@@ -148,8 +148,8 @@ export function Mermaid({ chart }: MermaidProps) {
   return (
     <div 
       ref={ref}
-      className="w-full flex justify-center my-2 sm:my-4 overflow-x-auto mermaid-container"
-      style={{ minHeight: '80px' }}
+      className="w-full flex justify-center my-1 sm:my-4 overflow-x-auto mermaid-container"
+      style={{ minHeight: '60px', maxWidth: '100%' }}
       dangerouslySetInnerHTML={{ __html: svgContent }}
     />
   );

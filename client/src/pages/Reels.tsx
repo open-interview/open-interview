@@ -259,7 +259,7 @@ export default function Reels() {
   return (
     <div className="h-screen w-full bg-black text-white overflow-hidden flex font-mono">
       {/* Top Navigation Bar */}
-      <div className="absolute top-0 left-0 w-full h-12 sm:h-14 px-2 sm:px-4 z-50 flex justify-between items-center border-b border-white/10 bg-black/80 backdrop-blur-md">
+      <div className="absolute top-0 left-0 w-full h-11 sm:h-14 px-2 sm:px-4 z-50 flex justify-between items-center border-b border-white/10 bg-black/80 backdrop-blur-md">
         <div className="flex items-center gap-2 sm:gap-6 min-w-0 flex-1">
           <button 
             onClick={() => setLocation('/')}
@@ -413,7 +413,7 @@ export default function Reels() {
       </div>
 
       {/* Main Content Area - Split View */}
-      <div className="flex-1 w-full flex flex-col md:flex-row pt-14 pb-10 overflow-hidden">
+      <div className="flex-1 w-full flex flex-col md:flex-row pt-11 sm:pt-14 pb-7 sm:pb-10 overflow-hidden">
         <AnimatePresence mode="wait" custom={currentIndex}>
           <motion.div
             key={currentQuestion.id}
@@ -424,28 +424,33 @@ export default function Reels() {
             className="w-full h-full flex flex-col md:flex-row overflow-hidden"
           >
             {/* Left Panel: Question */}
-            <div className="w-full md:w-[30%] min-h-[30vh] md:min-h-0 md:h-full p-4 sm:p-6 md:p-8 flex flex-col justify-center border-b md:border-b-0 md:border-r border-white/10 relative shrink-0">
-               <div className="absolute top-4 left-4 sm:top-6 sm:left-6 md:top-8 md:left-8 flex items-center gap-2 text-[10px] font-bold text-primary uppercase tracking-widest opacity-70">
-                 <Hash className="w-3 h-3" />
+            <div className="w-full md:w-[30%] min-h-[20vh] md:min-h-0 md:h-full p-3 sm:p-6 md:p-8 flex flex-col justify-center border-b md:border-b-0 md:border-r border-white/10 relative shrink-0">
+               <div className="absolute top-2 left-3 sm:top-6 sm:left-6 md:top-8 md:left-8 flex items-center gap-1 sm:gap-2 text-[9px] sm:text-[10px] font-bold text-primary uppercase tracking-widest opacity-70">
+                 <Hash className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                  ID: {currentQuestion.id}
                </div>
 
-               <div className="flex-1 flex flex-col justify-center space-y-4 sm:space-y-6 max-w-2xl mx-auto w-full pt-8 md:pt-0">
-                  <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold leading-tight tracking-tight">
+               <div className="flex-1 flex flex-col justify-center space-y-2 sm:space-y-6 max-w-2xl mx-auto w-full pt-6 md:pt-0">
+                  <h1 className="text-base sm:text-xl md:text-2xl lg:text-3xl font-bold leading-snug sm:leading-tight tracking-tight">
                     {currentQuestion.question}
                   </h1>
 
-                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                    {currentQuestion.tags.map(tag => (
-                      <span key={tag} className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white/5 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest border border-white/10 text-white/60">
+                  <div className="flex flex-wrap gap-1 sm:gap-2">
+                    {currentQuestion.tags.slice(0, 4).map(tag => (
+                      <span key={tag} className="px-1 sm:px-2 py-0.5 bg-white/5 text-[8px] sm:text-[10px] font-bold uppercase tracking-widest border border-white/10 text-white/60">
                         #{tag}
                       </span>
                     ))}
+                    {currentQuestion.tags.length > 4 && (
+                      <span className="px-1 sm:px-2 py-0.5 text-[8px] sm:text-[10px] text-white/40">
+                        +{currentQuestion.tags.length - 4}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Timer Display (Large) */}
+                  {/* Timer Display (Large) - Hidden on mobile when answer not shown */}
                   {!showAnswer && timerEnabled && (
-                    <div className="border-l-2 border-primary pl-3 sm:pl-4 py-2 opacity-80">
+                    <div className="hidden sm:block border-l-2 border-primary pl-3 sm:pl-4 py-2 opacity-80">
                        <div className="text-[9px] sm:text-[10px] text-white/50 mb-1 tracking-widest uppercase">Time Remaining</div>
                        <div className="text-lg sm:text-xl font-mono">{String(timeLeft).padStart(2, '0')}s</div>
                     </div>
@@ -454,46 +459,49 @@ export default function Reels() {
             </div>
 
             {/* Right Panel: Answer */}
-            <div className="w-full md:w-[70%] flex-1 md:h-full bg-white/5 relative flex flex-col overflow-hidden">
+            <div className="w-full md:w-[70%] flex-1 md:h-full bg-white/5 relative flex flex-col overflow-hidden min-h-0">
                {!showAnswer ? (
                   <button 
                     onClick={() => {
                       setShowAnswer(true);
                       markCompleted(currentQuestion.id);
                     }}
-                    className="w-full h-full min-h-[200px] flex flex-col items-center justify-center group hover:bg-white/10 transition-all cursor-pointer"
+                    className="w-full h-full min-h-[120px] sm:min-h-[200px] flex flex-col items-center justify-center group hover:bg-white/10 transition-all cursor-pointer active:bg-white/10"
                   >
-                    <Terminal className="w-8 h-8 sm:w-12 sm:h-12 mb-4 sm:mb-6 text-white/20 group-hover:text-primary transition-colors duration-300" />
-                    <span className="text-xs sm:text-sm font-bold uppercase tracking-widest text-white/40 group-hover:text-white transition-colors">
-                      Tap to Reveal Answer
+                    <Terminal className="w-6 h-6 sm:w-12 sm:h-12 mb-2 sm:mb-6 text-white/20 group-hover:text-primary transition-colors duration-300" />
+                    <span className="text-[10px] sm:text-sm font-bold uppercase tracking-widest text-white/40 group-hover:text-white transition-colors">
+                      Tap to Reveal
                     </span>
+                    {timerEnabled && (
+                      <span className="mt-2 text-xs sm:text-sm text-primary font-mono sm:hidden">{String(timeLeft).padStart(2, '0')}s</span>
+                    )}
                     <span className="mt-2 text-[9px] sm:text-[10px] text-white/20 font-mono hidden sm:block">[OR PRESS ARROW RIGHT]</span>
                   </button>
                ) : (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="w-full h-full overflow-y-auto p-4 sm:p-6 md:p-12 custom-scrollbar"
+                    className="w-full h-full overflow-y-auto p-3 sm:p-6 md:p-12 custom-scrollbar"
                   >
-                    <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8 pb-20">
+                    <div className="max-w-2xl mx-auto space-y-4 sm:space-y-8 pb-16 sm:pb-20">
                       {currentQuestion.diagram && (
                         <div>
-                          <div className="text-[9px] sm:text-[10px] font-bold text-primary uppercase tracking-widest mb-2 sm:mb-3 border-b border-primary/20 pb-1 w-fit">Visualization</div>
-                          <div className="bg-black/40 border border-white/10 p-3 sm:p-4 md:p-6 rounded-lg overflow-x-auto">
+                          <div className="text-[8px] sm:text-[10px] font-bold text-primary uppercase tracking-widest mb-2 sm:mb-3 border-b border-primary/20 pb-1 w-fit">Visualization</div>
+                          <div className="bg-black/40 border border-white/10 p-2 sm:p-4 md:p-6 rounded-lg overflow-x-auto">
                             <Mermaid chart={currentQuestion.diagram} />
                           </div>
                         </div>
                       )}
 
                       <div>
-                        <div className="text-[9px] sm:text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2 sm:mb-3 border-b border-white/10 pb-1 w-fit">Explanation</div>
-                        <div className="text-xs sm:text-sm md:text-base text-white/80 leading-6 sm:leading-7 font-light">
+                        <div className="text-[8px] sm:text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2 sm:mb-3 border-b border-white/10 pb-1 w-fit">Explanation</div>
+                        <div className="text-[11px] sm:text-sm md:text-base text-white/80 leading-5 sm:leading-7 font-light">
                           {renderExplanation(currentQuestion.explanation)}
                         </div>
                       </div>
                       
                       {isCompleted && (
-                         <div className="flex items-center gap-2 text-green-500 text-[10px] sm:text-xs font-bold uppercase tracking-widest mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-white/10">
+                         <div className="flex items-center gap-2 text-green-500 text-[9px] sm:text-xs font-bold uppercase tracking-widest mt-4 sm:mt-8 pt-4 sm:pt-8 border-t border-white/10">
                             <Check className="w-3 h-3 sm:w-4 sm:h-4" /> Completed
                          </div>
                       )}
@@ -506,12 +514,12 @@ export default function Reels() {
       </div>
 
       {/* Footer Navigation */}
-      <div className="absolute bottom-0 w-full h-8 sm:h-10 px-2 sm:px-4 border-t border-white/10 flex justify-between items-center text-[8px] sm:text-[10px] font-bold uppercase tracking-widest text-white/30 bg-black z-50">
-         <div className="flex gap-3 sm:gap-6">
+      <div className="absolute bottom-0 w-full h-7 sm:h-10 px-2 sm:px-4 border-t border-white/10 flex justify-between items-center text-[7px] sm:text-[10px] font-bold uppercase tracking-widest text-white/30 bg-black z-50">
+         <div className="flex gap-2 sm:gap-6">
             <span className="hidden sm:flex items-center gap-1"><span className="text-primary">↑</span> PREV</span>
             <span className="hidden sm:flex items-center gap-1"><span className="text-primary">↓</span> NEXT</span>
             <span className="hidden sm:flex items-center gap-1"><span className="text-primary">→</span> REVEAL</span>
-            <span className="sm:hidden">SWIPE TO NAVIGATE</span>
+            <span className="sm:hidden text-white/40">TAP ARROWS TO NAV</span>
          </div>
          <div>
             v2.2
