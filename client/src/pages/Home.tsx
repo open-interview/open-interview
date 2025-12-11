@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { channels, getQuestions } from '../lib/data';
 import { motion } from 'framer-motion';
-import { Terminal, Cpu, Database, Layout, ChevronRight, CheckSquare, BarChart2, Palette } from 'lucide-react';
+import { Terminal, Cpu, Database, Layout, BarChart2, Palette, Activity, GitBranch } from 'lucide-react';
 import { useProgress } from '../hooks/use-progress';
 import { useTheme } from '../context/ThemeContext';
 
@@ -96,6 +96,8 @@ export default function Home() {
                   {channel.id === 'algorithms' && <Terminal className="w-6 h-6" />}
                   {channel.id === 'frontend' && <Layout className="w-6 h-6" />}
                   {channel.id === 'database' && <Database className="w-6 h-6" />}
+                  {channel.id === 'sre' && <Activity className="w-6 h-6" />}
+                  {channel.id === 'devops' && <GitBranch className="w-6 h-6" />}
                 </div>
                 
                 <div>
