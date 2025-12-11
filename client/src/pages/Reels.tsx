@@ -314,15 +314,18 @@ export default function Reels() {
 
   const isCompleted = completed.includes(currentQuestion.id);
 
-  // Render markdown explanation with code highlighting
+  // Render markdown explanation with code highlighting and mermaid support
   const renderExplanation = (text: string) => {
     return (
       <ReactMarkdown
         components={{
           code({ node, className, children, ...props }) {
             const match = /language-(\w+)/.exec(className || '');
+            const language = match ? match[1] : '';
+            const codeContent = String(children).replace(/\n$/, '');
             const isInline = !match && !String(children).includes('\n');
             
+            // Handle inline code
             if (isInline) {
               return (
                 <code className="bg-white/10 px-1.5 py-0.5 rounded text-primary text-[0.9em]" {...props}>
@@ -331,14 +334,25 @@ export default function Reels() {
               );
             }
             
+            // Handle mermaid diagrams
+            if (language === 'mermaid') {
+              return (
+                <div className="my-4 bg-black/40 border border-white/10 p-2 sm:p-4 rounded-lg overflow-x-auto">
+                  <div className="text-[8px] sm:text-[10px] font-bold text-primary uppercase tracking-widest mb-2 border-b border-primary/20 pb-1 w-fit">Diagram</div>
+                  <Mermaid chart={codeContent} />
+                </div>
+              );
+            }
+            
+            // Handle other code blocks
             return (
               <div className="my-4 rounded overflow-hidden border border-white/10 text-xs">
                 <SyntaxHighlighter
-                  language={match ? match[1] : 'text'}
+                  language={language || 'text'}
                   style={vscDarkPlus}
                   customStyle={{ margin: 0, padding: '1rem', background: '#0a0a0a' }}
                 >
-                  {String(children).replace(/\n$/, '')}
+                  {codeContent}
                 </SyntaxHighlighter>
               </div>
             );
