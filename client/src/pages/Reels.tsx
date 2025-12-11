@@ -3,7 +3,7 @@ import { useLocation, useRoute } from 'wouter';
 import { channels, getQuestions, getChannel } from '../lib/data';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mermaid } from '../components/Mermaid';
-import { ArrowLeft, ArrowRight, Share2, Terminal, Home, ChevronRight, Hash, ChevronDown, Check, Settings, Timer, Clock } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Share2, Terminal, Home, ChevronRight, Hash, ChevronDown, Check, Settings, Timer, Clock, List, Flag } from 'lucide-react';
 import { useProgress } from '../hooks/use-progress';
 import { useToast } from '@/hooks/use-toast';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -73,6 +73,14 @@ export default function Reels() {
   const [timerDuration, setTimerDuration] = useState(60);
   const [timeLeft, setTimeLeft] = useState(timerDuration);
   const [isActive, setIsActive] = useState(true);
+  const [showQuestionPicker, setShowQuestionPicker] = useState(false);
+
+  // Progress calculations
+  const totalQuestions = channelQuestions.length;
+  const remainingQuestions = totalQuestions - currentIndex - 1;
+  const isLastQuestion = currentIndex === totalQuestions - 1;
+  const isFirstQuestion = currentIndex === 0;
+  const progressPercent = totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0;
 
   // Load timer settings
   useEffect(() => {
@@ -375,9 +383,78 @@ export default function Reels() {
             </button>
           </div>
 
-          <span className="text-[10px] sm:text-xs font-mono text-white/50">
-            {String(currentIndex + 1).padStart(2, '0')} / {String(channelQuestions.length).padStart(2, '0')}
-          </span>
+          {/* Question Progress & Picker */}
+          <Popover.Root open={showQuestionPicker} onOpenChange={setShowQuestionPicker}>
+            <Popover.Trigger asChild>
+              <button 
+                className="flex items-center gap-1 sm:gap-2 hover:text-primary transition-colors group"
+                title="Jump to question"
+              >
+                <List className="w-3 h-3 sm:w-4 sm:h-4 opacity-50 group-hover:opacity-100" />
+                <span className="text-[10px] sm:text-xs font-mono text-white/50 group-hover:text-white">
+                  {String(currentIndex + 1).padStart(2, '0')} / {String(totalQuestions).padStart(2, '0')}
+                </span>
+                {isLastQuestion && <Flag className="w-3 h-3 text-primary animate-pulse" />}
+              </button>
+            </Popover.Trigger>
+            <Popover.Portal>
+              <Popover.Content 
+                className="bg-black border border-white/20 p-2 sm:p-3 w-72 sm:w-80 max-h-[60vh] z-50 shadow-xl animate-in fade-in zoom-in-95 duration-100" 
+                sideOffset={5}
+                align="end"
+              >
+                <div className="space-y-2 sm:space-y-3">
+                  {/* Progress bar */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[9px] sm:text-[10px] uppercase tracking-widest">
+                      <span className="text-white/50">Progress</span>
+                      <span className="text-primary">{Math.round(progressPercent)}%</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary transition-all duration-300"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[8px] sm:text-[9px] text-white/30">
+                      <span>{currentIndex + 1} of {totalQuestions}</span>
+                      <span>{remainingQuestions} remaining</span>
+                    </div>
+                  </div>
+
+                  {/* Question list */}
+                  <div className="border-t border-white/10 pt-2">
+                    <div className="text-[9px] sm:text-[10px] uppercase tracking-widest text-white/50 mb-2">Jump to Question</div>
+                    <div className="max-h-[35vh] overflow-y-auto custom-scrollbar space-y-1">
+                      {channelQuestions.map((q, idx) => (
+                        <button
+                          key={q.id}
+                          onClick={() => {
+                            setCurrentIndex(idx);
+                            setShowQuestionPicker(false);
+                          }}
+                          className={`w-full text-left p-2 text-[10px] sm:text-xs rounded transition-colors flex items-start gap-2 ${
+                            idx === currentIndex 
+                              ? 'bg-primary/20 text-primary border border-primary/30' 
+                              : 'hover:bg-white/10 text-white/70'
+                          }`}
+                        >
+                          <span className="font-mono text-[9px] sm:text-[10px] opacity-50 shrink-0 w-6">
+                            {String(idx + 1).padStart(2, '0')}
+                          </span>
+                          <span className="line-clamp-2 flex-1">{q.question}</span>
+                          {completed.includes(q.id) && (
+                            <Check className="w-3 h-3 text-green-500 shrink-0" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <Popover.Arrow className="fill-white/20" />
+              </Popover.Content>
+            </Popover.Portal>
+          </Popover.Root>
 
           {/* Timer Toggle in Top Bar - Hidden on mobile */}
           <div className="hidden sm:flex items-center gap-2 border-l border-white/10 pl-4">
@@ -562,6 +639,25 @@ export default function Reels() {
                             <Check className="w-3 h-3 sm:w-4 sm:h-4" /> Completed
                          </div>
                       )}
+
+                      {/* Last question indicator */}
+                      {isLastQuestion && (
+                        <div className="flex flex-col items-center gap-2 mt-4 sm:mt-8 pt-4 sm:pt-8 border-t border-primary/30 text-center">
+                          <Flag className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                          <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-primary">
+                            🎉 Last Question!
+                          </div>
+                          <div className="text-[9px] sm:text-[10px] text-white/50">
+                            You've reached the end of this module
+                          </div>
+                          <button
+                            onClick={() => setLocation('/')}
+                            className="mt-2 px-3 py-1.5 border border-primary text-primary text-[10px] sm:text-xs uppercase tracking-widest hover:bg-primary hover:text-black transition-colors"
+                          >
+                            Back to Modules
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                )}
@@ -576,10 +672,21 @@ export default function Reels() {
             <span className="hidden sm:flex items-center gap-1"><span className="text-primary">↑</span> PREV</span>
             <span className="hidden sm:flex items-center gap-1"><span className="text-primary">↓</span> NEXT</span>
             <span className="hidden sm:flex items-center gap-1"><span className="text-primary">→</span> REVEAL</span>
-            <span className="sm:hidden text-white/40">← SWIPE → TO NAVIGATE</span>
+            <span className="sm:hidden text-white/40">← SWIPE →</span>
          </div>
-         <div>
-            v2.3
+         <div className="flex items-center gap-2 sm:gap-4">
+            {/* Remaining questions indicator */}
+            <span className={`${isLastQuestion ? 'text-primary' : 'text-white/40'}`}>
+              {isLastQuestion ? (
+                <span className="flex items-center gap-1">
+                  <Flag className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> FINAL
+                </span>
+              ) : (
+                <span>{remainingQuestions} LEFT</span>
+              )}
+            </span>
+            <span className="text-white/20">|</span>
+            <span>v2.4</span>
          </div>
       </div>
     </div>
