@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useRoute } from 'wouter';
-import { channels, getQuestions, getChannel } from '../lib/data';
+import { channels, getQuestions, getChannel, getQuestionDifficulty } from '../lib/data';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mermaid } from '../components/Mermaid';
-import { ArrowLeft, ArrowRight, Share2, Terminal, Home, ChevronRight, Hash, ChevronDown, Check, Settings, Timer, Clock, List, Flag, Bookmark, Grid3X3, LayoutList } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Share2, Terminal, Home, ChevronRight, Hash, ChevronDown, Check, Settings, Timer, Clock, List, Flag, Bookmark, Grid3X3, LayoutList, Zap, Target, Flame } from 'lucide-react';
 import { useProgress } from '../hooks/use-progress';
 import { useToast } from '@/hooks/use-toast';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -57,17 +57,19 @@ export default function Reels() {
   const [location, setLocation] = useLocation();
   const [match, params] = useRoute('/channel/:id/:index?');
   const channelId = params?.id;
-  const paramIndex = params?.index ? parseInt(params.index) : 0;
+  const hasIndexInUrl = params?.index !== undefined && params?.index !== '';
+  const paramIndex = hasIndexInUrl ? parseInt(params.index || '0') : null;
   
   const channel = getChannel(channelId || '');
   
   const [selectedSubChannel, setSelectedSubChannel] = useState('all');
-  const channelQuestions = getQuestions(channelId || '', selectedSubChannel);
+  const [selectedDifficulty, setSelectedDifficulty] = useState('all');
+  const channelQuestions = getQuestions(channelId || '', selectedSubChannel, selectedDifficulty);
   
   const { completed, markCompleted, lastVisitedIndex, saveLastVisitedIndex } = useProgress(channelId || '');
   const { toast } = useToast();
 
-  const [currentIndex, setCurrentIndex] = useState(paramIndex);
+  const [currentIndex, setCurrentIndex] = useState(paramIndex ?? 0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [timerEnabled, setTimerEnabled] = useState(true);
   const [timerDuration, setTimerDuration] = useState(60);
@@ -136,28 +138,40 @@ export default function Reels() {
     localStorage.setItem('timer-duration', String(duration));
   };
 
-  // Sync state with URL params
+  // Sync state with URL params - restore last visited position
   useEffect(() => {
-    // If index is out of bounds for current filter, reset to 0
-    if (paramIndex >= channelQuestions.length && channelQuestions.length > 0) {
-       setCurrentIndex(0);
-    } else if (!isNaN(paramIndex) && paramIndex >= 0) {
-      setCurrentIndex(paramIndex);
-    } else if (lastVisitedIndex > 0 && lastVisitedIndex < channelQuestions.length) {
-       // Restore last visited index if no param provided (or invalid)
-       setCurrentIndex(lastVisitedIndex);
-       // Update URL to match
-       setLocation(`/channel/${channelId}/${lastVisitedIndex}`, { replace: true });
-    }
-  }, [paramIndex, channelQuestions.length, lastVisitedIndex]);
+    if (channelQuestions.length === 0) return;
 
-  // Update URL when index changes
+    // If URL has explicit index
+    if (hasIndexInUrl && paramIndex !== null) {
+      // If index is out of bounds, reset to 0
+      if (paramIndex >= channelQuestions.length) {
+        setCurrentIndex(0);
+      } else if (paramIndex >= 0) {
+        setCurrentIndex(paramIndex);
+      }
+    } else {
+      // No index in URL - restore last visited position
+      if (lastVisitedIndex > 0 && lastVisitedIndex < channelQuestions.length) {
+        setCurrentIndex(lastVisitedIndex);
+        setLocation(`/channel/${channelId}/${lastVisitedIndex}`, { replace: true });
+      } else {
+        // Default to first question
+        setCurrentIndex(0);
+      }
+    }
+  }, [hasIndexInUrl, paramIndex, channelQuestions.length, lastVisitedIndex, channelId]);
+
+  // Update URL and save position when index changes
   useEffect(() => {
-    if (channelId && currentIndex !== paramIndex) {
-      setLocation(`/channel/${channelId}/${currentIndex}`, { replace: true });
+    if (channelId && channelQuestions.length > 0) {
+      const urlIndex = hasIndexInUrl ? paramIndex : null;
+      if (currentIndex !== urlIndex) {
+        setLocation(`/channel/${channelId}/${currentIndex}`, { replace: true });
+      }
       saveLastVisitedIndex(currentIndex);
     }
-  }, [currentIndex, channelId, setLocation, paramIndex]);
+  }, [currentIndex, channelId, channelQuestions.length]);
 
   // Timer logic
   useEffect(() => {
@@ -401,6 +415,51 @@ export default function Reels() {
                     </DropdownMenu.Root>
                 </>
               )}
+
+              {/* Difficulty Filter */}
+              <div className="h-4 w-px bg-white/20 hidden sm:block shrink-0" />
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger className="flex items-center gap-1 text-[10px] sm:text-xs font-bold uppercase tracking-widest hover:text-white text-white/70 outline-none">
+                  {selectedDifficulty === 'all' && <Target className="w-3 h-3 shrink-0" />}
+                  {selectedDifficulty === 'beginner' && <Zap className="w-3 h-3 text-green-400 shrink-0" />}
+                  {selectedDifficulty === 'intermediate' && <Target className="w-3 h-3 text-yellow-400 shrink-0" />}
+                  {selectedDifficulty === 'advanced' && <Flame className="w-3 h-3 text-red-400 shrink-0" />}
+                  <span className="hidden sm:inline truncate">
+                    {selectedDifficulty === 'all' ? 'All Levels' : selectedDifficulty}
+                  </span>
+                  <ChevronDown className="w-3 h-3 opacity-50 shrink-0" />
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Content className="bg-black border border-white/20 p-1 z-50 min-w-[150px] shadow-xl animate-in fade-in zoom-in-95 duration-100" align="start">
+                  <DropdownMenu.Item 
+                    className="text-[11px] sm:text-xs text-white p-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 outline-none data-[highlighted]:bg-white/10"
+                    onSelect={() => { setSelectedDifficulty('all'); setCurrentIndex(0); }}
+                  >
+                    <Target className="w-3 h-3" /> All Levels
+                    {selectedDifficulty === 'all' && <Check className="w-3 h-3 text-primary ml-auto" />}
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item 
+                    className="text-[11px] sm:text-xs text-white p-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 outline-none data-[highlighted]:bg-white/10"
+                    onSelect={() => { setSelectedDifficulty('beginner'); setCurrentIndex(0); }}
+                  >
+                    <Zap className="w-3 h-3 text-green-400" /> Beginner
+                    {selectedDifficulty === 'beginner' && <Check className="w-3 h-3 text-primary ml-auto" />}
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item 
+                    className="text-[11px] sm:text-xs text-white p-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 outline-none data-[highlighted]:bg-white/10"
+                    onSelect={() => { setSelectedDifficulty('intermediate'); setCurrentIndex(0); }}
+                  >
+                    <Target className="w-3 h-3 text-yellow-400" /> Intermediate
+                    {selectedDifficulty === 'intermediate' && <Check className="w-3 h-3 text-primary ml-auto" />}
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item 
+                    className="text-[11px] sm:text-xs text-white p-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 outline-none data-[highlighted]:bg-white/10"
+                    onSelect={() => { setSelectedDifficulty('advanced'); setCurrentIndex(0); }}
+                  >
+                    <Flame className="w-3 h-3 text-red-400" /> Advanced
+                    {selectedDifficulty === 'advanced' && <Check className="w-3 h-3 text-primary ml-auto" />}
+                  </DropdownMenu.Item>
+                </DropdownMenu.Content>
+              </DropdownMenu.Root>
           </div>
         </div>
 

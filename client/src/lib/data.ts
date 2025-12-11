@@ -25,6 +25,27 @@ export interface Question {
   explanation: string;
   diagram?: string;
   tags: string[];
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
+}
+
+// Infer difficulty from tags
+export function getQuestionDifficulty(question: Question): 'beginner' | 'intermediate' | 'advanced' {
+  if (question.difficulty) return question.difficulty;
+  
+  const tags = question.tags.map(t => t.toLowerCase());
+  
+  // Advanced indicators
+  if (tags.some(t => ['advanced', 'expert', 'complex', 'architecture', 'dist-sys', 'scale', 'optimization'].includes(t))) {
+    return 'advanced';
+  }
+  
+  // Beginner indicators
+  if (tags.some(t => ['basics', 'intro', 'beginner', 'fundamentals', 'concepts', 'basic'].includes(t))) {
+    return 'beginner';
+  }
+  
+  // Default to intermediate
+  return 'intermediate';
 }
 
 export const channels: Channel[] = [
@@ -89,13 +110,13 @@ export const channels: Channel[] = [
 
 export const questions: Question[] = questionsData as Question[];
 
-export function getQuestions(channelId: string, subChannelId?: string) {
+export function getQuestions(channelId: string, subChannelId?: string, difficulty?: string) {
     let channelQuestions = questions.filter(q => q.channelId === channelId);
     
     if (subChannelId && subChannelId !== 'all') {
       // Map 'observability' topic to related tags
       if (subChannelId === 'observability') {
-         return channelQuestions.filter(q => 
+         channelQuestions = channelQuestions.filter(q => 
            q.tags.includes('monitoring') || 
            q.tags.includes('logging') || 
            q.tags.includes('prometheus') ||
@@ -104,18 +125,44 @@ export function getQuestions(channelId: string, subChannelId?: string) {
          );
       }
       // Map 'docker' topic to container tags
-      if (subChannelId === 'docker') {
-         return channelQuestions.filter(q => 
+      else if (subChannelId === 'docker') {
+         channelQuestions = channelQuestions.filter(q => 
            q.tags.includes('docker') || 
            q.tags.includes('container') || 
            q.tags.includes('containers')
          );
       }
-      
-      return channelQuestions.filter(q => q.tags.includes(subChannelId));
+      else {
+        channelQuestions = channelQuestions.filter(q => q.tags.includes(subChannelId));
+      }
+    }
+    
+    // Filter by difficulty
+    if (difficulty && difficulty !== 'all') {
+      channelQuestions = channelQuestions.filter(q => getQuestionDifficulty(q) === difficulty);
     }
     
     return channelQuestions;
+}
+
+// Get all questions for stats
+export function getAllQuestions() {
+  return questions;
+}
+
+// Get stats by channel
+export function getStatsByChannel() {
+  return channels.map(channel => {
+    const channelQuestions = questions.filter(q => q.channelId === channel.id);
+    return {
+      id: channel.id,
+      name: channel.name,
+      total: channelQuestions.length,
+      beginner: channelQuestions.filter(q => getQuestionDifficulty(q) === 'beginner').length,
+      intermediate: channelQuestions.filter(q => getQuestionDifficulty(q) === 'intermediate').length,
+      advanced: channelQuestions.filter(q => getQuestionDifficulty(q) === 'advanced').length,
+    };
+  });
 }
 
 export function getChannel(channelId: string) {
