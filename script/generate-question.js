@@ -183,11 +183,43 @@ async function main() {
   const addedQuestions = [];
   const failedAttempts = [];
 
+  // Function to get weighted category based on question count
+  function getWeightedCategory(cats) {
+    // Count questions per channel
+    const channelCounts = {};
+    cats.forEach(c => {
+      if (!channelCounts[c.channel]) channelCounts[c.channel] = 0;
+      const file = getQuestionsFile(c.channel);
+      try {
+        const qs = JSON.parse(fs.readFileSync(file, 'utf8'));
+        channelCounts[c.channel] = qs.length;
+      } catch(e) {}
+    });
+
+    // Find min and max counts
+    const counts = Object.values(channelCounts);
+    const minCount = Math.min(...counts);
+    const maxCount = Math.max(...counts);
+
+    // Create weighted array - channels with fewer questions get higher weight
+    const weighted = [];
+    cats.forEach(c => {
+      const count = channelCounts[c.channel];
+      // Weight inversely proportional to question count
+      const weight = maxCount - count + 1;
+      for (let i = 0; i < weight; i++) {
+        weighted.push(c);
+      }
+    });
+
+    return weighted[Math.floor(Math.random() * weighted.length)];
+  }
+
   for (let i = 0; i < NUM_QUESTIONS; i++) {
     console.log(`\n--- Question ${i + 1}/${NUM_QUESTIONS} ---`);
     
     const filteredCats = inputChannel === 'random' ? categories : categories.filter(c => c.channel === inputChannel);
-    const category = filteredCats[Math.floor(Math.random() * filteredCats.length)] || categories[0];
+    const category = getWeightedCategory(filteredCats);
 
     const difficulty = inputDifficulty === 'random'
       ? difficulties[Math.floor(Math.random() * difficulties.length)]
