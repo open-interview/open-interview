@@ -95,9 +95,10 @@ export function useGlobalStats() {
     // Also aggregate from channel history for backward compatibility
     const allHistory: ProgressEntry[] = [];
     
-    // Scan ALL channels
-    ['system-design', 'algorithms', 'frontend', 'database', 'sre', 'devops'].forEach(cid => {
-      const savedHistory = localStorage.getItem(`history-${cid}`);
+    // Scan ALL channels dynamically from localStorage
+    const historyKeys = Object.keys(localStorage).filter(k => k.startsWith('history-'));
+    historyKeys.forEach(key => {
+      const savedHistory = localStorage.getItem(key);
       if (savedHistory) {
         allHistory.push(...JSON.parse(savedHistory));
       }

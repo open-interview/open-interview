@@ -61,7 +61,8 @@ jobs:
           const fs = require('fs');
           const { execSync } = require('child_process');
 
-          const QUESTIONS_FILE = 'client/src/lib/questions.json';
+          const QUESTIONS_DIR = 'client/src/lib/questions';
+          const getQuestionsFile = (channel) => `${QUESTIONS_DIR}/${channel}.json`;
 
           // All categories with their tags
           const categories = [
@@ -451,19 +452,47 @@ jobs:
             return fallbackQuestions[Math.floor(Math.random() * fallbackQuestions.length)];
           }
 
+          // Load all questions from channel files for dedup checking
+          function loadAllQuestions() {
+            const allQuestions = [];
+            try {
+              const channelFiles = fs.readdirSync(QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+              for (const file of channelFiles) {
+                try {
+                  const data = JSON.parse(fs.readFileSync(`${QUESTIONS_DIR}/${file}`, 'utf8'));
+                  allQuestions.push(...data);
+                } catch (e) {
+                  console.log(`Warning: Could not load ${file}`);
+                }
+              }
+            } catch (e) {
+              console.log('Questions directory not found, will create');
+            }
+            return allQuestions;
+          }
+
+          // Update the index.ts file after adding a question
+          function updateIndexFile() {
+            const channelFiles = fs.readdirSync(QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+            const channels = channelFiles.map(f => f.replace('.json', ''));
+            
+            const imports = channels.map(ch => 
+              `import ${ch.replace(/-/g, '_')} from "./${ch}.json";`
+            ).join('\n');
+            
+            const exports = channels.map(ch => 
+              `  "${ch}": ${ch.replace(/-/g, '_')}`
+            ).join(',\n');
+            
+            const content = `${imports}\n\nexport const questionsByChannel: Record<string, any[]> = {\n${exports}\n};\n\nexport const allQuestions = Object.values(questionsByChannel).flat();\n`;
+            
+            fs.writeFileSync(`${QUESTIONS_DIR}/index.ts`, content);
+            console.log('Updated index.ts');
+          }
+
           async function main() {
             console.log('=== Daily Question Generator ===\n');
             
-            // Load existing questions
-            let questions;
-            try {
-              questions = JSON.parse(fs.readFileSync(QUESTIONS_FILE, 'utf8'));
-              console.log(`Loaded ${questions.length} existing questions`);
-            } catch (error) {
-              console.error('Failed to load questions file:', error.message);
-              process.exit(1);
-            }
-
             // Get inputs (from workflow_dispatch or use random)
             const inputChannel = process.env.INPUT_CHANNEL || 'random';
             const inputDifficulty = process.env.INPUT_DIFFICULTY || 'random';
@@ -475,6 +504,20 @@ jobs:
             } else {
               const filtered = categories.filter(c => c.channel === inputChannel);
               category = filtered[Math.floor(Math.random() * filtered.length)] || categories[0];
+            }
+            
+            // Load all questions for dedup checking
+            const allQuestions = loadAllQuestions();
+            console.log(`Loaded ${allQuestions.length} existing questions across all channels`);
+            
+            // Load channel-specific questions
+            const channelFile = getQuestionsFile(category.channel);
+            let channelQuestions = [];
+            try {
+              channelQuestions = JSON.parse(fs.readFileSync(channelFile, 'utf8'));
+            } catch (e) {
+              console.log(`Channel file ${channelFile} not found, will create new`);
+              channelQuestions = [];
             }
 
             // Pick difficulty based on input
@@ -512,8 +555,8 @@ jobs:
               questionData = parseJsonFromResponse(response);
               
               if (validateQuestion(questionData)) {
-                // Check for duplicates
-                if (isDuplicate(questionData.question, questions)) {
+                // Check for duplicates against ALL questions
+                if (isDuplicate(questionData.question, allQuestions)) {
                   console.log('AI-generated question is a duplicate, will use fallback');
                   questionData = null;
                 } else {
@@ -530,7 +573,7 @@ jobs:
             // Use fallback if needed (with dedup)
             if (!questionData) {
               console.log('\nFinding non-duplicate fallback question...');
-              const fallback = findNonDuplicateFallback(questions);
+              const fallback = findNonDuplicateFallback(allQuestions);
               
               if (!fallback) {
                 console.log('No unique questions available. Skipping.');
@@ -543,10 +586,18 @@ jobs:
               category.tags = fallback.category.tags;
               usedFallback = true;
               console.log('Found unique fallback question');
+              
+              // Reload channel questions for the fallback's channel
+              const fallbackChannelFile = getQuestionsFile(category.channel);
+              try {
+                channelQuestions = JSON.parse(fs.readFileSync(fallbackChannelFile, 'utf8'));
+              } catch (e) {
+                channelQuestions = [];
+              }
             }
 
-            // Generate unique ID
-            const newId = generateUniqueId(questions, category.channel);
+            // Generate unique ID based on all questions
+            const newId = generateUniqueId(allQuestions, category.channel);
 
             // Build new question object
             const newQuestion = {
@@ -561,13 +612,17 @@ jobs:
               diagram: questionData.diagram || "graph TD\n    A[Concept] --> B[Implementation]"
             };
 
-            // Add to questions array
-            questions.push(newQuestion);
+            // Add to channel-specific questions array
+            channelQuestions.push(newQuestion);
 
-            // Write back to file
+            // Write back to channel-specific file
+            const targetFile = getQuestionsFile(category.channel);
             try {
-              fs.writeFileSync(QUESTIONS_FILE, JSON.stringify(questions, null, 2));
+              fs.mkdirSync(QUESTIONS_DIR, { recursive: true });
+              fs.writeFileSync(targetFile, JSON.stringify(channelQuestions, null, 2));
+              updateIndexFile();
               console.log('\n=== Success ===');
+              console.log(`File: ${targetFile}`);
               console.log(`ID: ${newQuestion.id}`);
               console.log(`Question: ${newQuestion.question}`);
               console.log(`Source: ${usedFallback ? 'Fallback' : 'AI Generated'}`);
@@ -596,7 +651,7 @@ jobs:
       - name: Check for changes
         id: check
         run: |
-          if git diff --quiet client/src/lib/questions.json; then
+          if git diff --quiet client/src/lib/questions/; then
             echo "changed=false" >> $GITHUB_OUTPUT
           else
             echo "changed=true" >> $GITHUB_OUTPUT
@@ -616,40 +671,62 @@ jobs:
             git rebase --abort 2>/dev/null || true
             
             # Reset to clean state and pull latest
-            git checkout -- client/src/lib/questions.json 2>/dev/null || true
+            git checkout -- client/src/lib/questions/ 2>/dev/null || true
             git fetch origin main
             git reset --hard origin/main
             
             # Re-run the question generation on latest base with dedup
             node -e '
             const fs = require("fs");
-            const QUESTIONS_FILE = "client/src/lib/questions.json";
-            const questions = JSON.parse(fs.readFileSync(QUESTIONS_FILE, "utf8"));
+            const QUESTIONS_DIR = "client/src/lib/questions";
             const newQuestion = JSON.parse(process.env.NEW_QUESTION || "{}");
-            if (!newQuestion.id) { console.log("No new question to add"); process.exit(0); }
+            if (!newQuestion.id || !newQuestion.channel) { console.log("No new question to add"); process.exit(0); }
+            
+            // Load all questions for dedup
+            const allQuestions = [];
+            fs.readdirSync(QUESTIONS_DIR).filter(f => f.endsWith(".json")).forEach(f => {
+              try { allQuestions.push(...JSON.parse(fs.readFileSync(QUESTIONS_DIR + "/" + f, "utf8"))); } catch(e) {}
+            });
+            
             const normalize = t => t.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
             const stopWords = new Set(["what","is","the","a","an","how","does","do","are","in","of","to","and","for","with","between","explain","describe","difference"]);
             const keywords = t => normalize(t).split(" ").filter(w => w.length > 2 && !stopWords.has(w));
             const similarity = (a, b) => { const w1 = new Set(keywords(a)), w2 = new Set(keywords(b)); if (!w1.size || !w2.size) return 0; return [...w1].filter(w => w2.has(w)).length / new Set([...w1, ...w2]).size; };
             const isDup = (q, arr) => arr.some(e => normalize(e.question) === normalize(q) || similarity(q, e.question) >= 0.6);
-            if (isDup(newQuestion.question, questions)) { console.log("Question is duplicate, skipping"); process.exit(0); }
+            
+            if (isDup(newQuestion.question, allQuestions)) { console.log("Question is duplicate, skipping"); process.exit(0); }
+            
+            // Load channel file
+            const channelFile = QUESTIONS_DIR + "/" + newQuestion.channel + ".json";
+            let channelQuestions = [];
+            try { channelQuestions = JSON.parse(fs.readFileSync(channelFile, "utf8")); } catch(e) {}
+            
+            // Generate unique ID
             const prefix = newQuestion.channel.substring(0, 2);
-            const ids = new Set(questions.map(q => q.id));
-            let c = questions.length + 1, newId;
+            const ids = new Set(allQuestions.map(q => q.id));
+            let c = allQuestions.length + 1, newId;
             do { newId = prefix + "-" + c++; } while (ids.has(newId));
             newQuestion.id = newId;
-            questions.push(newQuestion);
-            fs.writeFileSync(QUESTIONS_FILE, JSON.stringify(questions, null, 2));
-            console.log("Added question with ID:", newId);
+            
+            channelQuestions.push(newQuestion);
+            fs.writeFileSync(channelFile, JSON.stringify(channelQuestions, null, 2));
+            
+            // Update index.ts
+            const channels = fs.readdirSync(QUESTIONS_DIR).filter(f => f.endsWith(".json")).map(f => f.replace(".json", ""));
+            const imports = channels.map(ch => "import " + ch.replace(/-/g, "_") + " from \"./" + ch + ".json\";").join("\n");
+            const exports = channels.map(ch => "  \"" + ch + "\": " + ch.replace(/-/g, "_")).join(",\n");
+            fs.writeFileSync(QUESTIONS_DIR + "/index.ts", imports + "\n\nexport const questionsByChannel: Record<string, any[]> = {\n" + exports + "\n};\n\nexport const allQuestions = Object.values(questionsByChannel).flat();\n");
+            
+            console.log("Added question with ID:", newId, "to", channelFile);
             '
             
             # Check if there are changes to commit
-            if git diff --quiet client/src/lib/questions.json; then
+            if git diff --quiet client/src/lib/questions/; then
               echo "No changes to commit"
               exit 0
             fi
             
-            git add client/src/lib/questions.json
+            git add client/src/lib/questions/
             git commit -m "🤖 Add daily question $(date +%Y-%m-%d)"
             
             if git push origin main; then

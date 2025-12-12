@@ -1,6 +1,7 @@
-import questionsData from './questions.json';
+import { allQuestions, questionsByChannel } from './questions';
 
 // Channel metadata for display (icons, colors, images)
+// New channels will use default metadata automatically
 const channelMeta: Record<string, { image: string; color: string; icon: string; description: string }> = {
   'system-design': {
     image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=300&fit=crop',
@@ -77,8 +78,11 @@ export interface Channel {
   subChannels: SubChannel[];
 }
 
-// Load questions from JSON
-export const questions: Question[] = questionsData as Question[];
+// Load questions from split channel files
+export const questions: Question[] = allQuestions as Question[];
+
+// Get all channel IDs dynamically
+export const channelIds: string[] = Object.keys(questionsByChannel);
 
 // Dynamically derive channels from questions
 function deriveChannels(): Channel[] {
@@ -100,7 +104,7 @@ function deriveChannels(): Channel[] {
     const meta = channelMeta[channelId] || defaultMeta;
     const subChannels: SubChannel[] = [
       { id: 'all', name: 'All Topics' },
-      ...Array.from(subChannelSet).map((sc: string) => ({
+      ...Array.from(subChannelSet).sort().map((sc: string) => ({
         id: sc,
         name: formatSubChannelName(sc)
       }))
@@ -117,7 +121,7 @@ function deriveChannels(): Channel[] {
     });
   }
   
-  // Sort channels by predefined order
+  // Sort channels by predefined order, unknown channels go at the end
   const order = ['system-design', 'algorithms', 'frontend', 'database', 'sre', 'devops'];
   derivedChannels.sort((a, b) => {
     const aIdx = order.indexOf(a.id);
@@ -131,7 +135,7 @@ function deriveChannels(): Channel[] {
   return derivedChannels;
 }
 
-// Format channel ID to display name
+// Format channel ID to display name (auto-formats unknown channels)
 function formatChannelName(id: string): string {
   const nameMap: Record<string, string> = {
     'system-design': 'System.Design',
@@ -144,59 +148,28 @@ function formatChannelName(id: string): string {
   return nameMap[id] || id.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
-// Format subchannel ID to display name
+// Format subchannel ID to display name (auto-formats unknown subchannels)
 function formatSubChannelName(id: string): string {
   const nameMap: Record<string, string> = {
-    // System Design
-    'infrastructure': 'Infrastructure',
-    'distributed-systems': 'Distributed Systems',
+    // Common abbreviations and special cases
     'api-design': 'API Design',
-    'caching': 'Caching',
-    'messaging': 'Messaging',
-    'architecture': 'Architecture',
-    // Algorithms
-    'data-structures': 'Data Structures',
-    'sorting': 'Sorting',
-    'dynamic-programming': 'Dynamic Programming',
-    'graphs': 'Graphs',
-    'trees': 'Trees',
-    'searching': 'Searching',
-    'fundamentals': 'Fundamentals',
-    // Frontend
-    'react': 'React',
-    'javascript': 'JavaScript',
-    'typescript': 'TypeScript',
-    'css': 'CSS',
-    'performance': 'Performance',
-    'web-fundamentals': 'Web Fundamentals',
-    // Database
-    'database': 'Database',
+    'cicd': 'CI/CD',
+    'aws': 'AWS',
+    'gcp': 'GCP',
     'sql': 'SQL',
     'nosql': 'NoSQL',
-    'indexing': 'Indexing',
-    'transactions': 'Transactions',
-    'replication': 'Replication',
-    // DevOps
-    'containers': 'Containers',
-    'cicd': 'CI/CD',
-    'terraform': 'Terraform',
-    'kubernetes': 'Kubernetes',
-    'observability': 'Observability',
-    'jenkins': 'Jenkins',
-    'aws': 'AWS',
-    'azure': 'Azure',
-    'gcp': 'GCP',
-    'ansible': 'Ansible',
-    'git': 'Git',
-    'linux': 'Linux',
-    'networking': 'Networking',
-    'security': 'Security',
-    'general': 'General',
-    // SRE
-    'reliability': 'Reliability',
-    'incident-management': 'Incident Management',
-    'capacity-planning': 'Capacity Planning'
+    'slo-sli': 'SLO/SLI',
+    'dp': 'Dynamic Programming',
+    'k8s': 'Kubernetes',
+    'iac': 'Infrastructure as Code',
+    'dns': 'DNS',
+    'elk': 'ELK Stack',
+    'css': 'CSS',
+    'js': 'JavaScript',
+    'ts': 'TypeScript'
   };
+  
+  // Return mapped name or auto-format
   return nameMap[id] || id.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
@@ -243,7 +216,7 @@ export function getStatsByChannel() {
   });
 }
 
-// Get difficulty for a question (now just returns the field directly)
+// Get difficulty for a question
 export function getQuestionDifficulty(question: Question): Difficulty {
   return question.difficulty;
 }
