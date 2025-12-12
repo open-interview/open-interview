@@ -829,11 +829,26 @@ export default function Reels() {
           >
             {/* Left Panel: Question */}
             <div className="w-full md:w-[30%] min-h-[20vh] md:min-h-0 md:h-full p-3 sm:p-6 md:p-8 flex flex-col justify-center border-b md:border-b-0 md:border-r border-white/10 relative shrink-0">
-               <div className="absolute top-2 left-3 sm:top-6 sm:left-6 md:top-8 md:left-8 flex items-center gap-2 sm:gap-3">
+               <div className="absolute top-2 left-3 sm:top-6 sm:left-6 md:top-8 md:left-8 flex flex-wrap items-center gap-2 sm:gap-3">
                  <div className="flex items-center gap-1 sm:gap-2 text-[9px] sm:text-[10px] font-bold text-primary uppercase tracking-widest opacity-70">
                    <Hash className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                   ID: {currentQuestion.id}
+                   {currentQuestion.id}
                  </div>
+                 {/* Difficulty Badge */}
+                 <span className={`px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider rounded ${
+                   currentQuestion.difficulty === 'beginner' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                   currentQuestion.difficulty === 'intermediate' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                   'bg-red-500/20 text-red-400 border border-red-500/30'
+                 }`}>
+                   {currentQuestion.difficulty === 'beginner' && <Zap className="w-2.5 h-2.5 inline mr-0.5" />}
+                   {currentQuestion.difficulty === 'intermediate' && <Target className="w-2.5 h-2.5 inline mr-0.5" />}
+                   {currentQuestion.difficulty === 'advanced' && <Flame className="w-2.5 h-2.5 inline mr-0.5" />}
+                   {currentQuestion.difficulty}
+                 </span>
+                 {/* SubChannel Badge */}
+                 <span className="px-1.5 py-0.5 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider bg-white/5 text-white/50 border border-white/10 rounded">
+                   {currentQuestion.subChannel}
+                 </span>
                  <button
                    onClick={() => toggleMark(currentQuestion.id)}
                    className={`p-1 rounded transition-colors ${
