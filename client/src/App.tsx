@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Stats from "@/pages/Stats";
 import Home from "@/pages/Home";
+import About from "@/pages/About";
 import Reels from "@/pages/Reels";
 import MermaidTest from "@/pages/MermaidTest";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -14,6 +15,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/about" component={About} />
       <Route path="/stats" component={Stats} />
       <Route path="/test/mermaid" component={MermaidTest} />
       <Route path="/channel/:id" component={Reels} />
