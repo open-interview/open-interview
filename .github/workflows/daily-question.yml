@@ -369,6 +369,13 @@ jobs:
               console.log(`ID: ${newQuestion.id}`);
               console.log(`Question: ${newQuestion.question}`);
               console.log(`Source: ${usedFallback ? 'Fallback' : 'AI Generated'}`);
+              
+              // Output the new question for retry logic
+              const outputFile = process.env.GITHUB_OUTPUT;
+              if (outputFile) {
+                const questionJson = JSON.stringify(newQuestion).replace(/\n/g, '\\n');
+                fs.appendFileSync(outputFile, `new_question=${questionJson}\n`);
+              }
             } catch (error) {
               console.error('Failed to write questions file:', error.message);
               process.exit(1);
@@ -398,15 +405,76 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add client/src/lib/questions.json
-          git commit -m "🤖 Add daily question $(date +%Y-%m-%d)"
           
-          # Retry push up to 3 times in case of conflicts
+          # Retry up to 3 times in case of conflicts
           for i in 1 2 3; do
-            git pull --rebase origin main && git push && break
-            echo "Push attempt $i failed, retrying..."
+            echo "Attempt $i..."
+            
+            # Abort any in-progress rebase
+            git rebase --abort 2>/dev/null || true
+            
+            # Reset to clean state and pull latest
+            git checkout -- client/src/lib/questions.json 2>/dev/null || true
+            git fetch origin main
+            git reset --hard origin/main
+            
+            # Re-run the question generation on latest base
+            node << 'REGEN_SCRIPT'
+            const fs = require('fs');
+            const QUESTIONS_FILE = 'client/src/lib/questions.json';
+            const questions = JSON.parse(fs.readFileSync(QUESTIONS_FILE, 'utf8'));
+            
+            // Read the generated question from env (set by previous step)
+            const newQuestion = JSON.parse(process.env.NEW_QUESTION || '{}');
+            if (!newQuestion.id) {
+              console.log('No new question to add');
+              process.exit(0);
+            }
+            
+            // Check if question already exists
+            if (questions.some(q => q.question === newQuestion.question)) {
+              console.log('Question already exists, skipping');
+              process.exit(0);
+            }
+            
+            // Generate new unique ID based on current questions
+            const prefix = newQuestion.channel.substring(0, 2);
+            const existingIds = new Set(questions.map(q => q.id));
+            let counter = questions.length + 1;
+            let newId;
+            do {
+              newId = prefix + '-' + counter;
+              counter++;
+            } while (existingIds.has(newId));
+            newQuestion.id = newId;
+            
+            questions.push(newQuestion);
+            fs.writeFileSync(QUESTIONS_FILE, JSON.stringify(questions, null, 2));
+            console.log('Added question with ID:', newId);
+            REGEN_SCRIPT
+            
+            # Check if there are changes to commit
+            if git diff --quiet client/src/lib/questions.json; then
+              echo "No changes to commit"
+              exit 0
+            fi
+            
+            git add client/src/lib/questions.json
+            git commit -m "🤖 Add daily question $(date +%Y-%m-%d)"
+            
+            if git push origin main; then
+              echo "Successfully pushed!"
+              exit 0
+            fi
+            
+            echo "Push failed, retrying..."
             sleep 5
           done
+          
+          echo "Failed after 3 attempts"
+          exit 1
+        env:
+          NEW_QUESTION: ${{ steps.generate.outputs.new_question }}
 
       - name: Summary
         run: |
