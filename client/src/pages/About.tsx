@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { ArrowLeft, Brain, Code, Target, Flame, Lock, Unlock, Volume2, VolumeX } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { SEOHead } from '../components/SEOHead';
+import { trackEasterEggUnlocked, trackGitHubClick } from '../hooks/use-analytics';
 
 export default function About() {
   const [_, setLocation] = useLocation();
@@ -21,10 +22,12 @@ export default function About() {
       
       if (keySequence === 'hack') {
         setEasterEgg2(true);
+        trackEasterEggUnlocked('hacker_mode');
         playSound();
         keySequence = '';
       } else if (keySequence === 'legend') {
         setEasterEgg3(true);
+        trackEasterEggUnlocked('legend_status');
         playSound();
         keySequence = '';
       }

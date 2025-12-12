@@ -4,6 +4,7 @@ import { getQuestions, getChannel } from '../lib/data';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mermaid } from '../components/Mermaid';
 import { SEOHead } from '../components/SEOHead';
+import { trackQuestionView, trackAnswerRevealed, trackLinkedInShare, trackLinkedInDownload, trackGitHubClick, trackTimerUsage } from '../hooks/use-analytics';
 import { ArrowLeft, ArrowRight, Share2, Terminal, ChevronRight, Hash, ChevronDown, Check, Timer, List, Flag, Bookmark, Grid3X3, LayoutList, Zap, Target, Flame, Star, AlertCircle } from 'lucide-react';
 import { useProgress, trackActivity } from '../hooks/use-progress';
 import { useToast } from '@/hooks/use-toast';
@@ -197,6 +198,13 @@ export default function Reels() {
     setIsActive(true);
   }, [currentIndex, timerDuration, timerEnabled]);
 
+  // Track question view when it changes
+  useEffect(() => {
+    if (currentQuestion) {
+      trackQuestionView(currentQuestion.id, currentQuestion.channel, currentQuestion.difficulty);
+    }
+  }, [currentIndex]);
+
   // When timer is toggled off, show answer immediately
   useEffect(() => {
     if (!timerEnabled) {
@@ -214,6 +222,7 @@ export default function Reels() {
       } else if (e.key === 'ArrowRight') {
         if (!showAnswer) {
           setShowAnswer(true);
+          trackAnswerRevealed(channelQuestions[currentIndex].id, timeLeft);
           markCompleted(channelQuestions[currentIndex].id);
           trackActivity(); // Track user activity
         }
@@ -922,6 +931,7 @@ export default function Reels() {
                   <button 
                     onClick={() => {
                       setShowAnswer(true);
+                      trackAnswerRevealed(currentQuestion.id, timeLeft);
                       markCompleted(currentQuestion.id);
                       trackActivity(); // Track user activity
                     }}

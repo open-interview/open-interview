@@ -5,6 +5,7 @@ import { channels, getQuestions, getAllQuestions, getQuestionDifficulty } from "
 import { ArrowLeft, Trophy, Flame, Calendar, Zap, Star, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { SEOHead } from "../components/SEOHead";
+import { trackStatsView, trackGitHubClick } from "../hooks/use-analytics";
 
 // Generate activity data for a given number of days
 function generateActivityData(stats: { date: string; count: number }[], days: number) {
@@ -28,6 +29,8 @@ export default function Stats() {
 
   // Handle ESC key to go back to main page
   useEffect(() => {
+    trackStatsView();
+    
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setLocation('/');

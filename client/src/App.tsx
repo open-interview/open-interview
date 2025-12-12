@@ -10,6 +10,7 @@ import About from "@/pages/About";
 import Reels from "@/pages/Reels";
 import MermaidTest from "@/pages/MermaidTest";
 import { ThemeProvider } from "./context/ThemeContext";
+import { usePageViewTracking, useSessionTracking, useInteractionTracking } from "./hooks/use-analytics";
 
 function Router() {
   return (
@@ -25,13 +26,22 @@ function Router() {
   );
 }
 
+function AppContent() {
+  // Initialize analytics hooks
+  usePageViewTracking();
+  useSessionTracking();
+  useInteractionTracking();
+
+  return <Router />;
+}
+
 function App() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
-          <Router />
+          <AppContent />
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>

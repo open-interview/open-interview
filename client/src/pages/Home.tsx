@@ -6,6 +6,7 @@ import { Terminal, Cpu, Database, Layout, BarChart2, Palette, Activity, GitBranc
 import { useProgress } from '../hooks/use-progress';
 import { useTheme } from '../context/ThemeContext';
 import { SEOHead } from '../components/SEOHead';
+import { trackChannelSelect, trackGitHubClick, trackThemeChange } from '../hooks/use-analytics';
 
 export default function Home() {
   const [_, setLocation] = useLocation();
@@ -70,6 +71,7 @@ export default function Home() {
                href="https://github.com/satishkumar-dhule/code-reels/issues/new"
                target="_blank"
                rel="noopener noreferrer"
+               onClick={() => trackGitHubClick('issue')}
                className="text-[10px] sm:text-xs uppercase tracking-widest hover:text-primary flex items-center gap-1 sm:gap-2 transition-colors p-1"
                title="Report Issue"
              >
@@ -79,13 +81,17 @@ export default function Home() {
                href="https://github.com/satishkumar-dhule/code-reels"
                target="_blank"
                rel="noopener noreferrer"
+               onClick={() => trackGitHubClick('star')}
                className="text-[10px] sm:text-xs uppercase tracking-widest hover:text-primary flex items-center gap-1 sm:gap-2 transition-colors p-1"
                title="Star on GitHub"
              >
                 <Star className="w-3 h-3 sm:w-4 sm:h-4" /> <span className="hidden xs:inline">Star</span>
              </a>
              <button 
-               onClick={cycleTheme}
+               onClick={() => {
+                 cycleTheme();
+                 trackThemeChange(theme);
+               }}
                className="text-[10px] sm:text-xs uppercase tracking-widest hover:text-primary flex items-center gap-1 sm:gap-2 transition-colors p-1"
                title="Switch Theme [T]"
              >
@@ -109,7 +115,10 @@ export default function Home() {
           return (
             <motion.div
               key={channel.id}
-              onClick={() => setLocation(`/channel/${channel.id}`)}
+              onClick={() => {
+                trackChannelSelect(channel.id, channel.name);
+                setLocation(`/channel/${channel.id}`);
+              }}
               className={`
                 relative cursor-pointer border border-border p-3 sm:p-6 flex flex-col justify-between
                 transition-all duration-200 group bg-card hover:border-primary min-h-[140px] sm:min-h-[200px]
@@ -177,6 +186,7 @@ export default function Home() {
             href="https://github.com/satishkumar-dhule/code-reels"
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => trackGitHubClick('star')}
             className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
           >
             <Star className="w-3 h-3" /> Star on GitHub
@@ -186,6 +196,7 @@ export default function Home() {
             href="https://github.com/satishkumar-dhule/code-reels/issues/new"
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => trackGitHubClick('issue')}
             className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
           >
             <AlertCircle className="w-3 h-3" /> Report Issue
@@ -195,6 +206,7 @@ export default function Home() {
             href="https://github.com/satishkumar-dhule/code-reels/discussions"
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => trackGitHubClick('discussions')}
             className="text-muted-foreground hover:text-primary transition-colors"
           >
             Discuss
