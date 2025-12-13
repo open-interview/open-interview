@@ -2,6 +2,17 @@
 
 > A modern, interactive platform for mastering technical interview questions across multiple domains. Built with React, TypeScript, and Node.js.
 
+## 🎉 NEW: Redesigned Q&A Interface (v3.0)
+
+The question and answer interface has been completely redesigned with:
+- **Enhanced Diagram Viewer** - Zoom, pan, and fullscreen support for complex diagrams
+- **Structured Content Layout** - Clear sections for diagrams, quick answers, and detailed explanations
+- **Mobile-First Design** - Optimized touch interactions and swipe gestures
+- **Advanced Navigation** - Grid/list question picker with visual progress indicators
+- **Better Code Blocks** - Language labels, line numbers, and improved syntax highlighting
+
+📖 See [REDESIGN_SUMMARY.md](REDESIGN_SUMMARY.md) for complete details.
+
 [![GitHub Stars](https://img.shields.io/github/stars/satishkumar-dhule/code-reels?style=social)](https://github.com/satishkumar-dhule/code-reels)
 [![GitHub Forks](https://img.shields.io/github/forks/satishkumar-dhule/code-reels?style=social)](https://github.com/satishkumar-dhule/code-reels)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)

@@ -7,7 +7,7 @@ import NotFound from "@/pages/not-found";
 import Stats from "@/pages/Stats";
 import Home from "@/pages/Home";
 import About from "@/pages/About";
-import Reels from "@/pages/Reels";
+import Reels from "@/pages/ReelsRedesigned";
 import MermaidTest from "@/pages/MermaidTest";
 import { ThemeProvider } from "./context/ThemeContext";
 import { usePageViewTracking, useSessionTracking, useInteractionTracking } from "./hooks/use-analytics";
