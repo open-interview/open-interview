@@ -7,9 +7,13 @@ import NotFound from "@/pages/not-found";
 import Stats from "@/pages/Stats";
 import Home from "@/pages/Home";
 import About from "@/pages/About";
+import WhatsNew from "@/pages/WhatsNew";
 import Reels from "@/pages/ReelsRedesigned";
+import AllChannels from "@/pages/AllChannels";
 import MermaidTest from "@/pages/MermaidTest";
+import { Onboarding } from "./components/Onboarding";
 import { ThemeProvider } from "./context/ThemeContext";
+import { UserPreferencesProvider, useUserPreferences } from "./context/UserPreferencesContext";
 import { usePageViewTracking, useSessionTracking, useInteractionTracking } from "./hooks/use-analytics";
 
 function Router() {
@@ -17,7 +21,9 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/about" component={About} />
+      <Route path="/whats-new" component={WhatsNew} />
       <Route path="/stats" component={Stats} />
+      <Route path="/channels" component={AllChannels} />
       <Route path="/test/mermaid" component={MermaidTest} />
       <Route path="/channel/:id" component={Reels} />
       <Route path="/channel/:id/:index" component={Reels} />
@@ -31,6 +37,13 @@ function AppContent() {
   usePageViewTracking();
   useSessionTracking();
   useInteractionTracking();
+  
+  const { needsOnboarding } = useUserPreferences();
+  
+  // Show onboarding for first-time users
+  if (needsOnboarding) {
+    return <Onboarding />;
+  }
 
   return <Router />;
 }
@@ -38,12 +51,14 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <AppContent />
-        </TooltipProvider>
-      </QueryClientProvider>
+      <UserPreferencesProvider>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <Toaster />
+            <AppContent />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </UserPreferencesProvider>
     </ThemeProvider>
   );
 }

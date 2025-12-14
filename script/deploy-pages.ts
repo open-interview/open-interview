@@ -47,7 +47,7 @@ async function deployToGitHubPages() {
     }
   }
   
-  execSync("pnpm run build:client", { stdio: "inherit" });
+  execSync("pnpm run build", { stdio: "inherit" });
 
   const distPath = join(process.cwd(), "dist/public");
   

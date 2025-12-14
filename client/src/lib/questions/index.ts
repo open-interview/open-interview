@@ -1,17 +1,34 @@
-import algorithms from "./algorithms.json";
-import database from "./database.json";
-import devops from "./devops.json";
-import frontend from "./frontend.json";
-import sre from "./sre.json";
-import system_design from "./system-design.json";
+// Auto-generated index file for unified question storage
+import allQuestionsData from "./all-questions.json";
+import channelMappingsData from "./channel-mappings.json";
 
-export const questionsByChannel: Record<string, any[]> = {
-  "algorithms": algorithms,
-  "database": database,
-  "devops": devops,
-  "frontend": frontend,
-  "sre": sre,
-  "system-design": system_design
-};
+export const questionsById: Record<string, any> = allQuestionsData.questions || {};
+export const channelMappings: Record<string, any> = channelMappingsData.channels || {};
 
-export const allQuestions = Object.values(questionsByChannel).flat();
+// Get all questions as array
+export const allQuestions = Object.values(questionsById);
+
+// Get questions for a channel
+export function getQuestionsForChannel(channel: string): any[] {
+  const mapping = channelMappings[channel];
+  if (!mapping) return [];
+  
+  const ids = new Set<string>();
+  Object.values(mapping.subChannels || {}).forEach((subIds: any) => {
+    (subIds as string[]).forEach(id => ids.add(id));
+  });
+  
+  return Array.from(ids).map(id => questionsById[id]).filter(q => q != null);
+}
+
+// Get questions for a subchannel
+export function getQuestionsForSubChannel(channel: string, subChannel: string): any[] {
+  const ids = channelMappings[channel]?.subChannels?.[subChannel] || [];
+  return ids.map((id: string) => questionsById[id]).filter((q: any) => q != null);
+}
+
+// Legacy compatibility - questions by channel
+export const questionsByChannel: Record<string, any[]> = {};
+Object.keys(channelMappings).forEach(channel => {
+  questionsByChannel[channel] = getQuestionsForChannel(channel);
+});

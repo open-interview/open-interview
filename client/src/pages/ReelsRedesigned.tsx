@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useRoute } from 'wouter';
-import { getQuestions, getChannel } from '../lib/data';
+import { getChannel } from '../lib/data';
+import { useQuestionsWithPrefetch, useSubChannels } from '../hooks/use-questions';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SEOHead } from '../components/SEOHead';
 import { QuestionPanel } from '../components/QuestionPanel';
@@ -56,16 +57,56 @@ export default function ReelsRedesigned() {
   const hasIndexInUrl = params?.index !== undefined && params?.index !== '';
   const paramIndex = hasIndexInUrl ? parseInt(params.index || '0') : null;
   
-  const channel = getChannel(channelId || '');
+  const staticChannel = getChannel(channelId || '');
+  const { subChannels: apiSubChannels } = useSubChannels(channelId || '');
+  
+  // Build channel object with dynamic subchannels
+  const channel = staticChannel ? {
+    ...staticChannel,
+    subChannels: [
+      { id: 'all', name: 'All Topics' },
+      ...apiSubChannels.map(sc => ({ 
+        id: sc, 
+        name: sc.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+      }))
+    ]
+  } : null;
   
   const [selectedSubChannel, setSelectedSubChannel] = useState('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
-  const channelQuestions = getQuestions(channelId || '', selectedSubChannel, selectedDifficulty);
+  const [currentIndex, setCurrentIndex] = useState(paramIndex ?? 0);
+  
+  // Use the new API-based hook
+  const { question: currentQuestion, questionIds, totalQuestions, loading, error } = useQuestionsWithPrefetch(
+    channelId || '',
+    currentIndex,
+    selectedSubChannel,
+    selectedDifficulty
+  );
+
+  // Reset index when filters change and ensure it's within bounds
+  useEffect(() => {
+    if (totalQuestions > 0 && currentIndex >= totalQuestions) {
+      setCurrentIndex(0);
+    }
+  }, [totalQuestions, currentIndex]);
+
+  // Handler for subchannel change - ensures clean state transition
+  const handleSubChannelChange = (newSubChannel: string) => {
+    setCurrentIndex(0);
+    setSelectedSubChannel(newSubChannel);
+    setShowAnswer(false);
+  };
+
+  // Handler for difficulty change - ensures clean state transition
+  const handleDifficultyChange = (newDifficulty: string) => {
+    setCurrentIndex(0);
+    setSelectedDifficulty(newDifficulty);
+    setShowAnswer(false);
+  };
   
   const { completed, markCompleted, lastVisitedIndex, saveLastVisitedIndex } = useProgress(channelId || '');
   const { toast } = useToast();
-
-  const [currentIndex, setCurrentIndex] = useState(paramIndex ?? 0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [timerEnabled, setTimerEnabled] = useState(true);
   const [timerDuration, setTimerDuration] = useState(60);
@@ -88,7 +129,6 @@ export default function ReelsRedesigned() {
     });
   };
 
-  const totalQuestions = channelQuestions.length;
   const remainingQuestions = totalQuestions - currentIndex - 1;
   const isLastQuestion = currentIndex === totalQuestions - 1;
   const progressPercent = totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0;
@@ -116,32 +156,32 @@ export default function ReelsRedesigned() {
 
   // Sync with URL
   useEffect(() => {
-    if (channelQuestions.length === 0) return;
+    if (totalQuestions === 0) return;
     if (hasIndexInUrl && paramIndex !== null) {
-      if (paramIndex >= channelQuestions.length) {
+      if (paramIndex >= totalQuestions) {
         setCurrentIndex(0);
       } else if (paramIndex >= 0) {
         setCurrentIndex(paramIndex);
       }
     } else {
-      if (lastVisitedIndex > 0 && lastVisitedIndex < channelQuestions.length) {
+      if (lastVisitedIndex > 0 && lastVisitedIndex < totalQuestions) {
         setCurrentIndex(lastVisitedIndex);
         setLocation(`/channel/${channelId}/${lastVisitedIndex}`, { replace: true });
       } else {
         setCurrentIndex(0);
       }
     }
-  }, [hasIndexInUrl, paramIndex, channelQuestions.length, lastVisitedIndex, channelId]);
+  }, [hasIndexInUrl, paramIndex, totalQuestions, lastVisitedIndex, channelId]);
 
   useEffect(() => {
-    if (channelId && channelQuestions.length > 0) {
+    if (channelId && totalQuestions > 0) {
       const urlIndex = hasIndexInUrl ? paramIndex : null;
       if (currentIndex !== urlIndex) {
         setLocation(`/channel/${channelId}/${currentIndex}`, { replace: true });
       }
       saveLastVisitedIndex(currentIndex);
     }
-  }, [currentIndex, channelId, channelQuestions.length]);
+  }, [currentIndex, channelId, totalQuestions]);
 
   // Timer logic
   useEffect(() => {
@@ -187,14 +227,14 @@ export default function ReelsRedesigned() {
           }
         }
       }
-      else if (e.key === 'ArrowLeft' || e.key === 'Escape') setLocation('/');
+      else if (e.key === 'ArrowLeft' || e.key === 'Escape') goBack();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, showAnswer, channelQuestions.length]);
+  }, [currentIndex, showAnswer, totalQuestions]);
 
   const nextQuestion = () => {
-    if (currentIndex < channelQuestions.length - 1) {
+    if (currentIndex < totalQuestions - 1) {
       setCurrentIndex(prev => prev + 1);
     }
   };
@@ -202,6 +242,14 @@ export default function ReelsRedesigned() {
   const prevQuestion = () => {
     if (currentIndex > 0) {
       setCurrentIndex(prev => prev - 1);
+    }
+  };
+
+  const goBack = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      setLocation('/');
     }
   };
 
@@ -215,7 +263,7 @@ export default function ReelsRedesigned() {
 
   const handleSwipeLeft = useCallback(() => {
     nextQuestion();
-  }, [currentIndex, channelQuestions.length]);
+  }, [currentIndex, totalQuestions]);
 
   const handleSwipeRight = useCallback(() => {
     prevQuestion();
@@ -229,20 +277,71 @@ export default function ReelsRedesigned() {
     </div>
   );
 
-  const currentQuestion = channelQuestions[currentIndex];
+  // currentQuestion is now provided by the useQuestionsWithPrefetch hook
   
-  if (!currentQuestion) {
+  // Show loading state
+  if (loading && !currentQuestion) {
     return (
       <div className="h-screen w-full bg-black text-white flex flex-col font-mono">
         <div className="p-4 border-b border-white/10 flex justify-between items-center">
-          <button onClick={() => setLocation('/')} className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest hover:text-primary">
-            <span className="border border-white/20 p-1 px-2">ESC</span> Home
+          <button onClick={goBack} className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest hover:text-primary">
+            <span className="border border-white/20 p-1 px-2">ESC</span> Back
           </button>
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-white/50">
+            <div className="animate-pulse text-xl mb-2">LOADING...</div>
+            <div className="text-xs">Fetching question data</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="h-screen w-full bg-black text-white flex flex-col font-mono">
+        <div className="p-4 border-b border-white/10 flex justify-between items-center">
+          <button onClick={goBack} className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest hover:text-primary">
+            <span className="border border-white/20 p-1 px-2">ESC</span> Back
+          </button>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center text-white/50">
+            <div className="text-xl mb-2 text-red-400">ERROR</div>
+            <div className="text-xs">{error}</div>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-4 px-4 py-2 bg-primary text-black text-xs font-bold rounded hover:bg-primary/90"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!currentQuestion || totalQuestions === 0) {
+    return (
+      <div className="h-screen w-full bg-black text-white flex flex-col font-mono" data-testid="no-questions-view">
+        <div className="p-4 border-b border-white/10 flex justify-between items-center">
+          <button onClick={goBack} className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest hover:text-primary">
+            <span className="border border-white/20 p-1 px-2">ESC</span> Back
+          </button>
+          <span className="text-xs text-white/50 uppercase tracking-widest">{channel?.name}</span>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center text-white/50">
             <div className="text-xl mb-2">NO_DATA_FOUND</div>
-            <div className="text-xs">Try selecting a different topic</div>
+            <div className="text-xs mb-4">No questions available for this filter</div>
+            <button 
+              onClick={() => { setSelectedSubChannel('all'); setSelectedDifficulty('all'); setCurrentIndex(0); }}
+              className="px-4 py-2 bg-primary text-black text-xs font-bold uppercase tracking-widest hover:bg-primary/90 transition-colors"
+            >
+              Reset Filters
+            </button>
           </div>
         </div>
       </div>
@@ -265,32 +364,33 @@ export default function ReelsRedesigned() {
         <div className="h-14 px-4 z-50 flex justify-between items-center border-b border-white/10 bg-black/90 backdrop-blur-md shrink-0">
           <div className="flex items-center gap-4 min-w-0 flex-1">
             <button 
-              onClick={() => setLocation('/')}
+              onClick={goBack}
               className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest hover:text-primary transition-colors group shrink-0"
             >
               <span className="border border-white/20 px-2 py-1 group-hover:border-primary transition-colors">ESC</span> 
-              <span className="hidden sm:inline">Home</span>
+              <span className="hidden sm:inline">Back</span>
             </button>
             
             <div className="h-4 w-px bg-white/20 hidden sm:block shrink-0" />
             
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xs font-bold uppercase tracking-widest text-primary truncate">{channel.name}</span>
+            <div className="flex items-center gap-1 sm:gap-2 min-w-0 overflow-hidden">
+              <span className="text-xs font-bold uppercase tracking-widest text-primary truncate max-w-[80px] sm:max-w-none">{channel.name}</span>
               
+              {/* Subchannel dropdown - hidden on very small screens */}
               {channel.subChannels && (
-                <>
+                <div className="hidden xs:flex items-center gap-1">
                   <span className="text-white/30 hidden sm:inline">›</span>
                   <DropdownMenu.Root>
                     <DropdownMenu.Trigger className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest hover:text-white text-white/70 outline-none">
-                      <span className="truncate max-w-[100px]">{channel.subChannels.find(s => s.id === selectedSubChannel)?.name}</span>
+                      <span className="truncate max-w-[60px] sm:max-w-[100px]">{channel.subChannels.find(s => s.id === selectedSubChannel)?.name}</span>
                       <ChevronDown className="w-3 h-3 opacity-50 shrink-0" />
                     </DropdownMenu.Trigger>
-                    <DropdownMenu.Content className="bg-black border border-white/20 p-1 z-50 min-w-[200px] shadow-xl" align="start">
+                    <DropdownMenu.Content className="bg-black border border-white/20 p-1 z-[100] min-w-[200px] shadow-xl" align="start">
                       {channel.subChannels.map(sub => (
                         <DropdownMenu.Item 
                           key={sub.id} 
                           className="text-xs text-white p-2 hover:bg-white/10 cursor-pointer flex justify-between outline-none"
-                          onSelect={() => { setSelectedSubChannel(sub.id); setCurrentIndex(0); }}
+                          onSelect={() => handleSubChannelChange(sub.id)}
                         >
                           {sub.name}
                           {selectedSubChannel === sub.id && <Check className="w-3 h-3 text-primary" />}
@@ -298,13 +398,14 @@ export default function ReelsRedesigned() {
                       ))}
                     </DropdownMenu.Content>
                   </DropdownMenu.Root>
-                </>
+                </div>
               )}
 
               <div className="h-4 w-px bg-white/20 hidden sm:block shrink-0" />
               
+              {/* Difficulty dropdown */}
               <DropdownMenu.Root>
-                <DropdownMenu.Trigger className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest hover:text-white text-white/70 outline-none">
+                <DropdownMenu.Trigger className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest hover:text-white text-white/70 outline-none p-1">
                   {selectedDifficulty === 'all' && <Target className="w-3 h-3 shrink-0" />}
                   {selectedDifficulty === 'beginner' && <Zap className="w-3 h-3 text-green-400 shrink-0" />}
                   {selectedDifficulty === 'intermediate' && <Target className="w-3 h-3 text-yellow-400 shrink-0" />}
@@ -314,20 +415,20 @@ export default function ReelsRedesigned() {
                   </span>
                   <ChevronDown className="w-3 h-3 opacity-50 shrink-0" />
                 </DropdownMenu.Trigger>
-                <DropdownMenu.Content className="bg-black border border-white/20 p-1 z-50 min-w-[150px] shadow-xl" align="start">
-                  <DropdownMenu.Item className="text-xs text-white p-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 outline-none" onSelect={() => { setSelectedDifficulty('all'); setCurrentIndex(0); }}>
+                <DropdownMenu.Content className="bg-black border border-white/20 p-1 z-[100] min-w-[150px] shadow-xl" align="start">
+                  <DropdownMenu.Item className="text-xs text-white p-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 outline-none" onSelect={() => handleDifficultyChange('all')}>
                     <Target className="w-3 h-3" /> All
                     {selectedDifficulty === 'all' && <Check className="w-3 h-3 text-primary ml-auto" />}
                   </DropdownMenu.Item>
-                  <DropdownMenu.Item className="text-xs text-white p-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 outline-none" onSelect={() => { setSelectedDifficulty('beginner'); setCurrentIndex(0); }}>
+                  <DropdownMenu.Item className="text-xs text-white p-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 outline-none" onSelect={() => handleDifficultyChange('beginner')}>
                     <Zap className="w-3 h-3 text-green-400" /> Beginner
                     {selectedDifficulty === 'beginner' && <Check className="w-3 h-3 text-primary ml-auto" />}
                   </DropdownMenu.Item>
-                  <DropdownMenu.Item className="text-xs text-white p-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 outline-none" onSelect={() => { setSelectedDifficulty('intermediate'); setCurrentIndex(0); }}>
+                  <DropdownMenu.Item className="text-xs text-white p-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 outline-none" onSelect={() => handleDifficultyChange('intermediate')}>
                     <Target className="w-3 h-3 text-yellow-400" /> Intermediate
                     {selectedDifficulty === 'intermediate' && <Check className="w-3 h-3 text-primary ml-auto" />}
                   </DropdownMenu.Item>
-                  <DropdownMenu.Item className="text-xs text-white p-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 outline-none" onSelect={() => { setSelectedDifficulty('advanced'); setCurrentIndex(0); }}>
+                  <DropdownMenu.Item className="text-xs text-white p-2 hover:bg-white/10 cursor-pointer flex items-center gap-2 outline-none" onSelect={() => handleDifficultyChange('advanced')}>
                     <Flame className="w-3 h-3 text-red-400" /> Advanced
                     {selectedDifficulty === 'advanced' && <Check className="w-3 h-3 text-primary ml-auto" />}
                   </DropdownMenu.Item>
@@ -336,18 +437,22 @@ export default function ReelsRedesigned() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="flex gap-1 mr-2">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            {/* GitHub links - hidden on mobile */}
+            <div className="hidden sm:flex gap-1 mr-2">
               <a href="https://github.com/satishkumar-dhule/code-reels/issues/new" target="_blank" rel="noopener noreferrer" className="p-1.5 hover:bg-white/10 border border-white/10 rounded transition-colors" title="Report Issue">
                 <AlertCircle className="w-4 h-4" />
               </a>
               <a href="https://github.com/satishkumar-dhule/code-reels" target="_blank" rel="noopener noreferrer" className="p-1.5 hover:bg-white/10 border border-white/10 rounded transition-colors" title="Star on GitHub">
                 <Star className="w-4 h-4" />
               </a>
+            </div>
+            {/* Navigation buttons */}
+            <div className="flex gap-1">
               <button onClick={prevQuestion} disabled={currentIndex === 0} className="p-1.5 hover:bg-white/10 border border-white/10 rounded disabled:opacity-30 transition-colors" title="Previous">
                 <ArrowLeft className="w-4 h-4" />
               </button>
-              <button onClick={nextQuestion} disabled={currentIndex === channelQuestions.length - 1} className="p-1.5 hover:bg-white/10 border border-white/10 rounded disabled:opacity-30 transition-colors" title="Next">
+              <button onClick={nextQuestion} disabled={currentIndex === totalQuestions - 1} className="p-1.5 hover:bg-white/10 border border-white/10 rounded disabled:opacity-30 transition-colors" title="Next">
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -406,10 +511,10 @@ export default function ReelsRedesigned() {
 
                       {seatMapView ? (
                         <div className="grid grid-cols-10 gap-1 max-h-[40vh] overflow-y-auto custom-scrollbar p-1">
-                          {channelQuestions.map((q, idx) => {
+                          {questionIds.map((qId, idx) => {
                             const isCurrent = idx === currentIndex;
-                            const isMarked = markedQuestions.includes(q.id);
-                            const isCompletedQ = completed.includes(q.id);
+                            const isMarked = markedQuestions.includes(qId);
+                            const isCompletedQ = completed.includes(qId);
                             
                             let bgClass = 'bg-white/10 border-white/20 hover:bg-white/20';
                             if (isCurrent) bgClass = 'bg-primary border-primary text-black';
@@ -418,10 +523,10 @@ export default function ReelsRedesigned() {
                             
                             return (
                               <button
-                                key={q.id}
+                                key={qId}
                                 onClick={() => { setCurrentIndex(idx); setShowQuestionPicker(false); }}
                                 className={`w-8 h-8 rounded border text-[10px] font-mono font-bold transition-all ${bgClass} relative`}
-                                title={q.question.substring(0, 50) + '...'}
+                                title={`Question ${idx + 1}`}
                               >
                                 {idx + 1}
                                 {isMarked && !isCurrent && (
@@ -433,10 +538,10 @@ export default function ReelsRedesigned() {
                         </div>
                       ) : (
                         <div className="max-h-[40vh] overflow-y-auto custom-scrollbar space-y-1">
-                          {channelQuestions.map((q, idx) => {
+                          {questionIds.map((qId, idx) => {
                             const isCurrent = idx === currentIndex;
-                            const isMarked = markedQuestions.includes(q.id);
-                            const isCompletedQ = completed.includes(q.id);
+                            const isMarked = markedQuestions.includes(qId);
+                            const isCompletedQ = completed.includes(qId);
                             
                             let borderClass = 'hover:bg-white/10 text-white/70';
                             if (isCurrent) borderClass = 'bg-primary/20 text-primary border border-primary/30';
@@ -445,12 +550,12 @@ export default function ReelsRedesigned() {
                             
                             return (
                               <button
-                                key={q.id}
+                                key={qId}
                                 onClick={() => { setCurrentIndex(idx); setShowQuestionPicker(false); }}
                                 className={`w-full text-left p-2 text-xs rounded transition-colors flex items-start gap-2 ${borderClass}`}
                               >
                                 <span className="font-mono text-[10px] opacity-50 shrink-0 w-6">{String(idx + 1).padStart(2, '0')}</span>
-                                <span className="line-clamp-2 flex-1">{q.question}</span>
+                                <span className="line-clamp-2 flex-1">Question {idx + 1}</span>
                                 <div className="flex gap-1 shrink-0">
                                   {isMarked && <Bookmark className="w-3 h-3 text-blue-400 fill-blue-400" />}
                                   {isCompletedQ && <Check className="w-3 h-3 text-green-500" />}

@@ -1,17 +1,28 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, ZoomIn, ZoomOut, Maximize2, Move } from 'lucide-react';
+import { X, ZoomIn, ZoomOut, Maximize2, Move, Palette } from 'lucide-react';
 // @ts-ignore
 import mermaid from 'mermaid/dist/mermaid.esm.mjs';
+import { useTheme } from '../context/ThemeContext';
+import { mermaidThemeConfigs, type MermaidTheme } from './Mermaid';
 
-let initialized = false;
+const appThemeToMermaid: Record<string, MermaidTheme> = {
+  unix: 'dark',
+  cyberpunk: 'dark',
+  dracula: 'dark',
+  light: 'default',
+};
 
-function initMermaid() {
-  if (initialized) return;
+let currentMermaidTheme: MermaidTheme | null = null;
+
+function initMermaid(mermaidTheme: MermaidTheme, force = false) {
+  if (currentMermaidTheme === mermaidTheme && !force) return;
   const isMobile = window.innerWidth < 640;
+  const config = mermaidThemeConfigs[mermaidTheme];
+
   try {
     mermaid.initialize({
       startOnLoad: false,
-      theme: 'dark',
+      ...config,
       securityLevel: 'loose',
       fontFamily: 'monospace, sans-serif',
       fontSize: isMobile ? 14 : 12,
@@ -23,24 +34,8 @@ function initMermaid() {
         rankSpacing: isMobile ? 30 : 50,
         padding: isMobile ? 8 : 15,
       },
-      themeVariables: {
-        primaryColor: '#22c55e',
-        primaryTextColor: '#fff',
-        primaryBorderColor: '#22c55e',
-        lineColor: '#666',
-        secondaryColor: '#1a1a1a',
-        tertiaryColor: '#333',
-        background: '#0a0a0a',
-        mainBkg: '#1a1a1a',
-        nodeBorder: '#22c55e',
-        clusterBkg: '#1a1a1a',
-        clusterBorder: '#333',
-        titleColor: '#fff',
-        edgeLabelBackground: '#1a1a1a',
-        fontSize: isMobile ? '14px' : '12px',
-      },
     });
-    initialized = true;
+    currentMermaidTheme = mermaidTheme;
   } catch (e) {
     console.error('Mermaid init error:', e);
   }
@@ -52,6 +47,7 @@ interface EnhancedMermaidProps {
 }
 
 export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps) {
+  const { theme: appTheme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const svgContainerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -62,27 +58,33 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [selectedMermaidTheme, setSelectedMermaidTheme] = useState<MermaidTheme | null>(() => {
+    const saved = localStorage.getItem('mermaid-theme');
+    return saved ? (saved as MermaidTheme) : null;
+  });
+  const [showThemePicker, setShowThemePicker] = useState(false);
   const renderIdRef = useRef(0);
 
-  // Reset view
+  // Persist theme selection to localStorage
+  const handleThemeChange = (theme: MermaidTheme | null) => {
+    setSelectedMermaidTheme(theme);
+    if (theme) {
+      localStorage.setItem('mermaid-theme', theme);
+    } else {
+      localStorage.removeItem('mermaid-theme');
+    }
+  };
+
+  const effectiveMermaidTheme = selectedMermaidTheme || appThemeToMermaid[appTheme] || 'dark';
+
   const resetView = useCallback(() => {
     setZoom(1);
     setPosition({ x: 0, y: 0 });
   }, []);
 
-  // Fit to screen - simplified approach
-  const fitToScreen = useCallback(() => {
-    // Just reset to 1x zoom and center
-    // Users can zoom in/out manually if needed
-    setZoom(1);
-    setPosition({ x: 0, y: 0 });
-  }, []);
-
-  // Zoom controls
   const handleZoomIn = () => setZoom(z => Math.min(z + 0.25, 4));
   const handleZoomOut = () => setZoom(z => Math.max(z - 0.25, 0.25));
 
-  // Pan controls
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!isExpanded) return;
     setIsDragging(true);
@@ -91,15 +93,11 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return;
-    setPosition({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y,
-    });
+    setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
   };
 
   const handleMouseUp = () => setIsDragging(false);
 
-  // Touch support
   const touchStartRef = useRef({ x: 0, y: 0, dist: 0 });
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!isExpanded) return;
@@ -107,10 +105,7 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
       setIsDragging(true);
       setDragStart({ x: e.touches[0].clientX - position.x, y: e.touches[0].clientY - position.y });
     } else if (e.touches.length === 2) {
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
+      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
       touchStartRef.current = { x: position.x, y: position.y, dist };
     }
   };
@@ -118,15 +113,9 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isExpanded) return;
     if (e.touches.length === 1 && isDragging) {
-      setPosition({
-        x: e.touches[0].clientX - dragStart.x,
-        y: e.touches[0].clientY - dragStart.y,
-      });
+      setPosition({ x: e.touches[0].clientX - dragStart.x, y: e.touches[0].clientY - dragStart.y });
     } else if (e.touches.length === 2) {
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
+      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
       const scale = dist / touchStartRef.current.dist;
       setZoom(z => Math.max(0.25, Math.min(z * scale, 4)));
       touchStartRef.current.dist = dist;
@@ -135,40 +124,13 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
 
   const handleTouchEnd = () => setIsDragging(false);
 
-  // Debug effect - MUST be before any conditional returns
   useEffect(() => {
     if (isExpanded) {
-      console.log('=== FULLSCREEN DEBUG ===');
-      console.log('SVG Content exists:', !!svgContent);
-      console.log('SVG Content length:', svgContent?.length);
-      console.log('Zoom:', zoom);
-      console.log('Position:', position);
-      console.log('Container ref:', !!svgContainerRef.current);
-      
-      if (svgContainerRef.current) {
-        const svg = svgContainerRef.current.querySelector('svg');
-        console.log('SVG element found:', !!svg);
-        if (svg) {
-          const rect = svg.getBoundingClientRect();
-          console.log('SVG dimensions:', rect.width, 'x', rect.height);
-          console.log('SVG position:', rect.x, rect.y);
-          console.log('SVG computed style:', window.getComputedStyle(svg).display);
-        }
-      }
-      console.log('======================');
-    }
-  }, [isExpanded, svgContent, zoom, position]);
-
-  // Reset zoom when entering fullscreen - simple approach
-  useEffect(() => {
-    if (isExpanded) {
-      // Start at 1x zoom, centered
       setZoom(1);
       setPosition({ x: 0, y: 0 });
     }
   }, [isExpanded]);
 
-  // ESC to close
   useEffect(() => {
     if (!isExpanded) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -183,7 +145,6 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [isExpanded, resetView]);
 
-  // Render mermaid
   useEffect(() => {
     if (!chart) {
       setError('Empty diagram');
@@ -195,7 +156,7 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
     setError(null);
     setSvgContent(null);
     setIsLoading(true);
-    initMermaid();
+    initMermaid(effectiveMermaidTheme, true);
 
     const id = `mermaid-${currentRenderId}-${Math.random().toString(36).slice(2, 11)}`;
     const cleanChart = chart.trim().replace(/\r\n/g, '\n').replace(/^\n+/, '').replace(/\n+$/, '');
@@ -231,15 +192,21 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
 
     renderChart();
     return () => { cancelled = true; };
-  }, [chart]);
+  }, [chart, effectiveMermaidTheme]);
+
+  const mermaidThemes: { id: MermaidTheme; name: string; color: string }[] = [
+    { id: 'default', name: 'Default', color: '#326ce5' },
+    { id: 'neutral', name: 'Neutral', color: '#999' },
+    { id: 'dark', name: 'Dark', color: '#22c55e' },
+    { id: 'forest', name: 'Forest', color: '#6eaa49' },
+    { id: 'base', name: 'Base', color: '#f9a825' },
+  ];
 
   if (error) {
     return (
       <div className="w-full p-3 sm:p-4 border border-red-500/30 bg-red-500/5 rounded text-red-400 text-xs">
         <div className="mb-2 font-bold">Diagram Error</div>
-        <pre className="text-[10px] opacity-50 overflow-x-auto whitespace-pre-wrap max-h-32 overflow-y-auto">
-          {chart}
-        </pre>
+        <pre className="text-[10px] opacity-50 overflow-x-auto whitespace-pre-wrap max-h-32 overflow-y-auto">{chart}</pre>
       </div>
     );
   }
@@ -257,24 +224,9 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
 
   if (!svgContent) return null;
 
-  // Expanded fullscreen view
   if (isExpanded) {
     return (
-      <div className="fixed inset-0 z-[100] bg-red-900/20 flex flex-col">
-        {/* Debug Panel */}
-        <div className="absolute top-16 left-4 bg-black/90 border-2 border-yellow-500 p-4 text-white text-xs font-mono z-50 max-w-md">
-          <div className="font-bold text-yellow-500 mb-2">🔍 DEBUG INFO</div>
-          <div>SVG Content: {svgContent ? `${svgContent.length} chars` : 'MISSING'}</div>
-          <div>Zoom: {zoom}x ({Math.round(zoom * 100)}%)</div>
-          <div>Position: x={position.x}, y={position.y}</div>
-          <div>Container: {svgContainerRef.current ? 'EXISTS' : 'MISSING'}</div>
-          <div>Dragging: {isDragging ? 'YES' : 'NO'}</div>
-          <div className="mt-2 text-yellow-500">
-            {svgContainerRef.current?.querySelector('svg') ? '✅ SVG in DOM' : '❌ NO SVG'}
-          </div>
-        </div>
-
-        {/* Toolbar */}
+      <div className="fixed inset-0 z-[100] bg-black flex flex-col">
         <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 bg-black/90 shrink-0">
           <div className="flex items-center gap-2 text-[10px] text-white/50 uppercase tracking-widest">
             <Move className="w-3.5 h-3.5" />
@@ -282,31 +234,41 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
           </div>
           
           <div className="flex items-center gap-1">
-            <button onClick={handleZoomOut} className="p-2 hover:bg-white/10 rounded transition-colors border border-white/20" title="Zoom out">
-              <ZoomOut className="w-4 h-4 text-white" />
-            </button>
-            <button onClick={handleZoomIn} className="p-2 hover:bg-white/10 rounded transition-colors border border-white/20" title="Zoom in">
-              <ZoomIn className="w-4 h-4 text-white" />
-            </button>
-            <button onClick={fitToScreen} className="px-3 py-2 text-[10px] text-white bg-primary hover:bg-primary/80 rounded font-bold border border-primary" title="Reset">
-              RESET
-            </button>
-            <button onClick={() => { setIsExpanded(false); resetView(); }} className="p-2 hover:bg-white/10 rounded transition-colors border border-white/20" title="Close">
-              <X className="w-4 h-4 text-white" />
-            </button>
+            <div className="relative">
+              <button onClick={() => setShowThemePicker(!showThemePicker)} className="p-2 hover:bg-white/10 rounded transition-colors flex items-center gap-1" title="Change theme">
+                <Palette className="w-4 h-4 text-white/70" />
+                <span className="text-[9px] text-white/50 hidden sm:inline">{effectiveMermaidTheme}</span>
+              </button>
+              {showThemePicker && (
+                <div className="absolute top-full right-0 mt-1 bg-black border border-white/20 rounded shadow-lg z-10 min-w-[120px]">
+                  {mermaidThemes.map((t) => (
+                    <button key={t.id} onClick={() => { handleThemeChange(t.id); setShowThemePicker(false); }}
+                      className={`w-full px-3 py-1.5 text-left text-[10px] hover:bg-white/10 flex items-center gap-2 ${effectiveMermaidTheme === t.id ? 'text-primary' : 'text-white/70'}`}>
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color }} />
+                      {t.name}
+                    </button>
+                  ))}
+                  <div className="border-t border-white/10 mt-1 pt-1">
+                    <button onClick={() => { handleThemeChange(null); setShowThemePicker(false); }} className="w-full px-3 py-1.5 text-left text-[10px] text-white/50 hover:bg-white/10">
+                      Auto (match app)
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="w-px h-4 bg-white/20 mx-1" />
+            <button onClick={handleZoomOut} className="p-2 hover:bg-white/10 rounded transition-colors" title="Zoom out"><ZoomOut className="w-4 h-4 text-white/70" /></button>
+            <button onClick={handleZoomIn} className="p-2 hover:bg-white/10 rounded transition-colors" title="Zoom in"><ZoomIn className="w-4 h-4 text-white/70" /></button>
+            <button onClick={resetView} className="px-3 py-1 text-[10px] text-white/50 hover:text-white hover:bg-white/10 rounded uppercase" title="Reset">Reset</button>
+            <div className="w-px h-4 bg-white/20 mx-1" />
+            <button onClick={() => { setIsExpanded(false); resetView(); }} className="p-2 hover:bg-white/10 rounded transition-colors" title="Close"><X className="w-4 h-4 text-white/70" /></button>
           </div>
         </div>
 
-        {/* Diagram area with visible border */}
         <div 
           ref={svgContainerRef}
-          className="flex-1 overflow-auto flex items-center justify-center p-8 border-4 border-green-500"
-          style={{ 
-            cursor: isDragging ? 'grabbing' : 'grab',
-            userSelect: 'none',
-            backgroundColor: '#1a1a1a',
-            minHeight: '400px'
-          }}
+          className="flex-1 overflow-hidden flex items-center justify-center"
+          style={{ cursor: isDragging ? 'grabbing' : 'grab', userSelect: 'none', backgroundColor: '#0a0a0a' }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -314,49 +276,33 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          onClick={() => setShowThemePicker(false)}
         >
-          {/* Actual diagram - using same class as inline view */}
-          <div 
-            style={{ 
-              transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
-              transformOrigin: 'center center',
-              transition: isDragging ? 'none' : 'transform 0.2s ease-out'
-            }}
-          >
-            <div 
-              className="mermaid-container"
-              dangerouslySetInnerHTML={{ __html: svgContent }}
-            />
+          <div style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`, transformOrigin: 'center center', transition: isDragging ? 'none' : 'transform 0.2s ease-out' }}>
+            <div className="mermaid-container" dangerouslySetInnerHTML={{ __html: svgContent }} />
           </div>
         </div>
 
-        {/* Help text */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/90 border border-white/20 rounded text-[10px] text-white uppercase tracking-widest">
-          Press ESC to close • Check console for debug info
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/80 border border-white/20 rounded text-[10px] text-white/50 uppercase tracking-widest">
+          Drag to pan • Scroll/pinch to zoom • ESC to close
         </div>
       </div>
     );
   }
 
-  // Compact inline view
   return (
     <div ref={containerRef} className="relative group">
       <div 
         className={`w-full flex justify-center overflow-hidden rounded-lg border border-white/10 bg-black/20 ${compact ? 'p-2' : 'p-4'} ${!compact ? 'cursor-pointer hover:border-primary/50 transition-colors' : ''}`}
         onClick={() => !compact && setIsExpanded(true)}
       >
-        <div 
-          className="mermaid-container"
-          dangerouslySetInnerHTML={{ __html: svgContent }}
-        />
+        <div className="mermaid-container" dangerouslySetInnerHTML={{ __html: svgContent }} />
       </div>
       
       {!compact && (
-        <button
-          onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
+        <button onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
           className="absolute top-2 right-2 p-2 bg-black/80 hover:bg-primary/90 rounded border border-white/20 opacity-0 group-hover:opacity-100 transition-all"
-          title="Expand diagram (click anywhere)"
-        >
+          title="Expand diagram">
           <Maximize2 className="w-3.5 h-3.5 text-white" />
         </button>
       )}

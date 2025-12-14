@@ -1,24 +1,19 @@
-import fs from 'fs';
 import {
-  QUESTIONS_DIR,
-  loadChannelQuestions,
-  saveChannelQuestions,
+  loadUnifiedQuestions,
+  saveUnifiedQuestions,
+  loadChannelMappings,
+  saveChannelMappings,
+  getAllUnifiedQuestions,
   calculateSimilarity,
-  updateIndexFile,
-  writeGitHubOutput,
-  getQuestionsFile
+  updateUnifiedIndexFile,
+  writeGitHubOutput
 } from './utils.js';
 
 const SIMILARITY_THRESHOLD = 0.6;
 
 function getAllChannels() {
-  try {
-    return fs.readdirSync(QUESTIONS_DIR)
-      .filter(f => f.endsWith('.json') && f !== 'index.ts')
-      .map(f => f.replace('.json', ''));
-  } catch (e) {
-    return [];
-  }
+  const mappings = loadChannelMappings();
+  return Object.keys(mappings);
 }
 
 function findDuplicates(questions, threshold = SIMILARITY_THRESHOLD) {
@@ -45,68 +40,105 @@ function findDuplicates(questions, threshold = SIMILARITY_THRESHOLD) {
 }
 
 async function main() {
-  console.log('=== Question Deduplication Bot ===\n');
+  console.log('=== Question Deduplication Bot (Unified Storage) ===\n');
 
-  const channels = getAllChannels();
-  console.log(`Found ${channels.length} channels\n`);
+  const allQuestions = getAllUnifiedQuestions();
+  console.log(`Loaded ${allQuestions.length} questions\n`);
 
-  if (channels.length === 0) {
-    console.log('No channels found.');
+  if (allQuestions.length === 0) {
+    console.log('No questions found.');
     return;
   }
 
-  // Select random channel
-  const selectedChannel = channels[Math.floor(Math.random() * channels.length)];
-  console.log(`Analyzing channel: ${selectedChannel}\n`);
-
-  const questions = loadChannelQuestions(selectedChannel);
-  console.log(`Loaded ${questions.length} questions from ${selectedChannel}`);
-
-  const duplicates = findDuplicates(questions);
+  // Find duplicates across all questions
+  const duplicates = findDuplicates(allQuestions);
   console.log(`Found ${duplicates.length} duplicate pairs\n`);
 
   if (duplicates.length === 0) {
     console.log('✅ No duplicates found!');
     writeGitHubOutput({
       removed_count: 0,
-      total_questions: questions.length,
-      channel: selectedChannel
+      total_questions: allQuestions.length
     });
     return;
   }
 
-  // Remove at most 1 duplicate per run
-  const toRemove = duplicates[0];
+  const removedQuestions = [];
+  const questions = loadUnifiedQuestions();
+  const mappings = loadChannelMappings();
+
+  // Remove duplicates (limit to 10 per run to avoid too many changes)
+  const maxToRemove = Math.min(10, duplicates.length);
   
-  console.log('Duplicate Pair Found:');
-  console.log(`  Q1 [${toRemove.q1.id}]: ${toRemove.q1.question.substring(0, 60)}...`);
-  console.log(`  Q2 [${toRemove.q2.id}]: ${toRemove.q2.question.substring(0, 60)}...`);
-  console.log(`  Similarity: ${toRemove.similarity}`);
+  for (let i = 0; i < maxToRemove; i++) {
+    const dup = duplicates[i];
+    
+    console.log(`\n--- Duplicate ${i + 1}/${maxToRemove} ---`);
+    console.log(`  Q1 [${dup.q1.id}]: ${dup.q1.question.substring(0, 50)}...`);
+    console.log(`  Q2 [${dup.q2.id}]: ${dup.q2.question.substring(0, 50)}...`);
+    console.log(`  Similarity: ${dup.similarity}`);
 
-  // Keep older question, remove newer one
-  const q1Date = new Date(toRemove.q1.lastUpdated || 0).getTime();
-  const q2Date = new Date(toRemove.q2.lastUpdated || 0).getTime();
+    // Keep older question, remove newer one
+    const q1Date = new Date(dup.q1.lastUpdated || 0).getTime();
+    const q2Date = new Date(dup.q2.lastUpdated || 0).getTime();
+    
+    const toRemoveId = q1Date < q2Date ? dup.q2.id : dup.q1.id;
+    const toKeepId = q1Date < q2Date ? dup.q1.id : dup.q2.id;
+
+    // Skip if already removed
+    if (!questions[toRemoveId]) {
+      console.log(`  ⏭️ Already removed`);
+      continue;
+    }
+
+    console.log(`  Keeping: ${toKeepId} | Removing: ${toRemoveId}`);
+
+    // Remove from unified questions
+    delete questions[toRemoveId];
+
+    // Remove from all channel mappings
+    Object.keys(mappings).forEach(channel => {
+      Object.keys(mappings[channel].subChannels || {}).forEach(subChannel => {
+        mappings[channel].subChannels[subChannel] = 
+          mappings[channel].subChannels[subChannel].filter(id => id !== toRemoveId);
+      });
+    });
+
+    removedQuestions.push({
+      removedId: toRemoveId,
+      keptId: toKeepId,
+      similarity: dup.similarity
+    });
+
+    console.log(`  ✅ Removed`);
+  }
+
+  // Save updated data
+  saveUnifiedQuestions(questions);
+  saveChannelMappings(mappings);
+  updateUnifiedIndexFile();
+
+  // Print summary
+  const totalRemaining = Object.keys(questions).length;
+  console.log('\n\n=== SUMMARY ===');
+  console.log(`Total Duplicates Found: ${duplicates.length}`);
+  console.log(`Duplicates Removed: ${removedQuestions.length}`);
   
-  const toRemoveId = q1Date < q2Date ? toRemove.q2.id : toRemove.q1.id;
-  const toKeepId = q1Date < q2Date ? toRemove.q1.id : toRemove.q2.id;
+  if (removedQuestions.length > 0) {
+    console.log('\n🗑️ Removed Duplicates:');
+    removedQuestions.forEach((r, idx) => {
+      console.log(`  ${idx + 1}. Removed ${r.removedId}, kept ${r.keptId} (${r.similarity} similar)`);
+    });
+  }
 
-  console.log(`\nKeeping: ${toKeepId} (older)`);
-  console.log(`Removing: ${toRemoveId} (newer)`);
-
-  // Remove the duplicate
-  const filtered = questions.filter(q => q.id !== toRemoveId);
-  saveChannelQuestions(selectedChannel, filtered);
-  updateIndexFile();
-
-  console.log(`\n✅ Removed 1 duplicate from ${selectedChannel}`);
-  console.log(`Questions remaining: ${filtered.length}/${questions.length}`);
+  console.log(`\nTotal Questions Remaining: ${totalRemaining}`);
+  console.log('=== END SUMMARY ===\n');
 
   writeGitHubOutput({
-    removed_count: 1,
-    removed_id: toRemoveId,
-    kept_id: toKeepId,
-    total_questions: filtered.length,
-    channel: selectedChannel
+    removed_count: removedQuestions.length,
+    duplicates_found: duplicates.length,
+    total_questions: totalRemaining,
+    removed_ids: removedQuestions.map(r => r.removedId).join(',')
   });
 }
 
