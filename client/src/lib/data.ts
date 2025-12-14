@@ -131,6 +131,30 @@ const channelMeta: Record<string, { image: string; color: string; icon: string; 
     color: 'text-emerald-500',
     icon: 'message-circle',
     description: 'Soft Skills & STAR'
+  },
+  'testing': {
+    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop',
+    color: 'text-lime-500',
+    icon: 'check-circle',
+    description: 'Software Testing'
+  },
+  'e2e-testing': {
+    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop',
+    color: 'text-teal-400',
+    icon: 'layers',
+    description: 'End-to-End Testing'
+  },
+  'api-testing': {
+    image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=300&fit=crop',
+    color: 'text-blue-400',
+    icon: 'globe',
+    description: 'API Testing'
+  },
+  'performance-testing': {
+    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop',
+    color: 'text-orange-400',
+    icon: 'zap',
+    description: 'Performance Testing'
   }
 };
 

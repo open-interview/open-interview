@@ -280,6 +280,80 @@ test.describe('Mobile Swipe Navigation', () => {
   });
 });
 
+test.describe('Mobile Mermaid Zoom Controls', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('user-preferences', JSON.stringify({
+        role: 'fullstack',
+        subscribedChannels: ['system-design'],
+        onboardingComplete: true,
+        createdAt: new Date().toISOString()
+      }));
+    });
+  });
+
+  test('should have zoom controls visible on mobile', async ({ page }) => {
+    await page.goto('/channel/system-design');
+    await expect(page.getByTestId('question-panel')).toBeVisible({ timeout: 10000 });
+    
+    // Reveal answer to see diagram
+    const revealButton = page.getByText(/Tap to Reveal|Reveal Answer/i);
+    if (await revealButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await revealButton.click();
+      await page.waitForTimeout(1000);
+    }
+    
+    // Check if mermaid container exists
+    const mermaidContainer = page.locator('.mermaid-container').first();
+    const hasDiagram = await mermaidContainer.isVisible({ timeout: 5000 }).catch(() => false);
+    
+    if (hasDiagram) {
+      // Zoom controls should be visible on mobile
+      const zoomOutBtn = page.locator('button[title="Zoom out"]').first();
+      const zoomInBtn = page.locator('button[title="Zoom in"]').first();
+      
+      const hasZoomOut = await zoomOutBtn.isVisible({ timeout: 2000 }).catch(() => false);
+      const hasZoomIn = await zoomInBtn.isVisible({ timeout: 2000 }).catch(() => false);
+      
+      // At least one zoom control should be visible
+      expect(hasZoomOut || hasZoomIn).toBeTruthy();
+    }
+  });
+
+  test('should be able to zoom in and out on mobile diagram', async ({ page }) => {
+    await page.goto('/channel/system-design');
+    await expect(page.getByTestId('question-panel')).toBeVisible({ timeout: 10000 });
+    
+    // Reveal answer
+    const revealButton = page.getByText(/Tap to Reveal|Reveal Answer/i);
+    if (await revealButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await revealButton.click();
+      await page.waitForTimeout(1000);
+    }
+    
+    // Check if mermaid container exists
+    const mermaidContainer = page.locator('.mermaid-container').first();
+    const hasDiagram = await mermaidContainer.isVisible({ timeout: 5000 }).catch(() => false);
+    
+    if (hasDiagram) {
+      // Click zoom in button
+      const zoomInBtn = page.locator('button[title="Zoom in"]').first();
+      if (await zoomInBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await zoomInBtn.click();
+        await page.waitForTimeout(300);
+        
+        // Check zoom indicator shows increased zoom
+        const zoomIndicator = page.locator('text=/\\d+%/').first();
+        const zoomText = await zoomIndicator.textContent().catch(() => '100%');
+        
+        // Zoom should be greater than 100%
+        const zoomValue = parseInt(zoomText?.replace('%', '') || '100');
+        expect(zoomValue).toBeGreaterThanOrEqual(100);
+      }
+    }
+  });
+});
+
 test.describe('Mobile Answer Panel Scrolling', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {

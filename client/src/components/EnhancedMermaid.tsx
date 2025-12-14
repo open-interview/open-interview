@@ -24,15 +24,25 @@ function initMermaid(mermaidTheme: MermaidTheme, force = false) {
       startOnLoad: false,
       ...config,
       securityLevel: 'loose',
-      fontFamily: 'monospace, sans-serif',
-      fontSize: isMobile ? 14 : 12,
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+      fontSize: isMobile ? 12 : 14,
       flowchart: {
-        useMaxWidth: true,
+        useMaxWidth: false, // Allow natural width for better text rendering
         htmlLabels: true,
         curve: 'basis',
-        nodeSpacing: isMobile ? 30 : 50,
-        rankSpacing: isMobile ? 30 : 50,
-        padding: isMobile ? 8 : 15,
+        nodeSpacing: isMobile ? 40 : 50,
+        rankSpacing: isMobile ? 40 : 50,
+        padding: isMobile ? 12 : 15,
+        wrappingWidth: isMobile ? 150 : 200,
+      },
+      sequence: {
+        diagramMarginX: isMobile ? 20 : 50,
+        diagramMarginY: isMobile ? 10 : 20,
+        boxMargin: isMobile ? 5 : 10,
+        noteMargin: isMobile ? 5 : 10,
+        messageMargin: isMobile ? 25 : 35,
+        mirrorActors: false,
+        useMaxWidth: false,
       },
     });
     currentMermaidTheme = mermaidTheme;
@@ -67,6 +77,7 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
   
   // Mobile pinch-to-zoom state for inline view - must be declared at top level
   const [inlineZoom, setInlineZoom] = useState(1);
+  const [isPinching, setIsPinching] = useState(false);
   const inlineTouchRef = useRef({ dist: 0, initialZoom: 1 });
 
   // Persist theme selection to localStorage
@@ -296,7 +307,7 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
 
   const handleInlineTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
-      e.preventDefault();
+      setIsPinching(true);
       const dist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
@@ -306,8 +317,9 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
   };
   
   const handleInlineTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
+    if (e.touches.length === 2 && isPinching) {
       e.preventDefault();
+      e.stopPropagation();
       const dist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
@@ -318,9 +330,13 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
     }
   };
   
+  const handleInlineTouchEnd = () => {
+    setIsPinching(false);
+  };
+  
   const handleInlineDoubleTap = () => {
-    // Reset zoom on double tap
-    setInlineZoom(1);
+    // Toggle between 1x and 1.5x zoom on double tap
+    setInlineZoom(prev => prev === 1 ? 1.5 : 1);
   };
   
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
@@ -328,24 +344,44 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
   return (
     <div ref={containerRef} className="relative group">
       <div 
-        className={`w-full flex justify-center overflow-auto rounded-lg border border-white/10 bg-black/20 ${compact ? 'p-2' : 'p-3 sm:p-4'} ${!compact ? 'cursor-pointer hover:border-primary/50 transition-colors' : ''}`}
+        className={`w-full overflow-x-auto overflow-y-hidden rounded-lg border border-white/10 bg-black/20 ${compact ? 'p-2' : 'p-3 sm:p-4'} ${!compact ? 'cursor-pointer hover:border-primary/50 transition-colors' : ''}`}
         onClick={() => !compact && !isMobile && setIsExpanded(true)}
         onTouchStart={handleInlineTouchStart}
         onTouchMove={handleInlineTouchMove}
+        onTouchEnd={handleInlineTouchEnd}
         onDoubleClick={handleInlineDoubleTap}
-        style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
+        style={{ touchAction: isPinching ? 'none' : 'pan-x pan-y' }}
       >
         <div 
-          className="mermaid-container transition-transform duration-150" 
-          style={{ transform: `scale(${inlineZoom})`, transformOrigin: 'center center' }}
+          className="mermaid-container transition-transform duration-150 inline-block min-w-full" 
+          style={{ 
+            transform: `scale(${inlineZoom})`, 
+            transformOrigin: 'top left',
+          }}
           dangerouslySetInnerHTML={{ __html: svgContent }} 
         />
       </div>
       
-      {/* Zoom indicator on mobile */}
-      {isMobile && inlineZoom !== 1 && (
-        <div className="absolute top-2 left-2 px-2 py-1 bg-black/80 rounded text-[10px] text-white/70">
-          {Math.round(inlineZoom * 100)}%
+      {/* Zoom controls on mobile */}
+      {isMobile && !compact && (
+        <div className="absolute top-2 left-2 flex items-center gap-1">
+          <button 
+            onClick={(e) => { e.stopPropagation(); setInlineZoom(z => Math.max(0.5, z - 0.25)); }}
+            className="p-1.5 bg-black/80 rounded border border-white/20 text-white/70 hover:text-white"
+            title="Zoom out"
+          >
+            <ZoomOut className="w-3 h-3" />
+          </button>
+          <span className="px-2 py-1 bg-black/80 rounded text-[10px] text-white/70 min-w-[40px] text-center">
+            {Math.round(inlineZoom * 100)}%
+          </span>
+          <button 
+            onClick={(e) => { e.stopPropagation(); setInlineZoom(z => Math.min(3, z + 0.25)); }}
+            className="p-1.5 bg-black/80 rounded border border-white/20 text-white/70 hover:text-white"
+            title="Zoom in"
+          >
+            <ZoomIn className="w-3 h-3" />
+          </button>
         </div>
       )}
       
@@ -353,18 +389,21 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
       {!compact && (
         <button 
           onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
-          className={`absolute top-2 right-2 p-2 bg-black/80 hover:bg-primary/90 rounded border border-white/20 transition-all ${isMobile ? 'opacity-70' : 'opacity-0 group-hover:opacity-100'}`}
+          className={`absolute top-2 right-2 p-2 bg-black/80 hover:bg-primary/90 rounded border border-white/20 transition-all ${isMobile ? 'opacity-80' : 'opacity-0 group-hover:opacity-100'}`}
           title="Expand diagram"
         >
           <Maximize2 className="w-3.5 h-3.5 text-white" />
         </button>
       )}
       
-      {/* Mobile hint */}
-      {isMobile && !compact && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/60 rounded text-[9px] text-white/40 opacity-0 group-active:opacity-100 transition-opacity">
-          Pinch to zoom • Tap expand for full view
-        </div>
+      {/* Reset zoom button when zoomed */}
+      {isMobile && !compact && inlineZoom !== 1 && (
+        <button 
+          onClick={(e) => { e.stopPropagation(); setInlineZoom(1); }}
+          className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 rounded border border-white/20 text-[9px] text-white/70 hover:text-white"
+        >
+          Reset
+        </button>
       )}
     </div>
   );

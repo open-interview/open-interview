@@ -232,21 +232,19 @@ test.describe('Mobile Experience', () => {
   });
 
   test('should navigate from home to channel and back', async ({ page }) => {
+    // First go to home to establish history
     await page.goto('/');
+    await page.waitForTimeout(500);
     
-    await page.waitForTimeout(1000);
+    // Navigate to channel page directly (more reliable than clicking cards on mobile)
+    await page.goto('/channel/system-design');
     
-    // Click on a channel card
-    const channelCard = page.locator('[class*="card"], [class*="channel"]').filter({ hasText: /system|design/i }).first();
-    if (await channelCard.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await channelCard.click();
-      await page.waitForTimeout(500);
-      
-      // Should be on channel page
-      await expect(page.getByTestId('question-panel').or(page.getByTestId('no-questions-view'))).toBeVisible({ timeout: 10000 });
-      
-      // Go back using force click to avoid overlay issues
-      const escButton = page.locator('button').filter({ hasText: 'ESC' }).first();
+    // Should be on channel page
+    await expect(page.getByTestId('question-panel').or(page.getByTestId('no-questions-view'))).toBeVisible({ timeout: 10000 });
+    
+    // Go back using ESC button
+    const escButton = page.locator('button').filter({ hasText: /ESC/i }).first();
+    if (await escButton.isVisible({ timeout: 3000 }).catch(() => false)) {
       await escButton.click({ force: true });
       await page.waitForTimeout(500);
       

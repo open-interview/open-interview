@@ -303,9 +303,31 @@ export default function ReelsRedesigned() {
 
   const { onTouchStart, onTouchMove, onTouchEnd } = useSwipe(handleSwipeLeft, handleSwipeRight);
 
+  // Redirect to home if channel not found
+  useEffect(() => {
+    if (!staticChannel && channelId) {
+      const timer = setTimeout(() => {
+        setLocation('/');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [staticChannel, channelId, setLocation]);
+
   if (!channel) return (
-    <div className="h-screen flex items-center justify-center font-mono text-white">
-      ERR: MODULE_NOT_FOUND
+    <div className="h-screen flex flex-col items-center justify-center font-mono text-white bg-black">
+      <div className="text-center">
+        <div className="text-2xl mb-4 text-red-400">ERR: CHANNEL_NOT_FOUND</div>
+        <div className="text-sm text-white/50 mb-6">
+          The channel "{channelId}" does not exist or has no questions.
+        </div>
+        <div className="text-xs text-white/30 mb-4">Redirecting to home in 3 seconds...</div>
+        <button 
+          onClick={() => setLocation('/')}
+          className="px-4 py-2 bg-primary text-black text-xs font-bold uppercase tracking-widest hover:bg-primary/90 transition-colors"
+        >
+          Go Home Now
+        </button>
+      </div>
     </div>
   );
 
@@ -367,13 +389,21 @@ export default function ReelsRedesigned() {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-white/50">
             <div className="text-xl mb-2">NO_DATA_FOUND</div>
-            <div className="text-xs mb-4">No questions available for this filter</div>
-            <button 
-              onClick={() => { setSelectedSubChannel('all'); setSelectedDifficulty('all'); setCurrentIndex(0); }}
-              className="px-4 py-2 bg-primary text-black text-xs font-bold uppercase tracking-widest hover:bg-primary/90 transition-colors"
-            >
-              Reset Filters
-            </button>
+            <div className="text-xs mb-4">No questions available for this channel or filter</div>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+              <button 
+                onClick={() => { setSelectedSubChannel('all'); setSelectedDifficulty('all'); setCurrentIndex(0); }}
+                className="px-4 py-2 bg-white/10 text-white text-xs font-bold uppercase tracking-widest hover:bg-white/20 transition-colors border border-white/20"
+              >
+                Reset Filters
+              </button>
+              <button 
+                onClick={() => setLocation('/')}
+                className="px-4 py-2 bg-primary text-black text-xs font-bold uppercase tracking-widest hover:bg-primary/90 transition-colors"
+              >
+                Go Home
+              </button>
+            </div>
           </div>
         </div>
       </div>
