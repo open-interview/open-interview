@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { 
   Terminal, Cpu, Database, Layout, BarChart2, Palette, Activity, GitBranch, 
   Star, AlertCircle, Sparkles, Plus, Server, Layers, Smartphone, Shield,
-  Brain, Workflow, Box, Cloud, Code, Network, MessageCircle, Users
+  Brain, Workflow, Box, Cloud, Code, Network, MessageCircle, Users, Eye, FileText
 } from 'lucide-react';
 import { useProgress } from '../hooks/use-progress';
 import { useTheme } from '../context/ThemeContext';
@@ -33,7 +33,11 @@ const iconMap: Record<string, React.ReactNode> = {
   'code': <Code className="w-4 h-4 sm:w-6 sm:h-6" />,
   'network': <Network className="w-4 h-4 sm:w-6 sm:h-6" />,
   'message-circle': <MessageCircle className="w-4 h-4 sm:w-6 sm:h-6" />,
-  'users': <Users className="w-4 h-4 sm:w-6 sm:h-6" />
+  'users': <Users className="w-4 h-4 sm:w-6 sm:h-6" />,
+  'sparkles': <Sparkles className="w-4 h-4 sm:w-6 sm:h-6" />,
+  'eye': <Eye className="w-4 h-4 sm:w-6 sm:h-6" />,
+  'file-text': <FileText className="w-4 h-4 sm:w-6 sm:h-6" />,
+  'chart': <Activity className="w-4 h-4 sm:w-6 sm:h-6" />
 };
 
 // Channel Card Component
@@ -201,11 +205,18 @@ export default function Home() {
                 <Plus className="w-3 h-3 sm:w-4 sm:h-4" /> <span className="hidden xs:inline">Channels</span>
              </button>
              <button 
+               onClick={() => setLocation('/whats-new')}
+               className="text-[10px] sm:text-xs uppercase tracking-widest hover:text-primary flex items-center gap-1 sm:gap-2 transition-colors p-1"
+               title="What's New"
+             >
+                <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" /> <span className="hidden xs:inline">New</span>
+             </button>
+             <button 
                onClick={() => setLocation('/about')}
                className="text-[10px] sm:text-xs uppercase tracking-widest hover:text-primary flex items-center gap-1 sm:gap-2 transition-colors p-1"
                title="About"
              >
-                <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" /> <span className="hidden xs:inline">About</span>
+                <Activity className="w-3 h-3 sm:w-4 sm:h-4" /> <span className="hidden xs:inline">About</span>
              </button>
              <button 
                onClick={() => setLocation('/stats')}

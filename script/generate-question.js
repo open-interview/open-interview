@@ -7,7 +7,8 @@ import {
   parseJson,
   validateQuestion,
   updateUnifiedIndexFile,
-  writeGitHubOutput
+  writeGitHubOutput,
+  logQuestionsAdded
 } from './utils.js';
 
 // Complete channel configurations matching channels-config.ts
@@ -15,143 +16,177 @@ import {
 const channelConfigs = {
   // Engineering Channels
   'system-design': [
-    { subChannel: 'infrastructure', tags: ['infra', 'scale'] },
-    { subChannel: 'distributed-systems', tags: ['dist-sys', 'architecture'] },
-    { subChannel: 'api-design', tags: ['api', 'rest'] },
-    { subChannel: 'caching', tags: ['cache', 'redis'] },
-    { subChannel: 'load-balancing', tags: ['lb', 'traffic'] },
+    { subChannel: 'infrastructure', tags: ['infra', 'scale', 'distributed'] },
+    { subChannel: 'distributed-systems', tags: ['dist-sys', 'cap-theorem', 'consensus'] },
+    { subChannel: 'api-design', tags: ['api', 'rest', 'grpc', 'graphql'] },
+    { subChannel: 'caching', tags: ['cache', 'redis', 'memcached', 'cdn'] },
+    { subChannel: 'load-balancing', tags: ['lb', 'traffic', 'nginx', 'haproxy'] },
+    { subChannel: 'message-queues', tags: ['kafka', 'rabbitmq', 'sqs', 'pubsub'] },
   ],
   'algorithms': [
-    { subChannel: 'data-structures', tags: ['struct', 'basics'] },
-    { subChannel: 'sorting', tags: ['sort', 'complexity'] },
-    { subChannel: 'dynamic-programming', tags: ['dp', 'optimization'] },
-    { subChannel: 'graphs', tags: ['graph', 'traversal'] },
-    { subChannel: 'trees', tags: ['tree', 'binary'] },
+    { subChannel: 'data-structures', tags: ['arrays', 'linkedlist', 'hashtable', 'heap'] },
+    { subChannel: 'sorting', tags: ['quicksort', 'mergesort', 'complexity'] },
+    { subChannel: 'dynamic-programming', tags: ['dp', 'memoization', 'tabulation'] },
+    { subChannel: 'graphs', tags: ['bfs', 'dfs', 'dijkstra', 'topological'] },
+    { subChannel: 'trees', tags: ['bst', 'avl', 'trie', 'segment-tree'] },
   ],
   'frontend': [
-    { subChannel: 'react', tags: ['react', 'hooks'] },
-    { subChannel: 'javascript', tags: ['js', 'core'] },
-    { subChannel: 'css', tags: ['css', 'styling'] },
-    { subChannel: 'performance', tags: ['perf', 'optimization'] },
-    { subChannel: 'web-apis', tags: ['browser', 'dom'] },
+    { subChannel: 'react', tags: ['react', 'hooks', 'context', 'redux'] },
+    { subChannel: 'javascript', tags: ['js', 'es6', 'closures', 'promises'] },
+    { subChannel: 'css', tags: ['css', 'flexbox', 'grid', 'animations'] },
+    { subChannel: 'performance', tags: ['lighthouse', 'bundle', 'lazy-loading'] },
+    { subChannel: 'web-apis', tags: ['dom', 'fetch', 'websocket', 'service-worker'] },
   ],
   'backend': [
-    { subChannel: 'apis', tags: ['api', 'rest', 'graphql'] },
-    { subChannel: 'microservices', tags: ['microservices', 'architecture'] },
-    { subChannel: 'caching', tags: ['cache', 'redis'] },
-    { subChannel: 'authentication', tags: ['auth', 'jwt', 'oauth'] },
-    { subChannel: 'server-architecture', tags: ['server', 'scaling'] },
+    { subChannel: 'apis', tags: ['rest', 'graphql', 'grpc', 'openapi'] },
+    { subChannel: 'microservices', tags: ['saga', 'cqrs', 'event-sourcing'] },
+    { subChannel: 'caching', tags: ['redis', 'memcached', 'cache-invalidation'] },
+    { subChannel: 'authentication', tags: ['jwt', 'oauth2', 'oidc', 'saml'] },
+    { subChannel: 'server-architecture', tags: ['scaling', 'sharding', 'replication'] },
   ],
   'database': [
-    { subChannel: 'sql', tags: ['sql', 'queries'] },
-    { subChannel: 'nosql', tags: ['nosql', 'mongodb'] },
-    { subChannel: 'indexing', tags: ['index', 'optimization'] },
-    { subChannel: 'transactions', tags: ['acid', 'transactions'] },
-    { subChannel: 'query-optimization', tags: ['query', 'performance'] },
+    { subChannel: 'sql', tags: ['joins', 'indexes', 'normalization', 'postgres'] },
+    { subChannel: 'nosql', tags: ['mongodb', 'dynamodb', 'cassandra', 'redis'] },
+    { subChannel: 'indexing', tags: ['btree', 'hash-index', 'composite'] },
+    { subChannel: 'transactions', tags: ['acid', 'isolation-levels', 'mvcc'] },
+    { subChannel: 'query-optimization', tags: ['explain', 'query-plan', 'partitioning'] },
   ],
 
   // DevOps & Cloud Channels
   'devops': [
-    { subChannel: 'cicd', tags: ['cicd', 'automation'] },
-    { subChannel: 'docker', tags: ['docker', 'containers'] },
-    { subChannel: 'automation', tags: ['automation', 'scripting'] },
-    { subChannel: 'orchestration', tags: ['orchestration', 'deployment'] },
+    { subChannel: 'cicd', tags: ['github-actions', 'jenkins', 'gitlab-ci'] },
+    { subChannel: 'docker', tags: ['dockerfile', 'compose', 'multi-stage'] },
+    { subChannel: 'automation', tags: ['ansible', 'puppet', 'chef'] },
+    { subChannel: 'gitops', tags: ['argocd', 'flux', 'declarative'] },
   ],
   'sre': [
-    { subChannel: 'observability', tags: ['metrics', 'monitoring'] },
-    { subChannel: 'reliability', tags: ['reliability', 'uptime'] },
-    { subChannel: 'slo-sli', tags: ['slo', 'sli', 'error-budget'] },
-    { subChannel: 'incident-management', tags: ['incident', 'postmortem'] },
-    { subChannel: 'chaos-engineering', tags: ['chaos', 'resilience'] },
+    { subChannel: 'observability', tags: ['prometheus', 'grafana', 'opentelemetry'] },
+    { subChannel: 'reliability', tags: ['slo', 'sli', 'error-budget'] },
+    { subChannel: 'incident-management', tags: ['pagerduty', 'runbooks', 'postmortem'] },
+    { subChannel: 'chaos-engineering', tags: ['chaos-monkey', 'litmus', 'gremlin'] },
+    { subChannel: 'capacity-planning', tags: ['forecasting', 'autoscaling', 'load-testing'] },
   ],
   'kubernetes': [
-    { subChannel: 'pods', tags: ['pods', 'containers'] },
-    { subChannel: 'services', tags: ['services', 'networking'] },
-    { subChannel: 'deployments', tags: ['deployments', 'rollouts'] },
-    { subChannel: 'helm', tags: ['helm', 'charts'] },
-    { subChannel: 'operators', tags: ['operators', 'crds'] },
+    { subChannel: 'pods', tags: ['containers', 'init-containers', 'sidecars'] },
+    { subChannel: 'services', tags: ['clusterip', 'nodeport', 'loadbalancer', 'ingress'] },
+    { subChannel: 'deployments', tags: ['rolling-update', 'canary', 'blue-green'] },
+    { subChannel: 'helm', tags: ['charts', 'values', 'templating'] },
+    { subChannel: 'operators', tags: ['crds', 'controllers', 'reconciliation'] },
   ],
   'aws': [
-    { subChannel: 'ec2', tags: ['ec2', 'compute'] },
-    { subChannel: 's3', tags: ['s3', 'storage'] },
-    { subChannel: 'lambda', tags: ['lambda', 'serverless'] },
-    { subChannel: 'rds', tags: ['rds', 'database'] },
-    { subChannel: 'vpc', tags: ['vpc', 'networking'] },
+    { subChannel: 'compute', tags: ['ec2', 'ecs', 'eks', 'fargate'] },
+    { subChannel: 'storage', tags: ['s3', 'ebs', 'efs', 'glacier'] },
+    { subChannel: 'serverless', tags: ['lambda', 'api-gateway', 'step-functions'] },
+    { subChannel: 'database', tags: ['rds', 'aurora', 'dynamodb', 'elasticache'] },
+    { subChannel: 'networking', tags: ['vpc', 'route53', 'cloudfront', 'alb'] },
   ],
   'terraform': [
-    { subChannel: 'basics', tags: ['iac', 'basics'] },
-    { subChannel: 'modules', tags: ['modules', 'reusability'] },
-    { subChannel: 'state-management', tags: ['state', 'backend'] },
-    { subChannel: 'providers', tags: ['providers', 'resources'] },
+    { subChannel: 'basics', tags: ['hcl', 'resources', 'data-sources'] },
+    { subChannel: 'modules', tags: ['composition', 'versioning', 'registry'] },
+    { subChannel: 'state-management', tags: ['remote-state', 'locking', 'workspaces'] },
+    { subChannel: 'best-practices', tags: ['dry', 'terragrunt', 'atlantis'] },
   ],
 
   // Data & AI Channels
   'data-engineering': [
-    { subChannel: 'etl', tags: ['etl', 'pipelines'] },
-    { subChannel: 'data-pipelines', tags: ['pipelines', 'airflow'] },
-    { subChannel: 'warehousing', tags: ['warehouse', 'analytics'] },
-    { subChannel: 'streaming', tags: ['streaming', 'kafka'] },
+    { subChannel: 'etl', tags: ['spark', 'airflow', 'dbt'] },
+    { subChannel: 'data-pipelines', tags: ['dag', 'orchestration', 'scheduling'] },
+    { subChannel: 'warehousing', tags: ['snowflake', 'bigquery', 'redshift'] },
+    { subChannel: 'streaming', tags: ['kafka', 'flink', 'kinesis'] },
   ],
   'machine-learning': [
-    { subChannel: 'algorithms', tags: ['ml', 'algorithms'] },
-    { subChannel: 'model-training', tags: ['training', 'optimization'] },
-    { subChannel: 'deployment', tags: ['mlops', 'deployment'] },
-    { subChannel: 'deep-learning', tags: ['dl', 'neural-networks'] },
-    { subChannel: 'nlp', tags: ['nlp', 'text'] },
+    { subChannel: 'algorithms', tags: ['regression', 'classification', 'clustering'] },
+    { subChannel: 'model-training', tags: ['hyperparameter', 'cross-validation', 'regularization'] },
+    { subChannel: 'deployment', tags: ['mlflow', 'kubeflow', 'sagemaker'] },
+    { subChannel: 'deep-learning', tags: ['cnn', 'rnn', 'transformer', 'attention'] },
+    { subChannel: 'evaluation', tags: ['precision', 'recall', 'auc-roc', 'f1'] },
   ],
   'python': [
-    { subChannel: 'fundamentals', tags: ['python', 'basics'] },
-    { subChannel: 'libraries', tags: ['pandas', 'numpy'] },
-    { subChannel: 'best-practices', tags: ['patterns', 'clean-code'] },
-    { subChannel: 'async', tags: ['async', 'concurrency'] },
+    { subChannel: 'fundamentals', tags: ['generators', 'decorators', 'context-managers'] },
+    { subChannel: 'libraries', tags: ['pandas', 'numpy', 'scikit-learn'] },
+    { subChannel: 'best-practices', tags: ['pep8', 'typing', 'testing'] },
+    { subChannel: 'async', tags: ['asyncio', 'aiohttp', 'concurrency'] },
+  ],
+
+  // NEW: AI & GenAI Channels
+  'generative-ai': [
+    { subChannel: 'llm-fundamentals', tags: ['transformer', 'attention', 'tokenization'] },
+    { subChannel: 'fine-tuning', tags: ['lora', 'qlora', 'peft', 'adapter'] },
+    { subChannel: 'rag', tags: ['retrieval', 'embeddings', 'vector-db', 'chunking'] },
+    { subChannel: 'agents', tags: ['langchain', 'autogen', 'tool-use', 'planning'] },
+    { subChannel: 'evaluation', tags: ['hallucination', 'faithfulness', 'relevance'] },
+  ],
+  'prompt-engineering': [
+    { subChannel: 'techniques', tags: ['chain-of-thought', 'few-shot', 'zero-shot'] },
+    { subChannel: 'optimization', tags: ['prompt-tuning', 'dspy', 'automatic-prompting'] },
+    { subChannel: 'safety', tags: ['jailbreak', 'guardrails', 'content-filtering'] },
+    { subChannel: 'structured-output', tags: ['json-mode', 'function-calling', 'schema'] },
+  ],
+  'llm-ops': [
+    { subChannel: 'deployment', tags: ['vllm', 'tgi', 'triton', 'onnx'] },
+    { subChannel: 'optimization', tags: ['quantization', 'pruning', 'distillation'] },
+    { subChannel: 'monitoring', tags: ['latency', 'throughput', 'cost-tracking'] },
+    { subChannel: 'infrastructure', tags: ['gpu', 'tpu', 'inference-server'] },
+  ],
+  'computer-vision': [
+    { subChannel: 'image-classification', tags: ['cnn', 'resnet', 'efficientnet'] },
+    { subChannel: 'object-detection', tags: ['yolo', 'rcnn', 'detr'] },
+    { subChannel: 'segmentation', tags: ['unet', 'mask-rcnn', 'sam'] },
+    { subChannel: 'multimodal', tags: ['clip', 'blip', 'llava', 'vision-transformer'] },
+  ],
+  'nlp': [
+    { subChannel: 'text-processing', tags: ['tokenization', 'stemming', 'ner'] },
+    { subChannel: 'embeddings', tags: ['word2vec', 'bert', 'sentence-transformers'] },
+    { subChannel: 'sequence-models', tags: ['lstm', 'gru', 'seq2seq'] },
+    { subChannel: 'transformers', tags: ['bert', 'gpt', 't5', 'llama'] },
   ],
 
   // Security Channel
   'security': [
-    { subChannel: 'application-security', tags: ['appsec', 'vulnerabilities'] },
-    { subChannel: 'owasp', tags: ['owasp', 'top10'] },
-    { subChannel: 'encryption', tags: ['encryption', 'crypto'] },
-    { subChannel: 'authentication', tags: ['auth', 'identity'] },
+    { subChannel: 'application-security', tags: ['xss', 'csrf', 'sqli', 'ssrf'] },
+    { subChannel: 'owasp', tags: ['top10', 'asvs', 'samm'] },
+    { subChannel: 'encryption', tags: ['aes', 'rsa', 'tls', 'hashing'] },
+    { subChannel: 'authentication', tags: ['mfa', 'passkeys', 'zero-trust'] },
   ],
   'networking': [
-    { subChannel: 'tcp-ip', tags: ['tcp', 'ip', 'protocols'] },
-    { subChannel: 'dns', tags: ['dns', 'resolution'] },
-    { subChannel: 'load-balancing', tags: ['lb', 'traffic'] },
-    { subChannel: 'cdn', tags: ['cdn', 'caching'] },
+    { subChannel: 'tcp-ip', tags: ['tcp', 'udp', 'http2', 'quic'] },
+    { subChannel: 'dns', tags: ['resolution', 'caching', 'dnssec'] },
+    { subChannel: 'load-balancing', tags: ['l4', 'l7', 'consistent-hashing'] },
+    { subChannel: 'cdn', tags: ['edge', 'caching', 'purging'] },
   ],
 
   // Mobile Channels
   'ios': [
-    { subChannel: 'swift', tags: ['swift', 'language'] },
-    { subChannel: 'uikit', tags: ['uikit', 'ui'] },
-    { subChannel: 'swiftui', tags: ['swiftui', 'declarative'] },
-    { subChannel: 'architecture', tags: ['mvvm', 'patterns'] },
+    { subChannel: 'swift', tags: ['optionals', 'protocols', 'generics'] },
+    { subChannel: 'uikit', tags: ['autolayout', 'tableview', 'collectionview'] },
+    { subChannel: 'swiftui', tags: ['state', 'binding', 'environment'] },
+    { subChannel: 'architecture', tags: ['mvvm', 'viper', 'clean-architecture'] },
   ],
   'android': [
-    { subChannel: 'kotlin', tags: ['kotlin', 'language'] },
-    { subChannel: 'jetpack-compose', tags: ['compose', 'ui'] },
-    { subChannel: 'architecture', tags: ['mvvm', 'patterns'] },
-    { subChannel: 'lifecycle', tags: ['lifecycle', 'components'] },
+    { subChannel: 'kotlin', tags: ['coroutines', 'flow', 'sealed-classes'] },
+    { subChannel: 'jetpack-compose', tags: ['composables', 'state', 'navigation'] },
+    { subChannel: 'architecture', tags: ['mvvm', 'mvi', 'clean-architecture'] },
+    { subChannel: 'lifecycle', tags: ['viewmodel', 'livedata', 'savedstate'] },
   ],
   'react-native': [
-    { subChannel: 'components', tags: ['components', 'ui'] },
-    { subChannel: 'navigation', tags: ['navigation', 'routing'] },
-    { subChannel: 'native-modules', tags: ['native', 'bridge'] },
-    { subChannel: 'performance', tags: ['perf', 'optimization'] },
+    { subChannel: 'components', tags: ['flatlist', 'navigation', 'gestures'] },
+    { subChannel: 'native-modules', tags: ['turbo-modules', 'fabric', 'jsi'] },
+    { subChannel: 'performance', tags: ['hermes', 'reanimated', 'profiling'] },
+    { subChannel: 'architecture', tags: ['new-architecture', 'bridgeless'] },
   ],
 
   // Management & Soft Skills Channels
   'engineering-management': [
-    { subChannel: 'team-leadership', tags: ['leadership', 'team'] },
-    { subChannel: 'one-on-ones', tags: ['1on1', 'feedback'] },
-    { subChannel: 'hiring', tags: ['hiring', 'interviews'] },
-    { subChannel: 'project-management', tags: ['project', 'planning'] },
+    { subChannel: 'team-leadership', tags: ['delegation', 'mentoring', 'growth'] },
+    { subChannel: 'one-on-ones', tags: ['feedback', 'career-development', 'coaching'] },
+    { subChannel: 'hiring', tags: ['sourcing', 'interviewing', 'onboarding'] },
+    { subChannel: 'project-management', tags: ['agile', 'scrum', 'kanban', 'okrs'] },
   ],
   'behavioral': [
-    { subChannel: 'star-method', tags: ['star', 'stories'] },
-    { subChannel: 'leadership-principles', tags: ['leadership', 'principles'] },
-    { subChannel: 'soft-skills', tags: ['communication', 'collaboration'] },
-    { subChannel: 'conflict-resolution', tags: ['conflict', 'resolution'] },
+    { subChannel: 'star-method', tags: ['situation', 'task', 'action', 'result'] },
+    { subChannel: 'leadership-principles', tags: ['ownership', 'bias-for-action', 'customer-obsession'] },
+    { subChannel: 'soft-skills', tags: ['communication', 'collaboration', 'influence'] },
+    { subChannel: 'conflict-resolution', tags: ['negotiation', 'mediation', 'feedback'] },
   ],
 };
 
@@ -203,7 +238,33 @@ async function main() {
     console.log(`Sub-channel: ${subChannelConfig.subChannel}`);
     console.log(`Difficulty: ${difficulty}`);
 
-    const prompt = `Generate a unique technical interview question for ${channel} (${subChannelConfig.subChannel}). Difficulty: ${difficulty}. Return ONLY valid JSON with no other text: {"question": "the question text", "answer": "brief answer under 150 chars", "explanation": "detailed markdown explanation", "diagram": "mermaid diagram starting with graph TD or LR", "relatedChannels": ["list of other channels this question could belong to"]}`;
+    // Build technical prompt based on difficulty
+    const difficultyContext = {
+      beginner: 'Focus on fundamental concepts, definitions, and basic use cases. Ask about core terminology and simple implementations.',
+      intermediate: 'Focus on practical implementation details, trade-offs, and real-world scenarios. Include specific technologies and patterns.',
+      advanced: 'Focus on edge cases, performance optimization, system design trade-offs, and production-scale challenges. Expect deep technical knowledge.'
+    };
+
+    const prompt = `You are a senior technical interviewer. Generate a unique ${difficulty}-level interview question for ${channel} specifically about ${subChannelConfig.subChannel}.
+
+Context: ${difficultyContext[difficulty]}
+Tags to consider: ${subChannelConfig.tags.join(', ')}
+
+Requirements:
+- Question must be specific and technical, not generic
+- Answer should be concise (under 150 chars) but technically accurate
+- Explanation must include: concept overview, implementation details, code example if applicable, common pitfalls
+- Diagram should visualize the architecture/flow using mermaid (graph TD or flowchart LR)
+- Suggest related channels where this question could also be relevant
+
+Return ONLY valid JSON:
+{
+  "question": "specific technical question ending with ?",
+  "answer": "concise technical answer under 150 chars",
+  "explanation": "detailed markdown with ## headers, code blocks, and bullet points",
+  "diagram": "mermaid diagram code starting with graph TD or flowchart LR",
+  "relatedChannels": ["channel-id-1", "channel-id-2"]
+}`;
 
     const response = await runWithRetries(prompt);
     
@@ -292,6 +353,17 @@ async function main() {
 
   console.log(`\nTotal Questions in Database: ${totalQuestions}`);
   console.log('=== END SUMMARY ===\n');
+
+  // Log to changelog
+  if (addedQuestions.length > 0) {
+    const channelsAffected = addedQuestions.flatMap(q => q.mappedChannels.map(m => m.channel));
+    logQuestionsAdded(
+      addedQuestions.length,
+      channelsAffected,
+      addedQuestions.map(q => q.id)
+    );
+    console.log('📝 Changelog updated with new questions');
+  }
 
   writeGitHubOutput({
     added_count: addedQuestions.length,

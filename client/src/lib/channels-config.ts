@@ -124,6 +124,51 @@ export const allChannelsConfig: ChannelConfig[] = [
     roles: ['ml-engineer', 'data-scientist', 'ai-engineer']
   },
   {
+    id: 'generative-ai',
+    name: 'Generative AI',
+    description: 'LLMs, RAG, fine-tuning, agents & prompt engineering',
+    icon: 'sparkles',
+    color: 'text-violet-500',
+    category: 'ai',
+    roles: ['ai-engineer', 'ml-engineer', 'fullstack', 'backend']
+  },
+  {
+    id: 'prompt-engineering',
+    name: 'Prompt Engineering',
+    description: 'Prompt design, optimization, safety & structured outputs',
+    icon: 'message-circle',
+    color: 'text-cyan-400',
+    category: 'ai',
+    roles: ['ai-engineer', 'ml-engineer', 'fullstack', 'product']
+  },
+  {
+    id: 'llm-ops',
+    name: 'LLMOps',
+    description: 'LLM deployment, optimization, monitoring & infrastructure',
+    icon: 'server',
+    color: 'text-orange-400',
+    category: 'ai',
+    roles: ['ai-engineer', 'ml-engineer', 'devops', 'sre']
+  },
+  {
+    id: 'computer-vision',
+    name: 'Computer Vision',
+    description: 'Image classification, object detection & multimodal AI',
+    icon: 'eye',
+    color: 'text-blue-400',
+    category: 'ai',
+    roles: ['ml-engineer', 'ai-engineer', 'data-scientist']
+  },
+  {
+    id: 'nlp',
+    name: 'NLP',
+    description: 'Text processing, embeddings, transformers & language models',
+    icon: 'file-text',
+    color: 'text-emerald-400',
+    category: 'ai',
+    roles: ['ml-engineer', 'ai-engineer', 'data-scientist']
+  },
+  {
     id: 'python',
     name: 'Python',
     description: 'Python fundamentals, libraries & best practices',
@@ -220,6 +265,8 @@ export const rolesConfig: RoleConfig[] = [
   { id: 'sre', name: 'Site Reliability Engineer', description: 'Reliability, Monitoring, Incident Response', icon: 'activity' },
   { id: 'data-engineer', name: 'Data Engineer', description: 'ETL, Data Pipelines, Warehousing', icon: 'workflow' },
   { id: 'ml-engineer', name: 'ML Engineer', description: 'Machine Learning, Model Deployment', icon: 'brain' },
+  { id: 'ai-engineer', name: 'AI Engineer', description: 'GenAI, LLMs, RAG, Prompt Engineering', icon: 'sparkles' },
+  { id: 'data-scientist', name: 'Data Scientist', description: 'ML, Statistics, Data Analysis', icon: 'chart' },
   { id: 'security', name: 'Security Engineer', description: 'AppSec, Penetration Testing, Compliance', icon: 'shield' },
   { id: 'architect', name: 'Solutions Architect', description: 'System Design, Cloud Architecture', icon: 'cpu' },
   { id: 'manager', name: 'Engineering Manager', description: 'Team Leadership, Hiring, Strategy', icon: 'users' },

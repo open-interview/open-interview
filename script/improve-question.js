@@ -7,7 +7,8 @@ import {
   parseJson,
   validateQuestion,
   updateUnifiedIndexFile,
-  writeGitHubOutput
+  writeGitHubOutput,
+  logQuestionsImproved
 } from './utils.js';
 
 // Get all channels from mappings
@@ -104,7 +105,30 @@ async function main() {
     console.log(`Issues: ${issues.join(', ')}`);
     console.log(`Current Q: ${question.question.substring(0, 60)}...`);
 
-    const prompt = `Improve this technical interview question. Current question: "${question.question}". Current answer: "${question.answer}". Current explanation: "${question.explanation}". Issues to fix: ${issues.join(', ')}. Return ONLY valid JSON: {"question": "improved question", "answer": "improved answer under 150 chars", "explanation": "detailed markdown explanation with examples", "diagram": "mermaid diagram if helpful"}`;
+    const prompt = `You are a senior technical interviewer improving interview questions for quality.
+
+Current Question: "${question.question}"
+Current Answer: "${question.answer}"
+Current Explanation: "${question.explanation?.substring(0, 500) || 'None'}"
+Issues to fix: ${issues.join(', ')}
+
+Improvement Guidelines:
+- Make the question more specific and technically precise
+- Answer must be concise (under 150 chars) but technically accurate
+- Explanation should include:
+  * ## Concept Overview - what and why
+  * ## Implementation - how it works with code examples
+  * ## Trade-offs - pros/cons and when to use
+  * ## Common Pitfalls - mistakes to avoid
+- Diagram should clearly visualize the concept using mermaid
+
+Return ONLY valid JSON:
+{
+  "question": "improved specific technical question ending with ?",
+  "answer": "concise technical answer under 150 chars",
+  "explanation": "detailed markdown with ## headers, \`\`\`code blocks\`\`\`, and bullet points",
+  "diagram": "mermaid diagram code starting with graph TD or flowchart LR"
+}`;
 
     const response = await runWithRetries(prompt);
     
@@ -170,6 +194,28 @@ async function main() {
 
   console.log(`\nTotal Questions in Database: ${totalQuestions}`);
   console.log('=== END SUMMARY ===\n');
+
+  // Log to changelog
+  if (improvedQuestions.length > 0) {
+    // Get channels for improved questions from mappings
+    const mappings = loadChannelMappings();
+    const channelsAffected = [];
+    improvedQuestions.forEach(q => {
+      Object.entries(mappings).forEach(([channel, data]) => {
+        const allIds = Object.values(data.subChannels || {}).flat();
+        if (allIds.includes(q.id)) {
+          channelsAffected.push(channel);
+        }
+      });
+    });
+    
+    logQuestionsImproved(
+      improvedQuestions.length,
+      channelsAffected,
+      improvedQuestions.map(q => q.id)
+    );
+    console.log('📝 Changelog updated with improved questions');
+  }
 
   writeGitHubOutput({
     improved_count: improvedQuestions.length,

@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Stats from "@/pages/Stats";
 import Home from "@/pages/Home";
 import About from "@/pages/About";
+import WhatsNew from "@/pages/WhatsNew";
 import Reels from "@/pages/ReelsRedesigned";
 import AllChannels from "@/pages/AllChannels";
 import MermaidTest from "@/pages/MermaidTest";
@@ -20,6 +21,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/about" component={About} />
+      <Route path="/whats-new" component={WhatsNew} />
       <Route path="/stats" component={Stats} />
       <Route path="/channels" component={AllChannels} />
       <Route path="/test/mermaid" component={MermaidTest} />

@@ -9,7 +9,7 @@ import {
   ArrowLeft, Check, Plus, Search, Filter, 
   Layout, Server, Layers, Smartphone, Activity, Shield, 
   Cpu, Users, Database, Brain, Workflow, Box, Cloud, Code,
-  Network, MessageCircle, Terminal, GitBranch
+  Network, MessageCircle, Terminal, GitBranch, Sparkles, Eye, FileText
 } from 'lucide-react';
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -30,7 +30,11 @@ const iconMap: Record<string, React.ReactNode> = {
   'code': <Code className="w-5 h-5" />,
   'network': <Network className="w-5 h-5" />,
   'message-circle': <MessageCircle className="w-5 h-5" />,
-  'terminal': <Terminal className="w-5 h-5" />
+  'terminal': <Terminal className="w-5 h-5" />,
+  'sparkles': <Sparkles className="w-5 h-5" />,
+  'eye': <Eye className="w-5 h-5" />,
+  'file-text': <FileText className="w-5 h-5" />,
+  'chart': <Activity className="w-5 h-5" />
 };
 
 function ChannelCard({ 

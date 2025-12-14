@@ -239,6 +239,7 @@ export function writeGitHubOutput(data) {
 
 export const ALL_QUESTIONS_FILE = `${QUESTIONS_DIR}/all-questions.json`;
 export const CHANNEL_MAPPINGS_FILE = `${QUESTIONS_DIR}/channel-mappings.json`;
+export const CHANGELOG_FILE = `${QUESTIONS_DIR}/changelog.json`;
 
 // Load all questions from unified storage
 export function loadUnifiedQuestions() {
@@ -395,4 +396,101 @@ Object.keys(channelMappings).forEach(channel => {
 `;
   
   fs.writeFileSync(`${QUESTIONS_DIR}/index.ts`, content);
+}
+
+
+// ============================================
+// CHANGELOG MANAGEMENT
+// ============================================
+// Track what's new - questions added, improved, features
+
+// Load changelog data
+export function loadChangelog() {
+  try {
+    return JSON.parse(fs.readFileSync(CHANGELOG_FILE, 'utf8'));
+  } catch (e) {
+    return {
+      entries: [],
+      stats: {
+        totalQuestionsAdded: 0,
+        totalQuestionsImproved: 0,
+        lastUpdated: new Date().toISOString()
+      }
+    };
+  }
+}
+
+// Save changelog data
+export function saveChangelog(data) {
+  fs.mkdirSync(QUESTIONS_DIR, { recursive: true });
+  data.stats.lastUpdated = new Date().toISOString();
+  fs.writeFileSync(CHANGELOG_FILE, JSON.stringify(data, null, 2));
+}
+
+// Add a changelog entry for new questions
+export function addChangelogEntry(type, title, description, details = {}) {
+  const changelog = loadChangelog();
+  
+  const entry = {
+    date: new Date().toISOString().split('T')[0],
+    type,
+    title,
+    description,
+    details
+  };
+  
+  // Add to beginning of entries
+  changelog.entries.unshift(entry);
+  
+  // Update stats
+  if (details.questionsAdded) {
+    changelog.stats.totalQuestionsAdded += details.questionsAdded;
+  }
+  if (details.questionsImproved) {
+    changelog.stats.totalQuestionsImproved += details.questionsImproved;
+  }
+  
+  // Keep only last 100 entries
+  if (changelog.entries.length > 100) {
+    changelog.entries = changelog.entries.slice(0, 100);
+  }
+  
+  saveChangelog(changelog);
+  return entry;
+}
+
+// Add entry for daily question generation
+export function logQuestionsAdded(count, channels, questionIds = []) {
+  if (count === 0) return;
+  
+  const uniqueChannels = [...new Set(channels)];
+  
+  return addChangelogEntry(
+    'added',
+    `${count} New Questions Added`,
+    `Daily AI-powered question generation added ${count} new questions across ${uniqueChannels.length} channels.`,
+    {
+      questionsAdded: count,
+      channels: uniqueChannels,
+      questionIds: questionIds.slice(0, 10) // Keep first 10 IDs
+    }
+  );
+}
+
+// Add entry for question improvements
+export function logQuestionsImproved(count, channels, questionIds = []) {
+  if (count === 0) return;
+  
+  const uniqueChannels = [...new Set(channels)];
+  
+  return addChangelogEntry(
+    'improved',
+    `${count} Questions Improved`,
+    `AI-powered improvement bot enhanced ${count} questions with better explanations and diagrams.`,
+    {
+      questionsImproved: count,
+      channels: uniqueChannels,
+      questionIds: questionIds.slice(0, 10)
+    }
+  );
 }
