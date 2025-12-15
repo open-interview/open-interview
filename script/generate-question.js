@@ -266,38 +266,34 @@ async function main() {
     console.log(`Sub-channel: ${subChannelConfig.subChannel}`);
     console.log(`Difficulty: ${difficulty}`);
 
-    // Build technical prompt based on difficulty
-    const difficultyContext = {
-      beginner: 'Focus on fundamental concepts, definitions, and basic use cases. Ask about core terminology and simple implementations.',
-      intermediate: 'Focus on practical implementation details, trade-offs, and real-world scenarios. Include specific technologies and patterns.',
-      advanced: 'Focus on edge cases, performance optimization, system design trade-offs, and production-scale challenges. Expect deep technical knowledge.'
+    // Compact difficulty hints
+    const difficultyHint = {
+      beginner: 'fundamentals, definitions, basic use cases',
+      intermediate: 'implementation, trade-offs, real-world patterns',
+      advanced: 'edge cases, optimization, production-scale challenges'
     };
+    
+    // Topic context for better search hints
+    const topicHint = `${channel.replace(/-/g, ' ')} ${subChannelConfig.subChannel.replace(/-/g, ' ')}`;
 
-    const prompt = `You are a senior technical interviewer. Generate a unique ${difficulty}-level interview question for ${channel} specifically about ${subChannelConfig.subChannel}.
+    const prompt = `Generate a ${difficulty} ${channel}/${subChannelConfig.subChannel} interview question.
 
-Context: ${difficultyContext[difficulty]}
-Tags to consider: ${subChannelConfig.tags.join(', ')}
+Focus: ${difficultyHint[difficulty]}
+Tags: ${subChannelConfig.tags.join(', ')}
 
-Requirements:
-- Question must be specific and technical, not generic
-- Answer should be concise (under 150 chars) but technically accurate
-- Explanation must include: concept overview, implementation details, code example if applicable, common pitfalls
-- Diagram should visualize the architecture/flow using mermaid (graph TD or flowchart LR)
-- Suggest related channels where this question could also be relevant
-
-Return ONLY valid JSON:
+Return JSON:
 {
   "question": "specific technical question ending with ?",
-  "answer": "concise technical answer under 150 chars",
-  "explanation": "detailed markdown with ## headers, code blocks, and bullet points",
-  "diagram": "mermaid diagram code starting with graph TD or flowchart LR",
-  "relatedChannels": ["channel-id-1", "channel-id-2"],
-  "sourceUrl": "URL to a real interview resource, blog post, or documentation where this question topic is discussed (e.g., LeetCode, HackerRank, company engineering blog, official docs)",
+  "answer": "concise answer under 150 chars",
+  "explanation": "markdown: ## Concept, ## Implementation (code), ## Trade-offs, ## Pitfalls",
+  "diagram": "mermaid flowchart visualizing the concept",
+  "relatedChannels": ["1-2 related channel IDs from: system-design, algorithms, frontend, backend, database, devops, sre, kubernetes, aws, terraform, security, networking"],
+  "sourceUrl": "real URL: official docs (MDN, AWS, K8s), tech blog, or tutorial site",
   "videos": {
-    "shortVideo": "YouTube Shorts URL (under 60 seconds) explaining this concept quickly - must be a real, existing video",
-    "longVideo": "YouTube video URL (5-20 minutes) with in-depth explanation - must be a real, existing video from channels like Fireship, Traversy Media, Tech With Tim, NeetCode, etc."
+    "shortVideo": "YouTube Shorts URL - search: '${topicHint} explained shorts'",
+    "longVideo": "YouTube URL (5-15min) - channels: Fireship, NeetCode, Traversy Media, ByteByteGo"
   },
-  "companies": ["Company names where this question has been asked in interviews - e.g., Google, Amazon, Meta, Microsoft, Apple, Netflix, Uber, Airbnb, etc."]
+  "companies": ["2-4 companies: Google, Amazon, Meta, Microsoft, Apple, Netflix, Uber, Stripe"]
 }`;
 
     const response = await runWithRetries(prompt);

@@ -121,26 +121,18 @@ async function remapQuestionsWithAI(questionsToRemap, mappings) {
     console.log(`  Current: ${currentLocation.channel}/${currentLocation.subChannel}`);
     console.log(`  Q: ${question.question.substring(0, 60)}...`);
     
-    const prompt = `You are a technical interview question categorizer. Analyze this question and determine the BEST channel and subchannel for it.
+    // Compact prompt for remapping - focus on core topic classification
+    const prompt = `Categorize this interview question into the best channel/subchannel.
 
-Question ID: ${question.id}
-Question: "${question.question}"
-Answer: "${question.answer}"
-Tags: ${(question.tags || []).join(', ')}
-Current Channel: ${currentLocation.channel}
-Current SubChannel: ${currentLocation.subChannel}
+Q: "${question.question}"
+A: "${question.answer.substring(0, 100)}"
+Tags: ${(question.tags || []).slice(0, 5).join(', ')}
+Current: ${currentLocation.channel}/${currentLocation.subChannel}
 
-Available Channels and SubChannels:
+Channels:
 ${channelStructureStr}
 
-Rules:
-1. Choose the MOST relevant channel based on the question's core topic
-2. Choose the MOST specific subchannel within that channel
-3. If the current mapping is already optimal, return the same values
-4. Consider the question content, not just keywords
-
-Return ONLY valid JSON (no markdown, no explanation):
-{"channel": "channel-id", "subChannel": "subchannel-id", "reason": "brief reason for this mapping"}`;
+Return JSON only: {"channel":"id","subChannel":"id","reason":"10 words max"}`;
 
     const response = await runWithRetries(prompt);
     
@@ -314,35 +306,31 @@ async function main() {
     console.log(`Issues: ${issues.join(', ')}`);
     console.log(`Current Q: ${question.question.substring(0, 60)}...`);
 
-    const prompt = `You are a senior technical interviewer improving interview questions for quality.
+    // Build focused prompt based on what needs fixing
+    const needsContent = issues.some(i => ['short_answer', 'long_answer', 'short_explanation', 'no_diagram', 'truncated', 'no_question_mark'].includes(i));
+    const needsMeta = issues.some(i => ['no_source_url', 'no_short_video', 'no_long_video', 'no_companies'].includes(i));
+    
+    // Topic hint from channel for better context
+    const topicHint = channel.replace(/-/g, ' ');
+    
+    const prompt = `Improve this ${topicHint} interview question. Fix: ${issues.join(', ')}
 
-Current Question: "${question.question}"
-Current Answer: "${question.answer}"
-Current Explanation: "${question.explanation?.substring(0, 500) || 'None'}"
-Issues to fix: ${issues.join(', ')}
+Q: "${question.question}"
+A: "${question.answer}"
+${needsContent ? `Explanation: "${question.explanation?.substring(0, 300) || 'None'}"` : ''}
 
-Improvement Guidelines:
-- Make the question more specific and technically precise
-- Answer must be concise (under 150 chars) but technically accurate
-- Explanation should include:
-  * ## Concept Overview - what and why
-  * ## Implementation - how it works with code examples
-  * ## Trade-offs - pros/cons and when to use
-  * ## Common Pitfalls - mistakes to avoid
-- Diagram should clearly visualize the concept using mermaid
-
-Return ONLY valid JSON:
+Return JSON:
 {
-  "question": "improved specific technical question ending with ?",
-  "answer": "concise technical answer under 150 chars",
-  "explanation": "detailed markdown with ## headers, \`\`\`code blocks\`\`\`, and bullet points",
-  "diagram": "mermaid diagram code starting with graph TD or flowchart LR",
-  "sourceUrl": "URL to a real interview resource, blog post, or documentation where this question topic is discussed (e.g., LeetCode, HackerRank, company engineering blog, official docs)",
+  "question": "specific technical question ending with ?",
+  "answer": "concise answer under 150 chars",
+  "explanation": "markdown with ## Concept, ## Implementation (code), ## Trade-offs, ## Pitfalls",
+  "diagram": "mermaid flowchart visualizing the concept"${needsMeta ? `,
+  "sourceUrl": "real URL: official docs, MDN, or tech blog discussing this topic",
   "videos": {
-    "shortVideo": "YouTube Shorts URL (under 60 seconds) explaining this concept quickly - must be a real, existing video",
-    "longVideo": "YouTube video URL (5-20 minutes) with in-depth explanation - must be a real, existing video from channels like Fireship, Traversy Media, Tech With Tim, NeetCode, etc."
+    "shortVideo": "YouTube Shorts URL (<60s) - search: '${topicHint} explained shorts'",
+    "longVideo": "YouTube URL (5-15min) - channels: Fireship, NeetCode, Traversy Media, Tech With Tim"
   },
-  "companies": ["Company names where this question has been asked in interviews - e.g., Google, Amazon, Meta, Microsoft, Apple, Netflix, Uber, Airbnb, etc."]
+  "companies": ["2-4 FAANG companies known to ask this type of question"]` : ''}
 }`;
 
     const response = await runWithRetries(prompt);
