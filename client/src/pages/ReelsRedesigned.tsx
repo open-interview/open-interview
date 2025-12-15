@@ -164,6 +164,11 @@ export default function ReelsRedesigned() {
   const [isActive, setIsActive] = useState(true);
   const [showQuestionPicker, setShowQuestionPicker] = useState(false);
   const [seatMapView, setSeatMapView] = useState(true);
+  
+  // Dropdown open states - to close them on keyboard navigation
+  const [subChannelDropdownOpen, setSubChannelDropdownOpen] = useState(false);
+  const [difficultyDropdownOpen, setDifficultyDropdownOpen] = useState(false);
+  const [companyDropdownOpen, setCompanyDropdownOpen] = useState(false);
   const [markedQuestions, setMarkedQuestions] = useState<string[]>(() => {
     const saved = localStorage.getItem(`marked-${channelId}`);
     return saved ? JSON.parse(saved) : [];
@@ -296,9 +301,22 @@ export default function ReelsRedesigned() {
     if (!timerEnabled) setShowAnswer(true);
   }, [timerEnabled]);
 
+  // Close all dropdowns helper
+  const closeAllDropdowns = useCallback(() => {
+    setSubChannelDropdownOpen(false);
+    setDifficultyDropdownOpen(false);
+    setCompanyDropdownOpen(false);
+    setShowQuestionPicker(false);
+  }, []);
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Close dropdowns on any arrow key navigation
+      if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        closeAllDropdowns();
+      }
+      
       if (e.key === 'ArrowDown') nextQuestion();
       else if (e.key === 'ArrowUp') prevQuestion();
       else if (e.key === 'ArrowRight') {
@@ -315,7 +333,7 @@ export default function ReelsRedesigned() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, showAnswer, totalQuestions]);
+  }, [currentIndex, showAnswer, totalQuestions, closeAllDropdowns]);
 
   const nextQuestion = () => {
     if (currentIndex < totalQuestions - 1) {
@@ -512,7 +530,7 @@ export default function ReelsRedesigned() {
               {channel.subChannels && (
                 <div className="hidden xs:flex items-center gap-1">
                   <span className="text-white/30 hidden sm:inline">›</span>
-                  <DropdownMenu.Root>
+                  <DropdownMenu.Root open={subChannelDropdownOpen} onOpenChange={setSubChannelDropdownOpen}>
                     <DropdownMenu.Trigger className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest hover:text-white text-white/70 outline-none">
                       <span className="truncate max-w-[60px] sm:max-w-[100px]">{channel.subChannels.find(s => s.id === selectedSubChannel)?.name}</span>
                       <ChevronDown className="w-3 h-3 opacity-50 shrink-0" />
@@ -536,7 +554,7 @@ export default function ReelsRedesigned() {
               <div className="h-4 w-px bg-white/20 hidden sm:block shrink-0" />
               
               {/* Difficulty dropdown */}
-              <DropdownMenu.Root>
+              <DropdownMenu.Root open={difficultyDropdownOpen} onOpenChange={setDifficultyDropdownOpen}>
                 <DropdownMenu.Trigger className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest hover:text-white text-white/70 outline-none p-1">
                   {selectedDifficulty === 'all' && <Target className="w-3 h-3 shrink-0" />}
                   {selectedDifficulty === 'beginner' && <Zap className="w-3 h-3 text-green-400 shrink-0" />}
@@ -571,7 +589,7 @@ export default function ReelsRedesigned() {
               {companiesWithCounts.length > 0 && (
                 <>
                   <div className="h-4 w-px bg-white/20 hidden sm:block shrink-0" />
-                  <DropdownMenu.Root>
+                  <DropdownMenu.Root open={companyDropdownOpen} onOpenChange={setCompanyDropdownOpen}>
                     <DropdownMenu.Trigger className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest hover:text-white text-white/70 outline-none p-1">
                       <Building2 className="w-3 h-3 text-blue-400 shrink-0" />
                       <span className="hidden sm:inline truncate max-w-[80px]">
