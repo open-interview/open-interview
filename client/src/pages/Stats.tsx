@@ -133,7 +133,12 @@ export default function Stats() {
 
   return (
     <>
-      <SEOHead title="Stats - Code Reels" description="Track your interview prep progress" />
+      <SEOHead 
+        title="Progress Stats - Code Reels Interview Prep" 
+        description="Track your technical interview preparation progress. View completion stats, activity heatmap, and difficulty breakdown across all channels."
+        keywords="interview prep stats, progress tracking, learning analytics, study streak"
+        canonical="https://reel-interview.github.io/stats"
+      />
       <div className="min-h-screen bg-background text-foreground p-3 sm:p-4 font-mono overflow-y-auto">
         <div className="max-w-5xl mx-auto">
           {/* Header */}

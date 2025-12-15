@@ -8,7 +8,24 @@ interface SEOHeadProps {
   ogType?: string;
   canonical?: string;
   noindex?: boolean;
+  structuredData?: object;
 }
+
+// Default structured data for the site
+const defaultStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Code Reels",
+  "description": "Interactive platform for practicing technical interview questions",
+  "url": "https://reel-interview.github.io/",
+  "applicationCategory": "EducationalApplication",
+  "operatingSystem": "Web Browser",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+};
 
 export function SEOHead({
   title,
@@ -17,7 +34,8 @@ export function SEOHead({
   ogImage = 'https://reel-interview.github.io/opengraph.jpg',
   ogType = 'website',
   canonical,
-  noindex = false
+  noindex = false,
+  structuredData
 }: SEOHeadProps) {
   useEffect(() => {
     // Update title
@@ -25,7 +43,8 @@ export function SEOHead({
 
     // Update meta tags
     const updateMeta = (name: string, content: string, isProperty = false) => {
-      let element = document.querySelector(`meta[${isProperty ? 'property' : 'name'}="${name}"]`);
+      const selector = isProperty ? `meta[property="${name}"]` : `meta[name="${name}"]`;
+      let element = document.querySelector(selector);
       if (!element) {
         element = document.createElement('meta');
         element.setAttribute(isProperty ? 'property' : 'name', name);
@@ -34,17 +53,25 @@ export function SEOHead({
       element.setAttribute('content', content);
     };
 
+    // Basic meta tags
     updateMeta('description', description);
     if (keywords) updateMeta('keywords', keywords);
-    if (noindex) updateMeta('robots', 'noindex, nofollow');
+    updateMeta('robots', noindex ? 'noindex, nofollow' : 'index, follow');
+    
+    // Mobile optimization
+    updateMeta('viewport', 'width=device-width, initial-scale=1, maximum-scale=5');
+    updateMeta('theme-color', '#00ff00');
 
     // Open Graph
     updateMeta('og:title', title, true);
     updateMeta('og:description', description, true);
     updateMeta('og:image', ogImage, true);
     updateMeta('og:type', ogType, true);
+    updateMeta('og:site_name', 'Code Reels', true);
+    if (canonical) updateMeta('og:url', canonical, true);
 
-    // Twitter
+    // Twitter Card
+    updateMeta('twitter:card', 'summary_large_image');
     updateMeta('twitter:title', title);
     updateMeta('twitter:description', description);
     updateMeta('twitter:image', ogImage);
@@ -59,7 +86,22 @@ export function SEOHead({
       }
       canonicalElement.setAttribute('href', canonical);
     }
-  }, [title, description, keywords, ogImage, ogType, canonical, noindex]);
+
+    // Structured Data (JSON-LD)
+    const jsonLdData = structuredData || defaultStructuredData;
+    let scriptElement = document.querySelector('script[type="application/ld+json"]');
+    if (!scriptElement) {
+      scriptElement = document.createElement('script');
+      scriptElement.setAttribute('type', 'application/ld+json');
+      document.head.appendChild(scriptElement);
+    }
+    scriptElement.textContent = JSON.stringify(jsonLdData);
+
+    // Cleanup function to remove dynamic elements when component unmounts
+    return () => {
+      // Keep essential meta tags, only clean up page-specific ones if needed
+    };
+  }, [title, description, keywords, ogImage, ogType, canonical, noindex, structuredData]);
 
   return null;
 }

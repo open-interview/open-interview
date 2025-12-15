@@ -7,7 +7,7 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import ReactMarkdown from 'react-markdown';
 import { 
   Check, BookOpen, Code2, Lightbulb, ExternalLink, Building2, 
-  ChevronDown, ChevronUp 
+  ChevronDown 
 } from 'lucide-react';
 import type { Question } from '../lib/data';
 
@@ -36,19 +36,20 @@ function CollapsibleSection({
   onVisibilityChange 
 }: CollapsibleSectionProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-  const [hasBeenViewed, setHasBeenViewed] = useState(false);
+  const [userToggled, setUserToggled] = useState(false); // Track if user manually toggled
   const sectionRef = useRef<HTMLDivElement>(null);
 
-  // Track when section enters/exits viewport
+  // Only auto-collapse when section scrolls above viewport
+  // Don't auto-expand - let user control that
   useEffect(() => {
+    // Skip auto-collapse if user has manually toggled
+    if (userToggled) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setHasBeenViewed(true);
-            setIsExpanded(true);
-          } else if (hasBeenViewed && entry.boundingClientRect.top < 0) {
-            // Section has scrolled above viewport - collapse it
+          // Only auto-collapse when scrolled above viewport (not below)
+          if (!entry.isIntersecting && entry.boundingClientRect.top < 0) {
             setIsExpanded(false);
           }
           onVisibilityChange?.(id, entry.isIntersecting);
@@ -56,7 +57,7 @@ function CollapsibleSection({
       },
       { 
         threshold: 0.1,
-        rootMargin: '-50px 0px -50px 0px'
+        rootMargin: '-100px 0px 0px 0px' // Only trigger when header is well above viewport
       }
     );
 
@@ -65,9 +66,12 @@ function CollapsibleSection({
     }
 
     return () => observer.disconnect();
-  }, [id, hasBeenViewed, onVisibilityChange]);
+  }, [id, userToggled, onVisibilityChange]);
 
-  const toggleExpanded = () => setIsExpanded(!isExpanded);
+  const toggleExpanded = () => {
+    setUserToggled(true); // Mark as user-controlled
+    setIsExpanded(!isExpanded);
+  };
 
   const accentClasses = {
     primary: 'bg-primary',

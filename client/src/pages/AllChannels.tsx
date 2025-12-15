@@ -142,8 +142,10 @@ export default function AllChannels() {
   return (
     <>
       <SEOHead
-        title="All Channels - Code Reels"
-        description="Browse and subscribe to interview prep channels"
+        title="Browse All Channels - Code Reels Interview Prep"
+        description="Explore all technical interview prep channels including System Design, Algorithms, Frontend, Backend, DevOps, SRE, and more. Subscribe to topics that match your career goals."
+        keywords="interview channels, system design, algorithms, frontend, backend, devops, sre, database, mobile development"
+        canonical="https://reel-interview.github.io/channels"
       />
       <div className="min-h-screen bg-black text-white font-mono overflow-y-auto">
         {/* Header */}

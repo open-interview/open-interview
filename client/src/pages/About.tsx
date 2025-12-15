@@ -130,8 +130,10 @@ export default function About() {
   return (
     <>
       <SEOHead
-        title="About Code Reels - Master Technical Interviews"
-        description="Learn about Code Reels, an interactive platform for practicing technical interview questions."
+        title="About Code Reels - AI-Powered Interview Prep Platform"
+        description="Code Reels is an open-source, AI-powered platform for practicing technical interview questions. Features daily updates, progress tracking, and interactive diagrams."
+        keywords="about code reels, interview prep platform, open source, ai powered learning, technical interviews"
+        canonical="https://reel-interview.github.io/about"
       />
       <div className="min-h-screen bg-background text-foreground font-mono overflow-y-auto">
         {/* Hero Section */}

@@ -64,7 +64,7 @@ export function WhatsNewBanner() {
 
   useEffect(() => {
     // Check if first visit today and banner not dismissed
-    const firstVisit = isFirstVisitToday();
+    isFirstVisitToday(); // Updates last visit date
     const dismissed = isBannerDismissedToday();
     
     if (!dismissed) {
@@ -76,6 +76,17 @@ export function WhatsNewBanner() {
       }
     }
   }, []);
+
+  // Handle Escape key to close banner
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isVisible) {
+        handleDismiss();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isVisible]);
 
   const handleDismiss = () => {
     setIsVisible(false);

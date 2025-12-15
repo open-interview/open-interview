@@ -183,8 +183,10 @@ export default function WhatsNew() {
   return (
     <>
       <SEOHead
-        title="What's New - Code Reels"
-        description="See the latest questions, improvements, and features added to Code Reels"
+        title="What's New - Code Reels Updates & Changelog"
+        description="Stay updated with the latest questions, improvements, and features added to Code Reels. See daily AI-generated content updates and platform enhancements."
+        keywords="code reels updates, changelog, new questions, interview prep updates"
+        canonical="https://reel-interview.github.io/whats-new"
       />
       <div className="min-h-screen bg-background text-foreground font-mono overflow-y-auto">
         {/* Header */}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Play, X, Youtube, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -37,6 +37,17 @@ export function YouTubePlayer({ shortVideo, longVideo }: YouTubePlayerProps) {
   if (!shortVideoId && !longVideoId) return null;
 
   const closePlayer = () => setActiveVideo(null);
+
+  // Handle Escape key to close video modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && activeVideo) {
+        closePlayer();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeVideo]);
 
   return (
     <>

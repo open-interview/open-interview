@@ -8,9 +8,9 @@ import { QuestionPanel } from '../components/QuestionPanel';
 import { AnswerPanel } from '../components/AnswerPanel';
 import { trackQuestionView, trackAnswerRevealed } from '../hooks/use-analytics';
 import { 
-  ArrowLeft, ArrowRight, Share2, ChevronDown, Check, Timer, List, 
+  ArrowLeft, ArrowRight, Share2, ChevronDown, Check, List, 
   Flag, Grid3X3, LayoutList, Zap, Target, Flame, Star, AlertCircle, 
-  Terminal, Bookmark, X, Settings, Building2
+  Terminal, Bookmark, Settings, Building2
 } from 'lucide-react';
 import { useProgress, trackActivity } from '../hooks/use-progress';
 import { useToast } from '@/hooks/use-toast';
@@ -435,13 +435,31 @@ export default function ReelsRedesigned() {
 
   const isCompleted = completed.includes(currentQuestion.id);
 
+  // Generate structured data for SEO
+  const questionStructuredData = currentQuestion ? {
+    "@context": "https://schema.org",
+    "@type": "Question",
+    "name": currentQuestion.question,
+    "text": currentQuestion.question,
+    "answerCount": 1,
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": currentQuestion.answer || currentQuestion.explanation?.substring(0, 200)
+    },
+    "author": {
+      "@type": "Organization",
+      "name": "Code Reels"
+    }
+  } : undefined;
+
   return (
     <>
       <SEOHead
-        title={`${currentQuestion?.question || 'Question'} - Code Reels Interview Prep`}
-        description={`Practice ${currentQuestion?.channel || 'technical'} interview questions on Code Reels. Difficulty: ${currentQuestion?.difficulty || 'intermediate'}`}
-        keywords={`${currentQuestion?.channel}, ${currentQuestion?.subChannel}, interview prep, ${currentQuestion?.tags?.join(', ') || 'technical interviews'}`}
-        canonical={`https://reel-interview.github.io/channel/${channelId}`}
+        title={`${currentQuestion?.question?.substring(0, 60) || 'Question'} | ${channel?.name || 'Interview'} - Code Reels`}
+        description={`${currentQuestion?.answer?.substring(0, 150) || `Practice ${currentQuestion?.channel || 'technical'} interview questions`}. Difficulty: ${currentQuestion?.difficulty || 'intermediate'}`}
+        keywords={`${currentQuestion?.channel}, ${currentQuestion?.subChannel}, interview prep, ${currentQuestion?.tags?.slice(0, 5).join(', ') || 'technical interviews'}, ${currentQuestion?.companies?.join(', ') || ''}`}
+        canonical={`https://reel-interview.github.io/channel/${channelId}/${currentIndex}`}
+        structuredData={questionStructuredData}
       />
       
       <div className="h-screen w-full bg-black text-white overflow-hidden flex flex-col font-mono">
