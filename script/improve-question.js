@@ -94,7 +94,21 @@ function needsImprovement(q) {
   if (!q.sourceUrl) issues.push('no_source_url');
   if (!q.videos?.shortVideo) issues.push('no_short_video');
   if (!q.videos?.longVideo) issues.push('no_long_video');
-  if (!q.companies || q.companies.length === 0) issues.push('no_companies');
+  
+  // Stricter company requirements - need at least 2 companies
+  if (!q.companies || q.companies.length < 2) issues.push('no_companies');
+  
+  // Check for interview context in explanation
+  const hasInterviewContext = q.explanation && (
+    q.explanation.toLowerCase().includes('interview') ||
+    q.explanation.toLowerCase().includes('commonly asked') ||
+    q.explanation.toLowerCase().includes('interviewers') ||
+    q.explanation.includes('## Interview Context') ||
+    q.explanation.includes('## Strong Answer') ||
+    q.explanation.includes('## Follow-up')
+  );
+  if (!hasInterviewContext) issues.push('missing_interview_context');
+  
   return issues;
 }
 
@@ -121,18 +135,20 @@ async function remapQuestionsWithAI(questionsToRemap, mappings) {
     console.log(`  Current: ${currentLocation.channel}/${currentLocation.subChannel}`);
     console.log(`  Q: ${question.question.substring(0, 60)}...`);
     
-    // Compact prompt for remapping - focus on core topic classification
-    const prompt = `Categorize this interview question into the best channel/subchannel.
+    // Optimized prompt for remapping
+    const prompt = `Categorize this question into best channel/subchannel.
 
-Q: "${question.question}"
-A: "${question.answer.substring(0, 100)}"
-Tags: ${(question.tags || []).slice(0, 5).join(', ')}
+Q: "${question.question.substring(0, 100)}"
+Tags: ${(question.tags || []).slice(0, 4).join(', ')}
 Current: ${currentLocation.channel}/${currentLocation.subChannel}
 
-Channels:
-${channelStructureStr}
+Available channels: ${Object.keys(CHANNEL_STRUCTURE).join(', ')}
 
-Return JSON only: {"channel":"id","subChannel":"id","reason":"10 words max"}`;
+Return JSON: {"channel": "channel-id", "subChannel": "sub-id", "reason": "brief reason"}`;
+
+    // Log the prompt
+    console.log('\n📝 PROMPT:');
+    console.log(prompt);
 
     const response = await runWithRetries(prompt);
     
@@ -210,15 +226,27 @@ Return JSON only: {"channel":"id","subChannel":"id","reason":"10 words max"}`;
 
 async function main() {
   console.log('=== Question Improvement Bot (Unified Storage) ===\n');
-  console.log('Mode: 1 question per channel + 20 question remapping\n');
+  
+  // Limit parameters (0 = default behavior)
+  const inputLimit = parseInt(process.env.INPUT_LIMIT || '0', 10);
+  const remapLimit = inputLimit > 0 ? inputLimit : 20;
+  const improveLimit = inputLimit > 0 ? inputLimit : 0; // 0 = all channels
+  
+  console.log(`Mode: ${improveLimit || 'all'} question(s) improvement + ${remapLimit} question remapping\n`);
 
-  const channels = getAllChannels();
+  let channels = getAllChannels();
   const allQuestions = getAllUnifiedQuestions();
   let mappings = loadChannelMappings();
   
+  // Apply limit to channels if specified
+  if (inputLimit > 0) {
+    channels = channels.sort(() => Math.random() - 0.5).slice(0, inputLimit);
+    console.log(`Limited to ${inputLimit} channel(s): ${channels.join(', ')}`);
+  }
+  
   console.log(`Loaded ${allQuestions.length} questions from ${channels.length} channels`);
 
-  // ========== PHASE 1: AI-POWERED REMAPPING (20 questions) ==========
+  // ========== PHASE 1: AI-POWERED REMAPPING ==========
   console.log('\n========== PHASE 1: AI-POWERED REMAPPING ==========');
   
   // Sort questions by lastRemapped (oldest first) to ensure rotation
@@ -229,8 +257,8 @@ async function main() {
     return dateA - dateB;
   });
   
-  // Take 20 questions for remapping
-  const questionsToRemap = sortedForRemap.slice(0, 20);
+  // Take questions for remapping based on limit
+  const questionsToRemap = sortedForRemap.slice(0, remapLimit);
   console.log(`Selected ${questionsToRemap.length} questions for remapping check`);
   
   const { remappedQuestions, failedRemaps, checkedIds } = await remapQuestionsWithAI(questionsToRemap, mappings);
@@ -306,38 +334,28 @@ async function main() {
     console.log(`Issues: ${issues.join(', ')}`);
     console.log(`Current Q: ${question.question.substring(0, 60)}...`);
 
-    // Build focused prompt based on what needs fixing
-    const needsContent = issues.some(i => ['short_answer', 'long_answer', 'short_explanation', 'no_diagram', 'truncated', 'no_question_mark'].includes(i));
-    const needsMeta = issues.some(i => ['no_source_url', 'no_short_video', 'no_long_video', 'no_companies'].includes(i));
-    
-    // Topic hint from channel for better context
-    const topicHint = channel.replace(/-/g, ' ');
-    
-    const prompt = `Improve this ${topicHint} interview question. Fix: ${issues.join(', ')}
+    // Optimized prompt - concise but clear
+    const prompt = `Improve ${channel} interview question. Fix: ${issues.slice(0, 4).join(', ')}
 
-Q: "${question.question}"
-A: "${question.answer}"
-${needsContent ? `Explanation: "${question.explanation?.substring(0, 300) || 'None'}"` : ''}
-${needsMeta ? `
-CRITICAL VIDEO RULES:
-- Videos MUST be real educational content about "${topicHint}"
-- NEVER use placeholder/meme videos (dQw4w9WgXcQ is BLOCKED)
-- If unsure about a real video, set to null
-- Only use: Fireship, NeetCode, ByteByteGo, Traversy Media, freeCodeCamp, Web Dev Simplified` : ''}
+Current Q: "${question.question.substring(0, 120)}"
+Current A: "${question.answer.substring(0, 100)}"
 
-Return JSON:
+Return valid JSON:
 {
-  "question": "specific technical question ending with ?",
+  "question": "improved question ending with ?",
   "answer": "concise answer under 150 chars",
-  "explanation": "markdown with ## Concept, ## Implementation (code), ## Trade-offs, ## Pitfalls",
-  "diagram": "mermaid flowchart visualizing the concept"${needsMeta ? `,
-  "sourceUrl": "real URL: official docs, MDN, AWS docs, or reputable tech blog",
-  "videos": {
-    "shortVideo": null,
-    "longVideo": null
-  },
-  "companies": ["2-4 FAANG companies known to ask this type of question"]` : ''}
+  "explanation": "## Why Asked\\nInterview context\\n## Key Concepts\\nCore knowledge\\n## Code Example\\n\`\`\`\\nImplementation\\n\`\`\`\\n## Follow-up Questions\\nCommon follow-ups",
+  "diagram": "flowchart TD\\n  A[Start] --> B[End]",
+  "companies": ["Google", "Amazon", "Meta"],
+  "sourceUrl": "https://docs.example.com or null",
+  "videos": {"shortVideo": null, "longVideo": null}
 }`;
+
+    // Log the prompt
+    console.log('\n📝 PROMPT:');
+    console.log('─'.repeat(50));
+    console.log(prompt);
+    console.log('─'.repeat(50));
 
     const response = await runWithRetries(prompt);
     

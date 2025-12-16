@@ -6,7 +6,7 @@ import https from 'https';
 export const QUESTIONS_DIR = 'client/src/lib/questions';
 export const MAX_RETRIES = 3;
 export const RETRY_DELAY_MS = 10000;
-export const TIMEOUT_MS = 120000;
+export const TIMEOUT_MS = 300000; // 5 minutes
 
 // ============================================
 // YOUTUBE VIDEO VALIDATION
@@ -394,13 +394,23 @@ export function extractTextFromJsonEvents(output) {
 }
 
 export function parseJson(response) {
-  if (!response) return null;
+  if (!response) {
+    console.log('⚠️ DEBUG: No response received');
+    return null;
+  }
   
   const text = extractTextFromJsonEvents(response);
   
+  // Debug: show first 500 chars of response
+  console.log('📥 RESPONSE (first 500 chars):');
+  console.log(text.substring(0, 500));
+  console.log('─'.repeat(30));
+  
   try {
     return JSON.parse(text.trim());
-  } catch(e) {}
+  } catch(e) {
+    console.log('⚠️ Direct JSON parse failed:', e.message);
+  }
   
   const patterns = [
     /```json\s*([\s\S]*?)\s*```/,
@@ -413,7 +423,9 @@ export function parseJson(response) {
     if (m) {
       try {
         return JSON.parse(m[1].trim());
-      } catch(e) {}
+      } catch(e) {
+        console.log('⚠️ Pattern match parse failed:', e.message);
+      }
     }
   }
   

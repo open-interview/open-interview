@@ -1,0 +1,103 @@
+name: Add Random Question
+
+on:
+  workflow_dispatch:
+    inputs:
+      question:
+        description: 'Your question (will be mapped to channel and refined)'
+        required: true
+        type: string
+
+jobs:
+  add-question:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install OpenCode CLI
+        run: npm install -g opencode-ai
+
+      - name: Process and add question
+        id: process
+        run: node script/add-random-question.js
+        env:
+          INPUT_QUESTION: ${{ inputs.question }}
+
+      - name: Check for changes
+        id: check
+        run: |
+          if git diff --quiet client/src/lib/questions/; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add client/src/lib/questions/
+          QUESTION="${{ inputs.question }}"
+          TRUNCATED="${QUESTION:0:50}"
+          git commit -m "🤖 Add question: ${TRUNCATED}..."
+          
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push origin main && exit 0
+            echo "Push failed, retry $i..."
+            sleep 5
+          done
+          exit 1
+
+      - name: Trigger deploy
+        if: steps.check.outputs.changed == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GH_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy-pages.yml',
+              ref: 'main'
+            });
+            console.log('Triggered deploy workflow');
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Add Random Question" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Input Question:** ${{ inputs.question }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check.outputs.changed }}" == "true" ]; then
+            echo "### ✅ Question Added Successfully" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The question was:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Mapped to the appropriate channel/subchannel" >> $GITHUB_STEP_SUMMARY
+            echo "2. Refined into a professional interview question" >> $GITHUB_STEP_SUMMARY
+            echo "3. Added to the question database" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Deploy workflow has been triggered!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ℹ️ No Changes" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Question was not added. Possible reasons:" >> $GITHUB_STEP_SUMMARY
+            echo "- Duplicate question detected" >> $GITHUB_STEP_SUMMARY
+            echo "- OpenCode processing failed" >> $GITHUB_STEP_SUMMARY
+            echo "- Invalid question format" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY

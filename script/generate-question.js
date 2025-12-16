@@ -259,11 +259,20 @@ async function main() {
   console.log('Mode: 1 question per channel (can map to multiple channels)\n');
 
   const inputDifficulty = process.env.INPUT_DIFFICULTY || 'random';
-  const inputAdditionalChannels = process.env.INPUT_ADDITIONAL_CHANNELS || '';
+  // Limit number of questions to generate (0 = all channels)
+  const inputLimit = parseInt(process.env.INPUT_LIMIT || '0', 10);
   
   // Get all channels from config
-  const channels = getAllChannels();
-  console.log(`Found ${channels.length} channels: ${channels.join(', ')}\n`);
+  let channels = getAllChannels();
+  
+  // Apply limit if specified
+  if (inputLimit > 0) {
+    // Shuffle channels to get random selection
+    channels = channels.sort(() => Math.random() - 0.5).slice(0, inputLimit);
+    console.log(`Limited to ${inputLimit} channel(s): ${channels.join(', ')}\n`);
+  } else {
+    console.log(`Found ${channels.length} channels: ${channels.join(', ')}\n`);
+  }
 
   const allQuestions = getAllUnifiedQuestions();
   console.log(`Loaded ${allQuestions.length} existing questions`);
@@ -285,41 +294,26 @@ async function main() {
     console.log(`Sub-channel: ${subChannelConfig.subChannel}`);
     console.log(`Difficulty: ${difficulty}`);
 
-    // Compact difficulty hints
-    const difficultyHint = {
-      beginner: 'fundamentals, definitions, basic use cases',
-      intermediate: 'implementation, trade-offs, real-world patterns',
-      advanced: 'edge cases, optimization, production-scale challenges'
-    };
-    
-    // Topic context for better search hints
-    const topicHint = `${channel.replace(/-/g, ' ')} ${subChannelConfig.subChannel.replace(/-/g, ' ')}`;
+    // Optimized prompt - concise but clear
+    const prompt = `Generate ${difficulty} ${channel}/${subChannelConfig.subChannel} interview question.
+Topics: ${subChannelConfig.tags.join(', ')}
 
-    const prompt = `Generate a ${difficulty} ${channel}/${subChannelConfig.subChannel} interview question.
-
-Focus: ${difficultyHint[difficulty]}
-Tags: ${subChannelConfig.tags.join(', ')}
-
-CRITICAL VIDEO RULES:
-- Videos MUST be real educational content about "${topicHint}"
-- NEVER use placeholder/meme videos (dQw4w9WgXcQ is BLOCKED)
-- If unsure, leave video fields as null
-- Only use videos from: Fireship, NeetCode, ByteByteGo, Traversy Media, freeCodeCamp, Web Dev Simplified
-
-Return JSON:
+Return valid JSON:
 {
   "question": "specific technical question ending with ?",
   "answer": "concise answer under 150 chars",
-  "explanation": "markdown: ## Concept, ## Implementation (code), ## Trade-offs, ## Pitfalls",
-  "diagram": "mermaid flowchart visualizing the concept",
-  "relatedChannels": ["1-2 related channel IDs"],
-  "sourceUrl": "real URL: official docs, MDN, AWS docs, or reputable tech blog",
-  "videos": {
-    "shortVideo": null,
-    "longVideo": null
-  },
-  "companies": ["2-4 companies: Google, Amazon, Meta, Microsoft, Apple, Netflix, Uber, Stripe"]
+  "explanation": "## Why Asked\\nInterview context\\n## Key Concepts\\nCore knowledge\\n## Code Example\\n\`\`\`\\nImplementation\\n\`\`\`\\n## Follow-up Questions\\nCommon follow-ups",
+  "diagram": "flowchart TD\\n  A[Start] --> B[End]",
+  "companies": ["Google", "Amazon", "Meta"],
+  "sourceUrl": "https://docs.example.com or null",
+  "videos": {"shortVideo": null, "longVideo": null}
 }`;
+
+    // Log the prompt
+    console.log('\n📝 PROMPT:');
+    console.log('─'.repeat(50));
+    console.log(prompt);
+    console.log('─'.repeat(50));
 
     const response = await runWithRetries(prompt);
     
