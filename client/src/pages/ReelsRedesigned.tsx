@@ -15,6 +15,7 @@ import {
 import { SearchModal } from '../components/SearchModal';
 import { useProgress, trackActivity } from '../hooks/use-progress';
 import { useToast } from '@/hooks/use-toast';
+import { useUserPreferences } from '../context/UserPreferencesContext';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Popover from '@radix-ui/react-popover';
 import * as Switch from '@radix-ui/react-switch';
@@ -156,6 +157,7 @@ export default function ReelsRedesigned() {
   
   const { completed, markCompleted, lastVisitedIndex, saveLastVisitedIndex } = useProgress(channelId || '');
   const { toast } = useToast();
+  const { getSubscribedChannels } = useUserPreferences();
   const [showAnswer, setShowAnswer] = useState(false);
   // Disable timer on mobile devices
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
@@ -361,6 +363,28 @@ export default function ReelsRedesigned() {
   const nextQuestion = () => {
     if (currentIndex < totalQuestions - 1) {
       setCurrentIndex(prev => prev + 1);
+    } else {
+      // At last question - navigate to next subscribed channel
+      const subscribedChannels = getSubscribedChannels();
+      const currentChannelIndex = subscribedChannels.findIndex(c => c.id === channelId);
+      
+      if (currentChannelIndex !== -1 && currentChannelIndex < subscribedChannels.length - 1) {
+        // Go to next channel
+        const nextChannel = subscribedChannels[currentChannelIndex + 1];
+        toast({
+          title: "CHANNEL_SWITCH",
+          description: `Moving to ${nextChannel.name}`,
+        });
+        setLocation(`/channel/${nextChannel.id}/0`);
+      } else if (subscribedChannels.length > 1) {
+        // Loop back to first channel
+        const firstChannel = subscribedChannels[0];
+        toast({
+          title: "CHANNELS_COMPLETE",
+          description: `Looping back to ${firstChannel.name}`,
+        });
+        setLocation(`/channel/${firstChannel.id}/0`);
+      }
     }
   };
 
@@ -685,7 +709,7 @@ export default function ReelsRedesigned() {
               <button onClick={prevQuestion} disabled={currentIndex === 0} className="p-1.5 hover:bg-white/10 border border-white/10 rounded disabled:opacity-30 transition-colors" title="Previous">
                 <ArrowLeft className="w-4 h-4" />
               </button>
-              <button onClick={nextQuestion} disabled={currentIndex === totalQuestions - 1} className="p-1.5 hover:bg-white/10 border border-white/10 rounded disabled:opacity-30 transition-colors" title="Next">
+              <button onClick={nextQuestion} className="p-1.5 hover:bg-white/10 border border-white/10 rounded transition-colors" title={isLastQuestion ? "Next Channel" : "Next"}>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -939,14 +963,24 @@ export default function ReelsRedesigned() {
                     <div className="text-xs font-bold text-primary uppercase tracking-widest">🎉 Module Complete!</div>
                     <div className="text-[10px] text-white/60 mt-0.5">{completed.length}/{totalQuestions} questions done</div>
                   </div>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setLocation('/')}
-                    className="ml-2 px-3 py-1.5 bg-primary text-black text-[10px] font-bold uppercase tracking-widest rounded hover:bg-primary/90"
-                  >
-                    Home
-                  </motion.button>
+                  <div className="flex gap-2 ml-2">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={nextQuestion}
+                      className="px-3 py-1.5 bg-primary text-black text-[10px] font-bold uppercase tracking-widest rounded hover:bg-primary/90"
+                    >
+                      Next Channel
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setLocation('/')}
+                      className="px-3 py-1.5 bg-white/10 text-white text-[10px] font-bold uppercase tracking-widest rounded hover:bg-white/20 border border-white/20"
+                    >
+                      Home
+                    </motion.button>
+                  </div>
                 </div>
               </div>
             </motion.div>
