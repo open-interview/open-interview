@@ -1,74 +1,34 @@
-// Auto-generated - DO NOT EDIT
-// Questions are loaded individually for better performance
+// Auto-generated index file for unified question storage
+import allQuestionsData from "./all-questions.json";
+import channelMappingsData from "./channel-mappings.json";
 
-import indexData from "./questions-index.json";
-import mappingsData from "./channel-mappings.json";
+export const questionsById: Record<string, any> = allQuestionsData.questions || {};
+export const channelMappings: Record<string, any> = channelMappingsData.channels || {};
 
-// Type definitions for the JSON data
-interface QuestionMetadata {
-  question: string;
-  channel: string;
-  difficulty: string;
-  hasVideo: boolean;
-  hasDiagram: boolean;
-  companies: number;
-  lastUpdated: string;
-}
+// Get all questions as array
+export const allQuestions = Object.values(questionsById);
 
-interface ChannelMapping {
-  subChannels: Record<string, string[]>;
-}
-
-interface QuestionsIndex {
-  files: Record<string, string>;
-  metadata: Record<string, QuestionMetadata>;
-}
-
-interface ChannelMappingsData {
-  channels: Record<string, ChannelMapping>;
-}
-
-// Cast imported data with proper types
-export const questionsIndex = indexData as QuestionsIndex;
-export const channelMappings = (mappingsData as ChannelMappingsData).channels || {};
-
-// Get question metadata (lightweight, no full content)
-export function getQuestionMetadata(id: string) {
-  return questionsIndex.metadata[id] || null;
-}
-
-// Get all question IDs
-export function getAllQuestionIds(): string[] {
-  return Object.keys(questionsIndex.files);
-}
-
-// Get question IDs for a channel
-export function getQuestionIdsForChannel(channel: string): string[] {
+// Get questions for a channel
+export function getQuestionsForChannel(channel: string): any[] {
   const mapping = channelMappings[channel];
   if (!mapping) return [];
   
   const ids = new Set<string>();
-  Object.values(mapping.subChannels || {}).forEach((subIds) => {
-    subIds.forEach(id => ids.add(id));
+  Object.values(mapping.subChannels || {}).forEach((subIds: any) => {
+    (subIds as string[]).forEach(id => ids.add(id));
   });
-  return Array.from(ids);
-}
-
-// Lazy load individual question (for client-side)
-export async function loadQuestion(id: string): Promise<unknown | null> {
-  const filename = questionsIndex.files[id];
-  if (!filename) return null;
   
-  try {
-    const module = await import(`./individual/${filename}`);
-    return module.default;
-  } catch {
-    return null;
-  }
+  return Array.from(ids).map(id => questionsById[id]).filter(q => q != null);
 }
 
-// Legacy compatibility
-export const questionsByChannel: Record<string, string[]> = {};
+// Get questions for a subchannel
+export function getQuestionsForSubChannel(channel: string, subChannel: string): any[] {
+  const ids = channelMappings[channel]?.subChannels?.[subChannel] || [];
+  return ids.map((id: string) => questionsById[id]).filter((q: any) => q != null);
+}
+
+// Legacy compatibility - questions by channel
+export const questionsByChannel: Record<string, any[]> = {};
 Object.keys(channelMappings).forEach(channel => {
-  questionsByChannel[channel] = getQuestionIdsForChannel(channel);
+  questionsByChannel[channel] = getQuestionsForChannel(channel);
 });
