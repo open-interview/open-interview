@@ -105,7 +105,7 @@ function mightNeedReclassification(question) {
   return false;
 }
 
-// Classify a question using AI
+// Classify a question using AI - supports multiple channels
 async function classifyQuestion(question) {
   const channelList = Object.entries(CHANNEL_STRUCTURE)
     .map(([ch, subs]) => `${ch}: [${subs.join(', ')}]`)
@@ -113,7 +113,8 @@ async function classifyQuestion(question) {
 
   const prompt = `You are a JSON generator. Output ONLY valid JSON, no explanations, no markdown, no text before or after.
 
-Analyze this technical interview question and determine the BEST channel and subchannel classification.
+Analyze this technical interview question and determine ALL relevant channel and subchannel classifications.
+A question can belong to MULTIPLE channels if it spans different topics.
 
 Question: "${question.question}"
 Answer: "${(question.answer || '').substring(0, 200)}"
@@ -124,10 +125,14 @@ Current SubChannel: ${question.subChannel || 'none'}
 Available channels and subchannels:
 ${channelList}
 
-Evaluate if the current classification is correct. If not, provide the better classification.
+Rules:
+1. Return the PRIMARY channel first (most relevant)
+2. Include SECONDARY channels if the question genuinely spans multiple topics
+3. Maximum 3 channels per question
+4. Only add secondary channels if they are truly relevant (confidence > medium)
 
 Output this exact JSON structure:
-{"channel":"best-channel-id","subChannel":"best-subchannel-id","confidence":"high|medium|low","reasoning":"brief explanation","changed":true|false}
+{"classifications":[{"channel":"channel-id","subChannel":"subchannel-id","isPrimary":true},{"channel":"secondary-channel","subChannel":"subchannel","isPrimary":false}],"confidence":"high|medium|low","reasoning":"brief explanation"}
 
 IMPORTANT: Return ONLY the JSON object. No other text.`;
 
@@ -135,20 +140,33 @@ IMPORTANT: Return ONLY the JSON object. No other text.`;
   if (!response) return null;
   
   const data = parseJson(response);
-  if (!data || !data.channel) return null;
+  if (!data || !data.classifications || !Array.isArray(data.classifications)) return null;
   
-  // Validate the classification
-  if (!CHANNEL_STRUCTURE[data.channel]) {
-    console.log(`  ⚠️ Invalid channel suggested: ${data.channel}`);
-    return null;
+  // Validate and filter classifications
+  const validClassifications = data.classifications.filter(c => {
+    if (!CHANNEL_STRUCTURE[c.channel]) {
+      console.log(`  ⚠️ Invalid channel suggested: ${c.channel}`);
+      return false;
+    }
+    if (!CHANNEL_STRUCTURE[c.channel].includes(c.subChannel)) {
+      // Use first subchannel as fallback
+      c.subChannel = CHANNEL_STRUCTURE[c.channel][0];
+    }
+    return true;
+  });
+  
+  if (validClassifications.length === 0) return null;
+  
+  // Ensure at least one is marked as primary
+  if (!validClassifications.some(c => c.isPrimary)) {
+    validClassifications[0].isPrimary = true;
   }
   
-  if (!CHANNEL_STRUCTURE[data.channel].includes(data.subChannel)) {
-    // Use first subchannel as fallback
-    data.subChannel = CHANNEL_STRUCTURE[data.channel][0];
-  }
-  
-  return data;
+  return {
+    classifications: validClassifications,
+    confidence: data.confidence,
+    reasoning: data.reasoning
+  };
 }
 
 // Rate limiting helper
@@ -225,35 +243,65 @@ async function main() {
       continue;
     }
     
-    console.log(`AI Result: ${classification.channel}/${classification.subChannel} (${classification.confidence})`);
+    // Get primary classification
+    const primary = classification.classifications.find(c => c.isPrimary) || classification.classifications[0];
+    const secondary = classification.classifications.filter(c => !c.isPrimary);
+    
+    console.log(`AI Result: ${primary.channel}/${primary.subChannel} (${classification.confidence})`);
+    if (secondary.length > 0) {
+      console.log(`Secondary: ${secondary.map(s => `${s.channel}/${s.subChannel}`).join(', ')}`);
+    }
     console.log(`Reasoning: ${classification.reasoning}`);
     
-    const wasChanged = classification.channel !== question.channel || 
-                       classification.subChannel !== question.subChannel;
+    // Check if primary changed
+    const primaryChanged = primary.channel !== question.channel || 
+                           primary.subChannel !== question.subChannel;
+    
+    // Get existing mappings to compare
+    const existingMappings = await dbClient.execute({
+      sql: 'SELECT channel_id, sub_channel FROM channel_mappings WHERE question_id = ?',
+      args: [question.id]
+    });
+    const existingSet = new Set(existingMappings.rows.map(r => `${r.channel_id}/${r.sub_channel}`));
+    const newSet = new Set(classification.classifications.map(c => `${c.channel}/${c.subChannel}`));
+    
+    // Check if mappings changed
+    const mappingsChanged = existingSet.size !== newSet.size || 
+                            [...existingSet].some(m => !newSet.has(m)) ||
+                            [...newSet].some(m => !existingSet.has(m));
+    
+    const wasChanged = primaryChanged || mappingsChanged;
     
     if (wasChanged) {
-      console.log(`📝 Reclassifying: ${question.channel}/${question.subChannel} → ${classification.channel}/${classification.subChannel}`);
+      console.log(`📝 Reclassifying: ${question.channel}/${question.subChannel} → ${primary.channel}/${primary.subChannel}`);
+      if (classification.classifications.length > 1) {
+        console.log(`   + ${classification.classifications.length - 1} secondary channel(s)`);
+      }
       
-      // Update question
-      question.channel = classification.channel;
-      question.subChannel = classification.subChannel;
+      // Update question with primary channel
+      question.channel = primary.channel;
+      question.subChannel = primary.subChannel;
       question.lastRemapped = new Date().toISOString();
       question.lastUpdated = new Date().toISOString();
       
       await saveQuestion(question);
       
-      // Update channel mappings
+      // Update channel mappings - delete old and insert all new
       await dbClient.execute({
         sql: 'DELETE FROM channel_mappings WHERE question_id = ?',
         args: [question.id]
       });
-      await dbClient.execute({
-        sql: 'INSERT INTO channel_mappings (channel_id, sub_channel, question_id) VALUES (?, ?, ?)',
-        args: [classification.channel, classification.subChannel, question.id]
-      });
+      
+      // Insert all classifications (primary + secondary)
+      for (const c of classification.classifications) {
+        await dbClient.execute({
+          sql: 'INSERT INTO channel_mappings (channel_id, sub_channel, question_id) VALUES (?, ?, ?)',
+          args: [c.channel, c.subChannel, question.id]
+        });
+      }
       
       results.reclassified++;
-      console.log('💾 Saved to database');
+      console.log(`💾 Saved to database (${classification.classifications.length} channel(s))`);
     } else {
       console.log('✅ Classification confirmed - no change needed');
       
