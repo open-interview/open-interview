@@ -88,31 +88,19 @@ async function main() {
   // Step 1: Map question to channel/subchannel and refine it
   console.log('🔄 Step 1: Mapping to channel and refining question...\n');
   
-  const mappingPrompt = `Analyze this interview question and:
-1. Map it to the best channel and subchannel
-2. Refine it into a professional interview question
-3. Generate a complete answer
+  const mappingPrompt = `You are a JSON generator. Output ONLY valid JSON, no explanations, no markdown, no text before or after.
+
+Analyze this interview question and map it to the best channel/subchannel, refine it, and generate a complete answer.
 
 Input Question: "${inputQuestion}"
 
 Available channels and subchannels:
 ${channelList}
 
-Return valid JSON:
-{
-  "channel": "channel-id",
-  "subChannel": "subchannel-id",
-  "question": "refined professional interview question ending with ?",
-  "answer": "concise answer under 150 chars",
-  "explanation": "## Why Asked\\nInterview context\\n## Key Concepts\\nCore knowledge\\n## Code Example\\n\`\`\`\\nImplementation if applicable\\n\`\`\`\\n## Follow-up Questions\\nCommon follow-ups",
-  "diagram": "flowchart TD\\n  A[Start] --> B[End]",
-  "companies": ["Google", "Amazon", "Meta"],
-  "difficulty": "beginner|intermediate|advanced",
-  "tags": ["tag1", "tag2", "tag3"],
-  "sourceUrl": "https://docs.example.com or null",
-  "videos": {"shortVideo": null, "longVideo": null},
-  "relatedChannels": ["other-channel-1", "other-channel-2"]
-}`;
+Output this exact JSON structure:
+{"channel":"channel-id","subChannel":"subchannel-id","question":"refined professional interview question ending with ?","answer":"concise answer under 150 chars","explanation":"## Why Asked\\nInterview context\\n## Key Concepts\\nCore knowledge\\n## Code Example\\n\`\`\`\\nImplementation if applicable\\n\`\`\`\\n## Follow-up Questions\\nCommon follow-ups","diagram":"flowchart TD\\n  A[Start] --> B[End]","companies":["Google","Amazon","Meta"],"difficulty":"beginner|intermediate|advanced","tags":["tag1","tag2","tag3"],"sourceUrl":null,"videos":{"shortVideo":null,"longVideo":null},"relatedChannels":["other-channel-1","other-channel-2"]}
+
+IMPORTANT: Return ONLY the JSON object. No other text.`;
 
   console.log('📝 PROMPT:');
   console.log('─'.repeat(50));

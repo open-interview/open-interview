@@ -79,25 +79,20 @@ function needsDiagramWork(question) {
 
 // Generate improved mermaid diagram using AI
 async function generateDiagram(question) {
-  const prompt = `Create a detailed Mermaid diagram for this interview question.
+  const prompt = `You are a JSON generator. Output ONLY valid JSON, no explanations, no markdown, no text before or after.
+
+Create a detailed Mermaid diagram for this interview question.
 
 Question: "${question.question}"
 Answer: "${question.answer?.substring(0, 200) || ''}"
 Tags: ${question.tags?.slice(0, 4).join(', ') || 'technical'}
 
-Requirements:
-1. Use flowchart TD or appropriate diagram type
-2. Include 5-10 meaningful nodes
-3. Show relationships and flow clearly
-4. Use proper Mermaid syntax
-5. Make it educational and interview-relevant
+Requirements: Use flowchart TD or appropriate diagram type, include 5-10 meaningful nodes, show relationships clearly, use proper Mermaid syntax.
 
-Return ONLY valid JSON:
-{
-  "diagram": "flowchart TD\\n  A[Step 1] --> B[Step 2]\\n  B --> C[Step 3]",
-  "diagramType": "flowchart|sequence|class|state",
-  "confidence": "high|medium|low"
-}`;
+Output this exact JSON structure:
+{"diagram":"flowchart TD\\n  A[Step 1] --> B[Step 2]\\n  B --> C[Step 3]","diagramType":"flowchart|sequence|class|state","confidence":"high|medium|low"}
+
+IMPORTANT: Return ONLY the JSON object. No other text.`;
 
   const response = await runWithRetries(prompt);
   if (!response) return null;

@@ -135,8 +135,10 @@ async function remapQuestionsWithAI(questionsToRemap, mappings) {
     console.log(`  Current: ${currentLocation.channel}/${currentLocation.subChannel}`);
     console.log(`  Q: ${question.question.substring(0, 60)}...`);
     
-    // Optimized prompt for remapping
-    const prompt = `Categorize this question into best channel/subchannel.
+    // Optimized prompt for remapping - strict JSON-only instruction
+    const prompt = `You are a JSON generator. Output ONLY valid JSON, no explanations, no markdown, no text before or after.
+
+Categorize this question into best channel/subchannel.
 
 Q: "${question.question.substring(0, 100)}"
 Tags: ${(question.tags || []).slice(0, 4).join(', ')}
@@ -144,7 +146,10 @@ Current: ${currentLocation.channel}/${currentLocation.subChannel}
 
 Available channels: ${Object.keys(CHANNEL_STRUCTURE).join(', ')}
 
-Return JSON: {"channel": "channel-id", "subChannel": "sub-id", "reason": "brief reason"}`;
+Output this exact JSON structure:
+{"channel":"channel-id","subChannel":"sub-id","reason":"brief reason"}
+
+IMPORTANT: Return ONLY the JSON object. No other text.`;
 
     // Log the prompt
     console.log('\n📝 PROMPT:');
@@ -334,22 +339,18 @@ async function main() {
     console.log(`Issues: ${issues.join(', ')}`);
     console.log(`Current Q: ${question.question.substring(0, 60)}...`);
 
-    // Optimized prompt - concise but clear
-    const prompt = `Improve ${channel} interview question. Fix: ${issues.slice(0, 4).join(', ')}
+    // Optimized prompt - concise but clear, with strict JSON-only instruction
+    const prompt = `You are a JSON generator. Output ONLY valid JSON, no explanations, no markdown, no text before or after.
+
+Improve ${channel} interview question. Fix: ${issues.slice(0, 4).join(', ')}
 
 Current Q: "${question.question.substring(0, 120)}"
 Current A: "${question.answer.substring(0, 100)}"
 
-Return valid JSON:
-{
-  "question": "improved question ending with ?",
-  "answer": "concise answer under 150 chars",
-  "explanation": "## Why Asked\\nInterview context\\n## Key Concepts\\nCore knowledge\\n## Code Example\\n\`\`\`\\nImplementation\\n\`\`\`\\n## Follow-up Questions\\nCommon follow-ups",
-  "diagram": "flowchart TD\\n  A[Start] --> B[End]",
-  "companies": ["Google", "Amazon", "Meta"],
-  "sourceUrl": "https://docs.example.com or null",
-  "videos": {"shortVideo": null, "longVideo": null}
-}`;
+Output this exact JSON structure:
+{"question":"improved question ending with ?","answer":"concise answer under 150 chars","explanation":"## Why Asked\\nInterview context\\n## Key Concepts\\nCore knowledge\\n## Code Example\\n\`\`\`\\nImplementation\\n\`\`\`\\n## Follow-up Questions\\nCommon follow-ups","diagram":"flowchart TD\\n  A[Start] --> B[End]","companies":["Google","Amazon","Meta"],"sourceUrl":null,"videos":{"shortVideo":null,"longVideo":null}}
+
+IMPORTANT: Return ONLY the JSON object. No other text.`;
 
     // Log the prompt
     console.log('\n📝 PROMPT:');

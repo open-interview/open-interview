@@ -46,28 +46,20 @@ function needsVideoWork(question) {
 
 // Search for relevant YouTube videos using AI
 async function findVideosForQuestion(question) {
-  const prompt = `Find real YouTube videos for this interview question.
+  const prompt = `You are a JSON generator. Output ONLY valid JSON, no explanations, no markdown, no text before or after.
+
+Find real YouTube videos for this interview question.
 
 Question: "${question.question}"
 Topic: ${question.tags?.slice(0, 3).join(', ') || 'technical interview'}
 
-Search YouTube and return REAL video URLs that:
-1. Actually exist and are educational
-2. Are relevant to the question topic
-3. shortVideo: Under 5 minutes (shorts, quick explanations)
-4. longVideo: 10-60 minutes (deep dives, tutorials)
+Return REAL video URLs that exist and are educational. Use well-known channels like freeCodeCamp, Fireship, Traversy Media, ByteByteGo, Hussein Nasser.
+shortVideo: Under 5 minutes. longVideo: 10-60 minutes.
 
-IMPORTANT: Only return videos you're confident exist. Use well-known channels like:
-- freeCodeCamp, Fireship, Traversy Media, The Coding Train
-- TechWorld with Nana, NetworkChuck, Hussein Nasser
-- ByteByteGo, System Design Interview, Gaurav Sen
+Output this exact JSON structure:
+{"shortVideo":"https://youtube.com/watch?v=REAL_ID or null","longVideo":"https://youtube.com/watch?v=REAL_ID or null","confidence":"high|medium|low"}
 
-Return JSON:
-{
-  "shortVideo": "https://youtube.com/watch?v=REAL_ID or null",
-  "longVideo": "https://youtube.com/watch?v=REAL_ID or null",
-  "confidence": "high|medium|low"
-}`;
+IMPORTANT: Return ONLY the JSON object. No other text.`;
 
   const response = await runWithRetries(prompt);
   if (!response) return null;

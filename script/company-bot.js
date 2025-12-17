@@ -83,30 +83,21 @@ function needsCompanyWork(question) {
 
 // Find companies that ask this type of question using AI
 async function findCompaniesForQuestion(question) {
-  const prompt = `Find real tech companies that ask this interview question or similar ones.
+  const prompt = `You are a JSON generator. Output ONLY valid JSON, no explanations, no markdown, no text before or after.
+
+Find real tech companies that ask this interview question or similar ones.
 
 Question: "${question.question}"
 Topic: ${question.tags?.slice(0, 4).join(', ') || 'technical interview'}
 Difficulty: ${question.difficulty || 'intermediate'}
 
 Research which companies are known to ask this type of question in their interviews.
-Consider:
-- FAANG companies (Google, Amazon, Meta, Apple, Netflix)
-- Top tech companies (Microsoft, Uber, Airbnb, LinkedIn, Stripe)
-- Finance tech (Goldman Sachs, Bloomberg, Citadel, Two Sigma)
-- Startups and unicorns (Databricks, Snowflake, Coinbase)
+Consider: FAANG, top tech (Microsoft, Uber, Airbnb, LinkedIn, Stripe), finance tech (Goldman Sachs, Bloomberg, Citadel), startups (Databricks, Snowflake, Coinbase).
 
-Return ONLY companies that genuinely ask similar questions based on:
-- Glassdoor interview reports
-- LeetCode company tags
-- Known interview patterns
+Output this exact JSON structure:
+{"companies":["Company1","Company2","Company3","Company4","Company5"],"confidence":"high|medium|low","reasoning":"brief explanation"}
 
-Return JSON:
-{
-  "companies": ["Company1", "Company2", "Company3", "Company4", "Company5"],
-  "confidence": "high|medium|low",
-  "reasoning": "brief explanation"
-}`;
+IMPORTANT: Return ONLY the JSON object. No other text.`;
 
   const response = await runWithRetries(prompt);
   if (!response) return null;

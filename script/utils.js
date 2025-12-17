@@ -412,20 +412,33 @@ export function parseJson(response) {
     console.log('⚠️ Direct JSON parse failed:', e.message);
   }
   
-  const patterns = [
+  // Try to find JSON in code blocks first
+  const codeBlockPatterns = [
     /```json\s*([\s\S]*?)\s*```/,
     /```\s*([\s\S]*?)\s*```/,
-    /(\{[\s\S]*\})/
   ];
   
-  for (const p of patterns) {
+  for (const p of codeBlockPatterns) {
     const m = text.match(p);
     if (m) {
       try {
         return JSON.parse(m[1].trim());
       } catch(e) {
-        console.log('⚠️ Pattern match parse failed:', e.message);
+        console.log('⚠️ Code block parse failed:', e.message);
       }
+    }
+  }
+  
+  // Find the first { and last } to extract JSON object
+  const firstBrace = text.indexOf('{');
+  const lastBrace = text.lastIndexOf('}');
+  
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    const jsonCandidate = text.substring(firstBrace, lastBrace + 1);
+    try {
+      return JSON.parse(jsonCandidate);
+    } catch(e) {
+      console.log('⚠️ Brace extraction parse failed:', e.message);
     }
   }
   

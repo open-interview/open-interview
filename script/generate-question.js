@@ -294,20 +294,16 @@ async function main() {
     console.log(`Sub-channel: ${subChannelConfig.subChannel}`);
     console.log(`Difficulty: ${difficulty}`);
 
-    // Optimized prompt - concise but clear
-    const prompt = `Generate ${difficulty} ${channel}/${subChannelConfig.subChannel} interview question.
+    // Optimized prompt - concise but clear, with strict JSON-only instruction
+    const prompt = `You are a JSON generator. Output ONLY valid JSON, no explanations, no markdown, no text before or after.
+
+Generate ${difficulty} ${channel}/${subChannelConfig.subChannel} interview question.
 Topics: ${subChannelConfig.tags.join(', ')}
 
-Return valid JSON:
-{
-  "question": "specific technical question ending with ?",
-  "answer": "concise answer under 150 chars",
-  "explanation": "## Why Asked\\nInterview context\\n## Key Concepts\\nCore knowledge\\n## Code Example\\n\`\`\`\\nImplementation\\n\`\`\`\\n## Follow-up Questions\\nCommon follow-ups",
-  "diagram": "flowchart TD\\n  A[Start] --> B[End]",
-  "companies": ["Google", "Amazon", "Meta"],
-  "sourceUrl": "https://docs.example.com or null",
-  "videos": {"shortVideo": null, "longVideo": null}
-}`;
+Output this exact JSON structure:
+{"question":"specific technical question ending with ?","answer":"concise answer under 150 chars","explanation":"## Why Asked\\nInterview context\\n## Key Concepts\\nCore knowledge\\n## Code Example\\n\`\`\`\\nImplementation\\n\`\`\`\\n## Follow-up Questions\\nCommon follow-ups","diagram":"flowchart TD\\n  A[Start] --> B[End]","companies":["Google","Amazon","Meta"],"sourceUrl":null,"videos":{"shortVideo":null,"longVideo":null}}
+
+IMPORTANT: Return ONLY the JSON object. No other text.`;
 
     // Log the prompt
     console.log('\n📝 PROMPT:');
