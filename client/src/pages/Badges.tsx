@@ -1,0 +1,428 @@
+/**
+ * Badges Page - Apple Watch-style achievement showcase
+ * Shows all badges, progress, and what's needed to unlock each
+ */
+
+import { useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'wouter';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  ArrowLeft, Trophy, Flame, Target, Compass, Sparkles, Star,
+  ChevronRight, Lock, Check, X
+} from 'lucide-react';
+import { SEOHead } from '../components/SEOHead';
+import { BadgeRing } from '../components/BadgeDisplay';
+import { 
+  BADGES, Badge, BadgeProgress, calculateBadgeProgress, 
+  getCategoryLabel, getTierColor, getUnlockedBadges 
+} from '../lib/badges';
+import { channels, getQuestions, getAllQuestions, getQuestionDifficulty } from '../lib/data';
+import { useGlobalStats } from '../hooks/use-progress';
+
+const categoryIcons: Record<string, React.ReactNode> = {
+  streak: <Flame className="w-4 h-4" />,
+  completion: <Target className="w-4 h-4" />,
+  mastery: <Trophy className="w-4 h-4" />,
+  explorer: <Compass className="w-4 h-4" />,
+  special: <Sparkles className="w-4 h-4" />,
+};
+
+const tierOrder = ['bronze', 'silver', 'gold', 'platinum', 'diamond'] as const;
+
+export default function Badges() {
+  const [_, setLocation] = useLocation();
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedBadge, setSelectedBadge] = useState<BadgeProgress | null>(null);
+  const { stats } = useGlobalStats();
+
+  const goBack = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      setLocation('/');
+    }
+  };
+
+  // Calculate user stats
+  const userStats = useMemo(() => {
+    const allQuestions = getAllQuestions();
+    const allCompletedIds = new Set<string>();
+    const channelsWithProgress: string[] = [];
+    const channelCompletionPcts: number[] = [];
+    const difficultyStats = { beginner: 0, intermediate: 0, advanced: 0 };
+
+    channels.forEach(ch => {
+      const questions = getQuestions(ch.id);
+      const stored = localStorage.getItem(`progress-${ch.id}`);
+      const completedIds = stored ? new Set(JSON.parse(stored)) : new Set<string>();
+      
+      Array.from(completedIds).forEach((id) => allCompletedIds.add(id as string));
+      
+      if (completedIds.size > 0) {
+        channelsWithProgress.push(ch.id);
+      }
+      
+      if (questions.length > 0) {
+        channelCompletionPcts.push(Math.round((completedIds.size / questions.length) * 100));
+      }
+      
+      questions.forEach(q => {
+        if (completedIds.has(q.id)) {
+          const d = getQuestionDifficulty(q);
+          difficultyStats[d]++;
+        }
+      });
+    });
+
+    // Calculate streak
+    let streak = 0;
+    for (let i = 0; i < 365; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      if (stats.find(x => x.date === d.toISOString().split('T')[0])) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    return {
+      totalCompleted: allCompletedIds.size,
+      streak,
+      channelsExplored: channelsWithProgress,
+      difficultyStats,
+      channelCompletionPcts,
+      totalChannels: channels.length,
+    };
+  }, [stats]);
+
+  // Calculate badge progress
+  const badgeProgress = useMemo(() => {
+    return calculateBadgeProgress(
+      userStats.totalCompleted,
+      userStats.streak,
+      userStats.channelsExplored,
+      userStats.difficultyStats,
+      userStats.channelCompletionPcts,
+      userStats.totalChannels
+    );
+  }, [userStats]);
+
+  // Group badges by category
+  const badgesByCategory = useMemo(() => {
+    const grouped: Record<string, BadgeProgress[]> = {};
+    badgeProgress.forEach(bp => {
+      if (!grouped[bp.badge.category]) {
+        grouped[bp.badge.category] = [];
+      }
+      grouped[bp.badge.category].push(bp);
+    });
+    // Sort by tier within each category
+    Object.keys(grouped).forEach(cat => {
+      grouped[cat].sort((a, b) => 
+        tierOrder.indexOf(a.badge.tier) - tierOrder.indexOf(b.badge.tier)
+      );
+    });
+    return grouped;
+  }, [badgeProgress]);
+
+  // Stats summary
+  const unlockedCount = badgeProgress.filter(b => b.isUnlocked).length;
+  const totalBadges = BADGES.length;
+  const overallProgress = Math.round((unlockedCount / totalBadges) * 100);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (selectedBadge) {
+          setSelectedBadge(null);
+        } else {
+          goBack();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedBadge]);
+
+  const categories: Array<'streak' | 'completion' | 'mastery' | 'explorer' | 'special'> = ['streak', 'completion', 'mastery', 'explorer', 'special'];
+
+  return (
+    <>
+      <SEOHead
+        title="Achievement Badges - Track Your Interview Prep Progress | Code Reels"
+        description="Earn badges as you master technical interview questions. Track your streaks, completion milestones, and explore different topics to unlock achievements."
+        keywords="achievement badges, gamification, interview prep progress, study streaks, learning milestones"
+        canonical="https://reel-interview.github.io/badges"
+      />
+      
+      <div className="min-h-screen bg-background text-foreground p-3 sm:p-4 font-mono overflow-y-auto">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <header className="flex items-center justify-between mb-6">
+            <button
+              onClick={goBack}
+              className="flex items-center gap-1.5 hover:text-primary text-[10px] uppercase tracking-widest font-bold"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Back
+            </button>
+            <h1 className="text-base sm:text-xl font-bold uppercase">
+              <span className="text-primary">&gt;</span> Badges
+            </h1>
+            <div className="w-16" />
+          </header>
+
+          {/* Overall Progress */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="border border-border p-4 bg-card rounded-lg mb-6"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-primary" />
+                <span className="font-bold">Your Collection</span>
+              </div>
+              <span className="text-2xl font-bold text-primary">{unlockedCount}/{totalBadges}</span>
+            </div>
+            <div className="h-2 bg-muted/30 rounded-full overflow-hidden mb-2">
+              <motion.div
+                className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${overallProgress}%` }}
+                transition={{ duration: 1, ease: 'easeOut' }}
+              />
+            </div>
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>{overallProgress}% Complete</span>
+              <span>{totalBadges - unlockedCount} badges remaining</span>
+            </div>
+          </motion.div>
+
+          {/* Category Tabs */}
+          <div className="flex gap-1 mb-4 overflow-x-auto pb-2">
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className={`px-3 py-1.5 text-[10px] uppercase tracking-widest font-bold rounded transition-colors whitespace-nowrap
+                ${!selectedCategory ? 'bg-primary text-primary-foreground' : 'bg-muted/30 hover:bg-muted/50'}`}
+            >
+              All
+            </button>
+            {categories.map(cat => {
+              const catBadges = badgesByCategory[cat] || [];
+              const catUnlocked = catBadges.filter(b => b.isUnlocked).length;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-3 py-1.5 text-[10px] uppercase tracking-widest font-bold rounded transition-colors whitespace-nowrap flex items-center gap-1.5
+                    ${selectedCategory === cat ? 'bg-primary text-primary-foreground' : 'bg-muted/30 hover:bg-muted/50'}`}
+                >
+                  {categoryIcons[cat]}
+                  {getCategoryLabel(cat)}
+                  <span className="opacity-60">({catUnlocked}/{catBadges.length})</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Badge Grid by Category */}
+          <div className="space-y-6">
+            {categories
+              .filter(cat => !selectedCategory || selectedCategory === cat)
+              .map(cat => {
+                const catBadges = badgesByCategory[cat] || [];
+                if (catBadges.length === 0) return null;
+                
+                return (
+                  <motion.div
+                    key={cat}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="border border-border p-4 bg-card rounded-lg"
+                  >
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="p-1.5 rounded bg-primary/10 text-primary">
+                        {categoryIcons[cat]}
+                      </div>
+                      <span className="font-bold uppercase text-sm">{getCategoryLabel(cat)}</span>
+                      <span className="text-[10px] text-muted-foreground ml-auto">
+                        {catBadges.filter(b => b.isUnlocked).length}/{catBadges.length}
+                      </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+                      {catBadges.map((bp, i) => (
+                        <motion.div
+                          key={bp.badge.id}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: i * 0.03 }}
+                        >
+                          <BadgeRing
+                            progress={bp}
+                            size="md"
+                            onClick={() => setSelectedBadge(bp)}
+                          />
+                        </motion.div>
+                      ))}
+                    </div>
+                  </motion.div>
+                );
+              })}
+          </div>
+
+          {/* Next Badges to Unlock */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="border border-border p-4 bg-card rounded-lg mt-6"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Target className="w-4 h-4 text-primary" />
+              <span className="font-bold uppercase text-sm">Next Up</span>
+            </div>
+            <div className="space-y-3">
+              {badgeProgress
+                .filter(b => !b.isUnlocked && b.progress > 0)
+                .sort((a, b) => b.progress - a.progress)
+                .slice(0, 3)
+                .map((bp, i) => (
+                  <motion.div
+                    key={bp.badge.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 + i * 0.1 }}
+                    className="flex items-center gap-3 p-2 bg-muted/10 rounded cursor-pointer hover:bg-muted/20 transition-colors"
+                    onClick={() => setSelectedBadge(bp)}
+                  >
+                    <BadgeRing progress={bp} size="sm" showProgress={false} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-bold">{bp.badge.name}</div>
+                      <div className="h-1.5 bg-muted/30 rounded-full overflow-hidden mt-1">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ 
+                            width: `${bp.progress}%`,
+                            backgroundColor: getTierColor(bp.badge.tier)
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-bold" style={{ color: getTierColor(bp.badge.tier) }}>
+                        {Math.round(bp.progress)}%
+                      </div>
+                      <div className="text-[9px] text-muted-foreground">
+                        {bp.current}/{bp.badge.requirement}
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </motion.div>
+                ))}
+              {badgeProgress.filter(b => !b.isUnlocked && b.progress > 0).length === 0 && (
+                <div className="text-center text-muted-foreground text-sm py-4">
+                  Complete some questions to start earning badges!
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Badge Detail Modal */}
+      <AnimatePresence>
+        {selectedBadge && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setSelectedBadge(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-card border border-border rounded-lg p-6 max-w-sm w-full"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setSelectedBadge(null)}
+                className="absolute top-3 right-3 p-1 hover:bg-muted rounded"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              
+              <div className="flex flex-col items-center text-center">
+                <BadgeRing progress={selectedBadge} size="lg" showProgress={false} />
+                
+                <h3 className="text-lg font-bold mt-4">{selectedBadge.badge.name}</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {selectedBadge.badge.description}
+                </p>
+                
+                <div className="flex items-center gap-2 mt-3">
+                  <span
+                    className="px-2 py-0.5 rounded text-[10px] uppercase font-bold"
+                    style={{ 
+                      backgroundColor: `${getTierColor(selectedBadge.badge.tier)}20`,
+                      color: getTierColor(selectedBadge.badge.tier)
+                    }}
+                  >
+                    {selectedBadge.badge.tier}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground uppercase">
+                    {getCategoryLabel(selectedBadge.badge.category)}
+                  </span>
+                </div>
+                
+                {/* Progress */}
+                <div className="w-full mt-6">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Progress</span>
+                    <span className="font-bold">
+                      {selectedBadge.current}/{selectedBadge.badge.requirement} {selectedBadge.badge.unit}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-muted/30 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ backgroundColor: getTierColor(selectedBadge.badge.tier) }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${selectedBadge.progress}%` }}
+                      transition={{ duration: 0.5 }}
+                    />
+                  </div>
+                </div>
+                
+                {/* Status */}
+                <div className="mt-4 flex items-center gap-2">
+                  {selectedBadge.isUnlocked ? (
+                    <>
+                      <Check className="w-4 h-4 text-green-500" />
+                      <span className="text-sm text-green-500">
+                        Unlocked {selectedBadge.unlockedAt 
+                          ? new Date(selectedBadge.unlockedAt).toLocaleDateString() 
+                          : 'recently'}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        {selectedBadge.badge.requirement - selectedBadge.current} {selectedBadge.badge.unit} to go
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}

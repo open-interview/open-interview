@@ -8,7 +8,7 @@ import {
   Terminal, Cpu, Database, Layout, BarChart2, Palette, Activity, GitBranch, 
   Star, AlertCircle, Sparkles, Plus, Server, Layers, Smartphone, Shield,
   Brain, Workflow, Box, Cloud, Code, Network, MessageCircle, Users, Eye, FileText,
-  CheckCircle, Monitor, Zap, Gauge, Search, X, Rss, Bot
+  CheckCircle, Monitor, Zap, Gauge, Search, X, Rss, Bot, Trophy
 } from 'lucide-react';
 import { SearchModal } from '../components/SearchModal';
 import { useProgress } from '../hooks/use-progress';
@@ -16,6 +16,7 @@ import { useTheme } from '../context/ThemeContext';
 import { SEOHead } from '../components/SEOHead';
 import { trackChannelSelect, trackGitHubClick, trackThemeChange } from '../hooks/use-analytics';
 import { WhatsNewBanner } from '../components/WhatsNewBanner';
+import { BadgeWidget } from '../components/BadgeWidget';
 
 // Icon mapping
 const iconMap: Record<string, React.ReactNode> = {
@@ -325,6 +326,13 @@ export default function Home() {
                 <BarChart2 className="w-3 h-3 sm:w-4 sm:h-4" /> <span className="hidden xs:inline">Stats</span>
              </button>
              <button 
+               onClick={() => setLocation('/badges')}
+               className="text-[10px] sm:text-xs uppercase tracking-widest hover:text-primary flex items-center gap-1 sm:gap-2 transition-colors p-1"
+               title="View Badges"
+             >
+                <Trophy className="w-3 h-3 sm:w-4 sm:h-4" /> <span className="hidden xs:inline">Badges</span>
+             </button>
+             <button 
                onClick={() => setLocation('/bot-activity')}
                className="text-[10px] sm:text-xs uppercase tracking-widest hover:text-primary flex items-center gap-1 sm:gap-2 transition-colors p-1"
                title="Bot Activity"
@@ -441,6 +449,9 @@ export default function Home() {
       
       {/* Search Modal */}
       <SearchModal isOpen={showSearchModal} onClose={() => setShowSearchModal(false)} />
+      
+      {/* Badge Widget (Desktop) */}
+      <BadgeWidget />
       
       {/* Unsubscribe Confirmation Dialog */}
       <ConfirmDialog

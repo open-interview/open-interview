@@ -10,6 +10,8 @@ import { motion } from "framer-motion";
 import { SEOHead } from "../components/SEOHead";
 import { trackStatsView } from "../hooks/use-analytics";
 import { GitHubAnalytics } from "../components/GitHubAnalytics";
+import { BadgeShowcase, NextBadgeProgress } from "../components/BadgeDisplay";
+import { calculateBadgeProgress } from "../lib/badges";
 
 function generateActivityData(stats: { date: string; count: number }[], days: number) {
   const data: { date: string; count: number; week: number; dayOfWeek: number }[] = [];
@@ -191,6 +193,32 @@ export default function Stats() {
               </div>
             </motion.div>
           </div>
+
+          {/* Badges Section */}
+          {(() => {
+            const channelsWithProgress: string[] = [];
+            const channelCompletionPcts: number[] = [];
+            channels.forEach(ch => {
+              const questions = getQuestions(ch.id);
+              const stored = localStorage.getItem(`progress-${ch.id}`);
+              const completedIds = stored ? new Set(JSON.parse(stored)) : new Set<string>();
+              if (completedIds.size > 0) channelsWithProgress.push(ch.id);
+              if (questions.length > 0) channelCompletionPcts.push(Math.round((completedIds.size / questions.length) * 100));
+            });
+            const badgeProgress = calculateBadgeProgress(
+              totalCompleted, streak, channelsWithProgress,
+              { beginner: globalDifficulty.beginner.done, intermediate: globalDifficulty.intermediate.done, advanced: globalDifficulty.advanced.done },
+              channelCompletionPcts, channels.length
+            );
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div className="cursor-pointer" onClick={() => setLocation('/badges')}>
+                  <BadgeShowcase badges={badgeProgress} title="Your Badges" />
+                </div>
+                <NextBadgeProgress badges={badgeProgress} />
+              </div>
+            );
+          })()}
 
           {/* Difficulty Overview */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="border border-border p-3 bg-card rounded-lg mb-4">
