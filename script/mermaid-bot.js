@@ -174,6 +174,13 @@ async function main() {
     }
   }
   
+  // Sort all questions for sequential processing (used as fallback)
+  const sortedQuestions = [...allQuestions].sort((a, b) => {
+    const numA = parseInt(a.id.replace(/\D/g, '')) || 0;
+    const numB = parseInt(b.id.replace(/\D/g, '')) || 0;
+    return numA - numB;
+  });
+  
   // Fallback to prioritized query if no work queue items
   if (batch.length === 0) {
     console.log('🔍 Querying database for questions needing diagrams...');
@@ -188,12 +195,6 @@ async function main() {
     } else {
       // Fall back to sequential processing if no prioritized questions
       console.log('ℹ️ No prioritized questions found, using sequential processing');
-      
-      const sortedQuestions = [...allQuestions].sort((a, b) => {
-        const numA = parseInt(a.id.replace(/\D/g, '')) || 0;
-        const numB = parseInt(b.id.replace(/\D/g, '')) || 0;
-        return numA - numB;
-      });
       
       totalQuestionsCount = sortedQuestions.length;
       

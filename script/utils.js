@@ -11,12 +11,28 @@ import fs from 'fs';
 const url = process.env.TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL_RO;
 const authToken = process.env.TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN_RO;
 
-if (!url) {
-  console.error('❌ Missing TURSO_DATABASE_URL environment variable');
-  process.exit(1);
-}
-
-export const dbClient = createClient({ url, authToken });
+// Create database client lazily - only fail when actually used if URL is missing
+let _dbClient = null;
+export const dbClient = {
+  get execute() {
+    if (!_dbClient) {
+      if (!url) {
+        throw new Error('Missing TURSO_DATABASE_URL environment variable');
+      }
+      _dbClient = createClient({ url, authToken });
+    }
+    return _dbClient.execute.bind(_dbClient);
+  },
+  get batch() {
+    if (!_dbClient) {
+      if (!url) {
+        throw new Error('Missing TURSO_DATABASE_URL environment variable');
+      }
+      _dbClient = createClient({ url, authToken });
+    }
+    return _dbClient.batch.bind(_dbClient);
+  }
+};
 
 // Constants
 export const MAX_RETRIES = 3;
