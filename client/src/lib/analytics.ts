@@ -8,8 +8,54 @@ declare global {
   }
 }
 
+// Detect if running in CI/test environment
+function isCI(): boolean {
+  // Check for common CI environment indicators
+  if (typeof window === 'undefined') return true;
+  
+  // Check URL for CI/test indicators
+  const hostname = window.location?.hostname || '';
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+  const isTestEnv = hostname.includes('test') || hostname.includes('preview');
+  
+  // Check for Playwright/Puppeteer/Cypress test runners
+  const isAutomatedTest = !!(
+    (window as any).__PLAYWRIGHT__ ||
+    (window as any).__PUPPETEER__ ||
+    (window as any).Cypress ||
+    navigator.webdriver
+  );
+  
+  // Check for headless browser indicators
+  const isHeadless = /HeadlessChrome|PhantomJS/i.test(navigator.userAgent);
+  
+  // Check for CI query param (useful for debugging)
+  const urlParams = new URLSearchParams(window.location?.search || '');
+  const hasCIParam = urlParams.get('ci') === 'true' || urlParams.get('test') === 'true';
+  
+  return isAutomatedTest || isHeadless || hasCIParam;
+}
+
+// Cache the CI check result
+let _isCI: boolean | null = null;
+function shouldSkipAnalytics(): boolean {
+  if (_isCI === null) {
+    _isCI = isCI();
+    if (_isCI) {
+      console.log('[Analytics] Skipping analytics in CI/test environment');
+    }
+  }
+  return _isCI;
+}
+
 // Initialize Google Analytics
 export function initializeAnalytics(measurementId: string) {
+  // Skip analytics in CI/test environments
+  if (shouldSkipAnalytics()) {
+    console.log('[Analytics] Initialization skipped in CI/test environment');
+    return;
+  }
+
   if (!measurementId) {
     console.warn('Google Analytics Measurement ID not provided');
     return;
@@ -40,7 +86,7 @@ export function initializeAnalytics(measurementId: string) {
 
 // Track page views
 export function trackPageView(path: string, title: string) {
-  if (!window.gtag) return;
+  if (shouldSkipAnalytics() || !window.gtag) return;
   
   window.gtag('event', 'page_view', {
     'page_path': path,
@@ -50,7 +96,7 @@ export function trackPageView(path: string, title: string) {
 
 // Track custom events
 export function trackEvent(eventName: string, eventData?: Record<string, any>) {
-  if (!window.gtag) return;
+  if (shouldSkipAnalytics() || !window.gtag) return;
   
   window.gtag('event', eventName, eventData || {});
 }
@@ -173,7 +219,7 @@ export function trackError(errorMessage: string, errorContext?: string) {
 
 // Set user properties
 export function setUserProperties(userId?: string, userProperties?: Record<string, any>) {
-  if (!window.gtag) return;
+  if (shouldSkipAnalytics() || !window.gtag) return;
   
   const properties: Record<string, any> = {
     'anonymize_ip': true,
