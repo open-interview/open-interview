@@ -7,46 +7,24 @@ import {
   validateQuestion,
   writeGitHubOutput,
   logQuestionsImproved,
-  validateYouTubeVideos,
-  normalizeCompanies,
   getQuestionsNeedingImprovement,
   getChannelStats
 } from './utils.js';
 
-const CHANNEL_STRUCTURE = {
-  'system-design': ['infrastructure', 'distributed-systems', 'api-design', 'caching', 'load-balancing', 'message-queues'],
-  'algorithms': ['data-structures', 'sorting', 'dynamic-programming', 'graphs', 'trees'],
-  'frontend': ['react', 'javascript', 'css', 'performance', 'web-apis'],
-  'backend': ['apis', 'microservices', 'caching', 'authentication', 'server-architecture'],
-  'database': ['sql', 'nosql', 'indexing', 'transactions', 'query-optimization'],
-  'devops': ['cicd', 'docker', 'automation', 'gitops'],
-  'sre': ['observability', 'reliability', 'incident-management', 'chaos-engineering', 'capacity-planning'],
-  'kubernetes': ['pods', 'services', 'deployments', 'helm', 'operators'],
-  'aws': ['compute', 'storage', 'serverless', 'database', 'networking'],
-  'generative-ai': ['llm-fundamentals', 'fine-tuning', 'rag', 'agents', 'evaluation'],
-  'machine-learning': ['algorithms', 'model-training', 'deployment', 'deep-learning', 'evaluation'],
-  'security': ['application-security', 'owasp', 'encryption', 'authentication'],
-  'testing': ['unit-testing', 'integration-testing', 'tdd', 'test-strategies'],
-  'behavioral': ['star-method', 'leadership-principles', 'soft-skills', 'conflict-resolution']
-};
-
+// Focus on answer/explanation quality only
+// Diagrams, videos, companies handled by dedicated bots
 function needsImprovement(q) {
   const issues = [];
   if (!q.answer || q.answer.length < 20) issues.push('short_answer');
   if (!q.answer || q.answer.length > 300) issues.push('long_answer');
   if (!q.explanation || q.explanation.length < 50) issues.push('short_explanation');
-  if (!q.diagram || q.diagram.length < 10) issues.push('no_diagram');
   if (q.explanation && q.explanation.includes('[truncated')) issues.push('truncated');
   if (!q.question.endsWith('?')) issues.push('no_question_mark');
-  if (!q.sourceUrl) issues.push('no_source_url');
-  if (!q.videos?.shortVideo) issues.push('no_short_video');
-  if (!q.videos?.longVideo) issues.push('no_long_video');
-  if (!q.companies || q.companies.length < 2) issues.push('no_companies');
   
   const hasInterviewContext = q.explanation && (
     q.explanation.toLowerCase().includes('interview') ||
     q.explanation.toLowerCase().includes('commonly asked') ||
-    q.explanation.includes('## Interview Context') ||
+    q.explanation.includes('## Why Asked') ||
     q.explanation.includes('## Follow-up')
   );
   if (!hasInterviewContext) issues.push('missing_interview_context');
@@ -102,15 +80,16 @@ async function main() {
     console.log(`Issues: ${issues.join(', ')}`);
     console.log(`Current Q: ${question.question.substring(0, 60)}...`);
 
+    // Focus on answer/explanation only - diagrams, videos, companies handled by dedicated bots
     const prompt = `You are a JSON generator. Output ONLY valid JSON, no explanations, no markdown, no text before or after.
 
-Improve ${question.channel} interview question. Fix: ${issues.slice(0, 4).join(', ')}
+Improve this ${question.channel} interview question's answer and explanation. Fix: ${issues.slice(0, 3).join(', ')}
 
-Current Q: "${question.question.substring(0, 120)}"
-Current A: "${question.answer.substring(0, 100)}"
+Current Q: "${question.question.substring(0, 150)}"
+Current A: "${question.answer?.substring(0, 150) || 'missing'}"
 
 Output this exact JSON structure:
-{"question":"improved question ending with ?","answer":"concise answer under 150 chars","explanation":"## Why Asked\\nInterview context\\n## Key Concepts\\nCore knowledge\\n## Code Example\\n\`\`\`\\nImplementation\\n\`\`\`\\n## Follow-up Questions\\nCommon follow-ups","diagram":"flowchart TD\\n  A[Start] --> B[End]","companies":["Google","Amazon","Meta"],"sourceUrl":null,"videos":{"shortVideo":null,"longVideo":null}}
+{"question":"improved question ending with ?","answer":"concise answer under 150 chars","explanation":"## Why Asked\\nInterview context explaining why this is commonly asked\\n\\n## Key Concepts\\n- Concept 1\\n- Concept 2\\n\\n## Code Example\\n\`\`\`\\nImplementation if applicable\\n\`\`\`\\n\\n## Follow-up Questions\\n- Common follow-up 1\\n- Common follow-up 2"}
 
 IMPORTANT: Return ONLY the JSON object. No other text.`;
 
@@ -135,24 +114,10 @@ IMPORTANT: Return ONLY the JSON object. No other text.`;
       continue;
     }
 
-    console.log('🎬 Validating YouTube videos...');
-    const validatedVideos = await validateYouTubeVideos(data.videos);
-    const existingVideos = question.videos || {};
-
-    const existingCompanies = question.companies || [];
-    const newCompanies = normalizeCompanies(data.companies);
-
-    // Update question
+    // Update only question, answer, explanation - other fields handled by dedicated bots
     question.question = data.question;
     question.answer = data.answer.substring(0, 200);
     question.explanation = data.explanation;
-    question.diagram = data.diagram || question.diagram;
-    question.sourceUrl = data.sourceUrl || question.sourceUrl || null;
-    question.videos = {
-      shortVideo: validatedVideos.shortVideo || existingVideos.shortVideo || null,
-      longVideo: validatedVideos.longVideo || existingVideos.longVideo || null
-    };
-    question.companies = newCompanies.length > 0 ? newCompanies : existingCompanies;
     question.lastUpdated = new Date().toISOString();
 
     await saveQuestion(question);

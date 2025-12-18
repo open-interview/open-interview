@@ -314,6 +314,14 @@ export function useMarvelIntro() {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
+    // Skip intro on mobile devices for better UX
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      setShowIntro(false);
+      setIsChecking(false);
+      return;
+    }
+    
     const seen = localStorage.getItem(INTRO_SEEN_KEY);
     setShowIntro(!seen);
     setIsChecking(false);
@@ -325,7 +333,9 @@ export function useMarvelIntro() {
 
   const resetIntro = () => {
     localStorage.removeItem(INTRO_SEEN_KEY);
-    setShowIntro(true);
+    // Only show intro on non-mobile
+    const isMobile = window.innerWidth < 768;
+    setShowIntro(!isMobile);
   };
 
   return { showIntro, isChecking, completeIntro, resetIntro };

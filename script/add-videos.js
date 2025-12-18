@@ -1,8 +1,6 @@
 import {
   getAllUnifiedQuestions,
   saveQuestion,
-  runWithRetries,
-  parseJson,
   validateYouTubeVideos,
   writeGitHubOutput,
   getPendingWork,
@@ -23,34 +21,18 @@ function needsVideoWork(question) {
   return !hasShort || !hasLong;
 }
 
-// Search for relevant YouTube videos using AI
-async function findVideosForQuestion(question) {
-  const prompt = `You are a JSON generator. Output ONLY valid JSON, no explanations, no markdown, no text before or after.
-
-Find real YouTube videos for this interview question.
-
-Question: "${question.question}"
-Topic: ${question.tags?.slice(0, 3).join(', ') || 'technical interview'}
-
-Return REAL video URLs that exist and are educational. Use well-known channels like freeCodeCamp, Fireship, Traversy Media, ByteByteGo, Hussein Nasser.
-shortVideo: Under 5 minutes. longVideo: 10-60 minutes.
-
-Output this exact JSON structure:
-{"shortVideo":"https://youtube.com/watch?v=REAL_ID or null","longVideo":"https://youtube.com/watch?v=REAL_ID or null","confidence":"high|medium|low"}
-
-IMPORTANT: Return ONLY the JSON object. No other text.`;
-
-  const response = await runWithRetries(prompt);
-  if (!response) return null;
-  
-  const data = parseJson(response);
-  if (!data) return null;
-  
-  return {
-    shortVideo: data.shortVideo || null,
-    longVideo: data.longVideo || null,
-    confidence: data.confidence || 'low'
-  };
+// NOTE: LLM-based video search removed - LLMs hallucinate video IDs
+// Videos should be added manually or via YouTube Data API integration
+// This bot now only validates existing videos and cleans up invalid ones
+function findVideosForQuestion(question) {
+  // Return null - we don't search for videos via LLM anymore
+  // Videos should be sourced from:
+  // 1. Manual curation
+  // 2. YouTube Data API (future integration)
+  // 3. Curated video database
+  console.log('  ℹ️ Video search disabled (LLM hallucinates video IDs)');
+  console.log('  ℹ️ Videos should be added manually or via YouTube API');
+  return null;
 }
 
 async function main() {
