@@ -2,6 +2,10 @@ import { createContext, useContext, useEffect, useState, useRef, useCallback } f
 
 // All available themes
 export const themes = [
+  // Google (Default)
+  { id: "google", name: "Google Light", category: "modern", description: "Clean Google-style light" },
+  { id: "google-dark", name: "Google Dark", category: "modern", description: "Clean Google-style dark" },
+  
   // Classic
   { id: "unix", name: "Unix", category: "classic", description: "Classic terminal green" },
   { id: "light", name: "Light", category: "classic", description: "Clean light mode" },
@@ -79,7 +83,8 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const saved = localStorage.getItem("theme") as Theme;
-    return themes.some(t => t.id === saved) ? saved : "glassmorphism";
+    // Default to Google Dark for new users
+    return themes.some(t => t.id === saved) ? saved : "google-dark";
   });
   
   // Track if user has manually changed theme (disables auto-rotate)

@@ -147,7 +147,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-start justify-center pt-[10vh] px-4"
+        className="fixed inset-0 z-[200] bg-background/80 backdrop-blur-sm flex items-start justify-center pt-[10vh] px-4"
         onClick={onClose}
       >
         <motion.div
@@ -155,12 +155,12 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -20, scale: 0.95 }}
           transition={{ duration: 0.15 }}
-          className="w-full max-w-2xl bg-black border border-white/20 rounded-lg shadow-2xl overflow-hidden"
+          className="w-full max-w-2xl bg-card border border-border rounded-lg shadow-2xl overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
           {/* Search Input */}
-          <div className="flex items-center gap-3 p-4 border-b border-white/10">
-            <Search className="w-5 h-5 text-white/50" />
+          <div className="flex items-center gap-3 p-4 border-b border-border">
+            <Search className="w-5 h-5 text-muted-foreground" />
             <input
               ref={inputRef}
               type="text"
@@ -168,16 +168,16 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
               onChange={e => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Search questions, topics, tags..."
-              className="flex-1 bg-transparent text-white text-lg outline-none placeholder:text-white/30"
+              className="flex-1 bg-transparent text-foreground text-lg outline-none placeholder:text-muted-foreground/50"
               autoComplete="off"
               spellCheck={false}
             />
             {query && (
-              <button onClick={() => setQuery('')} className="p-1 hover:bg-white/10 rounded">
-                <X className="w-4 h-4 text-white/50" />
+              <button onClick={() => setQuery('')} className="p-1 hover:bg-muted rounded">
+                <X className="w-4 h-4 text-muted-foreground" />
               </button>
             )}
-            <kbd className="hidden sm:inline-block px-2 py-1 text-[10px] text-white/40 bg-white/5 border border-white/10 rounded">
+            <kbd className="hidden sm:inline-block px-2 py-1 text-[10px] text-muted-foreground bg-muted border border-border rounded">
               ESC
             </kbd>
           </div>

@@ -74,9 +74,9 @@ export function QuestionPanel({
       default:
         return {
           icon: Target,
-          color: 'text-white/50',
-          bg: 'bg-white/5',
-          border: 'border-white/10',
+          color: 'text-muted-foreground',
+          bg: 'bg-muted/50',
+          border: 'border-border',
           label: 'Unknown'
         };
     }
@@ -90,14 +90,14 @@ export function QuestionPanel({
       {/* Header badges - Compact on mobile */}
       <div className="absolute top-1.5 sm:top-4 left-2 sm:left-6 md:left-10 lg:left-16 right-2 sm:right-4 flex flex-wrap items-center gap-1 sm:gap-2">
         {/* Question ID - Hidden on mobile */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-white/5 border border-white/10 rounded">
+        <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-muted/50 border border-border rounded">
           <Hash className="w-3 h-3 text-primary" />
-          <span className="text-[10px] font-mono text-white/70">{question.id}</span>
+          <span className="text-[10px] font-mono text-muted-foreground">{question.id}</span>
         </div>
 
         {/* Progress - Compact on mobile */}
-        <div className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-white/5 border border-white/10 rounded">
-          <span className="text-[9px] sm:text-[10px] font-mono text-white/70">
+        <div className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-muted/50 border border-border rounded">
+          <span className="text-[9px] sm:text-[10px] font-mono text-muted-foreground">
             {questionNumber}/{totalQuestions}
           </span>
         </div>
@@ -111,17 +111,17 @@ export function QuestionPanel({
         </div>
 
         {/* SubChannel - Hidden on mobile */}
-        <div className="hidden sm:block px-2 py-1 bg-white/5 border border-white/10 rounded">
-          <span className="text-[10px] font-mono text-white/50 uppercase tracking-wider">
+        <div className="hidden sm:block px-2 py-1 bg-muted/50 border border-border rounded">
+          <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
             {question.subChannel}
           </span>
         </div>
 
         {/* Last Updated - Hidden on mobile */}
         {question.lastUpdated && (
-          <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-white/5 border border-white/10 rounded">
-            <RefreshCw className="w-3 h-3 text-white/40" />
-            <span className="text-[10px] font-mono text-white/40">
+          <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-muted/50 border border-border rounded">
+            <RefreshCw className="w-3 h-3 text-muted-foreground" />
+            <span className="text-[10px] font-mono text-muted-foreground">
               {formatTimeAgo(question.lastUpdated)}
             </span>
           </div>
@@ -136,7 +136,7 @@ export function QuestionPanel({
           className={`p-1 sm:p-1.5 rounded transition-all ${
             isMarked
               ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-              : 'bg-white/5 text-white/30 hover:text-blue-400 hover:bg-blue-500/10 border border-white/10'
+              : 'bg-muted/50 text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10 border border-border'
           }`}
           title={isMarked ? 'Remove bookmark' : 'Bookmark this question'}
         >
@@ -160,7 +160,7 @@ export function QuestionPanel({
               <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-400" />
             </div>
           )}
-          <h1 className={`font-bold text-white ${
+          <h1 className={`font-bold text-foreground ${
             question.question.length > 250 
               ? 'text-xs sm:text-sm md:text-base lg:text-lg leading-relaxed' // Very long questions
               : question.question.length > 150
@@ -179,13 +179,13 @@ export function QuestionPanel({
             {question.tags.slice(0, 4).map(tag => (
               <span 
                 key={tag} 
-                className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-white/5 text-[9px] sm:text-[10px] font-mono uppercase tracking-wider border border-white/10 text-white/50 rounded"
+                className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-muted/50 text-[9px] sm:text-[10px] font-mono uppercase tracking-wider border border-border text-muted-foreground rounded"
               >
                 #{tag}
               </span>
             ))}
             {question.tags.length > 4 && (
-              <span className="px-2 py-0.5 text-[9px] sm:text-xs text-white/30">
+              <span className="px-2 py-0.5 text-[9px] sm:text-xs text-muted-foreground">
                 +{question.tags.length - 4}
               </span>
             )}
@@ -201,7 +201,7 @@ export function QuestionPanel({
           >
             <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
             <div>
-              <div className="text-[9px] sm:text-[10px] uppercase tracking-widest text-white/50 mb-0.5">Time Left</div>
+              <div className="text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Time Left</div>
               <div className="text-lg sm:text-2xl font-mono font-bold text-primary tabular-nums">
                 {String(Math.floor(timeLeft / 60)).padStart(2, '0')}:{String(timeLeft % 60).padStart(2, '0')}
               </div>
@@ -212,7 +212,7 @@ export function QuestionPanel({
 
       {/* Bottom hint - Hidden on mobile for compactness */}
       <div className="absolute bottom-2 sm:bottom-4 left-3 sm:left-6 md:left-10 lg:left-16 right-3 sm:right-4 hidden sm:block">
-        <div className="text-[9px] sm:text-[10px] text-white/20 uppercase tracking-widest">
+        <div className="text-[9px] sm:text-[10px] text-muted-foreground/50 uppercase tracking-widest">
           Press → to reveal answer
         </div>
       </div>
