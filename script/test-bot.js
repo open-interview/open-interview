@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
  * Test Bot - Generates quiz tests for each channel
- * Creates 25-50 multiple choice questions per channel based on existing questions
+ * Uses opencode run command for better reliability
  * Outputs to client/public/data/tests.json
  */
 
 import 'dotenv/config';
 import { createClient } from '@libsql/client';
-import { spawn } from 'child_process';
+import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
@@ -16,11 +16,10 @@ const db = createClient({
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
-const CHANNEL_ID = process.env.CHANNEL_ID || null; // Optional: specific channel
-const MAX_QUESTIONS = parseInt(process.env.MAX_QUESTIONS || '50');
+const CHANNEL_ID = process.env.CHANNEL_ID || null;
+const BATCH_SIZE = parseInt(process.env.BATCH_SIZE || '5'); // Smaller batches
 const OUTPUT_FILE = 'client/public/data/tests.json';
 
-// Channel display names
 const CHANNEL_NAMES = {
   'system-design': 'System Design',
   'algorithms': 'Algorithms',
@@ -37,169 +36,117 @@ const CHANNEL_NAMES = {
   'behavioral': 'Behavioral',
 };
 
-async function getChannelQuestions(channelId) {
+async function getChannelQuestions(channelId, limit = 25) {
   const result = await db.execute({
-    sql: `SELECT id, question, answer, explanation, difficulty 
+    sql: `SELECT id, question, answer, difficulty 
           FROM questions 
           WHERE channel = ? 
           ORDER BY RANDOM()
           LIMIT ?`,
-    args: [channelId, MAX_QUESTIONS]
+    args: [channelId, limit]
   });
   return result.rows;
 }
 
-// Run opencode with spawn for better control
-function runOpenCode(prompt) {
-  return new Promise((resolve, reject) => {
-    const child = spawn('opencode', ['-p', '-'], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 120000, // 2 minute timeout
-    });
+// Generate MCQs using opencode run
+function generateBatchMCQs(questions) {
+  const summaries = questions.map((q, i) => 
+    `${i + 1}. Q: ${q.question.substring(0, 100)} A: ${q.answer.substring(0, 150)}`
+  ).join('\n');
 
-    let stdout = '';
-    let stderr = '';
-
-    child.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    child.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    child.on('close', (code) => {
-      if (code === 0) {
-        resolve(stdout);
-      } else {
-        reject(new Error(`Exit code ${code}: ${stderr}`));
-      }
-    });
-
-    child.on('error', (err) => {
-      reject(err);
-    });
-
-    // Write prompt to stdin and close
-    child.stdin.write(prompt);
-    child.stdin.end();
-
-    // Timeout handler
-    setTimeout(() => {
-      child.kill('SIGTERM');
-      reject(new Error('Timeout after 120s'));
-    }, 120000);
-  });
-}
-
-async function generateTestQuestion(question) {
-  const prompt = `Generate a multiple choice question based on this interview Q&A.
-
-QUESTION: ${question.question.substring(0, 500)}
-
-ANSWER: ${question.answer.substring(0, 800)}
-
-Create a quiz question with 4 options. Decide randomly:
-- "single" (1 correct) or "multiple" (2-3 correct)
-
-Return ONLY this JSON:
-{
-  "question": "Quiz question text",
-  "type": "single",
-  "options": [
-    { "text": "Option A", "isCorrect": false },
-    { "text": "Option B", "isCorrect": true },
-    { "text": "Option C", "isCorrect": false },
-    { "text": "Option D", "isCorrect": false }
-  ],
-  "explanation": "Why the answer is correct"
-}`;
-
+  // Escape for shell - use base64 encoding
+  const prompt = `Create ${questions.length} MCQs from these Q&As:\n${summaries}\n\nReturn JSON array: [{"q":"question","o":["a","b","c","d"],"c":[0]}] where c=correct indices. ONLY JSON.`;
+  
+  const base64Prompt = Buffer.from(prompt).toString('base64');
+  
   try {
-    const result = await runOpenCode(prompt);
+    // Use opencode run with the message
+    const result = execSync(
+      `echo "${base64Prompt}" | base64 -d | opencode run`,
+      {
+        encoding: 'utf-8',
+        maxBuffer: 50 * 1024 * 1024,
+        timeout: 120000,
+        stdio: ['pipe', 'pipe', 'pipe']
+      }
+    );
 
-    // Extract JSON from response
-    const jsonMatch = result.match(/\{[\s\S]*\}/);
+    // Extract JSON array - handle markdown code blocks
+    let jsonStr = result;
+    
+    // Remove markdown code blocks if present
+    const codeBlockMatch = result.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (codeBlockMatch) {
+      jsonStr = codeBlockMatch[1].trim();
+    }
+    
+    // Find JSON array
+    const jsonMatch = jsonStr.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
-      console.log('    ⚠️ No JSON in response');
-      return null;
+      console.log('    ⚠️ No JSON found');
+      return [];
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
     
-    // Validate
-    if (!parsed.question || !parsed.options || parsed.options.length !== 4) {
-      console.log('    ⚠️ Invalid structure');
-      return null;
-    }
+    return parsed.map((item, i) => {
+      const q = questions[i];
+      if (!q || !item.q || !item.o || item.o.length < 4) return null;
 
-    // Ensure at least one correct answer
-    const hasCorrect = parsed.options.some(o => o.isCorrect);
-    if (!hasCorrect) {
-      parsed.options[0].isCorrect = true;
-    }
+      const correctIndices = Array.isArray(item.c) ? item.c : [0];
+      const options = item.o.slice(0, 4).map((text, idx) => ({
+        id: `opt-${idx}`,
+        text: String(text),
+        isCorrect: correctIndices.includes(idx)
+      }));
 
-    const options = parsed.options.map((opt, i) => ({
-      id: `opt-${i}`,
-      text: opt.text,
-      isCorrect: !!opt.isCorrect
-    }));
+      if (!options.some(o => o.isCorrect)) options[0].isCorrect = true;
 
-    return {
-      id: `tq-${question.id}`,
-      questionId: question.id,
-      question: parsed.question,
-      type: parsed.type === 'multiple' ? 'multiple' : 'single',
-      options,
-      explanation: parsed.explanation || '',
-      difficulty: question.difficulty || 'intermediate'
-    };
+      return {
+        id: `tq-${q.id}`,
+        questionId: q.id,
+        question: item.q,
+        type: correctIndices.length > 1 ? 'multiple' : 'single',
+        options,
+        explanation: item.e || '',
+        difficulty: q.difficulty || 'intermediate'
+      };
+    }).filter(Boolean);
+
   } catch (error) {
-    console.log(`    ⚠️ Error: ${error.message.substring(0, 50)}`);
-    return null;
+    console.log(`    ⚠️ Error: ${error.message.substring(0, 60)}`);
+    return [];
   }
 }
 
 async function generateTestForChannel(channelId) {
-  console.log(`\n📝 Generating test for: ${channelId}`);
+  console.log(`\n📝 ${channelId}`);
   
-  const questions = await getChannelQuestions(channelId);
-  console.log(`   Found ${questions.length} questions`);
+  const questions = await getChannelQuestions(channelId, 25);
+  console.log(`   ${questions.length} questions`);
   
   if (questions.length < 10) {
-    console.log(`   ⚠️ Not enough questions (need at least 10)`);
+    console.log(`   ⚠️ Not enough`);
     return null;
   }
 
   const testQuestions = [];
-  const targetCount = Math.min(MAX_QUESTIONS, questions.length);
-  let failures = 0;
-  const maxFailures = 5; // Stop after 5 consecutive failures
   
-  for (let i = 0; i < questions.length && testQuestions.length < targetCount; i++) {
-    if (failures >= maxFailures) {
-      console.log(`   ⚠️ Too many failures, stopping`);
-      break;
-    }
-
-    const q = questions[i];
-    console.log(`   [${testQuestions.length + 1}/${targetCount}] ${q.question.substring(0, 40)}...`);
+  for (let i = 0; i < questions.length; i += BATCH_SIZE) {
+    const batch = questions.slice(i, i + BATCH_SIZE);
+    console.log(`   Batch ${Math.floor(i / BATCH_SIZE) + 1}...`);
     
-    const testQ = await generateTestQuestion(q);
-    if (testQ) {
-      testQuestions.push(testQ);
-      failures = 0; // Reset on success
-      console.log(`    ✓ Generated (${testQ.type})`);
-    } else {
-      failures++;
-    }
+    const mcqs = generateBatchMCQs(batch);
+    testQuestions.push(...mcqs);
+    console.log(`   ✓ ${mcqs.length} MCQs`);
     
-    // Delay between requests to avoid rate limiting
-    await new Promise(r => setTimeout(r, 2000));
+    if (i + BATCH_SIZE < questions.length) {
+      await new Promise(r => setTimeout(r, 2000));
+    }
   }
 
   if (testQuestions.length < 10) {
-    console.log(`   ⚠️ Only generated ${testQuestions.length} questions (need 10+)`);
+    console.log(`   ⚠️ Only ${testQuestions.length}`);
     return null;
   }
 
@@ -208,7 +155,7 @@ async function generateTestForChannel(channelId) {
     channelId,
     channelName: CHANNEL_NAMES[channelId] || channelId,
     title: `${CHANNEL_NAMES[channelId] || channelId} Knowledge Test`,
-    description: `Test your ${CHANNEL_NAMES[channelId] || channelId} interview prep knowledge.`,
+    description: `Test your ${CHANNEL_NAMES[channelId] || channelId} knowledge.`,
     questions: testQuestions,
     passingScore: 70,
     createdAt: new Date().toISOString(),
@@ -217,75 +164,47 @@ async function generateTestForChannel(channelId) {
 }
 
 async function main() {
-  console.log('🧪 Test Bot Starting...\n');
+  console.log('🧪 Test Bot\n');
 
-  // Get channels to process
-  let channelIds = [];
-  
-  if (CHANNEL_ID) {
-    channelIds = [CHANNEL_ID];
-    console.log(`Processing single channel: ${CHANNEL_ID}`);
-  } else {
-    const result = await db.execute('SELECT DISTINCT channel FROM questions ORDER BY channel');
-    channelIds = result.rows.map(r => r.channel);
-    console.log(`Found ${channelIds.length} channels`);
-  }
+  let channelIds = CHANNEL_ID ? [CHANNEL_ID] : 
+    (await db.execute('SELECT DISTINCT channel FROM questions ORDER BY channel')).rows.map(r => r.channel);
 
-  // Load existing tests
-  let existingTests = [];
+  console.log(`${channelIds.length} channels`);
+
+  let tests = [];
   try {
     if (fs.existsSync(OUTPUT_FILE)) {
-      existingTests = JSON.parse(fs.readFileSync(OUTPUT_FILE, 'utf-8'));
-      console.log(`Loaded ${existingTests.length} existing tests`);
+      tests = JSON.parse(fs.readFileSync(OUTPUT_FILE, 'utf-8'));
     }
-  } catch {
-    existingTests = [];
-  }
+  } catch {}
 
-  const tests = [...existingTests];
   let generated = 0;
   
   for (const channelId of channelIds) {
-    // Skip if test already exists (unless regenerating specific channel)
     if (!CHANNEL_ID && tests.find(t => t.channelId === channelId)) {
-      console.log(`\n⏭️ Skipping ${channelId} (test exists)`);
+      console.log(`⏭️ ${channelId} exists`);
       continue;
     }
 
     const test = await generateTestForChannel(channelId);
     if (test) {
-      // Remove old test for this channel if exists
       const idx = tests.findIndex(t => t.channelId === channelId);
-      if (idx >= 0) {
-        tests[idx] = test;
-      } else {
-        tests.push(test);
-      }
+      if (idx >= 0) tests[idx] = test;
+      else tests.push(test);
       generated++;
     }
 
-    // Stop after generating a few to avoid long runs
-    if (!CHANNEL_ID && generated >= 3) {
-      console.log(`\n⏸️ Generated ${generated} tests, stopping to avoid timeout`);
+    if (!CHANNEL_ID && generated >= 1) {
+      console.log(`\n⏸️ Done ${generated}`);
       break;
     }
   }
 
-  // Ensure output directory exists
   const dir = path.dirname(OUTPUT_FILE);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-  // Save tests
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(tests, null, 2));
-  console.log(`\n✅ Saved ${tests.length} tests to ${OUTPUT_FILE}`);
-
-  // Summary
-  console.log('\n📊 Summary:');
-  tests.forEach(t => {
-    console.log(`   - ${t.channelName}: ${t.questions.length} questions`);
-  });
+  console.log(`\n✅ ${tests.length} tests saved`);
 }
 
 main().catch(e => {
