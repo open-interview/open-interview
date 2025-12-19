@@ -997,6 +997,18 @@ export function getChallengeAttempts(): ChallengeAttempt[] {
   }
 }
 
+// Check if a specific challenge has been solved
+export function isChallengeSolved(challengeId: string): boolean {
+  const attempts = getChallengeAttempts();
+  return attempts.some(a => a.challengeId === challengeId && a.passed);
+}
+
+// Get all solved challenge IDs
+export function getSolvedChallengeIds(): Set<string> {
+  const attempts = getChallengeAttempts();
+  return new Set(attempts.filter(a => a.passed).map(a => a.challengeId));
+}
+
 // Get stats
 export function getCodingStats(): {
   totalAttempts: number;

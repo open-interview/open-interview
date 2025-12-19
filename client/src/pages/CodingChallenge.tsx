@@ -35,13 +35,14 @@ import {
   getAllChallenges,
   getChallengeById,
   getRandomChallenge,
-  runTests,
   runTestsAsync,
   saveChallengeAttempt,
   analyzeCodeComplexity,
   getCodingStats,
+  getSolvedChallengeIds,
   ComplexityAnalysis,
 } from '../lib/coding-challenges';
+import { GiscusComments } from '../components/GiscusComments';
 
 type ViewState = 'list' | 'challenge';
 
@@ -91,7 +92,15 @@ export default function CodingChallenge() {
   const [copied, setCopied] = useState(false);
   const [userComplexity, setUserComplexity] = useState<ComplexityAnalysis | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [solvedIds, setSolvedIds] = useState<Set<string>>(() => getSolvedChallengeIds());
   const stats = getCodingStats();
+
+  // Refresh solved IDs when returning to list or after solving
+  useEffect(() => {
+    if (viewState === 'list' || showSuccessModal) {
+      setSolvedIds(getSolvedChallengeIds());
+    }
+  }, [viewState, showSuccessModal]);
 
   // Save language preference when it changes
   useEffect(() => {
@@ -350,63 +359,81 @@ export default function CodingChallenge() {
 
               {/* Challenge List */}
               <div className="space-y-3" data-testid="challenge-list">
-                {challenges.map((challenge, i) => (
-                  <motion.div
-                    key={challenge.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    onClick={() => startChallenge(challenge)}
-                    className="border border-border p-4 bg-card rounded-lg cursor-pointer hover:border-primary/50 transition-colors group"
-                    data-testid={`challenge-card-${i}`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
-                          challenge.difficulty === 'easy' ? 'bg-green-500/20' : 'bg-yellow-500/20'
-                        }`}
-                      >
-                        <Code
-                          className={`w-6 h-6 ${
-                            challenge.difficulty === 'easy' ? 'text-green-500' : 'text-yellow-500'
+                {challenges.map((challenge, i) => {
+                  const isSolved = solvedIds.has(challenge.id);
+                  return (
+                    <motion.div
+                      key={challenge.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      onClick={() => startChallenge(challenge)}
+                      className={`border p-4 bg-card rounded-lg cursor-pointer hover:border-primary/50 transition-colors group ${
+                        isSolved ? 'border-green-500/30' : 'border-border'
+                      }`}
+                      data-testid={`challenge-card-${i}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div
+                          className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            isSolved
+                              ? 'bg-green-500/20'
+                              : challenge.difficulty === 'easy'
+                              ? 'bg-green-500/20'
+                              : 'bg-yellow-500/20'
                           }`}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-bold truncate">{challenge.title}</h3>
-                          <span
-                            className={`px-1.5 py-0.5 text-[9px] uppercase rounded ${
-                              challenge.difficulty === 'easy'
-                                ? 'bg-green-500/20 text-green-500'
-                                : 'bg-yellow-500/20 text-yellow-500'
-                            }`}
-                            data-testid="difficulty-badge"
-                          >
-                            {challenge.difficulty}
-                          </span>
+                        >
+                          {isSolved ? (
+                            <CheckCircle className="w-6 h-6 text-green-500" />
+                          ) : (
+                            <Code
+                              className={`w-6 h-6 ${
+                                challenge.difficulty === 'easy' ? 'text-green-500' : 'text-yellow-500'
+                              }`}
+                            />
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground line-clamp-1">
-                          {challenge.description}
-                        </p>
-                        <div className="flex items-center gap-2 mt-2 flex-wrap">
-                          {challenge.tags?.slice(0, 3).map((tag) => (
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-bold truncate">{challenge.title}</h3>
+                            {isSolved && (
+                              <span className="px-1.5 py-0.5 text-[9px] uppercase rounded bg-green-500/20 text-green-500">
+                                ✓ Solved
+                              </span>
+                            )}
                             <span
-                              key={tag}
-                              className="px-1.5 py-0.5 text-[9px] bg-primary/10 text-primary rounded font-mono"
+                              className={`px-1.5 py-0.5 text-[9px] uppercase rounded ${
+                                challenge.difficulty === 'easy'
+                                  ? 'bg-green-500/20 text-green-500'
+                                  : 'bg-yellow-500/20 text-yellow-500'
+                              }`}
+                              data-testid="difficulty-badge"
                             >
-                              {tag}
+                              {challenge.difficulty}
                             </span>
-                          ))}
-                          <span className="text-[10px] text-muted-foreground ml-1">
-                            {challenge.testCases.length} tests • {challenge.timeLimit} min
-                          </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-1">
+                            {challenge.description}
+                          </p>
+                          <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            {challenge.tags?.slice(0, 3).map((tag) => (
+                              <span
+                                key={tag}
+                                className="px-1.5 py-0.5 text-[9px] bg-primary/10 text-primary rounded font-mono"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                            <span className="text-[10px] text-muted-foreground ml-1">
+                              {challenge.testCases.length} tests • {challenge.timeLimit} min
+                            </span>
+                          </div>
                         </div>
+                        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
                       </div>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -605,6 +632,11 @@ export default function CodingChallenge() {
                       </div>
                     </motion.div>
                   )}
+
+                  {/* Discussion Section */}
+                  <div className="pt-4 border-t border-border">
+                    <GiscusComments questionId={`coding-${currentChallenge.id}`} />
+                  </div>
                 </div>
               </div>
 

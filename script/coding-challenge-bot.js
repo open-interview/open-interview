@@ -1,6 +1,7 @@
 /**
  * Coding Challenge Generator Bot
  * Generates coding challenges using OpenCode CLI (same pattern as other bots)
+ * Saves challenges to database as the source of truth
  * 
  * Usage:
  *   node script/coding-challenge-bot.js
@@ -11,8 +12,7 @@
  *   INPUT_COUNT - number of challenges to generate (default: 1)
  */
 
-import { runWithRetries, parseJson, writeGitHubOutput } from './utils.js';
-import { writeFileSync } from 'fs';
+import { runWithRetries, parseJson, writeGitHubOutput, dbClient, logBotActivity } from './utils.js';
 
 const CATEGORIES = [
   'arrays',
@@ -46,6 +46,106 @@ function getRandomCompanies() {
   const count = Math.floor(Math.random() * 3) + 2; // 2-4 companies
   const shuffled = [...TOP_COMPANIES].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
+}
+
+// Initialize coding_challenges table
+async function initCodingChallengesTable() {
+  console.log('📦 Ensuring coding_challenges table exists...');
+  
+  await dbClient.execute(`
+    CREATE TABLE IF NOT EXISTS coding_challenges (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      difficulty TEXT NOT NULL,
+      category TEXT NOT NULL,
+      tags TEXT,
+      companies TEXT,
+      starter_code_js TEXT,
+      starter_code_py TEXT,
+      test_cases TEXT NOT NULL,
+      hints TEXT,
+      solution_js TEXT,
+      solution_py TEXT,
+      complexity_time TEXT,
+      complexity_space TEXT,
+      complexity_explanation TEXT,
+      time_limit INTEGER DEFAULT 15,
+      created_at TEXT,
+      last_updated TEXT
+    )
+  `);
+  
+  // Create indexes
+  await dbClient.execute(`CREATE INDEX IF NOT EXISTS idx_coding_difficulty ON coding_challenges(difficulty)`);
+  await dbClient.execute(`CREATE INDEX IF NOT EXISTS idx_coding_category ON coding_challenges(category)`);
+  
+  console.log('✅ Table ready');
+}
+
+// Generate unique ID for coding challenge
+async function generateChallengeId() {
+  const result = await dbClient.execute(`
+    SELECT MAX(CAST(SUBSTR(id, 3) AS INTEGER)) as max_num 
+    FROM coding_challenges 
+    WHERE id LIKE 'cc%' AND id GLOB 'cc[0-9]*'
+  `);
+  
+  const maxNum = result.rows[0]?.max_num || 0;
+  return `cc${maxNum + 1}`;
+}
+
+// Check for duplicate challenge by title similarity
+async function isDuplicateChallenge(title) {
+  const result = await dbClient.execute({
+    sql: `SELECT title FROM coding_challenges WHERE LOWER(title) = LOWER(?)`,
+    args: [title]
+  });
+  return result.rows.length > 0;
+}
+
+// Save challenge to database
+async function saveChallengeToDb(challenge) {
+  const id = await generateChallengeId();
+  const now = new Date().toISOString();
+  
+  await dbClient.execute({
+    sql: `INSERT INTO coding_challenges 
+          (id, title, description, difficulty, category, tags, companies,
+           starter_code_js, starter_code_py, test_cases, hints,
+           solution_js, solution_py, complexity_time, complexity_space,
+           complexity_explanation, time_limit, created_at, last_updated)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      id,
+      challenge.title,
+      challenge.description,
+      challenge.difficulty,
+      challenge.category,
+      JSON.stringify(challenge.tags || []),
+      JSON.stringify(challenge.companies || []),
+      challenge.starterCode?.javascript || '',
+      challenge.starterCode?.python || '',
+      JSON.stringify(challenge.testCases),
+      JSON.stringify(challenge.hints || []),
+      challenge.sampleSolution?.javascript || '',
+      challenge.sampleSolution?.python || '',
+      challenge.complexity?.time || 'O(n)',
+      challenge.complexity?.space || 'O(1)',
+      challenge.complexity?.explanation || '',
+      challenge.timeLimit || 15,
+      now,
+      now
+    ]
+  });
+  
+  return id;
+}
+
+// Get count of challenges in database
+async function getChallengeCount() {
+  const result = await dbClient.execute('SELECT COUNT(*) as count FROM coding_challenges');
+  return result.rows[0]?.count || 0;
 }
 
 const SYSTEM_PROMPT = `You are an expert coding interview question creator for a LeetCode-style platform.
@@ -197,11 +297,17 @@ async function generateChallenge(difficulty, category) {
 async function main() {
   console.log('=== 🤖 Coding Challenge Generator Bot ===\n');
   
+  // Initialize database table
+  await initCodingChallengesTable();
+  
+  const initialCount = await getChallengeCount();
+  console.log(`📊 Current challenges in database: ${initialCount}`);
+  
   const inputDifficulty = process.env.INPUT_DIFFICULTY || 'random';
   const inputCategory = process.env.INPUT_CATEGORY || 'random';
   const inputCount = parseInt(process.env.INPUT_COUNT || '1', 10);
   
-  console.log(`Configuration:`);
+  console.log(`\nConfiguration:`);
   console.log(`  Difficulty: ${inputDifficulty}`);
   console.log(`  Category: ${inputCategory}`);
   console.log(`  Count: ${inputCount}`);
@@ -223,39 +329,53 @@ async function main() {
     const challenge = await generateChallenge(difficulty, category);
     
     if (challenge) {
-      generated.push(challenge);
-      console.log(`✅ Generated: ${challenge.title}`);
-      console.log(`   Difficulty: ${challenge.difficulty}`);
-      console.log(`   Category: ${challenge.category}`);
-      console.log(`   Companies: ${challenge.companies?.join(', ') || 'N/A'}`);
-      console.log(`   Test cases: ${challenge.testCases.length}`);
+      // Check for duplicates
+      if (await isDuplicateChallenge(challenge.title)) {
+        console.log(`⚠️ Duplicate title detected: ${challenge.title}`);
+        failed.push({ difficulty, category, reason: 'Duplicate title' });
+        continue;
+      }
+      
+      // Save to database
+      try {
+        const challengeId = await saveChallengeToDb(challenge);
+        challenge.id = challengeId;
+        generated.push(challenge);
+        
+        console.log(`✅ Saved to database: ${challengeId}`);
+        console.log(`   Title: ${challenge.title}`);
+        console.log(`   Difficulty: ${challenge.difficulty}`);
+        console.log(`   Category: ${challenge.category}`);
+        console.log(`   Companies: ${challenge.companies?.join(', ') || 'N/A'}`);
+        console.log(`   Test cases: ${challenge.testCases.length}`);
+        
+        // Log bot activity
+        await logBotActivity(challengeId, 'coding-challenge', 'new challenge created', 'completed', {
+          difficulty: challenge.difficulty,
+          category: challenge.category,
+          companies: challenge.companies
+        });
+      } catch (dbError) {
+        console.log(`❌ Database error: ${dbError.message}`);
+        failed.push({ difficulty, category, reason: `DB error: ${dbError.message}` });
+      }
     } else {
       failed.push({ difficulty, category, reason: 'Generation failed' });
     }
   }
   
-  // Save generated challenges to file
-  if (generated.length > 0) {
-    const outputFile = `generated_coding_challenges_${Date.now()}.json`;
-    writeFileSync(outputFile, JSON.stringify(generated, null, 2));
-    console.log(`\n📁 Saved ${generated.length} challenges to ${outputFile}`);
-    
-    // Also save the latest single challenge for easy access
-    if (generated.length === 1) {
-      writeFileSync('generated_coding_challenge.json', JSON.stringify(generated[0], null, 2));
-      console.log('📁 Also saved to generated_coding_challenge.json');
-    }
-  }
+  const finalCount = await getChallengeCount();
   
   // Summary
   console.log('\n=== SUMMARY ===');
   console.log(`Generated: ${generated.length}/${inputCount}`);
   console.log(`Failed: ${failed.length}`);
+  console.log(`Total challenges in database: ${finalCount}`);
   
   if (generated.length > 0) {
-    console.log('\n✅ Generated Challenges:');
+    console.log('\n✅ Added Challenges:');
     generated.forEach((c, i) => {
-      console.log(`  ${i + 1}. ${c.title} (${c.difficulty}, ${c.category})`);
+      console.log(`  ${i + 1}. [${c.id}] ${c.title} (${c.difficulty}, ${c.category})`);
     });
   }
   
@@ -267,6 +387,8 @@ async function main() {
   writeGitHubOutput({
     generated_count: generated.length,
     failed_count: failed.length,
+    total_challenges: finalCount,
+    added_ids: generated.map(c => c.id).join(',')
   });
 }
 

@@ -205,5 +205,148 @@ export async function registerRoutes(
   // Note: Bot activity is served from static JSON file at /data/bot-activity.json
   // Generated during build by fetch-questions-for-build.js
 
+  // ============================================
+  // CODING CHALLENGES API
+  // ============================================
+
+  // Helper to parse coding challenge from DB row
+  function parseCodingChallenge(row: any) {
+    return {
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      difficulty: row.difficulty,
+      category: row.category,
+      tags: row.tags ? JSON.parse(row.tags) : [],
+      companies: row.companies ? JSON.parse(row.companies) : [],
+      starterCode: {
+        javascript: row.starter_code_js || '',
+        python: row.starter_code_py || '',
+      },
+      testCases: row.test_cases ? JSON.parse(row.test_cases) : [],
+      hints: row.hints ? JSON.parse(row.hints) : [],
+      sampleSolution: {
+        javascript: row.solution_js || '',
+        python: row.solution_py || '',
+      },
+      complexity: {
+        time: row.complexity_time || 'O(n)',
+        space: row.complexity_space || 'O(1)',
+        explanation: row.complexity_explanation || '',
+      },
+      timeLimit: row.time_limit || 15,
+    };
+  }
+
+  // Get all coding challenges
+  app.get("/api/coding/challenges", async (req, res) => {
+    try {
+      const { difficulty, category } = req.query;
+      
+      let sql = "SELECT * FROM coding_challenges WHERE 1=1";
+      const args: any[] = [];
+
+      if (difficulty && difficulty !== "all") {
+        sql += " AND difficulty = ?";
+        args.push(difficulty);
+      }
+      if (category && category !== "all") {
+        sql += " AND category = ?";
+        args.push(category);
+      }
+
+      sql += " ORDER BY created_at DESC";
+
+      const result = await client.execute({ sql, args });
+      res.json(result.rows.map(parseCodingChallenge));
+    } catch (error) {
+      console.error("Error fetching coding challenges:", error);
+      // Return empty array if table doesn't exist yet
+      res.json([]);
+    }
+  });
+
+  // Get a single coding challenge by ID
+  app.get("/api/coding/challenge/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const result = await client.execute({
+        sql: "SELECT * FROM coding_challenges WHERE id = ? LIMIT 1",
+        args: [id]
+      });
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Challenge not found" });
+      }
+
+      res.json(parseCodingChallenge(result.rows[0]));
+    } catch (error) {
+      console.error("Error fetching coding challenge:", error);
+      res.status(500).json({ error: "Failed to fetch challenge" });
+    }
+  });
+
+  // Get a random coding challenge
+  app.get("/api/coding/random", async (req, res) => {
+    try {
+      const { difficulty } = req.query;
+      
+      let sql = "SELECT * FROM coding_challenges WHERE 1=1";
+      const args: any[] = [];
+
+      if (difficulty && difficulty !== "all") {
+        sql += " AND difficulty = ?";
+        args.push(difficulty);
+      }
+
+      sql += " ORDER BY RANDOM() LIMIT 1";
+
+      const result = await client.execute({ sql, args });
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "No challenges found" });
+      }
+
+      res.json(parseCodingChallenge(result.rows[0]));
+    } catch (error) {
+      console.error("Error fetching random challenge:", error);
+      res.status(500).json({ error: "Failed to fetch random challenge" });
+    }
+  });
+
+  // Get coding challenge stats
+  app.get("/api/coding/stats", async (_req, res) => {
+    try {
+      const result = await client.execute(
+        "SELECT difficulty, category, COUNT(*) as count FROM coding_challenges GROUP BY difficulty, category"
+      );
+
+      const stats = {
+        total: 0,
+        byDifficulty: { easy: 0, medium: 0 },
+        byCategory: {} as Record<string, number>,
+      };
+
+      for (const row of result.rows) {
+        const count = Number(row.count);
+        stats.total += count;
+        
+        const diff = row.difficulty as string;
+        if (diff === 'easy' || diff === 'medium') {
+          stats.byDifficulty[diff] += count;
+        }
+        
+        const cat = row.category as string;
+        stats.byCategory[cat] = (stats.byCategory[cat] || 0) + count;
+      }
+
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching coding stats:", error);
+      res.json({ total: 0, byDifficulty: { easy: 0, medium: 0 }, byCategory: {} });
+    }
+  });
+
   return httpServer;
 }
