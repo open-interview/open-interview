@@ -90,17 +90,19 @@ export default function Stats() {
       if (completedIds.has(q.id)) difficulty[d].done++;
     });
 
+    // Cap completed at total to handle recategorized questions
+    const validCompleted = Math.min(completedIds.size, questions.length);
     return { 
       id: ch.id, name: ch.name.replace(/\./g, ''), 
-      completed: completedIds.size, total: questions.length, 
-      pct: questions.length > 0 ? Math.round((completedIds.size / questions.length) * 100) : 0,
+      completed: validCompleted, total: questions.length, 
+      pct: questions.length > 0 ? Math.min(100, Math.round((validCompleted / questions.length) * 100)) : 0,
       difficulty
     };
   }).filter(m => m.total > 0).sort((a, b) => b.pct - a.pct);
 
-  const totalCompleted = allCompletedIds.size;
+  const totalCompleted = Math.min(allCompletedIds.size, allQuestions.length);
   const totalQuestions = allQuestions.length;
-  const overallPct = totalQuestions > 0 ? Math.round((totalCompleted / totalQuestions) * 100) : 0;
+  const overallPct = totalQuestions > 0 ? Math.min(100, Math.round((totalCompleted / totalQuestions) * 100)) : 0;
 
   // Global difficulty stats
   const globalDifficulty = { beginner: { total: 0, done: 0 }, intermediate: { total: 0, done: 0 }, advanced: { total: 0, done: 0 } };
@@ -203,7 +205,8 @@ export default function Stats() {
               const stored = localStorage.getItem(`progress-${ch.id}`);
               const completedIds = stored ? new Set(JSON.parse(stored)) : new Set<string>();
               if (completedIds.size > 0) channelsWithProgress.push(ch.id);
-              if (questions.length > 0) channelCompletionPcts.push(Math.round((completedIds.size / questions.length) * 100));
+              // Cap at 100% to handle recategorized questions
+              if (questions.length > 0) channelCompletionPcts.push(Math.min(100, Math.round((completedIds.size / questions.length) * 100)));
             });
             const badgeProgress = calculateBadgeProgress(
               totalCompleted, streak, channelsWithProgress,

@@ -72,13 +72,15 @@ export default function StatsRedesigned() {
         }
       });
 
-      const pct = questions.length > 0 ? Math.round((completedIds.size / questions.length) * 100) : 0;
+      // Cap at 100% to handle recategorized questions
+      const validCompleted = Math.min(completedIds.size, questions.length);
+      const pct = questions.length > 0 ? Math.min(100, Math.round((validCompleted / questions.length) * 100)) : 0;
       if (questions.length > 0) channelCompletionPcts.push(pct);
 
       return {
         id: ch.id,
         name: ch.name,
-        completed: completedIds.size,
+        completed: validCompleted,
         total: questions.length,
         pct,
         difficulty
@@ -120,10 +122,11 @@ export default function StatsRedesigned() {
       channels.length
     );
 
+    const validTotalCompleted = Math.min(allCompletedIds.size, allQuestions.length);
     return {
-      totalCompleted: allCompletedIds.size,
+      totalCompleted: validTotalCompleted,
       totalQuestions: allQuestions.length,
-      overallPct: allQuestions.length > 0 ? Math.round((allCompletedIds.size / allQuestions.length) * 100) : 0,
+      overallPct: allQuestions.length > 0 ? Math.min(100, Math.round((validTotalCompleted / allQuestions.length) * 100)) : 0,
       streak: currentStreak,
       totalSessions: stats.reduce((a, c) => a + c.count, 0),
       globalDifficulty: globalDiff,

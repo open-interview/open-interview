@@ -28,9 +28,9 @@ test.describe('Home Page', () => {
   test('should show progress for each channel', async ({ page }) => {
     await page.goto('/');
     
-    // Should show progress indicators (new UI shows percentage like "0%" or "complete" text)
+    // Should show progress indicators (new UI shows percentage like "0%" and "done" text)
     // Just check that the page has loaded with channel cards showing progress
-    const progressIndicator = page.getByText(/complete/i).first();
+    const progressIndicator = page.getByText(/done|complete|%/i).first();
     await expect(progressIndicator).toBeVisible({ timeout: 5000 });
   });
 

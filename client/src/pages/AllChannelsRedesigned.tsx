@@ -219,7 +219,8 @@ function ChannelCard({
   index: number;
 }) {
   const { completed } = useProgress(channel.id);
-  const progress = questionCount > 0 ? Math.round((completed.length / questionCount) * 100) : 0;
+  // Cap at 100% - completed can exceed questionCount if questions were recategorized
+  const progress = questionCount > 0 ? Math.min(100, Math.round((completed.length / questionCount) * 100)) : 0;
 
   return (
     <motion.div

@@ -226,7 +226,9 @@ function ChannelCard({ channel, questionCount, index, onClick }: {
   onClick: () => void;
 }) {
   const { completed } = useProgress(channel.id);
-  const progress = questionCount > 0 ? Math.round((completed.length / questionCount) * 100) : 0;
+  // Cap progress at 100% - completed can exceed questionCount if questions were removed
+  const validCompleted = Math.min(completed.length, questionCount);
+  const progress = questionCount > 0 ? Math.min(100, Math.round((validCompleted / questionCount) * 100)) : 0;
 
   return (
     <motion.div
@@ -256,7 +258,7 @@ function ChannelCard({ channel, questionCount, index, onClick }: {
       {/* Progress bar */}
       <div className="space-y-1.5 lg:space-y-2">
         <div className="flex justify-between text-[10px] lg:text-xs text-muted-foreground">
-          <span>{completed.length}/{questionCount}</span>
+          <span>{validCompleted}/{questionCount}</span>
         </div>
         <div className="h-1.5 lg:h-2 bg-muted rounded-full overflow-hidden">
           <motion.div

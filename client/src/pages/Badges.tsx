@@ -63,7 +63,8 @@ export default function Badges() {
       }
       
       if (questions.length > 0) {
-        channelCompletionPcts.push(Math.round((completedIds.size / questions.length) * 100));
+        // Cap at 100% to handle recategorized questions
+        channelCompletionPcts.push(Math.min(100, Math.round((completedIds.size / questions.length) * 100)));
       }
       
       questions.forEach(q => {

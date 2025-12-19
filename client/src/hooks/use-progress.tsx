@@ -1,14 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 interface ProgressEntry {
   questionId: string;
   timestamp: number;
 }
 
-export function useProgress(channelId: string) {
+export function useProgress(channelId: string, validQuestionIds?: string[]) {
   const [completed, setCompleted] = useState<string[]>([]);
   const [history, setHistory] = useState<ProgressEntry[]>([]);
-
   const [lastVisitedIndex, setLastVisitedIndex] = useState(0);
 
   useEffect(() => {
@@ -30,6 +29,16 @@ export function useProgress(channelId: string) {
         setLastVisitedIndex(parseInt(savedIndex));
     }
   }, [channelId]);
+
+  // Filter completed IDs to only include valid questions still in this channel
+  // This handles recategorization - old IDs that moved to other channels are excluded
+  const validCompleted = useMemo(() => {
+    if (!validQuestionIds || validQuestionIds.length === 0) {
+      return completed;
+    }
+    const validSet = new Set(validQuestionIds);
+    return completed.filter(id => validSet.has(id));
+  }, [completed, validQuestionIds]);
 
   const saveLastVisitedIndex = (index: number) => {
       localStorage.setItem(`last-index-${channelId}`, index.toString());
@@ -53,7 +62,25 @@ export function useProgress(channelId: string) {
     });
   };
 
-  return { completed, history, markCompleted, lastVisitedIndex, saveLastVisitedIndex };
+  // Clean up stale completed IDs that no longer exist in the channel
+  const cleanupStaleProgress = (currentValidIds: string[]) => {
+    const validSet = new Set(currentValidIds);
+    const cleaned = completed.filter(id => validSet.has(id));
+    if (cleaned.length !== completed.length) {
+      localStorage.setItem(`progress-${channelId}`, JSON.stringify(cleaned));
+      setCompleted(cleaned);
+    }
+  };
+
+  return { 
+    completed: validCompleted, 
+    rawCompleted: completed, // Original unfiltered for debugging
+    history, 
+    markCompleted, 
+    lastVisitedIndex, 
+    saveLastVisitedIndex,
+    cleanupStaleProgress
+  };
 }
 
 // Track a session/activity
