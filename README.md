@@ -57,6 +57,12 @@ See your streaks, completion rates, and flex on your consistency.
 ### 🏆 Earn Badges
 Gamified learning because dopamine hits > boring checkboxes.
 
+### 💻 Coding Challenges
+Practice real coding problems with an in-browser editor. Python & JavaScript supported.
+
+### 🔍 Instant Search
+Find any question instantly with Pagefind-powered search. Filter by topic, difficulty, or company.
+
 ### 🤖 AI-Powered Content
 Fresh questions added daily by our AI bots. Always something new.
 
@@ -125,6 +131,7 @@ For the light mode enthusiasts (we don't judge... much 😏)
 | 🔒 **Security** | Application Security, Networking |
 | 🧪 **Testing** | Unit Testing, E2E Testing, API Testing, Performance Testing |
 | 👥 **Soft Skills** | Behavioral, Engineering Management |
+| 💻 **Coding** | Arrays, Strings, Hash Maps, Dynamic Programming, Trees |
 
 ---
 
@@ -183,8 +190,10 @@ Built with the good stuff:
 - **Frontend**: React 19, TypeScript, Tailwind CSS, Framer Motion
 - **Backend**: Express.js, Drizzle ORM
 - **Database**: Turso (SQLite edge)
+- **Search**: Pagefind (static search)
+- **Code Editor**: Monaco Editor
 - **Diagrams**: Mermaid.js
-- **Testing**: Playwright
+- **Testing**: Playwright (216 E2E tests)
 - **CI/CD**: GitHub Actions
 
 ---

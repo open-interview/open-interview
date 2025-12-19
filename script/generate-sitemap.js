@@ -44,6 +44,9 @@ const channels = [
 const staticPages = [
   { path: '/', priority: '1.0', changefreq: 'daily', title: 'Home' },
   { path: '/channels', priority: '0.9', changefreq: 'daily', title: 'All Channels' },
+  { path: '/coding', priority: '0.9', changefreq: 'weekly', title: 'Coding Challenges' },
+  { path: '/tests', priority: '0.8', changefreq: 'weekly', title: 'Practice Tests' },
+  { path: '/badges', priority: '0.7', changefreq: 'weekly', title: 'Badges & Achievements' },
   { path: '/whats-new', priority: '0.8', changefreq: 'daily', title: 'What\'s New' },
   { path: '/about', priority: '0.6', changefreq: 'monthly', title: 'About' },
   { path: '/stats', priority: '0.7', changefreq: 'weekly', title: 'Statistics' },
