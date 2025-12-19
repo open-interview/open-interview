@@ -99,6 +99,73 @@ async function main() {
   fs.writeFileSync(channelsFile, JSON.stringify(channelStats, null, 0));
   console.log(`   ✓ channels.json (${channelStats.length} channels)`);
 
+  // Fetch channel metadata from DB (source of truth)
+  console.log('\n📥 Fetching channel metadata...');
+  try {
+    const channelsMetaResult = await client.execute(`
+      SELECT id, name, description, icon, color, category, roles, sort_order
+      FROM channels ORDER BY sort_order
+    `);
+    
+    const channelsMeta = channelsMetaResult.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      icon: row.icon,
+      color: row.color,
+      category: row.category,
+      roles: row.roles ? JSON.parse(row.roles) : [],
+      questionCount: channelData[row.id]?.stats.total || 0
+    }));
+    
+    const channelsMetaFile = path.join(OUTPUT_DIR, 'channels-meta.json');
+    fs.writeFileSync(channelsMetaFile, JSON.stringify(channelsMeta, null, 0));
+    console.log(`   ✓ channels-meta.json (${channelsMeta.length} channels with metadata)`);
+    
+    // Fetch subchannels for each channel
+    const subchannelsResult = await client.execute(`
+      SELECT channel_id, sub_channel, name, tags, sort_order
+      FROM subchannels ORDER BY channel_id, sort_order
+    `);
+    
+    // Group by channel
+    const subchannelsByChannel = {};
+    for (const row of subchannelsResult.rows) {
+      const channelId = row.channel_id;
+      if (!subchannelsByChannel[channelId]) {
+        subchannelsByChannel[channelId] = [];
+      }
+      subchannelsByChannel[channelId].push({
+        id: row.sub_channel,
+        name: row.name,
+        tags: row.tags ? JSON.parse(row.tags) : []
+      });
+    }
+    
+    // Write subchannel files for each channel
+    for (const [channelId, subs] of Object.entries(subchannelsByChannel)) {
+      const subchannelFile = path.join(OUTPUT_DIR, `${channelId}-subchannels.json`);
+      fs.writeFileSync(subchannelFile, JSON.stringify(subs, null, 0));
+    }
+    console.log(`   ✓ *-subchannels.json (${Object.keys(subchannelsByChannel).length} channel subchannel files)`);
+    
+    // Write combined channel configs for bots
+    const channelConfigs = {};
+    for (const ch of channelsMeta) {
+      channelConfigs[ch.id] = {
+        ...ch,
+        subChannels: subchannelsByChannel[ch.id] || []
+      };
+    }
+    const channelConfigsFile = path.join(OUTPUT_DIR, 'channel-configs.json');
+    fs.writeFileSync(channelConfigsFile, JSON.stringify(channelConfigs, null, 0));
+    console.log(`   ✓ channel-configs.json (combined config for bots)`);
+    
+  } catch (e) {
+    console.log(`   ⚠️ Could not fetch channel metadata: ${e.message}`);
+    console.log(`   (Run 'node script/seed-channels.js' to populate channels table)`);
+  }
+
   // Write all questions index (for search)
   const allQuestionsFile = path.join(OUTPUT_DIR, 'all-questions.json');
   const searchIndex = questions.map(q => ({

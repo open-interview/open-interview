@@ -1,3 +1,12 @@
+/**
+ * @deprecated This file is being replaced by database-driven channel configs.
+ * Use the useChannelsMeta() hook from hooks/use-channels.ts instead.
+ * The database tables `channels` and `subchannels` are now the source of truth.
+ * Run `node script/seed-channels.js` to populate the database.
+ * 
+ * This file is kept for backward compatibility during migration.
+ */
+
 // All available channels with metadata
 export interface ChannelConfig {
   id: string;

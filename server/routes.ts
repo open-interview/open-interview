@@ -29,16 +29,136 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  // Get all channels with question counts
+  // Get all channels with metadata and question counts
   app.get("/api/channels", async (_req, res) => {
     try {
-      const result = await client.execute(
+      // Get channel metadata from channels table
+      const channelsResult = await client.execute(
+        "SELECT id, name, description, icon, color, category, roles, sort_order FROM channels ORDER BY sort_order"
+      );
+      
+      // Get question counts per channel
+      const countsResult = await client.execute(
         "SELECT channel, COUNT(*) as count FROM questions GROUP BY channel"
       );
-      res.json(result.rows.map(r => ({ id: r.channel, questionCount: r.count })));
+      
+      const countMap = new Map(countsResult.rows.map(r => [r.channel as string, Number(r.count)]));
+      
+      const channels = channelsResult.rows.map(r => ({
+        id: r.id as string,
+        name: r.name as string,
+        description: r.description as string,
+        icon: r.icon as string,
+        color: r.color as string,
+        category: r.category as string,
+        roles: r.roles ? JSON.parse(r.roles as string) : [],
+        questionCount: countMap.get(r.id as string) || 0
+      }));
+      
+      res.json(channels);
     } catch (error) {
       console.error("Error fetching channels:", error);
       res.status(500).json({ error: "Failed to fetch channels" });
+    }
+  });
+
+  // Get channel metadata by ID
+  app.get("/api/channel/:channelId/meta", async (req, res) => {
+    try {
+      const { channelId } = req.params;
+      
+      const result = await client.execute({
+        sql: "SELECT id, name, description, icon, color, category, roles FROM channels WHERE id = ?",
+        args: [channelId]
+      });
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Channel not found" });
+      }
+      
+      const r = result.rows[0];
+      res.json({
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        icon: r.icon,
+        color: r.color,
+        category: r.category,
+        roles: r.roles ? JSON.parse(r.roles as string) : []
+      });
+    } catch (error) {
+      console.error("Error fetching channel metadata:", error);
+      res.status(500).json({ error: "Failed to fetch channel metadata" });
+    }
+  });
+
+  // Get subchannels with metadata for a channel
+  app.get("/api/channel/:channelId/subchannels", async (req, res) => {
+    try {
+      const { channelId } = req.params;
+      
+      const result = await client.execute({
+        sql: "SELECT sub_channel, name, tags FROM subchannels WHERE channel_id = ? ORDER BY sort_order",
+        args: [channelId]
+      });
+      
+      const subchannels = result.rows.map(r => ({
+        id: r.sub_channel as string,
+        name: r.name as string,
+        tags: r.tags ? JSON.parse(r.tags as string) : []
+      }));
+      
+      res.json(subchannels);
+    } catch (error) {
+      console.error("Error fetching subchannels:", error);
+      res.status(500).json({ error: "Failed to fetch subchannels" });
+    }
+  });
+
+  // Get all channel configs (for bots/scripts)
+  app.get("/api/channel-configs", async (_req, res) => {
+    try {
+      const channelsResult = await client.execute(
+        "SELECT id, name, description, icon, color, category, roles FROM channels ORDER BY sort_order"
+      );
+      
+      const subchannelsResult = await client.execute(
+        "SELECT channel_id, sub_channel, name, tags FROM subchannels ORDER BY channel_id, sort_order"
+      );
+      
+      // Group subchannels by channel
+      const subchannelMap = new Map<string, any[]>();
+      for (const r of subchannelsResult.rows) {
+        const channelId = r.channel_id as string;
+        if (!subchannelMap.has(channelId)) {
+          subchannelMap.set(channelId, []);
+        }
+        subchannelMap.get(channelId)!.push({
+          subChannel: r.sub_channel,
+          name: r.name,
+          tags: r.tags ? JSON.parse(r.tags as string) : []
+        });
+      }
+      
+      const configs: Record<string, any> = {};
+      for (const r of channelsResult.rows) {
+        const id = r.id as string;
+        configs[id] = {
+          id,
+          name: r.name,
+          description: r.description,
+          icon: r.icon,
+          color: r.color,
+          category: r.category,
+          roles: r.roles ? JSON.parse(r.roles as string) : [],
+          subChannels: subchannelMap.get(id) || []
+        };
+      }
+      
+      res.json(configs);
+    } catch (error) {
+      console.error("Error fetching channel configs:", error);
+      res.status(500).json({ error: "Failed to fetch channel configs" });
     }
   });
 

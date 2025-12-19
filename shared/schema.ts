@@ -8,6 +8,30 @@ export const users = sqliteTable("users", {
   password: text("password").notNull(),
 });
 
+// Channels - source of truth for channel metadata
+export const channels = sqliteTable("channels", {
+  id: text("id").primaryKey(), // e.g., 'system-design', 'algorithms'
+  name: text("name").notNull(), // Display name
+  description: text("description").notNull(),
+  icon: text("icon").notNull(), // Lucide icon name
+  color: text("color").notNull(), // Tailwind color class
+  category: text("category").notNull(), // 'engineering', 'cloud', 'ai', etc.
+  roles: text("roles"), // JSON array of role IDs
+  sortOrder: integer("sort_order").default(0),
+  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+});
+
+// Subchannels - source of truth for subchannel metadata
+export const subchannels = sqliteTable("subchannels", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  channelId: text("channel_id").notNull().references(() => channels.id),
+  subChannel: text("sub_channel").notNull(), // e.g., 'infrastructure', 'distributed-systems'
+  name: text("name").notNull(), // Display name
+  tags: text("tags"), // JSON array of related tags for question generation
+  sortOrder: integer("sort_order").default(0),
+  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+});
+
 export const questions = sqliteTable("questions", {
   id: text("id").primaryKey(),
   question: text("question").notNull(),
@@ -57,8 +81,14 @@ export const insertUserSchema = createInsertSchema(users).pick({
 });
 
 export const insertQuestionSchema = createInsertSchema(questions);
+export const insertChannelSchema = createInsertSchema(channels);
+export const insertSubchannelSchema = createInsertSchema(subchannels);
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertQuestion = z.infer<typeof insertQuestionSchema>;
 export type Question = typeof questions.$inferSelect;
+export type InsertChannel = z.infer<typeof insertChannelSchema>;
+export type Channel = typeof channels.$inferSelect;
+export type InsertSubchannel = z.infer<typeof insertSubchannelSchema>;
+export type Subchannel = typeof subchannels.$inferSelect;

@@ -995,3 +995,97 @@ export async function getRecentBotActivity(limit = 50, botType = null) {
     channel: row.channel
   }));
 }
+
+// ============================================
+// CHANNEL CONFIGURATION (from DB)
+// ============================================
+
+// Cache for channel configs
+let _channelConfigsCache = null;
+let _channelConfigsCacheTime = 0;
+const CHANNEL_CACHE_TTL_MS = 300000; // 5 minutes
+
+// Get all channel configurations from database
+export async function getChannelConfigs() {
+  const now = Date.now();
+  
+  // Return cached data if valid
+  if (_channelConfigsCache && (now - _channelConfigsCacheTime) < CHANNEL_CACHE_TTL_MS) {
+    return _channelConfigsCache;
+  }
+  
+  // Fetch channels
+  const channelsResult = await dbClient.execute(`
+    SELECT id, name, description, icon, color, category, roles, sort_order
+    FROM channels ORDER BY sort_order
+  `);
+  
+  // Fetch subchannels
+  const subchannelsResult = await dbClient.execute(`
+    SELECT channel_id, sub_channel, name, tags, sort_order
+    FROM subchannels ORDER BY channel_id, sort_order
+  `);
+  
+  // Group subchannels by channel
+  const subchannelMap = {};
+  for (const row of subchannelsResult.rows) {
+    const channelId = row.channel_id;
+    if (!subchannelMap[channelId]) {
+      subchannelMap[channelId] = [];
+    }
+    subchannelMap[channelId].push({
+      subChannel: row.sub_channel,
+      name: row.name,
+      tags: row.tags ? JSON.parse(row.tags) : []
+    });
+  }
+  
+  // Build config object
+  const configs = {};
+  for (const row of channelsResult.rows) {
+    const id = row.id;
+    configs[id] = {
+      id,
+      name: row.name,
+      description: row.description,
+      icon: row.icon,
+      color: row.color,
+      category: row.category,
+      roles: row.roles ? JSON.parse(row.roles) : [],
+      subChannels: subchannelMap[id] || []
+    };
+  }
+  
+  // Update cache
+  _channelConfigsCache = configs;
+  _channelConfigsCacheTime = now;
+  
+  return configs;
+}
+
+// Get all channel IDs from database
+export async function getAllChannelIds() {
+  const configs = await getChannelConfigs();
+  return Object.keys(configs);
+}
+
+// Get subchannels for a specific channel
+export async function getSubchannelsForChannel(channelId) {
+  const configs = await getChannelConfigs();
+  return configs[channelId]?.subChannels || [];
+}
+
+// Get a random subchannel config for a channel
+export async function getRandomSubchannel(channelId) {
+  const subchannels = await getSubchannelsForChannel(channelId);
+  if (subchannels.length === 0) {
+    return { subChannel: 'general', name: 'General', tags: [channelId] };
+  }
+  return subchannels[Math.floor(Math.random() * subchannels.length)];
+}
+
+// Clear channel config cache
+export function clearChannelConfigCache() {
+  _channelConfigsCache = null;
+  _channelConfigsCacheTime = 0;
+}

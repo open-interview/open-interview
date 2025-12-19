@@ -11,107 +11,14 @@ import {
   normalizeCompanies,
   logBotActivity,
   getChannelQuestionCounts,
-  getQuestionCount
+  getQuestionCount,
+  getChannelConfigs,
+  getAllChannelIds,
+  getRandomSubchannel
 } from './utils.js';
 
-// Channel configurations
-const channelConfigs = {
-  'system-design': [
-    { subChannel: 'infrastructure', tags: ['infra', 'scale', 'distributed'] },
-    { subChannel: 'distributed-systems', tags: ['dist-sys', 'cap-theorem', 'consensus'] },
-    { subChannel: 'api-design', tags: ['api', 'rest', 'grpc', 'graphql'] },
-    { subChannel: 'caching', tags: ['cache', 'redis', 'memcached', 'cdn'] },
-    { subChannel: 'load-balancing', tags: ['lb', 'traffic', 'nginx', 'haproxy'] },
-    { subChannel: 'message-queues', tags: ['kafka', 'rabbitmq', 'sqs', 'pubsub'] },
-  ],
-  'algorithms': [
-    { subChannel: 'data-structures', tags: ['arrays', 'linkedlist', 'hashtable', 'heap'] },
-    { subChannel: 'sorting', tags: ['quicksort', 'mergesort', 'complexity'] },
-    { subChannel: 'dynamic-programming', tags: ['dp', 'memoization', 'tabulation'] },
-    { subChannel: 'graphs', tags: ['bfs', 'dfs', 'dijkstra', 'topological'] },
-    { subChannel: 'trees', tags: ['bst', 'avl', 'trie', 'segment-tree'] },
-  ],
-  'frontend': [
-    { subChannel: 'react', tags: ['react', 'hooks', 'context', 'redux'] },
-    { subChannel: 'javascript', tags: ['js', 'es6', 'closures', 'promises'] },
-    { subChannel: 'css', tags: ['css', 'flexbox', 'grid', 'animations'] },
-    { subChannel: 'performance', tags: ['lighthouse', 'bundle', 'lazy-loading'] },
-    { subChannel: 'web-apis', tags: ['dom', 'fetch', 'websocket', 'service-worker'] },
-  ],
-  'backend': [
-    { subChannel: 'apis', tags: ['rest', 'graphql', 'grpc', 'openapi'] },
-    { subChannel: 'microservices', tags: ['saga', 'cqrs', 'event-sourcing'] },
-    { subChannel: 'caching', tags: ['redis', 'memcached', 'cache-invalidation'] },
-    { subChannel: 'authentication', tags: ['jwt', 'oauth2', 'oidc', 'saml'] },
-    { subChannel: 'server-architecture', tags: ['scaling', 'sharding', 'replication'] },
-  ],
-  'database': [
-    { subChannel: 'sql', tags: ['joins', 'indexes', 'normalization', 'postgres'] },
-    { subChannel: 'nosql', tags: ['mongodb', 'dynamodb', 'cassandra', 'redis'] },
-    { subChannel: 'indexing', tags: ['btree', 'hash-index', 'composite'] },
-    { subChannel: 'transactions', tags: ['acid', 'isolation-levels', 'mvcc'] },
-    { subChannel: 'query-optimization', tags: ['explain', 'query-plan', 'partitioning'] },
-  ],
-  'devops': [
-    { subChannel: 'cicd', tags: ['github-actions', 'jenkins', 'gitlab-ci'] },
-    { subChannel: 'docker', tags: ['dockerfile', 'compose', 'multi-stage'] },
-    { subChannel: 'automation', tags: ['ansible', 'puppet', 'chef'] },
-    { subChannel: 'gitops', tags: ['argocd', 'flux', 'declarative'] },
-  ],
-  'sre': [
-    { subChannel: 'observability', tags: ['prometheus', 'grafana', 'opentelemetry'] },
-    { subChannel: 'reliability', tags: ['slo', 'sli', 'error-budget'] },
-    { subChannel: 'incident-management', tags: ['pagerduty', 'runbooks', 'postmortem'] },
-    { subChannel: 'chaos-engineering', tags: ['chaos-monkey', 'litmus', 'gremlin'] },
-    { subChannel: 'capacity-planning', tags: ['forecasting', 'autoscaling', 'load-testing'] },
-  ],
-  'kubernetes': [
-    { subChannel: 'pods', tags: ['containers', 'init-containers', 'sidecars'] },
-    { subChannel: 'services', tags: ['clusterip', 'nodeport', 'loadbalancer', 'ingress'] },
-    { subChannel: 'deployments', tags: ['rolling-update', 'canary', 'blue-green'] },
-    { subChannel: 'helm', tags: ['charts', 'values', 'templating'] },
-    { subChannel: 'operators', tags: ['crds', 'controllers', 'reconciliation'] },
-  ],
-  'aws': [
-    { subChannel: 'compute', tags: ['ec2', 'ecs', 'eks', 'fargate'] },
-    { subChannel: 'storage', tags: ['s3', 'ebs', 'efs', 'glacier'] },
-    { subChannel: 'serverless', tags: ['lambda', 'api-gateway', 'step-functions'] },
-    { subChannel: 'database', tags: ['rds', 'aurora', 'dynamodb', 'elasticache'] },
-    { subChannel: 'networking', tags: ['vpc', 'route53', 'cloudfront', 'alb'] },
-  ],
-  'generative-ai': [
-    { subChannel: 'llm-fundamentals', tags: ['transformer', 'attention', 'tokenization'] },
-    { subChannel: 'fine-tuning', tags: ['lora', 'qlora', 'peft', 'adapter'] },
-    { subChannel: 'rag', tags: ['retrieval', 'embeddings', 'vector-db', 'chunking'] },
-    { subChannel: 'agents', tags: ['langchain', 'autogen', 'tool-use', 'planning'] },
-    { subChannel: 'evaluation', tags: ['hallucination', 'faithfulness', 'relevance'] },
-  ],
-  'machine-learning': [
-    { subChannel: 'algorithms', tags: ['regression', 'classification', 'clustering'] },
-    { subChannel: 'model-training', tags: ['hyperparameter', 'cross-validation', 'regularization'] },
-    { subChannel: 'deployment', tags: ['mlflow', 'kubeflow', 'sagemaker'] },
-    { subChannel: 'deep-learning', tags: ['cnn', 'rnn', 'transformer', 'attention'] },
-    { subChannel: 'evaluation', tags: ['precision', 'recall', 'auc-roc', 'f1'] },
-  ],
-  'security': [
-    { subChannel: 'application-security', tags: ['xss', 'csrf', 'sqli', 'ssrf'] },
-    { subChannel: 'owasp', tags: ['top10', 'asvs', 'samm'] },
-    { subChannel: 'encryption', tags: ['aes', 'rsa', 'tls', 'hashing'] },
-    { subChannel: 'authentication', tags: ['mfa', 'passkeys', 'zero-trust'] },
-  ],
-  'testing': [
-    { subChannel: 'unit-testing', tags: ['jest', 'mocha', 'pytest', 'junit'] },
-    { subChannel: 'integration-testing', tags: ['api-testing', 'database-testing', 'mocking'] },
-    { subChannel: 'tdd', tags: ['test-driven', 'red-green-refactor', 'test-first'] },
-    { subChannel: 'test-strategies', tags: ['test-pyramid', 'coverage', 'mutation-testing'] },
-  ],
-  'behavioral': [
-    { subChannel: 'star-method', tags: ['situation', 'task', 'action', 'result'] },
-    { subChannel: 'leadership-principles', tags: ['ownership', 'bias-for-action', 'customer-obsession'] },
-    { subChannel: 'soft-skills', tags: ['communication', 'collaboration', 'influence'] },
-    { subChannel: 'conflict-resolution', tags: ['negotiation', 'mediation', 'feedback'] },
-  ],
-};
+// Channel configs are now loaded from database (source of truth)
+// See script/seed-channels.js to populate the channels and subchannels tables
 
 const difficulties = ['beginner', 'intermediate', 'advanced'];
 
@@ -156,9 +63,7 @@ function getRandomTopCompanies(count = 3) {
   return shuffled.slice(0, Math.min(count, Math.floor(Math.random() * 3) + 2));
 }
 
-function getAllChannels() {
-  return Object.keys(channelConfigs);
-}
+// getAllChannels now fetches from DB via getAllChannelIds()
 
 // Validate question quality to ensure it's a real interview question
 function validateQuestionQuality(question, channel, difficulty) {
@@ -217,13 +122,7 @@ function validateQuestionQuality(question, channel, difficulty) {
   return { valid: true };
 }
 
-function getRandomSubChannel(channel) {
-  const configs = channelConfigs[channel];
-  if (!configs || configs.length === 0) {
-    return { subChannel: 'general', tags: [channel] };
-  }
-  return configs[Math.floor(Math.random() * configs.length)];
-}
+// getRandomSubChannel now uses getRandomSubchannel() from utils.js (DB-based)
 
 // Prioritize channels with fewer questions using weighted selection
 // Excludes channels in the top percentile to focus on lagging channels
@@ -313,7 +212,11 @@ async function main() {
   const inputLimit = parseInt(process.env.INPUT_LIMIT || '0', 10);
   const balanceChannels = process.env.BALANCE_CHANNELS !== 'false'; // Default to true
   
-  const allChannels = getAllChannels();
+  // Load channel configs from database (source of truth)
+  console.log('📚 Loading channel configs from database...');
+  const channelConfigs = await getChannelConfigs();
+  const allChannels = Object.keys(channelConfigs);
+  console.log(`   Found ${allChannels.length} channels\n`);
   
   // Get channel question counts efficiently (single query instead of fetching all questions)
   const channelCounts = await getChannelQuestionCounts();
@@ -370,7 +273,7 @@ async function main() {
 
   for (let i = 0; i < channels.length; i++) {
     const channel = channels[i];
-    const subChannelConfig = getRandomSubChannel(channel);
+    const subChannelConfig = await getRandomSubchannel(channel);
     
     console.log(`\n--- Channel ${i + 1}/${channels.length}: ${channel} ---`);
     
