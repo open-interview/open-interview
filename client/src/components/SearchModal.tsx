@@ -184,8 +184,8 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
           {/* Filter Buttons */}
           {results.length > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 border-b border-white/10 bg-white/5">
-              <span className="text-[10px] text-white/40 uppercase tracking-wider mr-1">Filter:</span>
+            <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-muted/30">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider mr-1">Filter:</span>
               {filters.map(filter => {
                 // Count items for each filter
                 let count = results.length;
@@ -205,16 +205,16 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                     className={`
                       flex items-center gap-1.5 px-2.5 py-1 text-[11px] rounded-full transition-all
                       ${activeFilter === filter.id 
-                        ? 'bg-primary text-black font-bold' 
+                        ? 'bg-primary text-primary-foreground font-bold' 
                         : count > 0 
-                          ? 'bg-white/10 text-white/70 hover:bg-white/20' 
-                          : 'bg-white/5 text-white/30 cursor-not-allowed'
+                          ? 'bg-muted text-muted-foreground hover:bg-muted/80' 
+                          : 'bg-muted/50 text-muted-foreground/50 cursor-not-allowed'
                       }
                     `}
                   >
                     {filter.icon}
                     {filter.label}
-                    <span className={`text-[9px] ${activeFilter === filter.id ? 'text-black/60' : 'text-white/40'}`}>
+                    <span className={`text-[9px] ${activeFilter === filter.id ? 'text-primary-foreground/70' : 'text-muted-foreground/70'}`}>
                       ({count})
                     </span>
                   </button>
@@ -226,13 +226,13 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
           {/* Results */}
           <div className="max-h-[60vh] overflow-y-auto">
             {isSearching && (
-              <div className="p-8 text-center text-white/50">
+              <div className="p-8 text-center text-muted-foreground">
                 <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
               </div>
             )}
             
             {!isSearching && query.length >= 2 && results.length === 0 && (
-              <div className="p-8 text-center text-white/50">
+              <div className="p-8 text-center text-muted-foreground">
                 <Search className="w-8 h-8 mx-auto mb-2 opacity-30" />
                 <p>No questions found for "{query}"</p>
                 <p className="text-xs mt-1">Try different keywords or check spelling</p>
@@ -240,7 +240,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
             )}
 
             {!isSearching && results.length > 0 && filteredResults.length === 0 && (
-              <div className="p-8 text-center text-white/50">
+              <div className="p-8 text-center text-muted-foreground">
                 <Filter className="w-8 h-8 mx-auto mb-2 opacity-30" />
                 <p>No questions match the "{activeFilter}" filter</p>
                 <button 
@@ -269,52 +269,52 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                       }}
                       onClick={() => navigateToQuestion(result)}
                       className={`w-full px-4 py-3 text-left flex items-start gap-3 transition-colors ${
-                        index === selectedIndex ? 'bg-primary/20' : 'hover:bg-white/5'
+                        index === selectedIndex ? 'bg-primary/20' : 'hover:bg-muted/50'
                       }`}
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           {getDifficultyIcon(result.question.difficulty)}
-                          <span className="text-[10px] text-white/40 uppercase tracking-wider">
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
                             {result.question.channel}/{result.question.subChannel}
                           </span>
                           {/* Feature indicators */}
                           <div className="flex items-center gap-1 ml-auto">
                             {hasCompanies && (
-                              <span className="flex items-center gap-0.5 text-[9px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded">
+                              <span className="flex items-center gap-0.5 text-[9px] text-blue-600 dark:text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded">
                                 <Building2 className="w-2.5 h-2.5" />
                                 {result.question.companies!.length}
                               </span>
                             )}
                             {hasVideo && (
-                              <span className="flex items-center text-[9px] text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded">
+                              <span className="flex items-center text-[9px] text-red-600 dark:text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded">
                                 <Video className="w-2.5 h-2.5" />
                               </span>
                             )}
                             {hasDiagram && (
-                              <span className="flex items-center text-[9px] text-green-400 bg-green-400/10 px-1.5 py-0.5 rounded">
+                              <span className="flex items-center text-[9px] text-green-600 dark:text-green-400 bg-green-400/10 px-1.5 py-0.5 rounded">
                                 <GitBranch className="w-2.5 h-2.5" />
                               </span>
                             )}
                           </div>
                         </div>
-                        <p className="text-sm text-white truncate">
+                        <p className="text-sm text-foreground truncate">
                           {result.question.question}
                         </p>
-                        <p className="text-xs text-white/50 truncate mt-1">
+                        <p className="text-xs text-muted-foreground truncate mt-1">
                           {result.question.answer}
                         </p>
                         {result.question.tags && result.question.tags.length > 0 && (
                           <div className="flex items-center gap-1 mt-2">
-                            <Tag className="w-3 h-3 text-white/30" />
-                            <span className="text-[10px] text-white/30">
+                            <Tag className="w-3 h-3 text-muted-foreground/50" />
+                            <span className="text-[10px] text-muted-foreground/50">
                               {result.question.tags.slice(0, 3).join(', ')}
                             </span>
                           </div>
                         )}
                       </div>
                       <ArrowRight className={`w-4 h-4 shrink-0 mt-1 transition-opacity ${
-                        index === selectedIndex ? 'text-primary opacity-100' : 'text-white/30 opacity-0'
+                        index === selectedIndex ? 'text-primary opacity-100' : 'text-muted-foreground/30 opacity-0'
                       }`} />
                     </button>
                   );
@@ -323,7 +323,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
             )}
             
             {!isSearching && query.length < 2 && (
-              <div className="p-6 text-center text-white/40">
+              <div className="p-6 text-center text-muted-foreground">
                 <Search className="w-8 h-8 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">Type at least 2 characters to search</p>
                 <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -331,7 +331,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                     <button
                       key={term}
                       onClick={() => setQuery(term)}
-                      className="px-3 py-1 text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
+                      className="px-3 py-1 text-xs bg-muted hover:bg-muted/80 border border-border rounded-full transition-colors"
                     >
                       {term}
                     </button>
@@ -342,11 +342,11 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
           </div>
           
           {/* Footer */}
-          <div className="px-4 py-2 border-t border-white/10 flex items-center justify-between text-[10px] text-white/30">
+          <div className="px-4 py-2 border-t border-border flex items-center justify-between text-[10px] text-muted-foreground/70">
             <div className="flex items-center gap-4">
-              <span><kbd className="px-1 bg-white/10 rounded">↑↓</kbd> Navigate</span>
-              <span><kbd className="px-1 bg-white/10 rounded">↵</kbd> Select</span>
-              <span><kbd className="px-1 bg-white/10 rounded">ESC</kbd> Close</span>
+              <span><kbd className="px-1 bg-muted rounded">↑↓</kbd> Navigate</span>
+              <span><kbd className="px-1 bg-muted rounded">↵</kbd> Select</span>
+              <span><kbd className="px-1 bg-muted rounded">ESC</kbd> Close</span>
             </div>
             {results.length > 0 && (
               <span>
