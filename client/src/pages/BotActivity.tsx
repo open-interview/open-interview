@@ -124,7 +124,7 @@ export default function BotActivity() {
   const [selectedBot, setSelectedBot] = useState<string>('all');
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async (botFilter: string) => {
     try {
       // Fetch from static JSON file (generated during build)
       const res = await fetch('/data/bot-activity.json');
@@ -134,9 +134,9 @@ export default function BotActivity() {
         
         // Filter activities by selected bot
         let filteredActivities = data.activities || [];
-        if (selectedBot !== 'all') {
+        if (botFilter !== 'all') {
           filteredActivities = filteredActivities.filter(
-            (a: BotActivityItem) => a.botType === selectedBot
+            (a: BotActivityItem) => a.botType === botFilter
           );
         }
         
@@ -149,15 +149,15 @@ export default function BotActivity() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [selectedBot]);
+    fetchData(selectedBot);
+  }, [selectedBot, fetchData]);
 
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchData();
+    fetchData(selectedBot);
   };
 
   const goBack = () => {

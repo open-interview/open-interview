@@ -160,6 +160,63 @@ function getAllChannels() {
   return Object.keys(channelConfigs);
 }
 
+// Validate question quality to ensure it's a real interview question
+function validateQuestionQuality(question, channel, difficulty) {
+  // Check minimum length
+  if (question.length < 30) {
+    return { valid: false, reason: 'Question too short (< 30 chars)' };
+  }
+  
+  // Check it ends with a question mark
+  if (!question.trim().endsWith('?')) {
+    return { valid: false, reason: 'Question must end with ?' };
+  }
+  
+  // Check for generic/vague questions
+  const vaguePatterns = [
+    /^what is /i,
+    /^define /i,
+    /^explain what /i,
+    /^tell me about /i,
+  ];
+  
+  // Allow "what is" for beginner level only
+  if (difficulty !== 'beginner') {
+    for (const pattern of vaguePatterns) {
+      if (pattern.test(question) && question.length < 60) {
+        return { valid: false, reason: 'Question too generic for ' + difficulty + ' level' };
+      }
+    }
+  }
+  
+  // Check for specific technical content based on channel
+  const channelKeywords = {
+    'system-design': ['design', 'scale', 'architecture', 'handle', 'build', 'implement', 'distributed'],
+    'algorithms': ['array', 'string', 'tree', 'graph', 'find', 'implement', 'optimize', 'complexity', 'given'],
+    'frontend': ['react', 'javascript', 'css', 'component', 'render', 'state', 'dom', 'browser', 'performance'],
+    'backend': ['api', 'database', 'server', 'request', 'authentication', 'microservice', 'cache'],
+    'devops': ['deploy', 'pipeline', 'container', 'kubernetes', 'docker', 'ci/cd', 'infrastructure'],
+    'sre': ['incident', 'monitoring', 'slo', 'availability', 'latency', 'alert', 'on-call'],
+    'database': ['query', 'index', 'transaction', 'sql', 'nosql', 'schema', 'optimization'],
+    'behavioral': ['time', 'situation', 'challenge', 'team', 'project', 'decision', 'conflict'],
+  };
+  
+  const keywords = channelKeywords[channel] || [];
+  const questionLower = question.toLowerCase();
+  const hasRelevantKeyword = keywords.length === 0 || keywords.some(kw => questionLower.includes(kw));
+  
+  if (!hasRelevantKeyword && question.length < 100) {
+    return { valid: false, reason: 'Question lacks channel-specific technical content' };
+  }
+  
+  // Advanced questions should be more complex
+  if (difficulty === 'advanced' && question.length < 80) {
+    return { valid: false, reason: 'Advanced question should be more detailed' };
+  }
+  
+  return { valid: true };
+}
+
 function getRandomSubChannel(channel) {
   const configs = channelConfigs[channel];
   if (!configs || configs.length === 0) {
@@ -328,17 +385,98 @@ async function main() {
     const targetCompanies = getRandomTopCompanies(3);
     console.log(`Target companies: ${targetCompanies.join(', ')}`);
 
-    const prompt = `You are a JSON generator. Output ONLY valid JSON, no explanations, no markdown, no text before or after.
+    // Real interview scenarios by channel - used to provide context in prompts
+const REAL_SCENARIOS = {
+  'system-design': [
+    { scenario: 'Design Twitter/X feed', scale: '500M users, 10K tweets/sec', focus: 'fan-out, caching, real-time' },
+    { scenario: 'Design Uber ride matching', scale: '1M concurrent rides', focus: 'geospatial, real-time, matching' },
+    { scenario: 'Design Netflix video streaming', scale: '200M subscribers', focus: 'CDN, encoding, recommendations' },
+    { scenario: 'Design Slack messaging', scale: '10M concurrent users', focus: 'websockets, presence, search' },
+    { scenario: 'Design payment processing', scale: '$1B daily transactions', focus: 'consistency, idempotency, fraud' },
+    { scenario: 'Design notification system', scale: '1B push notifications/day', focus: 'delivery, batching, preferences' },
+    { scenario: 'Design rate limiter', scale: '10M requests/minute', focus: 'distributed, algorithms, fairness' },
+    { scenario: 'Design URL shortener', scale: '100M URLs', focus: 'hashing, redirection, analytics' },
+  ],
+  'algorithms': [
+    { problem: 'LRU Cache', pattern: 'HashMap + Doubly Linked List', complexity: 'O(1) get/put' },
+    { problem: 'Merge K sorted lists', pattern: 'Min Heap', complexity: 'O(N log K)' },
+    { problem: 'Word ladder', pattern: 'BFS', complexity: 'O(M² × N)' },
+    { problem: 'Meeting rooms II', pattern: 'Interval + Heap', complexity: 'O(N log N)' },
+    { problem: 'Serialize binary tree', pattern: 'Preorder DFS', complexity: 'O(N)' },
+    { problem: 'Median finder', pattern: 'Two Heaps', complexity: 'O(log N) insert' },
+    { problem: 'Trapping rain water', pattern: 'Two Pointers', complexity: 'O(N)' },
+    { problem: 'Course schedule', pattern: 'Topological Sort', complexity: 'O(V + E)' },
+  ],
+  'frontend': [
+    { topic: 'Virtual DOM diffing', context: 'React reconciliation algorithm' },
+    { topic: 'State management', context: 'Redux vs Context vs Zustand trade-offs' },
+    { topic: 'Bundle optimization', context: 'Code splitting, tree shaking, lazy loading' },
+    { topic: 'Accessibility', context: 'ARIA, keyboard navigation, screen readers' },
+    { topic: 'SSR vs CSR vs SSG', context: 'Next.js rendering strategies' },
+  ],
+  'devops': [
+    { scenario: 'Blue-green deployment', context: 'Zero-downtime releases' },
+    { scenario: 'GitOps workflow', context: 'ArgoCD, Flux, declarative infrastructure' },
+    { scenario: 'Secret management', context: 'Vault, AWS Secrets Manager, rotation' },
+    { scenario: 'Multi-stage Docker builds', context: 'Image optimization, security' },
+  ],
+  'sre': [
+    { scenario: 'Production incident', context: 'On-call response, root cause analysis' },
+    { scenario: 'Error budget exhaustion', context: 'SLO negotiation, feature freeze' },
+    { scenario: 'Capacity planning', context: 'Load testing, forecasting, autoscaling' },
+    { scenario: 'Chaos experiment', context: 'Failure injection, blast radius' },
+  ],
+  'database': [
+    { topic: 'Query optimization', context: 'EXPLAIN plans, index selection' },
+    { topic: 'Sharding strategy', context: 'Horizontal partitioning, consistent hashing' },
+    { topic: 'ACID vs BASE', context: 'Consistency trade-offs, CAP theorem' },
+    { topic: 'Connection pooling', context: 'PgBouncer, HikariCP, connection limits' },
+  ],
+  'behavioral': [
+    { scenario: 'Technical disagreement', context: 'Conflict resolution, influence without authority' },
+    { scenario: 'Project failure', context: 'Learning from mistakes, accountability' },
+    { scenario: 'Tight deadline', context: 'Prioritization, scope negotiation' },
+    { scenario: 'Mentoring junior', context: 'Knowledge transfer, patience' },
+  ],
+};
 
-Generate a ${difficulty} ${channel}/${subChannelConfig.subChannel} interview question that is commonly asked at top tech companies like ${targetCompanies.join(', ')}.
-Topics: ${subChannelConfig.tags.join(', ')}
+// Get a random scenario hint for the channel
+function getScenarioHint(channel) {
+  const scenarios = REAL_SCENARIOS[channel];
+  if (!scenarios || scenarios.length === 0) return '';
+  const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+  return JSON.stringify(scenario);
+}
 
-IMPORTANT: Generate a question that is ACTUALLY asked in technical interviews at companies like ${targetCompanies.join(', ')}. Focus on real-world interview patterns from these companies.
+const scenarioHint = getScenarioHint(channel);
 
-Output this exact JSON structure:
-{"question":"specific technical question ending with ?","answer":"concise answer under 150 chars","explanation":"## Why Asked\\nInterview context at ${targetCompanies[0]} and similar companies\\n## Key Concepts\\nCore knowledge\\n## Code Example\\n\`\`\`\\nImplementation\\n\`\`\`\\n## Follow-up Questions\\nCommon follow-ups","diagram":"flowchart TD\\n  A[Start] --> B[End]","companies":${JSON.stringify(targetCompanies)},"sourceUrl":null,"videos":{"shortVideo":null,"longVideo":null}}
+const prompt = `You are a senior technical interviewer at ${targetCompanies[0]}. Generate a REAL interview question that you would actually ask candidates.
 
-IMPORTANT: Return ONLY the JSON object. No other text.`;
+CONTEXT:
+- Channel: ${channel}/${subChannelConfig.subChannel}
+- Difficulty: ${difficulty}
+- Topics: ${subChannelConfig.tags.join(', ')}
+- Target companies: ${targetCompanies.join(', ')}
+${scenarioHint ? `- Example scenario for inspiration (create something DIFFERENT but similar quality): ${scenarioHint}` : ''}
+
+REQUIREMENTS:
+1. Question must be SPECIFIC and PRACTICAL - something actually asked in interviews
+2. For ${difficulty} level:
+   - beginner: Fundamental concepts, basic implementation
+   - intermediate: Real-world scenarios, trade-offs, debugging
+   - advanced: System design at scale, complex algorithms, production issues
+3. Include a realistic scenario or context when appropriate
+4. The answer should be actionable and demonstrate expertise
+
+QUESTION TYPES TO CONSIDER:
+${channel === 'algorithms' ? '- Coding problem with clear input/output\n- Time/space complexity analysis\n- Edge case handling' : ''}
+${channel === 'system-design' ? '- Design a specific system with scale requirements\n- Architecture decisions and trade-offs\n- Handling failures and edge cases' : ''}
+${channel === 'frontend' ? '- Framework-specific implementation\n- Performance optimization\n- Browser/DOM concepts' : ''}
+${channel === 'behavioral' ? '- STAR method scenario\n- Leadership/conflict resolution\n- Technical decision making' : ''}
+${['devops', 'sre', 'kubernetes'].includes(channel) ? '- Production incident scenario\n- Infrastructure automation\n- Monitoring and alerting' : ''}
+
+Output ONLY this JSON (no markdown, no explanation):
+{"question":"[Specific, practical interview question ending with ?]","answer":"[Concise answer under 150 chars that directly addresses the question]","explanation":"## Why This Is Asked\\n[Why ${targetCompanies[0]} asks this - what skills it tests]\\n\\n## Expected Answer\\n[What a strong candidate would say]\\n\\n## Code Example\\n\`\`\`${channel === 'algorithms' ? 'python' : channel === 'frontend' ? 'javascript' : 'typescript'}\\n[Working code example]\\n\`\`\`\\n\\n## Follow-up Questions\\n- [Follow-up 1]\\n- [Follow-up 2]\\n- [Follow-up 3]","diagram":"flowchart TD\\n  A[Start] --> B[Step 1]\\n  B --> C[Step 2]\\n  C --> D[End]","companies":${JSON.stringify(targetCompanies)},"sourceUrl":null,"videos":{"shortVideo":null,"longVideo":null}}`;
 
     console.log('\n📝 PROMPT:');
     console.log('─'.repeat(50));
@@ -358,6 +496,14 @@ IMPORTANT: Return ONLY the JSON object. No other text.`;
     if (!validateQuestion(data)) {
       console.log('❌ Invalid response format.');
       failedAttempts.push({ channel, reason: 'Invalid JSON format' });
+      continue;
+    }
+
+    // Quality checks for realistic interview questions
+    const questionQuality = validateQuestionQuality(data.question, channel, difficulty);
+    if (!questionQuality.valid) {
+      console.log(`❌ Quality check failed: ${questionQuality.reason}`);
+      failedAttempts.push({ channel, reason: questionQuality.reason });
       continue;
     }
 
