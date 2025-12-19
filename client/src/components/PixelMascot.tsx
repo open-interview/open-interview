@@ -377,10 +377,17 @@ export default function PixelMascot() {
   }, [state, mascotType]);
 
   return (
-    <div className="fixed bottom-4 z-50 hidden cursor-pointer md:block" style={{ left: position.x }} onClick={handleClick}>
+    <div 
+      data-testid="pixel-mascot" 
+      data-mascot-type={mascotType}
+      className="fixed bottom-4 z-50 hidden cursor-pointer md:block" 
+      style={{ left: position.x }} 
+      onClick={handleClick}
+    >
       <AnimatePresence>
         {message && (
           <motion.div
+            data-testid="mascot-message"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
