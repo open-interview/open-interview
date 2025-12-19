@@ -5,6 +5,7 @@ import { YouTubePlayer } from './YouTubePlayer';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { 
   Check, BookOpen, Code2, Lightbulb, ExternalLink, Building2, 
   ChevronDown, Baby 
@@ -168,6 +169,7 @@ export function AnswerPanel({ question, isCompleted }: AnswerPanelProps) {
   const renderMarkdown = (text: string) => {
     return (
       <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
         components={{
           code({ node, className, children, ...props }) {
             const match = /language-(\w+)/.exec(className || '');
@@ -279,6 +281,38 @@ export function AnswerPanel({ question, isCompleted }: AnswerPanelProps) {
           },
           hr() {
             return <hr className="my-2 sm:my-6 md:my-8 border-white/10 clear-both" />;
+          },
+          table({ children }) {
+            return (
+              <div className="my-3 sm:my-6 overflow-x-auto clear-both">
+                <table className="w-full border-collapse text-[10px] sm:text-sm">
+                  {children}
+                </table>
+              </div>
+            );
+          },
+          thead({ children }) {
+            return <thead className="bg-white/10">{children}</thead>;
+          },
+          tbody({ children }) {
+            return <tbody className="divide-y divide-white/10">{children}</tbody>;
+          },
+          tr({ children }) {
+            return <tr className="border-b border-white/10 hover:bg-white/5 transition-colors">{children}</tr>;
+          },
+          th({ children }) {
+            return (
+              <th className="px-2 sm:px-4 py-1.5 sm:py-2 text-left font-semibold text-white/90 border border-white/10 bg-white/5">
+                {children}
+              </th>
+            );
+          },
+          td({ children }) {
+            return (
+              <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-white/80 border border-white/10">
+                {children}
+              </td>
+            );
           },
         }}
       >
