@@ -10,7 +10,8 @@ import {
   getQuestionsNeedingImprovement,
   getChannelStats,
   logBotActivity,
-  getQuestionCount
+  getQuestionCount,
+  dbClient
 } from './utils.js';
 
 // Focus on answer/explanation quality only
@@ -34,6 +35,85 @@ function needsImprovement(q) {
   return issues;
 }
 
+// Get questions flagged by relevance bot for improvement (highest priority)
+async function getQuestionsWithRelevanceFeedback(limit = 10) {
+  const result = await dbClient.execute({
+    sql: `
+      SELECT * FROM questions 
+      WHERE relevance_recommendation = 'improve' 
+        AND improvement_suggestions IS NOT NULL
+      ORDER BY relevance_score ASC, last_updated ASC
+      LIMIT ?
+    `,
+    args: [limit]
+  });
+  
+  return result.rows.map(row => ({
+    id: row.id,
+    question: row.question,
+    answer: row.answer,
+    explanation: row.explanation,
+    diagram: row.diagram,
+    difficulty: row.difficulty,
+    tags: row.tags ? JSON.parse(row.tags) : [],
+    channel: row.channel,
+    subChannel: row.sub_channel,
+    sourceUrl: row.source_url,
+    videos: row.videos ? JSON.parse(row.videos) : null,
+    companies: row.companies ? JSON.parse(row.companies) : null,
+    eli5: row.eli5,
+    tldr: row.tldr,
+    lastUpdated: row.last_updated,
+    relevanceScore: row.relevance_score,
+    relevanceRecommendation: row.relevance_recommendation,
+    improvementSuggestions: row.improvement_suggestions ? JSON.parse(row.improvement_suggestions) : null
+  }));
+}
+
+// Build improvement prompt using relevance feedback
+function buildImprovementPrompt(question, issues, relevanceFeedback) {
+  let feedbackSection = '';
+  
+  if (relevanceFeedback) {
+    feedbackSection = `
+RELEVANCE BOT FEEDBACK (use this to guide improvements):`;
+    
+    if (relevanceFeedback.questionIssues?.length > 0) {
+      feedbackSection += `
+- Question Issues: ${relevanceFeedback.questionIssues.join('; ')}`;
+    }
+    if (relevanceFeedback.answerIssues?.length > 0) {
+      feedbackSection += `
+- Answer Issues: ${relevanceFeedback.answerIssues.join('; ')}`;
+    }
+    if (relevanceFeedback.missingTopics?.length > 0) {
+      feedbackSection += `
+- Missing Topics to Cover: ${relevanceFeedback.missingTopics.join('; ')}`;
+    }
+    if (relevanceFeedback.suggestedAdditions?.length > 0) {
+      feedbackSection += `
+- Suggested Additions: ${relevanceFeedback.suggestedAdditions.join('; ')}`;
+    }
+    if (relevanceFeedback.difficultyAdjustment && relevanceFeedback.difficultyAdjustment !== 'none') {
+      feedbackSection += `
+- Difficulty Adjustment: ${relevanceFeedback.difficultyAdjustment}`;
+    }
+  }
+
+  return `You are a JSON generator. Output ONLY valid JSON, no explanations, no markdown, no text before or after.
+
+Improve this ${question.channel} interview question's answer and explanation. Fix: ${issues.slice(0, 3).join(', ')}
+${feedbackSection}
+
+Current Q: "${question.question.substring(0, 150)}"
+Current A: "${question.answer?.substring(0, 150) || 'missing'}"
+
+Output this exact JSON structure:
+{"question":"improved question ending with ?","answer":"concise answer under 150 chars","explanation":"## Why Asked\\nInterview context explaining why this is commonly asked\\n\\n## Key Concepts\\n- Concept 1\\n- Concept 2\\n\\n## Code Example\\n\`\`\`\\nImplementation if applicable\\n\`\`\`\\n\\n## Follow-up Questions\\n- Common follow-up 1\\n- Common follow-up 2"}
+
+IMPORTANT: Return ONLY the JSON object. No other text.`;
+}
+
 async function main() {
   console.log('=== ✨ Polisher Bot - Making Good Answers Great ===\n');
   
@@ -55,13 +135,31 @@ async function main() {
     console.log(`  ${stat.channel}: ${stat.question_count} questions, ${stat.missing_diagrams} missing diagrams, ${stat.missing_explanations} missing explanations`);
   });
 
-  // Use database query to get prioritized questions needing improvement
-  console.log('\n🔍 Querying database for questions needing improvement...');
-  const prioritizedQuestions = await getQuestionsNeedingImprovement(improveLimit * 2);
+  // PRIORITY 1: Get questions flagged by relevance bot for improvement
+  console.log('\n🎯 Checking for questions with relevance bot feedback...');
+  const relevanceFlaggedQuestions = await getQuestionsWithRelevanceFeedback(improveLimit);
+  console.log(`Found ${relevanceFlaggedQuestions.length} questions flagged by relevance bot for improvement`);
+
+  // PRIORITY 2: Use database query to get other prioritized questions needing improvement
+  let improvableQuestions = [];
   
-  // Also check with local function for additional issues
-  const improvableQuestions = prioritizedQuestions.filter(q => needsImprovement(q).length > 0);
-  console.log(`Found ${improvableQuestions.length} questions needing improvement (prioritized by severity)\n`);
+  if (relevanceFlaggedQuestions.length < improveLimit) {
+    console.log('\n🔍 Querying database for additional questions needing improvement...');
+    const prioritizedQuestions = await getQuestionsNeedingImprovement((improveLimit - relevanceFlaggedQuestions.length) * 2);
+    
+    // Filter out questions already in relevanceFlaggedQuestions
+    const flaggedIds = new Set(relevanceFlaggedQuestions.map(q => q.id));
+    const additionalQuestions = prioritizedQuestions.filter(q => 
+      !flaggedIds.has(q.id) && needsImprovement(q).length > 0
+    );
+    
+    // Combine: relevance-flagged first, then others
+    improvableQuestions = [...relevanceFlaggedQuestions, ...additionalQuestions];
+  } else {
+    improvableQuestions = relevanceFlaggedQuestions;
+  }
+  
+  console.log(`Total ${improvableQuestions.length} questions to process (prioritized by relevance feedback)\n`);
 
   if (improvableQuestions.length === 0) {
     console.log('✅ All questions are in good shape!');
@@ -76,24 +174,18 @@ async function main() {
   for (let i = 0; i < batch.length; i++) {
     const question = batch[i];
     const issues = needsImprovement(question);
+    const hasRelevanceFeedback = question.improvementSuggestions != null;
     
     console.log(`\n--- Question ${i + 1}/${batch.length}: ${question.id} ---`);
     console.log(`Channel: ${question.channel}/${question.subChannel}`);
-    console.log(`Issues: ${issues.join(', ')}`);
+    console.log(`Issues: ${issues.length > 0 ? issues.join(', ') : 'relevance feedback only'}`);
+    if (hasRelevanceFeedback) {
+      console.log(`🎯 Has relevance bot feedback (score: ${question.relevanceScore}/100)`);
+    }
     console.log(`Current Q: ${question.question.substring(0, 60)}...`);
 
-    // Focus on answer/explanation only - diagrams, videos, companies handled by dedicated bots
-    const prompt = `You are a JSON generator. Output ONLY valid JSON, no explanations, no markdown, no text before or after.
-
-Improve this ${question.channel} interview question's answer and explanation. Fix: ${issues.slice(0, 3).join(', ')}
-
-Current Q: "${question.question.substring(0, 150)}"
-Current A: "${question.answer?.substring(0, 150) || 'missing'}"
-
-Output this exact JSON structure:
-{"question":"improved question ending with ?","answer":"concise answer under 150 chars","explanation":"## Why Asked\\nInterview context explaining why this is commonly asked\\n\\n## Key Concepts\\n- Concept 1\\n- Concept 2\\n\\n## Code Example\\n\`\`\`\\nImplementation if applicable\\n\`\`\`\\n\\n## Follow-up Questions\\n- Common follow-up 1\\n- Common follow-up 2"}
-
-IMPORTANT: Return ONLY the JSON object. No other text.`;
+    // Build prompt with relevance feedback if available
+    const prompt = buildImprovementPrompt(question, issues, question.improvementSuggestions);
 
     console.log('\n📝 PROMPT:');
     console.log('─'.repeat(50));
@@ -124,14 +216,25 @@ IMPORTANT: Return ONLY the JSON object. No other text.`;
 
     await saveQuestion(question);
     
+    // Clear the relevance recommendation since we've addressed the feedback
+    if (hasRelevanceFeedback) {
+      await dbClient.execute({
+        sql: `UPDATE questions SET relevance_recommendation = 'improved', last_updated = ? WHERE id = ?`,
+        args: [new Date().toISOString(), question.id]
+      });
+      console.log(`✅ Improved with relevance feedback: ${question.id}`);
+    } else {
+      console.log(`✅ Improved: ${question.id}`);
+    }
+    
     // Log bot activity
-    await logBotActivity(question.id, 'improve', issues.join(', '), 'completed', {
+    await logBotActivity(question.id, 'improve', issues.join(', ') || 'relevance_feedback', 'completed', {
       channel: question.channel,
-      issuesFixed: issues.length
+      issuesFixed: issues.length,
+      usedRelevanceFeedback: hasRelevanceFeedback
     });
     
     improvedQuestions.push(question);
-    console.log(`✅ Improved: ${question.id}`);
   }
 
   const totalQuestions = await getQuestionCount();

@@ -20,38 +20,34 @@ const SCORING_WEIGHTS = {
   answerQuality: 0.05         // Answer is accurate and helpful
 };
 
-// Initialize relevance_score column if not exists
-async function initRelevanceColumn() {
-  try {
-    await dbClient.execute(`
-      ALTER TABLE questions ADD COLUMN relevance_score INTEGER DEFAULT NULL
-    `);
-    console.log('✅ Added relevance_score column');
-  } catch (e) {
-    // Column likely already exists
-    if (!e.message.includes('duplicate column')) {
-      console.log('ℹ️ relevance_score column already exists');
-    }
-  }
+// Initialize relevance columns if not exists
+async function initRelevanceColumns() {
+  const columns = [
+    { name: 'relevance_score', type: 'INTEGER DEFAULT NULL' },
+    { name: 'relevance_details', type: 'TEXT DEFAULT NULL' },
+    { name: 'improvement_suggestions', type: 'TEXT DEFAULT NULL' },
+    { name: 'relevance_recommendation', type: 'TEXT DEFAULT NULL' }
+  ];
   
-  try {
-    await dbClient.execute(`
-      ALTER TABLE questions ADD COLUMN relevance_details TEXT DEFAULT NULL
-    `);
-    console.log('✅ Added relevance_details column');
-  } catch (e) {
-    if (!e.message.includes('duplicate column')) {
-      console.log('ℹ️ relevance_details column already exists');
+  for (const col of columns) {
+    try {
+      await dbClient.execute(`ALTER TABLE questions ADD COLUMN ${col.name} ${col.type}`);
+      console.log(`✅ Added ${col.name} column`);
+    } catch (e) {
+      if (!e.message.includes('duplicate column')) {
+        console.log(`ℹ️ ${col.name} column already exists`);
+      }
     }
   }
 }
 
-// Generate relevance score using AI
+// Generate relevance score using AI with detailed improvement suggestions
 async function scoreQuestion(question) {
   const prompt = `You are an expert technical interviewer and hiring manager. Analyze this interview question and score its relevance for real technical interviews.
 
 Question: "${question.question}"
-Answer: "${question.answer?.substring(0, 300) || 'N/A'}"
+Answer: "${question.answer?.substring(0, 500) || 'N/A'}"
+Explanation: "${question.explanation?.substring(0, 300) || 'N/A'}"
 Channel: ${question.channel}
 Difficulty: ${question.difficulty}
 Tags: ${question.tags?.join(', ') || 'N/A'}
@@ -98,8 +94,27 @@ Score each criterion from 1-10:
    - 5: Adequate
    - 1: Incorrect or unhelpful
 
+Also provide specific improvement suggestions if the score is below 80.
+
 Output ONLY this JSON:
-{"interviewFrequency":N,"practicalRelevance":N,"conceptDepth":N,"industryDemand":N,"difficultyAppropriate":N,"questionClarity":N,"answerQuality":N,"reasoning":"Brief 1-2 sentence explanation","recommendation":"keep|improve|retire"}
+{
+  "interviewFrequency":N,
+  "practicalRelevance":N,
+  "conceptDepth":N,
+  "industryDemand":N,
+  "difficultyAppropriate":N,
+  "questionClarity":N,
+  "answerQuality":N,
+  "reasoning":"Brief 1-2 sentence explanation of the overall assessment",
+  "recommendation":"keep|improve|retire",
+  "improvements":{
+    "questionIssues":["list of issues with the question text, empty if none"],
+    "answerIssues":["list of issues with the answer, empty if none"],
+    "missingTopics":["important topics that should be covered but aren't"],
+    "suggestedAdditions":["specific content to add like trade-offs, examples, edge cases"],
+    "difficultyAdjustment":"none|increase|decrease"
+  }
+}
 
 IMPORTANT: Return ONLY the JSON object. No other text.`;
 
@@ -127,8 +142,18 @@ IMPORTANT: Return ONLY the JSON object. No other text.`;
   
   return {
     score: weightedScore,
-    details: data,
-    recommendation: data.recommendation || 'keep'
+    details: {
+      interviewFrequency: data.interviewFrequency,
+      practicalRelevance: data.practicalRelevance,
+      conceptDepth: data.conceptDepth,
+      industryDemand: data.industryDemand,
+      difficultyAppropriate: data.difficultyAppropriate,
+      questionClarity: data.questionClarity,
+      answerQuality: data.answerQuality,
+      reasoning: data.reasoning
+    },
+    recommendation: data.recommendation || 'keep',
+    improvements: data.improvements || null
   };
 }
 
@@ -163,18 +188,31 @@ async function getQuestionsToScore(limit) {
   }));
 }
 
-// Save relevance score to database
-async function saveRelevanceScore(questionId, score, details) {
+// Save relevance score to database with improvement suggestions
+async function saveRelevanceScore(questionId, score, details, recommendation, improvements) {
   await dbClient.execute({
-    sql: `UPDATE questions SET relevance_score = ?, relevance_details = ?, last_updated = ? WHERE id = ?`,
-    args: [score, JSON.stringify(details), new Date().toISOString(), questionId]
+    sql: `UPDATE questions SET 
+          relevance_score = ?, 
+          relevance_details = ?, 
+          relevance_recommendation = ?,
+          improvement_suggestions = ?,
+          last_updated = ? 
+          WHERE id = ?`,
+    args: [
+      score, 
+      JSON.stringify(details), 
+      recommendation,
+      improvements ? JSON.stringify(improvements) : null,
+      new Date().toISOString(), 
+      questionId
+    ]
   });
 }
 
 async function main() {
   console.log('=== 📊 Ranker Bot - Interview Likelihood Scoring ===\n');
   
-  await initRelevanceColumn();
+  await initRelevanceColumns();
   
   // Get questions needing scoring
   const questions = await getQuestionsToScore(BATCH_SIZE);
@@ -240,15 +278,35 @@ async function main() {
     console.log(`✅ Score: ${scoring.score}/100 (${scoring.recommendation})`);
     console.log(`   Reasoning: ${scoring.details.reasoning}`);
     
+    // Log improvement suggestions if present
+    if (scoring.improvements && scoring.recommendation === 'improve') {
+      console.log(`   📝 Improvement Suggestions:`);
+      if (scoring.improvements.questionIssues?.length > 0) {
+        console.log(`      Question Issues: ${scoring.improvements.questionIssues.join(', ')}`);
+      }
+      if (scoring.improvements.answerIssues?.length > 0) {
+        console.log(`      Answer Issues: ${scoring.improvements.answerIssues.join(', ')}`);
+      }
+      if (scoring.improvements.missingTopics?.length > 0) {
+        console.log(`      Missing Topics: ${scoring.improvements.missingTopics.join(', ')}`);
+      }
+      if (scoring.improvements.suggestedAdditions?.length > 0) {
+        console.log(`      Suggested Additions: ${scoring.improvements.suggestedAdditions.join(', ')}`);
+      }
+      if (scoring.improvements.difficultyAdjustment !== 'none') {
+        console.log(`      Difficulty: ${scoring.improvements.difficultyAdjustment}`);
+      }
+    }
+    
     // Categorize
     if (scoring.score >= 80) results.excellent++;
     else if (scoring.score >= 60) results.good++;
     else if (scoring.score >= 40) results.fair++;
     else results.needsReview++;
     
-    // Save to database
-    await saveRelevanceScore(question.id, scoring.score, scoring.details);
-    console.log('💾 Saved to database');
+    // Save to database with improvement suggestions
+    await saveRelevanceScore(question.id, scoring.score, scoring.details, scoring.recommendation, scoring.improvements);
+    console.log('💾 Saved to database (with improvement suggestions)');
     
     // Log bot activity
     await logBotActivity(question.id, 'relevance', `scored ${scoring.score}/100`, 'completed', {
