@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useChannelStats } from '../../hooks/use-stats';
 import { useUserPreferences } from '../../context/UserPreferencesContext';
 import { useProgress, useGlobalStats } from '../../hooks/use-progress';
+import { allChannelsConfig } from '../../lib/channels-config';
 import {
   Cpu, Terminal, Layout, Database, Activity, GitBranch, Server,
   Layers, Smartphone, Shield, Brain, Workflow, Box, Cloud, Code,
@@ -97,7 +98,19 @@ export function MobileFeed() {
 
       {/* Recommended Topics */}
       <RecommendedSection 
-        channels={channelStats.filter(c => !subscribedChannels.find(s => s.id === c.id)).slice(0, 4)}
+        channels={channelStats
+          .filter(c => !subscribedChannels.find(s => s.id === c.id))
+          .slice(0, 4)
+          .map(stat => {
+            const config = allChannelsConfig.find(ch => ch.id === stat.id);
+            return {
+              id: stat.id,
+              name: config?.name || stat.id,
+              icon: config?.icon || 'code',
+              total: stat.total
+            };
+          })
+        }
         onChannelClick={(id) => setLocation(`/channel/${id}`)}
         onSeeAll={() => setLocation('/channels')}
       />
@@ -160,16 +173,13 @@ function StoryItem({ channel, onClick }: { channel: any; onClick: () => void }) 
       className="flex flex-col items-center gap-1.5 flex-shrink-0"
     >
       <div className={`
-        w-16 h-16 rounded-full flex items-center justify-center
+        w-16 h-16 rounded-full p-[2px] flex items-center justify-center
         ${hasProgress 
-          ? 'bg-gradient-to-br from-primary to-primary/60 ring-2 ring-primary/30' 
-          : 'bg-muted'
+          ? 'bg-gradient-to-br from-primary to-primary/60' 
+          : 'bg-border'
         }
       `}>
-        <div className={`
-          w-14 h-14 rounded-full bg-card flex items-center justify-center
-          ${hasProgress ? 'ring-2 ring-card' : ''}
-        `}>
+        <div className="w-full h-full rounded-full bg-card flex items-center justify-center">
           <span className={hasProgress ? 'text-primary' : 'text-muted-foreground'}>
             {iconMap[channel.icon] || <Code className="w-5 h-5" />}
           </span>

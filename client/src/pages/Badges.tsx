@@ -339,76 +339,88 @@ export default function Badges() {
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="relative bg-card border border-border rounded-lg p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto"
+                className="relative bg-card border border-border rounded-2xl p-6 max-w-xs w-full shadow-2xl"
                 onClick={e => e.stopPropagation()}
               >
                 <button
                   onClick={() => setSelectedBadge(null)}
-                  className="absolute top-3 right-3 p-1 hover:bg-muted rounded"
+                  className="absolute top-4 left-4 p-2 hover:bg-muted rounded-full transition-colors"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-4 h-4 text-muted-foreground" />
                 </button>
                 
-                <div className="flex flex-col items-center text-center">
-                  <BadgeRing progress={selectedBadge} size="lg" showProgress={false} />
+                <div className="flex flex-col items-center text-center pt-2">
+                  {/* Badge Icon with glow effect when unlocked */}
+                  <div className={`relative ${selectedBadge.isUnlocked ? 'drop-shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)]' : ''}`}>
+                    <BadgeRing progress={selectedBadge} size="lg" showProgress={false} />
+                  </div>
                   
-                  <h3 className="text-lg font-bold mt-4">{selectedBadge.badge.name}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  {/* Badge Name */}
+                  <h3 className="text-xl font-bold mt-4 tracking-tight">{selectedBadge.badge.name}</h3>
+                  
+                  {/* Description */}
+                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
                     {selectedBadge.badge.description}
                   </p>
                   
-                  <div className="flex items-center gap-2 mt-3">
+                  {/* Tier & Category Tags */}
+                  <div className="flex items-center gap-2 mt-4">
                     <span
-                      className="px-2 py-0.5 rounded text-[10px] uppercase font-bold"
+                      className="px-2.5 py-1 rounded-full text-[10px] uppercase font-bold tracking-wide"
                       style={{ 
-                        backgroundColor: `${getTierColor(selectedBadge.badge.tier)}20`,
-                        color: getTierColor(selectedBadge.badge.tier)
+                        backgroundColor: `${getTierColor(selectedBadge.badge.tier)}15`,
+                        color: getTierColor(selectedBadge.badge.tier),
+                        border: `1px solid ${getTierColor(selectedBadge.badge.tier)}30`
                       }}
                     >
                       {selectedBadge.badge.tier}
                     </span>
-                    <span className="text-[10px] text-muted-foreground uppercase">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] uppercase font-medium tracking-wide bg-muted/50 text-muted-foreground">
                       {getCategoryLabel(selectedBadge.badge.category)}
                     </span>
                   </div>
                   
-                  {/* Progress */}
-                  <div className="w-full mt-6">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>Progress</span>
+                  {/* Progress Section */}
+                  <div className="w-full mt-6 p-4 bg-muted/20 rounded-xl">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-muted-foreground">Progress</span>
                       <span className="font-bold">
                         {selectedBadge.current}/{selectedBadge.badge.requirement} {selectedBadge.badge.unit}
                       </span>
                     </div>
-                    <div className="h-2 bg-muted/30 rounded-full overflow-hidden">
+                    <div className="h-2.5 bg-muted/40 rounded-full overflow-hidden">
                       <motion.div
                         className="h-full rounded-full"
                         style={{ backgroundColor: getTierColor(selectedBadge.badge.tier) }}
                         initial={{ width: 0 }}
-                        animate={{ width: `${selectedBadge.progress}%` }}
-                        transition={{ duration: 0.5 }}
+                        animate={{ width: `${Math.min(selectedBadge.progress, 100)}%` }}
+                        transition={{ duration: 0.6, ease: 'easeOut' }}
                       />
                     </div>
                   </div>
                   
-                  {/* Status */}
-                  <div className="mt-4 flex items-center gap-2">
+                  {/* Status - Unlocked or Locked */}
+                  <div className="mt-5 w-full">
                     {selectedBadge.isUnlocked ? (
-                      <>
+                      <div className="flex items-center justify-center gap-2 py-2.5 px-4 bg-green-500/10 rounded-xl border border-green-500/20">
                         <Check className="w-4 h-4 text-green-500" />
-                        <span className="text-sm text-green-500">
+                        <span className="text-sm font-medium text-green-500">
                           Unlocked {selectedBadge.unlockedAt 
-                            ? new Date(selectedBadge.unlockedAt).toLocaleDateString() 
+                            ? new Date(selectedBadge.unlockedAt).toLocaleDateString('en-GB', { 
+                                day: '2-digit', 
+                                month: '2-digit', 
+                                year: 'numeric' 
+                              }).replace(/\//g, '/')
                             : 'recently'}
                         </span>
-                      </>
+                      </div>
                     ) : (
-                      <>
+                      <div className="flex items-center justify-center gap-2 py-2.5 px-4 bg-muted/30 rounded-xl">
                         <Lock className="w-4 h-4 text-muted-foreground" />
                         <span className="text-sm text-muted-foreground">
-                          {selectedBadge.badge.requirement - selectedBadge.current} {selectedBadge.badge.unit} to go
+                          {selectedBadge.badge.requirement - selectedBadge.current} {selectedBadge.badge.unit} to unlock
                         </span>
-                      </>
+                      </div>
                     )}
                   </div>
                 </div>
