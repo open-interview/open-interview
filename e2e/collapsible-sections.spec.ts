@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Collapsible Sections - Desktop', () => {
+  // Skip on mobile - these are desktop-specific tests
+  test.skip(({ isMobile }) => isMobile, 'Desktop collapsible section tests');
+
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('marvel-intro-seen', 'true');

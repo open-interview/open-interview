@@ -10,12 +10,20 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:3333',
     trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
+    screenshot: 'on',
   },
+  outputDir: 'test-results',
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'mobile-chrome',
+      use: {
+        ...devices['Pixel 5'],
+        viewport: { width: 390, height: 844 },
+      },
     },
   ],
   webServer: {

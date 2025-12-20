@@ -30,14 +30,13 @@ test.describe('Mobile Experience', () => {
     const viewportWidth = await page.evaluate(() => window.innerWidth);
     expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 10);
     
-    // Main heading should be visible
-    await expect(page.locator('h1').first()).toBeVisible();
+    // LinkedIn-style mobile header should be visible (has search bar)
+    const searchBar = page.locator('button:has-text("Search topics")').first();
+    await expect(searchBar).toBeVisible({ timeout: 5000 });
     
-    // Channel cards should be visible (look for visible cards in main content, not sidebar)
-    // The redesigned UI uses rounded-2xl cards with channel names
-    // Use getByRole for more reliable selection
-    const channelHeading = page.getByRole('heading', { name: 'Your Channels' });
-    await expect(channelHeading).toBeVisible({ timeout: 5000 });
+    // Bottom navigation should be visible
+    const bottomNav = page.locator('nav').filter({ has: page.locator('text=Home') });
+    await expect(bottomNav).toBeVisible({ timeout: 5000 });
   });
 
   test('channel page should work on mobile', async ({ page }) => {

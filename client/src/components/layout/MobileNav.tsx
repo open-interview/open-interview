@@ -1,6 +1,7 @@
 /**
  * Mobile-First Bottom Navigation
  * Instagram/TikTok style bottom nav for mobile devices
+ * Fixed at the bottom of the screen like a native mobile app
  */
 
 import { useLocation } from 'wouter';
@@ -31,12 +32,23 @@ export function MobileNav({ onSearchClick }: MobileNavProps) {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
-      {/* Blur background */}
-      <div className="absolute inset-0 bg-card/90 backdrop-blur-xl border-t border-border" />
+    <nav 
+      className="fixed bottom-0 left-0 right-0 z-50 lg:hidden"
+      style={{ 
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+      }}
+    >
+      {/* Blur background with solid base for better visibility */}
+      <div className="absolute inset-0 bg-card/95 backdrop-blur-xl border-t border-border shadow-[0_-2px_10px_rgba(0,0,0,0.1)]" />
       
-      {/* Safe area padding for iOS */}
-      <div className="relative flex items-center justify-around px-2 pb-safe pt-2">
+      {/* Safe area padding for iOS - ensures nav is always visible */}
+      <div 
+        className="relative flex items-center justify-around px-2 pt-2"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 8px)' }}
+      >
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
@@ -45,7 +57,7 @@ export function MobileNav({ onSearchClick }: MobileNavProps) {
             <button
               key={item.id}
               onClick={() => item.path ? setLocation(item.path) : item.action?.()}
-              className="flex flex-col items-center justify-center py-2 px-4 min-w-[64px] relative"
+              className="flex flex-col items-center justify-center py-2 px-4 min-w-[64px] relative active:scale-95 transition-transform"
             >
               {active && (
                 <motion.div

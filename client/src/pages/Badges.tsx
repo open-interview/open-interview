@@ -11,6 +11,7 @@ import {
   ChevronRight, Lock, Check, X
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
+import { AppLayout } from '../components/layout/AppLayout';
 import { BadgeRing } from '../components/BadgeDisplay';
 import { 
   BADGES, Badge, BadgeProgress, calculateBadgeProgress, 
@@ -158,21 +159,8 @@ export default function Badges() {
         canonical="https://reel-interview.github.io/badges"
       />
       
-      <div className="min-h-screen bg-background text-foreground p-3 sm:p-4 font-mono overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <header className="flex items-center justify-between mb-6">
-            <button
-              onClick={goBack}
-              className="flex items-center gap-1.5 hover:text-primary text-[10px] uppercase tracking-widest font-bold"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back
-            </button>
-            <h1 className="text-base sm:text-xl font-bold uppercase">
-              <span className="text-primary">&gt;</span> Badges
-            </h1>
-            <div className="w-16" />
-          </header>
+      <AppLayout title="Badges" showBackOnMobile>
+        <div className="max-w-4xl mx-auto pb-8">
 
           {/* Overall Progress */}
           <motion.div
@@ -202,11 +190,11 @@ export default function Badges() {
           </motion.div>
 
           {/* Category Tabs */}
-          <div className="flex gap-1 mb-4 overflow-x-auto pb-2">
+          <div className="flex gap-2 mb-4 overflow-x-auto pb-2 -mx-4 px-4 no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
             <button
               onClick={() => setSelectedCategory(null)}
-              className={`px-3 py-1.5 text-[10px] uppercase tracking-widest font-bold rounded transition-colors whitespace-nowrap
-                ${!selectedCategory ? 'bg-primary text-primary-foreground' : 'bg-muted/30 hover:bg-muted/50'}`}
+              className={`px-3 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex-shrink-0
+                ${!selectedCategory ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted'}`}
             >
               All
             </button>
@@ -217,12 +205,12 @@ export default function Badges() {
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1.5 text-[10px] uppercase tracking-widest font-bold rounded transition-colors whitespace-nowrap flex items-center gap-1.5
-                    ${selectedCategory === cat ? 'bg-primary text-primary-foreground' : 'bg-muted/30 hover:bg-muted/50'}`}
+                  className={`px-3 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 flex-shrink-0
+                    ${selectedCategory === cat ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted'}`}
                 >
                   {categoryIcons[cat]}
-                  {getCategoryLabel(cat)}
-                  <span className="opacity-60">({catUnlocked}/{catBadges.length})</span>
+                  <span>{getCategoryLabel(cat)}</span>
+                  <span className="opacity-70 text-[10px]">{catUnlocked}/{catBadges.length}</span>
                 </button>
               );
             })}
@@ -253,13 +241,14 @@ export default function Badges() {
                       </span>
                     </div>
                     
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-4 gap-2 sm:gap-4">
                       {catBadges.map((bp, i) => (
                         <motion.div
                           key={bp.badge.id}
                           initial={{ opacity: 0, scale: 0.8 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ delay: i * 0.03 }}
+                          className="flex justify-center"
                         >
                           <BadgeRing
                             progress={bp}
@@ -331,7 +320,7 @@ export default function Badges() {
             </div>
           </motion.div>
         </div>
-      </div>
+      </AppLayout>
 
       {/* Badge Detail Modal */}
       <AnimatePresence>

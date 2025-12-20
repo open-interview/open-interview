@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Question Metadata Display', () => {
+  // Skip on mobile - metadata display tests are desktop-focused
+  test.skip(({ isMobile }) => isMobile, 'Question metadata tests are desktop-only');
+
   test.beforeEach(async ({ page }) => {
     // Skip onboarding
     await page.addInitScript(() => {
@@ -97,6 +100,9 @@ test.describe('Question Metadata Display', () => {
 });
 
 test.describe('Question Navigation with Metadata', () => {
+  // Skip on mobile - navigation tests are desktop-focused
+  test.skip(({ isMobile }) => isMobile, 'Question navigation tests are desktop-only');
+
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('marvel-intro-seen', 'true');

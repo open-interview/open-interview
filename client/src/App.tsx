@@ -23,6 +23,7 @@ import HomeRedesigned from "@/pages/HomeRedesigned";
 import ReelsGoogle from "@/pages/ReelsGoogle";
 import StatsRedesigned from "@/pages/StatsRedesigned";
 import AllChannelsRedesigned from "@/pages/AllChannelsRedesigned";
+import Profile from "@/pages/Profile";
 import { Onboarding } from "./components/Onboarding";
 import { MarvelIntro, useMarvelIntro } from "./components/MarvelIntro";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -68,6 +69,7 @@ function Router() {
       <Route path="/coding/:id" component={CodingChallenge} />
       <Route path="/bot-activity" component={BotActivity} />
       <Route path="/channels" component={Channels} />
+      <Route path="/profile" component={Profile} />
       <Route path="/test/mermaid" component={MermaidTest} />
       <Route path="/channel/:id" component={Reels} />
       <Route path="/channel/:id/:index" component={Reels} />

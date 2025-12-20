@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Video Player and Source Links', () => {
+  // Skip on mobile - video player tests are desktop-focused
+  test.skip(({ isMobile }) => isMobile, 'Video player tests are desktop-only');
+
   test.beforeEach(async ({ page }) => {
     // Skip onboarding
     await page.addInitScript(() => {

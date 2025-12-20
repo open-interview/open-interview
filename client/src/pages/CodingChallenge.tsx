@@ -18,6 +18,8 @@ import {
   Code,
   Lightbulb,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Zap,
   Trophy,
   AlertCircle,
@@ -25,6 +27,7 @@ import {
   Check,
   Timer,
   TrendingUp,
+  FileText,
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
 import { CodeEditor, CodeDisplay } from '../components/CodeEditor';
@@ -94,6 +97,9 @@ export default function CodingChallenge() {
   const [userComplexity, setUserComplexity] = useState<ComplexityAnalysis | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [solvedIds, setSolvedIds] = useState<Set<string>>(() => getSolvedChallengeIds());
+  // Mobile collapsible states
+  const [isProblemCollapsed, setIsProblemCollapsed] = useState(false);
+  const [isCodeCollapsed, setIsCodeCollapsed] = useState(false);
   const stats = getCodingStats();
 
   // Refresh solved IDs when returning to list or after solving
@@ -495,9 +501,36 @@ export default function CodingChallenge() {
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-              {/* Problem Description Panel */}
+              {/* Problem Description Panel - Collapsible on Mobile */}
               <div className="lg:w-[400px] xl:w-[450px] border-b lg:border-b-0 lg:border-r border-border flex flex-col overflow-hidden flex-shrink-0">
-                <div className="flex-1 overflow-y-auto p-4">
+                {/* Mobile Collapsible Header */}
+                <button
+                  onClick={() => setIsProblemCollapsed(!isProblemCollapsed)}
+                  className="lg:hidden flex items-center justify-between p-3 bg-muted/20 border-b border-border hover:bg-muted/30 transition-colors"
+                  data-testid="problem-collapse-toggle"
+                >
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-primary" />
+                    <span className="font-bold text-sm">Problem Description</span>
+                  </div>
+                  {isProblemCollapsed ? (
+                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </button>
+                
+                <AnimatePresence initial={false}>
+                  {!isProblemCollapsed && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex-1 overflow-hidden lg:!h-auto lg:!opacity-100"
+                      data-testid="problem-content"
+                    >
+                      <div className="flex-1 overflow-y-auto p-4 max-h-[40vh] lg:max-h-none">
                   <h1 className="text-lg font-bold mb-3" data-testid="challenge-title">
                     {currentChallenge.title}
                   </h1>
@@ -643,10 +676,43 @@ export default function CodingChallenge() {
                     <GiscusComments questionId={`coding-${currentChallenge.id}`} />
                   </div>
                 </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
-              {/* Code Editor Panel */}
+              {/* Code Editor Panel - Collapsible on Mobile */}
               <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+                {/* Mobile Collapsible Header */}
+                <button
+                  onClick={() => setIsCodeCollapsed(!isCodeCollapsed)}
+                  className="lg:hidden flex items-center justify-between p-3 bg-muted/20 border-b border-border hover:bg-muted/30 transition-colors"
+                  data-testid="code-collapse-toggle"
+                >
+                  <div className="flex items-center gap-2">
+                    <Code className="w-4 h-4 text-primary" />
+                    <span className="font-bold text-sm">Code Editor</span>
+                    <span className="text-xs text-muted-foreground font-mono">
+                      ({language === 'javascript' ? 'JS' : 'PY'})
+                    </span>
+                  </div>
+                  {isCodeCollapsed ? (
+                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </button>
+                
+                <AnimatePresence initial={false}>
+                  {!isCodeCollapsed && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex-1 flex flex-col overflow-hidden lg:!h-auto lg:!opacity-100"
+                      data-testid="code-content"
+                    >
                 {/* Editor Header */}
                 <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/10 flex-shrink-0">
                   <div className="flex items-center gap-2">
@@ -792,6 +858,9 @@ export default function CodingChallenge() {
                     )}
                   </button>
                 </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
 

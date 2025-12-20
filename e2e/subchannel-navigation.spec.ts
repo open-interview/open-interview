@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Subchannel Navigation', () => {
+  // Skip on mobile - subchannel navigation tests are desktop-focused
+  test.skip(({ isMobile }) => isMobile, 'Subchannel navigation tests are desktop-only');
+
   test.beforeEach(async ({ page }) => {
     // Skip onboarding
     await page.addInitScript(() => {

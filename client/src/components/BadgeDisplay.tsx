@@ -40,10 +40,11 @@ interface BadgeRingProps {
 export function BadgeRing({ progress, size = 'md', showProgress = true, onClick }: BadgeRingProps) {
   const { badge, current, isUnlocked, progress: pct } = progress;
   
+  // Sizes for different badge sizes
   const sizes = {
-    sm: { ring: 48, stroke: 3, icon: 16, font: '8px' },
-    md: { ring: 72, stroke: 4, icon: 24, font: '10px' },
-    lg: { ring: 96, stroke: 5, icon: 32, font: '12px' },
+    sm: { ring: 44, stroke: 3, icon: 16, font: '9px', inner: 30 },
+    md: { ring: 56, stroke: 3, icon: 20, font: '10px', inner: 38 },
+    lg: { ring: 80, stroke: 4, icon: 32, font: '12px', inner: 56 },
   };
   
   const s = sizes[size];
@@ -55,19 +56,24 @@ export function BadgeRing({ progress, size = 'md', showProgress = true, onClick 
   const tierColor = getTierColor(badge.tier);
   
   return (
-    <motion.div
-      className={`relative flex flex-col items-center cursor-pointer group ${onClick ? 'hover:scale-105' : ''}`}
+    <div
+      className={`flex flex-col items-center ${onClick ? 'cursor-pointer active:scale-95 transition-transform' : ''}`}
       onClick={onClick}
-      whileHover={onClick ? { scale: 1.05 } : undefined}
-      whileTap={onClick ? { scale: 0.95 } : undefined}
+      style={{ width: s.ring }}
     >
-      {/* Ring container */}
+      {/* Ring container - use relative positioning */}
       <div 
-        className="relative flex items-center justify-center"
+        className="relative"
         style={{ width: s.ring, height: s.ring }}
       >
-        {/* Background ring */}
-        <svg width={s.ring} height={s.ring} className="absolute transform -rotate-90">
+        {/* SVG Ring */}
+        <svg 
+          width={s.ring} 
+          height={s.ring} 
+          className="transform -rotate-90"
+          style={{ position: 'absolute', top: 0, left: 0 }}
+        >
+          {/* Background ring */}
           <circle
             cx={s.ring / 2}
             cy={s.ring / 2}
@@ -75,7 +81,7 @@ export function BadgeRing({ progress, size = 'md', showProgress = true, onClick 
             fill="none"
             stroke="currentColor"
             strokeWidth={s.stroke}
-            className="text-muted/20"
+            className="text-muted/30"
           />
           {/* Progress ring */}
           <motion.circle
@@ -94,61 +100,54 @@ export function BadgeRing({ progress, size = 'md', showProgress = true, onClick 
           />
         </svg>
         
-        {/* Inner circle with icon */}
+        {/* Inner circle with icon - absolutely centered */}
         <div
           className={`
-            absolute rounded-full flex items-center justify-center transition-all
+            absolute rounded-full flex items-center justify-center
             ${isUnlocked 
-              ? `bg-gradient-to-br ${badge.gradient} shadow-lg` 
-              : 'bg-muted/30'
+              ? `bg-gradient-to-br ${badge.gradient} shadow-md` 
+              : 'bg-muted/40'
             }
           `}
           style={{ 
-            width: s.ring - s.stroke * 4, 
-            height: s.ring - s.stroke * 4,
+            width: s.inner, 
+            height: s.inner,
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
           }}
         >
           {isUnlocked ? (
-            <Icon className={`text-white drop-shadow-sm w-[${s.icon}px] h-[${s.icon}px]`} />
+            <Icon 
+              className="text-white" 
+              style={{ width: s.icon, height: s.icon }}
+            />
           ) : (
-            <Lock className={`text-muted-foreground/50 w-[${Math.round(s.icon * 0.7)}px] h-[${Math.round(s.icon * 0.7)}px]`} />
+            <Lock 
+              className="text-muted-foreground/60" 
+              style={{ width: s.icon, height: s.icon }}
+            />
           )}
         </div>
-        
-        {/* Shine effect for unlocked badges */}
-        {isUnlocked && (
-          <motion.div
-            className="absolute inset-0 rounded-full"
-            style={{
-              background: `linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.3) 50%, transparent 60%)`,
-            }}
-            animate={{
-              backgroundPosition: ['200% 200%', '-200% -200%'],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              repeatDelay: 2,
-            }}
-          />
-        )}
       </div>
       
       {/* Badge name */}
-      <span 
-        className={`mt-1.5 text-center font-medium truncate max-w-[80px] ${isUnlocked ? 'text-foreground' : 'text-muted-foreground'}`}
-        style={{ fontSize: s.font }}
-      >
-        {badge.name}
-      </span>
+      {size !== 'sm' && (
+        <span 
+          className={`mt-1.5 text-center font-medium leading-tight line-clamp-2 ${isUnlocked ? 'text-foreground' : 'text-muted-foreground'}`}
+          style={{ fontSize: s.font, width: s.ring + 16, maxWidth: s.ring + 16 }}
+        >
+          {badge.name}
+        </span>
+      )}
       
       {/* Progress text */}
-      {showProgress && !isUnlocked && (
-        <span className="text-muted-foreground" style={{ fontSize: `calc(${s.font} - 1px)` }}>
+      {showProgress && !isUnlocked && size !== 'sm' && (
+        <span className="text-muted-foreground mt-0.5" style={{ fontSize: '9px' }}>
           {current}/{badge.requirement}
         </span>
       )}
-    </motion.div>
+    </div>
   );
 }
 
@@ -187,30 +186,36 @@ interface BadgeShowcaseProps {
   title?: string;
 }
 
-export function BadgeShowcase({ badges, title = 'Recent Badges' }: BadgeShowcaseProps) {
-  const unlockedBadges = badges.filter(b => b.isUnlocked);
-  const recentBadges = unlockedBadges
-    .sort((a, b) => (b.unlockedAt || '').localeCompare(a.unlockedAt || ''))
-    .slice(0, 5);
+export function BadgeShowcase({ badges, title = 'Your Badges' }: BadgeShowcaseProps) {
+  const unlockedCount = badges.filter(b => b.isUnlocked).length;
   
-  if (recentBadges.length === 0) {
-    return null;
-  }
+  // Sort: unlocked first, then by progress
+  const sortedBadges = [...badges].sort((a, b) => {
+    if (a.isUnlocked && !b.isUnlocked) return -1;
+    if (!a.isUnlocked && b.isUnlocked) return 1;
+    return b.progress - a.progress;
+  });
   
   return (
-    <div className="border border-border p-3 bg-card rounded-lg">
-      <div className="flex items-center gap-1.5 mb-3">
-        <Trophy className="w-3.5 h-3.5 text-primary" />
-        <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+    <div className="border border-border p-4 bg-card rounded-xl">
+      <div className="flex items-center gap-2 mb-4">
+        <Trophy className="w-4 h-4 text-primary" />
+        <span className="text-xs uppercase tracking-widest text-muted-foreground font-bold">
           {title}
         </span>
-        <span className="text-[10px] text-muted-foreground ml-auto">
-          {unlockedBadges.length} unlocked
+        <span className="text-xs text-muted-foreground ml-auto">
+          {unlockedCount} unlocked
         </span>
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {recentBadges.map((bp) => (
-          <BadgeRing key={bp.badge.id} progress={bp} size="sm" showProgress={false} />
+      {/* Horizontal scrolling badges - show all badges */}
+      <div 
+        className="flex gap-5 overflow-x-auto pb-2 no-scrollbar" 
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        {sortedBadges.map((bp) => (
+          <div key={bp.badge.id} className="flex-shrink-0">
+            <BadgeRing progress={bp} size="sm" showProgress={false} />
+          </div>
         ))}
       </div>
     </div>
@@ -233,22 +238,20 @@ export function NextBadgeProgress({ badges }: NextBadgeProps) {
     return null;
   }
   
-  const Icon = iconMap[nextBadge.badge.icon] || Star;
-  
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="border border-border p-3 bg-card rounded-lg"
+      className="border border-border p-4 bg-card rounded-xl"
     >
-      <div className="flex items-center gap-3">
-        <div className="relative">
+      <div className="flex items-center gap-4">
+        <div className="flex-shrink-0">
           <BadgeRing progress={nextBadge} size="sm" showProgress={false} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-bold truncate">{nextBadge.badge.name}</div>
-          <div className="text-[10px] text-muted-foreground">{nextBadge.badge.description}</div>
-          <div className="mt-1.5 h-1.5 bg-muted/30 rounded-full overflow-hidden">
+          <div className="text-sm font-bold truncate">{nextBadge.badge.name}</div>
+          <div className="text-xs text-muted-foreground">{nextBadge.badge.description}</div>
+          <div className="mt-2 h-1.5 bg-muted/30 rounded-full overflow-hidden">
             <motion.div
               className="h-full rounded-full"
               style={{ backgroundColor: getTierColor(nextBadge.badge.tier) }}
@@ -257,7 +260,7 @@ export function NextBadgeProgress({ badges }: NextBadgeProps) {
               transition={{ duration: 0.5 }}
             />
           </div>
-          <div className="text-[9px] text-muted-foreground mt-0.5">
+          <div className="text-[10px] text-muted-foreground mt-1">
             {nextBadge.current} / {nextBadge.badge.requirement} {nextBadge.badge.unit}
           </div>
         </div>

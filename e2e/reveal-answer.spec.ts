@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Reveal Answer Functionality', () => {
+  // Skip on mobile - reveal answer tests are desktop-focused
+  test.skip(({ isMobile }) => isMobile, 'Reveal answer tests are desktop-only');
+
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('marvel-intro-seen', 'true');

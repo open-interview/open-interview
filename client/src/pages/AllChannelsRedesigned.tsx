@@ -1,19 +1,21 @@
 /**
- * Redesigned All Channels Page - Google-style clean interface
+ * Redesigned All Channels Page - LinkedIn-style mobile, Google-style desktop
  * Browse and subscribe to channels with category filtering
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
+import { LinkedInChannels } from '../components/mobile/LinkedInChannels';
 import { allChannelsConfig, categories, ChannelConfig } from '../lib/channels-config';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { useChannelStats } from '../hooks/use-stats';
 import { useProgress } from '../hooks/use-progress';
+import { useIsMobile } from '../hooks/use-mobile';
 import { SEOHead } from '../components/SEOHead';
 import {
-  Search, Check, Plus, Filter,
+  Search, Check, Plus,
   Cpu, Terminal, Layout, Database, Activity, GitBranch, Server,
   Layers, Smartphone, Shield, Brain, Workflow, Box, Cloud, Code,
   Network, MessageCircle, Users, Sparkles, Eye, FileText, CheckCircle, 
@@ -50,11 +52,12 @@ const iconMap: Record<string, React.ReactNode> = {
 };
 
 export default function AllChannelsRedesigned() {
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
   const { isSubscribed, toggleSubscription, preferences } = useUserPreferences();
   const { stats } = useChannelStats();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   // Create question count map
   const questionCounts: Record<string, number> = {};
@@ -74,6 +77,23 @@ export default function AllChannelsRedesigned() {
     channels: filteredChannels.filter(c => c.category === cat.id)
   })).filter(group => group.channels.length > 0);
 
+  // Mobile: LinkedIn-style channels
+  if (isMobile) {
+    return (
+      <>
+        <SEOHead
+          title="Browse 30+ Interview Prep Channels | Code Reels"
+          description="Explore 30+ technical interview prep channels: System Design, Algorithms, Frontend, Backend, DevOps, and more."
+          canonical="https://reel-interview.github.io/channels"
+        />
+        <AppLayout title="Explore" fullWidth>
+          <LinkedInChannels />
+        </AppLayout>
+      </>
+    );
+  }
+
+  // Desktop: Original design
   return (
     <>
       <SEOHead
@@ -109,11 +129,11 @@ export default function AllChannelsRedesigned() {
             </div>
 
             {/* Category Pills */}
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 no-scrollbar">
+            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
               <button
                 onClick={() => setSelectedCategory(null)}
                 className={`
-                  px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-all
+                  px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-all flex-shrink-0
                   ${!selectedCategory 
                     ? 'bg-primary text-primary-foreground' 
                     : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -127,7 +147,7 @@ export default function AllChannelsRedesigned() {
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
                   className={`
-                    px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-all flex items-center gap-2
+                    px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-all flex items-center gap-2 flex-shrink-0
                     ${selectedCategory === cat.id 
                       ? 'bg-primary text-primary-foreground' 
                       : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -144,7 +164,7 @@ export default function AllChannelsRedesigned() {
           {/* Channel Grid */}
           {selectedCategory ? (
             // Flat grid when category is selected
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredChannels.map((channel, index) => (
                 <ChannelCard
                   key={channel.id}
@@ -172,7 +192,9 @@ export default function AllChannelsRedesigned() {
                       </p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  
+                  {/* Desktop: Grid */}
+                  <div className="grid grid-cols-3 xl:grid-cols-4 gap-4">
                     {group.channels.map((channel, index) => (
                       <ChannelCard
                         key={channel.id}
@@ -230,7 +252,7 @@ function ChannelCard({
       className={`
         bg-card border rounded-xl p-5 transition-all cursor-pointer group
         ${isSubscribed 
-          ? 'border-primary/50 bg-primary/5' 
+          ? 'border-primary/50 bg-primary/5'
           : 'border-border hover:border-primary/30 hover:shadow-md'
         }
       `}

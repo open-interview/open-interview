@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Diagram Rendering', () => {
+  // Skip on mobile - diagram rendering tests are desktop-focused
+  test.skip(({ isMobile }) => isMobile, 'Diagram rendering tests are desktop-only');
+
   test.beforeEach(async ({ page }) => {
     // Skip onboarding
     await page.addInitScript(() => {

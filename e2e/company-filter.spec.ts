@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Company Filter', () => {
+  // Skip on mobile - company filter UI is optimized for desktop
+  test.skip(({ isMobile }) => isMobile, 'Company filter tests are desktop-only');
+
   test.beforeEach(async ({ page }) => {
     // Skip onboarding
     await page.addInitScript(() => {
