@@ -316,24 +316,45 @@ const SPRITE_MAP: Record<MascotType, React.FC<{ state: MascotState }>> = {
 
 const getAnimation = (state: MascotState) => {
   switch (state) {
-    case 'jump': return { y: [0, -25, 0] };
-    case 'flip': return { rotateY: [0, 360] };
-    case 'dance': return { rotate: [-8, 8, -8] };
-    case 'walk': return { y: [0, -2, 0] };
-    case 'spin': return { rotate: [0, 360] };
-    case 'bounce': return { y: [0, -12, 0, -8, 0] };
-    case 'shake': return { x: [-3, 3, -3, 3, 0] };
-    case 'nod': return { y: [0, 3, 0, 3, 0] };
-    case 'wiggle': return { rotate: [-3, 3, -3, 3, 0] };
-    case 'celebrate': return { y: [0, -30, 0, -20, 0, -10, 0], scale: [1, 1.2, 1, 1.1, 1] };
-    case 'sad': return { y: [0, 5, 0], rotate: [-5, 0, 5, 0, -3, 0] };
-    default: return {};
+    case 'jump': return { y: [0, -35, -38, -35, 0], scale: [1, 1.1, 1.15, 1.1, 1] };
+    case 'flip': return { rotateY: [0, 180, 360], scale: [1, 1.2, 1] };
+    case 'dance': return { rotate: [-15, 15, -15, 15, -10, 10], y: [0, -5, 0, -5, 0, -3] };
+    case 'walk': return { y: [0, -4, 0], rotate: [-2, 2, -2] };
+    case 'spin': return { rotate: [0, 360, 720], scale: [1, 1.1, 1] };
+    case 'bounce': return { y: [0, -20, 0, -15, 0, -10, 0, -5, 0], scale: [1, 1.15, 1, 1.1, 1, 1.05, 1] };
+    case 'shake': return { x: [-6, 6, -6, 6, -4, 4, -2, 2, 0], rotate: [-3, 3, -3, 3, 0] };
+    case 'nod': return { y: [0, 5, 0, 5, 0, 3, 0], scale: [1, 0.95, 1, 0.95, 1] };
+    case 'wiggle': return { rotate: [-8, 8, -8, 8, -5, 5, 0], x: [-2, 2, -2, 2, 0] };
+    case 'celebrate': return { y: [0, -40, 0, -30, 0, -20, 0, -10, 0], scale: [1, 1.3, 1, 1.2, 1, 1.1, 1], rotate: [0, -10, 10, -10, 10, 0] };
+    case 'sad': return { y: [0, 8, 5, 8, 5], rotate: [-8, 0, 8, 0, -5, 0], scale: [1, 0.9, 0.92, 0.9, 0.95] };
+    case 'idle': return { y: [0, -2, 0, -1, 0], scale: [1, 1.02, 1, 1.01, 1] }; // Breathing animation
+    default: return { y: [0, -2, 0], scale: [1, 1.02, 1] };
   }
 };
 
 const PixelCharacter = ({ mascotType, state, direction }: { mascotType: MascotType; state: MascotState; direction: 'left' | 'right' }) => {
   const SpriteComponent = SPRITE_MAP[mascotType];
-  const loopingStates: MascotState[] = ['walk', 'dance', 'wiggle', 'celebrate'];
+  const loopingStates: MascotState[] = ['walk', 'dance', 'wiggle', 'celebrate', 'idle'];
+  
+  // Faster, snappier durations for more energy
+  const getDuration = () => {
+    switch (state) {
+      case 'walk': return 0.2;
+      case 'dance': return 0.4;
+      case 'celebrate': return 0.6;
+      case 'sad': return 0.8;
+      case 'jump': return 0.35;
+      case 'bounce': return 0.5;
+      case 'spin': return 0.4;
+      case 'flip': return 0.4;
+      case 'shake': return 0.3;
+      case 'wiggle': return 0.35;
+      case 'nod': return 0.4;
+      case 'idle': return 2; // Slow breathing
+      default: return 0.4;
+    }
+  };
+  
   return (
     <motion.svg
       width="32"
@@ -342,9 +363,9 @@ const PixelCharacter = ({ mascotType, state, direction }: { mascotType: MascotTy
       style={{ imageRendering: 'pixelated', transform: direction === 'left' ? 'scaleX(-1)' : 'scaleX(1)' }}
       animate={getAnimation(state)}
       transition={{ 
-        duration: state === 'walk' ? 0.3 : state === 'celebrate' ? 0.8 : state === 'sad' ? 1 : 0.5, 
+        duration: getDuration(), 
         repeat: loopingStates.includes(state) ? Infinity : 0, 
-        ease: 'easeInOut' 
+        ease: state === 'idle' ? 'easeInOut' : [0.25, 0.46, 0.45, 0.94] // Snappy easing
       }}
     >
       <SpriteComponent state={state} />
@@ -405,45 +426,98 @@ export default function PixelMascot() {
     return () => window.removeEventListener('click', handleClick);
   }, [position.x, state]);
 
-  // Autonomous wandering - slow and relaxed
+  // Autonomous wandering - energetic and playful!
   useEffect(() => {
+    // Quick random tricks while idle (every 1.5-3 seconds)
+    const trickInterval = setInterval(() => {
+      if (state === 'idle' && Math.random() > 0.5) {
+        // 50% chance to do a quick trick
+        const quickTricks: MascotState[] = ['nod', 'wiggle', 'shake'];
+        const trick = quickTricks[Math.floor(Math.random() * quickTricks.length)];
+        setState(trick);
+        setTimeout(() => setState('idle'), 400);
+      }
+    }, 1500 + Math.random() * 1500);
+
     const interval = setInterval(() => {
       const idle = Date.now() - lastActivityRef.current;
       
-      // Sleep after 45 seconds of no interaction
-      if (idle > 45000 && state !== 'sleep') {
+      // Sleep after 90 seconds of no interaction (longer before sleep)
+      if (idle > 90000 && state !== 'sleep') {
         setState('sleep');
         setMessage('💤 zzz...');
         setTimeout(() => setMessage(null), 2000);
         return;
       }
       
-      // Random autonomous wandering (30% chance every 4 seconds)
-      if (state === 'idle' && Math.random() > 0.7) {
-        const dir = Math.random() > 0.5 ? 'right' : 'left';
-        setDirection(dir);
-        setState('walk');
-        let step = 0;
-        const totalSteps = Math.floor(Math.random() * 20) + 10; // 10-30 steps
-        const walkInt = setInterval(() => {
-          step++;
-          setPosition((p) => ({ x: Math.max(50, Math.min(p.x + (dir === 'right' ? 1 : -1), window.innerWidth - 80)) }));
-          if (step >= totalSteps) { clearInterval(walkInt); setState('idle'); }
-        }, 120); // Slower: 120ms per step instead of 50ms
+      // Much more active! 60% chance to do something every 1.5 seconds
+      if (state === 'idle' && Math.random() > 0.4) {
+        const action = Math.random();
+        
+        if (action < 0.5) {
+          // 50% - Walk somewhere
+          const dir = Math.random() > 0.5 ? 'right' : 'left';
+          setDirection(dir);
+          setState('walk');
+          let step = 0;
+          const totalSteps = Math.floor(Math.random() * 30) + 15; // 15-45 steps
+          const walkInt = setInterval(() => {
+            step++;
+            setPosition((p) => ({ x: Math.max(50, Math.min(p.x + (dir === 'right' ? 2 : -2), window.innerWidth - 80)) }));
+            if (step >= totalSteps) { clearInterval(walkInt); setState('idle'); }
+          }, 50); // Fast: 50ms per step
+        } else if (action < 0.75) {
+          // 25% - Do a random trick with message
+          const tricks = MASCOT_TRICKS[mascotType];
+          const trick = tricks[Math.floor(Math.random() * tricks.length)];
+          setState(trick);
+          const msg = MASCOT_MESSAGES[mascotType][trick];
+          if (msg && Math.random() > 0.5) setMessage(msg);
+          setTimeout(() => { setState('idle'); setMessage(null); }, 800);
+        } else if (action < 0.9) {
+          // 15% - Quick jump or bounce
+          setState(Math.random() > 0.5 ? 'jump' : 'bounce');
+          setTimeout(() => setState('idle'), 500);
+        } else {
+          // 10% - Change direction and look around
+          setDirection(d => d === 'left' ? 'right' : 'left');
+          setState('nod');
+          setTimeout(() => setState('idle'), 400);
+        }
       }
-    }, 4000); // Check every 4 seconds instead of 2
-    return () => clearInterval(interval);
-  }, [state]);
+    }, 1500); // Check every 1.5 seconds (much more frequent!)
+    
+    return () => {
+      clearInterval(interval);
+      clearInterval(trickInterval);
+    };
+  }, [state, mascotType]);
 
   const handleClick = useCallback(() => {
     lastActivityRef.current = Date.now();
-    if (state === 'sleep') { setState('idle'); setMessage("😊 I'm awake!"); setTimeout(() => setMessage(null), 2000); return; }
+    if (state === 'sleep') { 
+      setState('jump'); // Wake up with a jump!
+      setMessage("😊 I'm awake!"); 
+      setTimeout(() => { setState('idle'); setMessage(null); }, 800); 
+      return; 
+    }
+    
+    // More dramatic reactions on click
     const tricks = MASCOT_TRICKS[mascotType];
     const trick = tricks[Math.floor(Math.random() * tricks.length)];
     setState(trick);
     const msg = MASCOT_MESSAGES[mascotType][trick] || '✨ Fun!';
     setMessage(msg);
-    setTimeout(() => { setState('idle'); setMessage(null); }, 1500);
+    
+    // Sometimes do a combo trick!
+    if (Math.random() > 0.7) {
+      setTimeout(() => {
+        const secondTrick = tricks[Math.floor(Math.random() * tricks.length)];
+        setState(secondTrick);
+      }, 500);
+    }
+    
+    setTimeout(() => { setState('idle'); setMessage(null); }, 1200);
   }, [state, mascotType]);
 
   return (
