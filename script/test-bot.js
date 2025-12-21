@@ -7,7 +7,7 @@
 
 import 'dotenv/config';
 import { createClient } from '@libsql/client';
-import { execSync } from 'child_process';
+import { runWithRetries, parseJson } from './utils.js';
 
 const db = createClient({
   url: process.env.TURSO_DATABASE_URL,
@@ -74,69 +74,63 @@ async function testExists(channelId) {
 }
 
 // Generate MCQs using opencode run
-function generateBatchMCQs(questions) {
+async function generateBatchMCQs(questions) {
   const summaries = questions.map((q, i) => 
     `${i + 1}. Q: ${q.question.substring(0, 100)} A: ${q.answer.substring(0, 150)}`
   ).join('\n');
 
-  const prompt = `Create ${questions.length} MCQs from these Q&As:\n${summaries}\n\nReturn JSON array: [{"q":"question","o":["a","b","c","d"],"c":[0]}] where c=correct indices. ONLY JSON.`;
-  
-  const base64Prompt = Buffer.from(prompt).toString('base64');
-  
-  try {
-    const result = execSync(
-      `echo "${base64Prompt}" | base64 -d | opencode run`,
-      {
-        encoding: 'utf-8',
-        maxBuffer: 50 * 1024 * 1024,
-        timeout: 120000,
-        stdio: ['pipe', 'pipe', 'pipe']
-      }
-    );
+  const prompt = `You are a JSON generator. Output ONLY valid JSON, no explanations, no markdown.
 
-    // Extract JSON array - handle markdown code blocks
-    let jsonStr = result;
-    const codeBlockMatch = result.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (codeBlockMatch) {
-      jsonStr = codeBlockMatch[1].trim();
-    }
-    
-    const jsonMatch = jsonStr.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
-      console.log('    ⚠️ No JSON found');
-      return [];
-    }
+Create ${questions.length} multiple choice questions (MCQs) from these Q&As:
 
-    const parsed = JSON.parse(jsonMatch[0]);
-    
-    return parsed.map((item, i) => {
-      const q = questions[i];
-      if (!q || !item.q || !item.o || item.o.length < 4) return null;
+${summaries}
 
-      const correctIndices = Array.isArray(item.c) ? item.c : [0];
-      const options = item.o.slice(0, 4).map((text, idx) => ({
-        id: `opt-${idx}`,
-        text: String(text),
-        isCorrect: correctIndices.includes(idx)
-      }));
+Return a JSON array with this exact structure:
+[{"q":"question text","o":["option a","option b","option c","option d"],"c":[0],"e":"brief explanation"}]
 
-      if (!options.some(o => o.isCorrect)) options[0].isCorrect = true;
+Where:
+- q = question text
+- o = array of 4 options
+- c = array of correct option indices (0-based)
+- e = brief explanation
 
-      return {
-        id: `tq-${q.id}`,
-        questionId: q.id,
-        question: item.q,
-        type: correctIndices.length > 1 ? 'multiple' : 'single',
-        options,
-        explanation: item.e || '',
-        difficulty: q.difficulty || 'intermediate'
-      };
-    }).filter(Boolean);
+IMPORTANT: Return ONLY the JSON array. No other text.`;
 
-  } catch (error) {
-    console.log(`    ⚠️ Error: ${error.message.substring(0, 60)}`);
+  const response = await runWithRetries(prompt);
+  if (!response) {
+    console.log('    ⚠️ No response from OpenCode');
     return [];
   }
+
+  const parsed = parseJson(response);
+  if (!parsed || !Array.isArray(parsed)) {
+    console.log('    ⚠️ Invalid JSON response');
+    return [];
+  }
+
+  return parsed.map((item, i) => {
+    const q = questions[i];
+    if (!q || !item.q || !item.o || item.o.length < 4) return null;
+
+    const correctIndices = Array.isArray(item.c) ? item.c : [0];
+    const options = item.o.slice(0, 4).map((text, idx) => ({
+      id: `opt-${idx}`,
+      text: String(text),
+      isCorrect: correctIndices.includes(idx)
+    }));
+
+    if (!options.some(o => o.isCorrect)) options[0].isCorrect = true;
+
+    return {
+      id: `tq-${q.id}`,
+      questionId: q.id,
+      question: item.q,
+      type: correctIndices.length > 1 ? 'multiple' : 'single',
+      options,
+      explanation: item.e || '',
+      difficulty: q.difficulty || 'intermediate'
+    };
+  }).filter(Boolean);
 }
 
 async function saveTestToDb(test) {
@@ -174,7 +168,7 @@ async function generateTestForChannel(channelId) {
     const batch = questions.slice(i, i + BATCH_SIZE);
     console.log(`   Batch ${Math.floor(i / BATCH_SIZE) + 1}...`);
     
-    const mcqs = generateBatchMCQs(batch);
+    const mcqs = await generateBatchMCQs(batch);
     testQuestions.push(...mcqs);
     console.log(`   ✓ ${mcqs.length} MCQs`);
     
