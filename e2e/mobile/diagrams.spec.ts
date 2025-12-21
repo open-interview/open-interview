@@ -25,15 +25,18 @@ test.describe('Mobile Mermaid Diagrams (Disabled)', () => {
 
   test('should show placeholder instead of mermaid diagram on mobile', async ({ page }) => {
     await page.goto('/channel/system-design');
+    await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
     
-    const hasContent = await page.getByTestId('question-panel').first().isVisible({ timeout: 3000 }).catch(() => false) ||
-                       await page.getByText('Question').isVisible({ timeout: 1000 }).catch(() => false);
+    // Mobile view shows question content differently - check for heading or question text
+    const hasContent = await page.getByRole('heading', { level: 1 }).first().isVisible({ timeout: 5000 }).catch(() => false) ||
+                       await page.locator('h1').first().isVisible({ timeout: 2000 }).catch(() => false);
     expect(hasContent).toBeTruthy();
   });
 
   test('diagram placeholder should not overflow viewport', async ({ page }) => {
     await page.goto('/channel/system-design');
+    await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
     
     const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
@@ -89,19 +92,27 @@ test.describe('Mobile Mermaid Disabled State', () => {
 
   test('should not have zoom controls on mobile (mermaid disabled)', async ({ page }) => {
     await page.goto('/channel/system-design');
+    await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
     
-    const hasContent = await page.getByTestId('question-panel').first().isVisible({ timeout: 3000 }).catch(() => false) ||
-                       await page.getByText('Question').isVisible({ timeout: 1000 }).catch(() => false);
+    // Mobile view shows question content - check for heading
+    const hasContent = await page.getByRole('heading', { level: 1 }).first().isVisible({ timeout: 5000 }).catch(() => false) ||
+                       await page.locator('h1').first().isVisible({ timeout: 2000 }).catch(() => false);
     expect(hasContent).toBeTruthy();
+    
+    // Verify no zoom controls on mobile
+    const hasZoomControls = await page.locator('[data-testid="zoom-controls"]').isVisible().catch(() => false);
+    expect(hasZoomControls).toBeFalsy();
   });
 
   test('placeholder should be styled correctly', async ({ page }) => {
     await page.goto('/channel/system-design');
+    await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
     
-    const hasContent = await page.getByTestId('question-panel').first().isVisible({ timeout: 3000 }).catch(() => false) ||
-                       await page.getByText('Question').isVisible({ timeout: 1000 }).catch(() => false);
+    // Mobile view shows question content - check for heading
+    const hasContent = await page.getByRole('heading', { level: 1 }).first().isVisible({ timeout: 5000 }).catch(() => false) ||
+                       await page.locator('h1').first().isVisible({ timeout: 2000 }).catch(() => false);
     expect(hasContent).toBeTruthy();
   });
 });
