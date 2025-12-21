@@ -318,6 +318,55 @@ async function main() {
     console.log(`   ✓ tests.json (empty - table may not exist yet)`);
   }
 
+  // Fetch coding challenges from database
+  console.log('\n📥 Fetching coding challenges...');
+  try {
+    const challengesResult = await client.execute(`
+      SELECT id, title, description, difficulty, category, tags, companies,
+             starter_code_js, starter_code_py, test_cases, hints,
+             solution_js, solution_py, complexity_time, complexity_space, complexity_explanation,
+             time_limit, created_at
+      FROM coding_challenges
+      ORDER BY category, difficulty, id
+    `);
+
+    const challenges = challengesResult.rows.map(row => ({
+      id: row.id,
+      title: row.title,
+      description: row.description,
+      difficulty: row.difficulty,
+      category: row.category,
+      tags: row.tags ? JSON.parse(row.tags) : [],
+      companies: row.companies ? JSON.parse(row.companies) : [],
+      starterCode: {
+        javascript: row.starter_code_js,
+        python: row.starter_code_py
+      },
+      testCases: row.test_cases ? JSON.parse(row.test_cases) : [],
+      hints: row.hints ? JSON.parse(row.hints) : [],
+      solution: {
+        javascript: row.solution_js,
+        python: row.solution_py
+      },
+      complexity: {
+        time: row.complexity_time,
+        space: row.complexity_space,
+        explanation: row.complexity_explanation
+      },
+      timeLimit: row.time_limit || 15,
+      createdAt: row.created_at
+    }));
+
+    const challengesFile = path.join(OUTPUT_DIR, 'coding-challenges.json');
+    fs.writeFileSync(challengesFile, JSON.stringify(challenges, null, 0));
+    console.log(`   ✓ coding-challenges.json (${challenges.length} challenges)`);
+  } catch (e) {
+    console.log(`   ⚠️ Could not fetch coding challenges: ${e.message}`);
+    const challengesFile = path.join(OUTPUT_DIR, 'coding-challenges.json');
+    fs.writeFileSync(challengesFile, JSON.stringify([], null, 0));
+    console.log(`   ✓ coding-challenges.json (empty - table may not exist yet)`);
+  }
+
   // Generate changelog from bot activity
   console.log('\n📥 Generating changelog from bot activity...');
   try {
