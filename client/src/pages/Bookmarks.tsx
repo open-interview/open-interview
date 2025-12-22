@@ -221,7 +221,8 @@ export default function Bookmarks() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.03 }}
-                    className="bg-card border border-border rounded-xl sm:rounded-2xl p-3 sm:p-4 hover:border-primary/30 transition-colors"
+                    onClick={() => goToQuestion(question)}
+                    className="bg-card border border-border rounded-xl sm:rounded-2xl p-3 sm:p-4 hover:border-primary/30 transition-colors cursor-pointer"
                   >
                     <div className="flex items-start gap-3">
                       {/* Channel icon */}
@@ -276,14 +277,14 @@ export default function Bookmarks() {
                       {/* Actions */}
                       <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                         <button
-                          onClick={() => removeBookmark(question)}
+                          onClick={(e) => { e.stopPropagation(); removeBookmark(question); }}
                           className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
                           title="Remove bookmark"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => goToQuestion(question)}
+                          onClick={(e) => { e.stopPropagation(); goToQuestion(question); }}
                           className="p-2 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition-colors"
                           title="Go to question"
                         >
