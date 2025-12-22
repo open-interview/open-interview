@@ -81,7 +81,10 @@ export const guidelines = [
   'Explanation should include interview context',
   'Add code examples where relevant',
   'Include 2-3 follow-up questions interviewers might ask',
-  'For system design, use the NFR format with calculations'
+  'For system design, use the NFR format with calculations',
+  'CRITICAL: Use proper markdown formatting - ensure all ** bold markers are properly paired',
+  'Each section header should be on its own line with ## prefix',
+  'Bullet points should start with - on a new line'
 ];
 
 export function build(context) {

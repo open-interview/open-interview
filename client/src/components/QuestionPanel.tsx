@@ -10,6 +10,7 @@ interface QuestionPanelProps {
   isMarked: boolean;
   isCompleted: boolean;
   onToggleMark: () => void;
+  onTapQuestion?: () => void;
   timerEnabled: boolean;
   timeLeft: number;
 }
@@ -107,6 +108,7 @@ export function QuestionPanel({
   isMarked,
   isCompleted,
   onToggleMark,
+  onTapQuestion,
   timerEnabled,
   timeLeft
 }: QuestionPanelProps) {
@@ -198,7 +200,10 @@ export function QuestionPanel({
       </div>
 
       {/* Main content area - Question centered */}
-      <div className="flex-1 flex flex-col justify-center max-w-3xl mx-auto w-full">
+      <div 
+        className={`flex-1 flex flex-col justify-center max-w-3xl mx-auto w-full ${onTapQuestion ? 'cursor-pointer lg:cursor-default' : ''}`}
+        onClick={onTapQuestion}
+      >
         
         {/* Companies - if asked at specific companies */}
         {question.companies && question.companies.length > 0 && (
@@ -278,7 +283,7 @@ export function QuestionPanel({
       {/* Bottom hint */}
       <div className="mt-4 sm:mt-6 text-center">
         <p className="text-xs sm:text-sm text-muted-foreground">
-          <span className="sm:hidden">Swipe left or tap Answer tab →</span>
+          <span className="sm:hidden">Tap question or swipe left to see answer →</span>
           <span className="hidden sm:inline">Press <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">→</kbd> or click the Answer tab to reveal</span>
         </p>
       </div>

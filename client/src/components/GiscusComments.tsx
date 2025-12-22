@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, ChevronDown, Loader2 } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 // Giscus configuration - uses environment variables with fallbacks
 const GISCUS_REPO = import.meta.env.VITE_GISCUS_REPO || 'satishkumar-dhule/code-reels';
@@ -8,15 +9,22 @@ const GISCUS_REPO_ID = import.meta.env.VITE_GISCUS_REPO_ID || 'R_kgDOQmWh6w';
 const GISCUS_CATEGORY = import.meta.env.VITE_GISCUS_CATEGORY || 'General';
 const GISCUS_CATEGORY_ID = import.meta.env.VITE_GISCUS_CATEGORY_ID || 'DIC_kwDOQmWh684C0ESo';
 
+// Light themes in the app
+const LIGHT_THEMES = ['clean', 'light', 'macos-light', 'ios-light', 'playful', 'aqua', 'solarized'];
+
 interface GiscusCommentsProps {
   questionId: string;
 }
 
 export function GiscusComments({ questionId }: GiscusCommentsProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const scriptRef = useRef<HTMLScriptElement | null>(null);
+  const { theme } = useTheme();
+  
+  // Determine Giscus theme based on app theme
+  const giscusTheme = LIGHT_THEMES.includes(theme) ? 'light' : 'transparent_dark';
 
   useEffect(() => {
     if (!isOpen || !containerRef.current) return;
@@ -39,7 +47,7 @@ export function GiscusComments({ questionId }: GiscusCommentsProps) {
     script.setAttribute('data-reactions-enabled', '0');
     script.setAttribute('data-emit-metadata', '0');
     script.setAttribute('data-input-position', 'top');
-    script.setAttribute('data-theme', 'transparent_dark');
+    script.setAttribute('data-theme', giscusTheme);
     script.setAttribute('data-lang', 'en');
     script.setAttribute('data-loading', 'lazy');
     script.crossOrigin = 'anonymous';
@@ -71,7 +79,7 @@ export function GiscusComments({ questionId }: GiscusCommentsProps) {
       }
       scriptRef.current = null;
     };
-  }, [isOpen, questionId]);
+  }, [isOpen, questionId, giscusTheme]);
 
   // Handle hash fragment from OAuth redirect
   useEffect(() => {
@@ -126,8 +134,8 @@ export function GiscusComments({ questionId }: GiscusCommentsProps) {
               
               <div 
                 ref={containerRef} 
-                className="giscus-container rounded-xl overflow-hidden"
-                style={{ colorScheme: 'dark' }}
+                className="giscus-container rounded-xl overflow-hidden min-h-[200px]"
+                style={{ colorScheme: LIGHT_THEMES.includes(theme) ? 'light' : 'dark' }}
               />
             </div>
           </motion.div>

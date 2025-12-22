@@ -148,7 +148,10 @@ export const guidelines = [
   'Include a realistic scenario or context when appropriate',
   'Answer should be actionable and demonstrate expertise',
   'Create a MEANINGFUL diagram with 5-8 specific nodes',
-  'DO NOT create trivial diagrams like "Start -> End"'
+  'DO NOT create trivial diagrams like "Start -> End"',
+  'CRITICAL: Use proper markdown formatting - all ** bold markers must be properly paired',
+  'Each section header must be on its own line with ## prefix',
+  'Bullet points must start with - on a new line, not inline'
 ];
 
 export function build(context) {

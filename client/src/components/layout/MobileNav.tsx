@@ -5,19 +5,15 @@
 
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import { Code, Compass, Trophy, User, Home } from 'lucide-react';
+import { Compass, Trophy, User, Home, Bookmark } from 'lucide-react';
 
-interface MobileNavProps {
-  onCreateClick?: () => void;
-}
-
-export function MobileNav({ onCreateClick }: MobileNavProps) {
+export function MobileNav() {
   const [location, setLocation] = useLocation();
 
   const navItems = [
     { id: 'home', icon: Home, label: 'Home', path: '/' },
     { id: 'explore', icon: Compass, label: 'Explore', path: '/channels' },
-    { id: 'create', icon: Code, label: 'Code', action: onCreateClick, isCenter: true },
+    { id: 'bookmarks', icon: Bookmark, label: 'Saved', path: '/bookmarks' },
     { id: 'achievements', icon: Trophy, label: 'Progress', path: '/stats' },
     { id: 'profile', icon: User, label: 'Me', path: '/profile' },
   ];
@@ -42,28 +38,10 @@ export function MobileNav({ onCreateClick }: MobileNavProps) {
           const Icon = item.icon;
           const active = isActive(item.path);
           
-          if (item.isCenter) {
-            // Center action button
-            return (
-              <button
-                key={item.id}
-                onClick={() => item.action?.() || setLocation('/coding')}
-                className="flex flex-col items-center justify-center py-2 px-3 relative"
-              >
-                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shadow-sm">
-                  <Icon className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <span className="text-[10px] mt-1 font-medium text-primary">
-                  {item.label}
-                </span>
-              </button>
-            );
-          }
-          
           return (
             <button
               key={item.id}
-              onClick={() => item.path ? setLocation(item.path) : item.action?.()}
+              onClick={() => item.path ? setLocation(item.path) : undefined}
               className="flex flex-col items-center justify-center py-2 px-3 min-w-[60px] relative"
             >
               {/* Active indicator - top line */}

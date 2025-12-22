@@ -127,21 +127,28 @@ async function main() {
   // Fetch bot activity from work_queue
   console.log('\n📥 Fetching bot activity...');
   try {
+    // Get only the most recent activity per question per bot (no duplicates)
     const activityResult = await client.execute(`
-      SELECT 
-        w.id,
-        w.bot_type as botType,
-        w.question_id as questionId,
-        q.question as questionText,
-        q.channel,
-        w.reason as action,
-        w.status,
-        w.result,
-        w.completed_at as completedAt
-      FROM work_queue w
-      LEFT JOIN questions q ON w.question_id = q.id
-      WHERE w.status IN ('completed', 'failed')
-      ORDER BY w.completed_at DESC
+      WITH RankedActivity AS (
+        SELECT 
+          w.id,
+          w.bot_type as botType,
+          w.question_id as questionId,
+          q.question as questionText,
+          q.channel,
+          w.reason as action,
+          w.status,
+          w.result,
+          w.completed_at as completedAt,
+          ROW_NUMBER() OVER (PARTITION BY w.bot_type, w.question_id ORDER BY w.completed_at DESC) as rn
+        FROM work_queue w
+        LEFT JOIN questions q ON w.question_id = q.id
+        WHERE w.status IN ('completed', 'failed')
+      )
+      SELECT id, botType, questionId, questionText, channel, action, status, result, completedAt
+      FROM RankedActivity
+      WHERE rn = 1
+      ORDER BY completedAt DESC
       LIMIT 100
     `);
 
@@ -156,7 +163,7 @@ async function main() {
       completedAt: row.completedAt
     }));
 
-    // Calculate stats per bot
+    // Calculate stats per bot (still count all runs for accurate totals)
     const statsResult = await client.execute(`
       SELECT 
         bot_type as botType,

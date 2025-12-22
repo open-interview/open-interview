@@ -23,12 +23,45 @@ function preprocessMarkdown(text: string): string {
   
   let processed = text;
   
+  // Fix broken bold markers - standalone ** on their own line
+  processed = processed.replace(/^\*\*\s*$/gm, '');
+  
+  // Fix bold markers that are split across lines (e.g., "**\nSome text**")
+  processed = processed.replace(/\*\*\s*\n\s*([^*]+)\*\*/g, '**$1**');
+  
+  // Fix unclosed bold markers at start of lines followed by content
+  // Pattern: line starting with ** but no closing ** on same line
+  const lines = processed.split('\n');
+  const fixedLines: string[] = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    
+    // Count ** occurrences in line
+    const boldMarkers = (line.match(/\*\*/g) || []).length;
+    
+    // If odd number of ** markers, it's unbalanced
+    if (boldMarkers % 2 === 1) {
+      // If line starts with ** and has no closing, remove the opening **
+      if (line.trim().startsWith('**') && boldMarkers === 1) {
+        line = line.replace(/^\s*\*\*\s*/, '');
+      }
+      // If line ends with ** and has no opening, remove the closing **
+      else if (line.trim().endsWith('**') && boldMarkers === 1) {
+        line = line.replace(/\s*\*\*\s*$/, '');
+      }
+    }
+    
+    fixedLines.push(line);
+  }
+  processed = fixedLines.join('\n');
+  
   // Fix inline bullet points
   processed = processed.replace(/^[•·]\s*/gm, '- ');
   
   if (processed.includes('•') || processed.includes('·')) {
-    const lines = processed.split('\n');
-    const processedLines = lines.map(line => {
+    const bulletLines = processed.split('\n');
+    const processedLines = bulletLines.map(line => {
       const bulletCount = (line.match(/[•·]/g) || []).length;
       if (bulletCount > 1 || (bulletCount === 1 && !line.trim().startsWith('•') && !line.trim().startsWith('·'))) {
         const parts = line.split(/[•·]/).map(p => p.trim()).filter(p => p);

@@ -359,7 +359,7 @@ export default function BotActivity() {
             })}
           </motion.div>
 
-          {/* Activity Feed */}
+          {/* Activity Feed - Grouped by Bot's Last Run */}
           <motion.div 
             initial={{ opacity: 0, y: 10 }} 
             animate={{ opacity: 1, y: 0 }}
@@ -369,10 +369,10 @@ export default function BotActivity() {
             <div className="p-3 border-b border-border flex items-center justify-between">
               <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-primary" />
-                Recent Activity
+                Recent Activity {selectedBot !== 'all' && `- ${getBotConfig(selectedBot).name}`}
               </span>
               <span className="text-[10px] text-muted-foreground">
-                {activities.length} actions
+                {activities.length} unique items
               </span>
             </div>
 
@@ -397,7 +397,7 @@ export default function BotActivity() {
                     const Icon = config.icon;
                     return (
                       <motion.div
-                        key={activity.id}
+                        key={`${activity.botType}-${activity.questionId}`}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 10 }}

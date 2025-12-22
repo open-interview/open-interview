@@ -4,22 +4,22 @@
  * Mobile: Swipeable cards
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useRoute } from 'wouter';
-import { motion, AnimatePresence } from 'framer-motion';
 import { getChannel } from '../lib/data';
 import { useQuestionsWithPrefetch, useSubChannels, useCompaniesWithCounts } from '../hooks/use-questions';
 import { useProgress, trackActivity } from '../hooks/use-progress';
-import { useUserPreferences } from '../context/UserPreferencesContext';
 import { SEOHead } from '../components/SEOHead';
 import { QuestionPanel } from '../components/QuestionPanel';
 import { AnswerPanel } from '../components/AnswerPanel';
 import { UnifiedSearch } from '../components/UnifiedSearch';
-import { trackQuestionView, trackAnswerRevealed } from '../hooks/use-analytics';
+import { trackQuestionView } from '../hooks/use-analytics';
+import { useToast } from '../hooks/use-toast';
+import { useSwipe } from '../hooks/use-swipe';
 import {
-  ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Home, Search,
-  Filter, ChevronDown, Check, Share2, Bookmark, Grid, List,
-  Zap, Target, Flame, Building2, X, Menu, MoreVertical
+  ChevronLeft, ChevronRight, Search,
+  ChevronDown, Check, Share2, Bookmark,
+  Zap, Target, Flame, Building2
 } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
@@ -48,7 +48,6 @@ export default function QuestionViewer() {
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
   const [selectedCompany, setSelectedCompany] = useState('all');
   const [currentIndex, setCurrentIndex] = useState(paramIndex ?? 0);
-  const [showAnswer, setShowAnswer] = useState(true);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [mobileView, setMobileView] = useState<'question' | 'answer'>('question');
 
@@ -66,12 +65,18 @@ export default function QuestionViewer() {
     selectedCompany
   );
 
-  const { completed, markCompleted, lastVisitedIndex, saveLastVisitedIndex } = useProgress(channelId || '');
-  const { getSubscribedChannels } = useUserPreferences();
+  const { completed, markCompleted, saveLastVisitedIndex } = useProgress(channelId || '');
+  const { toast } = useToast();
 
   const [markedQuestions, setMarkedQuestions] = useState<string[]>(() => {
     const saved = localStorage.getItem(`marked-${channelId}`);
     return saved ? JSON.parse(saved) : [];
+  });
+
+  // Mobile swipe to switch between question and answer
+  const swipeHandlers = useSwipe({
+    onSwipeLeft: () => setMobileView('answer'),
+    onSwipeRight: () => setMobileView('question'),
   });
 
   // Reset index when filters change
@@ -147,8 +152,19 @@ export default function QuestionViewer() {
     });
   };
 
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: "Link copied!",
+        description: "Question link copied to clipboard",
+      });
+    } catch {
+      toast({
+        title: "Share",
+        description: window.location.href,
+      });
+    }
   };
 
   const handleFilterChange = (type: 'sub' | 'diff' | 'company', value: string) => {
@@ -298,8 +314,13 @@ export default function QuestionViewer() {
                 Answer
               </button>
             </div>
-            {/* Mobile Content */}
-            <div className="flex-1 overflow-hidden">
+            {/* Mobile Content - Swipeable */}
+            <div 
+              className="flex-1 overflow-hidden"
+              onTouchStart={swipeHandlers.onTouchStart}
+              onTouchMove={swipeHandlers.onTouchMove}
+              onTouchEnd={swipeHandlers.onTouchEnd}
+            >
               {mobileView === 'question' ? (
                 <QuestionPanel
                   question={currentQuestion}
@@ -308,6 +329,7 @@ export default function QuestionViewer() {
                   isMarked={isMarked}
                   isCompleted={isCompleted}
                   onToggleMark={toggleMark}
+                  onTapQuestion={() => setMobileView('answer')}
                   timerEnabled={false}
                   timeLeft={0}
                 />
