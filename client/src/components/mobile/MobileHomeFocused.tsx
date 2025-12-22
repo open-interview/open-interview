@@ -17,7 +17,7 @@ import {
   Layers, Smartphone, Shield, Brain, Workflow, Box, Cloud, Code,
   Network, MessageCircle, Users, Sparkles, Eye, FileText, CheckCircle, 
   Monitor, Zap, Gauge, ChevronRight, Play, Compass, ArrowRight,
-  RefreshCw, Flame, Target
+  RefreshCw, Flame, Target, X
 } from 'lucide-react';
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -52,7 +52,7 @@ const iconMap: Record<string, React.ReactNode> = {
 export function MobileHomeFocused() {
   const [, setLocation] = useLocation();
   const { stats: channelStats } = useChannelStats();
-  const { getSubscribedChannels } = useUserPreferences();
+  const { getSubscribedChannels, unsubscribeChannel } = useUserPreferences();
   const { stats: activityStats } = useGlobalStats();
   const subscribedChannels = getSubscribedChannels();
 
@@ -108,6 +108,7 @@ export function MobileHomeFocused() {
           channels={subscribedChannels}
           questionCounts={questionCounts}
           onChannelClick={(id) => setLocation(`/channel/${id}`)}
+          onUnsubscribe={unsubscribeChannel}
           onSeeAll={() => setLocation('/channels')}
         />
       )}
@@ -292,11 +293,13 @@ function ContinueLearningSection({
   channels, 
   questionCounts,
   onChannelClick,
+  onUnsubscribe,
   onSeeAll
 }: { 
   channels: any[];
   questionCounts: Record<string, number>;
   onChannelClick: (id: string) => void;
+  onUnsubscribe: (id: string) => void;
   onSeeAll: () => void;
 }) {
   return (
@@ -320,6 +323,7 @@ function ContinueLearningSection({
               channel={channel}
               questionCount={questionCounts[channel.id] || 0}
               onClick={() => onChannelClick(channel.id)}
+              onUnsubscribe={() => onUnsubscribe(channel.id)}
             />
           ))}
         </div>
@@ -331,6 +335,7 @@ function ContinueLearningSection({
               channel={channel}
               questionCount={questionCounts[channel.id] || 0}
               onClick={() => onChannelClick(channel.id)}
+              onUnsubscribe={() => onUnsubscribe(channel.id)}
             />
           ))}
         </div>
@@ -352,81 +357,181 @@ function ContinueLearningSection({
 function ChannelCard({ 
   channel, 
   questionCount,
-  onClick 
+  onClick,
+  onUnsubscribe
 }: { 
   channel: any;
   questionCount: number;
   onClick: () => void;
+  onUnsubscribe: () => void;
 }) {
   const { completed } = useProgress(channel.id);
+  const [confirmingUnsubscribe, setConfirmingUnsubscribe] = useState(false);
   const validCompleted = Math.min(completed.length, questionCount);
   const progress = questionCount > 0 ? Math.round((validCompleted / questionCount) * 100) : 0;
 
-  return (
-    <button
-      onClick={onClick}
-      className="p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors text-left border border-border/50 hover:border-primary/30"
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-          {iconMap[channel.icon] || <Code className="w-5 h-5" />}
+  // Auto-cancel confirmation after 5 seconds
+  useEffect(() => {
+    if (confirmingUnsubscribe) {
+      const timer = setTimeout(() => setConfirmingUnsubscribe(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [confirmingUnsubscribe]);
+
+  if (confirmingUnsubscribe) {
+    return (
+      <div className="p-4 bg-destructive/10 rounded-xl border border-destructive/30 text-center">
+        <p className="text-sm font-medium mb-3">Remove {channel.name}?</p>
+        <div className="flex gap-2 justify-center">
+          <button
+            onClick={() => setConfirmingUnsubscribe(false)}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onUnsubscribe();
+              setConfirmingUnsubscribe(false);
+            }}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+          >
+            Remove
+          </button>
         </div>
-        <span className="text-lg font-bold text-primary">{progress}%</span>
       </div>
+    );
+  }
+
+  return (
+    <div className="relative group">
+      <button
+        onClick={onClick}
+        className="w-full p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors text-left border border-border/50 hover:border-primary/30"
+      >
+        <div className="flex items-start justify-between mb-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+            {iconMap[channel.icon] || <Code className="w-5 h-5" />}
+          </div>
+          <span className="text-lg font-bold text-primary">{progress}%</span>
+        </div>
+        
+        <h4 className="font-semibold text-sm mb-1 truncate">{channel.name}</h4>
+        <p className="text-xs text-muted-foreground mb-3 line-clamp-1">{channel.description}</p>
+        
+        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-primary rounded-full transition-all"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <div className="mt-1 text-[10px] text-muted-foreground">
+          {validCompleted}/{questionCount} completed
+        </div>
+      </button>
       
-      <h4 className="font-semibold text-sm mb-1 truncate">{channel.name}</h4>
-      <p className="text-xs text-muted-foreground mb-3 line-clamp-1">{channel.description}</p>
-      
-      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-        <div 
-          className="h-full bg-primary rounded-full transition-all"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-      <div className="mt-1 text-[10px] text-muted-foreground">
-        {validCompleted}/{questionCount} completed
-      </div>
-    </button>
+      {/* Unsubscribe button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setConfirmingUnsubscribe(true);
+        }}
+        className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 border border-border opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-all"
+        title="Unsubscribe"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
   );
 }
 
 function ChannelRow({ 
   channel, 
   questionCount,
-  onClick 
+  onClick,
+  onUnsubscribe
 }: { 
   channel: any;
   questionCount: number;
   onClick: () => void;
+  onUnsubscribe: () => void;
 }) {
   const { completed } = useProgress(channel.id);
+  const [confirmingUnsubscribe, setConfirmingUnsubscribe] = useState(false);
   const validCompleted = Math.min(completed.length, questionCount);
   const progress = questionCount > 0 ? Math.round((validCompleted / questionCount) * 100) : 0;
 
-  return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center gap-3 px-3 py-2.5 sm:px-4 sm:py-3 hover:bg-muted/50 transition-colors text-left"
-    >
-      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
-        {iconMap[channel.icon] || <Code className="w-4 h-4 sm:w-5 sm:h-5" />}
-      </div>
-      
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-1">
-          <h4 className="font-medium text-sm sm:text-base truncate">{channel.name}</h4>
-          <span className="text-xs sm:text-sm text-muted-foreground ml-2">{progress}%</span>
-        </div>
-        <div className="h-1 sm:h-1.5 bg-muted rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-primary rounded-full"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
+  // Auto-cancel confirmation after 5 seconds
+  useEffect(() => {
+    if (confirmingUnsubscribe) {
+      const timer = setTimeout(() => setConfirmingUnsubscribe(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [confirmingUnsubscribe]);
 
-      <Play className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" fill="currentColor" />
-    </button>
+  if (confirmingUnsubscribe) {
+    return (
+      <div className="flex items-center justify-between gap-2 px-3 py-2.5 bg-destructive/10">
+        <span className="text-sm font-medium truncate">Remove {channel.name}?</span>
+        <div className="flex gap-2 flex-shrink-0">
+          <button
+            onClick={() => setConfirmingUnsubscribe(false)}
+            className="px-2.5 py-1 text-xs font-medium rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onUnsubscribe();
+              setConfirmingUnsubscribe(false);
+            }}
+            className="px-2.5 py-1 text-xs font-medium rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-2.5 sm:px-4 sm:py-3 hover:bg-muted/50 transition-colors">
+      <button
+        onClick={onClick}
+        className="flex-1 flex items-center gap-3 text-left"
+      >
+        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+          {iconMap[channel.icon] || <Code className="w-4 h-4 sm:w-5 sm:h-5" />}
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-1">
+            <h4 className="font-medium text-sm sm:text-base truncate">{channel.name}</h4>
+            <span className="text-xs sm:text-sm text-muted-foreground ml-2">{progress}%</span>
+          </div>
+          <div className="h-1 sm:h-1.5 bg-muted rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-primary rounded-full"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+
+        <Play className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" fill="currentColor" />
+      </button>
+      
+      {/* Unsubscribe button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setConfirmingUnsubscribe(true);
+        }}
+        className="p-1.5 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors flex-shrink-0"
+        title="Unsubscribe"
+      >
+        <X className="w-4 h-4" />
+      </button>
+    </div>
   );
 }
 

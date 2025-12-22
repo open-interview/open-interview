@@ -9,6 +9,7 @@ import { useLocation, useRoute } from 'wouter';
 import { getChannel } from '../lib/data';
 import { useQuestionsWithPrefetch, useSubChannels, useCompaniesWithCounts } from '../hooks/use-questions';
 import { useProgress, trackActivity } from '../hooks/use-progress';
+import { useUserPreferences } from '../context/UserPreferencesContext';
 import { SEOHead } from '../components/SEOHead';
 import { QuestionPanel } from '../components/QuestionPanel';
 import { AnswerPanel } from '../components/AnswerPanel';
@@ -66,7 +67,19 @@ export default function QuestionViewer() {
   );
 
   const { completed, markCompleted, saveLastVisitedIndex } = useProgress(channelId || '');
+  const { isSubscribed, subscribeChannel } = useUserPreferences();
   const { toast } = useToast();
+
+  // Auto-subscribe to channel if not subscribed
+  useEffect(() => {
+    if (channelId && channel && !isSubscribed(channelId)) {
+      subscribeChannel(channelId);
+      toast({
+        title: "Channel added",
+        description: `${channel.name} added to your channels`,
+      });
+    }
+  }, [channelId, channel]);
 
   const [markedQuestions, setMarkedQuestions] = useState<string[]>(() => {
     const saved = localStorage.getItem(`marked-${channelId}`);
