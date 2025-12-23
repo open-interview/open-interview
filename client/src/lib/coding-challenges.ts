@@ -775,37 +775,103 @@ const challengeTemplates: Omit<CodingChallenge, 'id'>[] = [
 // Storage key
 const CODING_PROGRESS_KEY = 'coding-challenge-progress';
 
-// Generate a random challenge
-export function getRandomChallenge(difficulty?: Difficulty): CodingChallenge {
-  let filtered = challengeTemplates;
-  if (difficulty) {
-    filtered = challengeTemplates.filter(c => c.difficulty === difficulty);
-  }
-  const template = filtered[Math.floor(Math.random() * filtered.length)];
-  return {
-    ...template,
-    id: `challenge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-  };
+// Cache for loaded challenges from JSON
+let loadedChallenges: CodingChallenge[] | null = null;
+let loadPromise: Promise<CodingChallenge[]> | null = null;
+
+// Load challenges from JSON file (database source)
+async function loadChallengesFromJson(): Promise<CodingChallenge[]> {
+  if (loadedChallenges) return loadedChallenges;
+  if (loadPromise) return loadPromise;
+  
+  loadPromise = (async (): Promise<CodingChallenge[]> => {
+    try {
+      const response = await fetch('/data/coding-challenges.json');
+      if (!response.ok) throw new Error('Failed to load challenges');
+      const data = await response.json();
+      
+      // Transform database format to app format
+      const challenges: CodingChallenge[] = data.map((c: any) => ({
+        id: c.id,
+        title: c.title,
+        description: c.description,
+        difficulty: c.difficulty as Difficulty,
+        category: c.category,
+        tags: c.tags || [],
+        starterCode: c.starterCode || { javascript: '', python: '' },
+        testCases: (c.testCases || []).map((tc: any) => ({
+          id: tc.id || String(Math.random()),
+          input: tc.input,
+          expectedOutput: tc.expectedOutput,
+          isHidden: tc.isHidden,
+          description: tc.description
+        })),
+        hints: c.hints || [],
+        sampleSolution: c.solution || c.sampleSolution || { javascript: '', python: '' },
+        complexity: c.complexity || { time: 'O(n)', space: 'O(1)', explanation: '' },
+        timeLimit: c.timeLimit || 15
+      }));
+      
+      loadedChallenges = challenges;
+      return challenges;
+    } catch (error) {
+      console.warn('Failed to load challenges from JSON, using fallback templates:', error);
+      // Fallback to hardcoded templates if JSON fails
+      const fallback: CodingChallenge[] = challengeTemplates.map((template, index) => ({
+        ...template,
+        id: `challenge-${index}`
+      }));
+      loadedChallenges = fallback;
+      return fallback;
+    }
+  })();
+  
+  return loadPromise;
 }
 
-// Get all available challenges
-export function getAllChallenges(): CodingChallenge[] {
+// Synchronous getter - returns cached challenges or fallback
+function getChallengesSync(): CodingChallenge[] {
+  if (loadedChallenges) return loadedChallenges;
+  // Return fallback templates while loading
   return challengeTemplates.map((template, index) => ({
     ...template,
     id: `challenge-${index}`
   }));
 }
 
+// Initialize challenges loading
+loadChallengesFromJson();
+
+// Generate a random challenge
+export function getRandomChallenge(difficulty?: Difficulty): CodingChallenge {
+  const challenges = getChallengesSync();
+  let filtered = challenges;
+  if (difficulty) {
+    filtered = challenges.filter(c => c.difficulty === difficulty);
+  }
+  return filtered[Math.floor(Math.random() * filtered.length)];
+}
+
+// Get all available challenges
+export function getAllChallenges(): CodingChallenge[] {
+  return getChallengesSync();
+}
+
+// Async version for components that can wait
+export async function getAllChallengesAsync(): Promise<CodingChallenge[]> {
+  return loadChallengesFromJson();
+}
+
 // Get challenge by ID
 export function getChallengeById(id: string): CodingChallenge | null {
-  const index = parseInt(id.replace('challenge-', ''));
-  if (isNaN(index) || index < 0 || index >= challengeTemplates.length) {
-    return null;
-  }
-  return {
-    ...challengeTemplates[index],
-    id
-  };
+  const challenges = getChallengesSync();
+  return challenges.find(c => c.id === id) || null;
+}
+
+// Async version for components that can wait
+export async function getChallengeByIdAsync(id: string): Promise<CodingChallenge | null> {
+  const challenges = await loadChallengesFromJson();
+  return challenges.find(c => c.id === id) || null;
 }
 
 // Execute JavaScript code safely in browser

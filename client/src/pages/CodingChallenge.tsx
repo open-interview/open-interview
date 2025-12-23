@@ -36,7 +36,9 @@ import {
   Language,
   TestResult,
   getAllChallenges,
+  getAllChallengesAsync,
   getChallengeById,
+  getChallengeByIdAsync,
   getRandomChallenge,
   runTestsAsync,
   saveChallengeAttempt,
@@ -82,7 +84,8 @@ export default function CodingChallenge() {
   const [_, setLocation] = useLocation();
 
   const [viewState, setViewState] = useState<ViewState>(id ? 'challenge' : 'list');
-  const [challenges] = useState(getAllChallenges());
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentChallenge, setCurrentChallenge] = useState<Challenge | null>(null);
   const [language, setLanguage] = useState<Language>(getStoredLanguage);
   const [code, setCode] = useState('');
@@ -97,6 +100,25 @@ export default function CodingChallenge() {
   const [userComplexity, setUserComplexity] = useState<ComplexityAnalysis | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [solvedIds, setSolvedIds] = useState<Set<string>>(() => getSolvedChallengeIds());
+  
+  // Load challenges from JSON on mount
+  useEffect(() => {
+    async function loadChallenges() {
+      try {
+        const { getAllChallengesAsync } = await import('../lib/coding-challenges');
+        const loaded = await getAllChallengesAsync();
+        setChallenges(loaded);
+      } catch (error) {
+        console.error('Failed to load challenges:', error);
+        // Fallback to sync version
+        setChallenges(getAllChallenges());
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadChallenges();
+  }, []);
+  
   // Mobile collapsible states
   const [isProblemCollapsed, setIsProblemCollapsed] = useState(false);
   const [isCodeCollapsed, setIsCodeCollapsed] = useState(false);
@@ -145,8 +167,8 @@ export default function CodingChallenge() {
 
   // Load challenge by ID
   useEffect(() => {
-    if (id) {
-      const challenge = getChallengeById(id);
+    if (id && !isLoading) {
+      const challenge = getChallengeById(id) || challenges.find(c => c.id === id);
       if (challenge) {
         setCurrentChallenge(challenge);
         // Restore saved code or use starter code
@@ -162,7 +184,7 @@ export default function CodingChallenge() {
         setShowSuccessModal(false);
       }
     }
-  }, [id]);
+  }, [id, isLoading, challenges]);
 
   // Update code when language changes
   useEffect(() => {
