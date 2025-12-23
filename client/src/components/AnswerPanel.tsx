@@ -28,6 +28,15 @@ function preprocessMarkdown(text: string): string {
   
   let processed = text;
   
+  // Fix code fences that are not on their own line
+  // Pattern: text followed by ``` on same line (but not at start of line)
+  // This handles cases like "Example: ```yaml" -> "Example:\n```yaml"
+  processed = processed.replace(/([^\n`])(\s*```)/g, '$1\n```');
+  // Pattern: ``` followed by text on same line (except language identifier)
+  processed = processed.replace(/(```\w*)\s*\n?\s*([^\n`])/g, '$1\n$2');
+  // Fix colon followed by backticks with optional space: ": ```" or ":```"
+  processed = processed.replace(/:\s*```/g, ':\n\n```');
+  
   // Fix broken bold markers - standalone ** on their own line
   processed = processed.replace(/^\*\*\s*$/gm, '');
   

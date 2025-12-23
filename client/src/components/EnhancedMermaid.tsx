@@ -56,6 +56,49 @@ interface EnhancedMermaidProps {
   compact?: boolean;
 }
 
+// Validate if content is a valid Mermaid diagram
+function isValidMermaidSyntax(chart: string): boolean {
+  if (!chart || typeof chart !== 'string') return false;
+  const trimmed = chart.trim();
+  if (!trimmed || trimmed.length < 10) return false;
+  
+  // Must start with a valid Mermaid diagram type
+  const validStarts = ['graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 'stateDiagram', 'erDiagram', 'journey', 'gantt', 'pie', 'gitGraph', 'mindmap', 'timeline', 'quadrantChart', 'sankey', 'xychart', 'block'];
+  const firstLine = trimmed.split('\n')[0].toLowerCase().trim();
+  const hasValidStart = validStarts.some(start => firstLine.startsWith(start.toLowerCase()));
+  if (!hasValidStart) return false;
+  
+  // Reject if it looks like code (YAML, JSON, etc.)
+  const lowerContent = trimmed.toLowerCase();
+  const codeIndicators = [
+    'name:', 'hosts:', 'tasks:', 'become:', // YAML/Ansible
+    '```', '~~~', // Markdown code blocks
+    'import ', 'from ', 'export ', 'const ', 'let ', 'var ', 'function ', // JS/TS
+    'def ', 'class ', 'if __name__', // Python
+    '<?php', '<?xml', '<!DOCTYPE', // PHP/XML/HTML
+    'package ', 'public class', 'private ', // Java
+    '"$schema"', '"type":', // JSON Schema
+  ];
+  
+  if (codeIndicators.some(indicator => lowerContent.includes(indicator))) {
+    return false;
+  }
+  
+  // Must have at least some diagram content (nodes/edges)
+  const contentLines = trimmed.split('\n').filter(line => {
+    const l = line.trim();
+    return l && !l.startsWith('%%') && !validStarts.some(s => l.toLowerCase().startsWith(s.toLowerCase()));
+  });
+  
+  if (contentLines.length < 2) return false;
+  
+  // Check for diagram-like patterns (arrows, brackets, etc.)
+  const diagramPatterns = /-->|==>|-.->|--[>|]|->|<--|===|---|[\[\](){}]|participant|subgraph|style\s+\w+/i;
+  const hasDiagramSyntax = contentLines.some(line => diagramPatterns.test(line));
+  
+  return hasDiagramSyntax;
+}
+
 export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps) {
   const { theme: appTheme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -82,6 +125,12 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
   
   // Detect mobile device
   const isMobileDevice = typeof window !== 'undefined' && window.innerWidth < 640;
+  
+  // Validate chart content before rendering
+  if (!isValidMermaidSyntax(chart)) {
+    console.warn('EnhancedMermaid: Invalid or non-Mermaid content detected, skipping render');
+    return null;
+  }
   
   // Disable mermaid on mobile - show placeholder instead
   if (isMobileDevice) {

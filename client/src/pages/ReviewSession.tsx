@@ -35,6 +35,12 @@ function preprocessMarkdown(text: string): string {
   
   let processed = text;
   
+  // Fix code fences that are not on their own line
+  // Pattern: text followed by ``` on same line
+  processed = processed.replace(/([^\n])(```)/g, '$1\n$2');
+  // Pattern: ``` followed by text on same line (except language identifier)
+  processed = processed.replace(/(```\w*)\s*\n?\s*([^\n`])/g, '$1\n$2');
+  
   // Fix broken bold markers - standalone ** on their own line
   processed = processed.replace(/^\*\*\s*$/gm, '');
   

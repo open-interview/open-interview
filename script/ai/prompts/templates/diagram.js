@@ -84,7 +84,11 @@ export const badExamples = [
   'Diagrams with very long node labels',
   'LR (left-right) layouts - too wide for panel',
   'More than 12 nodes - too complex',
-  'Deeply nested subgraphs'
+  'Deeply nested subgraphs',
+  'YAML code examples (name:, hosts:, tasks:)',
+  'Code snippets in any language',
+  'JSON or configuration examples',
+  'Markdown with code blocks'
 ];
 
 // Use centralized guidelines from config
@@ -106,6 +110,14 @@ Create a COMPACT, visually appealing Mermaid diagram optimized for a ~450px wide
 Question: "${question}"
 Answer: "${(answer || '').substring(0, 300)}"
 Tags: ${(tags || []).slice(0, 4).join(', ') || 'technical'}
+
+CRITICAL: OUTPUT MUST BE VALID MERMAID SYNTAX ONLY
+- Start with: flowchart TD, sequenceDiagram, classDiagram, stateDiagram, etc.
+- Use Mermaid node/edge syntax: A[Label] --> B[Label]
+- DO NOT output code examples (YAML, JSON, Python, JavaScript, etc.)
+- DO NOT output configuration files or playbooks
+- DO NOT include markdown code blocks (\`\`\`)
+- The diagram field must contain ONLY valid Mermaid diagram syntax
 
 DISPLAY CONSTRAINTS (CRITICAL):
 - Panel width: ~450px - diagram must fit without horizontal scroll
@@ -134,7 +146,7 @@ COMPACT LABEL EXAMPLES:
 
 ${guidelines.map(g => `- ${g}`).join('\n')}
 
-EXAMPLES OF BAD DIAGRAMS (DO NOT CREATE):
+EXAMPLES OF BAD OUTPUT (DO NOT CREATE):
 ${badExamples.map(e => `- ${e}`).join('\n')}
 
 ${qualityRules.technical}

@@ -132,7 +132,9 @@ export default {
       'Do NOT give high-level definitions - give answers that show expertise',
       'CRITICAL: Use proper markdown formatting - all ** bold markers must be properly paired',
       'Each section header must be on its own line with ## prefix',
-      'Bullet points must start with - on a new line, not inline'
+      'Bullet points must start with - on a new line, not inline',
+      'Code blocks MUST have ``` on its own line, never inline with text',
+      'Format: Text\\n```language\\ncode\\n``` - always newlines before and after code fences'
     ]
   },
   
