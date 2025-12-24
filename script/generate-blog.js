@@ -12,6 +12,7 @@ import path from 'path';
 import ai from './ai/index.js';
 
 const OUTPUT_DIR = 'blog-output';
+const MIN_SOURCES = 8;
 
 // Database connection
 const url = process.env.TURSO_DATABASE_URL_RO || process.env.TURSO_DATABASE_URL;
@@ -26,6 +27,72 @@ if (!url) {
 
 const client = createClient({ url, authToken });
 const writeClient = writeUrl ? createClient({ url: writeUrl, authToken: writeToken }) : client;
+
+/**
+ * Validate a URL by checking if it returns a valid response (not 404)
+ */
+async function validateUrl(url, timeout = 5000) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch(url, {
+      method: 'HEAD',
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; BlogBot/1.0)'
+      }
+    });
+    
+    clearTimeout(timeoutId);
+    return response.ok || response.status === 403 || response.status === 405; // Some sites block HEAD but page exists
+  } catch (error) {
+    // Try GET as fallback for sites that don't support HEAD
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; BlogBot/1.0)'
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/**
+ * Validate all sources and remove invalid ones
+ */
+async function validateSources(sources) {
+  if (!sources || !Array.isArray(sources)) return [];
+  
+  console.log(`   🔍 Validating ${sources.length} sources...`);
+  
+  const validatedSources = [];
+  
+  for (const source of sources) {
+    if (!source.url || !source.title) continue;
+    
+    const isValid = await validateUrl(source.url);
+    if (isValid) {
+      validatedSources.push(source);
+      console.log(`   ✅ ${source.title.substring(0, 40)}...`);
+    } else {
+      console.log(`   ❌ Removed (404): ${source.url}`);
+    }
+  }
+  
+  console.log(`   📊 Valid sources: ${validatedSources.length}/${sources.length}`);
+  return validatedSources;
+}
 
 // Theme configurations
 const themes = {
@@ -1082,9 +1149,21 @@ async function main() {
     const blogContent = await transformToBlogArticle(question);
     console.log(`   Title: ${blogContent.title}`);
     
-    console.log('💾 Saving to database...');
-    await saveBlogPost(question.id, blogContent, question);
-    console.log('✅ Blog post saved!\n');
+    // Validate sources - remove 404s
+    const validatedSources = await validateSources(blogContent.sources || []);
+    blogContent.sources = validatedSources;
+    
+    // Check minimum sources requirement
+    if (validatedSources.length < MIN_SOURCES) {
+      console.log(`   ⚠️ Only ${validatedSources.length} valid sources (need ${MIN_SOURCES})`);
+      console.log(`   🔄 Skipping this article - insufficient sources`);
+      // Don't save, will try different question next run
+    } else {
+      console.log(`   ✅ ${validatedSources.length} valid sources`);
+      console.log('💾 Saving to database...');
+      await saveBlogPost(question.id, blogContent, question);
+      console.log('✅ Blog post saved!\n');
+    }
   }
   
   console.log('📄 Regenerating static site...');

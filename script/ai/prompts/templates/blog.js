@@ -62,9 +62,20 @@ export const guidelines = [
   'Include a Mermaid diagram that tells the visual story',
   'Use callouts strategically: 💡 Insight, ⚠️ Watch Out, 🔥 Hot Take, 🎯 Key Point',
   
-  // SOURCES & CREDIBILITY
-  'Include 2-4 credible sources (engineering blogs, official docs, papers)',
-  'Reference specific incidents or case studies when possible',
+  // SOURCES & CREDIBILITY - CRITICAL
+  'MUST include AT LEAST 12 credible sources with REAL, WORKING URLs',
+  'USE ONLY these stable URL patterns that actually exist:',
+  '  - Wikipedia: https://en.wikipedia.org/wiki/[Topic]',
+  '  - MDN: https://developer.mozilla.org/en-US/docs/...',
+  '  - GitHub repos: https://github.com/[org]/[repo]',
+  '  - ArXiv papers: https://arxiv.org/abs/[paper-id]',
+  '  - RFC docs: https://datatracker.ietf.org/doc/html/rfc[number]',
+  '  - Python docs: https://docs.python.org/3/...',
+  '  - AWS docs: https://docs.aws.amazon.com/...',
+  '  - Kubernetes: https://kubernetes.io/docs/...',
+  '  - DigitalOcean tutorials: https://www.digitalocean.com/community/tutorials/...',
+  'DO NOT make up URLs - only use URLs you are confident exist',
+  'DO NOT use company engineering blog URLs (netflix, uber, stripe blogs) - they frequently 404',
   
   // ENDING
   'Conclude with the "so what?" - what should they do differently tomorrow?',
