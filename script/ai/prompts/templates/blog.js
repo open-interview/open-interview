@@ -23,6 +23,9 @@ export const schema = {
   glossary: [
     { term: "Technical term used in article", definition: "Simple 1-line explanation for 3-year dev" }
   ],
+  sources: [
+    { title: "Source title or article name", url: "https://example.com/article", type: "documentation|blog|paper|video" }
+  ],
   quickReference: ["Key point 1", "Key point 2", "Key point 3"],
   funFact: "Interesting trivia or surprising fact about this topic",
   conclusion: "Wrap-up with actionable next steps",
@@ -44,6 +47,8 @@ export const guidelines = [
   'ALWAYS include comparison tables when comparing approaches',
   'ALWAYS add a Mermaid diagram for visual learners',
   'Generate glossary terms for technical jargon used in the article',
+  'ALWAYS include 2-4 credible sources (official docs, engineering blogs, research papers)',
+  'Prefer sources from: official documentation, company engineering blogs (Netflix, Uber, etc.), academic papers, reputable tech blogs',
   'Use callouts: 💡 Pro Tip, ⚠️ Gotcha, 🔥 Hot Take, 🎯 Key Insight',
   'End with concrete next steps the reader can take TODAY',
   'For system design: include scale numbers (requests/sec, data size)',

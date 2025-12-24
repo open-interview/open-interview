@@ -115,7 +115,8 @@ async function initBlogPostsTable() {
     { name: 'quick_reference', type: 'TEXT' },
     { name: 'glossary', type: 'TEXT' },
     { name: 'real_world_example', type: 'TEXT' },
-    { name: 'fun_fact', type: 'TEXT' }
+    { name: 'fun_fact', type: 'TEXT' },
+    { name: 'sources', type: 'TEXT' }
   ];
   
   for (const col of newColumns) {
@@ -189,6 +190,7 @@ async function getAllBlogPosts() {
     glossary: row.glossary ? JSON.parse(row.glossary) : [],
     realWorldExample: row.real_world_example ? JSON.parse(row.real_world_example) : null,
     funFact: row.fun_fact,
+    sources: row.sources ? JSON.parse(row.sources) : [],
     createdAt: row.created_at
   }));
 }
@@ -201,8 +203,8 @@ async function saveBlogPost(questionId, blogContent, question) {
     sql: `INSERT INTO blog_posts 
           (question_id, title, slug, introduction, sections, conclusion, 
            meta_description, channel, difficulty, tags, diagram, quick_reference,
-           glossary, real_world_example, fun_fact, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           glossary, real_world_example, fun_fact, sources, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       questionId,
       blogContent.title,
@@ -219,6 +221,7 @@ async function saveBlogPost(questionId, blogContent, question) {
       JSON.stringify(blogContent.glossary || []),
       JSON.stringify(blogContent.realWorldExample || null),
       blogContent.funFact || null,
+      JSON.stringify(blogContent.sources || []),
       now
     ]
   });
@@ -331,6 +334,9 @@ async function transformToBlogArticle(question) {
       ],
       realWorldExample: { company: 'Netflix', scenario: 'Uses similar patterns at scale', lesson: 'Start simple, optimize when needed' },
       glossary: [],
+      sources: [
+        { title: 'Official Documentation', url: 'https://developer.mozilla.org', type: 'documentation' }
+      ],
       quickReference: ['Key concept to remember', 'Common gotcha to avoid', 'Best practice to follow'],
       funFact: 'This concept has been around since the early days of computing!',
       conclusion: `Now you know the essentials. Go build something cool with it!`,
@@ -350,45 +356,89 @@ function generateCSS(theme = themes[DEFAULT_THEME]) {
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
-.container { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+.container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
 
 /* Header */
-header { background: var(--bg-secondary); border-bottom: 1px solid var(--border); padding: 1rem 0; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
+header { background: rgba(10,10,10,0.9); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding: 1rem 0; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }
 .header-content { display: flex; align-items: center; justify-content: space-between; }
-.logo { font-size: 1.25rem; font-weight: 700; color: var(--accent); text-decoration: none; display: flex; align-items: center; gap: 0.5rem; }
-nav { display: flex; gap: 1.5rem; align-items: center; }
-nav a { color: var(--text-secondary); text-decoration: none; font-size: 0.875rem; transition: color 0.2s; }
+.logo { font-size: 1.5rem; font-weight: 800; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-decoration: none; }
+nav { display: flex; gap: 2rem; align-items: center; }
+nav a { color: var(--text-secondary); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: color 0.2s; }
 nav a:hover { color: var(--accent); }
-.theme-toggle { background: var(--bg-card); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.5rem; cursor: pointer; color: var(--text); }
 
-/* Hero */
-.hero { padding: 5rem 0; text-align: center; background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg) 100%); }
-.hero h1 { font-size: 3rem; margin-bottom: 1rem; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-.hero p { color: var(--text-secondary); max-width: 600px; margin: 0 auto; font-size: 1.25rem; }
+/* Hero - Redesigned */
+.hero { padding: 10rem 0 5rem; text-align: center; position: relative; overflow: hidden; }
+.hero::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 800px; height: 800px; background: radial-gradient(circle, rgba(34,197,94,0.12) 0%, transparent 70%); pointer-events: none; }
+.hero-badge { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--bg-card); border: 1px solid var(--border); padding: 0.5rem 1rem; border-radius: 2rem; font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
+.hero-badge .pulse { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.2); } }
+.hero h1 { font-size: 4rem; font-weight: 800; margin-bottom: 1.5rem; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1.1; }
+.hero p { color: var(--text-secondary); max-width: 550px; margin: 0 auto 2rem; font-size: 1.2rem; line-height: 1.6; }
+.hero-cta { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--accent); color: #000; padding: 1rem 2rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; font-size: 1rem; transition: all 0.2s; }
+.hero-cta:hover { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(34,197,94,0.3); }
+.hero-stats { display: flex; justify-content: center; gap: 4rem; margin-top: 4rem; }
+.hero-stat { text-align: center; }
+.hero-stat-value { font-size: 2.5rem; font-weight: 700; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.hero-stat-label { font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.25rem; }
 
-/* Cards */
-.category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
-.category-card, .article-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; transition: all 0.3s; }
-.category-card:hover, .article-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
-.category-card h3 { font-size: 1.25rem; margin-bottom: 0.5rem; }
-.category-card p { color: var(--text-secondary); font-size: 0.875rem; }
-.category-card a { color: var(--accent); text-decoration: none; font-size: 0.875rem; display: inline-block; margin-top: 1rem; }
+/* Featured Article */
+.featured { padding: 2rem 0 4rem; }
+.featured-card { background: linear-gradient(135deg, var(--bg-card), var(--bg-secondary)); border: 1px solid var(--border); border-radius: 1.5rem; padding: 3rem; display: grid; grid-template-columns: 1fr auto; gap: 3rem; align-items: center; position: relative; overflow: hidden; }
+.featured-card::before { content: ''; position: absolute; top: -50%; right: -20%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 70%); }
+.featured-label { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--accent); color: #000; padding: 0.375rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600; margin-bottom: 1rem; }
+.featured-title { font-size: 1.75rem; font-weight: 700; line-height: 1.3; margin-bottom: 1rem; }
+.featured-title a { color: var(--text); text-decoration: none; }
+.featured-title a:hover { color: var(--accent); }
+.featured-excerpt { color: var(--text-secondary); font-size: 1rem; line-height: 1.7; margin-bottom: 1.5rem; }
+.featured-meta { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.featured-visual { font-size: 6rem; opacity: 0.9; }
+
+/* Category Pills */
+.category-pills { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
+.category-pill { display: flex; align-items: center; gap: 0.5rem; background: var(--bg-card); border: 1px solid var(--border); padding: 0.625rem 1rem; border-radius: 2rem; text-decoration: none; color: var(--text); font-size: 0.875rem; font-weight: 500; transition: all 0.2s; }
+.category-pill:hover { border-color: var(--accent); background: var(--bg-secondary); }
+.category-pill .count { background: var(--bg-secondary); padding: 0.125rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; color: var(--text-secondary); }
+
+/* Section Headers */
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+.section-title { font-size: 1.5rem; font-weight: 700; }
+.section-link { color: var(--accent); text-decoration: none; font-size: 0.9rem; font-weight: 500; }
+.section-link:hover { text-decoration: underline; }
+
+/* Article Grid */
+.articles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
+
+/* Newsletter CTA */
+.newsletter { padding: 4rem 0; }
+.newsletter-card { background: var(--gradient); border-radius: 1.5rem; padding: 4rem 2rem; text-align: center; position: relative; overflow: hidden; }
+.newsletter-card h2 { font-size: 2rem; font-weight: 700; color: #000; margin-bottom: 0.75rem; }
+.newsletter-card p { color: rgba(0,0,0,0.7); font-size: 1.1rem; margin-bottom: 1.5rem; }
+.newsletter-btn { display: inline-flex; align-items: center; gap: 0.5rem; background: #000; color: #fff; padding: 1rem 2rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; transition: transform 0.2s; }
+.newsletter-btn:hover { transform: scale(1.05); }
 
 /* Article cards */
-.article-list { padding: 3rem 0; }
-.article-card { margin-bottom: 1.5rem; }
-.article-card h2 { font-size: 1.25rem; margin-bottom: 0.75rem; line-height: 1.4; }
+.article-list { padding: 4rem 0; }
+.article-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; transition: all 0.3s; display: flex; flex-direction: column; }
+.article-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+.article-card h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.75rem; line-height: 1.4; flex-grow: 1; }
 .article-card h2 a { color: var(--text); text-decoration: none; }
 .article-card h2 a:hover { color: var(--accent); }
 .article-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.75rem; margin-bottom: 0.75rem; }
-.tag { background: var(--bg-secondary); color: var(--text-secondary); padding: 0.25rem 0.75rem; border-radius: 2rem; }
-.difficulty { padding: 0.25rem 0.75rem; border-radius: 2rem; font-weight: 600; }
-.difficulty.beginner { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
-.difficulty.intermediate { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
-.difficulty.advanced { background: rgba(248, 113, 113, 0.2); color: #f87171; }
-.excerpt { color: var(--text-secondary); font-size: 0.9rem; }
+.tag { background: var(--bg-secondary); color: var(--text-secondary); padding: 0.3rem 0.75rem; border-radius: 0.375rem; font-weight: 500; }
+.difficulty { padding: 0.3rem 0.75rem; border-radius: 0.375rem; font-weight: 600; }
+.difficulty.beginner { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+.difficulty.intermediate { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+.difficulty.advanced { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+.excerpt { color: var(--text-secondary); font-size: 0.875rem; line-height: 1.6; }
 
-/* Article page */
+/* Category Grid */
+.category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem; }
+.category-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; transition: all 0.3s; }
+.category-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+.category-card h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
+.category-card p { color: var(--text-secondary); font-size: 0.875rem; }
+.category-card a { color: var(--accent); text-decoration: none; font-size: 0.875rem; font-weight: 500; display: inline-block; margin-top: 1rem; }
+.category-card a:hover { text-decoration: underline; }
 .article { padding: 3rem 0; max-width: 800px; margin: 0 auto; }
 .article-header { margin-bottom: 2rem; }
 .article-header h1 { font-size: 2.5rem; margin-bottom: 1rem; line-height: 1.2; }
@@ -436,6 +486,20 @@ nav a:hover { color: var(--accent); }
 .quick-ref li { margin-bottom: 0.5rem; color: var(--text-secondary); }
 .quick-ref li::marker { color: var(--accent); }
 
+/* Sources */
+.sources { background: var(--bg-card); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; margin: 2rem 0; }
+.sources h3 { margin-bottom: 1rem; font-size: 1rem; color: var(--text); }
+.sources ul { list-style: none; margin: 0; padding: 0; }
+.sources li { margin-bottom: 0.75rem; padding-left: 1.5rem; position: relative; }
+.sources li::before { content: '📄'; position: absolute; left: 0; }
+.sources li[data-type="documentation"]::before { content: '📚'; }
+.sources li[data-type="blog"]::before { content: '📝'; }
+.sources li[data-type="paper"]::before { content: '🎓'; }
+.sources li[data-type="video"]::before { content: '🎬'; }
+.sources a { color: var(--accent); text-decoration: none; }
+.sources a:hover { text-decoration: underline; }
+.sources .source-type { font-size: 0.75rem; color: var(--text-secondary); margin-left: 0.5rem; }
+
 /* CTA */
 .cta-box { margin-top: 3rem; padding: 2rem; background: var(--gradient); border-radius: 1rem; text-align: center; }
 .cta-box p { margin-bottom: 1rem; font-size: 1.25rem; font-weight: 600; }
@@ -443,16 +507,31 @@ nav a:hover { color: var(--accent); }
 .cta-button:hover { transform: scale(1.05); }
 
 /* Footer */
-footer { background: var(--bg-secondary); border-top: 1px solid var(--border); padding: 2rem 0; margin-top: 4rem; text-align: center; color: var(--text-secondary); font-size: 0.875rem; }
-footer a { color: var(--accent); }
+footer { background: var(--bg-secondary); border-top: 1px solid var(--border); padding: 3rem 0; margin-top: 4rem; }
+.footer-content { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+.footer-brand { font-size: 1.25rem; font-weight: 700; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.footer-links { display: flex; gap: 2rem; }
+.footer-links a { color: var(--text-secondary); text-decoration: none; font-size: 0.9rem; }
+.footer-links a:hover { color: var(--accent); }
+.footer-copy { text-align: center; color: var(--text-secondary); font-size: 0.875rem; }
+.footer-copy a { color: var(--accent); text-decoration: none; }
 
 /* Responsive */
 @media (max-width: 768px) { 
-  .hero h1 { font-size: 2rem; } 
+  .hero { padding: 8rem 0 4rem; }
+  .hero h1 { font-size: 2.25rem; } 
+  .hero-stats { gap: 2rem; flex-wrap: wrap; }
+  .hero-stat-value { font-size: 2rem; }
+  .featured-card { grid-template-columns: 1fr; padding: 2rem; }
+  .featured-visual { display: none; }
+  .featured-title { font-size: 1.4rem; }
   .article-header h1 { font-size: 1.75rem; } 
-  nav { gap: 1rem; } 
-  .category-grid { grid-template-columns: 1fr; }
+  nav { gap: 1rem; font-size: 0.8rem; } 
+  .category-grid, .articles-grid { grid-template-columns: 1fr; }
   .glossary-term:hover::after { left: 0; transform: none; }
+  .footer-content { flex-direction: column; gap: 1.5rem; text-align: center; }
+  .category-pills { gap: 0.5rem; }
+  .category-pill { font-size: 0.8rem; padding: 0.5rem 0.75rem; }
 }
 
 /* Theme switcher styles */
@@ -498,44 +577,108 @@ function generateHeader() {
 
 function generateFooter() {
   return `<footer><div class="container">
-    <p>Built for devs who want to level up 🔥</p>
-    <p style="margin-top:0.5rem">© ${new Date().getFullYear()} DevInsights • <a href="https://reel-interview.github.io">Reel Interview</a></p>
+    <div class="footer-content">
+      <div class="footer-brand">🚀 DevInsights</div>
+      <div class="footer-links">
+        <a href="/">Home</a>
+        <a href="/categories/">Topics</a>
+        <a href="https://reel-interview.github.io" target="_blank">Practice</a>
+      </div>
+    </div>
+    <div class="footer-copy">
+      <p>Built for devs who want to level up 🔥</p>
+      <p style="margin-top:0.5rem">© ${new Date().getFullYear()} DevInsights • <a href="https://reel-interview.github.io">Reel Interview</a></p>
+    </div>
   </div></footer></body></html>`;
 }
 
 function generateIndexPage(articles) {
-  const recentArticles = articles.slice(0, 12);
+  const recentArticles = articles.slice(0, 9);
+  const featuredArticle = articles[0];
   
-  let categoryCards = '';
+  // Category pills
+  let categoryPills = '';
   for (const [category, channels] of Object.entries(categoryMap)) {
     const count = articles.filter(a => channels.includes(a.channel)).length;
     if (count === 0) continue;
     const slug = category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const emoji = getCategoryEmoji(category);
-    categoryCards += `<div class="category-card"><h3>${emoji} ${category}</h3><p>${count} articles</p><a href="/categories/${slug}/">Explore →</a></div>`;
+    categoryPills += `<a href="/categories/${slug}/" class="category-pill">${emoji} ${category}<span class="count">${count}</span></a>`;
   }
   
-  let articleCards = recentArticles.map(a => `
+  // Stats
+  const totalArticles = articles.length;
+  const totalCategories = Object.keys(categoryMap).filter(cat => 
+    articles.some(a => categoryMap[cat].includes(a.channel))
+  ).length;
+  
+  // Article cards (skip first if featured)
+  let articleCards = recentArticles.slice(1).map(a => `
     <div class="article-card">
-      <div class="article-meta"><span class="tag">${formatChannelName(a.channel)}</span><span class="difficulty ${a.difficulty}">${a.difficulty}</span></div>
+      <div class="article-meta">
+        <span class="tag">${formatChannelName(a.channel)}</span>
+        <span class="difficulty ${a.difficulty}">${a.difficulty}</span>
+      </div>
       <h2><a href="/posts/${a.id}/${a.blogSlug}/">${escapeHtml(a.blogTitle)}</a></h2>
-      <p class="excerpt">${escapeHtml((a.blogIntro || '').substring(0, 150))}...</p>
+      <p class="excerpt">${escapeHtml((a.blogIntro || '').substring(0, 120))}...</p>
     </div>`).join('');
+  
+  // Featured article
+  let featuredHtml = '';
+  if (featuredArticle) {
+    const emoji = getCategoryEmoji(getCategoryForChannel(featuredArticle.channel));
+    featuredHtml = `
+    <section class="featured"><div class="container">
+      <div class="featured-card">
+        <div class="featured-content">
+          <span class="featured-label">✨ Latest Article</span>
+          <h2 class="featured-title"><a href="/posts/${featuredArticle.id}/${featuredArticle.blogSlug}/">${escapeHtml(featuredArticle.blogTitle)}</a></h2>
+          <p class="featured-excerpt">${escapeHtml((featuredArticle.blogIntro || '').substring(0, 200))}...</p>
+          <div class="featured-meta">
+            <span class="tag">${formatChannelName(featuredArticle.channel)}</span>
+            <span class="difficulty ${featuredArticle.difficulty}">${featuredArticle.difficulty}</span>
+          </div>
+        </div>
+        <div class="featured-visual">${emoji}</div>
+      </div>
+    </div></section>`;
+  }
   
   return `${generateHead('DevInsights - Level Up Your Tech Skills', 'Real-world tech insights for developers who ship')}
 ${generateHeader()}
 <main>
   <section class="hero"><div class="container">
-    <h1>Tech Insights That Actually Matter</h1>
-    <p>No fluff. No BS. Just practical knowledge from ${articles.length} deep dives into system design, algorithms, and engineering best practices.</p>
+    <div class="hero-badge"><span class="pulse"></span> ${totalArticles} articles and counting</div>
+    <h1>Tech Insights That<br>Actually Matter</h1>
+    <p>No fluff. No BS. Just practical knowledge for developers who want to level up their system design, algorithms, and engineering skills.</p>
+    <a href="/categories/" class="hero-cta">Browse All Topics →</a>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="hero-stat-value">${totalArticles}</div><div class="hero-stat-label">Articles</div></div>
+      <div class="hero-stat"><div class="hero-stat-value">${totalCategories}</div><div class="hero-stat-label">Topics</div></div>
+      <div class="hero-stat"><div class="hero-stat-value">3+</div><div class="hero-stat-label">Years Exp Target</div></div>
+    </div>
   </div></section>
-  <section class="categories" style="padding:3rem 0"><div class="container">
-    <h2 style="margin-bottom:1.5rem;font-size:1.5rem">🎯 Pick Your Poison</h2>
-    <div class="category-grid">${categoryCards}</div>
+  
+  ${featuredHtml}
+  
+  <section style="padding:2rem 0"><div class="container">
+    <div class="category-pills">${categoryPills}</div>
   </div></section>
+  
   <section class="article-list"><div class="container">
-    <h2 style="margin-bottom:1.5rem;font-size:1.5rem">🔥 Fresh Off the Press</h2>
-    ${articleCards}
+    <div class="section-header">
+      <h2 class="section-title">🔥 Recent Articles</h2>
+      <a href="/categories/" class="section-link">View all →</a>
+    </div>
+    <div class="articles-grid">${articleCards}</div>
+  </div></section>
+  
+  <section class="newsletter"><div class="container">
+    <div class="newsletter-card">
+      <h2>Ready to ace your next interview?</h2>
+      <p>Practice with real interview questions from top tech companies</p>
+      <a href="https://reel-interview.github.io" target="_blank" class="newsletter-btn">Start Practicing →</a>
+    </div>
   </div></section>
 </main>
 ${generateFooter()}`;
@@ -612,6 +755,15 @@ function generateArticlePage(article) {
   const quickRef = article.quickReference || [];
   if (quickRef.length > 0) {
     sectionsHtml += `<div class="quick-ref"><h3>📌 TL;DR - Quick Reference</h3><ul>${quickRef.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul></div>`;
+  }
+  
+  // Sources
+  const sources = article.sources || [];
+  if (sources.length > 0) {
+    const sourceItems = sources.map(s => 
+      `<li data-type="${s.type || 'blog'}"><a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.title)}</a><span class="source-type">${s.type || 'article'}</span></li>`
+    ).join('');
+    sectionsHtml += `<div class="sources"><h3>📖 Sources & Further Reading</h3><ul>${sourceItems}</ul></div>`;
   }
   
   const tags = (article.tags || []).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join(' ');
