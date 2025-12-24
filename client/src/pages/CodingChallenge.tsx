@@ -768,7 +768,7 @@ export default function CodingChallenge() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={copyCode}
-                      className="p-1.5 hover:bg-muted/30 rounded transition-colors"
+                      className="p-2 min-w-[32px] min-h-[32px] hover:bg-muted/30 rounded transition-colors flex items-center justify-center"
                       title="Copy code"
                       data-testid="copy-btn"
                     >
@@ -780,7 +780,7 @@ export default function CodingChallenge() {
                     </button>
                     <button
                       onClick={resetCode}
-                      className="p-1.5 hover:bg-muted/30 rounded transition-colors"
+                      className="p-2 min-w-[32px] min-h-[32px] hover:bg-muted/30 rounded transition-colors flex items-center justify-center"
                       title="Reset code"
                       data-testid="reset-btn"
                     >
@@ -874,7 +874,7 @@ export default function CodingChallenge() {
                 <div className="border-t border-border p-3 flex items-center justify-between flex-shrink-0 bg-card">
                   <button
                     onClick={() => setShowSolution(!showSolution)}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/20"
+                    className="flex items-center gap-2 px-3 py-2 min-h-[36px] text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/20"
                     data-testid="reveal-solution-btn"
                   >
                     {showSolution ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -883,7 +883,7 @@ export default function CodingChallenge() {
                   <button
                     onClick={runCode}
                     disabled={isRunning}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-bold rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 px-5 py-2.5 min-h-[36px] bg-primary text-primary-foreground font-bold rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     data-testid="run-tests-btn"
                   >
                     {isRunning ? (

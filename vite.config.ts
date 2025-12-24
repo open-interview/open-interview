@@ -44,4 +44,8 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
+  preview: {
+    port: 3333,
+  },
+  appType: 'spa',
 });
