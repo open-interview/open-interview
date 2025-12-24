@@ -104,15 +104,29 @@ async function initBlogPostsTable() {
       difficulty TEXT,
       tags TEXT,
       diagram TEXT,
-      quick_reference TEXT,
-      glossary TEXT,
-      real_world_example TEXT,
-      fun_fact TEXT,
       created_at TEXT,
       published_at TEXT
     )
   `);
   await writeClient.execute(`CREATE INDEX IF NOT EXISTS idx_blog_question ON blog_posts(question_id)`);
+  
+  // Add new columns if they don't exist (migration)
+  const newColumns = [
+    { name: 'quick_reference', type: 'TEXT' },
+    { name: 'glossary', type: 'TEXT' },
+    { name: 'real_world_example', type: 'TEXT' },
+    { name: 'fun_fact', type: 'TEXT' }
+  ];
+  
+  for (const col of newColumns) {
+    try {
+      await writeClient.execute(`ALTER TABLE blog_posts ADD COLUMN ${col.name} ${col.type}`);
+      console.log(`   Added column: ${col.name}`);
+    } catch (e) {
+      // Column already exists, ignore
+    }
+  }
+  
   console.log('✅ Table ready\n');
 }
 
