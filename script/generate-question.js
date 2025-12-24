@@ -10,12 +10,13 @@ import {
   logBotActivity,
   getChannelQuestionCounts,
   getQuestionCount,
-  postBotCommentToDiscussion
+  postBotCommentToDiscussion,
+  getAllChannelsFromDb
 } from './utils.js';
 import ai from './ai/index.js';
 import { channelConfigs, topCompanies as TOP_TECH_COMPANIES, realScenarios as REAL_SCENARIOS } from './ai/prompts/templates/generate.js';
 
-// Channel configurations - imported from AI framework template
+// Channel configurations - imported from AI framework template (used for sub-channel info)
 
 const difficulties = ['beginner', 'intermediate', 'advanced'];
 
@@ -27,8 +28,14 @@ function getRandomTopCompanies(count = 3) {
   return shuffled.slice(0, Math.min(count, Math.floor(Math.random() * 3) + 2));
 }
 
-function getAllChannels() {
-  return Object.keys(channelConfigs);
+// Get all channels - now fetches from database to include all channels
+async function getAllChannels() {
+  const dbChannels = await getAllChannelsFromDb();
+  // Merge with hardcoded configs to ensure we have sub-channel info
+  const hardcodedChannels = Object.keys(channelConfigs);
+  // Return unique channels from both sources, prioritizing DB channels
+  const allChannels = new Set([...dbChannels, ...hardcodedChannels]);
+  return Array.from(allChannels);
 }
 
 // NFR: Check if diagram is trivial/placeholder (should be rejected)
@@ -225,7 +232,9 @@ async function main() {
   const inputChannel = process.env.INPUT_CHANNEL || null; // Specific channel to generate for
   const balanceChannels = process.env.BALANCE_CHANNELS !== 'false'; // Default to true
   
-  const allChannels = getAllChannels();
+  // Get all channels from database (not hardcoded list)
+  const allChannels = await getAllChannels();
+  console.log(`Found ${allChannels.length} channels in database`);
   
   // Validate input channel if provided
   if (inputChannel && !allChannels.includes(inputChannel)) {

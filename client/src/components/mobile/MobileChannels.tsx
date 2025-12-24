@@ -299,13 +299,13 @@ function ChannelListCard({
         ${isSubscribed ? 'border-primary/30' : 'border-border'}
       `}
     >
-      {/* New badge */}
-      {newThisWeek && newThisWeek > 0 && (
+      {/* New badge - disabled for now as all questions show as new after migration */}
+      {/* {newThisWeek && newThisWeek > 0 && (
         <div className="absolute top-2 right-2 flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold rounded-full shadow-sm">
           <Sparkles className="w-2.5 h-2.5" />
           +{newThisWeek}
         </div>
-      )}
+      )} */}
 
       <div className="flex items-center gap-3 p-3">
         {/* Icon */}

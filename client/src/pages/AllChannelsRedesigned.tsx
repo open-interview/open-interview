@@ -266,13 +266,13 @@ function ChannelCard({
       `}
       onClick={onToggle}
     >
-      {/* New badge */}
-      {newThisWeek && newThisWeek > 0 && (
+      {/* New badge - disabled for now as all questions show as new after migration */}
+      {/* {newThisWeek && newThisWeek > 0 && (
         <div className="absolute -top-2 -right-2 flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
           <Sparkles className="w-3 h-3" />
           +{newThisWeek} new
         </div>
-      )}
+      )} */}
 
       <div className="flex items-start justify-between mb-4">
         <div className={`p-3 rounded-lg transition-colors ${

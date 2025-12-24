@@ -361,6 +361,14 @@ export async function getQuestionsNeedingDiagrams(limit = 10) {
   return result.rows.map(parseQuestionRow);
 }
 
+// Get all unique channels from database
+export async function getAllChannelsFromDb() {
+  const result = await dbClient.execute(`
+    SELECT DISTINCT channel FROM questions ORDER BY channel
+  `);
+  return result.rows.map(r => r.channel);
+}
+
 // Get channel statistics for balancing question distribution
 export async function getChannelStats() {
   const result = await dbClient.execute(`
