@@ -68,8 +68,7 @@ test.describe('All Channels Page', () => {
 
   test('persists subscription changes', async ({ page }) => {
     await page.goto('/channels');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
     
     // Get initial subscription count from localStorage
     const initialPrefs = await page.evaluate(() => {
@@ -93,8 +92,7 @@ test.describe('All Channels Page', () => {
     
     // Reload and verify subscriptions persist
     await page.reload();
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
     
     // Check localStorage after reload
     const prefsAfterReload = await page.evaluate(() => {

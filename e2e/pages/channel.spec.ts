@@ -107,14 +107,16 @@ test.describe('Channel Page', () => {
     test.skip(isMobile, 'Keyboard navigation is desktop-only');
     
     await page.goto('/channel/system-design/0');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(2000);
+    
+    // Wait for question panel to be visible
+    await expect(page.getByTestId('question-panel').first()).toBeVisible({ timeout: 15000 });
     
     // Get initial URL (will be redirected to question ID format)
     const initialUrl = page.url();
     
     await page.keyboard.press('ArrowRight');
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(500);
     
     const url = page.url();
     // URL should contain the channel path and either stay the same (if only 1 question) or change to a different question

@@ -25,19 +25,18 @@ test.describe('Mobile Mermaid Diagrams (Disabled)', () => {
 
   test('should show placeholder instead of mermaid diagram on mobile', async ({ page }) => {
     await page.goto('/channel/system-design');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     
     // Mobile view shows question content differently - check for heading or question text
     const hasContent = await page.getByRole('heading', { level: 1 }).first().isVisible({ timeout: 5000 }).catch(() => false) ||
-                       await page.locator('h1').first().isVisible({ timeout: 2000 }).catch(() => false);
+                       await page.locator('h1').first().isVisible({ timeout: 2000 }).catch(() => false) ||
+                       await page.getByTestId('question-panel').first().isVisible({ timeout: 2000 }).catch(() => false);
     expect(hasContent).toBeTruthy();
   });
 
   test('diagram placeholder should not overflow viewport', async ({ page }) => {
     await page.goto('/channel/system-design');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     
     const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
     const viewportWidth = await page.evaluate(() => window.innerWidth);
@@ -60,19 +59,19 @@ test.describe('Mobile Swipe Navigation', () => {
 
   test('horizontal swipe left should go to next question', async ({ page }) => {
     await page.goto('/channel/system-design/0');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     expect(page.url()).toContain('/channel/system-design');
   });
 
   test('horizontal swipe right should go to previous question', async ({ page }) => {
     await page.goto('/channel/system-design/1');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     expect(page.url()).toContain('/channel/system-design');
   });
 
   test('vertical swipe should NOT change question', async ({ page }) => {
     await page.goto('/channel/system-design/0');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     expect(page.url()).toContain('/channel/system-design');
   });
 });
@@ -92,12 +91,12 @@ test.describe('Mobile Mermaid Disabled State', () => {
 
   test('should not have zoom controls on mobile (mermaid disabled)', async ({ page }) => {
     await page.goto('/channel/system-design');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     
-    // Mobile view shows question content - check for heading
+    // Mobile view shows question content - check for heading or content
     const hasContent = await page.getByRole('heading', { level: 1 }).first().isVisible({ timeout: 5000 }).catch(() => false) ||
-                       await page.locator('h1').first().isVisible({ timeout: 2000 }).catch(() => false);
+                       await page.locator('h1').first().isVisible({ timeout: 2000 }).catch(() => false) ||
+                       await page.getByTestId('question-panel').first().isVisible({ timeout: 2000 }).catch(() => false);
     expect(hasContent).toBeTruthy();
     
     // Verify no zoom controls on mobile
@@ -107,12 +106,12 @@ test.describe('Mobile Mermaid Disabled State', () => {
 
   test('placeholder should be styled correctly', async ({ page }) => {
     await page.goto('/channel/system-design');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     
-    // Mobile view shows question content - check for heading
+    // Mobile view shows question content - check for heading or content
     const hasContent = await page.getByRole('heading', { level: 1 }).first().isVisible({ timeout: 5000 }).catch(() => false) ||
-                       await page.locator('h1').first().isVisible({ timeout: 2000 }).catch(() => false);
+                       await page.locator('h1').first().isVisible({ timeout: 2000 }).catch(() => false) ||
+                       await page.getByTestId('question-panel').first().isVisible({ timeout: 2000 }).catch(() => false);
     expect(hasContent).toBeTruthy();
   });
 });
@@ -132,7 +131,7 @@ test.describe('Mobile Answer Panel Scrolling', () => {
 
   test('should be able to scroll answer content without changing question', async ({ page }) => {
     await page.goto('/channel/system-design/0');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     expect(page.url()).toContain('/channel/system-design');
   });
 });

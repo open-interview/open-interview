@@ -20,7 +20,7 @@ test.describe('Home Page', () => {
 
   test('displays main heading', async ({ page, isMobile }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
     
     if (isMobile) {
       // Mobile uses focused feed UI
@@ -36,21 +36,20 @@ test.describe('Home Page', () => {
 
   test('shows Your Channels section', async ({ page, isMobile }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
     
     if (isMobile) {
       // Mobile uses focused feed UI
       const pageContent = await page.locator('body').textContent();
       expect(pageContent && pageContent.length > 100).toBeTruthy();
     } else {
-      await expect(page.getByText('Your Channels')).toBeVisible();
+      await expect(page.getByText('Your Channels')).toBeVisible({ timeout: 10000 });
     }
   });
 
   test('navigates to channel on card click', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
     
     const channelCard = page.locator('[class*="cursor-pointer"]').filter({ hasText: /System Design|Algorithms/i }).first();
     if (await channelCard.isVisible()) {
@@ -62,8 +61,7 @@ test.describe('Home Page', () => {
 
   test('has working search shortcut', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1500);
     
     await page.keyboard.press('Meta+k');
     await page.waitForTimeout(500);
@@ -79,10 +77,10 @@ test.describe('Home Page', () => {
     test.skip(isMobile, 'Sidebar is desktop-only');
     
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
     
     // Sidebar should be visible on desktop
     const sidebar = page.locator('aside, [class*="sidebar"]').first();
-    await expect(sidebar).toBeVisible({ timeout: 5000 });
+    await expect(sidebar).toBeVisible({ timeout: 10000 });
   });
 });

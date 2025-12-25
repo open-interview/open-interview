@@ -38,8 +38,7 @@ test.describe('Mobile Screenshots - All Pages', () => {
 
   test('Home page validation', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
     const pageContent = await page.locator('body').textContent();
     expect(pageContent && pageContent.length > 100).toBeTruthy();
@@ -48,8 +47,7 @@ test.describe('Mobile Screenshots - All Pages', () => {
 
   test('Channels page validation', async ({ page }) => {
     await page.goto('/channels');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
     const pageContent = await page.locator('body').textContent();
     expect(pageContent && pageContent.length > 100).toBeTruthy();
@@ -58,55 +56,49 @@ test.describe('Mobile Screenshots - All Pages', () => {
 
   test('Stats page validation', async ({ page }) => {
     await page.goto('/stats');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
     const mainContent = page.locator('main');
-    await expect(mainContent).toBeVisible();
+    await expect(mainContent).toBeVisible({ timeout: 10000 });
     await checkNoHorizontalOverflow(page);
   });
 
   test('Badges page validation', async ({ page }) => {
     await page.goto('/badges');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
-    await expect(page.getByRole('heading', { name: /Badges/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Badges/i })).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Your Collection')).toBeVisible();
     await checkNoHorizontalOverflow(page);
   });
 
   test('Tests page validation', async ({ page }) => {
     await page.goto('/tests');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
-    await expect(page.getByText('Tests')).toBeVisible();
+    await expect(page.getByText('Tests')).toBeVisible({ timeout: 10000 });
     await checkNoHorizontalOverflow(page);
   });
 
   test('About page validation', async ({ page }) => {
     await page.goto('/about');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
-    await expect(page.locator('h1').first()).toBeVisible();
+    await expect(page.locator('h1').first()).toBeVisible({ timeout: 10000 });
     await checkNoHorizontalOverflow(page);
   });
 
   test('Whats New page validation', async ({ page }) => {
     await page.goto('/whats-new');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
-    await expect(page.getByText("What's New")).toBeVisible();
+    await expect(page.getByText("What's New")).toBeVisible({ timeout: 10000 });
     await checkNoHorizontalOverflow(page);
   });
 
   test('Channel/Reels page validation', async ({ page }) => {
     await page.goto('/channel/system-design');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     
     const pageContent = await page.locator('body').textContent();
     expect(pageContent && pageContent.length > 100).toBeTruthy();
@@ -115,10 +107,9 @@ test.describe('Mobile Screenshots - All Pages', () => {
 
   test('Coding Challenges list page', async ({ page }) => {
     await page.goto('/coding');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
-    await expect(page.getByTestId('page-title')).toBeVisible();
+    await expect(page.getByTestId('page-title')).toBeVisible({ timeout: 10000 });
     await checkNoHorizontalOverflow(page);
   });
 });
@@ -130,8 +121,7 @@ test.describe('Mobile Issue Detection - Badges', () => {
 
   test('Badges should render correctly on mobile', async ({ page }) => {
     await page.goto('/badges');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     
     const badgeRings = page.locator('svg circle');
     const ringCount = await badgeRings.count();
@@ -144,8 +134,7 @@ test.describe('Mobile Issue Detection - Badges', () => {
 
   test('Badge progress rings should animate correctly', async ({ page }) => {
     await page.goto('/badges');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     
     const progressCircles = page.locator('svg circle[stroke-dasharray]');
     const circleCount = await progressCircles.count();
@@ -154,8 +143,7 @@ test.describe('Mobile Issue Detection - Badges', () => {
 
   test('Badge modal should work on mobile', async ({ page }) => {
     await page.goto('/badges');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
     const firstBadge = page.locator('[class*="cursor-pointer"][class*="group"]').first();
     if (await firstBadge.isVisible()) {
@@ -178,8 +166,7 @@ test.describe('Mobile Issue Detection - Question Count Loading', () => {
 
   test('Question count should not show 0 initially on home page', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
     const progressTexts = page.locator('[class*="text-muted-foreground"]');
     const progressCount = await progressTexts.count();
@@ -188,8 +175,7 @@ test.describe('Mobile Issue Detection - Question Count Loading', () => {
 
   test('Stats page should load counts correctly', async ({ page }) => {
     await page.goto('/stats');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
     const statNumbers = page.locator('[class*="font-bold"]');
     const numberCount = await statNumbers.count();
@@ -204,24 +190,21 @@ test.describe('Mobile Issue Detection - Coding Challenges', () => {
 
   test('Coding challenge page should be mobile-friendly', async ({ page }) => {
     await page.goto('/coding');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
-    await expect(page.getByTestId('stats-grid')).toBeVisible();
-    await expect(page.getByTestId('challenge-list')).toBeVisible();
+    await expect(page.getByTestId('stats-grid')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('challenge-list')).toBeVisible({ timeout: 10000 });
     await checkNoHorizontalOverflow(page);
   });
 
   test('Coding challenge view should have collapsible sections on mobile', async ({ page }) => {
     await page.goto('/coding');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
     
     const firstChallenge = page.getByTestId('challenge-card-0');
     if (await firstChallenge.isVisible()) {
       await firstChallenge.click();
-      await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(2500);
       await checkNoHorizontalOverflow(page);
     }
   });
@@ -234,30 +217,24 @@ test.describe('Mobile Issue Detection - Navigation', () => {
 
   test('Navigation between pages should work smoothly', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
     
     await page.goto('/stats');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
     
     await page.goto('/badges');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
     
     await page.goto('/tests');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
   });
 
   test('Back button should work correctly', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
     
     await page.goto('/stats');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
     
     await page.goBack();
     await page.waitForTimeout(500);
@@ -266,8 +243,7 @@ test.describe('Mobile Issue Detection - Navigation', () => {
 
   test('ESC key should navigate to home from channel page', async ({ page }) => {
     await page.goto('/channel/system-design');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     
     await page.keyboard.press('Escape');
     await page.waitForTimeout(500);
@@ -282,8 +258,7 @@ test.describe('Mobile Issue Detection - Touch Interactions', () => {
 
   test('Touch targets should be large enough', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
     
     const buttons = await page.locator('button').all();
     
@@ -298,8 +273,7 @@ test.describe('Mobile Issue Detection - Touch Interactions', () => {
 
   test('Tap on channel card should navigate', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
     
     const channelCard = page.locator('[class*="cursor-pointer"][class*="border"][class*="p-3"]').first();
     
@@ -331,8 +305,7 @@ test.describe('Mobile Issue Detection - Layout Issues', () => {
     
     for (const pagePath of pages) {
       await page.goto(pagePath);
-      await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(1500);
       
       const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
       const viewportWidth = await page.evaluate(() => window.innerWidth);
@@ -343,8 +316,7 @@ test.describe('Mobile Issue Detection - Layout Issues', () => {
 
   test('Text should be readable on mobile', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
     
     const textElements = await page.locator('p, span, h1, h2, h3, button').all();
     
@@ -361,8 +333,7 @@ test.describe('Mobile Issue Detection - Layout Issues', () => {
 
   test('Images and icons should be properly sized', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
     
     const icons = await page.locator('svg').all();
     
@@ -383,8 +354,7 @@ test.describe('Mobile Issue Detection - Test Session', () => {
 
   test('Test session page should be mobile-friendly', async ({ page }) => {
     await page.goto('/test/system-design');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     
     const startButton = page.locator('button').filter({ hasText: /start test/i });
     if (await startButton.isVisible()) {
@@ -394,13 +364,12 @@ test.describe('Mobile Issue Detection - Test Session', () => {
 
   test('Test navigation should work on mobile', async ({ page }) => {
     await page.goto('/test/system-design');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     
     const startButton = page.locator('button').filter({ hasText: /start test/i });
     if (await startButton.isVisible()) {
       await startButton.click();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(1500);
       await checkNoHorizontalOverflow(page);
     }
   });

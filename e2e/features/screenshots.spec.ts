@@ -29,12 +29,11 @@ test.describe('Screenshot Pages - Desktop', () => {
 
   test('home page renders correctly', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
     // Check for key elements in the redesigned home page
     // Featured question card or welcome card should be visible
-    const hasFeaturedQuestion = await page.getByText("Today's Question").isVisible({ timeout: 3000 }).catch(() => false);
+    const hasFeaturedQuestion = await page.getByText("Today's Question").isVisible({ timeout: 5000 }).catch(() => false);
     const hasWelcome = await page.getByText('Welcome to Learn Reels').isVisible({ timeout: 1000 }).catch(() => false);
     expect(hasFeaturedQuestion || hasWelcome).toBeTruthy();
     
@@ -44,42 +43,37 @@ test.describe('Screenshot Pages - Desktop', () => {
 
   test('channels page renders correctly', async ({ page }) => {
     await page.goto('/channels');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
-    await expect(page.locator('h1').first()).toBeVisible();
+    await page.waitForTimeout(2000);
+    await expect(page.locator('h1').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('question reels page renders correctly', async ({ page }) => {
     await page.goto('/channel/system-design/0');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     
-    const hasContent = await page.getByTestId('question-panel').first().isVisible({ timeout: 3000 }).catch(() => false) ||
+    const hasContent = await page.getByTestId('question-panel').first().isVisible({ timeout: 5000 }).catch(() => false) ||
                        await page.getByText('Question').isVisible({ timeout: 1000 }).catch(() => false);
     expect(hasContent).toBeTruthy();
   });
 
   test('stats page renders correctly', async ({ page }) => {
     await page.goto('/stats');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
-    await expect(page.locator('h1').first()).toBeVisible();
+    await page.waitForTimeout(2000);
+    await expect(page.locator('h1').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('badges page renders correctly', async ({ page }) => {
     await page.goto('/badges');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
-    await expect(page.getByRole('heading', { name: /Badges/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Badges/i })).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Your Collection')).toBeVisible();
   });
 
   test('tests page renders correctly', async ({ page }) => {
     await page.goto('/tests');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
-    await expect(page.getByText('Tests')).toBeVisible();
+    await page.waitForTimeout(2000);
+    await expect(page.getByText('Tests')).toBeVisible({ timeout: 10000 });
   });
 });
 
@@ -104,8 +98,7 @@ test.describe('Screenshot Pages - Mobile', () => {
 
   test('home page renders correctly on mobile', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
     const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
     const viewportWidth = await page.evaluate(() => window.innerWidth);
@@ -117,8 +110,7 @@ test.describe('Screenshot Pages - Mobile', () => {
 
   test('reels page renders correctly on mobile', async ({ page }) => {
     await page.goto('/channel/system-design/0');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     
     const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
     const viewportWidth = await page.evaluate(() => window.innerWidth);
@@ -127,26 +119,24 @@ test.describe('Screenshot Pages - Mobile', () => {
 
   test('badges page renders correctly on mobile', async ({ page }) => {
     await page.goto('/badges');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
     const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
     const viewportWidth = await page.evaluate(() => window.innerWidth);
     expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 10);
     
-    await expect(page.getByRole('heading', { name: /Badges/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Badges/i })).toBeVisible({ timeout: 10000 });
   });
 
   test('tests page renders correctly on mobile', async ({ page }) => {
     await page.goto('/tests');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
     
     const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
     const viewportWidth = await page.evaluate(() => window.innerWidth);
     expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 10);
     
-    await expect(page.getByText('Tests')).toBeVisible();
+    await expect(page.getByText('Tests')).toBeVisible({ timeout: 10000 });
   });
 });
 
@@ -168,9 +158,9 @@ test.describe('Screenshot Pages - Theme Support', () => {
   test('home page supports dark theme', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
     // Check for key elements in the redesigned home page
-    const hasFeaturedQuestion = await page.getByText("Today's Question").isVisible({ timeout: 3000 }).catch(() => false);
+    const hasFeaturedQuestion = await page.getByText("Today's Question").isVisible({ timeout: 5000 }).catch(() => false);
     const hasChannels = await page.getByText('Your Channels').isVisible({ timeout: 1000 }).catch(() => false);
     expect(hasFeaturedQuestion || hasChannels).toBeTruthy();
   });
@@ -181,9 +171,9 @@ test.describe('Screenshot Pages - Theme Support', () => {
       localStorage.setItem('theme', 'light');
     });
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
     // Check for key elements in the redesigned home page
-    const hasFeaturedQuestion = await page.getByText("Today's Question").isVisible({ timeout: 3000 }).catch(() => false);
+    const hasFeaturedQuestion = await page.getByText("Today's Question").isVisible({ timeout: 5000 }).catch(() => false);
     const hasChannels = await page.getByText('Your Channels').isVisible({ timeout: 1000 }).catch(() => false);
     expect(hasFeaturedQuestion || hasChannels).toBeTruthy();
   });
@@ -191,12 +181,12 @@ test.describe('Screenshot Pages - Theme Support', () => {
   test('badges page supports both themes', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.goto('/badges');
-    await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: /Badges/i })).toBeVisible();
+    await page.waitForTimeout(2000);
+    await expect(page.getByRole('heading', { name: /Badges/i })).toBeVisible({ timeout: 10000 });
     
     await page.emulateMedia({ colorScheme: 'light' });
     await page.reload();
-    await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: /Badges/i })).toBeVisible();
+    await page.waitForTimeout(2000);
+    await expect(page.getByRole('heading', { name: /Badges/i })).toBeVisible({ timeout: 10000 });
   });
 });

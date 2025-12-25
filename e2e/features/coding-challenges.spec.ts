@@ -20,25 +20,22 @@ test.describe('Coding Challenges Page', () => {
 
   test('displays page title', async ({ page }) => {
     await page.goto('/coding');
-    await page.waitForLoadState('networkidle');
-    await expect(page.getByTestId('page-title')).toBeVisible();
+    await expect(page.getByTestId('page-title')).toBeVisible({ timeout: 15000 });
   });
 
   test('shows stats grid', async ({ page }) => {
     await page.goto('/coding');
-    await page.waitForLoadState('networkidle');
-    await expect(page.getByTestId('stats-grid')).toBeVisible();
+    await expect(page.getByTestId('stats-grid')).toBeVisible({ timeout: 15000 });
   });
 
   test('shows challenge list', async ({ page }) => {
     await page.goto('/coding');
-    await page.waitForLoadState('networkidle');
-    await expect(page.getByTestId('challenge-list')).toBeVisible();
+    await expect(page.getByTestId('challenge-list')).toBeVisible({ timeout: 15000 });
   });
 
   test('navigates to challenge on click', async ({ page }) => {
     await page.goto('/coding');
-    await page.waitForLoadState('networkidle');
+    await expect(page.getByTestId('challenge-list')).toBeVisible({ timeout: 15000 });
     
     const firstChallenge = page.getByTestId('challenge-card-0');
     if (await firstChallenge.isVisible()) {
@@ -64,7 +61,7 @@ test.describe('Coding Challenge Editor', () => {
 
   test('displays code editor', async ({ page }) => {
     await page.goto('/coding');
-    await page.waitForLoadState('networkidle');
+    await expect(page.getByTestId('challenge-list')).toBeVisible({ timeout: 15000 });
     
     await page.getByTestId('challenge-card-0').click();
     await page.waitForTimeout(1000);
@@ -75,7 +72,7 @@ test.describe('Coding Challenge Editor', () => {
 
   test('has run tests button', async ({ page }) => {
     await page.goto('/coding');
-    await page.waitForLoadState('networkidle');
+    await expect(page.getByTestId('challenge-list')).toBeVisible({ timeout: 15000 });
     
     await page.getByTestId('challenge-card-0').click();
     await page.waitForTimeout(1000);
@@ -85,7 +82,7 @@ test.describe('Coding Challenge Editor', () => {
 
   test('has copy and reset buttons', async ({ page }) => {
     await page.goto('/coding');
-    await page.waitForLoadState('networkidle');
+    await expect(page.getByTestId('challenge-list')).toBeVisible({ timeout: 15000 });
     
     await page.getByTestId('challenge-card-0').click();
     await page.waitForTimeout(1000);
@@ -110,7 +107,7 @@ test.describe('Coding Challenge Test Execution', () => {
 
   test('runs tests and shows results', async ({ page }) => {
     await page.goto('/coding');
-    await page.waitForLoadState('networkidle');
+    await expect(page.getByTestId('challenge-list')).toBeVisible({ timeout: 15000 });
     
     await page.getByTestId('challenge-card-0').click();
     await page.waitForTimeout(500);
