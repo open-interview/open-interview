@@ -12,13 +12,13 @@ import { useProgress, useGlobalStats } from '../hooks/use-progress';
 import { SEOHead } from '../components/SEOHead';
 import {
   Code, Trophy, Target, Flame, BookOpen, ChevronRight,
-  Bell, HelpCircle, Zap, Calendar, TrendingUp, Bookmark
+  Bell, HelpCircle, Zap, Calendar, TrendingUp, Bookmark, Shuffle, Eye
 } from 'lucide-react';
 
 export default function Profile() {
   const [, setLocation] = useLocation();
   const { stats: channelStats } = useChannelStats();
-  const { getSubscribedChannels } = useUserPreferences();
+  const { getSubscribedChannels, preferences, toggleShuffleQuestions, togglePrioritizeUnvisited } = useUserPreferences();
   const { stats: activityStats } = useGlobalStats();
   const subscribedChannels = getSubscribedChannels();
 
@@ -202,6 +202,20 @@ export default function Profile() {
               <h3 className="text-sm font-semibold text-muted-foreground">Settings</h3>
             </div>
             <div className="divide-y divide-border/50">
+              <ToggleItem
+                icon={<Shuffle className="w-5 h-5" />}
+                label="Shuffle Questions"
+                sublabel="Randomize question order"
+                enabled={preferences.shuffleQuestions !== false}
+                onToggle={toggleShuffleQuestions}
+              />
+              <ToggleItem
+                icon={<Eye className="w-5 h-5" />}
+                label="Unvisited First"
+                sublabel="Show new questions first"
+                enabled={preferences.prioritizeUnvisited !== false}
+                onToggle={togglePrioritizeUnvisited}
+              />
               <MenuItem
                 icon={<Bell className="w-5 h-5" />}
                 label="Notifications"
@@ -271,6 +285,47 @@ function MenuItem({
         </div>
       </div>
       <ChevronRight className="w-5 h-5 text-muted-foreground pointer-events-none" />
+    </button>
+  );
+}
+
+function ToggleItem({ 
+  icon, 
+  label, 
+  sublabel, 
+  enabled,
+  onToggle
+}: { 
+  icon: React.ReactNode;
+  label: string;
+  sublabel: string;
+  enabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors border-b border-border/50 last:border-b-0 active:bg-muted/70 cursor-pointer touch-manipulation"
+    >
+      <div className="flex items-center gap-3 pointer-events-none">
+        <span className={enabled ? 'text-primary' : 'text-muted-foreground'}>{icon}</span>
+        <div className="text-left">
+          <h4 className="font-medium text-sm">{label}</h4>
+          <p className="text-xs text-muted-foreground">{sublabel}</p>
+        </div>
+      </div>
+      <div 
+        className={`w-11 h-6 rounded-full transition-colors relative ${
+          enabled ? 'bg-primary' : 'bg-muted'
+        }`}
+      >
+        <div 
+          className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+            enabled ? 'translate-x-6' : 'translate-x-1'
+          }`}
+        />
+      </div>
     </button>
   );
 }

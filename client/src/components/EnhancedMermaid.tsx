@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ZoomIn, ZoomOut, Maximize2, Move, Palette } from 'lucide-react';
 // @ts-ignore
 import mermaid from 'mermaid/dist/mermaid.esm.mjs';
@@ -344,14 +345,21 @@ export function EnhancedMermaid({ chart, compact = false, onRenderResult }: Enha
     return null;
   }
   
+  // Check if SVG content is actually valid (not empty or too small)
+  if (svgContent.length < 100 || !svgContent.includes('<svg')) {
+    console.warn('EnhancedMermaid: SVG content appears invalid or empty');
+    onRenderResult?.(false);
+    return null;
+  }
+  
   // Successfully rendered
   onRenderResult?.(true);
   
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
   if (isExpanded) {
-    return (
-      <div className="fixed inset-0 z-[100] bg-black flex flex-col">
+    return createPortal(
+      <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
         <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 bg-black/90 shrink-0">
           <div className="flex items-center gap-2 text-[10px] text-white/50 uppercase tracking-widest">
             <Move className="w-3.5 h-3.5" />
@@ -411,7 +419,8 @@ export function EnhancedMermaid({ chart, compact = false, onRenderResult }: Enha
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/80 border border-white/20 rounded text-[10px] text-white/50 uppercase tracking-widest">
           Drag to pan • Scroll/pinch to zoom • ESC to close
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 

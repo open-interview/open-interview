@@ -11,7 +11,9 @@ const defaultPreferences: UserPreferences = {
   role: DEFAULTS.ROLE,
   subscribedChannels: [],
   onboardingComplete: false,
-  createdAt: new Date().toISOString()
+  createdAt: new Date().toISOString(),
+  shuffleQuestions: true,
+  prioritizeUnvisited: true
 };
 
 interface UserPreferencesContextType {
@@ -25,6 +27,8 @@ interface UserPreferencesContextType {
   resetPreferences: () => void;
   skipOnboarding: () => void;
   needsOnboarding: boolean;
+  toggleShuffleQuestions: () => void;
+  togglePrioritizeUnvisited: () => void;
 }
 
 const UserPreferencesContext = createContext<UserPreferencesContextType | null>(null);
@@ -114,6 +118,20 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const toggleShuffleQuestions = useCallback(() => {
+    setPreferences(prev => ({
+      ...prev,
+      shuffleQuestions: !prev.shuffleQuestions
+    }));
+  }, []);
+
+  const togglePrioritizeUnvisited = useCallback(() => {
+    setPreferences(prev => ({
+      ...prev,
+      prioritizeUnvisited: !prev.prioritizeUnvisited
+    }));
+  }, []);
+
   return (
     <UserPreferencesContext.Provider value={{
       preferences,
@@ -125,7 +143,9 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
       getSubscribedChannels,
       resetPreferences,
       skipOnboarding,
-      needsOnboarding: !preferences.onboardingComplete
+      needsOnboarding: !preferences.onboardingComplete,
+      toggleShuffleQuestions,
+      togglePrioritizeUnvisited
     }}>
       {children}
     </UserPreferencesContext.Provider>

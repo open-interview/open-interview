@@ -9,13 +9,14 @@ import remarkGfm from 'remark-gfm';
 import { 
   BookOpen, Code2, Lightbulb, ExternalLink,
   ChevronDown, Baby, Copy, Check, Tag,
-  GitBranch, Play
+  GitBranch, Play, FileText
 } from 'lucide-react';
 import type { Question } from '../lib/data';
 import { GiscusComments } from './GiscusComments';
 import { formatTag } from '../lib/utils';
+import { BlogService } from '../services/api.service';
 
-type MediaTab = 'diagram' | 'eli5' | 'video';
+type MediaTab = 'tldr' | 'diagram' | 'eli5' | 'video';
 
 /**
  * Preprocess markdown text to fix common formatting issues
@@ -259,14 +260,16 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
   );
 }
 
-// Tabbed Media Panel for Diagram, ELI5, and Video
+// Tabbed Media Panel for TLDR, Diagram, ELI5, and Video
 function TabbedMediaPanel({ 
   question,
+  hasTldr,
   hasDiagram,
   hasEli5,
   hasVideo
 }: { 
   question: Question;
+  hasTldr: boolean;
   hasDiagram: boolean;
   hasEli5: boolean;
   hasVideo: boolean;
@@ -278,19 +281,21 @@ function TabbedMediaPanel({
   
   // Build available tabs
   const availableTabs: MediaTab[] = [];
+  if (hasTldr) availableTabs.push('tldr');
   if (showDiagramTab) availableTabs.push('diagram');
   if (hasEli5) availableTabs.push('eli5');
   if (hasVideo) availableTabs.push('video');
   
   // Default to first available tab, but prefer non-diagram if diagram hasn't rendered yet
   const getDefaultTab = (): MediaTab => {
+    if (hasTldr) return 'tldr';
     if (diagramRenderSuccess === null && hasDiagram) {
       // Diagram is still loading, prefer other tabs if available
       if (hasEli5) return 'eli5';
       if (hasVideo) return 'video';
       return 'diagram';
     }
-    return availableTabs[0] || 'eli5';
+    return availableTabs[0] || 'tldr';
   };
   
   const [activeTab, setActiveTab] = useState<MediaTab>(getDefaultTab);
@@ -298,10 +303,11 @@ function TabbedMediaPanel({
   // Switch away from diagram tab if it fails
   useEffect(() => {
     if (diagramRenderSuccess === false && activeTab === 'diagram') {
-      if (hasEli5) setActiveTab('eli5');
+      if (hasTldr) setActiveTab('tldr');
+      else if (hasEli5) setActiveTab('eli5');
       else if (hasVideo) setActiveTab('video');
     }
-  }, [diagramRenderSuccess, activeTab, hasEli5, hasVideo]);
+  }, [diagramRenderSuccess, activeTab, hasTldr, hasEli5, hasVideo]);
   
   // Handle diagram render result
   const handleDiagramRenderResult = useCallback((success: boolean) => {
@@ -311,7 +317,7 @@ function TabbedMediaPanel({
   // If no tabs available at all, don't render
   if (availableTabs.length === 0 && diagramRenderSuccess === false) return null;
   // If only diagram and it hasn't loaded yet, show loading state
-  if (availableTabs.length === 0 && !hasEli5 && !hasVideo && diagramRenderSuccess === null) {
+  if (availableTabs.length === 0 && !hasTldr && !hasEli5 && !hasVideo && diagramRenderSuccess === null) {
     return (
       <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-4 text-center text-muted-foreground text-sm">
         Loading...
@@ -321,23 +327,24 @@ function TabbedMediaPanel({
   if (availableTabs.length === 0) return null;
 
   const tabConfig = {
-    diagram: { label: 'Diagram', icon: <GitBranch className="w-4 h-4" />, color: 'text-primary' },
-    eli5: { label: 'ELI5', icon: <Baby className="w-4 h-4" />, color: 'text-green-500' },
-    video: { label: 'Video', icon: <Play className="w-4 h-4" />, color: 'text-purple-500' },
+    tldr: { label: 'TL;DR', icon: <Lightbulb className="w-4 h-4" />, color: 'text-cyan-400' },
+    diagram: { label: 'Diagram', icon: <GitBranch className="w-4 h-4" />, color: 'text-purple-400' },
+    eli5: { label: 'ELI5', icon: <Baby className="w-4 h-4" />, color: 'text-green-400' },
+    video: { label: 'Video', icon: <Play className="w-4 h-4" />, color: 'text-pink-400' },
   };
 
   return (
-    <div className="rounded-xl sm:rounded-2xl border border-border bg-card overflow-hidden">
+    <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-black/40 backdrop-blur-sm overflow-hidden">
       {/* Tab Headers */}
-      <div className="flex border-b border-border bg-muted/30">
+      <div className="flex border-b border-white/10 bg-black/20">
         {availableTabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 sm:py-3 text-sm font-medium transition-colors relative ${
+            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 sm:py-3 text-sm font-medium transition-all relative ${
               activeTab === tab 
-                ? `${tabConfig[tab].color} bg-card` 
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                ? `${tabConfig[tab].color} bg-white/5` 
+                : 'text-white/50 hover:text-white/70 hover:bg-white/5'
             }`}
           >
             <span className={activeTab === tab ? tabConfig[tab].color : ''}>{tabConfig[tab].icon}</span>
@@ -345,7 +352,11 @@ function TabbedMediaPanel({
             {activeTab === tab && (
               <motion.div
                 layoutId="activeTabIndicator"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-current"
+                className={`absolute bottom-0 left-0 right-0 h-0.5 ${
+                  tab === 'tldr' ? 'bg-cyan-400' :
+                  tab === 'diagram' ? 'bg-purple-400' :
+                  tab === 'eli5' ? 'bg-green-400' : 'bg-pink-400'
+                }`}
               />
             )}
           </button>
@@ -355,6 +366,22 @@ function TabbedMediaPanel({
       {/* Tab Content */}
       <div className="p-3 sm:p-4 lg:p-5">
         <AnimatePresence mode="wait">
+          {activeTab === 'tldr' && hasTldr && (
+            <motion.div
+              key="tldr"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="flex items-start gap-3"
+            >
+              <div className="p-2 bg-cyan-500/20 rounded-lg shrink-0">
+                <Lightbulb className="w-5 h-5 text-cyan-400" />
+              </div>
+              <p className="text-sm sm:text-base text-foreground/90 leading-relaxed">{question.answer}</p>
+            </motion.div>
+          )}
+          
           {activeTab === 'diagram' && hasDiagram && (
             <motion.div
               key="diagram"
@@ -407,12 +434,19 @@ function TabbedMediaPanel({
 export function AnswerPanel({ question, isCompleted }: AnswerPanelProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isMobileView = typeof window !== 'undefined' && window.innerWidth < 640;
+  const [blogPost, setBlogPost] = useState<{ title: string; slug: string; url: string } | null>(null);
+
+  // Fetch blog post info for this question
+  useEffect(() => {
+    BlogService.getByQuestionId(question.id).then(setBlogPost);
+  }, [question.id]);
 
   // On mobile, diagrams don't render, so don't show the tab
+  const hasTldr = !!question.answer;
   const hasDiagram = !isMobileView && isValidMermaidDiagram(question.diagram);
   const hasEli5 = !!question.eli5;
   const hasVideo = !!(question.videos?.shortVideo || question.videos?.longVideo);
-  const hasMediaContent = hasDiagram || hasEli5 || hasVideo;
+  const hasMediaContent = hasTldr || hasDiagram || hasEli5 || hasVideo;
 
   const renderMarkdown = useCallback((text: string) => {
     const processedText = preprocessMarkdown(text);
@@ -527,25 +561,11 @@ export function AnswerPanel({ question, isCompleted }: AnswerPanelProps) {
     >
       <div className="max-w-3xl lg:max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 pb-24 space-y-2.5 sm:space-y-4 lg:space-y-5">
 
-        {/* TLDR - Always visible, highlighted */}
-        {question.answer && (
-          <div className="bg-primary/5 border border-primary/20 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5">
-            <div className="flex items-start gap-2 sm:gap-3">
-              <Lightbulb className="w-4 h-4 sm:w-5 sm:h-5 text-primary mt-0.5 flex-shrink-0" />
-              <div>
-                <div className="text-[10px] sm:text-xs uppercase tracking-wider text-primary font-semibold mb-1 sm:mb-2">TLDR</div>
-                <p className="text-sm sm:text-base lg:text-lg text-foreground/90 leading-relaxed">
-                  {question.answer}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tabbed Media Panel - Diagram, ELI5, Video */}
+        {/* Tabbed Media Panel - TLDR, Diagram, ELI5, Video */}
         {hasMediaContent && (
           <TabbedMediaPanel
             question={question}
+            hasTldr={hasTldr}
             hasDiagram={hasDiagram}
             hasEli5={hasEli5}
             hasVideo={hasVideo}
@@ -581,17 +601,35 @@ export function AnswerPanel({ question, isCompleted }: AnswerPanelProps) {
           </div>
         )}
 
-        {/* Source Link */}
-        {question.sourceUrl && (
-          <a
-            href={question.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-muted hover:bg-muted/80 border border-border rounded-lg sm:rounded-xl transition-colors text-sm sm:text-base"
-          >
-            <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
-            <span className="text-muted-foreground">View Source</span>
-          </a>
+        {/* References Section */}
+        {(question.sourceUrl || blogPost) && (
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {/* Source Link */}
+            {question.sourceUrl && (
+              <a
+                href={question.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-muted hover:bg-muted/80 border border-border rounded-lg sm:rounded-xl transition-colors text-sm sm:text-base"
+              >
+                <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+                <span className="text-muted-foreground">View Source</span>
+              </a>
+            )}
+
+            {/* Blog Post Link */}
+            {blogPost && (
+              <a
+                href={`https://open-interview.github.io${blogPost.url}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-lg sm:rounded-xl transition-colors text-sm sm:text-base"
+              >
+                <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400" />
+                <span className="text-cyan-400">Read Blog Post</span>
+              </a>
+            )}
+          </div>
         )}
 
         {/* Discussion - Direct embed without extra wrapper */}

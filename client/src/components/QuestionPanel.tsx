@@ -329,19 +329,17 @@ export function QuestionPanel({
           <div className="flex items-center gap-1.5 sm:gap-2">
             <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500" />
             <span className="text-[10px] sm:text-xs font-semibold text-purple-500">SRS</span>
-            {srsCard && srsCard.totalReviews > 0 && (
-              <span className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded ${getMasteryColor(srsCard.masteryLevel)} bg-muted/50`}>
+            {srsCard && (
+              <span className={`text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-md ${getMasteryColor(srsCard.masteryLevel)} bg-muted/50`}>
                 {getMasteryLabel(srsCard.masteryLevel)}
               </span>
             )}
           </div>
           
           {hasRated ? (
-            <div className="flex items-center gap-1 text-[10px] sm:text-xs text-green-500">
-              <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">Next: {srsCard?.nextReview}</span>
-              <span className="sm:hidden">✓</span>
-            </div>
+            <span className="text-[10px] sm:text-xs text-green-500 font-medium">
+              ✓ Reviewed
+            </span>
           ) : showRatingButtons && srsCard ? (
             <div className="flex items-center gap-1">
               {[
@@ -365,7 +363,7 @@ export function QuestionPanel({
               onClick={(e) => { e.stopPropagation(); handleAddToSRS(); }}
               className="px-2 sm:px-2.5 py-0.5 sm:py-1 bg-purple-500 text-white text-[10px] sm:text-xs font-medium rounded-lg hover:bg-purple-600 transition-colors"
             >
-              Learn
+              + Add
             </button>
           )}
         </div>

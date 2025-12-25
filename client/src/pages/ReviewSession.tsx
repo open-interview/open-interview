@@ -95,7 +95,7 @@ function preprocessMarkdown(text: string): string {
 
 type SessionState = 'loading' | 'reviewing' | 'reveal' | 'completed';
 
-// Diagram section that hides itself if rendering fails
+// Diagram section that hides itself if rendering fails - Vibrant purple style
 function DiagramSection({ diagram }: { diagram: string }) {
   const [renderSuccess, setRenderSuccess] = useState<boolean | null>(null);
   
@@ -105,9 +105,14 @@ function DiagramSection({ diagram }: { diagram: string }) {
   }
   
   return (
-    <div>
-      <h3 className="text-sm font-semibold text-muted-foreground uppercase mb-2">Diagram</h3>
-      <div className="bg-muted/30 rounded-lg p-4 overflow-x-auto">
+    <div className="p-4 bg-gradient-to-br from-purple-500/10 via-violet-500/10 to-fuchsia-500/10 border border-purple-500/30 rounded-2xl backdrop-blur-sm">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="p-1.5 bg-purple-500/20 rounded-lg">
+          <Eye className="w-4 h-4 text-purple-400" />
+        </div>
+        <span className="text-xs font-bold text-purple-400 uppercase tracking-wider">Diagram</span>
+      </div>
+      <div className="bg-black/30 rounded-xl p-4 overflow-x-auto border border-white/5">
         <EnhancedMermaid 
           chart={diagram} 
           onRenderResult={(success) => setRenderSuccess(success)}
@@ -318,27 +323,29 @@ export default function ReviewSession() {
               >
                 {/* Question Card */}
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-                  <div className="max-w-3xl mx-auto">
-                    {/* Card header */}
-                    <div className="flex items-center gap-2 mb-4 flex-wrap">
-                      <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded">
+                  <div className="max-w-3xl mx-auto space-y-4">
+                    {/* Card header badges */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400 text-xs font-semibold rounded-full border border-cyan-500/30">
                         {currentCard.channel}
                       </span>
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${
-                        currentCard.difficulty === 'beginner' ? 'bg-green-500/10 text-green-500' :
-                        currentCard.difficulty === 'intermediate' ? 'bg-yellow-500/10 text-yellow-500' :
-                        'bg-red-500/10 text-red-500'
+                      <span className={`px-3 py-1.5 text-xs font-semibold rounded-full border ${
+                        currentCard.difficulty === 'beginner' 
+                          ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-400 border-green-500/30' 
+                          : currentCard.difficulty === 'intermediate' 
+                          ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 border-yellow-500/30' 
+                          : 'bg-gradient-to-r from-red-500/20 to-pink-500/20 text-red-400 border-red-500/30'
                       }`}>
                         {currentCard.difficulty}
                       </span>
-                      <span className={`px-2 py-1 text-xs font-medium rounded bg-muted flex items-center gap-1 ${getMasteryColor(currentCard.masteryLevel)}`}>
+                      <span className={`px-3 py-1.5 text-xs font-semibold rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center gap-1.5 ${getMasteryColor(currentCard.masteryLevel)}`}>
                         <span>{getMasteryEmoji(currentCard.masteryLevel)}</span>
                         {getMasteryLabel(currentCard.masteryLevel)}
                       </span>
                     </div>
 
                     {/* Question */}
-                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-6">
+                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight">
                       {currentQuestion.question}
                     </h2>
 
@@ -349,36 +356,67 @@ export default function ReviewSession() {
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
-                          className="space-y-4"
+                          className="space-y-4 pt-2"
                         >
-                          <div className="h-px bg-border" />
-                          
-                          {/* TLDR */}
+                          {/* TLDR Card - Vibrant cyan */}
                           {currentQuestion.tldr && (
-                            <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Zap className="w-4 h-4 text-primary" />
-                                <span className="text-xs font-semibold text-primary uppercase">TL;DR</span>
+                            <motion.div 
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.1 }}
+                              className="p-4 bg-gradient-to-br from-cyan-500/10 via-blue-500/10 to-purple-500/10 border border-cyan-500/30 rounded-2xl backdrop-blur-sm"
+                            >
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="p-1.5 bg-cyan-500/20 rounded-lg">
+                                  <Zap className="w-4 h-4 text-cyan-400" />
+                                </div>
+                                <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">TL;DR</span>
                               </div>
-                              <p className="text-sm">{currentQuestion.tldr}</p>
+                              <p className="text-sm sm:text-base text-foreground/90 leading-relaxed">{currentQuestion.tldr}</p>
+                            </motion.div>
+                          )}
+
+                          {/* Answer Card - Vibrant green */}
+                          <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.15 }}
+                            className="p-4 bg-gradient-to-br from-green-500/10 via-emerald-500/10 to-teal-500/10 border border-green-500/30 rounded-2xl backdrop-blur-sm"
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="p-1.5 bg-green-500/20 rounded-lg">
+                                <Check className="w-4 h-4 text-green-400" />
+                              </div>
+                              <span className="text-xs font-bold text-green-400 uppercase tracking-wider">Answer</span>
                             </div>
-                          )}
-
-                          {/* Answer */}
-                          <div>
-                            <h3 className="text-sm font-semibold text-muted-foreground uppercase mb-2">Answer</h3>
                             <p className="text-base sm:text-lg leading-relaxed text-foreground/90">{currentQuestion.answer}</p>
-                          </div>
+                          </motion.div>
 
-                          {/* Diagram - only show if it renders successfully */}
+                          {/* Diagram Card - Vibrant purple */}
                           {currentQuestion.diagram && (
-                            <DiagramSection diagram={currentQuestion.diagram} />
+                            <motion.div
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.2 }}
+                            >
+                              <DiagramSection diagram={currentQuestion.diagram} />
+                            </motion.div>
                           )}
 
-                          {/* Full Explanation */}
+                          {/* Explanation Card - Vibrant orange */}
                           {currentQuestion.explanation && (
-                            <div>
-                              <h3 className="text-sm font-semibold text-muted-foreground uppercase mb-3">Explanation</h3>
+                            <motion.div 
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.25 }}
+                              className="p-4 bg-gradient-to-br from-orange-500/10 via-amber-500/10 to-yellow-500/10 border border-orange-500/30 rounded-2xl backdrop-blur-sm"
+                            >
+                              <div className="flex items-center gap-2 mb-3">
+                                <div className="p-1.5 bg-orange-500/20 rounded-lg">
+                                  <Brain className="w-4 h-4 text-orange-400" />
+                                </div>
+                                <span className="text-xs font-bold text-orange-400 uppercase tracking-wider">Explanation</span>
+                              </div>
                               <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none">
                                 <ReactMarkdown
                                   remarkPlugins={[remarkGfm]}
@@ -398,14 +436,14 @@ export default function ReviewSession() {
                                       }
                                       
                                       return (
-                                        <div className="my-3 rounded-lg overflow-hidden border border-border">
+                                        <div className="my-3 rounded-xl overflow-hidden border border-white/10 shadow-lg">
                                           <SyntaxHighlighter
                                             language={language || 'text'}
                                             style={vscDarkPlus}
                                             customStyle={{ 
                                               margin: 0, 
                                               padding: '1rem', 
-                                              background: '#1e1e1e',
+                                              background: '#0d0d0d',
                                               fontSize: '0.8rem',
                                               lineHeight: '1.5',
                                             }}
@@ -465,7 +503,7 @@ export default function ReviewSession() {
                                   {preprocessMarkdown(currentQuestion.explanation)}
                                 </ReactMarkdown>
                               </div>
-                            </div>
+                            </motion.div>
                           )}
                         </motion.div>
                       )}

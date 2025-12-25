@@ -375,6 +375,43 @@ export const CodingService = {
 };
 
 // ============================================
+// BLOG POST SERVICE
+// ============================================
+interface BlogPostInfo {
+  title: string;
+  slug: string;
+  url: string;
+}
+
+const blogPostsCache = new CacheManager<Record<string, BlogPostInfo>>();
+
+export const BlogService = {
+  /**
+   * Get all blog posts mapping (question_id -> blog post info)
+   */
+  async getAll(): Promise<Record<string, BlogPostInfo>> {
+    const cached = blogPostsCache.get('all');
+    if (cached) return cached;
+
+    try {
+      const data = await fetchJson<Record<string, BlogPostInfo>>(`${DATA_BASE}/blog-posts.json`);
+      blogPostsCache.set('all', data);
+      return data;
+    } catch {
+      return {};
+    }
+  },
+
+  /**
+   * Get blog post info for a specific question ID
+   */
+  async getByQuestionId(questionId: string): Promise<BlogPostInfo | null> {
+    const posts = await this.getAll();
+    return posts[questionId] || null;
+  },
+};
+
+// ============================================
 // CACHE UTILITIES
 // ============================================
 export const CacheUtils = {
@@ -385,6 +422,7 @@ export const CacheUtils = {
     channelDataCache.clear();
     statsCache.clear();
     questionsCache.clear();
+    blogPostsCache.clear();
   },
 
   /**
@@ -406,6 +444,7 @@ export const api = {
   questions: QuestionService,
   stats: StatsService,
   coding: CodingService,
+  blog: BlogService,
   cache: CacheUtils,
 };
 

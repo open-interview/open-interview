@@ -7,7 +7,6 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { useToast } from '@/hooks/use-toast';
 import { allChannelsConfig } from '../lib/channels-config';
-import { getQuestions } from '../lib/data';
 import { formatTag } from '../lib/utils';
 
 type FilterType = 'all' | 'company' | 'video' | 'diagram' | 'coding';
@@ -132,10 +131,8 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
       });
     }
     
-    const channelQuestions = getQuestions(question.channel);
-    const questionIndex = channelQuestions.findIndex(q => q.id === question.id);
-    const index = questionIndex >= 0 ? questionIndex : 0;
-    setLocation(`/channel/${question.channel}/${index}`);
+    // Navigate using question ID directly in URL path
+    setLocation(`/channel/${question.channel}/${question.id}`);
     onClose();
   };
   

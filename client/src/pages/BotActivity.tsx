@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SEOHead } from "../components/SEOHead";
-import { getQuestions } from "../lib/data";
 
 interface BotActivityItem {
   id: number;
@@ -176,16 +175,9 @@ export default function BotActivity() {
 
   const botTypes = ['all', ...Object.keys(BOT_CONFIG)];
 
-  // Navigate to specific question by finding its index in the channel
+  // Navigate to specific question using question ID in URL
   const navigateToQuestion = useCallback((channel: string, questionId: string) => {
-    const questions = getQuestions(channel);
-    const index = questions.findIndex(q => q.id === questionId);
-    if (index >= 0) {
-      setLocation(`/channel/${channel}/${index}`);
-    } else {
-      // Fallback to channel if question not found
-      setLocation(`/channel/${channel}`);
-    }
+    setLocation(`/channel/${channel}/${questionId}`);
   }, [setLocation]);
 
   return (

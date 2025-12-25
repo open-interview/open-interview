@@ -141,6 +141,8 @@ export interface UserPreferences {
   subscribedChannels: string[];
   onboardingComplete: boolean;
   createdAt: string;
+  shuffleQuestions?: boolean;
+  prioritizeUnvisited?: boolean;
 }
 
 export interface UserProgress {

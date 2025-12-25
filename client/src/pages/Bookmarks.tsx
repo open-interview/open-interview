@@ -96,12 +96,9 @@ export default function Bookmarks() {
     setBookmarkedQuestions(prev => prev.filter(q => q.id !== question.id));
   };
 
-  // Navigate to question
+  // Navigate to question using question ID in URL
   const goToQuestion = (question: BookmarkedQuestion) => {
-    const allQuestions = getAllQuestions();
-    const channelQuestions = allQuestions.filter(q => q.channel === question.channelId);
-    const index = channelQuestions.findIndex(q => q.id === question.id);
-    setLocation(`/channel/${question.channelId}/${index >= 0 ? index : 0}`);
+    setLocation(`/channel/${question.channelId}/${question.id}`);
   };
 
   const getDifficultyConfig = (difficulty: string) => {

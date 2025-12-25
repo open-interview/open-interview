@@ -502,6 +502,34 @@ async function main() {
     console.log(`   ✓ changelog.json (default)`);
   }
 
+  // Fetch blog posts mapping
+  console.log('\n📥 Fetching blog posts...');
+  try {
+    const blogResult = await client.execute(`
+      SELECT question_id, title, slug
+      FROM blog_posts
+      ORDER BY created_at DESC
+    `);
+
+    const blogPosts = {};
+    for (const row of blogResult.rows) {
+      blogPosts[row.question_id] = {
+        title: row.title,
+        slug: row.slug,
+        url: `/posts/${row.question_id}/${row.slug}/`
+      };
+    }
+
+    const blogPostsFile = path.join(OUTPUT_DIR, 'blog-posts.json');
+    fs.writeFileSync(blogPostsFile, JSON.stringify(blogPosts, null, 0));
+    console.log(`   ✓ blog-posts.json (${Object.keys(blogPosts).length} posts)`);
+  } catch (e) {
+    console.log(`   ⚠️ Could not fetch blog posts: ${e.message}`);
+    const blogPostsFile = path.join(OUTPUT_DIR, 'blog-posts.json');
+    fs.writeFileSync(blogPostsFile, JSON.stringify({}, null, 0));
+    console.log(`   ✓ blog-posts.json (empty - table may not exist yet)`);
+  }
+
   console.log('\n✅ Static data files generated successfully!');
   console.log(`   Output directory: ${OUTPUT_DIR}`);
   console.log(`   Total questions: ${questions.length}`);

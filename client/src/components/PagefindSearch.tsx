@@ -6,7 +6,6 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { useToast } from '@/hooks/use-toast';
 import { allChannelsConfig } from '../lib/channels-config';
-import { getQuestions } from '../lib/data';
 
 // Pagefind types
 interface PagefindResult {
@@ -221,11 +220,9 @@ export function PagefindSearch({ isOpen, onClose }: PagefindSearchProps) {
       });
     }
     
+    // Navigate using question ID directly in URL path
     if (channel) {
-      const channelQuestions = getQuestions(channel);
-      const questionIndex = channelQuestions.findIndex(q => q.id === result.id);
-      const index = questionIndex >= 0 ? questionIndex : 0;
-      setLocation(`/channel/${channel}/${index}`);
+      setLocation(`/channel/${channel}/${result.id}`);
     }
     
     onClose();

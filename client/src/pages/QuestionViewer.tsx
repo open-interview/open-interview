@@ -25,11 +25,17 @@ import {
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 export default function QuestionViewer() {
-  const [, setLocation] = useLocation();
-  const [, params] = useRoute('/channel/:id/:index?');
+  const [location, setLocation] = useLocation();
+  const [, params] = useRoute('/channel/:id/:questionId?');
   const channelId = params?.id;
-  const hasIndexInUrl = params?.index !== undefined && params?.index !== '';
-  const paramIndex = hasIndexInUrl ? parseInt(params.index || '0') : null;
+  const questionIdFromUrl = params?.questionId;
+  
+  // Check for question ID in query params (from search) - fallback
+  const searchParams = new URLSearchParams(location.split('?')[1] || '');
+  const questionIdFromSearch = searchParams.get('q');
+  
+  // Determine the target question ID
+  const targetQuestionId = questionIdFromSearch || questionIdFromUrl;
 
   const staticChannel = getChannel(channelId || '');
   const { subChannels: apiSubChannels } = useSubChannels(channelId || '');
@@ -48,7 +54,7 @@ export default function QuestionViewer() {
   const [selectedSubChannel, setSelectedSubChannel] = useState('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
   const [selectedCompany, setSelectedCompany] = useState('all');
-  const [currentIndex, setCurrentIndex] = useState(paramIndex ?? 0);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [mobileView, setMobileView] = useState<'question' | 'answer'>('question');
 
@@ -58,13 +64,45 @@ export default function QuestionViewer() {
     selectedDifficulty
   );
 
-  const { question: currentQuestion, totalQuestions, loading, error } = useQuestionsWithPrefetch(
+  // Get shuffle preferences
+  const { preferences } = useUserPreferences();
+  const shuffleEnabled = preferences.shuffleQuestions !== false;
+  const prioritizeUnvisited = preferences.prioritizeUnvisited !== false;
+
+  const { question: currentQuestion, questions, totalQuestions, loading, error } = useQuestionsWithPrefetch(
     channelId || '',
     currentIndex,
     selectedSubChannel,
     selectedDifficulty,
-    selectedCompany
+    selectedCompany,
+    shuffleEnabled,
+    prioritizeUnvisited
   );
+
+  // Handle question ID from URL or search - find index in the list
+  useEffect(() => {
+    if (targetQuestionId && questions.length > 0) {
+      const foundIndex = questions.findIndex(q => q.id === targetQuestionId);
+      if (foundIndex >= 0) {
+        if (foundIndex !== currentIndex) {
+          setCurrentIndex(foundIndex);
+        }
+        // Update URL to use question ID format (clear query params if present)
+        if (questionIdFromSearch) {
+          setLocation(`/channel/${channelId}/${targetQuestionId}`, { replace: true });
+        }
+      } else {
+        // Question not found in current filter, go to first question
+        if (questions[0]) {
+          setCurrentIndex(0);
+          setLocation(`/channel/${channelId}/${questions[0].id}`, { replace: true });
+        }
+      }
+    } else if (!targetQuestionId && questions.length > 0 && !loading) {
+      // No question ID in URL, set to first question
+      setLocation(`/channel/${channelId}/${questions[0].id}`, { replace: true });
+    }
+  }, [targetQuestionId, questions, channelId, loading]);
 
   const { completed, markCompleted, saveLastVisitedIndex } = useProgress(channelId || '');
   const { isSubscribed, subscribeChannel } = useUserPreferences();
@@ -99,13 +137,16 @@ export default function QuestionViewer() {
     }
   }, [totalQuestions, currentIndex]);
 
-  // Sync with URL
+  // Update URL when navigating to a new question
   useEffect(() => {
-    if (channelId && totalQuestions > 0 && currentIndex !== paramIndex) {
-      setLocation(`/channel/${channelId}/${currentIndex}`, { replace: true });
+    if (channelId && currentQuestion && !loading) {
+      const currentUrlQuestionId = targetQuestionId;
+      if (currentQuestion.id !== currentUrlQuestionId) {
+        setLocation(`/channel/${channelId}/${currentQuestion.id}`, { replace: true });
+      }
       saveLastVisitedIndex(currentIndex);
     }
-  }, [currentIndex, channelId, totalQuestions]);
+  }, [currentQuestion?.id, channelId, loading]);
 
   // Track question view
   useEffect(() => {
@@ -114,7 +155,7 @@ export default function QuestionViewer() {
       markCompleted(currentQuestion.id);
       trackActivity();
     }
-  }, [currentIndex, currentQuestion?.id]);
+  }, [currentQuestion?.id]);
 
   // Keyboard navigation
   useEffect(() => {
