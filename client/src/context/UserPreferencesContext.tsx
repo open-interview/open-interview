@@ -33,15 +33,34 @@ interface UserPreferencesContextType {
 
 const UserPreferencesContext = createContext<UserPreferencesContextType | null>(null);
 
+// Detect search engine crawlers/bots
+function isCrawler(): boolean {
+  if (typeof window === 'undefined') return false;
+  const userAgent = navigator.userAgent.toLowerCase();
+  return /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|sogou|exabot|facebot|facebookexternalhit|ia_archiver|msnbot|ahrefsbot|semrushbot|dotbot|rogerbot|screaming frog|lighthouse|chrome-lighthouse|pagespeed|gtmetrix|pingdom/i.test(userAgent);
+}
+
 export function UserPreferencesProvider({ children }: { children: ReactNode }) {
   const [preferences, setPreferences] = useState<UserPreferences>(() => {
     if (typeof window === 'undefined') return defaultPreferences;
+    
+    // Bypass onboarding for crawlers - let them see main content immediately
+    if (isCrawler()) {
+      return {
+        ...defaultPreferences,
+        subscribedChannels: DEFAULTS.SUBSCRIBED_CHANNELS as unknown as string[],
+        onboardingComplete: true
+      };
+    }
+    
     return PreferencesStorage.get();
   });
 
-  // Save to localStorage whenever preferences change
+  // Save to localStorage whenever preferences change (skip for crawlers)
   useEffect(() => {
-    PreferencesStorage.set(preferences);
+    if (!isCrawler()) {
+      PreferencesStorage.set(preferences);
+    }
   }, [preferences]);
 
 

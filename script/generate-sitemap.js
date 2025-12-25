@@ -97,8 +97,18 @@ Allow: /
 # Sitemaps
 Sitemap: ${BASE_URL}/sitemap.xml
 
-# Crawl-delay for polite crawling
-Crawl-delay: 1
+# Allow all major search engine bots
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
 
 # Disallow admin/internal paths (none currently)
 # Disallow: /admin/

@@ -314,6 +314,18 @@ export function useMarvelIntro() {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
+    // Detect search engine crawlers/bots - bypass intro for them
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isCrawler = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|sogou|exabot|facebot|facebookexternalhit|ia_archiver|msnbot|ahrefsbot|semrushbot|dotbot|rogerbot|screaming frog|lighthouse|chrome-lighthouse|pagespeed|gtmetrix|pingdom/i.test(userAgent);
+    
+    if (isCrawler) {
+      // Skip intro for crawlers - let them see the main content
+      localStorage.setItem(INTRO_SEEN_KEY, 'true');
+      setShowIntro(false);
+      setIsChecking(false);
+      return;
+    }
+    
     // Skip intro on mobile devices for better UX
     const isMobile = window.innerWidth < 768;
     if (isMobile) {
