@@ -221,30 +221,21 @@ function ChannelItem({
         }
       `}
     >
-      <div className="relative">
+      <div className="relative shrink-0">
         {iconMap[channel.icon] || <Cpu className="w-5 h-5" />}
-        {/* Progress ring */}
-        <svg className="absolute -inset-1 w-7 h-7 -rotate-90">
-          <circle
-            cx="14"
-            cy="14"
-            r="12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className="opacity-10"
+        {/* Small progress dot indicator */}
+        {progress > 0 && progress < 100 && (
+          <div 
+            className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary"
+            title={`${progress}% complete`}
           />
-          <circle
-            cx="14"
-            cy="14"
-            r="12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeDasharray={`${progress * 0.75} 100`}
-            className="text-primary"
+        )}
+        {progress === 100 && (
+          <div 
+            className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500"
+            title="Completed"
           />
-        </svg>
+        )}
       </div>
       <AnimatePresence mode="wait">
         {isOpen && (

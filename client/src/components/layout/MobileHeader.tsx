@@ -1,6 +1,6 @@
 /**
  * Mobile Header Component
- * Profile avatar on left, search bar center, icons on right
+ * Modern glass-morphism floating design
  */
 
 import { useState } from 'react';
@@ -36,20 +36,22 @@ export function MobileHeader({
   // Back button header variant
   if (showBack) {
     return (
-      <header className="sticky top-0 z-40 lg:hidden bg-card border-b border-border/50">
+      <header className="sticky top-0 z-40 lg:hidden">
         <div className="pt-safe">
-          <div className="flex items-center h-14 px-4 gap-3">
-            <button
-              onClick={() => window.history.back()}
-              className="p-2 -ml-2 hover:bg-muted rounded-full transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            {title && (
-              <h1 className="text-base font-semibold truncate flex-1">
-                {title}
-              </h1>
-            )}
+          <div className="m-3">
+            <div className="flex items-center h-12 px-2 gap-3 bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl">
+              <button
+                onClick={() => window.history.back()}
+                className="p-2 hover:bg-white/10 rounded-xl transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-white/80" />
+              </button>
+              {title && (
+                <h1 className="text-sm font-semibold text-white truncate flex-1">
+                  {title}
+                </h1>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -57,80 +59,72 @@ export function MobileHeader({
   }
 
   return (
-    <header 
-      className={`
-        sticky top-0 z-40 lg:hidden
-        ${transparent 
-          ? 'bg-transparent' 
-          : 'bg-card border-b border-border/50'
-        }
-      `}
-    >
+    <header className="sticky top-0 z-40 lg:hidden">
       {/* Safe area padding for iOS notch */}
       <div className="pt-safe">
-        <div className="flex items-center h-14 px-4 gap-3">
-          {/* Left - Profile/Logo */}
-          <button 
-            onClick={handleLogoClick}
-            className="flex-shrink-0"
-          >
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center ring-2 ring-primary/20">
-              <Code className="w-5 h-5 text-primary-foreground" />
+        <div className="m-3">
+          <div className="flex items-center h-12 px-2 gap-2 bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl">
+            {/* Left - Profile/Logo */}
+            <button 
+              onClick={handleLogoClick}
+              className="flex-shrink-0 p-1"
+            >
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
+                <Code className="w-4 h-4 text-white" />
+              </div>
+            </button>
+
+            {/* Center - Search Bar */}
+            {showSearch && (
+              <button
+                onClick={onSearchClick}
+                className="flex-1 flex items-center gap-2 h-8 px-3 bg-white/5 hover:bg-white/10 rounded-xl transition-colors"
+              >
+                <Search className="w-3.5 h-3.5 text-white/50" />
+                <span className="text-xs text-white/50">Search...</span>
+              </button>
+            )}
+
+            {/* Right - Actions */}
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              {/* Notifications */}
+              <button
+                onClick={() => setShowNotifications(true)}
+                className="relative p-2 hover:bg-white/10 rounded-xl transition-colors"
+              >
+                <Bell className="w-4 h-4 text-white/70" />
+                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full" />
+              </button>
+
+              {/* Settings Menu */}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+                    <Settings className="w-4 h-4 text-white/70" />
+                  </button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    className="min-w-[180px] bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl p-1.5 z-50"
+                    sideOffset={8}
+                    align="end"
+                  >
+                    <DropdownMenu.Item
+                      onClick={() => setLocation('/about')}
+                      className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer outline-none hover:bg-white/10 text-white/80 text-sm"
+                    >
+                      About
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item
+                      onClick={() => setLocation('/whats-new')}
+                      className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer outline-none hover:bg-white/10 text-white/80 text-sm"
+                    >
+                      What's New
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
             </div>
-          </button>
-
-          {/* Center - Search Bar */}
-          {showSearch && (
-            <button
-              onClick={onSearchClick}
-              className="flex-1 flex items-center gap-2 h-9 px-3 bg-muted/60 hover:bg-muted rounded-lg transition-colors"
-            >
-              <Search className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Search topics...</span>
-            </button>
-          )}
-
-          {/* Right - Actions */}
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {/* Notifications */}
-            <button
-              onClick={() => setShowNotifications(true)}
-              className="relative p-2 hover:bg-muted rounded-full transition-colors"
-            >
-              <Bell className="w-5 h-5 text-muted-foreground" />
-              {/* Notification dot */}
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-            </button>
-
-            {/* Settings Menu */}
-            <DropdownMenu.Root>
-              <DropdownMenu.Trigger asChild>
-                <button className="p-2 hover:bg-muted rounded-full transition-colors">
-                  <Settings className="w-5 h-5 text-muted-foreground" />
-                </button>
-              </DropdownMenu.Trigger>
-              <DropdownMenu.Portal>
-                <DropdownMenu.Content
-                  className="min-w-[200px] bg-card border border-border rounded-xl shadow-xl p-2 z-50"
-                  sideOffset={8}
-                  align="end"
-                >
-                  {/* Links */}
-                  <DropdownMenu.Item
-                    onClick={() => setLocation('/about')}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer outline-none hover:bg-muted"
-                  >
-                    <span className="text-sm">About</span>
-                  </DropdownMenu.Item>
-                  <DropdownMenu.Item
-                    onClick={() => setLocation('/whats-new')}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer outline-none hover:bg-muted"
-                  >
-                    <span className="text-sm">What's New</span>
-                  </DropdownMenu.Item>
-                </DropdownMenu.Content>
-              </DropdownMenu.Portal>
-            </DropdownMenu.Root>
           </div>
         </div>
       </div>
@@ -151,24 +145,24 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-background"
+      className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl"
     >
       <div className="pt-safe">
-        <div className="flex items-center justify-between h-14 px-4 border-b border-border">
-          <h2 className="text-lg font-semibold">Notifications</h2>
+        <div className="flex items-center justify-between h-14 px-4 border-b border-white/10">
+          <h2 className="text-lg font-semibold text-white">Notifications</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-muted rounded-full transition-colors"
+            className="p-2 hover:bg-white/10 rounded-xl transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 text-white/70" />
           </button>
         </div>
         
         <div className="p-4">
           <div className="text-center py-12">
-            <Bell className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">No new notifications</p>
-            <p className="text-sm text-muted-foreground/70 mt-1">
+            <Bell className="w-12 h-12 text-white/30 mx-auto mb-4" />
+            <p className="text-white/60">No new notifications</p>
+            <p className="text-sm text-white/40 mt-1">
               Your activity updates will appear here
             </p>
           </div>

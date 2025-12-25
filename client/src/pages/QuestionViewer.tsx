@@ -376,7 +376,7 @@ function Header({ channel, onBack, onSearch, currentIndex, totalQuestions, progr
   const hasActiveFilter = selectedSubChannel !== 'all' || selectedDifficulty !== 'all' || selectedCompany !== 'all';
   
   return (
-    <header className="bg-card border-b border-border shrink-0">
+    <header className="bg-card/95 backdrop-blur-md border-b border-border shrink-0">
       {/* Main header row */}
       <div className="h-14 flex items-center px-3 sm:px-4 gap-2 sm:gap-3">
         <button onClick={onBack} className="p-2 hover:bg-muted rounded-lg transition-colors shrink-0">
@@ -389,7 +389,7 @@ function Header({ channel, onBack, onSearch, currentIndex, totalQuestions, progr
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>{currentIndex + 1} of {totalQuestions}</span>
               <div className="w-12 sm:w-16 h-1 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full" style={{ width: `${progress}%` }} />
+                <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progress}%` }} />
               </div>
             </div>
           )}
@@ -436,7 +436,7 @@ function Header({ channel, onBack, onSearch, currentIndex, totalQuestions, progr
           <button 
             onClick={() => setShowMobileFilters(!showMobileFilters)}
             className={`sm:hidden p-2 rounded-lg transition-colors ${
-              showMobileFilters || hasActiveFilter ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
+              showMobileFilters || hasActiveFilter ? 'bg-primary/15 text-primary' : 'hover:bg-muted'
             }`}
           >
             <ChevronDown className={`w-4 h-4 transition-transform ${showMobileFilters ? 'rotate-180' : ''}`} />
@@ -502,25 +502,35 @@ interface FilterDropdownProps {
 }
 
 function FilterDropdown({ label, options, selected, onSelect }: FilterDropdownProps) {
+  const isActive = selected !== 'all';
+  
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 hover:bg-muted rounded-full text-sm transition-colors whitespace-nowrap">
+        <button 
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap outline-none focus:outline-none ${
+            isActive 
+              ? 'bg-primary/15 text-primary border border-primary/30' 
+              : 'bg-muted/50 hover:bg-muted border border-transparent'
+          }`}
+        >
           {label}
-          <ChevronDown className="w-3 h-3 opacity-50" />
+          <ChevronDown className="w-3 h-3 opacity-60" />
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
-          className="min-w-[180px] max-h-[300px] overflow-y-auto bg-card border border-border rounded-lg shadow-lg p-1 z-50"
-          sideOffset={4}
+          className="min-w-[180px] max-h-[300px] overflow-y-auto bg-black/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl shadow-black/50 p-1.5 z-50"
+          sideOffset={6}
         >
           {options.map((opt: any) => (
             <DropdownMenu.Item
               key={opt.id}
               onClick={() => onSelect(opt.id)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer outline-none text-sm ${
-                selected === opt.id ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer outline-none text-sm transition-colors ${
+                selected === opt.id 
+                  ? 'bg-primary/20 text-primary' 
+                  : 'text-white/80 hover:bg-white/10 hover:text-white'
               }`}
             >
               {opt.icon}
@@ -542,34 +552,34 @@ function NavigationFooter({ currentIndex, totalQuestions, onPrev, onNext, onShar
     <>
       {/* Mobile: Minimal horizontal pill at bottom center */}
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none lg:hidden">
-        <div className="pointer-events-auto flex items-center gap-0.5 p-1 bg-black/60 backdrop-blur-md border border-white/10 rounded-full shadow-xl">
+        <div className="pointer-events-auto flex items-center gap-0.5 p-1 bg-black/80 backdrop-blur-xl border border-white/15 rounded-xl shadow-2xl shadow-black/50">
           {/* Previous button */}
           <button
             onClick={onPrev}
             disabled={currentIndex === 0}
-            className="p-2 rounded-full hover:bg-white/10 transition-all disabled:opacity-20 active:scale-90"
+            className="w-11 h-11 flex items-center justify-center rounded-lg hover:bg-white/10 transition-all disabled:opacity-20 active:scale-90"
           >
-            <ChevronLeft className="w-5 h-5 text-white/80" />
+            <ChevronLeft className="w-5 h-5 text-white/70" />
           </button>
 
-          {/* Progress pill */}
-          <div className="flex items-center gap-1.5 px-2 py-1">
-            <div className="relative w-10 h-1 bg-white/20 rounded-full overflow-hidden">
+          {/* Progress indicator */}
+          <div className="flex items-center gap-2 px-3 py-1.5">
+            <div className="relative w-10 h-1 bg-white/15 rounded-full overflow-hidden">
               <div 
                 className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <span className="text-[10px] text-white/60 tabular-nums">
+            <span className="text-[11px] text-white/50 tabular-nums font-medium min-w-[36px]">
               {currentIndex + 1}/{totalQuestions}
             </span>
           </div>
 
-          {/* Next button - Primary */}
+          {/* Next button */}
           <button
             onClick={onNext}
             disabled={currentIndex === totalQuestions - 1}
-            className="p-2 bg-primary text-white rounded-full hover:bg-primary/80 transition-all disabled:opacity-20 active:scale-90"
+            className="w-11 h-11 flex items-center justify-center bg-primary text-white rounded-lg hover:bg-primary/80 transition-all disabled:opacity-20 active:scale-90"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
@@ -578,25 +588,25 @@ function NavigationFooter({ currentIndex, totalQuestions, onPrev, onNext, onShar
 
       {/* Desktop: Horizontal pill at bottom center */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none hidden lg:block">
-        <div className="pointer-events-auto flex items-center gap-1 px-2 py-1.5 bg-black/50 backdrop-blur-xl border border-white/10 rounded-full shadow-xl">
+        <div className="pointer-events-auto flex items-center gap-1 px-1.5 py-1 bg-black/80 backdrop-blur-xl border border-white/15 rounded-xl shadow-2xl shadow-black/50">
           {/* Previous button */}
           <button
             onClick={onPrev}
             disabled={currentIndex === 0}
-            className="p-2 rounded-full hover:bg-white/10 transition-all disabled:opacity-20 active:scale-95"
+            className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/10 transition-all disabled:opacity-20 active:scale-95"
           >
-            <ChevronLeft className="w-5 h-5 text-white/80" />
+            <ChevronLeft className="w-5 h-5 text-white/70" />
           </button>
 
           {/* Progress indicator */}
-          <div className="flex items-center gap-2 px-2">
-            <div className="relative w-16 h-1 bg-white/20 rounded-full overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-1.5">
+            <div className="relative w-14 h-1 bg-white/15 rounded-full overflow-hidden">
               <div 
                 className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <span className="text-xs text-white/60 tabular-nums">
+            <span className="text-xs text-white/50 tabular-nums font-medium">
               {currentIndex + 1}/{totalQuestions}
             </span>
           </div>
@@ -604,8 +614,8 @@ function NavigationFooter({ currentIndex, totalQuestions, onPrev, onNext, onShar
           {/* Bookmark */}
           <button
             onClick={onToggleMark}
-            className={`p-2 rounded-full transition-all active:scale-95 ${
-              isMarked ? 'text-primary' : 'hover:bg-white/10 text-white/60'
+            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all active:scale-95 ${
+              isMarked ? 'bg-primary/20 text-primary' : 'hover:bg-white/10 text-white/50'
             }`}
           >
             <Bookmark className={`w-4 h-4 ${isMarked ? 'fill-current' : ''}`} />
@@ -614,7 +624,7 @@ function NavigationFooter({ currentIndex, totalQuestions, onPrev, onNext, onShar
           {/* Share */}
           <button 
             onClick={onShare} 
-            className="p-2 rounded-full hover:bg-white/10 text-white/60 transition-all active:scale-95"
+            className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/10 text-white/50 transition-all active:scale-95"
           >
             <Share2 className="w-4 h-4" />
           </button>
@@ -623,7 +633,7 @@ function NavigationFooter({ currentIndex, totalQuestions, onPrev, onNext, onShar
           <button
             onClick={onNext}
             disabled={currentIndex === totalQuestions - 1}
-            className="flex items-center gap-1 pl-3 pr-2 py-1.5 bg-primary text-white rounded-full hover:bg-primary/80 transition-all disabled:opacity-20 active:scale-95 text-sm font-medium"
+            className="flex items-center gap-1.5 h-10 pl-4 pr-3 bg-primary text-white rounded-lg hover:bg-primary/80 transition-all disabled:opacity-20 active:scale-95 text-sm font-medium"
           >
             Next
             <ChevronRight className="w-4 h-4" />

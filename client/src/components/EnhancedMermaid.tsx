@@ -51,6 +51,7 @@ function initMermaid(mermaidTheme: MermaidTheme, force = false) {
 interface EnhancedMermaidProps {
   chart: string;
   compact?: boolean;
+  onRenderResult?: (success: boolean) => void;
 }
 
 // Validate if content is a valid Mermaid diagram
@@ -96,7 +97,7 @@ function isValidMermaidSyntax(chart: string): boolean {
   return hasDiagramSyntax;
 }
 
-export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps) {
+export function EnhancedMermaid({ chart, compact = false, onRenderResult }: EnhancedMermaidProps) {
   const { theme: appTheme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const svgContainerRef = useRef<HTMLDivElement>(null);
@@ -310,27 +311,20 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
   // Validate chart content before rendering
   if (!isValidChart) {
     console.warn('EnhancedMermaid: Invalid or non-Mermaid content detected, skipping render');
+    onRenderResult?.(false);
     return null;
   }
   
-  // Disable mermaid on mobile - show placeholder instead
+  // On mobile, just return null - diagrams don't render well on small screens
   if (isMobileDevice) {
-    return (
-      <div 
-        className="w-full p-4 border border-white/10 bg-black/20 rounded-lg text-center"
-        data-testid="mermaid-mobile-placeholder"
-      >
-        <div className="text-white/50 text-sm mb-2">📊 Diagram</div>
-        <div className="text-white/30 text-xs">
-          Diagrams are best viewed on desktop for optimal experience
-        </div>
-      </div>
-    );
+    onRenderResult?.(false);
+    return null;
   }
 
   // Silently hide failed diagrams - don't show error to user
   if (error) {
     console.warn('EnhancedMermaid diagram skipped due to error:', error);
+    onRenderResult?.(false);
     return null;
   }
 
@@ -345,7 +339,13 @@ export function EnhancedMermaid({ chart, compact = false }: EnhancedMermaidProps
     );
   }
 
-  if (!svgContent) return null;
+  if (!svgContent) {
+    onRenderResult?.(false);
+    return null;
+  }
+  
+  // Successfully rendered
+  onRenderResult?.(true);
   
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 

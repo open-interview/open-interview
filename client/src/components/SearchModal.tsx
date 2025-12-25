@@ -252,52 +252,54 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Mobile: Fullscreen - uses CSS to show/hide */}
+          {/* Mobile: Fullscreen glass design */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="lg:hidden fixed inset-0 z-[200] bg-background flex flex-col"
+            className="lg:hidden fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex flex-col"
             style={{ top: 0, left: 0, right: 0, bottom: 0, position: 'fixed' }}
             data-testid="search-modal-mobile"
           >
             {/* Mobile Header */}
-            <div className="flex items-center justify-between px-4 h-14 border-b border-border bg-card flex-shrink-0">
-              <h2 className="font-semibold text-lg">Search</h2>
+            <div className="flex items-center justify-between px-4 h-14 border-b border-white/10 flex-shrink-0">
+              <h2 className="font-semibold text-lg text-white">Search</h2>
               <button 
                 onClick={onClose} 
-                className="p-2 -mr-2 hover:bg-muted rounded-full"
+                className="p-2 -mr-2 hover:bg-white/10 rounded-xl transition-colors"
                 data-testid="search-close-btn"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5 text-white/70" />
               </button>
             </div>
 
             {/* Mobile Search Input */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card flex-shrink-0">
-              <Search className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-              <input
-                ref={mobileInputRef}
-                type="text"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Search questions..."
-                className="flex-1 bg-transparent text-foreground text-base outline-none placeholder:text-muted-foreground/50"
-                autoComplete="off"
-                spellCheck={false}
-                data-testid="search-input-mobile"
-              />
-              {query && (
-                <button onClick={() => setQuery('')} className="p-1.5 hover:bg-muted rounded-full flex-shrink-0">
-                  <X className="w-4 h-4 text-muted-foreground" />
-                </button>
-              )}
+            <div className="px-4 py-3 flex-shrink-0">
+              <div className="flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-2xl">
+                <Search className="w-5 h-5 text-white/50 flex-shrink-0" />
+                <input
+                  ref={mobileInputRef}
+                  type="text"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Search questions..."
+                  className="flex-1 bg-transparent text-white text-base outline-none placeholder:text-white/30"
+                  autoComplete="off"
+                  spellCheck={false}
+                  data-testid="search-input-mobile"
+                />
+                {query && (
+                  <button onClick={() => setQuery('')} className="p-1.5 hover:bg-white/10 rounded-full flex-shrink-0">
+                    <X className="w-4 h-4 text-white/50" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Mobile Filters */}
             {results.length > 0 && (
-              <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-muted/30 overflow-x-auto no-scrollbar flex-shrink-0">
+              <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto no-scrollbar flex-shrink-0">
                 {filters.map(filter => {
                   const count = getFilterCount(filter.id);
                   return (
@@ -306,7 +308,11 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                       onClick={() => setActiveFilter(filter.id)}
                       disabled={count === 0 && filter.id !== 'all'}
                       className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full transition-all flex-shrink-0 ${
-                        activeFilter === filter.id ? 'bg-primary text-primary-foreground font-semibold' : count > 0 ? 'bg-muted text-muted-foreground' : 'bg-muted/50 text-muted-foreground/50'
+                        activeFilter === filter.id 
+                          ? 'bg-primary text-white font-semibold' 
+                          : count > 0 
+                            ? 'bg-white/10 text-white/70' 
+                            : 'bg-white/5 text-white/30'
                       }`}
                     >
                       {filter.icon} {filter.label} ({count})
@@ -332,21 +338,21 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
             {/* Mobile Footer */}
             <div 
-              className="px-4 py-3 border-t border-border bg-card flex-shrink-0"
+              className="px-4 py-3 border-t border-white/10 flex-shrink-0"
               style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
             >
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="text-sm text-white/40 text-center">
                 {filteredResults.length > 0 ? `${filteredResults.length} results` : 'Tap to search'}
               </p>
             </div>
           </motion.div>
 
-          {/* Desktop: Modal - uses CSS to show/hide */}
+          {/* Desktop: Modal with glass design */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="hidden lg:flex fixed inset-0 z-[200] bg-background/80 backdrop-blur-sm items-start justify-center pt-[10vh] px-4"
+            className="hidden lg:flex fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm items-start justify-center pt-[10vh] px-4"
             onClick={onClose}
             data-testid="search-modal-desktop"
           >

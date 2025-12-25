@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EnhancedMermaid } from './EnhancedMermaid';
 import { YouTubePlayer } from './YouTubePlayer';
@@ -271,13 +271,53 @@ function TabbedMediaPanel({
   hasEli5: boolean;
   hasVideo: boolean;
 }) {
+  const [diagramRenderSuccess, setDiagramRenderSuccess] = useState<boolean | null>(null);
+  
+  // Determine if diagram tab should show - only after we know render result
+  const showDiagramTab = hasDiagram && diagramRenderSuccess !== false;
+  
+  // Build available tabs
   const availableTabs: MediaTab[] = [];
-  if (hasDiagram) availableTabs.push('diagram');
+  if (showDiagramTab) availableTabs.push('diagram');
   if (hasEli5) availableTabs.push('eli5');
   if (hasVideo) availableTabs.push('video');
   
-  const [activeTab, setActiveTab] = useState<MediaTab>(availableTabs[0]);
+  // Default to first available tab, but prefer non-diagram if diagram hasn't rendered yet
+  const getDefaultTab = (): MediaTab => {
+    if (diagramRenderSuccess === null && hasDiagram) {
+      // Diagram is still loading, prefer other tabs if available
+      if (hasEli5) return 'eli5';
+      if (hasVideo) return 'video';
+      return 'diagram';
+    }
+    return availableTabs[0] || 'eli5';
+  };
   
+  const [activeTab, setActiveTab] = useState<MediaTab>(getDefaultTab);
+  
+  // Switch away from diagram tab if it fails
+  useEffect(() => {
+    if (diagramRenderSuccess === false && activeTab === 'diagram') {
+      if (hasEli5) setActiveTab('eli5');
+      else if (hasVideo) setActiveTab('video');
+    }
+  }, [diagramRenderSuccess, activeTab, hasEli5, hasVideo]);
+  
+  // Handle diagram render result
+  const handleDiagramRenderResult = useCallback((success: boolean) => {
+    setDiagramRenderSuccess(success);
+  }, []);
+  
+  // If no tabs available at all, don't render
+  if (availableTabs.length === 0 && diagramRenderSuccess === false) return null;
+  // If only diagram and it hasn't loaded yet, show loading state
+  if (availableTabs.length === 0 && !hasEli5 && !hasVideo && diagramRenderSuccess === null) {
+    return (
+      <div className="rounded-xl sm:rounded-2xl border border-border bg-card p-4 text-center text-muted-foreground text-sm">
+        Loading...
+      </div>
+    );
+  }
   if (availableTabs.length === 0) return null;
 
   const tabConfig = {
@@ -323,7 +363,10 @@ function TabbedMediaPanel({
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              <EnhancedMermaid chart={question.diagram!} />
+              <EnhancedMermaid 
+                chart={question.diagram!} 
+                onRenderResult={handleDiagramRenderResult}
+              />
             </motion.div>
           )}
           
@@ -365,7 +408,8 @@ export function AnswerPanel({ question, isCompleted }: AnswerPanelProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isMobileView = typeof window !== 'undefined' && window.innerWidth < 640;
 
-  const hasDiagram = isValidMermaidDiagram(question.diagram);
+  // On mobile, diagrams don't render, so don't show the tab
+  const hasDiagram = !isMobileView && isValidMermaidDiagram(question.diagram);
   const hasEli5 = !!question.eli5;
   const hasVideo = !!(question.videos?.shortVideo || question.videos?.longVideo);
   const hasMediaContent = hasDiagram || hasEli5 || hasVideo;

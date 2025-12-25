@@ -1,6 +1,6 @@
 /**
  * Mobile Bottom Navigation
- * Professional, clean design with 5 main tabs
+ * Modern glass-morphism floating design
  */
 
 import { useLocation } from 'wouter';
@@ -25,49 +25,49 @@ export function MobileNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
-      {/* Clean white background with subtle shadow */}
-      <div className="absolute inset-0 bg-card border-t border-border/50 shadow-[0_-1px_3px_rgba(0,0,0,0.08)]" />
-      
-      {/* Safe area padding for iOS */}
+    <nav className="fixed bottom-4 left-4 right-4 z-50 lg:hidden pointer-events-none">
+      {/* Floating glass pill */}
       <div 
-        className="relative flex items-stretch justify-around"
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 4px)' }}
+        className="pointer-events-auto mx-auto max-w-md bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/30"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}
       >
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const active = isActive(item.path);
-          
-          return (
-            <button
-              key={item.id}
-              onClick={() => item.path ? setLocation(item.path) : undefined}
-              className="flex flex-col items-center justify-center py-2 px-3 min-w-[60px] relative"
-            >
-              {/* Active indicator - top line */}
-              {active && (
-                <motion.div
-                  layoutId="mobile-nav-indicator"
-                  className="absolute top-0 left-1/2 -translate-x-1/2 w-[60%] h-[2px] bg-foreground rounded-b-full"
-                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                />
-              )}
-              <Icon 
-                className={`w-6 h-6 transition-colors ${
-                  active ? 'text-foreground' : 'text-muted-foreground'
-                }`}
-                strokeWidth={active ? 2.5 : 1.5}
-              />
-              <span 
-                className={`text-[10px] mt-0.5 transition-colors ${
-                  active ? 'text-foreground font-semibold' : 'text-muted-foreground font-medium'
+        <div className="flex items-stretch justify-around py-2 px-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.path);
+            
+            return (
+              <button
+                key={item.id}
+                onClick={() => item.path ? setLocation(item.path) : undefined}
+                className={`flex flex-col items-center justify-center py-2 px-3 min-w-[56px] rounded-xl transition-all active:scale-95 ${
+                  active ? 'bg-white/10' : 'hover:bg-white/5'
                 }`}
               >
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
+                <Icon 
+                  className={`w-5 h-5 transition-colors ${
+                    active ? 'text-primary' : 'text-white/60'
+                  }`}
+                  strokeWidth={active ? 2.5 : 1.5}
+                />
+                <span 
+                  className={`text-[10px] mt-1 transition-colors ${
+                    active ? 'text-white font-semibold' : 'text-white/50 font-medium'
+                  }`}
+                >
+                  {item.label}
+                </span>
+                {active && (
+                  <motion.div
+                    layoutId="mobile-nav-dot"
+                    className="w-1 h-1 bg-primary rounded-full mt-1"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </nav>
   );

@@ -323,64 +323,58 @@ export function QuestionPanel({
         )}
       </div>
 
-      {/* SRS Card - Compact at bottom */}
-      <div className="mt-auto pt-4 max-w-3xl mx-auto w-full">
-        <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Brain className="w-4 h-4 text-purple-500" />
-              <span className="text-xs font-semibold text-purple-500">Spaced Repetition</span>
-              {srsCard && srsCard.totalReviews > 0 && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded ${getMasteryColor(srsCard.masteryLevel)} bg-muted/50`}>
-                  {getMasteryLabel(srsCard.masteryLevel)}
-                </span>
-              )}
-            </div>
-            
-            {hasRated ? (
-              <div className="flex items-center gap-1.5 text-xs text-green-500">
-                <Check className="w-3.5 h-3.5" />
-                <span>Next: {srsCard?.nextReview}</span>
-              </div>
-            ) : !showRatingButtons && (
-              <button
-                onClick={(e) => { e.stopPropagation(); handleAddToSRS(); }}
-                className="px-2.5 py-1 bg-purple-500 text-white text-xs font-medium rounded-lg hover:bg-purple-600 transition-colors"
-              >
-                Learn
-              </button>
+      {/* SRS Card - Compact inline at bottom */}
+      <div className="mt-auto pt-4 max-w-3xl mx-auto w-full flex justify-start mb-16 sm:mb-0">
+        <div className="inline-flex items-center gap-2 sm:gap-3 bg-purple-500/5 border border-purple-500/20 rounded-xl px-2.5 sm:px-3 py-1.5 sm:py-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Brain className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500" />
+            <span className="text-[10px] sm:text-xs font-semibold text-purple-500">SRS</span>
+            {srsCard && srsCard.totalReviews > 0 && (
+              <span className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded ${getMasteryColor(srsCard.masteryLevel)} bg-muted/50`}>
+                {getMasteryLabel(srsCard.masteryLevel)}
+              </span>
             )}
           </div>
           
-          {showRatingButtons && srsCard && !hasRated && (
-            <div className="mt-2 pt-2 border-t border-purple-500/10">
-              <p className="text-[10px] text-muted-foreground mb-2">How well did you know this?</p>
-              <div className="flex gap-1.5">
-                {[
-                  { rating: 'again' as ConfidenceRating, label: 'Again', color: 'bg-red-500/10 text-red-500 border-red-500/30' },
-                  { rating: 'hard' as ConfidenceRating, label: 'Hard', color: 'bg-orange-500/10 text-orange-500 border-orange-500/30' },
-                  { rating: 'good' as ConfidenceRating, label: 'Good', color: 'bg-green-500/10 text-green-500 border-green-500/30' },
-                  { rating: 'easy' as ConfidenceRating, label: 'Easy', color: 'bg-blue-500/10 text-blue-500 border-blue-500/30' },
-                ].map((btn) => (
-                  <button
-                    key={btn.rating}
-                    onClick={(e) => { e.stopPropagation(); handleSRSRate(btn.rating); }}
-                    className={`flex-1 py-1.5 rounded-lg border text-xs font-medium transition-colors ${btn.color} hover:opacity-80`}
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-              </div>
+          {hasRated ? (
+            <div className="flex items-center gap-1 text-[10px] sm:text-xs text-green-500">
+              <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">Next: {srsCard?.nextReview}</span>
+              <span className="sm:hidden">✓</span>
             </div>
+          ) : showRatingButtons && srsCard ? (
+            <div className="flex items-center gap-1">
+              {[
+                { rating: 'again' as ConfidenceRating, label: '😕', color: 'bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500/20' },
+                { rating: 'hard' as ConfidenceRating, label: '🤔', color: 'bg-orange-500/10 text-orange-500 border-orange-500/30 hover:bg-orange-500/20' },
+                { rating: 'good' as ConfidenceRating, label: '👍', color: 'bg-green-500/10 text-green-500 border-green-500/30 hover:bg-green-500/20' },
+                { rating: 'easy' as ConfidenceRating, label: '🎯', color: 'bg-blue-500/10 text-blue-500 border-blue-500/30 hover:bg-blue-500/20' },
+              ].map((btn) => (
+                <button
+                  key={btn.rating}
+                  onClick={(e) => { e.stopPropagation(); handleSRSRate(btn.rating); }}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg border text-xs sm:text-sm transition-colors ${btn.color}`}
+                  title={btn.rating}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <button
+              onClick={(e) => { e.stopPropagation(); handleAddToSRS(); }}
+              className="px-2 sm:px-2.5 py-0.5 sm:py-1 bg-purple-500 text-white text-[10px] sm:text-xs font-medium rounded-lg hover:bg-purple-600 transition-colors"
+            >
+              Learn
+            </button>
           )}
         </div>
       </div>
 
-      {/* Bottom hint */}
-      <div className="mt-4 sm:mt-6 text-center">
+      {/* Bottom hint - desktop only */}
+      <div className="mt-4 sm:mt-6 text-center hidden sm:block">
         <p className="text-xs sm:text-sm text-muted-foreground">
-          <span className="sm:hidden">Tap question or swipe left to see answer →</span>
-          <span className="hidden sm:inline">Press <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">→</kbd> or click the Answer tab to reveal</span>
+          Press <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">→</kbd> or click the Answer tab to reveal
         </p>
       </div>
     </div>
