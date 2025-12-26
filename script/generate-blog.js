@@ -856,7 +856,7 @@ function generateHeader() {
       <a href="/">Home</a>
       <a href="/categories/">Topics</a>
       <button class="search-btn" onclick="openSearch()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Search<kbd>⌘K</kbd></button>
-      <a href="https://openstackdaily.github.io" target="_blank" class="nav-cta">Practice →</a>
+      <a href="https://open-interview.github.io" target="_blank" class="nav-cta">Practice →</a>
     </nav>
   </div></header>`;
 }
@@ -892,11 +892,11 @@ function generateFooter(articles = []) {
     <div class="footer-links">
       <a href="/">Home</a>
       <a href="/categories/">Topics</a>
-      <a href="https://openstackdaily.github.io" target="_blank">Practice</a>
+      <a href="https://open-interview.github.io" target="_blank">Practice</a>
     </div>
   </div>
   <div class="footer-copy">
-    <p>© ${new Date().getFullYear()} DevInsights · Built for developers who ship · <a href="https://openstackdaily.github.io">Reel Interview</a></p>
+    <p>© ${new Date().getFullYear()} DevInsights · Built for developers who ship · <a href="https://open-interview.github.io">Reel Interview</a></p>
   </div>
 </div></footer>
 
@@ -1124,7 +1124,7 @@ ${generateHeader()}
     <div class="newsletter-card">
       <h2>Ready to ace your interviews?</h2>
       <p>Practice with 1000+ real interview questions from FAANG companies</p>
-      <a href="https://openstackdaily.github.io" target="_blank" class="newsletter-btn">Start Practicing Free →</a>
+      <a href="https://open-interview.github.io" target="_blank" class="newsletter-btn">Start Practicing Free →</a>
     </div>
   </div></section>
 </main>
@@ -1387,7 +1387,7 @@ ${generateHeader()}
   ${relatedHtml}
   <div class="cta-box">
     <p>Ready to put this into practice?</p>
-    <a href="https://openstackdaily.github.io/channel/${article.channel}" class="cta-button">Practice Questions →</a>
+    <a href="https://open-interview.github.io/channel/${article.channel}" class="cta-button">Practice Questions →</a>
   </div>
 </div></article></main>
 ${generateFooter(allArticles)}`;
