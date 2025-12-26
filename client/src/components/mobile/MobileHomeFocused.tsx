@@ -4,22 +4,22 @@
  * Responsive: works for both mobile and desktop
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useChannelStats } from '../../hooks/use-stats';
 import { useUserPreferences } from '../../context/UserPreferencesContext';
 import { useProgress, useGlobalStats } from '../../hooks/use-progress';
 import { ProgressStorage } from '../../services/storage.service';
-import { getAllQuestions } from '../../lib/questions-loader';
-import type { Question } from '../../types';
 import { DailyReviewCard } from '../DailyReviewCard';
+import { loadTests, TestQuestion, Test, getSessionQuestions } from '../../lib/tests';
 import {
   Cpu, Terminal, Layout, Database, Activity, GitBranch, Server,
   Layers, Smartphone, Shield, Brain, Workflow, Box, Cloud, Code,
   Network, MessageCircle, Users, Sparkles, Eye, FileText, CheckCircle, 
   Monitor, Zap, Gauge, ChevronRight, Play, Compass, ArrowRight,
-  RefreshCw, Flame, Target, X
+  RefreshCw, Flame, Target, X, Check
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const iconMap: Record<string, React.ReactNode> = {
   'cpu': <Cpu className="w-5 h-5 sm:w-6 sm:h-6" />,
@@ -77,17 +77,11 @@ export function MobileHomeFocused() {
 
   return (
     <div className="pb-20 sm:pb-8 max-w-4xl mx-auto">
-      {/* Hero: Featured Question or Welcome */}
+      {/* Hero: Quick Quiz or Welcome */}
       {hasChannels ? (
-        <FeaturedQuestionCard 
+        <QuickQuizCard 
           channels={subscribedChannels}
-          onStartLearning={(channelId, questionIndex) => {
-            if (questionIndex !== undefined && questionIndex > 0) {
-              setLocation(`/channel/${channelId}/${questionIndex}`);
-            } else {
-              setLocation(`/channel/${channelId}`);
-            }
-          }}
+          onViewChannel={(channelId) => setLocation(`/channel/${channelId}`)}
         />
       ) : (
         <WelcomeCard onGetStarted={() => setLocation('/channels')} />
@@ -130,48 +124,124 @@ export function MobileHomeFocused() {
   );
 }
 
-// Featured Question Card - the main CTA
-function FeaturedQuestionCard({ 
+// Quick Quiz Card - Interactive quiz directly on home screen
+function QuickQuizCard({ 
   channels,
-  onStartLearning 
+  onViewChannel 
 }: { 
   channels: any[];
-  onStartLearning: (channelId: string, questionIndex?: number) => void;
+  onViewChannel: (channelId: string) => void;
 }) {
-  const [featuredQuestion, setFeaturedQuestion] = useState<Question | null>(null);
-  const [questionIndex, setQuestionIndex] = useState<number>(0);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [tests, setTests] = useState<Test[]>([]);
+  const [questions, setQuestions] = useState<TestQuestion[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [showFeedback, setShowFeedback] = useState<'correct' | 'incorrect' | null>(null);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [totalAnswered, setTotalAnswered] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Load test questions from subscribed channels
   useEffect(() => {
-    const loadFeatured = async () => {
+    const loadQuizQuestions = async () => {
+      setIsLoading(true);
       try {
-        const allQuestions = getAllQuestions();
+        const allTests = await loadTests();
         const subscribedIds = new Set(channels.map(c => c.id));
-        const relevantQuestions = allQuestions.filter(q => subscribedIds.has(q.channel));
+        const relevantTests = allTests.filter(t => subscribedIds.has(t.channelId));
+        setTests(relevantTests);
         
-        if (relevantQuestions.length > 0) {
-          const completedIds = ProgressStorage.getAllCompletedIds();
-          const uncompleted = relevantQuestions.filter(q => !completedIds.has(q.id));
-          const pool = uncompleted.length > 0 ? uncompleted : relevantQuestions;
-          const randomIndex = Math.floor(Math.random() * pool.length);
-          const selectedQuestion = pool[randomIndex];
-          setFeaturedQuestion(selectedQuestion);
+        if (relevantTests.length > 0) {
+          // Gather questions from all relevant tests and shuffle
+          const allQuestions: TestQuestion[] = [];
+          relevantTests.forEach(test => {
+            const sessionQuestions = getSessionQuestions(test, 5); // 5 from each channel
+            allQuestions.push(...sessionQuestions);
+          });
           
-          // Find the index of this question within its channel
-          const channelQuestions = allQuestions.filter(q => q.channel === selectedQuestion.channel);
-          const indexInChannel = channelQuestions.findIndex(q => q.id === selectedQuestion.id);
-          setQuestionIndex(indexInChannel >= 0 ? indexInChannel : 0);
+          // Shuffle all questions together
+          const shuffled = allQuestions.sort(() => Math.random() - 0.5);
+          setQuestions(shuffled.slice(0, 10)); // Take 10 questions max
         }
       } catch (e) {
-        console.error('Failed to load featured question', e);
+        console.error('Failed to load quiz questions', e);
       }
+      setIsLoading(false);
     };
-    loadFeatured();
-  }, [channels, refreshKey]);
+    
+    loadQuizQuestions();
+  }, [channels]);
 
-  const handleRefresh = () => setRefreshKey(k => k + 1);
+  const handleRefresh = useCallback(() => {
+    setCurrentIndex(0);
+    setSelectedAnswer(null);
+    setShowFeedback(null);
+    setCorrectCount(0);
+    setTotalAnswered(0);
+    
+    // Re-shuffle questions
+    if (tests.length > 0) {
+      const allQuestions: TestQuestion[] = [];
+      tests.forEach(test => {
+        const sessionQuestions = getSessionQuestions(test, 5);
+        allQuestions.push(...sessionQuestions);
+      });
+      const shuffled = allQuestions.sort(() => Math.random() - 0.5);
+      setQuestions(shuffled.slice(0, 10));
+    }
+  }, [tests]);
 
-  if (!featuredQuestion) {
+  const handleOptionSelect = (optionId: string) => {
+    if (showFeedback || !currentQuestion) return;
+    
+    setSelectedAnswer(optionId);
+    const correctOption = currentQuestion.options.find(o => o.isCorrect);
+    const isCorrect = correctOption?.id === optionId;
+    
+    setShowFeedback(isCorrect ? 'correct' : 'incorrect');
+    setTotalAnswered(prev => prev + 1);
+    if (isCorrect) {
+      setCorrectCount(prev => prev + 1);
+    }
+    
+    // Auto-advance after feedback
+    setTimeout(() => {
+      setShowFeedback(null);
+      setSelectedAnswer(null);
+      if (currentIndex < questions.length - 1) {
+        setCurrentIndex(prev => prev + 1);
+      } else {
+        // Quiz complete - refresh with new questions
+        handleRefresh();
+      }
+    }, isCorrect ? 800 : 1500);
+  };
+
+  const currentQuestion = questions[currentIndex];
+  const currentTest = tests.find(t => 
+    t.questions.some(q => q.id === currentQuestion?.id)
+  );
+  const channelConfig = channels.find(c => c.id === currentTest?.channelId);
+
+  if (isLoading) {
+    return (
+      <section className="mx-3 sm:mx-0 mt-3 sm:mt-4 mb-2 sm:mb-4">
+        <div className="bg-gradient-to-br from-primary/15 to-card rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-primary/20">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-primary/20 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-primary animate-pulse" />
+            </div>
+            <div>
+              <h2 className="font-semibold sm:text-lg">Loading quiz...</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">Preparing questions</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (!currentQuestion || questions.length === 0) {
     return (
       <section className="mx-3 sm:mx-0 mt-3 sm:mt-4 mb-2 sm:mb-4">
         <div className="bg-gradient-to-br from-primary/15 to-card rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-primary/20">
@@ -180,8 +250,8 @@ function FeaturedQuestionCard({
               <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             </div>
             <div>
-              <h2 className="font-semibold sm:text-lg">Loading question...</h2>
-              <p className="text-xs sm:text-sm text-muted-foreground">Pick a channel to start</p>
+              <h2 className="font-semibold sm:text-lg">No quiz available</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">Tests coming soon for your channels</p>
             </div>
           </div>
         </div>
@@ -189,57 +259,140 @@ function FeaturedQuestionCard({
     );
   }
 
-  const channelConfig = channels.find(c => c.id === featuredQuestion.channel);
-
   return (
     <section className="mx-3 sm:mx-0 mt-3 sm:mt-4 mb-2 sm:mb-4">
       <div className="bg-gradient-to-br from-primary/15 to-card rounded-xl sm:rounded-2xl overflow-hidden border border-primary/20">
         {/* Header */}
         <div className="px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between border-b border-border/30 bg-primary/5">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+            <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
             <span className="text-[11px] sm:text-xs font-semibold text-primary uppercase tracking-wide">
-              Today's Question
+              Quick Quiz
+            </span>
+            <span className="text-[10px] sm:text-xs text-muted-foreground">
+              {currentIndex + 1}/{questions.length}
             </span>
           </div>
-          <button 
-            onClick={handleRefresh}
-            className="p-1 sm:p-1.5 hover:bg-muted rounded transition-colors"
-          >
-            <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
-          </button>
+          <div className="flex items-center gap-2">
+            {totalAnswered > 0 && (
+              <span className="text-[10px] sm:text-xs text-muted-foreground">
+                {correctCount}/{totalAnswered} correct
+              </span>
+            )}
+            <button 
+              onClick={handleRefresh}
+              className="p-1 sm:p-1.5 hover:bg-muted rounded transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+            </button>
+          </div>
         </div>
 
         {/* Question */}
-        <button 
-          onClick={() => onStartLearning(featuredQuestion.channel, questionIndex)}
-          className="w-full p-3 sm:p-5 text-left hover:bg-muted/30 transition-colors"
-        >
-          <div className="flex items-center gap-2 mb-2 sm:mb-3">
-            <div className="px-2 sm:px-3 py-0.5 sm:py-1 bg-primary/10 rounded sm:rounded-lg flex items-center gap-1 sm:gap-2">
-              <span className="text-primary">{channelConfig && iconMap[channelConfig.icon]}</span>
-              <span className="text-[11px] sm:text-sm font-medium">{channelConfig?.name || featuredQuestion.channel}</span>
-            </div>
-            <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded ${
-              featuredQuestion.difficulty === 'beginner' ? 'bg-green-500/10 text-green-600' :
-              featuredQuestion.difficulty === 'intermediate' ? 'bg-yellow-500/10 text-yellow-600' :
-              'bg-red-500/10 text-red-600'
-            }`}>
-              {featuredQuestion.difficulty}
-            </span>
-          </div>
+        <div className="p-3 sm:p-5">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentQuestion.id}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              {/* Channel & Difficulty badges */}
+              <div className="flex items-center gap-2 mb-2 sm:mb-3 flex-wrap">
+                <button
+                  onClick={() => currentTest && onViewChannel(currentTest.channelId)}
+                  className="px-2 sm:px-3 py-0.5 sm:py-1 bg-primary/10 rounded sm:rounded-lg flex items-center gap-1 sm:gap-2 hover:bg-primary/20 transition-colors"
+                >
+                  <span className="text-primary">{channelConfig && iconMap[channelConfig.icon]}</span>
+                  <span className="text-[11px] sm:text-sm font-medium">{channelConfig?.name || currentTest?.channelName}</span>
+                </button>
+                <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded ${
+                  currentQuestion.difficulty === 'beginner' ? 'bg-green-500/10 text-green-600' :
+                  currentQuestion.difficulty === 'intermediate' ? 'bg-yellow-500/10 text-yellow-600' :
+                  'bg-red-500/10 text-red-600'
+                }`}>
+                  {currentQuestion.difficulty}
+                </span>
+                <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded ${
+                  currentQuestion.type === 'multiple' 
+                    ? 'bg-purple-500/10 text-purple-500' 
+                    : 'bg-blue-500/10 text-blue-500'
+                }`}>
+                  {currentQuestion.type === 'multiple' ? 'Multi' : 'Single'}
+                </span>
+              </div>
 
-          <h3 className="font-medium text-sm sm:text-lg lg:text-xl leading-snug line-clamp-2 sm:line-clamp-3 mb-3 sm:mb-4">
-            {featuredQuestion.question}
-          </h3>
+              {/* Question text */}
+              <h3 className="font-medium text-sm sm:text-lg leading-snug mb-3 sm:mb-4">
+                {currentQuestion.question}
+              </h3>
 
-          <div className="flex items-center justify-between">
-            <span className="text-xs sm:text-sm text-muted-foreground">Tap to answer</span>
-            <div className="flex items-center gap-1 sm:gap-2 text-primary font-medium text-xs sm:text-sm">
-              Start <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
-            </div>
-          </div>
-        </button>
+              {/* Options */}
+              <div className="space-y-2">
+                {currentQuestion.options.map((option) => {
+                  const isSelected = selectedAnswer === option.id;
+                  const showCorrect = showFeedback && option.isCorrect;
+                  const showWrong = showFeedback === 'incorrect' && isSelected && !option.isCorrect;
+                  
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => handleOptionSelect(option.id)}
+                      disabled={showFeedback !== null}
+                      className={`w-full p-3 sm:p-4 text-left border rounded-lg transition-all text-sm ${
+                        showCorrect
+                          ? 'border-green-500 bg-green-500/20'
+                          : showWrong
+                          ? 'border-red-500 bg-red-500/20'
+                          : isSelected
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border hover:border-primary/50'
+                      } ${showFeedback ? 'cursor-default' : ''}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                          showCorrect
+                            ? 'border-green-500 bg-green-500'
+                            : showWrong
+                            ? 'border-red-500 bg-red-500'
+                            : isSelected 
+                            ? 'border-primary bg-primary' 
+                            : 'border-muted-foreground/30'
+                        }`}>
+                          {showCorrect && <Check className="w-3 h-3 sm:w-4 sm:h-4 text-white" />}
+                          {showWrong && <X className="w-3 h-3 sm:w-4 sm:h-4 text-white" />}
+                          {!showFeedback && isSelected && <Check className="w-3 h-3 sm:w-4 sm:h-4 text-primary-foreground" />}
+                        </div>
+                        <span className="text-xs sm:text-sm">{option.text}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Explanation on wrong answer */}
+              {showFeedback === 'incorrect' && currentQuestion.explanation && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-3 p-3 bg-muted/30 rounded-lg text-xs sm:text-sm text-muted-foreground"
+                >
+                  <span className="font-medium text-foreground">💡 </span>
+                  {currentQuestion.explanation}
+                </motion.div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Progress bar */}
+        <div className="h-1 bg-muted/30">
+          <div 
+            className="h-full bg-primary transition-all duration-300"
+            style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
+          />
+        </div>
       </div>
     </section>
   );
