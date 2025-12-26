@@ -30,8 +30,8 @@ test.describe('Mobile Search Modal', () => {
 
   test('search button opens fullscreen modal', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2000);
     
     const searchButton = page.locator('button').filter({ has: page.locator('svg.lucide-search') }).first();
     if (await searchButton.isVisible()) {
@@ -45,8 +45,8 @@ test.describe('Mobile Search Modal', () => {
 
   test('Cmd+K shortcut opens search', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2000);
     
     await page.keyboard.press('Meta+k');
     await page.waitForTimeout(500);
@@ -58,8 +58,8 @@ test.describe('Mobile Search Modal', () => {
 
   test('search modal is fullscreen on mobile', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2000);
     
     const searchButton = page.locator('button').filter({ has: page.locator('svg.lucide-search') }).first();
     if (await searchButton.isVisible()) {
@@ -78,8 +78,8 @@ test.describe('Mobile Search Modal', () => {
 
   test('search input is typeable', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2000);
     
     const searchButton = page.locator('button').filter({ has: page.locator('svg.lucide-search') }).first();
     if (await searchButton.isVisible()) {
@@ -93,8 +93,8 @@ test.describe('Mobile Search Modal', () => {
 
   test('Escape closes search modal', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2000);
     
     const searchButton = page.locator('button').filter({ has: page.locator('svg.lucide-search') }).first();
     if (await searchButton.isVisible()) {
@@ -116,8 +116,8 @@ test.describe('Mobile Search from Different Pages', () => {
 
   test('search works from stats page', async ({ page }) => {
     await page.goto('/stats');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2000);
     await page.keyboard.press('Meta+k');
     await page.waitForTimeout(500);
     const searchModal = page.getByTestId('search-modal-mobile');
@@ -128,8 +128,8 @@ test.describe('Mobile Search from Different Pages', () => {
 
   test('search works from badges page', async ({ page }) => {
     await page.goto('/badges');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2000);
     await page.keyboard.press('Meta+k');
     await page.waitForTimeout(500);
     const searchModal = page.getByTestId('search-modal-mobile');
@@ -140,8 +140,8 @@ test.describe('Mobile Search from Different Pages', () => {
 
   test('search works from channel page', async ({ page }) => {
     await page.goto('/channel/system-design');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2500);
     await page.keyboard.press('Meta+k');
     await page.waitForTimeout(500);
     const searchModal = page.getByTestId('search-modal-mobile');

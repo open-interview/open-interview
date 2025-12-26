@@ -1,0 +1,125 @@
+name: Run E2E Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_pattern:
+        description: 'Test file pattern or grep filter (e.g., "e2e/mobile/search.spec.ts" or "home page")'
+        required: true
+        type: string
+      project:
+        description: 'Playwright project to run'
+        required: false
+        default: 'chromium'
+        type: choice
+        options:
+          - chromium
+          - firefox
+          - webkit
+          - all
+      retries:
+        description: 'Number of retries for flaky tests'
+        required: false
+        default: '2'
+        type: string
+      debug:
+        description: 'Enable debug mode (headed browser, slower)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+          
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+            
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+        
+      - name: Fetch questions from Turso
+        run: node script/fetch-questions-for-build.js
+        env:
+          TURSO_DATABASE_URL_RO: ${{ secrets.TURSO_DATABASE_URL_RO }}
+          TURSO_AUTH_TOKEN_RO: ${{ secrets.TURSO_AUTH_TOKEN_RO }}
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        
+      - name: Install Playwright browsers
+        run: |
+          if [ "${{ inputs.project }}" = "all" ]; then
+            pnpm exec playwright install --with-deps
+          else
+            pnpm exec playwright install --with-deps ${{ inputs.project }}
+          fi
+        
+      - name: Build application
+        run: pnpm run build
+
+      - name: Build Pagefind search index
+        run: pnpm run build:pagefind
+        
+      - name: Run E2E tests
+        run: |
+          PROJECT_FLAG=""
+          if [ "${{ inputs.project }}" != "all" ]; then
+            PROJECT_FLAG="--project=${{ inputs.project }}"
+          fi
+          
+          # Check if input looks like a file path or a grep pattern
+          if [[ "${{ inputs.test_pattern }}" == *".spec.ts"* ]] || [[ "${{ inputs.test_pattern }}" == *"e2e/"* ]]; then
+            # It's a file path
+            pnpm exec playwright test "${{ inputs.test_pattern }}" $PROJECT_FLAG --retries=${{ inputs.retries }}
+          else
+            # It's a grep pattern (test name)
+            pnpm exec playwright test --grep "${{ inputs.test_pattern }}" $PROJECT_FLAG --retries=${{ inputs.retries }}
+          fi
+        env:
+          CI: 'true'
+        
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ github.run_id }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+          
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "## 🧪 E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Pattern:** \`${{ inputs.test_pattern }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Project:** ${{ inputs.project }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Retries:** ${{ inputs.retries }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the artifacts for detailed test results and traces." >> $GITHUB_STEP_SUMMARY

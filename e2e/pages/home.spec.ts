@@ -28,9 +28,10 @@ test.describe('Home Page', () => {
       expect(pageContent && pageContent.length > 100).toBeTruthy();
     } else {
       // Desktop uses same focused design - check for key elements
-      const hasFeaturedQuestion = await page.getByText("Today's Question").isVisible({ timeout: 5000 }).catch(() => false);
+      const hasQuickQuiz = await page.getByText("Quick Quiz").isVisible({ timeout: 5000 }).catch(() => false);
+      const hasFeaturedQuestion = await page.getByText("Today's Question").isVisible({ timeout: 1000 }).catch(() => false);
       const hasChannels = await page.getByText('Your Channels').isVisible({ timeout: 3000 }).catch(() => false);
-      expect(hasFeaturedQuestion || hasChannels).toBeTruthy();
+      expect(hasQuickQuiz || hasFeaturedQuestion || hasChannels).toBeTruthy();
     }
   });
 

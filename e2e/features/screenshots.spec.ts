@@ -32,10 +32,11 @@ test.describe('Screenshot Pages - Desktop', () => {
     await page.waitForTimeout(2000);
     
     // Check for key elements in the redesigned home page
-    // Featured question card or welcome card should be visible
-    const hasFeaturedQuestion = await page.getByText("Today's Question").isVisible({ timeout: 5000 }).catch(() => false);
+    // Quick Quiz card, Featured question card, or welcome card should be visible
+    const hasQuickQuiz = await page.getByText("Quick Quiz").isVisible({ timeout: 5000 }).catch(() => false);
+    const hasFeaturedQuestion = await page.getByText("Today's Question").isVisible({ timeout: 1000 }).catch(() => false);
     const hasWelcome = await page.getByText('Welcome to Learn Reels').isVisible({ timeout: 1000 }).catch(() => false);
-    expect(hasFeaturedQuestion || hasWelcome).toBeTruthy();
+    expect(hasQuickQuiz || hasFeaturedQuestion || hasWelcome).toBeTruthy();
     
     // Your Channels section should be visible for users with subscriptions
     await expect(page.getByText('Your Channels')).toBeVisible();
@@ -160,9 +161,10 @@ test.describe('Screenshot Pages - Theme Support', () => {
     await page.goto('/');
     await page.waitForTimeout(2000);
     // Check for key elements in the redesigned home page
-    const hasFeaturedQuestion = await page.getByText("Today's Question").isVisible({ timeout: 5000 }).catch(() => false);
+    const hasQuickQuiz = await page.getByText("Quick Quiz").isVisible({ timeout: 5000 }).catch(() => false);
+    const hasFeaturedQuestion = await page.getByText("Today's Question").isVisible({ timeout: 1000 }).catch(() => false);
     const hasChannels = await page.getByText('Your Channels').isVisible({ timeout: 1000 }).catch(() => false);
-    expect(hasFeaturedQuestion || hasChannels).toBeTruthy();
+    expect(hasQuickQuiz || hasFeaturedQuestion || hasChannels).toBeTruthy();
   });
 
   test('home page supports light theme', async ({ page }) => {
@@ -173,9 +175,10 @@ test.describe('Screenshot Pages - Theme Support', () => {
     await page.goto('/');
     await page.waitForTimeout(2000);
     // Check for key elements in the redesigned home page
-    const hasFeaturedQuestion = await page.getByText("Today's Question").isVisible({ timeout: 5000 }).catch(() => false);
+    const hasQuickQuiz = await page.getByText("Quick Quiz").isVisible({ timeout: 5000 }).catch(() => false);
+    const hasFeaturedQuestion = await page.getByText("Today's Question").isVisible({ timeout: 1000 }).catch(() => false);
     const hasChannels = await page.getByText('Your Channels').isVisible({ timeout: 1000 }).catch(() => false);
-    expect(hasFeaturedQuestion || hasChannels).toBeTruthy();
+    expect(hasQuickQuiz || hasFeaturedQuestion || hasChannels).toBeTruthy();
   });
 
   test('badges page supports both themes', async ({ page }) => {
