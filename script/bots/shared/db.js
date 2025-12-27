@@ -21,6 +21,12 @@ export function getDb() {
 export async function initBotTables() {
   const db = getDb();
   
+  // Drop and recreate bot tables to ensure correct schema
+  // These tables only contain bot tracking data, safe to recreate
+  await db.execute(`DROP TABLE IF EXISTS work_queue`);
+  await db.execute(`DROP TABLE IF EXISTS bot_ledger`);
+  await db.execute(`DROP TABLE IF EXISTS bot_runs`);
+  
   // Work queue table
   await db.execute(`
     CREATE TABLE IF NOT EXISTS work_queue (
@@ -73,34 +79,6 @@ export async function initBotTables() {
   // Add status column to questions if not exists
   try {
     await db.execute(`ALTER TABLE questions ADD COLUMN status TEXT DEFAULT 'active'`);
-  } catch (e) {
-    // Column already exists
-  }
-  
-  // Add item_type column to bot_ledger if not exists (for older tables)
-  try {
-    await db.execute(`ALTER TABLE bot_ledger ADD COLUMN item_type TEXT NOT NULL DEFAULT 'question'`);
-  } catch (e) {
-    // Column already exists
-  }
-  
-  // Add item_id column to bot_ledger if not exists
-  try {
-    await db.execute(`ALTER TABLE bot_ledger ADD COLUMN item_id TEXT NOT NULL DEFAULT ''`);
-  } catch (e) {
-    // Column already exists
-  }
-  
-  // Add item_type column to work_queue if not exists
-  try {
-    await db.execute(`ALTER TABLE work_queue ADD COLUMN item_type TEXT NOT NULL DEFAULT 'question'`);
-  } catch (e) {
-    // Column already exists
-  }
-  
-  // Add item_id column to work_queue if not exists
-  try {
-    await db.execute(`ALTER TABLE work_queue ADD COLUMN item_id TEXT NOT NULL DEFAULT ''`);
   } catch (e) {
     // Column already exists
   }
