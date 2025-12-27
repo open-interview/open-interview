@@ -22,16 +22,26 @@ const db = createClient({
 
 // Patterns that indicate irrelevant questions
 const IRRELEVANT_PATTERNS = [
-  // Questions referencing specific scenarios/candidates
+  // Questions referencing specific scenarios/candidates - these are case-study style, not general interview questions
   { sql: "question LIKE '%percentage%did the candidate%'", desc: 'percentage + candidate' },
   { sql: "question LIKE '%the candidate%when%'", desc: 'the candidate when' },
   { sql: "question LIKE '%how many%did the candidate%'", desc: 'how many + candidate' },
   { sql: "question LIKE '%what number%did the candidate%'", desc: 'what number + candidate' },
+  { sql: "question LIKE '%How did the candidate%'", desc: 'How did the candidate' },
+  { sql: "question LIKE '%What did the candidate%'", desc: 'What did the candidate' },
+  { sql: "question LIKE '%did the candidate%'", desc: 'did the candidate (any)' },
   { sql: "question LIKE '%the team%when they%'", desc: 'the team when they' },
   { sql: "question LIKE '%in the scenario%'", desc: 'in the scenario' },
   { sql: "question LIKE '%in this case%'", desc: 'in this case' },
+  { sql: "question LIKE '%in this scenario%'", desc: 'in this scenario' },
   { sql: "question LIKE '%monitoring data%decision%'", desc: 'monitoring data + decision' },
   { sql: "question LIKE '%critical database migration%'", desc: 'critical database migration' },
+  // Behavioral questions that reference specific situations/stories
+  { sql: "question LIKE '%handle conflict with%'", desc: 'handle conflict with' },
+  { sql: "question LIKE '%According to the%'", desc: 'According to the' },
+  { sql: "question LIKE '%Based on the%'", desc: 'Based on the' },
+  { sql: "question LIKE '%From the story%'", desc: 'From the story' },
+  { sql: "question LIKE '%In the story%'", desc: 'In the story' },
   // Questions that are too short to be meaningful
   { sql: "LENGTH(question) < 30", desc: 'too short (<30 chars)' },
   // Questions that don't end with ?
@@ -87,6 +97,18 @@ async function main() {
     // First remove from test_question_map if exists
     await db.execute({
       sql: 'DELETE FROM test_question_map WHERE question_id = ?',
+      args: [id]
+    });
+    
+    // Remove from channel_mappings if exists
+    await db.execute({
+      sql: 'DELETE FROM channel_mappings WHERE question_id = ?',
+      args: [id]
+    });
+    
+    // Remove from work_queue if exists
+    await db.execute({
+      sql: 'DELETE FROM work_queue WHERE question_id = ?',
       args: [id]
     });
     

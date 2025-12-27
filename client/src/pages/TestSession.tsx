@@ -161,6 +161,30 @@ export default function TestSession() {
     }
   };
 
+  // Confirm answer for multiple choice questions (shows feedback then advances)
+  const confirmMultipleChoice = () => {
+    if (!currentQuestion || currentQuestion.type !== 'multiple') return;
+    
+    const userAnswers = answers[currentQuestion.id] || [];
+    if (userAnswers.length === 0) return;
+    
+    // Check if all correct options are selected and no incorrect ones
+    const correctIds = currentQuestion.options.filter(o => o.isCorrect).map(o => o.id);
+    const allCorrectSelected = correctIds.every(id => userAnswers.includes(id));
+    const noIncorrectSelected = userAnswers.every(id => correctIds.includes(id));
+    const isCorrect = allCorrectSelected && noIncorrectSelected;
+    
+    setShowFeedback(isCorrect ? 'correct' : 'incorrect');
+    
+    // Auto-advance after brief feedback
+    setTimeout(() => {
+      setShowFeedback(null);
+      if (currentIndex < questions.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+      }
+    }, 800);
+  };
+
   const goPrev = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
@@ -457,11 +481,44 @@ export default function TestSession() {
                 </div>
 
                 {currentIndex === questions.length - 1 ? (
+                  currentQuestion?.type === 'multiple' ? (
+                    <button
+                      onClick={() => {
+                        // For last multiple choice question, show feedback then submit
+                        const userAnswers = answers[currentQuestion.id] || [];
+                        if (userAnswers.length === 0) return;
+                        
+                        const correctIds = currentQuestion.options.filter(o => o.isCorrect).map(o => o.id);
+                        const allCorrectSelected = correctIds.every(id => userAnswers.includes(id));
+                        const noIncorrectSelected = userAnswers.every(id => correctIds.includes(id));
+                        const isCorrect = allCorrectSelected && noIncorrectSelected;
+                        
+                        setShowFeedback(isCorrect ? 'correct' : 'incorrect');
+                        setTimeout(() => {
+                          setShowFeedback(null);
+                          submitTest();
+                        }, 800);
+                      }}
+                      disabled={(answers[currentQuestion.id] || []).length === 0 || showFeedback !== null}
+                      className="px-4 py-2 bg-primary text-primary-foreground text-sm font-bold rounded hover:bg-primary/90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Confirm & Submit
+                    </button>
+                  ) : (
+                    <button
+                      onClick={submitTest}
+                      className="px-4 py-2 bg-primary text-primary-foreground text-sm font-bold rounded hover:bg-primary/90 transition-colors"
+                    >
+                      Submit Test
+                    </button>
+                  )
+                ) : currentQuestion?.type === 'multiple' ? (
                   <button
-                    onClick={submitTest}
-                    className="px-4 py-2 bg-primary text-primary-foreground text-sm font-bold rounded hover:bg-primary/90 transition-colors"
+                    onClick={confirmMultipleChoice}
+                    disabled={(answers[currentQuestion.id] || []).length === 0 || showFeedback !== null}
+                    className="flex items-center gap-1 px-4 py-2 text-sm bg-primary text-primary-foreground font-bold rounded hover:bg-primary/90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
-                    Submit Test
+                    Confirm <ArrowRight className="w-4 h-4" />
                   </button>
                 ) : (
                   <button

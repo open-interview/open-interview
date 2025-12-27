@@ -21,7 +21,9 @@ export const guidelines = [
   'Correct indices are 0-based',
   'Keep explanations brief but informative',
   'IMPORTANT: About 20-30% of questions should have MULTIPLE correct answers (c array with 2+ indices)',
-  'For multi-answer questions, phrase as "Which of the following..." or "Select all that apply..."'
+  'For multi-answer questions, phrase as "Which of the following..." or "Select all that apply..."',
+  'NEVER use positional references in options like "Both A and B", "All of the above", "None of the above", "A and B only" - options are shuffled so these become invalid',
+  'Each option must be self-contained and make sense regardless of its position'
 ];
 
 export function build(context) {

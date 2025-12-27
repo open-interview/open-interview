@@ -121,12 +121,21 @@ async function getUnconvertedQuestions(channelId, limit = 25) {
             AND q.question NOT LIKE '%the candidate%when%'
             AND q.question NOT LIKE '%how many%did the candidate%'
             AND q.question NOT LIKE '%what number%did the candidate%'
+            AND q.question NOT LIKE '%How did the candidate%'
+            AND q.question NOT LIKE '%What did the candidate%'
+            AND q.question NOT LIKE '%did the candidate%'
             AND q.question NOT LIKE '%the team%when they%'
             AND q.question NOT LIKE '%in the scenario%'
             AND q.question NOT LIKE '%in this case%'
+            AND q.question NOT LIKE '%in this scenario%'
             -- Filter out overly specific behavioral questions
             AND q.question NOT LIKE '%monitoring data%decision%'
             AND q.question NOT LIKE '%critical database migration%'
+            AND q.question NOT LIKE '%handle conflict with%'
+            AND q.question NOT LIKE '%According to the%'
+            AND q.question NOT LIKE '%Based on the%'
+            AND q.question NOT LIKE '%From the story%'
+            AND q.question NOT LIKE '%In the story%'
             -- Ensure questions are general enough (not referencing "the" specific situation)
             AND LENGTH(q.question) > 30
           ORDER BY RANDOM()
