@@ -9,9 +9,11 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
 import { 
   Bot, Sparkles, CheckCircle, RefreshCw,
-  Activity, Clock, Trash2, FileText, ListTodo, History, Zap, Eye, Wrench
+  Activity, Clock, Trash2, FileText, ListTodo, History, Zap, Eye, Wrench,
+  ExternalLink, Code, HelpCircle, Mic
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SEOHead } from "../components/SEOHead";
@@ -120,6 +122,70 @@ function formatTimeAgo(dateStr: string): string {
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
   return date.toLocaleDateString();
+}
+
+// Generate link to view an item based on its type and ID
+function getItemLink(itemType: string, itemId: string): string | null {
+  if (!itemId) return null;
+  
+  // Extract channel from question ID (e.g., "q-123" -> need to look up, or use pattern)
+  // For now, link to search or direct question view
+  switch (itemType) {
+    case 'question':
+      // Questions can be viewed via search or direct link
+      // Format: /channel/{channel}?q={questionId}
+      // Since we don't know the channel, link to home with search
+      return `/?search=${encodeURIComponent(itemId)}`;
+    case 'challenge':
+      return `/coding/${itemId}`;
+    case 'test':
+      return `/tests`;
+    case 'voice_keyword':
+      return `/voice-interview`;
+    default:
+      return null;
+  }
+}
+
+// Get icon for item type
+function getItemTypeIcon(itemType: string) {
+  switch (itemType) {
+    case 'question':
+      return <HelpCircle className="w-3 h-3" />;
+    case 'challenge':
+      return <Code className="w-3 h-3" />;
+    case 'test':
+      return <FileText className="w-3 h-3" />;
+    case 'voice_keyword':
+      return <Mic className="w-3 h-3" />;
+    default:
+      return <FileText className="w-3 h-3" />;
+  }
+}
+
+// Clickable item ID component
+function ItemLink({ itemType, itemId, className }: { itemType: string; itemId: string; className?: string }) {
+  const [, setLocation] = useLocation();
+  const link = getItemLink(itemType, itemId);
+  
+  if (!link) {
+    return <span className={className}>{itemId}</span>;
+  }
+  
+  return (
+    <button
+      onClick={() => setLocation(link)}
+      className={cn(
+        "inline-flex items-center gap-1 px-1.5 py-0.5 bg-primary/10 hover:bg-primary/20 text-primary rounded text-xs font-mono transition-colors",
+        className
+      )}
+      title={`View ${itemType}: ${itemId}`}
+    >
+      {getItemTypeIcon(itemType)}
+      <span className="truncate max-w-[120px]">{itemId}</span>
+      <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+    </button>
+  );
 }
 
 // Tab component
@@ -479,10 +545,11 @@ export default function BotActivity() {
                                item.action === 'improve' ? <Zap className="w-4 h-4" /> :
                                <Eye className="w-4 h-4" />}
                             </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-medium text-sm">{item.action}</span>
                                 <span className="text-xs text-muted-foreground">{item.itemType}</span>
+                                <ItemLink itemType={item.itemType} itemId={item.itemId} />
                                 <span className={cn(
                                   "text-xs px-2 py-0.5 rounded-full",
                                   item.status === 'pending' ? "bg-amber-500/20 text-amber-500" :
@@ -497,7 +564,7 @@ export default function BotActivity() {
                                 {item.reason || 'No reason specified'}
                               </div>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right flex-shrink-0">
                               <div className="text-xs font-medium">P{item.priority}</div>
                               <div className="text-xs text-muted-foreground">
                                 {formatTimeAgo(item.createdAt)}
@@ -541,8 +608,8 @@ export default function BotActivity() {
                             <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", config.color)}>
                               <Icon className="w-4 h-4" />
                             </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-medium text-sm">{config.name}</span>
                                 <span className={cn(
                                   "text-xs px-2 py-0.5 rounded-full",
@@ -555,12 +622,13 @@ export default function BotActivity() {
                                   {entry.action}
                                 </span>
                                 <span className="text-xs text-muted-foreground">{entry.itemType}</span>
+                                <ItemLink itemType={entry.itemType} itemId={entry.itemId} />
                               </div>
                               <div className="text-xs text-muted-foreground mt-1 truncate">
                                 {entry.reason || `${entry.action} ${entry.itemId}`}
                               </div>
                             </div>
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-xs text-muted-foreground flex-shrink-0">
                               {formatTimeAgo(entry.createdAt)}
                             </div>
                           </div>
