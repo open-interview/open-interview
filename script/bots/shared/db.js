@@ -77,6 +77,34 @@ export async function initBotTables() {
     // Column already exists
   }
   
+  // Add item_type column to bot_ledger if not exists (for older tables)
+  try {
+    await db.execute(`ALTER TABLE bot_ledger ADD COLUMN item_type TEXT NOT NULL DEFAULT 'question'`);
+  } catch (e) {
+    // Column already exists
+  }
+  
+  // Add item_id column to bot_ledger if not exists
+  try {
+    await db.execute(`ALTER TABLE bot_ledger ADD COLUMN item_id TEXT NOT NULL DEFAULT ''`);
+  } catch (e) {
+    // Column already exists
+  }
+  
+  // Add item_type column to work_queue if not exists
+  try {
+    await db.execute(`ALTER TABLE work_queue ADD COLUMN item_type TEXT NOT NULL DEFAULT 'question'`);
+  } catch (e) {
+    // Column already exists
+  }
+  
+  // Add item_id column to work_queue if not exists
+  try {
+    await db.execute(`ALTER TABLE work_queue ADD COLUMN item_id TEXT NOT NULL DEFAULT ''`);
+  } catch (e) {
+    // Column already exists
+  }
+  
   console.log('✓ Bot tables initialized');
 }
 
