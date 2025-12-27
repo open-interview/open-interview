@@ -53,57 +53,32 @@ export function CreditSplash({ amount, show, onComplete }: { amount: number; sho
     <AnimatePresence onExitComplete={onComplete}>
       {show && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.5, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.8, y: -30 }}
+          initial={{ opacity: 0, scale: 0.5, x: 20 }}
+          animate={{ opacity: 1, scale: 1, x: 0 }}
+          exit={{ opacity: 0, scale: 0.8, x: 20 }}
           transition={{ 
             type: "spring", 
             stiffness: 400, 
             damping: 15
           }}
-          className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] pointer-events-none"
+          className="fixed bottom-24 right-4 z-[100] pointer-events-none"
         >
           <motion.div
             animate={{ 
-              scale: [1, 1.15, 1],
+              scale: [1, 1.1, 1],
             }}
-            transition={{ duration: 0.4, times: [0, 0.5, 1] }}
-            className={`flex items-center gap-2 px-6 py-3 rounded-2xl shadow-2xl ${
+            transition={{ duration: 0.3, times: [0, 0.5, 1] }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl shadow-lg ${
               isPositive 
                 ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white' 
                 : 'bg-gradient-to-r from-red-500 to-rose-500 text-white'
             }`}
           >
-            <motion.div
-              animate={{ rotate: [0, 15, -15, 0] }}
-              transition={{ duration: 0.5 }}
-            >
-              <Coins className="w-6 h-6" />
-            </motion.div>
-            <span className="text-xl font-bold">
+            <Coins className="w-5 h-5" />
+            <span className="text-lg font-bold">
               {isPositive ? '+' : ''}{amount}
             </span>
           </motion.div>
-          
-          {/* Particle effects for positive credits */}
-          {isPositive && (
-            <>
-              {[...Array(8)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 1, scale: 0, x: 0, y: 0 }}
-                  animate={{ 
-                    opacity: 0, 
-                    scale: 1,
-                    x: Math.cos(i * Math.PI / 4) * 60,
-                    y: Math.sin(i * Math.PI / 4) * 60 - 20
-                  }}
-                  transition={{ duration: 0.7, delay: i * 0.03 }}
-                  className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full bg-yellow-300"
-                />
-              ))}
-            </>
-          )}
         </motion.div>
       )}
     </AnimatePresence>

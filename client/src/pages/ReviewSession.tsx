@@ -299,13 +299,13 @@ export default function ReviewSession() {
       <AnimatePresence>
         {creditPopup.show && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.8 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20 }}
-            className={`fixed top-32 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full font-bold shadow-lg ${
+            initial={{ opacity: 0, scale: 0.8, x: 20 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className={`fixed bottom-24 right-4 z-50 px-4 py-2 rounded-xl font-bold shadow-lg ${
               creditPopup.amount > 0 
-                ? 'bg-amber-500 text-white' 
-                : 'bg-red-500 text-white'
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white' 
+                : 'bg-gradient-to-r from-red-500 to-rose-500 text-white'
             }`}
           >
             {creditPopup.amount > 0 ? '+' : ''}{creditPopup.amount} 💰
