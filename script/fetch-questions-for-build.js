@@ -37,6 +37,7 @@ function parseQuestionRow(row) {
     eli5: row.eli5,
     relevanceScore: row.relevance_score,
     voiceKeywords: row.voice_keywords ? JSON.parse(row.voice_keywords) : null,
+    voiceSuitable: row.voice_suitable === 1,
     lastUpdated: row.last_updated,
     createdAt: row.created_at,
   };

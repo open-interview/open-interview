@@ -75,6 +75,9 @@ function parseQuestionRow(row) {
     companies: row.companies ? JSON.parse(row.companies) : null,
     eli5: row.eli5,
     tldr: row.tldr,
+    relevanceScore: row.relevance_score,
+    voiceKeywords: row.voice_keywords ? JSON.parse(row.voice_keywords) : null,
+    voiceSuitable: row.voice_suitable === 1,
     lastUpdated: row.last_updated,
     lastRemapped: row.last_remapped,
     createdAt: row.created_at

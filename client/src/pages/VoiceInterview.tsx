@@ -60,11 +60,17 @@ export default function VoiceInterview() {
       try {
         const allQuestions = await getAllQuestionsAsync();
         
-        // Filter to behavioral and system-design questions (good for voice answers)
-        const suitable = allQuestions.filter((q: Question) => 
-          ['behavioral', 'system-design', 'sre', 'devops'].includes(q.channel) &&
-          q.answer && q.answer.length > 100
-        );
+        // Filter to questions suitable for voice interview
+        // Prioritize questions with voiceSuitable=true and voiceKeywords
+        const suitable = allQuestions.filter((q: Question) => {
+          // If voiceSuitable is explicitly set, use it
+          if (q.voiceSuitable === false) return false;
+          if (q.voiceSuitable === true && q.voiceKeywords && q.voiceKeywords.length > 0) return true;
+          
+          // Fallback: filter by channel for questions not yet processed
+          return ['behavioral', 'system-design', 'sre', 'devops'].includes(q.channel) &&
+            q.answer && q.answer.length > 100;
+        });
         
         // Shuffle and take 10 random questions
         const shuffled = suitable.sort(() => Math.random() - 0.5).slice(0, 10);

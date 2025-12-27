@@ -296,6 +296,25 @@ async function main() {
         const finalStatus = await updateReviewStatus(question.id, result.score);
         console.log(`📋 Review Status: ${finalStatus}`);
         
+        // Generate voice keywords for suitable channels
+        const voiceChannels = ['behavioral', 'system-design', 'sre', 'devops'];
+        if (voiceChannels.includes(question.channel)) {
+          try {
+            const { processQuestionForVoice } = await import('./voice-keywords-bot.js');
+            const voiceResult = await processQuestionForVoice(
+              question.id,
+              question.question,
+              question.explanation || question.answer,
+              question.channel
+            );
+            if (voiceResult) {
+              console.log(`🎤 Voice: ${voiceResult.suitable ? 'suitable' : 'not suitable'}${voiceResult.suitable ? ` (${voiceResult.keywords.length} keywords)` : ''}`);
+            }
+          } catch (e) {
+            // Voice keywords optional, don't fail
+          }
+        }
+        
         // Post to discussion
         await postBotCommentToDiscussion(question.id, 'LangGraph Improve Bot', 'improved', {
           summary: `Improved question using adaptive pipeline (score: ${result.originalScore} → ${result.score}/100)`,

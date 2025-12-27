@@ -155,6 +155,29 @@ async function main() {
   console.log(`   ID: ${newQuestion.id}`);
   console.log(`   Primary: ${data.channel}/${data.subChannel}`);
   
+  // Generate voice keywords for suitable channels
+  const voiceChannels = ['behavioral', 'system-design', 'sre', 'devops'];
+  if (voiceChannels.includes(data.channel)) {
+    console.log('\n🎤 Generating voice interview keywords...');
+    try {
+      const { processQuestionForVoice } = await import('./voice-keywords-bot.js');
+      const voiceResult = await processQuestionForVoice(
+        newQuestion.id,
+        newQuestion.question,
+        newQuestion.explanation,
+        data.channel
+      );
+      if (voiceResult) {
+        console.log(`   Voice suitable: ${voiceResult.suitable}`);
+        if (voiceResult.suitable) {
+          console.log(`   Keywords: ${voiceResult.keywords.length}`);
+        }
+      }
+    } catch (e) {
+      console.log(`   ⚠️ Voice keywords skipped: ${e.message}`);
+    }
+  }
+  
   logQuestionsAdded(1, channelMappings.map(m => m.channel), [newQuestion.id]);
   
   const totalQuestions = await getQuestionCount();
