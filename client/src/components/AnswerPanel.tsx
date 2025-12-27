@@ -651,7 +651,7 @@ export function AnswerPanel({ question, isCompleted }: AnswerPanelProps) {
             {/* Blog Post Link */}
             {blogPost && (
               <a
-                href={`https://open-interview.github.io${blogPost.url}`}
+                href={`https://openstackdaily.github.io${blogPost.url}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-lg sm:rounded-xl transition-colors text-sm sm:text-base"
