@@ -174,14 +174,17 @@ function QuickQuizCard({
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [creditChange, setCreditChange] = useState<number | null>(null);
   const { onQuizAnswer, config } = useCredits();
+  
+  // Memoize channel IDs to prevent unnecessary reloads
+  const channelIds = channels.map(c => c.id).sort().join(',');
 
-  // Load test questions from subscribed channels
+  // Load test questions from subscribed channels - only when channel IDs actually change
   useEffect(() => {
     const loadQuizQuestions = async () => {
       setIsLoading(true);
       try {
         const allTests = await loadTests();
-        const subscribedIds = new Set(channels.map(c => c.id));
+        const subscribedIds = new Set(channelIds.split(','));
         const relevantTests = allTests.filter(t => subscribedIds.has(t.channelId));
         setTests(relevantTests);
         
@@ -203,8 +206,10 @@ function QuickQuizCard({
       setIsLoading(false);
     };
     
-    loadQuizQuestions();
-  }, [channels]);
+    if (channelIds) {
+      loadQuizQuestions();
+    }
+  }, [channelIds]);
 
   const handleRefresh = useCallback(() => {
     // Re-shuffle questions first, then reset state in a single batch
