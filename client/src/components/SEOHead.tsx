@@ -17,12 +17,12 @@ const defaultStructuredData = {
   "@type": "WebApplication",
   "name": "Code Reels",
   "alternateName": "CodeReels Interview Prep",
-  "description": "Free interactive platform for practicing technical interview questions. Master system design, algorithms, frontend, backend, DevOps, and AI interview prep.",
+  "description": "Free interactive platform for practicing technical interview questions across 30+ channels. Master system design, algorithms, frontend, backend, DevOps, and AI interview prep with voice practice, spaced repetition, and gamified learning.",
   "url": "https://open-interview.github.io/",
   "applicationCategory": "EducationalApplication",
   "operatingSystem": "Web Browser",
   "browserRequirements": "Requires JavaScript",
-  "softwareVersion": "2.2.0",
+  "softwareVersion": "2.3.0",
   "offers": {
     "@type": "Offer",
     "price": "0",
@@ -50,6 +50,13 @@ const defaultStructuredData = {
     "worstRating": "1"
   },
   "featureList": [
+    "Voice Interview Practice with AI Feedback",
+    "Spaced Repetition System (SRS) for Retention",
+    "Credits & Gamification System",
+    "Quick Quiz on Home Screen",
+    "Coding Challenges in Python & JavaScript",
+    "Knowledge Tests with Scoring",
+    "30+ Interview Topic Channels",
     "System Design Interview Questions",
     "Algorithm Practice",
     "Frontend Interview Prep",
@@ -101,7 +108,7 @@ export function SEOHead({
     
     // Additional SEO meta tags
     updateMeta('author', 'Satish Kumar Dhule');
-    updateMeta('generator', 'Code Reels v2.2.0');
+    updateMeta('generator', 'Code Reels v2.3.0');
     updateMeta('rating', 'General');
     updateMeta('revisit-after', '1 days');
     updateMeta('language', 'English');
