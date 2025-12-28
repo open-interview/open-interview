@@ -875,47 +875,65 @@ function CodingChallengeCard({ onStart }: { onStart: () => void }) {
 
 // Voice Interview CTA - Primary feature for earning credits
 function VoiceInterviewCard({ onStart }: { onStart: () => void }) {
+  const [, setLocation] = useLocation();
+  
   return (
     <section className="mx-3 sm:mx-0 mb-3 sm:mb-4">
-      <button
-        onClick={onStart}
-        className="w-full bg-gradient-to-r from-primary/20 via-primary/15 to-emerald-500/20 rounded-xl sm:rounded-2xl border-2 border-primary/30 p-4 sm:p-5 flex items-center gap-4 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 transition-all group"
-      >
-        {/* Animated mic icon */}
-        <div className="relative">
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform">
-            <Mic className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
+      <div className="bg-gradient-to-r from-primary/20 via-primary/15 to-emerald-500/20 rounded-xl sm:rounded-2xl border-2 border-primary/30 p-4 sm:p-5">
+        <button
+          onClick={onStart}
+          className="w-full flex items-center gap-4 hover:opacity-90 transition-all group"
+        >
+          {/* Animated mic icon */}
+          <div className="relative">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform">
+              <Mic className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
+            </div>
+            {/* Pulse animation */}
+            <div className="absolute inset-0 rounded-2xl bg-primary/30 animate-ping opacity-30" />
           </div>
-          {/* Pulse animation */}
-          <div className="absolute inset-0 rounded-2xl bg-primary/30 animate-ping opacity-30" />
-        </div>
+          
+          <div className="flex-1 text-left">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-bold text-base sm:text-lg">Voice Interview</h3>
+              <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-[10px] font-bold rounded-full">
+                EARN CREDITS
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground mb-2">
+              Practice answering questions out loud with AI feedback
+            </p>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="flex items-center gap-1 text-amber-400 font-semibold">
+                <Coins className="w-3.5 h-3.5" />+5 per attempt
+              </span>
+              <span className="flex items-center gap-1 text-green-400 font-semibold">
+                +15 bonus on success
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+              <ArrowRight className="w-5 h-5 text-primary" />
+            </div>
+          </div>
+        </button>
         
-        <div className="flex-1 text-left">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-bold text-base sm:text-lg">Voice Interview</h3>
-            <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-[10px] font-bold rounded-full">
-              EARN CREDITS
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-muted-foreground mb-2">
-            Practice answering questions out loud with AI feedback
-          </p>
-          <div className="flex items-center gap-3 text-xs">
-            <span className="flex items-center gap-1 text-amber-400 font-semibold">
-              <Coins className="w-3.5 h-3.5" />+5 per attempt
-            </span>
-            <span className="flex items-center gap-1 text-green-400 font-semibold">
-              +15 bonus on success
-            </span>
-          </div>
+        {/* Session mode link */}
+        <div className="mt-3 pt-3 border-t border-primary/20 flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">
+            Want focused practice?
+          </span>
+          <button
+            onClick={() => setLocation('/voice-session')}
+            className="text-xs text-primary hover:underline flex items-center gap-1"
+          >
+            <Target className="w-3 h-3" />
+            Try Micro-Question Sessions
+          </button>
         </div>
-        
-        <div className="flex-shrink-0">
-          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
-            <ArrowRight className="w-5 h-5 text-primary" />
-          </div>
-        </div>
-      </button>
+      </div>
     </section>
   );
 }

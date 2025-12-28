@@ -25,6 +25,7 @@ import Notifications from "@/pages/Notifications";
 import Bookmarks from "@/pages/Bookmarks";
 import ReviewSession from "@/pages/ReviewSession";
 import VoiceInterview from "@/pages/VoiceInterview";
+import VoiceSession from "@/pages/VoiceSession";
 import { Onboarding } from "./components/Onboarding";
 import { MarvelIntro, useMarvelIntro } from "./components/MarvelIntro";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -120,6 +121,8 @@ function Router() {
       <Route path="/bookmarks" component={Bookmarks} />
       <Route path="/review" component={ReviewSession} />
       <Route path="/voice-interview" component={VoiceInterview} />
+      <Route path="/voice-session" component={VoiceSession} />
+      <Route path="/voice-session/:questionId" component={VoiceSession} />
       <Route path="/channel/:id" component={QuestionViewer} />
       <Route path="/channel/:id/:index" component={QuestionViewer} />
       <Route component={NotFound} />

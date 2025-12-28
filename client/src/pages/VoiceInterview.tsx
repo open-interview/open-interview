@@ -444,6 +444,16 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
             </div>
             
             <div className="flex items-center gap-3">
+              {/* Session Mode Link */}
+              <button
+                onClick={() => setLocation('/voice-session')}
+                className="px-2 py-1 text-xs bg-primary/20 text-primary rounded hover:bg-primary/30 transition-colors flex items-center gap-1"
+                title="Try focused micro-question sessions"
+              >
+                <Target className="w-3 h-3" />
+                Sessions
+              </button>
+              
               {/* Credits Display */}
               <CreditsDisplay compact onClick={() => setLocation('/profile')} />
               
