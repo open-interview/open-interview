@@ -82,6 +82,30 @@ export const botRuns = sqliteTable("bot_runs", {
   summary: text("summary"), // JSON summary
 });
 
+// Question relationships for voice session grouping
+export const questionRelationships = sqliteTable("question_relationships", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  sourceQuestionId: text("source_question_id").notNull().references(() => questions.id),
+  targetQuestionId: text("target_question_id").notNull().references(() => questions.id),
+  relationshipType: text("relationship_type").notNull(), // 'prerequisite', 'follow_up', 'related', 'deeper_dive'
+  strength: integer("strength").default(50), // 0-100 how strongly related
+  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+});
+
+// Voice sessions - pre-built sessions of related questions
+export const voiceSessions = sqliteTable("voice_sessions", {
+  id: text("id").primaryKey(),
+  topic: text("topic").notNull(),
+  description: text("description"),
+  channel: text("channel").notNull(),
+  difficulty: text("difficulty").notNull(),
+  questionIds: text("question_ids").notNull(), // JSON array of question IDs in order
+  totalQuestions: integer("total_questions").notNull(),
+  estimatedMinutes: integer("estimated_minutes").default(5),
+  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+  lastUpdated: text("last_updated"),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,

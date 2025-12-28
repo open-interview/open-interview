@@ -70,11 +70,50 @@ export async function initBotTables() {
     )
   `);
   
+  // Question relationships table for voice session grouping
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS question_relationships (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_question_id TEXT NOT NULL,
+      target_question_id TEXT NOT NULL,
+      relationship_type TEXT NOT NULL,
+      strength INTEGER DEFAULT 50,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (source_question_id) REFERENCES questions(id),
+      FOREIGN KEY (target_question_id) REFERENCES questions(id)
+    )
+  `);
+  
+  // Voice sessions table - pre-built sessions of related questions
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS voice_sessions (
+      id TEXT PRIMARY KEY,
+      topic TEXT NOT NULL,
+      description TEXT,
+      channel TEXT NOT NULL,
+      difficulty TEXT NOT NULL,
+      question_ids TEXT NOT NULL,
+      total_questions INTEGER NOT NULL,
+      estimated_minutes INTEGER DEFAULT 5,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      last_updated TEXT
+    )
+  `);
+  
   // Add status column to questions if not exists
   try {
     await db.execute(`ALTER TABLE questions ADD COLUMN status TEXT DEFAULT 'active'`);
   } catch (e) {
     // Column already exists
+  }
+  
+  // Create indexes for faster lookups
+  try {
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_relationships_source ON question_relationships(source_question_id)`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_relationships_target ON question_relationships(target_question_id)`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_voice_sessions_channel ON voice_sessions(channel)`);
+  } catch (e) {
+    // Indexes might already exist
   }
   
   console.log('✓ Bot tables initialized');
