@@ -31,13 +31,15 @@ async function ensureLinkedInColumn() {
 }
 
 async function getLatestUnsharedPost() {
-  // If specific URL provided, extract slug and find that post
+  // If specific URL provided, extract question_id and find that post
   if (specificUrl) {
-    const slug = specificUrl.split('/posts/')[1]?.replace(/\/$/, '') || '';
-    if (slug) {
+    // URL format: /posts/{question_id}/{slug}/
+    const match = specificUrl.match(/\/posts\/([^\/]+)\/([^\/]+)/);
+    if (match) {
+      const questionId = match[1];
       const result = await client.execute({
-        sql: `SELECT * FROM blog_posts WHERE slug = ? LIMIT 1`,
-        args: [slug]
+        sql: `SELECT * FROM blog_posts WHERE question_id = ? LIMIT 1`,
+        args: [questionId]
       });
       if (result.rows.length > 0) {
         return result.rows[0];
@@ -104,7 +106,8 @@ async function main() {
     return;
   }
   
-  const postUrl = `${BLOG_BASE_URL}/posts/${post.slug}/`;
+  // URL structure: /posts/{question_id}/{slug}/
+  const postUrl = `${BLOG_BASE_URL}/posts/${post.question_id}/${post.slug}/`;
   const excerpt = generateExcerpt(post.introduction);
   const tags = formatTags(post.tags, post.channel);
   
