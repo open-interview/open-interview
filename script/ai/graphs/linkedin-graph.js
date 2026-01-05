@@ -412,11 +412,16 @@ function qualityCheck2Node(state) {
     issues.push('Story appears cut off - needs fix');
   }
   
-  // Verify all sentences are complete
+  // Verify all sentences are complete (skip emoji-only lines and flow patterns)
   const sentences = storyPart.split(/(?<=[.!?])\s+/);
   for (const sentence of sentences) {
     const trimmed = sentence.trim();
-    if (trimmed.length > 20 && !trimmed.match(/[.!?:"]$/)) {
+    // Skip emoji flows (lines with arrows and emojis)
+    const isEmojiFlow = trimmed.match(/[→➡️⬇️]/) && trimmed.match(/[✅❌🚀💡⚡🔥📈🔧📥📤⚙️1️⃣2️⃣3️⃣4️⃣]/);
+    // Skip lines that are mostly emojis
+    const isEmojiLine = trimmed.replace(/[\s→➡️⬇️✅❌🚀💡⚡🔥📈🔧📥📤⚙️1️⃣2️⃣3️⃣4️⃣🏗️🎨🗄️🔐🤖📊🧪☸️☁️💬🔄]/g, '').length < trimmed.length * 0.3;
+    
+    if (trimmed.length > 20 && !trimmed.match(/[.!?:"]$/) && !isEmojiFlow && !isEmojiLine) {
       issues.push(`Incomplete sentence detected: "${trimmed.substring(0, 30)}..."`);
     }
   }
@@ -533,7 +538,7 @@ export async function generateLinkedInPost(postData) {
     let finalResult = initialState;
     
     for await (const step of await graph.stream(initialState)) {
-      const [nodeName, nodeState] = Object.entries(step)[0];
+      const [, nodeState] = Object.entries(step)[0];
       finalResult = { ...finalResult, ...nodeState };
     }
     
