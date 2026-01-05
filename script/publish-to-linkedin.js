@@ -43,6 +43,9 @@ function buildPostContent() {
     '🔗 Read the full article:',
     postUrl,
     '',
+    '🎯 Practice more interview questions:',
+    'https://open-interview.github.io/',
+    '',
     postTags || '#tech #engineering #interview'
   ];
   
