@@ -347,6 +347,15 @@ function escapeHtml(text) {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// Escape HTML and convert citation references [1], [2] to clickable links
+function escapeHtmlWithCitations(text) {
+  if (!text) return '';
+  let html = escapeHtml(text);
+  // Convert [1], [2], etc. to citation links
+  html = html.replace(/\[(\d+)\]/g, '<a href="#source-$1" class="citation" title="View source">$1</a>');
+  return html;
+}
+
 function markdownToHtml(md, glossary = []) {
   if (!md) return '';
   let html = md;
@@ -404,15 +413,26 @@ function markdownToHtml(md, glossary = []) {
   // Single line breaks within paragraphs
   html = html.replace(/([^>])\n([^<])/g, '$1<br>$2');
   
-  // Add glossary tooltips
+  // Glossary tooltips disabled - causing nested replacement issues
+  // TODO: Fix glossary tooltip logic to avoid replacing inside attributes
+  /*
+  const appliedTerms = new Set();
   for (const item of glossary) {
-    if (item && item.term) {
-      const escapedTerm = item.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`\\b(${escapedTerm})\\b`, 'gi');
-      html = html.replace(regex, `<span class="glossary-term" data-tooltip="${escapeHtml(item.definition || '')}">$1</span>`);
+    if (item && item.term && !appliedTerms.has(item.term.toLowerCase())) {
+      const term = item.term;
+      let cleanDef = (item.definition || '').replace(/\s*\[\d+\]/g, '').trim();
+      if (!cleanDef) continue;
+      const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp(`(>[^<]*?)(\\b${escapedTerm}\\b)`, 'i');
+      if (pattern.test(html)) {
+        const safeTooltip = escapeHtml(cleanDef);
+        html = html.replace(pattern, `$1<span class="glossary-term" data-tooltip="${safeTooltip}">$2</span>`);
+        appliedTerms.add(term.toLowerCase());
+      }
     }
   }
-  
+  */
+
   // Convert inline citations [1], [2], etc. to clickable links
   html = html.replace(/\[(\d+)\]/g, '<a href="#source-$1" class="citation" title="View source">$1</a>');
   
@@ -472,13 +492,18 @@ html { scroll-behavior: smooth; }
 body { font-family: 'Google Sans', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.75; font-size: 16px; -webkit-font-smoothing: antialiased; }
 .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 
+/* Global icon alignment */
+[data-lucide] { display: inline-block; vertical-align: -0.125em; }
+svg.lucide { display: inline-block; vertical-align: -0.125em; }
+
 /* Header - Clean Google style */
 header { background: var(--bg); border-bottom: 1px solid var(--border); padding: 12px 0; position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
 .header-content { display: flex; align-items: center; justify-content: space-between; }
 .logo { font-size: 1.375rem; font-weight: 500; color: var(--text); text-decoration: none; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
 .logo::before { content: '◆'; color: var(--accent); font-size: 1.125rem; }
 nav { display: flex; gap: 4px; align-items: center; }
-nav a { color: var(--text-secondary); text-decoration: none; font-size: 0.875rem; font-weight: 500; padding: 8px 16px; border-radius: var(--radius-sm); transition: all 0.2s ease; }
+nav a { display: inline-flex; align-items: center; gap: 0.375rem; color: var(--text-secondary); text-decoration: none; font-size: 0.875rem; font-weight: 500; padding: 8px 16px; border-radius: var(--radius-sm); transition: all 0.2s ease; }
+nav a svg { width: 1rem; height: 1rem; }
 nav a:hover { color: var(--text); background: var(--bg-elevated); }
 nav a.nav-cta { background: var(--accent); color: white; }
 nav a.nav-cta:hover { background: var(--accent-secondary); }
@@ -503,7 +528,8 @@ nav a.nav-cta:hover { background: var(--accent-secondary); }
 .featured-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 2.5rem; display: grid; grid-template-columns: 1fr 200px; gap: 2rem; align-items: center; position: relative; overflow: hidden; transition: all 0.4s ease; }
 .featured-card:hover { border-color: var(--border-hover); box-shadow: var(--shadow-lg); }
 .featured-card::before { content: ''; position: absolute; top: 0; right: 0; width: 50%; height: 100%; background: var(--gradient-subtle); opacity: 0.5; }
-.featured-label { display: inline-flex; align-items: center; gap: 0.375rem; background: var(--gradient); color: #000; padding: 0.375rem 0.875rem; border-radius: 100px; font-size: 0.6875rem; font-weight: 700; margin-bottom: 1.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.featured-label { display: inline-flex; align-items: center; gap: 0.375rem; background: var(--accent); color: white; padding: 0.375rem 0.875rem; border-radius: 100px; font-size: 0.6875rem; font-weight: 600; margin-bottom: 1.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.featured-label svg { width: 0.875rem; height: 0.875rem; }
 .featured-title { font-size: 1.625rem; font-weight: 600; line-height: 1.35; margin-bottom: 1rem; letter-spacing: -0.02em; }
 .featured-title a { color: var(--text); text-decoration: none; transition: color 0.2s; }
 .featured-title a:hover { color: var(--accent); }
@@ -521,6 +547,7 @@ nav a.nav-cta:hover { background: var(--accent-secondary); }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
 .section-title { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.02em; display: flex; align-items: center; gap: 0.5rem; }
 .section-title::before { content: ''; width: 4px; height: 20px; background: var(--gradient); border-radius: 2px; }
+.section-title svg { width: 1.25rem; height: 1.25rem; color: var(--accent); }
 .section-link { color: var(--text-muted); text-decoration: none; font-size: 0.8125rem; font-weight: 500; transition: color 0.2s; }
 .section-link:hover { color: var(--accent); }
 
@@ -552,13 +579,14 @@ nav a.nav-cta:hover { background: var(--accent-secondary); }
 .card-link { color: var(--accent); text-decoration: none; font-size: 0.8125rem; font-weight: 600; transition: gap 0.2s; display: flex; align-items: center; gap: 4px; }
 .card-link:hover { gap: 8px; }
 
-/* Badge System - Heavy Badges */
-.badge { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 100px; font-weight: 600; font-size: 0.75rem; text-transform: capitalize; letter-spacing: 0.02em; transition: all 0.2s ease; }
-.badge-channel { background: var(--gradient); color: white; box-shadow: var(--shadow-sm); }
-.badge-difficulty { border: 2px solid; }
-.badge-beginner { background: rgba(52,168,83,0.15); color: var(--success); border-color: var(--success); }
-.badge-intermediate { background: rgba(251,188,4,0.15); color: #b8860b; border-color: var(--warning); }
-.badge-advanced { background: rgba(234,67,53,0.15); color: var(--error); border-color: var(--error); }
+/* Badge System - Clean Badges */
+.badge { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.75rem; border-radius: 100px; font-weight: 600; font-size: 0.75rem; text-transform: capitalize; letter-spacing: 0.02em; transition: all 0.2s ease; }
+.badge svg { width: 0.875rem; height: 0.875rem; flex-shrink: 0; }
+.badge-channel { background: var(--accent); color: white; }
+.badge-difficulty { border: 1.5px solid; background: transparent; }
+.badge-beginner { color: var(--success); border-color: var(--success); }
+.badge-intermediate { color: #b8860b; border-color: var(--warning); }
+.badge-advanced { color: var(--error); border-color: var(--error); }
 .badge-tag { background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border); font-size: 0.6875rem; padding: 4px 10px; }
 .badge-tag:hover { border-color: var(--accent); color: var(--text); }
 
@@ -684,17 +712,17 @@ nav a.nav-cta:hover { background: var(--accent-secondary); }
 /* Sources - Minimal */
 .sources { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.25rem 1.5rem; margin: 2rem 0; }
 .sources h3 { margin-bottom: 0.875rem; font-size: 0.875rem; color: var(--text); font-weight: 600; }
-.sources ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
-.sources li { padding-left: 1.25rem; position: relative; font-size: 0.875rem; }
-.sources li::before { content: '→'; position: absolute; left: 0; color: var(--text-muted); }
+.sources ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
+.sources li { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.875rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+.sources li:last-child { border-bottom: none; }
 .sources a { color: var(--accent); text-decoration: none; }
 .sources a:hover { text-decoration: underline; }
 .sources .source-type { font-size: 0.6875rem; color: var(--text-muted); margin-left: 0.5rem; text-transform: uppercase; letter-spacing: 0.03em; }
-.sources .source-num { display: inline-flex; align-items: center; justify-content: center; width: 1.25rem; height: 1.25rem; background: var(--accent); color: var(--bg); font-size: 0.625rem; font-weight: 700; border-radius: 50%; margin-right: 0.5rem; flex-shrink: 0; }
+.sources .source-num { display: inline-flex; align-items: center; justify-content: center; min-width: 1.5rem; height: 1.5rem; background: var(--accent); color: #ffffff; font-size: 0.75rem; font-weight: 700; border-radius: 50%; margin-right: 0.75rem; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
 /* Inline Citations */
-.citation { display: inline-flex; align-items: center; justify-content: center; width: 1rem; height: 1rem; background: var(--accent); color: var(--bg); font-size: 0.5625rem; font-weight: 700; border-radius: 50%; margin: 0 0.125rem; vertical-align: super; cursor: pointer; text-decoration: none; transition: all 0.2s; }
-.citation:hover { transform: scale(1.2); background: var(--accent-secondary); }
+.citation { display: inline-flex; align-items: center; justify-content: center; min-width: 1.125rem; height: 1.125rem; padding: 0 0.25rem; background: var(--accent); color: #ffffff; font-size: 0.625rem; font-weight: 700; border-radius: 50%; margin: 0 0.125rem; vertical-align: super; cursor: pointer; text-decoration: none; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+.citation:hover { transform: scale(1.15); background: var(--accent-secondary); box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
 
 /* Article Images */
 .article-image { margin: 2rem 0; border-radius: var(--radius-lg); overflow: hidden; background: var(--bg-card); border: 1px solid var(--border); }
@@ -817,7 +845,8 @@ footer { background: var(--bg); border-top: 1px solid var(--border); padding: 3r
 .stats-bar { padding: 0; margin-top: -3rem; position: relative; z-index: 10; }
 .stats-grid { display: flex; justify-content: center; align-items: center; gap: 2.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 1.5rem 3rem; max-width: 700px; margin: 0 auto; }
 .stat-item { text-align: center; }
-.stat-value { font-size: 1.75rem; font-weight: 700; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: block; letter-spacing: -0.02em; }
+.stat-value { font-size: 1.75rem; font-weight: 700; color: var(--accent); display: flex; align-items: center; justify-content: center; gap: 0.5rem; letter-spacing: -0.02em; }
+.stat-value svg { width: 1.25rem; height: 1.25rem; stroke-width: 2.5; }
 .stat-label { font-size: 0.6875rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.25rem; display: block; }
 .stat-divider { width: 1px; height: 40px; background: var(--border); }
 
@@ -834,11 +863,13 @@ footer { background: var(--bg); border-top: 1px solid var(--border); padding: 3r
 
 /* Topics Section */
 .topics-section { padding: 4rem 0 2rem; }
-.topics-title { font-size: 1.125rem; font-weight: 600; text-align: center; margin-bottom: 1.5rem; color: var(--text); letter-spacing: -0.02em; }
+.topics-title { font-size: 1.125rem; font-weight: 600; text-align: center; margin-bottom: 1.5rem; color: var(--text); letter-spacing: -0.02em; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+.topics-title svg { width: 1.25rem; height: 1.25rem; color: var(--accent); }
 
 /* Hero Actions */
 .hero-actions { display: flex; gap: 1rem; justify-content: center; align-items: center; }
-.hero-cta-secondary { color: var(--text-secondary); text-decoration: none; font-size: 0.9375rem; font-weight: 500; padding: 0.875rem 1.5rem; border: 1px solid var(--border); border-radius: 100px; transition: all 0.2s ease; }
+.hero-cta-secondary { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); text-decoration: none; font-size: 0.9375rem; font-weight: 500; padding: 0.875rem 1.5rem; border: 1px solid var(--border); border-radius: 100px; transition: all 0.2s ease; }
+.hero-cta-secondary svg { width: 1rem; height: 1rem; }
 .hero-cta-secondary:hover { border-color: var(--border-hover); color: var(--text); background: var(--bg-card); }
 
 /* Responsive - Stats & Featured */
@@ -1314,42 +1345,45 @@ function generateArticlePage(article, allArticles) {
   
   // Diagram section
   if (article.diagram) {
+    // Convert literal \n (stored as backslash + n in database) to actual newlines for mermaid
+    let diagramCode = article.diagram.replace(/\\n/g, '\n');
+    
     // Determine diagram label - use AI-generated label or detect from mermaid syntax
     let diagramLabel = article.diagramLabel || 'Architecture Overview';
-    if (!article.diagramLabel && article.diagram) {
-      const diagramCode = article.diagram.toLowerCase().trim();
-      if (diagramCode.startsWith('sequencediagram')) {
+    if (!article.diagramLabel && diagramCode) {
+      const diagramLower = diagramCode.toLowerCase().trim();
+      if (diagramLower.startsWith('sequencediagram')) {
         diagramLabel = 'Event Sequence';
-      } else if (diagramCode.startsWith('statediagram')) {
+      } else if (diagramLower.startsWith('statediagram')) {
         diagramLabel = 'State Transitions';
-      } else if (diagramCode.startsWith('classdiagram')) {
+      } else if (diagramLower.startsWith('classdiagram')) {
         diagramLabel = 'Class Structure';
-      } else if (diagramCode.startsWith('erdiagram')) {
+      } else if (diagramLower.startsWith('erdiagram')) {
         diagramLabel = 'Data Model';
-      } else if (diagramCode.startsWith('gantt')) {
+      } else if (diagramLower.startsWith('gantt')) {
         diagramLabel = 'Project Timeline';
-      } else if (diagramCode.startsWith('pie')) {
+      } else if (diagramLower.startsWith('pie')) {
         diagramLabel = 'Distribution Chart';
-      } else if (diagramCode.startsWith('mindmap')) {
+      } else if (diagramLower.startsWith('mindmap')) {
         diagramLabel = 'Concept Map';
-      } else if (diagramCode.startsWith('timeline')) {
+      } else if (diagramLower.startsWith('timeline')) {
         diagramLabel = 'Timeline';
-      } else if (diagramCode.startsWith('flowchart') || diagramCode.startsWith('graph')) {
+      } else if (diagramLower.startsWith('flowchart') || diagramLower.startsWith('graph')) {
         diagramLabel = 'System Flow';
       }
     }
-    sectionsHtml += `<h2>${escapeHtml(diagramLabel)}</h2><div class="mermaid">${article.diagram}</div>`;
+    sectionsHtml += `<h2>${escapeHtml(diagramLabel)}</h2><div class="mermaid">${diagramCode}</div>`;
   }
   
   // Fun fact
   if (article.funFact) {
-    sectionsHtml += `<div class="fun-fact"><span class="fun-fact-icon"><i data-lucide="sparkles"></i></span><p><strong>Did you know?</strong> ${escapeHtml(article.funFact)}</p></div>`;
+    sectionsHtml += `<div class="fun-fact"><span class="fun-fact-icon"><i data-lucide="sparkles"></i></span><p><strong>Did you know?</strong> ${escapeHtmlWithCitations(article.funFact)}</p></div>`;
   }
   
   // Quick reference
   const quickRef = article.quickReference || [];
   if (quickRef.length > 0) {
-    sectionsHtml += `<div class="quick-ref"><h3><i data-lucide="bookmark"></i> Key Takeaways</h3><ul>${quickRef.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul></div>`;
+    sectionsHtml += `<div class="quick-ref"><h3><i data-lucide="bookmark"></i> Key Takeaways</h3><ul>${quickRef.map(r => `<li>${escapeHtmlWithCitations(r)}</li>`).join('')}</ul></div>`;
   }
   
   // Sources with numbered references
@@ -1470,12 +1504,12 @@ ${generateHeader()}
     <h1>${escapeHtml(article.blogTitle)}</h1>
     <div class="article-meta" style="justify-content:flex-start;margin-top:1rem"><span class="tag">${formatChannelName(article.channel)}</span><span class="difficulty ${article.difficulty}">${article.difficulty}</span>${tags}</div>
   </div>
-  <p class="article-intro">${escapeHtml(article.blogIntro)}</p>
+  <p class="article-intro">${escapeHtmlWithCitations(article.blogIntro)}</p>
   <div class="article-content">
     ${sectionsHtml}
     ${imagesByPlacement['before-conclusion'] ? generateImageHtml(imagesByPlacement['before-conclusion']) : ''}
     <h2>Wrapping Up</h2>
-    <p>${escapeHtml(article.blogConclusion)}</p>
+    <p>${escapeHtmlWithCitations(article.blogConclusion)}</p>
   </div>
   ${authorHtml}
   ${relatedHtml}
