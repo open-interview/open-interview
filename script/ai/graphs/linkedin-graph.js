@@ -2,10 +2,10 @@
  * LangGraph-based LinkedIn Post Generation Pipeline
  * 
  * This graph orchestrates LinkedIn post generation with story-style content,
- * quality checks, and duplicate tag removal.
+ * quality checks, URL validation, and duplicate tag removal.
  * 
  * Flow:
- *   generate_story → quality_check_1 → build_post → quality_check_2 → final_validate → end
+ *   validate_url → generate_story → quality_check_1 → build_post → quality_check_2 → final_validate → end
  */
 
 import { StateGraph, END, START } from '@langchain/langgraph';
@@ -24,6 +24,9 @@ const LinkedInState = Annotation.Root({
   channel: Annotation({ reducer: (_, b) => b, default: () => '' }),
   tags: Annotation({ reducer: (_, b) => b, default: () => '' }),
   
+  // URL validation
+  urlValid: Annotation({ reducer: (_, b) => b, default: () => false }),
+  
   // Generated content
   story: Annotation({ reducer: (_, b) => b, default: () => '' }),
   finalContent: Annotation({ reducer: (_, b) => b, default: () => '' }),
@@ -38,6 +41,48 @@ const LinkedInState = Annotation.Root({
   status: Annotation({ reducer: (_, b) => b, default: () => 'pending' }),
   error: Annotation({ reducer: (_, b) => b, default: () => null })
 });
+
+/**
+ * Validate a URL by checking if it returns a valid response
+ */
+async function validateUrl(url, timeout = 10000) {
+  if (!url) return false;
+  
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch(url, {
+      method: 'HEAD',
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; LinkedInBot/1.0)'
+      }
+    });
+    
+    clearTimeout(timeoutId);
+    return response.ok || response.status === 405; // 405 = Method Not Allowed (but page exists)
+  } catch {
+    // Try GET as fallback
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; LinkedInBot/1.0)'
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+}
 
 /**
  * Get channel emoji
@@ -65,6 +110,48 @@ function getChannelEmoji(channel) {
     'llm-ops': '🔄'
   };
   return emojiMap[channel] || '📝';
+}
+
+/**
+ * Node: Validate article URL exists
+ */
+async function validateUrlNode(state) {
+  console.log('\n🔗 [VALIDATE_URL] Checking article URL...');
+  console.log(`   URL: ${state.url}`);
+  
+  if (!state.url) {
+    console.log('   ❌ No URL provided');
+    return {
+      urlValid: false,
+      status: 'error',
+      error: 'No article URL provided'
+    };
+  }
+  
+  const isValid = await validateUrl(state.url);
+  
+  if (isValid) {
+    console.log('   ✅ Article URL is valid and accessible');
+    return { urlValid: true };
+  } else {
+    console.log('   ❌ Article URL returned 404 or is unreachable');
+    return {
+      urlValid: false,
+      status: 'error',
+      error: `Article URL not accessible: ${state.url}`
+    };
+  }
+}
+
+/**
+ * Router: After URL validation, decide to continue or stop
+ */
+function routeAfterUrlValidation(state) {
+  if (!state.urlValid) {
+    console.log('\n🔀 [ROUTER] URL invalid, stopping pipeline');
+    return 'final_validate';
+  }
+  return 'generate_story';
 }
 
 /**
@@ -372,14 +459,23 @@ export function createLinkedInGraph() {
   const graph = new StateGraph(LinkedInState);
   
   // Add nodes
+  graph.addNode('validate_url', validateUrlNode);
   graph.addNode('generate_story', generateStoryNode);
   graph.addNode('quality_check_1', qualityCheck1Node);
   graph.addNode('build_post', buildPostNode);
   graph.addNode('quality_check_2', qualityCheck2Node);
   graph.addNode('final_validate', finalValidateNode);
   
-  // Add edges - linear flow
-  graph.addEdge(START, 'generate_story');
+  // Add edges - start with URL validation
+  graph.addEdge(START, 'validate_url');
+  
+  // Conditional routing after URL validation
+  graph.addConditionalEdges('validate_url', routeAfterUrlValidation, {
+    'generate_story': 'generate_story',
+    'final_validate': 'final_validate'
+  });
+  
+  // Rest of the flow
   graph.addEdge('generate_story', 'quality_check_1');
   graph.addEdge('quality_check_1', 'build_post');
   graph.addEdge('build_post', 'quality_check_2');
