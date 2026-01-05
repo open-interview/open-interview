@@ -94,11 +94,12 @@ async function generateStoryNode(state) {
   } catch (error) {
     console.log(`   ❌ Failed: ${error.message}`);
     
-    // Fallback to simple template
+    // Fallback to simple SHORT template
     const emoji = getChannelEmoji(state.channel);
-    const fallbackStory = `${emoji} ${state.title}\n\n${state.excerpt || 'Check out this in-depth technical article!'}`;
+    const shortExcerpt = (state.excerpt || '').substring(0, 200);
+    const fallbackStory = `${emoji} ${state.title}\n\n${shortExcerpt || 'A deep dive into this technical topic.'} Read the full breakdown below.`;
     
-    console.log(`   Using fallback template`);
+    console.log(`   Using fallback template (${fallbackStory.length} chars)`);
     return {
       story: fallbackStory,
       qualityIssues: ['AI generation failed, using fallback']
@@ -129,6 +130,31 @@ function qualityCheck1Node(state) {
     cleanStory = cleanStory.replace(/https?:\/\/[^\s]+/g, '').trim();
   }
   
+  // Check for cut-off text (ends with incomplete word or ellipsis)
+  if (cleanStory.match(/\.\.\.$|…$|\w-$/)) {
+    issues.push('Story appears to be cut off');
+    // Try to fix by finding last complete sentence
+    const sentences = cleanStory.match(/[^.!?]+[.!?]+/g) || [];
+    if (sentences.length > 0) {
+      cleanStory = sentences.join(' ').trim();
+      issues.push('Truncated to last complete sentence');
+    }
+  }
+  
+  // Ensure story ends with proper punctuation
+  if (!cleanStory.match(/[.!?]$/)) {
+    // Find last complete sentence
+    const lastPunctuation = Math.max(
+      cleanStory.lastIndexOf('.'),
+      cleanStory.lastIndexOf('!'),
+      cleanStory.lastIndexOf('?')
+    );
+    if (lastPunctuation > cleanStory.length * 0.5) {
+      cleanStory = cleanStory.substring(0, lastPunctuation + 1).trim();
+      issues.push('Truncated to last complete sentence');
+    }
+  }
+  
   // Check for repeated sentences
   const sentences = cleanStory.split(/[.!?]+/).filter(s => s.trim().length > 20);
   const uniqueSentences = [...new Set(sentences.map(s => s.trim().toLowerCase()))];
@@ -136,9 +162,22 @@ function qualityCheck1Node(state) {
     issues.push('Possible repeated content detected');
   }
   
-  // Check length
-  if (cleanStory.length > 1500) {
-    issues.push('Story may be too long');
+  // STRICT length check - story should be under 500 chars for good LinkedIn preview
+  if (cleanStory.length > 500) {
+    issues.push(`Story too long (${cleanStory.length} chars), truncating`);
+    // Truncate to last complete sentence under 500 chars
+    const allSentences = cleanStory.match(/[^.!?]+[.!?]+/g) || [];
+    let truncated = '';
+    for (const sentence of allSentences) {
+      if ((truncated + sentence).length <= 480) {
+        truncated += sentence;
+      } else {
+        break;
+      }
+    }
+    if (truncated.length > 100) {
+      cleanStory = truncated.trim();
+    }
   }
   
   if (cleanStory.length < 100) {
@@ -150,6 +189,8 @@ function qualityCheck1Node(state) {
   } else {
     console.log(`   ✅ Story quality OK`);
   }
+  
+  console.log(`   Final story length: ${cleanStory.length} chars`);
   
   return {
     story: cleanStory,
@@ -210,7 +251,7 @@ function qualityCheck2Node(state) {
   console.log('\n🔍 [QUALITY_CHECK_2] Final quality check...');
   
   const issues = [];
-  const content = state.finalContent;
+  let content = state.finalContent;
   
   // Check total length
   if (content.length > 3000) {
@@ -233,11 +274,28 @@ function qualityCheck2Node(state) {
     issues.push('Practice link missing');
   }
   
+  // Check story doesn't end with cut-off text
+  const storyPart = content.split('🔗')[0].trim();
+  if (storyPart.match(/\.\.\.$|…$|,$/)) {
+    issues.push('Story appears cut off - needs fix');
+  }
+  
+  // Verify all sentences are complete
+  const sentences = storyPart.split(/(?<=[.!?])\s+/);
+  for (const sentence of sentences) {
+    const trimmed = sentence.trim();
+    if (trimmed.length > 20 && !trimmed.match(/[.!?:"]$/)) {
+      issues.push(`Incomplete sentence detected: "${trimmed.substring(0, 30)}..."`);
+    }
+  }
+  
   if (issues.length > 0) {
     console.log(`   ⚠️ Issues: ${issues.join(', ')}`);
   } else {
     console.log(`   ✅ Final quality OK`);
   }
+  
+  console.log(`   Total content length: ${content.length} chars`);
   
   return {
     qualityIssues: issues
