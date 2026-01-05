@@ -1070,16 +1070,16 @@ function generateIndexPage(articles) {
     return `
     <div class="article-card" data-difficulty="${a.difficulty}" data-channel="${a.channel}">
       <div class="card-header">
-        <span class="badge badge-channel">${formatChannelName(a.channel)}</span>
-        <span class="badge badge-difficulty badge-${a.difficulty}">${a.difficulty}</span>
+        <span class="badge badge-channel"><i data-lucide="folder"></i> ${formatChannelName(a.channel)}</span>
+        <span class="badge badge-difficulty badge-${a.difficulty}"><i data-lucide="${a.difficulty === 'beginner' ? 'zap' : a.difficulty === 'intermediate' ? 'flame' : 'rocket'}"></i> ${a.difficulty}</span>
       </div>
       <h2 class="card-title"><a href="/posts/${a.id}/${a.blogSlug}/">${escapeHtml(a.blogTitle)}</a></h2>
       <p class="card-excerpt">${escapeHtml((a.blogIntro || '').substring(0, 120))}...</p>
       <div class="card-footer">
         <div class="card-tags">
-          ${displayTags.map(tag => `<span class="badge badge-tag">${tag}</span>`).join('')}
+          ${displayTags.map(tag => `<span class="badge badge-tag"><i data-lucide="tag"></i> ${tag}</span>`).join('')}
         </div>
-        <a href="/posts/${a.id}/${a.blogSlug}/" class="card-link">Read more →</a>
+        <a href="/posts/${a.id}/${a.blogSlug}/" class="card-link"><i data-lucide="arrow-right"></i> Read more</a>
       </div>
     </div>`;
   }).join('');
@@ -1127,30 +1127,30 @@ ${generateHeader()}
     <h1>Deep dives into<br>real engineering</h1>
     <p>Battle-tested insights from production systems. Learn what actually works at scale.</p>
     <div class="hero-actions">
-      <a href="#articles" class="hero-cta">Browse Articles <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
-      <a href="/categories/" class="hero-cta-secondary">All Topics</a>
+      <a href="#articles" class="hero-cta"><i data-lucide="book-open"></i> Browse Articles</a>
+      <a href="/categories/" class="hero-cta-secondary"><i data-lucide="grid-3x3"></i> All Topics</a>
     </div>
   </div></section>
   
   <section class="stats-bar"><div class="container">
     <div class="stats-grid">
       <div class="stat-item">
-        <span class="stat-value">${totalArticles}</span>
+        <span class="stat-value"><i data-lucide="file-text"></i> ${totalArticles}</span>
         <span class="stat-label">Deep Dives</span>
       </div>
       <div class="stat-divider"></div>
       <div class="stat-item">
-        <span class="stat-value">${totalCategories}</span>
+        <span class="stat-value"><i data-lucide="layers"></i> ${totalCategories}</span>
         <span class="stat-label">Topics</span>
       </div>
       <div class="stat-divider"></div>
       <div class="stat-item">
-        <span class="stat-value">${readingHours}h+</span>
+        <span class="stat-value"><i data-lucide="clock"></i> ${readingHours}h+</span>
         <span class="stat-label">Of Content</span>
       </div>
       <div class="stat-divider"></div>
       <div class="stat-item">
-        <span class="stat-value">Free</span>
+        <span class="stat-value"><i data-lucide="heart"></i> Free</span>
         <span class="stat-label">Forever</span>
       </div>
     </div>
@@ -1159,13 +1159,13 @@ ${generateHeader()}
   ${featuredHtml}
   
   <section class="topics-section"><div class="container">
-    <h2 class="topics-title">Explore by Topic</h2>
+    <h2 class="topics-title"><i data-lucide="compass"></i> Explore by Topic</h2>
     <div class="category-pills">${categoryPills}</div>
   </div></section>
   
   <section class="article-list" id="articles"><div class="container">
     <div class="section-header">
-      <h2 class="section-title">All Articles</h2>
+      <h2 class="section-title"><i data-lucide="newspaper"></i> All Articles</h2>
       <div class="diff-filters">
         <button class="diff-filter active" onclick="filterArticles('all')">All</button>
         <button class="diff-filter beginner" onclick="filterArticles('beginner')">Beginner (${byDifficulty.beginner.length})</button>
@@ -1226,16 +1226,16 @@ function generateCategoryPage(category, articles, allArticles) {
     return `
     <div class="article-card">
       <div class="card-header">
-        <span class="badge badge-channel">${formatChannelName(a.channel)}</span>
-        <span class="badge badge-difficulty badge-${a.difficulty}">${a.difficulty}</span>
+        <span class="badge badge-channel"><i data-lucide="folder"></i> ${formatChannelName(a.channel)}</span>
+        <span class="badge badge-difficulty badge-${a.difficulty}"><i data-lucide="${a.difficulty === 'beginner' ? 'zap' : a.difficulty === 'intermediate' ? 'flame' : 'rocket'}"></i> ${a.difficulty}</span>
       </div>
       <h2 class="card-title"><a href="/posts/${a.id}/${a.blogSlug}/">${escapeHtml(a.blogTitle)}</a></h2>
       <p class="card-excerpt">${escapeHtml((a.blogIntro || '').substring(0, 120))}...</p>
       <div class="card-footer">
         <div class="card-tags">
-          ${displayTags.map(tag => `<span class="badge badge-tag">${tag}</span>`).join('')}
+          ${displayTags.map(tag => `<span class="badge badge-tag"><i data-lucide="tag"></i> ${tag}</span>`).join('')}
         </div>
-        <a href="/posts/${a.id}/${a.blogSlug}/" class="card-link">Read more →</a>
+        <a href="/posts/${a.id}/${a.blogSlug}/" class="card-link"><i data-lucide="arrow-right"></i> Read more</a>
       </div>
     </div>`;
   }).join('');
@@ -1243,9 +1243,9 @@ function generateCategoryPage(category, articles, allArticles) {
   return `${generateHead(category, `${categoryArticles.length} articles about ${category}`)}
 ${generateHeader()}
 <main><section class="article-list" style="padding-top:7rem"><div class="container">
-  <a href="/" style="color:var(--text-muted);text-decoration:none;font-size:0.8125rem;display:inline-flex;align-items:center;gap:0.25rem">← Back</a>
+  <a href="/" style="color:var(--text-muted);text-decoration:none;font-size:0.8125rem;display:inline-flex;align-items:center;gap:0.25rem"><i data-lucide="arrow-left"></i> Back</a>
   <h1 style="margin:1.5rem 0 0.5rem;font-size:2rem;font-weight:700;letter-spacing:-0.03em">${category}</h1>
-  <p style="color:var(--text-muted);margin-bottom:2.5rem;font-size:0.9375rem">${categoryArticles.length} deep dives</p>
+  <p style="color:var(--text-muted);margin-bottom:2.5rem;font-size:0.9375rem"><i data-lucide="file-text"></i> ${categoryArticles.length} deep dives</p>
   <div class="articles-grid">${articleCards}</div>
 </div></section></main>
 ${generateFooter(allArticles)}`;
@@ -1305,10 +1305,10 @@ function generateArticlePage(article, allArticles) {
     const ex = article.realWorldExample;
     sectionsHtml += `
     <div class="real-world-example">
-      <h3>🏢 Real-World Case Study</h3>
-      <div class="company">${escapeHtml(ex.company)}</div>
+      <h3><i data-lucide="building-2"></i> Real-World Case Study</h3>
+      <div class="company"><i data-lucide="briefcase"></i> ${escapeHtml(ex.company)}</div>
       <p class="scenario">${escapeHtml(ex.scenario)}</p>
-      <div class="lesson"><strong>Key Takeaway:</strong> ${escapeHtml(ex.lesson)}</div>
+      <div class="lesson"><i data-lucide="lightbulb"></i> <strong>Key Takeaway:</strong> ${escapeHtml(ex.lesson)}</div>
     </div>`;
   }
   
@@ -1343,13 +1343,13 @@ function generateArticlePage(article, allArticles) {
   
   // Fun fact
   if (article.funFact) {
-    sectionsHtml += `<div class="fun-fact"><span class="fun-fact-icon">💡</span><p><strong>Did you know?</strong> ${escapeHtml(article.funFact)}</p></div>`;
+    sectionsHtml += `<div class="fun-fact"><span class="fun-fact-icon"><i data-lucide="sparkles"></i></span><p><strong>Did you know?</strong> ${escapeHtml(article.funFact)}</p></div>`;
   }
   
   // Quick reference
   const quickRef = article.quickReference || [];
   if (quickRef.length > 0) {
-    sectionsHtml += `<div class="quick-ref"><h3>📌 Key Takeaways</h3><ul>${quickRef.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul></div>`;
+    sectionsHtml += `<div class="quick-ref"><h3><i data-lucide="bookmark"></i> Key Takeaways</h3><ul>${quickRef.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul></div>`;
   }
   
   // Sources with numbered references
@@ -1358,7 +1358,7 @@ function generateArticlePage(article, allArticles) {
     const sourceItems = sources.map((s, idx) => 
       `<li id="source-${idx + 1}"><span class="source-num">${idx + 1}</span><a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.title)}</a><span class="source-type">${s.type || 'article'}</span></li>`
     ).join('');
-    sectionsHtml += `<div class="sources"><h3>📚 References</h3><ul>${sourceItems}</ul></div>`;
+    sectionsHtml += `<div class="sources"><h3><i data-lucide="book-open"></i> References</h3><ul>${sourceItems}</ul></div>`;
   }
   
   // Social snippet - shareable section
@@ -1375,17 +1375,17 @@ function generateArticlePage(article, allArticles) {
     sectionsHtml += `
     <div class="share-snippet">
       <div class="share-snippet-header">
-        <span class="share-icon">📣</span>
+        <span class="share-icon"><i data-lucide="share-2"></i></span>
         <h3>Share This</h3>
         <div class="share-buttons">
           <a href="${linkedInUrl}" target="_blank" rel="noopener" class="share-btn linkedin" title="Share on LinkedIn">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            <i data-lucide="linkedin"></i>
           </a>
           <a href="${twitterUrl}" target="_blank" rel="noopener" class="share-btn twitter" title="Share on X/Twitter">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            <i data-lucide="twitter"></i>
           </a>
           <button class="share-btn copy" onclick="copySnippet(this)" title="Copy to clipboard">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            <i data-lucide="copy"></i>
           </button>
         </div>
       </div>
@@ -1394,7 +1394,7 @@ function generateArticlePage(article, allArticles) {
         <p class="snippet-body">${escapeHtml(socialSnippet.body).replace(/\n/g, '<br>')}</p>
         <p class="snippet-cta">${escapeHtml(socialSnippet.cta)}</p>
         ${hashtags ? `<p class="snippet-hashtags">${escapeHtml(hashtags)}</p>` : ''}
-        <p class="snippet-link">🔗 ${articleUrl}</p>
+        <p class="snippet-link"><i data-lucide="link"></i> ${articleUrl}</p>
       </div>
     </div>
     <script>
