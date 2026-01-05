@@ -31,6 +31,7 @@ import videoTemplate from './prompts/templates/video.js';
 import testTemplate from './prompts/templates/test.js';
 import blogInputTemplate from './prompts/templates/blog-input.js';
 import realWorldCaseTemplate from './prompts/templates/real-world-case.js';
+import linkedinStoryTemplate from './prompts/templates/linkedin-story.js';
 
 // Template registry
 const templates = {
@@ -48,7 +49,8 @@ const templates = {
   video: videoTemplate,
   test: testTemplate,
   'blog-input': blogInputTemplate,
-  'realWorldCase': realWorldCaseTemplate
+  'realWorldCase': realWorldCaseTemplate,
+  'linkedinStory': linkedinStoryTemplate
 };
 
 // Provider registry
