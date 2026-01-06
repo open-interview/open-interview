@@ -5,12 +5,13 @@
  * Topics without interesting real-world cases are skipped.
  * 
  * Flow:
- *   find_real_world_case → validate_source → [retry_case | validate_case] → [skip | generate_blog] → validate_citations → validate_images → validate → end
+ *   find_real_world_case → validate_source → [retry_case | validate_case] → [skip | generate_blog] → validate_citations → generate_images → validate → end
  */
 
 import { StateGraph, END, START } from '@langchain/langgraph';
 import { Annotation } from '@langchain/langgraph';
 import ai from '../index.js';
+import { generateBlogIllustrations, generateBlogIllustrationsWithAI } from '../utils/blog-illustration-generator.js';
 
 /**
  * Validate a URL by checking if it returns a valid response
@@ -296,30 +297,50 @@ async function validateCitationsNode(state) {
 }
 
 /**
- * Node: Validate images
+ * Node: Generate cartoon-style SVG images for the blog
+ * Creates contextual illustrations based on blog content
+ * Uses AI-powered scene selection when USE_AI_SCENES env var is set
  */
 async function validateImagesNode(state) {
-  console.log('\n🖼️ [VALIDATE_IMAGES] Checking images...');
+  console.log('\n🖼️ [GENERATE_IMAGES] Creating cartoon-style illustrations...');
   
   if (!state.blogContent) {
     return { error: 'No blog content to validate' };
   }
   
-  const images = state.blogContent.images || [];
-  console.log(`   Found ${images.length} images`);
+  let images = state.blogContent.images || [];
+  console.log(`   Found ${images.length} images from AI`);
   
-  if (images.length < 2) {
-    console.log(`   ⚠️ Could use more images (have ${images.length}, recommend 2-3)`);
+  // Filter to only keep local images (already generated SVGs)
+  let validImages = images.filter(img => img?.url?.startsWith('/images/'));
+  
+  // Generate new cartoon-style SVG images
+  console.log(`   🎨 Generating cartoon-style SVG illustrations...`);
+  
+  try {
+    // Use AI-powered generation if enabled, otherwise use keyword-based
+    const useAI = process.env.USE_AI_SCENES === 'true';
+    let generatedImages;
+    
+    if (useAI) {
+      console.log(`   🤖 AI-powered scene selection enabled`);
+      generatedImages = await generateBlogIllustrationsWithAI(state.blogContent, state.questionId);
+    } else {
+      generatedImages = generateBlogIllustrations(state.blogContent, state.questionId);
+    }
+    
+    validImages = [...validImages, ...generatedImages];
+    console.log(`   ✅ Generated ${generatedImages.length} cartoon illustrations`);
+  } catch (error) {
+    console.log(`   ⚠️ SVG generation failed: ${error.message}`);
+    // Fallback to basic generation
+    try {
+      const fallbackImages = generateBlogIllustrations(state.blogContent, state.questionId);
+      validImages = [...validImages, ...fallbackImages];
+    } catch (e) {
+      console.log(`   ❌ Fallback also failed: ${e.message}`);
+    }
   }
-  
-  // Validate image URLs are from allowed sources
-  const validSources = ['unsplash.com', 'pexels.com', 'wikimedia.org'];
-  const validImages = images.filter(img => {
-    if (!img?.url) return false;
-    return validSources.some(src => img.url.includes(src));
-  });
-  
-  console.log(`   Valid images: ${validImages.length}/${images.length}`);
   
   return {
     blogContent: {

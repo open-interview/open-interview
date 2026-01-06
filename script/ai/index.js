@@ -36,6 +36,8 @@ import rcaSearchTemplate from './prompts/templates/rca-search.js';
 import rcaBlogTemplate from './prompts/templates/rca-blog.js';
 import citationSearchTemplate from './prompts/templates/citation-search.js';
 import citationBlogTemplate from './prompts/templates/citation-blog.js';
+import blogImageTemplate from './prompts/templates/blog-image.js';
+import illustrationSceneTemplate from './prompts/templates/illustration-scene.js';
 
 // Template registry
 const templates = {
@@ -58,7 +60,9 @@ const templates = {
   'rcaSearch': rcaSearchTemplate,
   'rcaBlog': rcaBlogTemplate,
   'citationSearch': citationSearchTemplate,
-  'citationBlog': citationBlogTemplate
+  'citationBlog': citationBlogTemplate,
+  'blogImage': blogImageTemplate,
+  'illustrationScene': illustrationSceneTemplate
 };
 
 // Provider registry

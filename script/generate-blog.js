@@ -10,7 +10,7 @@ import { createClient } from '@libsql/client';
 import fs from 'fs';
 import path from 'path';
 import { generateBlogPost } from './ai/graphs/blog-graph.js';
-import { downloadBlogImages } from './ai/utils/image-downloader.js';
+import { generateIllustration } from './ai/utils/blog-illustration-generator.js';
 
 // Author info for credits
 const AUTHOR = {
@@ -356,6 +356,7 @@ function escapeHtmlWithCitations(text) {
   return html;
 }
 
+
 function markdownToHtml(md, glossary = []) {
   if (!md) return '';
   let html = md;
@@ -365,7 +366,7 @@ function markdownToHtml(md, glossary = []) {
   html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
     const index = codeBlocks.length;
     codeBlocks.push({ lang: lang || '', code: escapeHtml(code.trim()) });
-    return `__CODE_BLOCK_${index}__`;
+    return `\n__CODE_BLOCK_${index}__\n`;
   });
   
   // Inline code - preserve with placeholder
@@ -376,62 +377,88 @@ function markdownToHtml(md, glossary = []) {
     return `__INLINE_CODE_${index}__`;
   });
   
-  // Headers
-  html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
-  html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
-  html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+  // Headers - close paragraph before, open after
+  html = html.replace(/^### (.*$)/gm, '</p>\n<h3>$1</h3>\n<p>');
+  html = html.replace(/^## (.*$)/gm, '</p>\n<h2>$1</h2>\n<p>');
+  html = html.replace(/^# (.*$)/gm, '</p>\n<h1>$1</h1>\n<p>');
   
   // Bold and italic
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
   
-  // Callout boxes
+  // Callout boxes - close paragraph before, open after
   html = html.replace(/^>\s*(💡|⚠️|✅|🔥|🎯|❌|ℹ️)\s*([^:]+):\s*(.*)$/gm, 
-    '<div class="callout"><span class="callout-icon">$1</span><div><strong>$2</strong><p>$3</p></div></div>');
-  html = html.replace(/^>\s*(.*)$/gm, '<blockquote>$1</blockquote>');
+    '</p>\n<div class="callout"><span class="callout-icon">$1</span><div><strong>$2</strong><p>$3</p></div></div>\n<p>');
+  html = html.replace(/^>\s*(.*)$/gm, '</p>\n<blockquote>$1</blockquote>\n<p>');
   
-  // Tables
+  // Tables - close paragraph before, open after
   html = html.replace(/\|(.+)\|\n\|[-:\s|]+\|\n((?:\|.+\|\n?)+)/g, (match, header, body) => {
     const headers = header.split('|').filter(h => h.trim()).map(h => '<th>' + h.trim() + '</th>').join('');
     const rows = body.trim().split('\n').map(row => {
       const cells = row.split('|').filter(c => c.trim()).map(c => '<td>' + c.trim() + '</td>').join('');
       return '<tr>' + cells + '</tr>';
     }).join('');
-    return '<table><thead><tr>' + headers + '</tr></thead><tbody>' + rows + '</tbody></table>';
+    return '</p>\n<table><thead><tr>' + headers + '</tr></thead><tbody>' + rows + '</tbody></table>\n<p>';
   });
   
-  // Lists - improved handling
-  html = html.replace(/^(\s*)[-*]\s+(.*)$/gm, '$1<li>$2</li>');
-  html = html.replace(/(<li>.*<\/li>\n?)+/gs, (match) => '<ul>' + match.trim() + '</ul>');
+  // Process lists line by line for proper grouping
+  const lines = html.split('\n');
+  const processedLines = [];
+  let inList = false;
+  let listType = null;
   
-  // Numbered lists
-  html = html.replace(/^(\d+)\.\s+(.*)$/gm, '<li>$2</li>');
-  
-  // Paragraphs - only add for actual paragraph breaks
-  html = html.replace(/\n\n+/g, '</p><p>');
-  
-  // Single line breaks within paragraphs
-  html = html.replace(/([^>])\n([^<])/g, '$1<br>$2');
-  
-  // Glossary tooltips disabled - causing nested replacement issues
-  // TODO: Fix glossary tooltip logic to avoid replacing inside attributes
-  /*
-  const appliedTerms = new Set();
-  for (const item of glossary) {
-    if (item && item.term && !appliedTerms.has(item.term.toLowerCase())) {
-      const term = item.term;
-      let cleanDef = (item.definition || '').replace(/\s*\[\d+\]/g, '').trim();
-      if (!cleanDef) continue;
-      const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const pattern = new RegExp(`(>[^<]*?)(\\b${escapedTerm}\\b)`, 'i');
-      if (pattern.test(html)) {
-        const safeTooltip = escapeHtml(cleanDef);
-        html = html.replace(pattern, `$1<span class="glossary-term" data-tooltip="${safeTooltip}">$2</span>`);
-        appliedTerms.add(term.toLowerCase());
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const unorderedMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
+    const orderedMatch = line.match(/^(\s*)(\d+)\.\s+(.*)$/);
+    
+    if (unorderedMatch) {
+      if (!inList || listType !== 'ul') {
+        if (inList) processedLines.push(`</${listType}>`);
+        processedLines.push('</p>\n<ul>');
+        inList = true;
+        listType = 'ul';
       }
+      processedLines.push(`<li>${unorderedMatch[2]}</li>`);
+    } else if (orderedMatch) {
+      if (!inList || listType !== 'ol') {
+        if (inList) processedLines.push(`</${listType}>`);
+        processedLines.push('</p>\n<ol>');
+        inList = true;
+        listType = 'ol';
+      }
+      processedLines.push(`<li>${orderedMatch[3]}</li>`);
+    } else {
+      if (inList) {
+        processedLines.push(`</${listType}>\n<p>`);
+        inList = false;
+        listType = null;
+      }
+      processedLines.push(line);
     }
   }
-  */
+  
+  // Close any remaining list
+  if (inList) {
+    processedLines.push(`</${listType}>\n<p>`);
+  }
+  
+  html = processedLines.join('\n');
+  
+  // Paragraphs - double newlines become paragraph breaks
+  html = html.replace(/\n\n+/g, '</p>\n<p>');
+  
+  // Single line breaks within paragraphs become spaces (not <br>)
+  html = html.replace(/([^>])\n([^<\n])/g, '$1 $2');
+  
+  // Clean up empty paragraphs and fix nesting issues
+  html = html.replace(/<p>\s*<\/p>/g, '');
+  html = html.replace(/<\/p>\s*<\/p>/g, '</p>');
+  html = html.replace(/<p>\s*<p>/g, '<p>');
+  html = html.replace(/<p>\s*<(ul|ol|table|div|blockquote|pre|h[1-6])/g, '<$1');
+  html = html.replace(/<\/(ul|ol|table|div|blockquote|pre|h[1-6])>\s*<\/p>/g, '</$1>');
+  html = html.replace(/<\/p>\s*<(ul|ol|table|div|blockquote|pre|h[1-6])/g, '<$1');
+  html = html.replace(/<\/(ul|ol|table|div|blockquote|pre|h[1-6])>\s*<p>/g, '</$1>');
 
   // Convert inline citations [1], [2], etc. to clickable links
   html = html.replace(/\[(\d+)\]/g, '<a href="#source-$1" class="citation" title="View source">$1</a>');
@@ -447,8 +474,13 @@ function markdownToHtml(md, glossary = []) {
     html = html.replace(`__INLINE_CODE_${index}__`, `<code>${code}</code>`);
   });
   
+  // Final cleanup - remove leading/trailing empty paragraphs
+  html = html.replace(/^<\/p>\s*/, '').replace(/\s*<p>$/, '');
+  html = html.replace(/^<p>\s*<\/p>/, '').replace(/<p>\s*<\/p>$/, '');
+  
   return html;
 }
+
 
 
 // Transform Q&A to blog using LangGraph pipeline
@@ -1603,10 +1635,10 @@ async function main() {
         
         console.log(`   ✅ ${validatedSources.length} valid sources`);
         
-        // Download images and store locally
+        // Images are now generated as SVGs in the blog-graph pipeline
+        // No need to download external images
         if (blogContent.images && blogContent.images.length > 0) {
-          console.log('🖼️ Downloading images...');
-          blogContent.images = await downloadBlogImages(blogContent.images, question.id);
+          console.log(`🖼️ ${blogContent.images.length} cartoon illustrations generated`);
         }
         
         console.log('💾 Saving to database...');
@@ -1644,6 +1676,33 @@ async function main() {
     console.log('   No articles yet, skipping site generation');
     return;
   }
+  
+  // Regenerate SVG images for all articles
+  console.log('\n🎨 Regenerating cartoon illustrations...');
+  let totalImages = 0;
+  for (const article of articles) {
+    if (article.images && article.images.length > 0) {
+      for (const img of article.images) {
+        if (img && img.url && img.url.startsWith('/images/') && img.url.endsWith('.svg')) {
+          // Extract filename from URL and regenerate with same name
+          const filename = img.url.replace('/images/', '');
+          try {
+            generateIllustration({
+              title: article.blogTitle,
+              context: img.alt || article.blogIntro || article.blogTitle,
+              postId: article.id,
+              placement: img.placement || 'after-intro',
+              filename: filename
+            });
+            totalImages++;
+          } catch (err) {
+            console.log(`   ⚠️ Failed to regenerate: ${img.url}`);
+          }
+        }
+      }
+    }
+  }
+  console.log(`   ✅ Regenerated ${totalImages} illustrations`);
   
   // Generate CSS with default theme
   fs.writeFileSync(path.join(OUTPUT_DIR, 'style.css'), generateCSS());
