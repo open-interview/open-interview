@@ -5,7 +5,6 @@ import {
   validateQuestion,
   writeGitHubOutput,
   logQuestionsAdded,
-  validateYouTubeVideos,
   normalizeCompanies,
   logBotActivity,
   getChannelQuestionCounts,
@@ -13,7 +12,7 @@ import {
   postBotCommentToDiscussion,
   getAllChannelsFromDb
 } from './utils.js';
-import ai from './ai/index.js';
+import { generateQuestion as generateQuestionGraph } from './ai/graphs/question-graph.js';
 import { channelConfigs, topCompanies as TOP_TECH_COMPANIES, realScenarios as REAL_SCENARIOS } from './ai/prompts/templates/generate.js';
 
 // Channel configurations - imported from AI framework template (used for sub-channel info)
@@ -36,103 +35,6 @@ async function getAllChannels() {
   // Return unique channels from both sources, prioritizing DB channels
   const allChannels = new Set([...dbChannels, ...hardcodedChannels]);
   return Array.from(allChannels);
-}
-
-// NFR: Check if diagram is trivial/placeholder (should be rejected)
-function isTrivialDiagram(diagram) {
-  if (!diagram) return true;
-  
-  const trimmed = diagram.trim().toLowerCase();
-  const lines = trimmed.split('\n').filter(line => {
-    const l = line.trim();
-    // Skip empty lines, comments, and diagram type declarations
-    return l && !l.startsWith('%%') && 
-           !l.startsWith('graph') && !l.startsWith('flowchart') &&
-           !l.startsWith('sequencediagram') && !l.startsWith('classdiagram');
-  });
-  
-  // Must have at least 4 meaningful lines
-  if (lines.length < 4) return true;
-  
-  // Check for trivial "Start -> End" patterns
-  const content = lines.join(' ');
-  if (content.includes('start') && content.includes('end') && lines.length <= 3) {
-    return true;
-  }
-  
-  // Check for generic placeholder patterns
-  const placeholderPatterns = [
-    /\bstart\b.*\bend\b/i,
-    /\bbegin\b.*\bfinish\b/i,
-    /\bstep\s*1\b.*\bstep\s*2\b.*\bstep\s*3\b/i,
-    /\bconcept\b.*\bimplementation\b/i,
-    /\binput\b.*\boutput\b/i,
-  ];
-  
-  // If matches placeholder pattern AND has few nodes, it's trivial
-  const nodeCount = (diagram.match(/\[.*?\]|\(.*?\)|{.*?}|>.*?]/g) || []).length;
-  if (nodeCount <= 3 && placeholderPatterns.some(p => p.test(content))) {
-    return true;
-  }
-  
-  return false;
-}
-
-// Validate question quality to ensure it's a real interview question
-function validateQuestionQuality(question, channel, difficulty) {
-  // Check minimum length
-  if (question.length < 30) {
-    return { valid: false, reason: 'Question too short (< 30 chars)' };
-  }
-  
-  // Check it ends with a question mark
-  if (!question.trim().endsWith('?')) {
-    return { valid: false, reason: 'Question must end with ?' };
-  }
-  
-  // Check for generic/vague questions
-  const vaguePatterns = [
-    /^what is /i,
-    /^define /i,
-    /^explain what /i,
-    /^tell me about /i,
-  ];
-  
-  // Allow "what is" for beginner level only
-  if (difficulty !== 'beginner') {
-    for (const pattern of vaguePatterns) {
-      if (pattern.test(question) && question.length < 60) {
-        return { valid: false, reason: 'Question too generic for ' + difficulty + ' level' };
-      }
-    }
-  }
-  
-  // Check for specific technical content based on channel
-  const channelKeywords = {
-    'system-design': ['design', 'scale', 'architecture', 'handle', 'build', 'implement', 'distributed'],
-    'algorithms': ['array', 'string', 'tree', 'graph', 'find', 'implement', 'optimize', 'complexity', 'given'],
-    'frontend': ['react', 'javascript', 'css', 'component', 'render', 'state', 'dom', 'browser', 'performance'],
-    'backend': ['api', 'database', 'server', 'request', 'authentication', 'microservice', 'cache'],
-    'devops': ['deploy', 'pipeline', 'container', 'kubernetes', 'docker', 'ci/cd', 'infrastructure'],
-    'sre': ['incident', 'monitoring', 'slo', 'availability', 'latency', 'alert', 'on-call'],
-    'database': ['query', 'index', 'transaction', 'sql', 'nosql', 'schema', 'optimization'],
-    'behavioral': ['time', 'situation', 'challenge', 'team', 'project', 'decision', 'conflict'],
-  };
-  
-  const keywords = channelKeywords[channel] || [];
-  const questionLower = question.toLowerCase();
-  const hasRelevantKeyword = keywords.length === 0 || keywords.some(kw => questionLower.includes(kw));
-  
-  if (!hasRelevantKeyword && question.length < 100) {
-    return { valid: false, reason: 'Question lacks channel-specific technical content' };
-  }
-  
-  // Advanced questions should be more complex
-  if (difficulty === 'advanced' && question.length < 80) {
-    return { valid: false, reason: 'Advanced question should be more detailed' };
-  }
-  
-  return { valid: true };
 }
 
 function getRandomSubChannel(channel) {
@@ -383,37 +285,30 @@ function getScenarioHint(channel) {
 
 const scenarioHint = getScenarioHint(channel);
 
-    // Use AI framework for question generation
-    console.log('\n📝 Generating question using AI framework...');
+    // Use LangGraph pipeline for question generation
+    console.log('\n📝 Generating question using LangGraph pipeline...');
     console.log('─'.repeat(50));
     
-    let data;
-    try {
-      data = await ai.run('generate', {
-        channel,
-        subChannel: subChannelConfig.subChannel,
-        difficulty,
-        tags: subChannelConfig.tags,
-        targetCompanies,
-        scenarioHint
-      });
-    } catch (error) {
-      console.log(`❌ AI framework error: ${error.message}`);
-      failedAttempts.push({ channel, reason: `AI error: ${error.message}` });
+    const result = await generateQuestionGraph({
+      channel,
+      subChannel: subChannelConfig.subChannel,
+      difficulty,
+      tags: subChannelConfig.tags,
+      targetCompanies,
+      scenarioHint
+    });
+    
+    if (!result.success) {
+      console.log(`❌ Generation failed: ${result.error}`);
+      failedAttempts.push({ channel, reason: result.error || 'Generation failed' });
       continue;
     }
+    
+    const data = result.question;
     
     if (!validateQuestion(data)) {
       console.log('❌ Invalid response format.');
       failedAttempts.push({ channel, reason: 'Invalid JSON format' });
-      continue;
-    }
-
-    // Quality checks for realistic interview questions
-    const questionQuality = validateQuestionQuality(data.question, channel, difficulty);
-    if (!questionQuality.valid) {
-      console.log(`❌ Quality check failed: ${questionQuality.reason}`);
-      failedAttempts.push({ channel, reason: questionQuality.reason });
       continue;
     }
 
@@ -423,29 +318,16 @@ const scenarioHint = getScenarioHint(channel);
       continue;
     }
 
-    console.log('🎬 Validating YouTube videos...');
-    const validatedVideos = await validateYouTubeVideos(data.videos);
-
-    // Validate diagram - reject trivial ones
-    let validatedDiagram = data.diagram;
-    if (validatedDiagram && isTrivialDiagram(validatedDiagram)) {
-      console.log('⚠️ Generated diagram is trivial, setting to null');
-      validatedDiagram = null;
-    }
-
     const newQuestion = {
       id: await generateUnifiedId(),
       question: data.question,
-      answer: data.answer.substring(0, 200),
-      explanation: data.explanation,
+      answer: data.answer?.substring(0, 200) || '',
+      explanation: data.explanation || '',
       tags: subChannelConfig.tags,
       difficulty: difficulty,
-      diagram: validatedDiagram || null,
+      diagram: data.diagram || null,
       sourceUrl: data.sourceUrl || null,
-      videos: {
-        shortVideo: validatedVideos.shortVideo,
-        longVideo: validatedVideos.longVideo
-      },
+      videos: data.videos || { shortVideo: null, longVideo: null },
       companies: normalizeCompanies(data.companies),
       lastUpdated: new Date().toISOString()
     };

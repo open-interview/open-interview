@@ -192,6 +192,7 @@ async function generateStoryNode(state) {
 
 /**
  * Fallback hook patterns for when AI is unavailable
+ * Includes recency-focused hooks for trending topics
  */
 const FALLBACK_HOOKS = [
   (title, emoji) => `${emoji} ${title}\n\nEver wondered why this matters? Here's the breakdown.`,
@@ -201,8 +202,30 @@ const FALLBACK_HOOKS = [
   (title, emoji) => `${emoji} Stop making this mistake with ${title.toLowerCase().split(' ').slice(0, 3).join(' ')}.`,
   (title, emoji) => `${emoji} ${title}\n\nHere's what top engineers know that you don't.`,
   (title, emoji) => `${emoji} Why do senior devs approach ${title.toLowerCase().split(' ').slice(0, 3).join(' ')} differently?`,
-  (title, emoji) => `${emoji} ${title}\n\nThe counterintuitive approach that actually works.`
+  (title, emoji) => `${emoji} ${title}\n\nThe counterintuitive approach that actually works.`,
+  // Recency-focused hooks
+  (title, emoji) => `🆕 ${title}\n\nThe 2025 approach that's changing everything.`,
+  (title, emoji) => `${emoji} ${title}\n\nIf you're not using this yet, you're falling behind.`,
+  (title, emoji) => `${emoji} Major update alert: ${title.toLowerCase().split(' ').slice(0, 4).join(' ')} just got better.`,
+  (title, emoji) => `${emoji} ${title}\n\nWhat changed in the last 6 months that you need to know.`
 ];
+
+// Keywords that indicate recent/trending topics
+const TRENDING_KEYWORDS = [
+  'ai', 'llm', 'gpt', 'claude', 'gemini', 'copilot', 'cursor',
+  'react 19', 'node 22', 'python 3.13', 'typescript 5',
+  'kubernetes', 'docker', 'terraform', 'opentofu',
+  'vector', 'rag', 'langchain', 'langgraph',
+  'platform engineering', 'backstage', 'opentelemetry'
+];
+
+/**
+ * Check if content relates to trending/recent topics
+ */
+function isTrendingTopic(title, channel, tags) {
+  const content = `${title} ${channel} ${tags}`.toLowerCase();
+  return TRENDING_KEYWORDS.some(kw => content.includes(kw));
+}
 
 /**
  * Generate fallback story without AI
@@ -210,8 +233,19 @@ const FALLBACK_HOOKS = [
 function generateFallbackStory(state) {
   const emoji = getChannelEmoji(state.channel);
   
-  // Pick a random hook pattern for variety
-  const hookIndex = Math.floor(Math.random() * FALLBACK_HOOKS.length);
+  // Check if this is a trending topic - if so, prefer recency hooks (last 4 in array)
+  const isTrending = isTrendingTopic(state.title, state.channel, state.tags);
+  
+  let hookIndex;
+  if (isTrending) {
+    // Use recency-focused hooks (indices 8-11)
+    hookIndex = 8 + Math.floor(Math.random() * 4);
+    console.log(`   📈 Trending topic detected, using recency hook`);
+  } else {
+    // Use standard hooks (indices 0-7)
+    hookIndex = Math.floor(Math.random() * 8);
+  }
+  
   const hookFn = FALLBACK_HOOKS[hookIndex];
   
   let story = '';

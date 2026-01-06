@@ -12,7 +12,7 @@
 import 'dotenv/config';
 import { createClient } from '@libsql/client';
 import fs from 'fs';
-import ai from './ai/index.js';
+import { generateCitationBlog } from './ai/graphs/citation-blog-graph.js';
 
 const OUTPUT_DIR = 'blog-output';
 const MIN_VALID_SOURCES = 8;
@@ -374,33 +374,6 @@ async function validateAndFetchSources(urls) {
   return validSources;
 }
 
-/**
- * Generate blog post from fetched content using AI framework
- */
-async function generateBlogFromSources(topic, sources) {
-  console.log(`\n📝 Generating blog from ${sources.length} sources...`);
-  
-  try {
-    const result = await ai.run('citationBlog', { topic, sources });
-    
-    if (result && result.title) {
-      // Ensure sources are from our validated list
-      result.sources = sources.map((s) => ({
-        title: s.title,
-        url: s.url,
-        type: detectSourceType(s.url)
-      }));
-      
-      console.log(`   ✅ Generated: ${result.title}`);
-      return result;
-    }
-  } catch (error) {
-    console.log(`   ❌ Generation failed: ${error.message}`);
-  }
-  
-  return null;
-}
-
 function detectSourceType(url) {
   if (url.includes('docs.') || url.includes('/documentation') || url.includes('/docs/')) return 'docs';
   if (url.includes('arxiv') || url.includes('paper')) return 'paper';
@@ -507,13 +480,16 @@ async function main() {
   
   console.log(`\n✅ Validated ${validSources.length} sources with content!`);
   
-  // Generate blog from sources
-  const blogContent = await generateBlogFromSources(topicData.topic, validSources);
+  // Generate blog using LangGraph pipeline
+  const result = await generateCitationBlog(topicData.topic, validSources.map(s => ({ url: s.url, title: s.title })));
   
-  if (!blogContent) {
+  if (!result.success || !result.blogContent) {
     console.log('❌ Failed to generate blog content');
+    console.log(`   Error: ${result.error || 'Unknown error'}`);
     process.exit(1);
   }
+  
+  const blogContent = result.blogContent;
   
   // Mark topic as used
   await markTopicUsed(topicData.topic);

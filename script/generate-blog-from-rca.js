@@ -14,7 +14,7 @@
 import 'dotenv/config';
 import { createClient } from '@libsql/client';
 import fs from 'fs';
-import ai from './ai/index.js';
+import { generateRCABlog } from './ai/graphs/rca-blog-graph.js';
 
 const OUTPUT_DIR = 'blog-output';
 
@@ -121,57 +121,6 @@ async function markCompanyUsed(company) {
   });
 }
 
-// Search for RCA/postmortem using web search
-async function searchForRCA(company) {
-  console.log(`🔍 Searching for ${company} postmortems/RCAs...`);
-  
-  const searchQueries = [
-    `${company} engineering blog postmortem incident`,
-    `${company} outage root cause analysis`,
-    `${company} system failure post-incident review`,
-    `${company} production incident lessons learned`
-  ];
-  
-  // Use AI to search and find real incidents
-  try {
-    const result = await ai.run('rcaSearch', {
-      company,
-      searchQueries
-    });
-    
-    if (result && result.incidents && result.incidents.length > 0) {
-      console.log(`   ✅ Found ${result.incidents.length} incidents`);
-      return result.incidents;
-    }
-  } catch (error) {
-    console.log(`   ⚠️ AI search failed: ${error.message}`);
-  }
-  
-  return null;
-}
-
-// Generate blog post from RCA
-async function generateBlogFromRCA(company, incident) {
-  console.log(`\n📝 Generating blog from ${company} incident...`);
-  console.log(`   Incident: ${incident.title || 'Unknown'}`);
-  
-  try {
-    const result = await ai.run('rcaBlog', {
-      company,
-      incident
-    });
-    
-    if (result && result.title) {
-      console.log(`   ✅ Generated: ${result.title}`);
-      return result;
-    }
-  } catch (error) {
-    console.log(`   ❌ Generation failed: ${error.message}`);
-  }
-  
-  return null;
-}
-
 // Helper functions
 function generateSlug(title) {
   return title.toLowerCase()
@@ -260,11 +209,11 @@ async function main() {
   const company = await getRandomUnusedCompany();
   console.log(`🎯 Selected company: ${company}\n`);
   
-  // Search for RCAs/postmortems
-  const incidents = await searchForRCA(company);
+  // Use LangGraph pipeline to search and generate
+  const result = await generateRCABlog(company);
   
-  if (!incidents || incidents.length === 0) {
-    console.log(`❌ No incidents found for ${company}`);
+  if (!result.success) {
+    console.log(`❌ Failed for ${company}: ${result.error}`);
     console.log('   Trying another company...\n');
     
     // Mark as used anyway to avoid infinite loop
@@ -274,32 +223,24 @@ async function main() {
     const company2 = await getRandomUnusedCompany();
     console.log(`🎯 Trying: ${company2}\n`);
     
-    const incidents2 = await searchForRCA(company2);
-    if (!incidents2 || incidents2.length === 0) {
-      console.log(`❌ No incidents found for ${company2} either`);
+    const result2 = await generateRCABlog(company2);
+    if (!result2.success) {
+      console.log(`❌ Failed for ${company2} too: ${result2.error}`);
       process.exit(1);
     }
     
     await markCompanyUsed(company2);
-    await processIncident(company2, incidents2[0]);
+    await processResult(company2, result2);
     return;
   }
   
   await markCompanyUsed(company);
-  
-  // Pick the most interesting incident
-  const incident = incidents[0];
-  await processIncident(company, incident);
+  await processResult(company, result);
 }
 
-async function processIncident(company, incident) {
-  // Generate blog post
-  const blogContent = await generateBlogFromRCA(company, incident);
-  
-  if (!blogContent) {
-    console.log('❌ Failed to generate blog content');
-    process.exit(1);
-  }
+async function processResult(company, result) {
+  const blogContent = result.blogContent;
+  const incident = result.incident || { description: '', lesson: '', type: 'outage' };
   
   // Save to database
   console.log('\n💾 Saving to database...');

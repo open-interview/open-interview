@@ -16,128 +16,8 @@
  */
 
 import { writeGitHubOutput, dbClient } from './utils.js';
-import ai from './ai/index.js';
+import { generateCodingChallenge } from './ai/graphs/coding-challenge-graph.js';
 import { categories as CATEGORIES, difficulties as DIFFICULTIES, topCompanies as TOP_COMPANIES } from './ai/prompts/templates/coding-challenge.js';
-import { spawn } from 'child_process';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
-
-/**
- * Execute Python code and return the result
- * This ensures expected outputs are generated from actual code execution, not AI
- */
-async function executePythonCode(code, functionName, input) {
-  return new Promise((resolve, reject) => {
-    const wrappedCode = `
-import json
-from collections.abc import Iterator, Iterable
-
-${code}
-
-# Parse input and call function
-_args = (${input},)
-if len(_args) == 1 and isinstance(_args[0], tuple):
-    _args = _args[0]
-
-_result = ${functionName}(*_args)
-
-# Convert to JSON-compatible format
-def to_json(obj):
-    if obj is None: return None
-    if isinstance(obj, bool): return obj
-    if isinstance(obj, (int, float, str)): return obj
-    if isinstance(obj, (list, tuple)): return [to_json(x) for x in obj]
-    if isinstance(obj, dict): return {str(k): to_json(v) for k, v in obj.items()}
-    if isinstance(obj, Iterator): return [to_json(x) for x in obj]
-    if isinstance(obj, Iterable) and not isinstance(obj, (str, bytes)): return [to_json(x) for x in obj]
-    return str(obj)
-
-print(json.dumps(to_json(_result)))
-`;
-
-    // Write to temp file
-    const tempFile = path.join(os.tmpdir(), `challenge_test_${Date.now()}.py`);
-    fs.writeFileSync(tempFile, wrappedCode);
-
-    const python = spawn('python3', [tempFile], { timeout: 10000 });
-    let stdout = '';
-    let stderr = '';
-
-    python.stdout.on('data', (data) => { stdout += data.toString(); });
-    python.stderr.on('data', (data) => { stderr += data.toString(); });
-
-    python.on('close', (code) => {
-      // Clean up temp file
-      try { fs.unlinkSync(tempFile); } catch (e) {}
-      
-      if (code === 0) {
-        resolve(stdout.trim());
-      } else {
-        reject(new Error(`Python error: ${stderr || 'Unknown error'}`));
-      }
-    });
-
-    python.on('error', (err) => {
-      try { fs.unlinkSync(tempFile); } catch (e) {}
-      reject(err);
-    });
-  });
-}
-
-/**
- * Extract function name from Python code
- */
-function extractPythonFunctionName(code) {
-  const match = code.match(/def\s+(\w+)\s*\(/);
-  return match ? match[1] : null;
-}
-
-/**
- * Generate expected outputs by running the actual solution code
- * This is the key function that ensures test cases are correct
- */
-async function generateExpectedOutputs(challenge) {
-  const pythonSolution = challenge.sampleSolution?.python;
-  if (!pythonSolution) {
-    console.log('  ⚠️ No Python solution to execute');
-    return challenge.testCases;
-  }
-
-  const functionName = extractPythonFunctionName(pythonSolution);
-  if (!functionName) {
-    console.log('  ⚠️ Could not extract function name from Python solution');
-    return challenge.testCases;
-  }
-
-  console.log(`  🔧 Generating expected outputs by running ${functionName}()...`);
-
-  const updatedTestCases = [];
-  for (const tc of challenge.testCases) {
-    try {
-      const actualOutput = await executePythonCode(pythonSolution, functionName, tc.input);
-      
-      // Compare with AI-generated expected output
-      if (actualOutput !== tc.expectedOutput) {
-        console.log(`    ⚠️ Test ${tc.id}: AI said "${tc.expectedOutput}", actual is "${actualOutput}" - FIXED`);
-      }
-      
-      updatedTestCases.push({
-        ...tc,
-        expectedOutput: actualOutput // Use actual execution result
-      });
-    } catch (error) {
-      console.log(`    ❌ Test ${tc.id} execution failed: ${error.message}`);
-      // Keep AI-generated output as fallback, but flag it
-      updatedTestCases.push({
-        ...tc,
-        _executionFailed: true
-      });
-    }
-  }
-
-  return updatedTestCases;
-}
 
 // Get 2-4 random companies
 function getRandomCompanies() {
@@ -231,44 +111,6 @@ async function getExistingTitlesForCategory(category) {
   return result.rows.map(r => r.title);
 }
 
-// Validate challenge structure
-function validateChallenge(data) {
-  if (!data) return false;
-  
-  const required = ['title', 'description', 'difficulty', 'starterCode', 'testCases', 'sampleSolution', 'complexity'];
-  for (const field of required) {
-    if (!data[field]) {
-      console.log(`❌ Missing required field: ${field}`);
-      return false;
-    }
-  }
-  
-  if (!data.starterCode.javascript || !data.starterCode.python) {
-    console.log('❌ Missing starter code for JS or Python');
-    return false;
-  }
-  
-  if (!data.sampleSolution.javascript || !data.sampleSolution.python) {
-    console.log('❌ Missing sample solution for JS or Python');
-    return false;
-  }
-  
-  if (!Array.isArray(data.testCases) || data.testCases.length < 2) {
-    console.log('❌ Need at least 2 test cases');
-    return false;
-  }
-  
-  // Validate test cases have required fields
-  for (const tc of data.testCases) {
-    if (!tc.input || tc.expectedOutput === undefined) {
-      console.log('❌ Test case missing input or expectedOutput');
-      return false;
-    }
-  }
-  
-  return true;
-}
-
 // Save challenge to database
 async function saveChallengeToDb(challenge) {
   const id = await generateChallengeId();
@@ -313,71 +155,27 @@ async function getChallengeCount() {
   return result.rows[0]?.count || 0;
 }
 
-async function generateChallenge(difficulty, category) {
+async function generateChallengeWrapper(difficulty, category) {
   const companies = getRandomCompanies();
   const categoryTitles = await getExistingTitlesForCategory(category);
   
   console.log(`\n🎯 Generating ${difficulty} challenge for ${category}...`);
   console.log(`🏢 Target companies: ${companies.join(', ')}`);
   
-  console.log('\n📝 Using AI framework for generation');
-  console.log('─'.repeat(50));
+  // Use LangGraph pipeline for generation
+  const result = await generateCodingChallenge({
+    difficulty,
+    category,
+    companies,
+    existingTitles: categoryTitles
+  });
   
-  try {
-    const data = await ai.run('coding-challenge', {
-      difficulty,
-      category,
-      companies,
-      existingTitles: categoryTitles
-    });
-    
-    if (!validateChallenge(data)) {
-      console.log('❌ Invalid challenge format');
-      return null;
-    }
-    
-    // Ensure test case IDs
-    data.testCases = data.testCases.map((tc, i) => ({
-      ...tc,
-      id: tc.id || String(i + 1),
-    }));
-    
-    // CRITICAL: Generate expected outputs by RUNNING the actual solution code
-    // This ensures test cases are always correct, not relying on AI-generated outputs
-    console.log('\n🧪 Validating test cases by executing solution...');
-    data.testCases = await generateExpectedOutputs(data);
-    
-    // Check if any test case execution failed
-    const failedTests = data.testCases.filter(tc => tc._executionFailed);
-    if (failedTests.length > 0) {
-      console.log(`⚠️ ${failedTests.length} test case(s) could not be validated`);
-      // Remove the flag before saving
-      data.testCases = data.testCases.map(tc => {
-        const { _executionFailed, ...rest } = tc;
-        return rest;
-      });
-    }
-    
-    // Ensure tags array
-    if (!Array.isArray(data.tags)) {
-      data.tags = [category];
-    }
-    
-    // Ensure hints array
-    if (!Array.isArray(data.hints)) {
-      data.hints = ['Think about the problem step by step'];
-    }
-    
-    // Ensure companies array
-    if (!Array.isArray(data.companies)) {
-      data.companies = companies;
-    }
-    
-    return data;
-  } catch (error) {
-    console.log(`❌ AI error: ${error.message}`);
+  if (!result.success) {
+    console.log(`❌ Generation failed: ${result.error}`);
     return null;
   }
+  
+  return result.challenge;
 }
 
 async function main() {
@@ -412,7 +210,7 @@ async function main() {
       ? CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)]
       : inputCategory;
     
-    const challenge = await generateChallenge(difficulty, category);
+    const challenge = await generateChallengeWrapper(difficulty, category);
     
     if (challenge) {
       // Check for duplicates
