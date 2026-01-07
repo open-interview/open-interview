@@ -1,278 +1,141 @@
 /**
- * Blog Illustration Generator v6
- * AI-Powered Dynamic Scene Generation
- * Uses opencode-ai to generate contextual illustrations
+ * Blog Illustration Generator v8
+ * Clean, Professional SVG Illustrations
+ * Fixed grid layouts - no overlaps
  */
 
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import ai from '../index.js';
 
 const IMAGES_DIR = 'blog-output/images';
-const W = 700, H = 380;
+const W = 700, H = 420;  // Increased height for multi-line title
 
-// GitHub dark theme colors
-const COLORS = {
-  bg: '#0d1117', bgCard: '#161b22', bgElevated: '#21262d',
-  blue: '#58a6ff', purple: '#a371f7', green: '#3fb950',
-  pink: '#f778ba', cyan: '#39c5cf', orange: '#d29922',
-  red: '#f85149', yellow: '#e3b341',
-  text: '#e6edf3', textMuted: '#8b949e', textDim: '#6e7681',
+// GitHub dark theme
+const C = {
+  bg: '#0d1117',
+  card: '#161b22',
+  elevated: '#21262d',
   border: '#30363d',
+  text: '#e6edf3',
+  muted: '#8b949e',
+  dim: '#6e7681',
+  blue: '#58a6ff',
+  purple: '#a371f7',
+  green: '#3fb950',
+  cyan: '#39c5cf',
+  orange: '#d29922',
+  red: '#f85149',
+  pink: '#f778ba',
 };
 
-const FONT = "'SF Mono', 'Fira Code', Consolas, monospace";
+// Use monospace font everywhere for consistency
+const FONT = "'SF Mono', Menlo, Monaco, 'Courier New', monospace";
 
-// Lucide icons
+// Simple icon paths (24x24 viewBox)
 const ICONS = {
-  server: 'M2 9h20M2 15h20M6 9v6M18 9v6M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z',
-  database: 'M21 5c0 1.1-4 2-9 2s-9-.9-9-2m18 0c0-1.1-4-2-9-2s-9 .9-9 2m18 0v14c0 1.1-4 2-9 2s-9-.9-9-2V5m18 7c0 1.1-4 2-9 2s-9-.9-9-2',
-  cloud: 'M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z',
-  network: 'M9 2v6M15 2v6M12 17v5M5 8h14M5 8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2M12 14a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
-  container: 'M22 7L12 2 2 7v10l10 5 10-5V7zM12 22V12M22 7l-10 5M2 7l10 5',
+  server: 'M4 6h16M4 12h16M4 18h16M8 6v12M16 6v12',
+  database: 'M12 3c4.97 0 9 1.34 9 3s-4.03 3-9 3-9-1.34-9-3 4.03-3 9-3m9 3v12c0 1.66-4.03 3-9 3s-9-1.34-9-3V6m18 6c0 1.66-4.03 3-9 3s-9-1.34-9-3',
+  cloud: 'M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z',
   code: 'M16 18l6-6-6-6M8 6l-6 6 6 6',
   terminal: 'M4 17l6-6-6-6M12 19h8',
-  bug: 'M8 2l1.88 1.88M14.12 3.88L16 2M9 7.13v-1a3 3 0 1 1 6 0v1M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6M12 20v-9',
   shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
-  shieldCheck: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4',
-  lock: 'M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zM7 11V7a5 5 0 0 1 10 0v4',
-  key: 'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4',
-  activity: 'M22 12h-4l-3 9L9 3l-3 9H2',
-  barChart: 'M12 20V10M18 20V4M6 20v-4',
-  gauge: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 12a10 10 0 1 0 20 0 10 10 0 0 0-20 0M12 6V2M6 12H2M12 18v4M18 12h4',
-  clock: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 6v6l4 2',
-  eye: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
   zap: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z',
-  checkCircle: 'M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3',
-  xCircle: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM15 9l-6 6M9 9l6 6',
-  alertCircle: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 8v4M12 16h.01',
-  smartphone: 'M12 18h.01M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z',
-  globe: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z',
+  check: 'M20 6L9 17l-5-5',
+  x: 'M18 6L6 18M6 6l12 12',
+  alert: 'M12 9v4m0 4h.01M12 2L2 22h20L12 2z',
+  globe: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z',
   layers: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
-  box: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z',
-  cog: 'M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41',
   rocket: 'M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09zM12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z',
-  users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
-  send: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z',
-  target: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
-  trendingUp: 'M23 6l-9.5 9.5-5-5L1 18',
-  bell: 'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0',
-  memory: 'M6 19v-3M10 19v-3M14 19v-3M18 19v-3M8 11V9M16 11V9M4 15h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2z',
-  cpu: 'M6 6h12v12H6zM9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2',
+  users: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  target: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
+  cpu: 'M9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3',
+  activity: 'M22 12h-4l-3 9L9 3l-3 9H2',
+  lock: 'M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zM7 11V7a5 5 0 0 1 10 0v4',
+  eye: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  git: 'M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22',
 };
 
-// ============== SVG COMPONENTS ==============
+const esc = t => String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-const icon = (name, x, y, size = 24, color = COLORS.text) => {
+// ============== SVG PRIMITIVES ==============
+
+const icon = (name, x, y, size = 24, color = C.text) => {
   const p = ICONS[name];
   if (!p) return '';
   const s = size / 24;
-  return `<g transform="translate(${x - size/2}, ${y - size/2}) scale(${s})"><path d="${p}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+  return `<g transform="translate(${x - size/2}, ${y - size/2}) scale(${s})">
+    <path d="${p}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>`;
 };
 
-const iconCircle = (name, x, y, size = 48, color = COLORS.blue) => `
-  <circle cx="${x}" cy="${y}" r="${size/2 + 8}" fill="${color}" opacity="0.1"/>
-  <circle cx="${x}" cy="${y}" r="${size/2}" fill="${COLORS.bgCard}" stroke="${color}" stroke-width="2"/>
-  ${icon(name, x, y, size * 0.5, color)}`;
+// Card with icon and label - main building block
+const card = (x, y, w, h, iconName, label, color = C.blue, sublabel = '') => `
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="${C.card}" stroke="${color}" stroke-width="2"/>
+  ${icon(iconName, x + w/2, y + h/2 - (sublabel ? 8 : 0), Math.min(w, h) * 0.35, color)}
+  <text x="${x + w/2}" y="${y + h - 16}" text-anchor="middle" fill="${C.text}" font-size="12" font-family="${FONT}">${esc(label.substring(0, 12))}</text>
+  ${sublabel ? `<text x="${x + w/2}" y="${y + h - 4}" text-anchor="middle" fill="${C.muted}" font-size="10" font-family="${FONT}">${esc(sublabel.substring(0, 15))}</text>` : ''}
+`;
 
-const badge = (iconName, x, y, label, color = COLORS.blue) => {
-  const w = Math.max(label.length * 7 + 20, 70);
+// Metric display
+const metric = (x, y, label, value, unit = '', color = C.blue) => `
+  <rect x="${x}" y="${y}" width="110" height="60" rx="8" fill="${C.card}" stroke="${C.border}"/>
+  <text x="${x + 55}" y="${y + 22}" text-anchor="middle" fill="${C.muted}" font-size="11" font-family="${FONT}">${esc(label.substring(0, 12))}</text>
+  <text x="${x + 55}" y="${y + 46}" text-anchor="middle" fill="${color}" font-size="18" font-family="${FONT}">${esc(value)}<tspan fill="${C.muted}" font-size="11">${esc(unit)}</tspan></text>
+`;
+
+// Status indicator
+const status = (x, y, state, text) => {
+  const col = { ok: C.green, warn: C.orange, error: C.red, info: C.cyan }[state] || C.muted;
   return `
-  <rect x="${x - w/2}" y="${y - 28}" width="${w}" height="56" rx="8" fill="${COLORS.bgCard}" stroke="${color}" stroke-width="1.5"/>
-  ${icon(iconName, x, y - 6, 20, color)}
-  <text x="${x}" y="${y + 18}" text-anchor="middle" fill="${COLORS.textMuted}" font-size="10" font-family="${FONT}">${esc(label)}</text>`;
+  <circle cx="${x}" cy="${y}" r="6" fill="${col}"/>
+  <text x="${x + 14}" y="${y + 4}" fill="${C.text}" font-size="11" font-family="${FONT}">${esc(text.substring(0, 30))}</text>`;
 };
 
-const statusPill = (x, y, state, text) => {
-  const col = { ok: COLORS.green, warn: COLORS.orange, error: COLORS.red, info: COLORS.cyan }[state] || COLORS.textMuted;
-  const w = text.length * 6.5 + 28;
-  return `
-  <rect x="${x}" y="${y}" width="${w}" height="24" rx="12" fill="${COLORS.bgCard}" stroke="${col}"/>
-  <circle cx="${x + 12}" cy="${y + 12}" r="4" fill="${col}"/>
-  <text x="${x + 22}" y="${y + 16}" fill="${COLORS.text}" font-size="10" font-family="${FONT}">${esc(text)}</text>`;
-};
-
-const metricCard = (x, y, iconName, label, value, unit, color = COLORS.blue, trend = null) => {
-  const trendIcon = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '';
-  const trendColor = trend === 'up' ? COLORS.green : trend === 'down' ? COLORS.red : '';
-  return `
-  <rect x="${x}" y="${y}" width="100" height="55" rx="6" fill="${COLORS.bgCard}" stroke="${COLORS.border}"/>
-  ${icon(iconName, x + 18, y + 18, 18, color)}
-  <text x="${x + 38}" y="${y + 20}" fill="${COLORS.textMuted}" font-size="9" font-family="${FONT}">${esc(label)}</text>
-  <text x="${x + 10}" y="${y + 44}" fill="${color}" font-size="18" font-weight="600" font-family="${FONT}">${esc(value)}<tspan fill="${COLORS.textMuted}" font-size="10">${esc(unit)}</tspan>${trendIcon ? `<tspan fill="${trendColor}" font-size="12"> ${trendIcon}</tspan>` : ''}</text>`;
-};
-
-const progressBar = (x, y, w, pct, color, label = '') => `
-  <rect x="${x}" y="${y}" width="${w}" height="8" rx="4" fill="${COLORS.bgElevated}"/>
-  <rect x="${x}" y="${y}" width="${w * Math.min(pct, 100) / 100}" height="8" rx="4" fill="${color}"/>
-  ${label ? `<text x="${x + w + 10}" y="${y + 7}" fill="${COLORS.textMuted}" font-size="10" font-family="${FONT}">${esc(label)}</text>` : ''}`;
-
-const codePanel = (x, y, w, h, lines = [], title = 'code.ts') => `
-  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${COLORS.bgCard}" stroke="${COLORS.border}"/>
-  <rect x="${x}" y="${y}" width="${w}" height="24" rx="8" fill="${COLORS.bgElevated}"/>
-  <circle cx="${x + 14}" cy="${y + 12}" r="5" fill="${COLORS.red}" opacity="0.8"/>
-  <circle cx="${x + 30}" cy="${y + 12}" r="5" fill="${COLORS.orange}" opacity="0.8"/>
-  <circle cx="${x + 46}" cy="${y + 12}" r="5" fill="${COLORS.green}" opacity="0.8"/>
-  <text x="${x + w/2}" y="${y + 16}" text-anchor="middle" fill="${COLORS.textDim}" font-size="10" font-family="${FONT}">${esc(title)}</text>
-  ${lines.slice(0, Math.floor((h - 32) / 15)).map((l, i) => 
-    `<text x="${x + 12}" y="${y + 42 + i * 15}" fill="${l.highlight ? COLORS.cyan : COLORS.text}" font-size="11" font-family="${FONT}">${esc(l.text)}</text>`
-  ).join('')}`;
-
-const terminalPanel = (x, y, w, h, lines = []) => `
-  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${COLORS.bg}" stroke="${COLORS.green}" stroke-width="1.5"/>
-  <rect x="${x}" y="${y}" width="${w}" height="22" rx="8" fill="${COLORS.green}" opacity="0.15"/>
-  ${icon('terminal', x + 16, y + 11, 14, COLORS.green)}
-  <text x="${x + 30}" y="${y + 15}" fill="${COLORS.green}" font-size="10" font-family="${FONT}">terminal</text>
-  ${lines.slice(0, Math.floor((h - 30) / 15)).map((l, i) => {
-    const col = { command: COLORS.text, success: COLORS.green, error: COLORS.red, info: COLORS.cyan }[l.type] || COLORS.text;
-    return `<text x="${x + 12}" y="${y + 38 + i * 15}" fill="${col}" font-size="11" font-family="${FONT}">${esc(l.text)}</text>`;
-  }).join('')}`;
-
-const connection = (x1, y1, x2, y2, color, label = '') => {
+// Arrow connector
+const arrow = (x1, y1, x2, y2, color = C.blue, label = '', dashed = false) => {
   const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-  const lw = label ? label.length * 7 + 16 : 0;
-  const d1 = (1.8 + Math.random() * 0.5).toFixed(1);
-  const d2 = (2.2 + Math.random() * 0.5).toFixed(1);
+  const dash = dashed ? 'stroke-dasharray="6 4"' : '';
   return `
-  <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="1.5" opacity="0.3"/>
-  <circle r="3" fill="${color}">
-    <animate attributeName="cx" values="${x1};${x2}" dur="${d1}s" repeatCount="indefinite"/>
-    <animate attributeName="cy" values="${y1};${y2}" dur="${d1}s" repeatCount="indefinite"/>
-    <animate attributeName="opacity" values="0;1;1;0" dur="${d1}s" repeatCount="indefinite"/>
-  </circle>
-  <circle r="2" fill="${color}" opacity="0.6">
-    <animate attributeName="cx" values="${x1};${x2}" dur="${d2}s" begin="0.6s" repeatCount="indefinite"/>
-    <animate attributeName="cy" values="${y1};${y2}" dur="${d2}s" begin="0.6s" repeatCount="indefinite"/>
-    <animate attributeName="opacity" values="0;0.7;0.7;0" dur="${d2}s" begin="0.6s" repeatCount="indefinite"/>
-  </circle>
-  ${label ? `<rect x="${mx - lw/2}" y="${my - 10}" width="${lw}" height="20" rx="4" fill="${COLORS.bgCard}" stroke="${color}"/><text x="${mx}" y="${my + 4}" text-anchor="middle" fill="${color}" font-size="10" font-family="${FONT}">${esc(label)}</text>` : ''}`;
+  <defs><marker id="ah${x1}${y1}" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="${color}"/>
+  </marker></defs>
+  <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="2" ${dash} marker-end="url(#ah${x1}${y1})"/>
+  ${label ? `<rect x="${mx - 25}" y="${my - 10}" width="50" height="20" rx="4" fill="${C.card}"/>
+  <text x="${mx}" y="${my + 4}" text-anchor="middle" fill="${C.muted}" font-size="10" font-family="${FONT}">${esc(label.substring(0, 8))}</text>` : ''}`;
 };
 
-const gear = (x, y, size, color) => `
-  <g transform="translate(${x}, ${y})">
-    <g>${icon('cog', 0, 0, size, color)}<animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="10s" repeatCount="indefinite"/></g>
-  </g>`;
+// Code snippet block
+const codeSnippet = (x, y, w, h, lines, title = 'code.ts') => `
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${C.elevated}" stroke="${C.border}"/>
+  <rect x="${x}" y="${y}" width="${w}" height="28" rx="8" fill="${C.card}"/>
+  <circle cx="${x + 16}" cy="${y + 14}" r="5" fill="${C.red}" opacity="0.8"/>
+  <circle cx="${x + 32}" cy="${y + 14}" r="5" fill="${C.orange}" opacity="0.8"/>
+  <circle cx="${x + 48}" cy="${y + 14}" r="5" fill="${C.green}" opacity="0.8"/>
+  <text x="${x + w/2}" y="${y + 18}" text-anchor="middle" fill="${C.dim}" font-size="10" font-family="${FONT}">${esc(title.substring(0, 20))}</text>
+  ${lines.slice(0, 5).map((l, i) => `<text x="${x + 12}" y="${y + 48 + i * 18}" fill="${l.hl ? C.cyan : C.text}" font-size="11" font-family="${FONT}">${esc(l.t.substring(0, 32))}</text>`).join('')}
+`;
 
-// ============== GEOMETRIC PEOPLE ==============
+// Terminal block
+const terminalBlock = (x, y, w, h, lines) => `
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${C.bg}" stroke="${C.green}"/>
+  <text x="${x + 12}" y="${y + 20}" fill="${C.green}" font-size="11" font-family="${FONT}">$ terminal</text>
+  ${lines.slice(0, 4).map((l, i) => {
+    const col = l.err ? C.red : l.ok ? C.green : C.text;
+    return `<text x="${x + 12}" y="${y + 44 + i * 18}" fill="${col}" font-size="11" font-family="${FONT}">${esc(l.t.substring(0, 35))}</text>`;
+  }).join('')}
+`;
 
-/**
- * Geometric person - minimalist stick figure with circle head
- * @param {number} x - center x position
- * @param {number} y - bottom y position (feet)
- * @param {number} scale - size multiplier (1 = 60px tall)
- * @param {string} color - primary color
- * @param {object} options - pose, expression, accessories
- */
-const person = (x, y, scale = 1, color = COLORS.blue, options = {}) => {
-  const s = scale;
-  const headR = 12 * s;
-  const bodyH = 25 * s;
-  const legH = 20 * s;
-  const armL = 18 * s;
-  
-  const headY = y - legH - bodyH - headR;
-  const shoulderY = y - legH - bodyH + 5 * s;
-  const hipY = y - legH;
-  
-  // Pose variations
-  const pose = options.pose || 'standing';
-  let armPath = '';
-  let legPath = '';
-  
-  switch (pose) {
-    case 'waving':
-      armPath = `M${x - 8*s} ${shoulderY} L${x - 20*s} ${shoulderY - 15*s} M${x + 8*s} ${shoulderY} L${x + 18*s} ${shoulderY + 10*s}`;
-      legPath = `M${x} ${hipY} L${x - 8*s} ${y} M${x} ${hipY} L${x + 8*s} ${y}`;
-      break;
-    case 'thinking':
-      armPath = `M${x - 8*s} ${shoulderY} L${x - 18*s} ${shoulderY + 10*s} M${x + 8*s} ${shoulderY} L${x + 5*s} ${headY}`;
-      legPath = `M${x} ${hipY} L${x - 8*s} ${y} M${x} ${hipY} L${x + 8*s} ${y}`;
-      break;
-    case 'pointing':
-      armPath = `M${x - 8*s} ${shoulderY} L${x - 18*s} ${shoulderY + 10*s} M${x + 8*s} ${shoulderY} L${x + 30*s} ${shoulderY - 5*s}`;
-      legPath = `M${x} ${hipY} L${x - 8*s} ${y} M${x} ${hipY} L${x + 8*s} ${y}`;
-      break;
-    case 'sitting':
-      armPath = `M${x - 8*s} ${shoulderY} L${x - 15*s} ${shoulderY + 15*s} M${x + 8*s} ${shoulderY} L${x + 15*s} ${shoulderY + 15*s}`;
-      legPath = `M${x} ${hipY} L${x - 15*s} ${hipY} L${x - 15*s} ${y} M${x} ${hipY} L${x + 15*s} ${hipY} L${x + 15*s} ${y}`;
-      break;
-    case 'working':
-      armPath = `M${x - 8*s} ${shoulderY} L${x - 5*s} ${shoulderY + 20*s} M${x + 8*s} ${shoulderY} L${x + 5*s} ${shoulderY + 20*s}`;
-      legPath = `M${x} ${hipY} L${x - 8*s} ${y} M${x} ${hipY} L${x + 8*s} ${y}`;
-      break;
-    default: // standing
-      armPath = `M${x - 8*s} ${shoulderY} L${x - 18*s} ${shoulderY + 15*s} M${x + 8*s} ${shoulderY} L${x + 18*s} ${shoulderY + 15*s}`;
-      legPath = `M${x} ${hipY} L${x - 8*s} ${y} M${x} ${hipY} L${x + 8*s} ${y}`;
-  }
-  
-  // Expression (simple face)
-  let face = '';
-  const expr = options.expression || 'neutral';
-  switch (expr) {
-    case 'happy':
-      face = `<circle cx="${x - 4*s}" cy="${headY - 2*s}" r="${2*s}" fill="${COLORS.bg}"/>
-              <circle cx="${x + 4*s}" cy="${headY - 2*s}" r="${2*s}" fill="${COLORS.bg}"/>
-              <path d="M${x - 5*s} ${headY + 4*s} Q${x} ${headY + 8*s} ${x + 5*s} ${headY + 4*s}" fill="none" stroke="${COLORS.bg}" stroke-width="${1.5*s}"/>`;
-      break;
-    case 'surprised':
-      face = `<circle cx="${x - 4*s}" cy="${headY - 2*s}" r="${2.5*s}" fill="${COLORS.bg}"/>
-              <circle cx="${x + 4*s}" cy="${headY - 2*s}" r="${2.5*s}" fill="${COLORS.bg}"/>
-              <circle cx="${x}" cy="${headY + 5*s}" r="${3*s}" fill="${COLORS.bg}"/>`;
-      break;
-    case 'thinking':
-      face = `<circle cx="${x - 4*s}" cy="${headY - 2*s}" r="${2*s}" fill="${COLORS.bg}"/>
-              <circle cx="${x + 4*s}" cy="${headY - 2*s}" r="${2*s}" fill="${COLORS.bg}"/>
-              <path d="M${x - 4*s} ${headY + 5*s} L${x + 4*s} ${headY + 5*s}" stroke="${COLORS.bg}" stroke-width="${1.5*s}"/>`;
-      break;
-    default: // neutral
-      face = `<circle cx="${x - 4*s}" cy="${headY - 2*s}" r="${2*s}" fill="${COLORS.bg}"/>
-              <circle cx="${x + 4*s}" cy="${headY - 2*s}" r="${2*s}" fill="${COLORS.bg}"/>
-              <path d="M${x - 4*s} ${headY + 5*s} L${x + 4*s} ${headY + 5*s}" stroke="${COLORS.bg}" stroke-width="${1.5*s}"/>`;
-  }
-  
-  // Accessories
-  let accessories = '';
-  if (options.laptop) {
-    accessories += `<rect x="${x - 15*s}" y="${shoulderY + 15*s}" width="${30*s}" height="${20*s}" rx="${2*s}" fill="${COLORS.bgCard}" stroke="${COLORS.cyan}"/>
-                    <rect x="${x - 12*s}" y="${shoulderY + 18*s}" width="${24*s}" height="${14*s}" fill="${COLORS.cyan}" opacity="0.3"/>`;
-  }
-  if (options.phone) {
-    accessories += `<rect x="${x + 15*s}" y="${shoulderY + 5*s}" width="${8*s}" height="${14*s}" rx="${1*s}" fill="${COLORS.bgCard}" stroke="${COLORS.cyan}"/>`;
-  }
-  if (options.coffee) {
-    accessories += `<rect x="${x + 20*s}" y="${shoulderY + 10*s}" width="${8*s}" height="${12*s}" rx="${1*s}" fill="${COLORS.orange}" opacity="0.8"/>
-                    <ellipse cx="${x + 24*s}" cy="${shoulderY + 10*s}" rx="${4*s}" ry="${2*s}" fill="${COLORS.orange}"/>`;
-  }
-  
-  return `
-  <g class="person" data-pose="${pose}">
-    <!-- Head -->
-    <circle cx="${x}" cy="${headY}" r="${headR}" fill="${color}"/>
-    ${face}
-    <!-- Body -->
-    <line x1="${x}" y1="${headY + headR}" x2="${x}" y2="${hipY}" stroke="${color}" stroke-width="${3*s}" stroke-linecap="round"/>
-    <!-- Arms -->
-    <path d="${armPath}" fill="none" stroke="${color}" stroke-width="${2.5*s}" stroke-linecap="round"/>
-    <!-- Legs -->
-    <path d="${legPath}" fill="none" stroke="${color}" stroke-width="${2.5*s}" stroke-linecap="round"/>
-    ${accessories}
-  </g>`;
-};
-
-/**
- * Speech bubble with text
- */
-const speechBubble = (x, y, text, options = {}) => {
-  const maxChars = options.maxChars || 25;
-  const lines = [];
+// Title bar at bottom - multi-line support for long titles
+const titleBar = (text) => {
+  const maxCharsPerLine = 60;
   const words = text.split(' ');
+  const lines = [];
   let currentLine = '';
   
   for (const word of words) {
-    if ((currentLine + ' ' + word).trim().length <= maxChars) {
+    if ((currentLine + ' ' + word).trim().length <= maxCharsPerLine) {
       currentLine = (currentLine + ' ' + word).trim();
     } else {
       if (currentLine) lines.push(currentLine);
@@ -281,726 +144,343 @@ const speechBubble = (x, y, text, options = {}) => {
   }
   if (currentLine) lines.push(currentLine);
   
-  const lineHeight = 14;
-  const padding = 12;
-  const w = Math.min(Math.max(...lines.map(l => l.length * 7), 60) + padding * 2, 200);
-  const h = lines.length * lineHeight + padding * 2;
-  
-  const tailDir = options.tailDirection || 'bottom-left';
-  let tailPath = '';
-  switch (tailDir) {
-    case 'bottom-left':
-      tailPath = `M${x + 15} ${y + h} L${x} ${y + h + 15} L${x + 30} ${y + h}`;
-      break;
-    case 'bottom-right':
-      tailPath = `M${x + w - 30} ${y + h} L${x + w} ${y + h + 15} L${x + w - 15} ${y + h}`;
-      break;
-    case 'left':
-      tailPath = `M${x} ${y + h/2 - 8} L${x - 12} ${y + h/2} L${x} ${y + h/2 + 8}`;
-      break;
-    case 'right':
-      tailPath = `M${x + w} ${y + h/2 - 8} L${x + w + 12} ${y + h/2} L${x + w} ${y + h/2 + 8}`;
-      break;
+  // Limit to 2 lines max
+  if (lines.length > 2) {
+    lines[1] = lines[1].substring(0, maxCharsPerLine - 3) + '...';
+    lines.length = 2;
   }
   
-  const bgColor = options.bgColor || COLORS.bgCard;
-  const borderColor = options.borderColor || COLORS.border;
-  const textColor = options.textColor || COLORS.text;
+  const boxHeight = lines.length === 1 ? 36 : 50;
+  const startY = H - boxHeight - 8;
   
   return `
-  <g class="speech-bubble">
-    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${bgColor}" stroke="${borderColor}" stroke-width="1.5"/>
-    <path d="${tailPath}" fill="${bgColor}" stroke="${borderColor}" stroke-width="1.5"/>
-    <rect x="${x}" y="${y + h - 2}" width="${w}" height="4" fill="${bgColor}"/>
-    ${lines.map((line, i) => 
-      `<text x="${x + padding}" y="${y + padding + 10 + i * lineHeight}" fill="${textColor}" font-size="11" font-family="${FONT}">${esc(line)}</text>`
-    ).join('')}
-  </g>`;
-};
-
-/**
- * Thought bubble (cloud-like)
- */
-const thoughtBubble = (x, y, text, options = {}) => {
-  const maxChars = options.maxChars || 20;
-  const lines = [];
-  const words = text.split(' ');
-  let currentLine = '';
-  
-  for (const word of words) {
-    if ((currentLine + ' ' + word).trim().length <= maxChars) {
-      currentLine = (currentLine + ' ' + word).trim();
-    } else {
-      if (currentLine) lines.push(currentLine);
-      currentLine = word;
-    }
-  }
-  if (currentLine) lines.push(currentLine);
-  
-  const w = Math.min(Math.max(...lines.map(l => l.length * 7), 50) + 24, 180);
-  const h = lines.length * 14 + 20;
-  
-  const bgColor = options.bgColor || COLORS.bgCard;
-  const borderColor = options.borderColor || COLORS.purple;
-  
-  return `
-  <g class="thought-bubble">
-    <ellipse cx="${x + w/2}" cy="${y + h/2}" rx="${w/2 + 5}" ry="${h/2 + 5}" fill="${bgColor}" stroke="${borderColor}" stroke-width="1.5"/>
-    <circle cx="${x + 10}" cy="${y + h + 10}" r="6" fill="${bgColor}" stroke="${borderColor}"/>
-    <circle cx="${x}" cy="${y + h + 20}" r="4" fill="${bgColor}" stroke="${borderColor}"/>
-    ${lines.map((line, i) => 
-      `<text x="${x + 12}" y="${y + 18 + i * 14}" fill="${COLORS.text}" font-size="11" font-family="${FONT}">${esc(line)}</text>`
-    ).join('')}
-  </g>`;
-};
-
-/**
- * Conversation scene with multiple people and dialogues
- */
-const conversationScene = (people, dialogues, options = {}) => {
-  const parts = [];
-  
-  // Render people
-  people.forEach((p, i) => {
-    const defaultX = 100 + i * 180;
-    parts.push(person(
-      p.x || defaultX,
-      p.y || 280,
-      p.scale || 0.9,
-      COLORS[p.color] || COLORS.blue,
-      { pose: p.pose, expression: p.expression, laptop: p.laptop, phone: p.phone, coffee: p.coffee }
-    ));
-    
-    // Label under person
-    if (p.label) {
-      parts.push(`<text x="${p.x || defaultX}" y="${(p.y || 280) + 15}" text-anchor="middle" fill="${COLORS.textMuted}" font-size="10" font-family="${FONT}">${esc(p.label)}</text>`);
-    }
-  });
-  
-  // Render dialogues
-  dialogues.forEach(d => {
-    if (d.type === 'thought') {
-      parts.push(thoughtBubble(d.x, d.y, d.text, d.options));
-    } else {
-      parts.push(speechBubble(d.x, d.y, d.text, { tailDirection: d.tailDirection, ...d.options }));
-    }
-  });
-  
-  return parts.join('\n');
-};
-
-/**
- * Team/group scene - multiple people in a row
- */
-const teamScene = (count = 3, options = {}) => {
-  const parts = [];
-  const colors = [COLORS.blue, COLORS.purple, COLORS.cyan, COLORS.green, COLORS.orange];
-  const poses = ['standing', 'waving', 'thinking', 'pointing', 'working'];
-  const startX = options.startX || 120;
-  const spacing = options.spacing || 140;
-  const y = options.y || 260;
-  
-  for (let i = 0; i < Math.min(count, 5); i++) {
-    const color = colors[i % colors.length];
-    const pose = options.samePose ? (options.pose || 'standing') : poses[i % poses.length];
-    parts.push(person(startX + i * spacing, y, 0.85, color, { pose }));
-  }
-  
-  return parts.join('\n');
-};
-
-const bottomLabel = (text, color = COLORS.textMuted) => {
-  const w = text.length * 7.5 + 24;
-  return `
-  <rect x="${W/2 - w/2}" y="${H - 32}" width="${w}" height="26" rx="6" fill="${COLORS.bgCard}" stroke="${COLORS.border}"/>
-  <text x="${W/2}" y="${H - 14}" text-anchor="middle" fill="${color}" font-size="12" font-family="${FONT}">${esc(text)}</text>`;
+  <rect x="30" y="${startY}" width="${W - 60}" height="${boxHeight}" rx="8" fill="${C.card}" stroke="${C.border}"/>
+  ${lines.map((line, i) => `<text x="${W/2}" y="${startY + 22 + i * 16}" text-anchor="middle" fill="${C.text}" font-size="11" font-family="${FONT}">${esc(line)}</text>`).join('')}`;
 };
 
 
-// ============== STRICT GRID LAYOUT RENDERER ==============
+// ============== SCENE LAYOUTS ==============
+// Each scene uses a fixed grid - NO OVERLAPS
 
-/**
- * Fixed grid positions - NO OVERLAPS POSSIBLE
- * Canvas: 700x380
- * 
- * ROW 1 (y=30-95):  [Metric1] [Metric2] [Metric3] ... [Icon]
- * ROW 2 (y=110-200): [CodePanel OR Terminal] ... [StatusIcon]
- * ROW 3 (y=210-280): [Badge1] [Badge2] [Badge3] [Badge4]
- * ROW 4 (y=290-340): [Status1] [Status2] [Status3] ... [Gear]
- * BOTTOM (y=348):   [Label]
- */
+const SCENES = {
+  // Architecture: 3 cards in a row with arrows
+  architecture: (title) => `
+    ${card(80, 100, 120, 100, 'globe', 'Client', C.cyan)}
+    ${card(290, 100, 120, 100, 'server', 'Server', C.blue)}
+    ${card(500, 100, 120, 100, 'database', 'Database', C.purple)}
+    ${arrow(200, 150, 290, 150, C.cyan, 'HTTP')}
+    ${arrow(410, 150, 500, 150, C.purple, 'SQL')}
+    ${metric(80, 250, 'Latency', '12', 'ms', C.green)}
+    ${metric(210, 250, 'Uptime', '99.9', '%', C.green)}
+    ${status(360, 280, 'ok', 'All systems operational')}
+    ${titleBar(title)}
+  `,
 
-const GRID = {
-  // Row 1: Metrics (y=30)
-  metric1: { x: 20, y: 30 },
-  metric2: { x: 125, y: 30 },
-  metric3: { x: 230, y: 30 },
-  topIcon: { x: 600, y: 60 },
-  
-  // Row 2: Panels (y=100)
-  codePanel: { x: 20, y: 100, w: 200, h: 95 },
-  terminal: { x: 240, y: 100, w: 200, h: 95 },
-  statusIcon: { x: 530, y: 140 },
-  
-  // Row 3: Badges (y=220) - evenly spaced
-  badge1: { x: 100, y: 220 },
-  badge2: { x: 260, y: 220 },
-  badge3: { x: 420, y: 220 },
-  badge4: { x: 580, y: 220 },
-  
-  // Row 4: Status pills (y=295)
-  status1: { x: 20, y: 295 },
-  status2: { x: 180, y: 295 },
-  status3: { x: 340, y: 295 },
-  gear: { x: 640, y: 310 },
-};
+  // Scaling: Load balancer + multiple nodes
+  scaling: (title) => `
+    ${card(290, 50, 120, 80, 'cloud', 'Load Balancer', C.cyan)}
+    ${card(80, 180, 100, 80, 'server', 'Node 1', C.green)}
+    ${card(220, 180, 100, 80, 'server', 'Node 2', C.green)}
+    ${card(360, 180, 100, 80, 'server', 'Node 3', C.green)}
+    ${card(500, 180, 100, 80, 'server', 'Node 4', C.orange)}
+    ${arrow(350, 130, 130, 180, C.cyan)}
+    ${arrow(350, 130, 270, 180, C.cyan)}
+    ${arrow(350, 130, 410, 180, C.cyan)}
+    ${arrow(350, 130, 550, 180, C.cyan)}
+    ${metric(150, 290, 'RPS', '45K', '', C.blue)}
+    ${metric(290, 290, 'Nodes', '4', '', C.green)}
+    ${metric(430, 290, 'CPU', '72', '%', C.orange)}
+    ${titleBar(title)}
+  `,
 
-/**
- * Render scene with STRICT grid positioning
- */
-function renderScene(spec) {
-  const color = COLORS[spec.primaryColor] || COLORS.blue;
-  const parts = [];
-  const el = spec.elements || {};
-  
-  // Determine layout mode based on what elements exist
-  const hasCode = el.codePanel?.show && el.codePanel.lines?.length;
-  const hasTerminal = el.terminal?.show && el.terminal.lines?.length;
-  const hasMetrics = el.metrics?.length > 0;
-  
-  // === ROW 1: Metrics OR Code+Terminal header area ===
-  if (hasMetrics && !hasCode && !hasTerminal) {
-    // Show up to 3 metrics in row 1
-    el.metrics.slice(0, 3).forEach((m, i) => {
-      const pos = [GRID.metric1, GRID.metric2, GRID.metric3][i];
-      const iconMap = { latency: 'clock', requests: 'activity', errors: 'alertCircle', cpu: 'cpu', memory: 'memory', uptime: 'checkCircle', coverage: 'target', fps: 'gauge' };
-      const iconName = iconMap[m.label?.toLowerCase()] || 'gauge';
-      parts.push(metricCard(pos.x, pos.y, iconName, m.label || '', m.value || '0', m.unit || '', color, m.trend));
-    });
-  }
-  
-  // === ROW 2: Code Panel and/or Terminal ===
-  if (hasCode) {
-    const lines = el.codePanel.lines.slice(0, 5).map(l => ({
-      text: String(l.text || '').substring(0, 28),
-      highlight: l.highlight
-    }));
-    parts.push(codePanel(GRID.codePanel.x, GRID.codePanel.y, GRID.codePanel.w, GRID.codePanel.h, lines, el.codePanel.title || 'code.ts'));
-  }
-  
-  if (hasTerminal) {
-    const termX = hasCode ? GRID.terminal.x : GRID.codePanel.x;
-    const lines = el.terminal.lines.slice(0, 5).map(l => ({
-      text: String(l.text || '').substring(0, 30),
-      type: l.type || 'info'
-    }));
-    parts.push(terminalPanel(termX, GRID.terminal.y, GRID.terminal.w, GRID.terminal.h, lines));
-  }
-  
-  // If we have code/terminal, show metrics smaller on the right
-  if ((hasCode || hasTerminal) && hasMetrics) {
-    el.metrics.slice(0, 2).forEach((m, i) => {
-      const x = 470 + i * 110;
-      const iconMap = { latency: 'clock', requests: 'activity', errors: 'alertCircle', cpu: 'cpu', memory: 'memory', uptime: 'checkCircle' };
-      const iconName = iconMap[m.label?.toLowerCase()] || 'gauge';
-      parts.push(metricCard(x, 30, iconName, m.label || '', m.value || '0', m.unit || '', color, m.trend));
-    });
-  }
-  
-  // Central status icon (top right area)
-  const sceneIcons = {
-    debugging: 'bug', deployment: 'rocket', scaling: 'network', database: 'database',
-    security: 'shieldCheck', performance: 'zap', testing: 'target', success: 'checkCircle',
-    error: 'xCircle', mobile: 'smartphone', frontend: 'globe', api: 'send',
-    monitoring: 'eye', architecture: 'layers'
-  };
-  const centralIcon = sceneIcons[spec.sceneType] || 'box';
-  
-  // Only show top icon if no code/terminal panels
-  if (!hasCode && !hasTerminal) {
-    parts.push(iconCircle(centralIcon, GRID.topIcon.x, GRID.topIcon.y, 45, color));
-  }
-  
-  // === ROW 3: Badges (servers, databases, clouds) ===
-  const allBadges = [];
-  
-  if (el.servers?.length) {
-    el.servers.forEach(s => {
-      const statusColor = { ok: COLORS.green, warn: COLORS.orange, error: COLORS.red }[s.status] || COLORS.blue;
-      allBadges.push({ icon: 'server', label: String(s.label || 'Server').substring(0, 12), color: statusColor });
-    });
-  }
-  if (el.databases?.length) {
-    el.databases.forEach(d => {
-      allBadges.push({ icon: 'database', label: String(d.label || 'Database').substring(0, 12), color: COLORS.purple });
-    });
-  }
-  if (el.clouds?.length) {
-    el.clouds.forEach(c => {
-      allBadges.push({ icon: 'cloud', label: String(c.label || 'Cloud').substring(0, 12), color: COLORS.cyan });
-    });
-  }
-  
-  // Place up to 4 badges in fixed positions
-  const badgePositions = [GRID.badge1, GRID.badge2, GRID.badge3, GRID.badge4];
-  allBadges.slice(0, 4).forEach((b, i) => {
-    parts.push(badge(b.icon, badgePositions[i].x, badgePositions[i].y, b.label, b.color));
-  });
-  
-  // Connections between badges (only if we have 2+ badges)
-  if (allBadges.length >= 2 && el.connections?.length) {
-    el.connections.slice(0, 2).forEach((c, i) => {
-      const fromIdx = Math.min(i, allBadges.length - 2);
-      const toIdx = Math.min(i + 1, allBadges.length - 1);
-      const fromX = badgePositions[fromIdx].x + 40;
-      const toX = badgePositions[toIdx].x - 40;
-      const label = String(c.label || '').substring(0, 10);
-      parts.push(connection(fromX, GRID.badge1.y, toX, GRID.badge1.y, color, label));
-    });
-  }
-  
-  // === ROW 4: Status pills (fixed positions) ===
-  if (el.statusItems?.length) {
-    const statusPositions = [GRID.status1, GRID.status2, GRID.status3];
-    el.statusItems.slice(0, 3).forEach((s, i) => {
-      const text = String(s.text || '').substring(0, 15);
-      parts.push(statusPill(statusPositions[i].x, statusPositions[i].y, s.state || 'info', text));
-    });
-  }
-  
-  // Gear icon (bottom right)
-  if (el.icons?.some(ic => ic.type === 'gear')) {
-    parts.push(gear(GRID.gear.x, GRID.gear.y, 28, color));
-  }
-  
-  // === PEOPLE & DIALOGUE RENDERING ===
-  
-  // Render team (multiple people in a row)
-  if (el.team) {
-    parts.push(teamScene(el.team.count || 3, {
-      startX: el.team.startX,
-      spacing: el.team.spacing,
-      y: el.team.y,
-      samePose: el.team.samePose,
-      pose: el.team.pose
-    }));
-  }
-  
-  // Render individual people
-  if (el.people?.length) {
-    el.people.forEach(p => {
-      parts.push(person(
-        p.x || 200,
-        p.y || 280,
-        p.scale || 0.9,
-        COLORS[p.color] || color,
-        { 
-          pose: p.pose || 'standing', 
-          expression: p.expression || 'neutral',
-          laptop: p.laptop,
-          phone: p.phone,
-          coffee: p.coffee
-        }
-      ));
-      
-      // Label under person
-      if (p.label) {
-        parts.push(`<text x="${p.x || 200}" y="${(p.y || 280) + 15}" text-anchor="middle" fill="${COLORS.textMuted}" font-size="10" font-family="${FONT}">${esc(p.label)}</text>`);
-      }
-    });
-  }
-  
-  // Render dialogues (speech bubbles and thought bubbles)
-  if (el.dialogues?.length) {
-    el.dialogues.forEach(d => {
-      if (d.type === 'thought') {
-        parts.push(thoughtBubble(d.x || 100, d.y || 50, d.text || '', d.options || {}));
-      } else {
-        parts.push(speechBubble(d.x || 100, d.y || 50, d.text || '', { 
-          tailDirection: d.tailDirection || 'bottom-left',
-          ...(d.options || {})
-        }));
-      }
-    });
-  }
-  
-  // Bottom label
-  const labelText = String(spec.bottomLabel || spec.title || 'System Overview').substring(0, 35);
-  parts.push(bottomLabel(labelText, color));
-  
-  return parts.join('\n');
-}
+  // Database: Primary + Replicas
+  database: (title) => `
+    ${card(180, 80, 140, 100, 'database', 'Primary', C.purple)}
+    ${card(380, 80, 140, 100, 'database', 'Replica', C.cyan)}
+    ${arrow(320, 130, 380, 130, C.green, 'sync')}
+    ${metric(80, 220, 'QPS', '2.3K', '', C.purple)}
+    ${metric(210, 220, 'Latency', '4', 'ms', C.green)}
+    ${metric(340, 220, 'Connections', '128', '', C.blue)}
+    ${metric(470, 220, 'Cache Hit', '94', '%', C.green)}
+    ${status(200, 320, 'ok', 'Replication healthy')}
+    ${status(400, 320, 'ok', 'Replica in sync')}
+    ${titleBar(title)}
+  `,
 
-// ============== FALLBACK SCENES ==============
+  // Deployment: CI/CD Pipeline
+  deployment: (title) => `
+    ${card(60, 120, 100, 80, 'code', 'Code', C.muted)}
+    ${card(200, 120, 100, 80, 'git', 'Build', C.orange)}
+    ${card(340, 120, 100, 80, 'target', 'Test', C.blue)}
+    ${card(480, 120, 100, 80, 'rocket', 'Deploy', C.green)}
+    ${arrow(160, 160, 200, 160, C.muted)}
+    ${arrow(300, 160, 340, 160, C.orange)}
+    ${arrow(440, 160, 480, 160, C.blue)}
+    ${metric(140, 240, 'Build', '2.3', 'min', C.orange)}
+    ${metric(290, 240, 'Tests', '141', '', C.green)}
+    ${metric(440, 240, 'Coverage', '87', '%', C.blue)}
+    ${status(280, 330, 'ok', 'Pipeline passed • Ready for production')}
+    ${titleBar(title)}
+  `,
 
-const FALLBACK_SCENES = {
-  architecture: { sceneType: 'architecture', title: 'System Architecture', primaryColor: 'cyan', bottomLabel: 'System Architecture',
-    elements: { metrics: [{ label: 'Services', value: '5', unit: '' }, { label: 'Regions', value: '3', unit: '' }],
-      servers: [{ label: 'API', position: 'left', status: 'ok' }], databases: [{ label: 'Database', position: 'center' }],
-      clouds: [{ label: 'Cache', position: 'right' }], connections: [{ from: 'left', to: 'center', label: 'query' }],
-      statusItems: [{ state: 'ok', text: 'Healthy' }], icons: [{ type: 'gear' }] }},
-  
-  scaling: { sceneType: 'scaling', title: 'Auto-scaling', primaryColor: 'cyan', bottomLabel: 'Auto-scaling Active',
-    elements: { metrics: [{ label: 'RPS', value: '12.4', unit: 'K', trend: 'up' }, { label: 'Nodes', value: '5', unit: '' }],
-      servers: [{ label: 'pod-1', position: 'left', status: 'ok' }, { label: 'pod-2', position: 'center', status: 'ok' }, { label: 'pod-3', position: 'right', status: 'warn' }],
-      statusItems: [{ state: 'ok', text: 'Scaling' }, { state: 'info', text: 'CPU: 72%' }], icons: [{ type: 'gear' }] }},
-  
-  database: { sceneType: 'database', title: 'Database Cluster', primaryColor: 'purple', bottomLabel: 'PostgreSQL Cluster',
-    elements: { metrics: [{ label: 'QPS', value: '2.3', unit: 'K' }, { label: 'Latency', value: '4.2', unit: 'ms' }],
-      databases: [{ label: 'Primary', position: 'left' }, { label: 'Replica', position: 'right' }],
-      connections: [{ from: 'left', to: 'right', label: 'sync' }],
-      statusItems: [{ state: 'ok', text: 'Replication OK' }], icons: [{ type: 'gear' }] }},
-  
-  deployment: { sceneType: 'deployment', title: 'CI/CD Pipeline', primaryColor: 'green', bottomLabel: 'Production Ready',
-    elements: { metrics: [{ label: 'Deploy', value: '2.3', unit: 'min' }],
-      codePanel: { show: true, lines: [{ text: 'name: deploy' }, { text: 'on: [push]' }, { text: 'jobs: build' }], title: 'ci.yml' },
-      servers: [{ label: 'Build', position: 'left', status: 'ok' }, { label: 'Prod', position: 'right', status: 'ok' }],
-      connections: [{ from: 'left', to: 'right', label: 'deploy' }],
-      statusItems: [{ state: 'ok', text: 'Pipeline passed' }], icons: [{ type: 'checkmark' }] }},
-  
-  security: { sceneType: 'security', title: 'Security', primaryColor: 'green', bottomLabel: 'Zero Trust Architecture',
-    elements: { metrics: [{ label: 'Blocked', value: '847', unit: '' }, { label: 'Auth', value: '99.2', unit: '%' }],
-      clouds: [{ label: 'Internet', position: 'left' }], servers: [{ label: 'Gateway', position: 'center', status: 'ok' }, { label: 'API', position: 'right', status: 'ok' }],
-      connections: [{ from: 'left', to: 'center', label: 'HTTPS' }, { from: 'center', to: 'right', label: 'mTLS' }],
-      statusItems: [{ state: 'ok', text: 'SSL/TLS' }, { state: 'ok', text: 'WAF active' }], icons: [{ type: 'shield' }] }},
-  
-  monitoring: { sceneType: 'monitoring', title: 'Observability', primaryColor: 'purple', bottomLabel: 'Observability Dashboard',
-    elements: { metrics: [{ label: 'Uptime', value: '99.99', unit: '%' }, { label: 'Alerts', value: '0', unit: '' }, { label: 'P95', value: '23', unit: 'ms' }],
-      terminal: { show: true, lines: [{ text: '$ kubectl top pods', type: 'command' }, { text: 'api-1  45%  1.2G', type: 'success' }] },
-      statusItems: [{ state: 'ok', text: 'All healthy' }, { state: 'info', text: 'Auto-scale' }], icons: [{ type: 'gear' }] }},
-  
-  debugging: { sceneType: 'debugging', title: 'Debug Session', primaryColor: 'orange', bottomLabel: 'Debug Session Active',
-    elements: { metrics: [{ label: 'Errors', value: '23', unit: '/hr' }, { label: 'MTTR', value: '4.2', unit: 'min' }],
-      codePanel: { show: true, lines: [{ text: 'try {' }, { text: '  await fetch(url);', highlight: true }, { text: '} catch (err) {' }], title: 'debug.ts' },
-      terminal: { show: true, lines: [{ text: 'TypeError: undefined', type: 'error' }, { text: 'at line 4', type: 'info' }] },
-      statusItems: [{ state: 'error', text: 'Memory leak' }, { state: 'warn', text: 'High CPU' }], icons: [{ type: 'gear' }] }},
-  
-  testing: { sceneType: 'testing', title: 'Test Results', primaryColor: 'blue', bottomLabel: 'Test Suite Results',
-    elements: { metrics: [{ label: 'Coverage', value: '87', unit: '%' }, { label: 'Passed', value: '141', unit: '' }, { label: 'Failed', value: '1', unit: '' }],
-      codePanel: { show: true, lines: [{ text: 'describe("API")' }, { text: '  it("returns 200")' }, { text: '    expect(status)' }], title: 'api.test.ts' },
-      statusItems: [{ state: 'ok', text: 'Unit tests' }, { state: 'warn', text: '1 failing' }], icons: [{ type: 'checkmark' }] }},
-  
-  api: { sceneType: 'api', title: 'API Gateway', primaryColor: 'blue', bottomLabel: 'API Gateway Architecture',
-    elements: { metrics: [{ label: 'RPS', value: '8.4', unit: 'K' }, { label: 'P99', value: '45', unit: 'ms' }],
-      codePanel: { show: true, lines: [{ text: 'GET /api/v2/users' }, { text: 'Authorization: Bearer' }, { text: '→ 200 OK (12ms)', highlight: true }], title: 'request.http' },
-      servers: [{ label: 'Gateway', position: 'left', status: 'ok' }, { label: 'API', position: 'right', status: 'ok' }],
-      connections: [{ from: 'left', to: 'right', label: 'REST' }],
-      statusItems: [{ state: 'ok', text: 'Rate limit OK' }], icons: [{ type: 'gear' }] }},
-  
-  performance: { sceneType: 'performance', title: 'Performance', primaryColor: 'orange', bottomLabel: 'Performance Optimization',
-    elements: { metrics: [{ label: 'P99', value: '23', unit: 'ms', trend: 'down' }, { label: 'RPS', value: '45', unit: 'K', trend: 'up' }],
-      terminal: { show: true, lines: [{ text: '$ flame-graph analyze', type: 'command' }, { text: 'Hotspot: db.query()', type: 'error' }, { text: '✓ -65% latency', type: 'success' }] },
-      statusItems: [{ state: 'ok', text: 'Optimized' }, { state: 'info', text: 'Cached' }], icons: [{ type: 'lightning' }] }},
-  
-  frontend: { sceneType: 'frontend', title: 'Frontend', primaryColor: 'cyan', bottomLabel: 'Frontend Performance',
-    elements: { metrics: [{ label: 'LCP', value: '1.2', unit: 's' }, { label: 'FID', value: '45', unit: 'ms' }, { label: 'CLS', value: '0.02', unit: '' }],
-      codePanel: { show: true, lines: [{ text: 'const App = () => {' }, { text: '  return <List />;' }, { text: '}' }], title: 'App.tsx' },
-      statusItems: [{ state: 'ok', text: 'Core Web Vitals' }, { state: 'ok', text: 'Lighthouse: 98' }], icons: [{ type: 'checkmark' }] }},
-  
-  mobile: { sceneType: 'mobile', title: 'Mobile', primaryColor: 'cyan', bottomLabel: 'Mobile Performance',
-    elements: { metrics: [{ label: 'FPS', value: '60', unit: '' }, { label: 'Memory', value: '42', unit: 'MB' }],
-      codePanel: { show: true, lines: [{ text: 'func tableView(_ tv:' }, { text: '  cellForRowAt idx)' }, { text: '  { return cell }' }], title: 'TableVC.swift' },
-      statusItems: [{ state: 'ok', text: 'Buttery smooth' }, { state: 'info', text: 'iOS + Android' }], icons: [{ type: 'checkmark' }] }},
-  
-  success: { sceneType: 'success', title: 'Success', primaryColor: 'green', bottomLabel: 'Deployment Successful',
-    elements: { metrics: [{ label: 'Uptime', value: '100', unit: '%' }, { label: 'Users', value: '12.4', unit: 'K', trend: 'up' }],
-      servers: [{ label: 'Production', position: 'left', status: 'ok' }], clouds: [{ label: 'CDN', position: 'right' }],
-      connections: [{ from: 'left', to: 'right', label: 'cached' }],
-      statusItems: [{ state: 'ok', text: 'All systems go' }, { state: 'ok', text: 'Zero downtime' }], icons: [{ type: 'checkmark' }] }},
-  
-  error: { sceneType: 'error', title: 'Incident', primaryColor: 'red', bottomLabel: 'Incident: Service Down',
-    elements: { metrics: [{ label: 'Status', value: '503', unit: '' }, { label: 'Errors', value: '2.3', unit: 'K' }],
-      terminal: { show: true, lines: [{ text: '$ kubectl logs pod', type: 'command' }, { text: 'ERROR: OOMKilled', type: 'error' }] },
-      servers: [{ label: 'prod-1', position: 'left', status: 'error' }, { label: 'prod-2', position: 'right', status: 'warn' }],
-      statusItems: [{ state: 'error', text: 'Service down' }, { state: 'error', text: 'OOM killed' }], icons: [{ type: 'xmark' }] }},
-  
-  // === PEOPLE & DIALOGUE SCENES ===
-  
-  interview: { sceneType: 'interview', title: 'Technical Interview', primaryColor: 'blue', bottomLabel: 'Technical Interview',
-    elements: { 
-      people: [
-        { x: 150, y: 270, color: 'blue', pose: 'sitting', label: 'Candidate', laptop: true },
-        { x: 450, y: 270, color: 'purple', pose: 'thinking', label: 'Interviewer' }
-      ],
-      dialogues: [
-        { x: 280, y: 80, text: 'Can you explain how you would design a rate limiter?', tailDirection: 'right' },
-        { x: 50, y: 140, text: 'I would use a token bucket algorithm...', tailDirection: 'bottom-left' }
-      ]
-    }},
-  
-  codeReview: { sceneType: 'codeReview', title: 'Code Review', primaryColor: 'cyan', bottomLabel: 'Code Review Session',
-    elements: {
-      people: [
-        { x: 120, y: 280, color: 'cyan', pose: 'pointing', label: 'Reviewer' },
-        { x: 320, y: 280, color: 'green', pose: 'working', label: 'Author', laptop: true }
-      ],
-      dialogues: [
-        { x: 180, y: 60, text: 'This could be simplified using reduce()', tailDirection: 'bottom-left' }
-      ],
-      codePanel: { show: true, lines: [{ text: 'for (let i = 0; i < arr.length; i++)' }, { text: '  sum += arr[i];', highlight: true }], title: 'review.ts' }
-    }},
-  
-  pairProgramming: { sceneType: 'pairProgramming', title: 'Pair Programming', primaryColor: 'green', bottomLabel: 'Pair Programming',
-    elements: {
-      people: [
-        { x: 180, y: 280, color: 'green', pose: 'working', label: 'Driver', laptop: true },
-        { x: 380, y: 280, color: 'blue', pose: 'thinking', label: 'Navigator', coffee: true }
-      ],
-      dialogues: [
-        { x: 400, y: 80, text: 'Try extracting that into a helper function', type: 'thought' }
-      ]
-    }},
-  
-  standup: { sceneType: 'standup', title: 'Daily Standup', primaryColor: 'purple', bottomLabel: 'Daily Standup Meeting',
-    elements: {
-      team: { count: 4, startX: 100, spacing: 150, y: 270 },
-      dialogues: [
-        { x: 200, y: 50, text: 'Yesterday I fixed the auth bug', tailDirection: 'bottom-left' },
-        { x: 400, y: 100, text: 'I\'ll review the PR today', tailDirection: 'bottom-right' }
-      ]
-    }},
-  
-  mentoring: { sceneType: 'mentoring', title: 'Mentoring Session', primaryColor: 'orange', bottomLabel: 'Mentoring & Learning',
-    elements: {
-      people: [
-        { x: 200, y: 280, color: 'orange', pose: 'pointing', label: 'Mentor' },
-        { x: 450, y: 280, color: 'cyan', pose: 'thinking', label: 'Mentee', expression: 'thinking' }
-      ],
-      dialogues: [
-        { x: 100, y: 60, text: 'Always consider edge cases first', tailDirection: 'bottom-left' },
-        { x: 380, y: 130, text: 'What about null inputs?', type: 'thought' }
-      ]
-    }},
-  
-  collaboration: { sceneType: 'collaboration', title: 'Team Collaboration', primaryColor: 'cyan', bottomLabel: 'Team Collaboration',
-    elements: {
-      team: { count: 3, startX: 150, spacing: 180, y: 270, samePose: false },
-      dialogues: [
-        { x: 250, y: 50, text: 'Let\'s split this into microservices', tailDirection: 'bottom-left' },
-        { x: 450, y: 100, text: 'Good idea!', tailDirection: 'bottom-right' }
-      ],
-      statusItems: [{ state: 'ok', text: 'Sprint 12' }, { state: 'info', text: '3 days left' }]
-    }},
-  
-  debugging_pair: { sceneType: 'debugging_pair', title: 'Debugging Together', primaryColor: 'red', bottomLabel: 'Collaborative Debugging',
-    elements: {
-      people: [
-        { x: 150, y: 280, color: 'red', pose: 'working', label: 'Dev 1', laptop: true, expression: 'surprised' },
-        { x: 400, y: 280, color: 'orange', pose: 'pointing', label: 'Dev 2' }
-      ],
-      dialogues: [
-        { x: 50, y: 60, text: 'Found it! Missing await', tailDirection: 'bottom-left' },
-        { x: 350, y: 120, text: 'That explains the race condition!', tailDirection: 'bottom-right' }
-      ],
-      terminal: { show: true, lines: [{ text: 'TypeError: undefined', type: 'error' }] }
-    }},
-  
-  presentation: { sceneType: 'presentation', title: 'Tech Talk', primaryColor: 'blue', bottomLabel: 'Technical Presentation',
-    elements: {
-      people: [
-        { x: 550, y: 280, color: 'blue', pose: 'pointing', label: 'Speaker' }
-      ],
-      dialogues: [
-        { x: 400, y: 50, text: 'Event-driven architecture enables loose coupling', tailDirection: 'bottom-right' }
-      ],
-      codePanel: { show: true, lines: [{ text: 'eventBus.emit("order.created")' }, { text: 'eventBus.on("order.created", handler)' }], title: 'events.ts' }
-    }},
-  
-  default: { sceneType: 'default', title: 'System Overview', primaryColor: 'cyan', bottomLabel: 'System Overview',
-    elements: { metrics: [{ label: 'Requests', value: '8.2', unit: 'K/s' }, { label: 'Latency', value: '12', unit: 'ms' }],
-      servers: [{ label: 'API', position: 'left', status: 'ok' }], databases: [{ label: 'Database', position: 'right' }],
-      connections: [{ from: 'left', to: 'right', label: 'query' }],
-      statusItems: [{ state: 'ok', text: 'All healthy' }], icons: [{ type: 'gear' }] }}
+  // Security: Firewall flow
+  security: (title) => `
+    ${card(80, 120, 120, 90, 'globe', 'Internet', C.muted)}
+    ${card(290, 120, 120, 90, 'shield', 'Firewall', C.green)}
+    ${card(500, 120, 120, 90, 'lock', 'Auth', C.purple)}
+    ${arrow(200, 165, 290, 165, C.muted, 'HTTPS')}
+    ${arrow(410, 165, 500, 165, C.green, 'mTLS')}
+    ${metric(100, 250, 'Blocked', '847', '', C.red)}
+    ${metric(250, 250, 'Auth Rate', '99.2', '%', C.green)}
+    ${metric(400, 250, 'Threats', '0', '', C.green)}
+    ${status(280, 340, 'ok', 'Zero Trust • All traffic encrypted')}
+    ${titleBar(title)}
+  `,
+
+
+  // Debugging: Code + Terminal side by side
+  debugging: (title) => `
+    ${codeSnippet(40, 50, 300, 130, [
+      { t: 'async function fetch() {' },
+      { t: '  const res = await api.get();', hl: true },
+      { t: '  return res.data;' },
+      { t: '}' }
+    ], 'debug.ts')}
+    ${terminalBlock(360, 50, 300, 130, [
+      { t: 'node debug.ts' },
+      { t: 'TypeError: Cannot read undefined', err: true },
+      { t: '    at fetch (debug.ts:2)', err: true }
+    ])}
+    ${card(150, 220, 120, 80, 'alert', 'Bug Found', C.red)}
+    ${card(430, 220, 120, 80, 'check', 'Fixed', C.green)}
+    ${arrow(270, 260, 430, 260, C.orange, 'debug')}
+    ${status(280, 340, 'ok', 'Issue resolved')}
+    ${titleBar(title)}
+  `,
+
+  // Testing: Test results
+  testing: (title) => `
+    ${codeSnippet(40, 50, 280, 120, [
+      { t: 'describe("API", () => {' },
+      { t: '  it("returns 200", async () => {', hl: true },
+      { t: '    expect(res.status).toBe(200);' },
+      { t: '  });' }
+    ], 'api.test.ts')}
+    ${metric(360, 50, 'Passed', '141', '', C.green)}
+    ${metric(490, 50, 'Failed', '1', '', C.red)}
+    ${metric(360, 120, 'Coverage', '87', '%', C.blue)}
+    ${metric(490, 120, 'Duration', '4.2', 's', C.muted)}
+    ${card(150, 220, 120, 80, 'target', 'Unit', C.green)}
+    ${card(310, 220, 120, 80, 'layers', 'Integration', C.blue)}
+    ${card(470, 220, 120, 80, 'globe', 'E2E', C.purple)}
+    ${status(280, 340, 'ok', 'All test suites passed')}
+    ${titleBar(title)}
+  `,
+
+  // Performance: Metrics focused
+  performance: (title) => `
+    ${metric(80, 60, 'P99 Latency', '23', 'ms', C.green)}
+    ${metric(210, 60, 'RPS', '45K', '', C.blue)}
+    ${metric(340, 60, 'Error Rate', '0.1', '%', C.green)}
+    ${metric(470, 60, 'CPU', '45', '%', C.orange)}
+    ${terminalBlock(120, 150, 460, 100, [
+      { t: '$ perf analyze --profile' },
+      { t: 'Hotspot: db.query() - 45% CPU', err: true },
+      { t: '✓ Optimized: -65% latency', ok: true }
+    ])}
+    ${card(200, 280, 120, 70, 'zap', 'Optimized', C.green)}
+    ${card(380, 280, 120, 70, 'activity', 'Monitoring', C.blue)}
+    ${titleBar(title)}
+  `,
+
+  // API: Request/Response
+  api: (title) => `
+    ${codeSnippet(40, 50, 300, 120, [
+      { t: 'GET /api/v2/users HTTP/1.1' },
+      { t: 'Authorization: Bearer ***', hl: true },
+      { t: 'Accept: application/json' }
+    ], 'request.http')}
+    ${codeSnippet(360, 50, 300, 120, [
+      { t: '200 OK (12ms)' },
+      { t: '{ "users": [...] }', hl: true },
+      { t: 'Content-Type: application/json' }
+    ], 'response')}
+    ${metric(80, 200, 'RPS', '8.4K', '', C.blue)}
+    ${metric(210, 200, 'P99', '45', 'ms', C.green)}
+    ${metric(340, 200, 'Errors', '0.01', '%', C.green)}
+    ${metric(470, 200, 'Cache', '78', '%', C.cyan)}
+    ${status(280, 300, 'ok', 'API healthy • Rate limit OK')}
+    ${titleBar(title)}
+  `,
+
+  // Monitoring: Dashboard
+  monitoring: (title) => `
+    ${metric(80, 50, 'Uptime', '99.99', '%', C.green)}
+    ${metric(210, 50, 'Alerts', '0', '', C.green)}
+    ${metric(340, 50, 'P95', '23', 'ms', C.blue)}
+    ${metric(470, 50, 'Memory', '62', '%', C.orange)}
+    ${card(120, 150, 120, 80, 'activity', 'Metrics', C.blue)}
+    ${card(290, 150, 120, 80, 'eye', 'Traces', C.purple)}
+    ${card(460, 150, 120, 80, 'terminal', 'Logs', C.cyan)}
+    ${metric(80, 270, 'Events', '1.2M', '/day', C.muted)}
+    ${metric(210, 270, 'Retention', '30', 'days', C.muted)}
+    ${status(380, 300, 'ok', 'All systems healthy')}
+    ${titleBar(title)}
+  `,
+
+
+  // Frontend: Web vitals
+  frontend: (title) => `
+    ${metric(80, 50, 'LCP', '1.2', 's', C.green)}
+    ${metric(210, 50, 'FID', '45', 'ms', C.green)}
+    ${metric(340, 50, 'CLS', '0.02', '', C.green)}
+    ${metric(470, 50, 'TTI', '2.1', 's', C.orange)}
+    ${codeSnippet(150, 140, 400, 100, [
+      { t: 'const App = () => {' },
+      { t: '  return <Suspense fallback={<Loader />}>', hl: true },
+      { t: '    <MainContent />' },
+      { t: '  </Suspense>;' }
+    ], 'App.tsx')}
+    ${card(200, 280, 120, 70, 'globe', 'Browser', C.cyan)}
+    ${card(380, 280, 120, 70, 'zap', 'Optimized', C.green)}
+    ${titleBar(title)}
+  `,
+
+  // Success: Celebration
+  success: (title) => `
+    ${card(290, 60, 120, 100, 'check', 'Success!', C.green)}
+    ${metric(80, 200, 'Uptime', '100', '%', C.green)}
+    ${metric(210, 200, 'Users', '12.4K', '', C.blue)}
+    ${metric(340, 200, 'Revenue', '+24', '%', C.green)}
+    ${metric(470, 200, 'NPS', '72', '', C.purple)}
+    ${status(200, 320, 'ok', 'Deployment successful')}
+    ${status(400, 320, 'ok', 'Zero downtime')}
+    ${titleBar(title)}
+  `,
+
+  // Error: Incident
+  error: (title) => `
+    ${card(290, 50, 120, 90, 'alert', 'Incident', C.red)}
+    ${terminalBlock(150, 160, 400, 100, [
+      { t: '$ kubectl logs pod/api-7d8f9' },
+      { t: 'ERROR: OOMKilled - Exit code 137', err: true },
+      { t: 'Memory limit exceeded: 512Mi', err: true }
+    ])}
+    ${metric(100, 290, 'Status', '503', '', C.red)}
+    ${metric(240, 290, 'Errors', '2.3K', '', C.red)}
+    ${metric(380, 290, 'MTTR', '4.2', 'min', C.orange)}
+    ${status(280, 370, 'error', 'Service degraded • Investigating')}
+    ${titleBar(title)}
+  `,
+
+  // Default: Simple overview
+  default: (title) => `
+    ${card(290, 80, 120, 100, 'layers', 'System', C.blue)}
+    ${metric(80, 220, 'Requests', '8.2K', '/s', C.blue)}
+    ${metric(220, 220, 'Latency', '12', 'ms', C.green)}
+    ${metric(360, 220, 'Errors', '0.1', '%', C.green)}
+    ${metric(500, 220, 'Uptime', '99.9', '%', C.green)}
+    ${status(280, 340, 'ok', 'All systems operational')}
+    ${titleBar(title)}
+  `,
 };
 
 
-// ============== SVG GENERATION ==============
-
-function generateSVG(sceneSpec) {
-  const content = renderScene(sceneSpec);
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
-  <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:${COLORS.bg}"/>
-      <stop offset="100%" style="stop-color:#161b22"/>
-    </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="2" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-  </defs>
-  <rect width="${W}" height="${H}" fill="url(#bgGrad)"/>
-  <g filter="url(#glow)">${content}</g>
-</svg>`;
-}
-
-async function ensureImagesDir() {
-  try {
-    await fs.promises.mkdir(IMAGES_DIR, { recursive: true });
-  } catch (err) {
-    if (err.code !== 'EEXIST') throw err;
-  }
-}
-
-// ============== KEYWORD-BASED SCENE DETECTION (Fallback) ==============
+// ============== KEYWORD DETECTION ==============
 
 const KEYWORDS = {
-  debugging: ['debug', 'bug', 'error', 'fix', 'issue', 'trace', 'breakpoint', 'crash', 'exception'],
-  deployment: ['deploy', 'ci', 'cd', 'pipeline', 'release', 'ship', 'production', 'staging', 'github actions'],
-  scaling: ['scale', 'load', 'traffic', 'kubernetes', 'k8s', 'container', 'docker', 'cluster', 'replicas'],
-  database: ['database', 'sql', 'postgres', 'mysql', 'mongo', 'query', 'migration', 'schema', 'orm'],
-  security: ['security', 'auth', 'authentication', 'jwt', 'oauth', 'encrypt', 'ssl', 'tls', 'firewall'],
-  performance: ['performance', 'optimize', 'speed', 'latency', 'cache', 'profil', 'benchmark', 'bottleneck'],
-  testing: ['test', 'jest', 'vitest', 'playwright', 'cypress', 'coverage', 'unit', 'integration', 'e2e'],
-  success: ['success', 'complete', 'done', 'achieve', 'launch', 'milestone', 'shipped'],
-  error: ['fail', 'crash', 'down', 'outage', 'incident', '500', '503', 'timeout', 'oom'],
-  mobile: ['mobile', 'ios', 'android', 'swift', 'kotlin', 'react native', 'flutter'],
-  frontend: ['frontend', 'react', 'vue', 'angular', 'svelte', 'css', 'tailwind', 'component', 'ui'],
-  api: ['api', 'rest', 'graphql', 'endpoint', 'gateway', 'microservice', 'grpc', 'webhook'],
-  monitoring: ['monitor', 'observ', 'metric', 'log', 'alert', 'grafana', 'datadog', 'prometheus'],
-  architecture: ['architecture', 'design', 'pattern', 'system', 'infrastructure', 'diagram', 'flow'],
-  // People & dialogue scenes
-  interview: ['interview', 'hiring', 'candidate', 'recruiter', 'behavioral', 'technical interview', 'whiteboard'],
-  codeReview: ['code review', 'pr review', 'pull request', 'review comment', 'feedback', 'approve'],
-  pairProgramming: ['pair programming', 'pairing', 'mob programming', 'driver', 'navigator', 'xp'],
-  standup: ['standup', 'daily', 'scrum', 'sprint', 'agile', 'retrospective', 'planning'],
-  mentoring: ['mentor', 'mentee', 'coaching', 'learning', 'teaching', 'onboarding', 'junior', 'senior'],
-  collaboration: ['collaboration', 'teamwork', 'team', 'together', 'brainstorm', 'workshop'],
-  debugging_pair: ['debug together', 'pair debug', 'troubleshoot together', 'investigate'],
-  presentation: ['presentation', 'talk', 'conference', 'meetup', 'demo', 'showcase', 'lightning talk'],
+  architecture: ['architecture', 'design', 'pattern', 'system', 'infrastructure', 'microservice', 'distributed'],
+  scaling: ['scale', 'load', 'traffic', 'kubernetes', 'k8s', 'container', 'docker', 'cluster', 'replicas', 'horizontal', 'auto-scaling'],
+  database: ['database', 'sql', 'postgres', 'mysql', 'mongo', 'query', 'migration', 'schema', 'orm', 'redis', 'cache', 'replication'],
+  deployment: ['deploy', 'ci', 'cd', 'pipeline', 'release', 'ship', 'production', 'staging', 'github actions', 'jenkins', 'devops'],
+  security: ['security', 'auth', 'authentication', 'jwt', 'oauth', 'encrypt', 'ssl', 'tls', 'firewall', 'vulnerability', 'zero trust'],
+  debugging: ['debug', 'bug', 'error', 'fix', 'issue', 'trace', 'breakpoint', 'crash', 'exception', 'troubleshoot', 'root cause'],
+  testing: ['test', 'jest', 'vitest', 'playwright', 'cypress', 'coverage', 'unit', 'integration', 'e2e', 'tdd', 'mock'],
+  performance: ['performance', 'optimize', 'speed', 'latency', 'cache', 'profil', 'benchmark', 'bottleneck', 'memory', 'cpu'],
+  api: ['api', 'rest', 'graphql', 'endpoint', 'gateway', 'grpc', 'webhook', 'http', 'request', 'response'],
+  monitoring: ['monitor', 'observ', 'metric', 'log', 'alert', 'grafana', 'datadog', 'prometheus', 'dashboard', 'trace'],
+  frontend: ['frontend', 'react', 'vue', 'angular', 'svelte', 'css', 'tailwind', 'component', 'ui', 'web vitals', 'lcp', 'fid'],
+  success: ['success', 'complete', 'done', 'achieve', 'launch', 'milestone', 'shipped', 'celebrate', 'win'],
+  error: ['fail', 'crash', 'down', 'outage', 'incident', '500', '503', 'timeout', 'oom', 'killed', 'alert'],
 };
 
 function detectSceneType(title, content = '') {
   const text = `${title} ${content}`.toLowerCase();
-  let bestScene = 'default';
-  let bestScore = 0;
+  let best = 'default', score = 0;
 
-  for (const [scene, keywords] of Object.entries(KEYWORDS)) {
-    let score = 0;
-    for (const kw of keywords) {
-      if (text.includes(kw)) {
-        score += title.toLowerCase().includes(kw) ? 3 : 1;
-      }
+  for (const [scene, kws] of Object.entries(KEYWORDS)) {
+    let s = 0;
+    for (const kw of kws) {
+      if (text.includes(kw)) s += title.toLowerCase().includes(kw) ? 3 : 1;
     }
-    if (score > bestScore) {
-      bestScore = score;
-      bestScene = scene;
-    }
+    if (s > score) { score = s; best = scene; }
   }
-  return bestScene;
+  return best;
 }
 
-// ============== MAIN EXPORTS ==============
+// ============== SVG GENERATION ==============
 
-/**
- * Generate illustration using AI to create dynamic scene specification
- * @param {string} title - Blog post title
- * @param {string} content - Blog post content
- * @param {string} filename - Output filename (optional)
- * @param {object} options - Additional options (placement, channel, realWorldExample)
- * @returns {Promise<{path: string, scene: string, aiGenerated: boolean}>}
- */
+function generateSVG(sceneType, title) {
+  const scene = SCENES[sceneType] || SCENES.default;
+  const content = scene(title);
+  
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${C.bg}"/>
+      <stop offset="100%" stop-color="${C.card}"/>
+    </linearGradient>
+  </defs>
+  <rect width="${W}" height="${H}" fill="url(#bg)"/>
+  ${content}
+</svg>`;
+}
+
+async function ensureImagesDir() {
+  try { await fs.promises.mkdir(IMAGES_DIR, { recursive: true }); } catch {}
+}
+
+// ============== EXPORTS ==============
+
 export async function generateIllustration(title, content = '', filename = null, options = {}) {
   await ensureImagesDir();
   
-  let sceneSpec;
-  let aiGenerated = false;
+  const sceneType = detectSceneType(title, content);
+  const svg = generateSVG(sceneType, title);
   
-  try {
-    // Use AI to generate scene specification
-    console.log(`🤖 Generating AI scene for: ${title.substring(0, 50)}...`);
-    
-    const aiResult = await ai.run('illustrationScene', {
-      title,
-      content: content.substring(0, 2000),
-      placement: options.placement || 'after-intro',
-      channel: options.channel || 'general',
-      realWorldExample: options.realWorldExample
-    }, { cache: true });
-    
-    if (aiResult && aiResult.sceneType) {
-      sceneSpec = aiResult;
-      aiGenerated = true;
-      console.log(`✓ AI generated scene: ${sceneSpec.sceneType} (${sceneSpec.primaryColor})`);
-    } else {
-      throw new Error('Invalid AI response');
-    }
-  } catch (err) {
-    // Fallback to keyword-based detection
-    console.log(`⚠️ AI scene generation failed: ${err.message}`);
-    console.log(`↳ Using keyword-based fallback...`);
-    
-    const sceneType = detectSceneType(title, content);
-    sceneSpec = FALLBACK_SCENES[sceneType] || FALLBACK_SCENES.default;
-    console.log(`✓ Fallback scene: ${sceneSpec.sceneType}`);
-  }
-  
-  const svg = generateSVG(sceneSpec);
-  
-  const hash = crypto.createHash('md5').update(title).digest('hex').slice(0, 8);
+  const hash = crypto.createHash('md5').update(String(title)).digest('hex').slice(0, 8);
   const outputFilename = filename || `img-${hash}`;
   const outputPath = path.join(IMAGES_DIR, `${outputFilename}.svg`);
   
   await fs.promises.writeFile(outputPath, svg, 'utf-8');
   
-  return {
-    path: outputPath,
-    scene: sceneSpec.sceneType,
-    filename: `${outputFilename}.svg`,
-    aiGenerated
-  };
+  return { path: outputPath, scene: sceneType, filename: `${outputFilename}.svg`, aiGenerated: false };
 }
 
-/**
- * Generate illustrations for multiple blog posts
- */
 export async function generateBlogIllustrations(posts) {
   await ensureImagesDir();
   const results = [];
   
   for (const post of posts) {
     try {
-      const result = await generateIllustration(
-        post.title,
-        post.content || '',
-        `img-${post.slug}`,
-        { placement: post.placement, channel: post.channel, realWorldExample: post.realWorldExample }
-      );
+      const result = await generateIllustration(post.title, post.content || '', post.slug ? `img-${post.slug}` : null);
       results.push({ slug: post.slug, ...result });
-      console.log(`✓ Generated: ${result.filename} (${result.scene}, AI: ${result.aiGenerated})`);
     } catch (err) {
-      console.error(`✗ Failed for ${post.slug}: ${err.message}`);
       results.push({ slug: post.slug, error: err.message });
     }
   }
   return results;
 }
 
-/**
- * Generate a specific scene by name (for testing/preview)
- */
 export function generateSceneSVG(sceneName) {
-  const spec = FALLBACK_SCENES[sceneName] || FALLBACK_SCENES.default;
-  return generateSVG(spec);
+  return generateSVG(sceneName, `${sceneName.charAt(0).toUpperCase() + sceneName.slice(1)} Overview`);
 }
 
-/**
- * Get available scene types
- */
 export function getAvailableScenes() {
-  return Object.keys(FALLBACK_SCENES);
+  return Object.keys(SCENES);
 }
 
-/**
- * Detect scene type from content (keyword-based)
- */
 export { detectSceneType as detectScene };
 
-export default {
-  generateIllustration,
-  generateBlogIllustrations,
-  generateSceneSVG,
-  getAvailableScenes,
-  detectScene: detectSceneType,
-};
+export default { generateIllustration, generateBlogIllustrations, generateSceneSVG, getAvailableScenes, detectScene: detectSceneType };

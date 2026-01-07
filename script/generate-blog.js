@@ -200,7 +200,8 @@ async function initBlogPostsTable() {
     { name: 'social_snippet', type: 'TEXT' },
     { name: 'diagram_type', type: 'TEXT' },
     { name: 'diagram_label', type: 'TEXT' },
-    { name: 'images', type: 'TEXT' }
+    { name: 'images', type: 'TEXT' },
+    { name: 'svg_content', type: 'TEXT' }  // Store SVG content to avoid regeneration
   ];
   
   for (const col of newColumns) {
@@ -274,13 +275,14 @@ async function getAllBlogPosts() {
     funFact: row.fun_fact,
     sources: row.sources ? JSON.parse(row.sources) : [],
     images: row.images ? JSON.parse(row.images) : [],
+    svgContent: row.svg_content ? JSON.parse(row.svg_content) : {},  // Map of filename -> SVG content
     socialSnippet: row.social_snippet ? JSON.parse(row.social_snippet) : null,
     createdAt: row.created_at
   }));
 }
 
 // Save blog post to database
-async function saveBlogPost(questionId, blogContent, question) {
+async function saveBlogPost(questionId, blogContent, question, svgContent = {}) {
   const now = new Date().toISOString();
   const diagram = blogContent.diagram || question.diagram;
   await writeClient.execute({
@@ -288,8 +290,8 @@ async function saveBlogPost(questionId, blogContent, question) {
           (question_id, title, slug, introduction, sections, conclusion, 
            meta_description, channel, difficulty, tags, diagram, quick_reference,
            glossary, real_world_example, fun_fact, sources, social_snippet, 
-           diagram_type, diagram_label, images, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           diagram_type, diagram_label, images, svg_content, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       questionId,
       blogContent.title,
@@ -311,8 +313,17 @@ async function saveBlogPost(questionId, blogContent, question) {
       blogContent.diagramType || null,
       blogContent.diagramLabel || null,
       JSON.stringify(blogContent.images || []),
+      JSON.stringify(svgContent),
       now
     ]
+  });
+}
+
+// Update SVG content for existing blog post
+async function updateSvgContent(questionId, svgContent) {
+  await writeClient.execute({
+    sql: `UPDATE blog_posts SET svg_content = ? WHERE question_id = ?`,
+    args: [JSON.stringify(svgContent), questionId]
   });
 }
 
@@ -1636,13 +1647,27 @@ async function main() {
         console.log(`   ✅ ${validatedSources.length} valid sources`);
         
         // Images are now generated as SVGs in the blog-graph pipeline
-        // No need to download external images
+        // Read SVG content from generated files to cache in database
+        const svgContent = {};
         if (blogContent.images && blogContent.images.length > 0) {
           console.log(`🖼️ ${blogContent.images.length} cartoon illustrations generated`);
+          for (const img of blogContent.images) {
+            if (img && img.url && img.url.startsWith('/images/') && img.url.endsWith('.svg')) {
+              const filename = img.url.replace('/images/', '');
+              const svgPath = path.join(OUTPUT_DIR, 'images', filename);
+              try {
+                if (fs.existsSync(svgPath)) {
+                  svgContent[filename] = fs.readFileSync(svgPath, 'utf-8');
+                }
+              } catch (err) {
+                console.log(`   ⚠️ Could not read SVG ${filename}: ${err.message}`);
+              }
+            }
+          }
         }
         
         console.log('💾 Saving to database...');
-        await saveBlogPost(question.id, blogContent, question);
+        await saveBlogPost(question.id, blogContent, question, svgContent);
         console.log('✅ Blog post saved!\n');
         blogGenerated = true;
         break;
@@ -1677,32 +1702,60 @@ async function main() {
     return;
   }
   
-  // Regenerate SVG images for all articles
-  console.log('\n🎨 Regenerating cartoon illustrations...');
-  let totalImages = 0;
+  // Write SVG images - use cached from DB or generate new ones
+  console.log('\n🎨 Processing cartoon illustrations...');
+  let cachedCount = 0;
+  let generatedCount = 0;
+  
   for (const article of articles) {
     if (article.images && article.images.length > 0) {
+      const svgContent = article.svgContent || {};
+      let needsUpdate = false;
+      
       for (const img of article.images) {
         if (img && img.url && img.url.startsWith('/images/') && img.url.endsWith('.svg')) {
-          // Extract filename from URL and regenerate with same name
           const filename = img.url.replace('/images/', '');
-          try {
-            generateIllustration({
-              title: article.blogTitle,
-              context: img.alt || article.blogIntro || article.blogTitle,
-              postId: article.id,
-              placement: img.placement || 'after-intro',
-              filename: filename
-            });
-            totalImages++;
-          } catch (err) {
-            console.log(`   ⚠️ Failed to regenerate: ${img.url}`);
+          const filenameNoExt = filename.replace('.svg', '');
+          const outputPath = path.join(OUTPUT_DIR, 'images', filename);
+          
+          // Check if SVG is cached in database
+          if (svgContent[filename]) {
+            // Write cached SVG to file
+            fs.writeFileSync(outputPath, svgContent[filename]);
+            cachedCount++;
+          } else {
+            // Generate new SVG
+            try {
+              const result = await generateIllustration(
+                article.blogTitle,
+                img.alt || article.blogIntro || article.blogTitle,
+                filenameNoExt,
+                { placement: img.placement || 'after-intro', channel: article.channel }
+              );
+              
+              // Read the generated SVG and cache it
+              const svgData = fs.readFileSync(result.path, 'utf-8');
+              svgContent[filename] = svgData;
+              needsUpdate = true;
+              generatedCount++;
+            } catch (err) {
+              console.log(`   ⚠️ Failed to generate ${img.url}: ${err.message}`);
+            }
           }
+        }
+      }
+      
+      // Update database with new SVG content if any were generated
+      if (needsUpdate) {
+        try {
+          await updateSvgContent(article.id, svgContent);
+        } catch (err) {
+          console.log(`   ⚠️ Failed to cache SVGs for ${article.id}: ${err.message}`);
         }
       }
     }
   }
-  console.log(`   ✅ Regenerated ${totalImages} illustrations`);
+  console.log(`   ✅ ${cachedCount} from cache, ${generatedCount} newly generated`);
   
   // Generate CSS with default theme
   fs.writeFileSync(path.join(OUTPUT_DIR, 'style.css'), generateCSS());

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Test SVG Generator - People & Dialogue Scenes
+ * Test SVG Generator - Simple Clean Scenes
  * Run: node script/test-svg-generator.js
  */
 
@@ -21,7 +21,7 @@ if (!fs.existsSync(OUTPUT_DIR)) {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 }
 
-console.log('🧪 Testing SVG Generator - People & Dialogue Scenes\n');
+console.log('🧪 Testing SVG Generator - Simple Clean Scenes\n');
 
 // Test 1: List all available scenes
 console.log('📋 Available scenes:');
@@ -46,40 +46,38 @@ for (const sceneName of scenes) {
   }
 }
 
-
-// Test 3: Test keyword detection for new scenes
-console.log('\n🔍 Testing keyword detection for people scenes:');
+// Test 3: Test keyword detection
+console.log('\n🔍 Testing keyword detection:');
 const testCases = [
-  { title: 'How to ace your technical interview', expected: 'interview' },
-  { title: 'Best practices for code review', expected: 'codeReview' },
-  { title: 'Pair programming tips for remote teams', expected: 'pairProgramming' },
-  { title: 'Running effective daily standups', expected: 'standup' },
-  { title: 'Mentoring junior developers', expected: 'mentoring' },
-  { title: 'Team collaboration in distributed systems', expected: 'collaboration' },
-  { title: 'Debugging production issues together', expected: 'debugging' },
-  { title: 'Giving a great tech talk', expected: 'presentation' },
-  // Backward compatibility - old scenes should still work
   { title: 'Kubernetes scaling strategies', expected: 'scaling' },
   { title: 'Database optimization techniques', expected: 'database' },
   { title: 'CI/CD pipeline best practices', expected: 'deployment' },
+  { title: 'Debugging production issues', expected: 'debugging' },
+  { title: 'API gateway design patterns', expected: 'api' },
+  { title: 'Security best practices for auth', expected: 'security' },
+  { title: 'Performance optimization tips', expected: 'performance' },
+  { title: 'System architecture overview', expected: 'architecture' },
+  { title: 'Unit testing with Jest', expected: 'testing' },
+  { title: 'Monitoring and observability', expected: 'monitoring' },
 ];
+
 
 for (const tc of testCases) {
   const detected = detectScene(tc.title);
   const match = detected === tc.expected ? '✅' : '⚠️';
-  console.log(`   ${match} "${tc.title.substring(0, 40)}..." -> ${detected} (expected: ${tc.expected})`);
+  console.log(`   ${match} "${tc.title.substring(0, 35)}..." -> ${detected} (expected: ${tc.expected})`);
 }
 
 // Test 4: Verify SVG structure
 console.log('\n🔬 Verifying SVG structure...');
-const interviewSvg = generateSceneSVG('interview');
+const testSvg = generateSceneSVG('architecture');
 const checks = [
-  { name: 'Has SVG root', test: interviewSvg.includes('<svg') },
-  { name: 'Has viewBox', test: interviewSvg.includes('viewBox') },
-  { name: 'Has person class', test: interviewSvg.includes('class="person"') },
-  { name: 'Has speech-bubble', test: interviewSvg.includes('class="speech-bubble"') },
-  { name: 'Has bottom label', test: interviewSvg.includes('Technical Interview') },
-  { name: 'Valid XML closing', test: interviewSvg.includes('</svg>') },
+  { name: 'Has SVG root', test: testSvg.includes('<svg') },
+  { name: 'Has viewBox', test: testSvg.includes('viewBox="0 0 700 380"') },
+  { name: 'Has background gradient', test: testSvg.includes('bgGrad') },
+  { name: 'Has icon boxes', test: testSvg.includes('rect') },
+  { name: 'Has labels', test: testSvg.includes('<text') },
+  { name: 'Valid XML closing', test: testSvg.includes('</svg>') },
 ];
 
 for (const check of checks) {
@@ -99,5 +97,5 @@ if (failed > 0) {
 } else {
   console.log('\n✅ All tests passed!');
   console.log('\n💡 Open the SVG files in a browser to visually inspect:');
-  console.log(`   open ${OUTPUT_DIR}/test-interview.svg`);
+  console.log(`   open ${OUTPUT_DIR}/test-architecture.svg`);
 }

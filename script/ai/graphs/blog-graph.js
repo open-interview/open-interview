@@ -12,7 +12,7 @@
 import { StateGraph, END, START } from '@langchain/langgraph';
 import { Annotation } from '@langchain/langgraph';
 import ai from '../index.js';
-import { generateBlogIllustrations, generateBlogIllustrationsWithAI } from '../utils/blog-illustration-generator.js';
+import { generateBlogIllustrations } from '../utils/blog-illustration-generator.js';
 import vectorDB from '../services/vector-db.js';
 
 /**
@@ -327,7 +327,7 @@ async function validateCitationsNode(state) {
 /**
  * Node: Generate cartoon-style SVG images for the blog
  * Creates contextual illustrations based on blog content
- * Uses AI-powered scene selection when USE_AI_SCENES env var is set
+ * Uses AI-powered scene selection for dynamic, contextual illustrations
  */
 async function validateImagesNode(state) {
   console.log('\n🖼️ [GENERATE_IMAGES] Creating cartoon-style illustrations...');
@@ -337,37 +337,82 @@ async function validateImagesNode(state) {
   }
   
   let images = state.blogContent.images || [];
-  console.log(`   Found ${images.length} images from AI`);
+  console.log(`   Found ${images.length} existing images`);
   
   // Filter to only keep local images (already generated SVGs)
   let validImages = images.filter(img => img?.url?.startsWith('/images/'));
   
-  // Generate new cartoon-style SVG images
+  // Generate new cartoon-style SVG images using the full-featured generator
   console.log(`   🎨 Generating cartoon-style SVG illustrations...`);
   
   try {
-    // Use AI-powered generation if enabled, otherwise use keyword-based
-    const useAI = process.env.USE_AI_SCENES === 'true';
-    let generatedImages;
+    // Prepare blog content for illustration generation
+    // The generator expects an array of posts with title, content, slug, etc.
+    const blogPosts = [];
     
-    if (useAI) {
-      console.log(`   🤖 AI-powered scene selection enabled`);
-      generatedImages = await generateBlogIllustrationsWithAI(state.blogContent, state.questionId);
-    } else {
-      generatedImages = generateBlogIllustrations(state.blogContent, state.questionId);
+    // Main hero illustration (after intro)
+    const mainContent = [
+      state.blogContent.introduction || '',
+      ...(state.blogContent.sections || []).map(s => `${s.title || ''}\n${s.content || ''}`),
+      state.blogContent.conclusion || ''
+    ].join('\n');
+    
+    blogPosts.push({
+      title: state.blogContent.title || state.question,
+      content: mainContent,
+      slug: state.questionId || 'main',
+      placement: 'after-intro',
+      channel: state.channel,
+      realWorldExample: state.realWorldCase ? {
+        company: state.realWorldCase.company,
+        scenario: state.realWorldCase.scenario,
+        lesson: state.realWorldCase.lesson
+      } : state.blogContent.realWorldExample
+    });
+    
+    // Generate section-specific illustrations for longer posts
+    const sections = state.blogContent.sections || [];
+    if (sections.length >= 3) {
+      // Add illustration for the middle section
+      const midIndex = Math.floor(sections.length / 2);
+      const midSection = sections[midIndex];
+      if (midSection) {
+        blogPosts.push({
+          title: midSection.title || state.blogContent.title,
+          content: midSection.content || '',
+          slug: `${state.questionId || 'section'}-${midIndex}`,
+          placement: 'mid-content',
+          channel: state.channel
+        });
+      }
     }
     
-    validImages = [...validImages, ...generatedImages];
-    console.log(`   ✅ Generated ${generatedImages.length} cartoon illustrations`);
+    // Generate illustrations using the AI-powered generator
+    const generatedImages = await generateBlogIllustrations(blogPosts);
+    
+    // Convert results to image format expected by blog
+    const newImages = generatedImages
+      .filter(img => !img.error && img.filename)
+      .map((img, index) => ({
+        url: `/images/${img.filename}`,
+        alt: `${state.blogContent.title} - Illustration ${index + 1}`,
+        caption: `${img.scene} scene${img.aiGenerated ? ' (AI-generated)' : ''}`,
+        placement: blogPosts[index]?.placement || 'after-intro'
+      }));
+    
+    validImages = [...validImages, ...newImages];
+    console.log(`   ✅ Generated ${newImages.length} cartoon illustrations`);
+    
+    // Log scene types for debugging
+    generatedImages.forEach(img => {
+      if (!img.error) {
+        console.log(`      - ${img.filename}: ${img.scene} scene (AI: ${img.aiGenerated})`);
+      }
+    });
+    
   } catch (error) {
     console.log(`   ⚠️ SVG generation failed: ${error.message}`);
-    // Fallback to basic generation
-    try {
-      const fallbackImages = generateBlogIllustrations(state.blogContent, state.questionId);
-      validImages = [...validImages, ...fallbackImages];
-    } catch (e) {
-      console.log(`   ❌ Fallback also failed: ${e.message}`);
-    }
+    console.log(`   Stack: ${error.stack}`);
   }
   
   return {
