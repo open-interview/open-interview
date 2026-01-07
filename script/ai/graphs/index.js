@@ -19,6 +19,9 @@ export { createLinkedInGraph, generateLinkedInPost } from './linkedin-graph.js';
 // Question generation
 export { createQuestionGraph, generateQuestion } from './question-graph.js';
 
+// Certification question generation
+export { createCertificationQuestionGraph, generateCertificationQuestions } from './certification-question-graph.js';
+
 // Coding challenge generation
 export { createCodingChallengeGraph, generateCodingChallenge } from './coding-challenge-graph.js';
 

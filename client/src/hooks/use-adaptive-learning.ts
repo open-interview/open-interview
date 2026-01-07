@@ -64,7 +64,7 @@ export interface AnswerRecord {
 export interface AdaptiveLearningState {
   answerHistory: AnswerRecord[];
   topicMastery: Record<string, TopicMastery>;
-  learningPath: LearningPath | null;
+  learningPath: LearningPath;
   lastUpdated: string;
 }
 
@@ -74,6 +74,33 @@ export interface AdaptiveLearningState {
 
 const STORAGE_KEY = 'adaptive-learning-state';
 const MIN_ANSWERS_FOR_ANALYSIS = 5;
+
+// Default learning path for new users who haven't answered enough questions
+const DEFAULT_LEARNING_PATH: LearningPath = {
+  readinessScore: 0,
+  strengthAreas: [],
+  weaknessAreas: [],
+  knowledgeGaps: [],
+  recommendedPath: [
+    {
+      phase: 1,
+      name: 'Getting Started',
+      focus: ['fundamentals', 'problem-solving', 'data-structures'],
+      difficulty: 'beginner',
+      estimatedTime: '1-2 days',
+      goal: 'Build your foundation with core concepts'
+    },
+    {
+      phase: 2,
+      name: 'Core Skills',
+      focus: ['system-design', 'algorithms', 'databases'],
+      difficulty: 'intermediate',
+      estimatedTime: '1 week',
+      goal: 'Master essential interview topics'
+    }
+  ],
+  nextTopics: ['system-design', 'algorithms', 'frontend']
+};
 
 // ============================================
 // HELPER FUNCTIONS
@@ -103,7 +130,7 @@ export function useAdaptiveLearning(channelId?: string) {
     const saved = storage.get<AdaptiveLearningState>(STORAGE_KEY, {
       answerHistory: [],
       topicMastery: {},
-      learningPath: null,
+      learningPath: DEFAULT_LEARNING_PATH,
       lastUpdated: new Date().toISOString()
     });
     return saved;
@@ -154,11 +181,12 @@ export function useAdaptiveLearning(channelId?: string) {
   }, [filteredHistory]);
 
   // Generate learning path
-  const learningPath = useMemo((): LearningPath | null => {
+  const learningPath = useMemo((): LearningPath => {
     const topics = Object.values(topicMastery);
     
+    // Return default path for new users - they still get guidance!
     if (topics.length < MIN_ANSWERS_FOR_ANALYSIS) {
-      return null; // Not enough data
+      return DEFAULT_LEARNING_PATH;
     }
 
     // Identify strengths and weaknesses
@@ -343,7 +371,7 @@ export function useAdaptiveLearning(channelId?: string) {
     setState({
       answerHistory: [],
       topicMastery: {},
-      learningPath: null,
+      learningPath: DEFAULT_LEARNING_PATH,
       lastUpdated: new Date().toISOString()
     });
   }, []);

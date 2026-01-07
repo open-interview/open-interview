@@ -25,16 +25,12 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          mermaid: ['mermaid'],
-        },
-      },
-    },
+    // Mermaid is now lazy-loaded, no need for manual chunking
+    // This reduces initial bundle size by ~200KB
   },
   optimizeDeps: {
-    include: ['mermaid'],
+    // Don't pre-bundle mermaid - it's lazy loaded
+    exclude: ['mermaid'],
   },
   server: {
     host: "0.0.0.0",

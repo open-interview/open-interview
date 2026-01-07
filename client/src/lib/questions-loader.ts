@@ -10,11 +10,32 @@ import type { Question, ChannelDetailedStats } from '../types';
 // Re-export Question type for backward compatibility
 export type { Question };
 
+// Base path for static data files
+const DATA_BASE = import.meta.env.BASE_URL + 'data';
+
 // In-memory cache for questions
 const questionsCache = new Map<string, Question>();
 const channelQuestionsCache = new Map<string, Question[]>();
 let statsCache: ChannelDetailedStats[] | null = null;
 let initialized = false;
+
+// Track prefetched channels to avoid duplicate prefetches
+const prefetchedChannels = new Set<string>();
+
+// Related channels mapping for smart prefetching
+const RELATED_CHANNELS: Record<string, string[]> = {
+  'system-design': ['backend', 'database', 'devops'],
+  'algorithms': ['frontend', 'backend', 'system-design'],
+  'frontend': ['react-native', 'algorithms', 'backend'],
+  'backend': ['database', 'system-design', 'devops'],
+  'database': ['backend', 'system-design', 'data-engineering'],
+  'devops': ['kubernetes', 'aws', 'sre', 'terraform'],
+  'kubernetes': ['devops', 'aws', 'sre'],
+  'aws': ['devops', 'kubernetes', 'terraform'],
+  'sre': ['devops', 'kubernetes', 'backend'],
+  'generative-ai': ['machine-learning', 'llm-ops', 'prompt-engineering'],
+  'machine-learning': ['generative-ai', 'nlp', 'computer-vision'],
+};
 
 // Load questions for a channel from static JSON
 export async function loadChannelQuestions(channelId: string): Promise<Question[]> {
@@ -196,6 +217,53 @@ export function getCompaniesWithCounts(
 
 // Popular tech companies for prioritization in UI
 export { POPULAR_COMPANIES };
+
+/**
+ * Prefetch related channels for faster navigation
+ * Uses link prefetch hints to load JSON files in the background
+ */
+export function prefetchRelatedChannels(currentChannel: string): void {
+  if (typeof window === 'undefined') return;
+  
+  // Get related channels
+  const related = RELATED_CHANNELS[currentChannel] || [];
+  
+  // Also get channels from stats if available
+  const allChannels = statsCache?.map(s => s.id) || [];
+  
+  // Combine related + nearby channels (limit to 3)
+  const uniqueChannels = new Set([...related, ...allChannels]);
+  const toPrefetch = Array.from(uniqueChannels)
+    .filter(ch => ch !== currentChannel && !prefetchedChannels.has(ch) && !channelQuestionsCache.has(ch))
+    .slice(0, 3);
+  
+  toPrefetch.forEach(channelId => {
+    prefetchedChannels.add(channelId);
+    
+    // Use link prefetch for browser-native prefetching
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = `${DATA_BASE}/${channelId}.json`;
+    link.as = 'fetch';
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+  });
+}
+
+/**
+ * Preload a specific channel's data (higher priority than prefetch)
+ */
+export function preloadChannel(channelId: string): void {
+  if (typeof window === 'undefined') return;
+  if (channelQuestionsCache.has(channelId)) return;
+  
+  const link = document.createElement('link');
+  link.rel = 'preload';
+  link.href = `${DATA_BASE}/${channelId}.json`;
+  link.as = 'fetch';
+  link.crossOrigin = 'anonymous';
+  document.head.appendChild(link);
+}
 
 // Preload all questions (call on app init for search functionality)
 export async function preloadQuestions(): Promise<void> {

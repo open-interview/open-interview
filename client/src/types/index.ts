@@ -302,3 +302,47 @@ export interface KeyboardShortcut {
   action: () => void;
   description: string;
 }
+
+// ============================================
+// CERTIFICATION TYPES
+// ============================================
+export interface Certification {
+  id: string;
+  name: string;
+  provider: string;
+  description: string;
+  icon: string;
+  color: string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  category: string;
+  estimatedHours: number;
+  examCode?: string;
+  officialUrl?: string;
+  channelMappings: CertificationChannelMapping[];
+  tags?: string[];
+  prerequisites?: string[];
+}
+
+export interface CertificationChannelMapping {
+  channelId: string;
+  subChannels?: string[];
+  weight: number;
+}
+
+export interface CertificationProgress {
+  certificationId: string;
+  completedQuestions: string[];
+  totalQuestions: number;
+  startedAt?: string;
+  lastPracticedAt?: string;
+}
+
+export interface CertificationStats {
+  id: string;
+  totalQuestions: number;
+  byDifficulty: {
+    beginner: number;
+    intermediate: number;
+    advanced: number;
+  };
+}

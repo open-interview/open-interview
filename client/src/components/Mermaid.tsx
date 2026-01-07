@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { X, ZoomIn, ZoomOut, Maximize2, Palette } from 'lucide-react';
-// @ts-ignore - Use the full ESM bundle to avoid dynamic import issues on GitHub Pages
-import mermaid from 'mermaid/dist/mermaid.esm.mjs';
 import { useTheme } from '../context/ThemeContext';
 
 // Mermaid theme configurations matching mermaid.live themes
@@ -105,12 +103,30 @@ const appThemeToMermaid: Record<string, MermaidTheme> = {
   'premium-dark': 'dark',
 };
 
-// Track current mermaid theme
+// Lazy-loaded mermaid instance
+let mermaidInstance: any = null;
+let mermaidLoadPromise: Promise<any> | null = null;
 let currentMermaidTheme: MermaidTheme | null = null;
 
-function initMermaid(mermaidTheme: MermaidTheme, force = false) {
+// Lazy load mermaid only when needed
+async function loadMermaid(): Promise<any> {
+  if (mermaidInstance) return mermaidInstance;
+  
+  if (!mermaidLoadPromise) {
+    // @ts-ignore - Use the full ESM bundle to avoid dynamic import issues on GitHub Pages
+    mermaidLoadPromise = import('mermaid/dist/mermaid.esm.mjs').then(m => {
+      mermaidInstance = m.default;
+      return mermaidInstance;
+    });
+  }
+  
+  return mermaidLoadPromise;
+}
+
+async function initMermaid(mermaidTheme: MermaidTheme, force = false) {
   if (currentMermaidTheme === mermaidTheme && !force) return;
 
+  const mermaid = await loadMermaid();
   const isMobile = window.innerWidth < 640;
   const config = mermaidThemeConfigs[mermaidTheme];
 
@@ -151,6 +167,7 @@ export function Mermaid({ chart, themeOverride }: MermaidProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [selectedMermaidTheme, setSelectedMermaidTheme] = useState<MermaidTheme | null>(() => {
+    if (typeof window === 'undefined') return null;
     const saved = localStorage.getItem('mermaid-theme');
     return saved ? (saved as MermaidTheme) : null;
   });
@@ -228,7 +245,7 @@ export function Mermaid({ chart, themeOverride }: MermaidProps) {
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [isExpanded]);
 
-  // Render mermaid diagram
+  // Render mermaid diagram - lazy loads mermaid on first use
   useEffect(() => {
     if (!chart) {
       setError('Empty diagram');
@@ -240,8 +257,6 @@ export function Mermaid({ chart, themeOverride }: MermaidProps) {
     setError(null);
     setSvgContent(null);
     setIsLoading(true);
-
-    initMermaid(effectiveMermaidTheme, true);
 
     const id = `mermaid-${currentRenderId}-${Math.random().toString(36).slice(2, 11)}`;
     const cleanChart = chart.trim().replace(/\r\n/g, '\n').replace(/^\n+/, '').replace(/\n+$/, '');
@@ -256,6 +271,10 @@ export function Mermaid({ chart, themeOverride }: MermaidProps) {
 
     const renderChart = async () => {
       try {
+        // Lazy load and initialize mermaid
+        await initMermaid(effectiveMermaidTheme, true);
+        const mermaid = await loadMermaid();
+        
         await new Promise(resolve => setTimeout(resolve, 50));
         if (cancelled) return;
         
@@ -297,7 +316,6 @@ export function Mermaid({ chart, themeOverride }: MermaidProps) {
 
   // Silently hide failed diagrams - don't show error to user
   if (error) {
-    // Log error for debugging but don't render anything
     console.warn('Mermaid diagram skipped due to error:', error);
     return null;
   }

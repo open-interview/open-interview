@@ -20,7 +20,7 @@ import {
   Layers, Smartphone, Shield, Brain, Workflow, Box, Cloud, Code,
   Network, MessageCircle, Users, Sparkles, Eye, FileText, CheckCircle, 
   Monitor, Zap, Gauge, ChevronRight, Play, Compass, ArrowRight,
-  RefreshCw, Flame, Target, X, Check, Mic, Coins
+  RefreshCw, Flame, Target, X, Check, Mic, Coins, Award
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -150,6 +150,11 @@ export function MobileHomeFocused() {
       {/* Coding Challenge CTA */}
       {hasChannels && (
         <CodingChallengeCard onStart={() => setLocation('/coding')} />
+      )}
+
+      {/* Certification Tracks CTA */}
+      {hasChannels && (
+        <CertificationCard onStart={() => setLocation('/certifications')} />
       )}
 
       {/* Quick Start Topics for new users */}
@@ -867,6 +872,29 @@ function CodingChallengeCard({ onStart }: { onStart: () => void }) {
         </div>
         <div className="flex flex-col items-end gap-1">
           <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
+        </div>
+      </button>
+    </section>
+  );
+}
+
+// Certification Tracks CTA
+function CertificationCard({ onStart }: { onStart: () => void }) {
+  return (
+    <section className="mx-3 sm:mx-0 mb-2 sm:mb-4">
+      <button
+        onClick={onStart}
+        className="w-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-xl sm:rounded-2xl border border-amber-500/20 p-3 sm:p-4 flex items-center gap-3 sm:gap-4 hover:from-amber-500/15 hover:to-orange-500/15 transition-colors"
+      >
+        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-amber-500/20 flex items-center justify-center">
+          <Award className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500" />
+        </div>
+        <div className="flex-1 text-left">
+          <h3 className="font-semibold text-sm sm:text-base">Certification Tracks</h3>
+          <p className="text-xs sm:text-sm text-muted-foreground">AWS, Kubernetes, Terraform & more</p>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
         </div>
       </button>
     </section>
