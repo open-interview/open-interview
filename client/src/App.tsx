@@ -31,6 +31,7 @@ const VoiceSession = React.lazy(() => import("@/pages/VoiceSession"));
 const Certifications = React.lazy(() => import("@/pages/Certifications"));
 const CertificationPractice = React.lazy(() => import("@/pages/CertificationPractice"));
 const CertificationExam = React.lazy(() => import("@/pages/CertificationExam"));
+const TrainingMode = React.lazy(() => import("@/pages/TrainingMode"));
 import { ProgressiveOnboarding } from "./components/ProgressiveOnboarding";
 import { ThemeProvider } from "./context/ThemeContext";
 import { UserPreferencesProvider, useUserPreferences } from "./context/UserPreferencesContext";
@@ -127,6 +128,7 @@ function Router() {
         <Route path="/voice-interview" component={VoiceInterview} />
         <Route path="/voice-session" component={VoiceSession} />
         <Route path="/voice-session/:questionId" component={VoiceSession} />
+        <Route path="/training" component={TrainingMode} />
         <Route path="/certifications" component={Certifications} />
         <Route path="/certification/:id" component={CertificationPractice} />
         <Route path="/certification/:id/exam" component={CertificationExam} />

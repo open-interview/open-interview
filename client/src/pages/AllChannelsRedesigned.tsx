@@ -3,7 +3,7 @@
  * Browse and subscribe to channels with category filtering
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
@@ -14,12 +14,13 @@ import { useChannelStats } from '../hooks/use-stats';
 import { useProgress } from '../hooks/use-progress';
 import { useIsMobile } from '../hooks/use-mobile';
 import { SEOHead } from '../components/SEOHead';
+import { loadTests } from '../lib/tests';
 import {
   Search, Check, Plus,
   Cpu, Terminal, Layout, Database, Activity, GitBranch, Server,
   Layers, Smartphone, Shield, Brain, Workflow, Box, Cloud, Code,
   Network, MessageCircle, Users, Sparkles, Eye, FileText, CheckCircle, 
-  Monitor, Zap, Gauge
+  Monitor, Zap, Gauge, Target
 } from 'lucide-react';
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -57,7 +58,19 @@ export default function AllChannelsRedesigned() {
   const { stats } = useChannelStats();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [testCounts, setTestCounts] = useState<Record<string, number>>({});
   const isMobile = useIsMobile();
+
+  // Load test question counts
+  useEffect(() => {
+    loadTests().then(tests => {
+      const counts: Record<string, number> = {};
+      tests.forEach(test => {
+        counts[test.channelId] = test.questions.length;
+      });
+      setTestCounts(counts);
+    });
+  }, []);
 
   // Create question count map
   const questionCounts: Record<string, number> = {};
@@ -177,6 +190,7 @@ export default function AllChannelsRedesigned() {
                   onToggle={() => toggleSubscription(channel.id)}
                   onNavigate={() => navigate(`/channel/${channel.id}`)}
                   questionCount={questionCounts[channel.id] || 0}
+                  testCount={testCounts[channel.id] || 0}
                   newThisWeek={newThisWeekCounts[channel.id]}
                   index={index}
                 />
@@ -209,6 +223,7 @@ export default function AllChannelsRedesigned() {
                         onToggle={() => toggleSubscription(channel.id)}
                         onNavigate={() => navigate(`/channel/${channel.id}`)}
                         questionCount={questionCounts[channel.id] || 0}
+                        testCount={testCounts[channel.id] || 0}
                         newThisWeek={newThisWeekCounts[channel.id]}
                         index={index}
                       />
@@ -241,6 +256,7 @@ function ChannelCard({
   onToggle,
   onNavigate,
   questionCount,
+  testCount,
   newThisWeek,
   index
 }: { 
@@ -249,6 +265,7 @@ function ChannelCard({
   onToggle: () => void;
   onNavigate: () => void;
   questionCount: number;
+  testCount: number;
   newThisWeek?: number;
   index: number;
 }) {
@@ -310,10 +327,33 @@ function ChannelCard({
         {channel.description}
       </p>
 
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">{questionCount} questions</span>
+      <div className="space-y-2">
+        {/* Interview Questions */}
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground flex items-center gap-1">
+            <Eye className="w-3 h-3" />
+            Interview
+          </span>
+          <span className="font-medium">{questionCount}</span>
+        </div>
+
+        {/* Test Questions */}
+        {testCount > 0 && (
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground flex items-center gap-1">
+              <Target className="w-3 h-3" />
+              Micro Quiz
+            </span>
+            <span className="font-medium">{testCount}</span>
+          </div>
+        )}
+
+        {/* Progress */}
         {isSubscribed && progress > 0 && (
-          <span className="text-primary font-medium">{progress}% done</span>
+          <div className="flex items-center justify-between text-xs pt-1 border-t border-border/50">
+            <span className="text-muted-foreground">Progress</span>
+            <span className="text-primary font-semibold">{progress}%</span>
+          </div>
         )}
       </div>
 

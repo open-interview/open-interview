@@ -26,7 +26,7 @@ import {
   Layers, Smartphone, Shield, Brain, Workflow, Box, Cloud, Code,
   Network, MessageCircle, Users, Sparkles, Eye, FileText, CheckCircle, 
   Monitor, Zap, Gauge, ChevronRight, Play, Compass, ArrowRight,
-  RefreshCw, Flame, Target, X, Check, Mic, Coins, Award
+  RefreshCw, Flame, Target, X, Check, Mic, Coins, Award, BookOpen, Volume2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -182,6 +182,11 @@ export function MobileHomeFocused() {
           {/* Voice Interview CTA - Primary feature */}
           {hasChannels && (
             <VoiceInterviewCard onStart={() => setLocation('/voice-interview')} />
+          )}
+
+          {/* Training Mode CTA - New feature */}
+          {hasChannels && (
+            <TrainingModeCard onStart={() => setLocation('/training')} />
           )}
 
           {/* Practice CTAs - Combined row */}
@@ -960,6 +965,56 @@ function VoiceInterviewCard({ onStart }: { onStart: () => void }) {
             <Target className="w-2.5 h-2.5" />
             Micro Sessions
           </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// Training Mode CTA - Read and record answers
+function TrainingModeCard({ onStart }: { onStart: () => void }) {
+  return (
+    <section className="mb-3">
+      <div className="bg-gradient-to-r from-blue-500/20 via-blue-500/15 to-purple-500/20 rounded-xl border border-blue-500/30 p-3">
+        <button
+          onClick={onStart}
+          className="w-full flex items-center gap-3 hover:opacity-90 transition-all group"
+        >
+          {/* Animated book icon */}
+          <div className="relative flex-shrink-0">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform">
+              <BookOpen className="w-6 h-6 text-white" />
+            </div>
+            <div className="absolute inset-0 rounded-xl bg-blue-500/30 animate-ping opacity-30" />
+          </div>
+          
+          <div className="flex-1 text-left min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <h3 className="font-bold text-sm">Training Mode</h3>
+              <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[9px] font-bold rounded-full">
+                NEW
+              </span>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Read answers & record yourself speaking
+            </p>
+          </div>
+          
+          <ArrowRight className="w-5 h-5 text-blue-500 flex-shrink-0" />
+        </button>
+        
+        {/* Features */}
+        <div className="mt-2 pt-2 border-t border-blue-500/20 flex items-center justify-between text-[10px]">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <Eye className="w-3 h-3" />
+              Full answers
+            </span>
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <Volume2 className="w-3 h-3" />
+              Live transcript
+            </span>
+          </div>
         </div>
       </div>
     </section>

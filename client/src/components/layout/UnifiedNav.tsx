@@ -59,6 +59,7 @@ const learnSubNav: NavItem[] = [
 // Practice section - Active learning modes
 const practiceSubNav: NavItem[] = [
   { id: 'voice', label: 'Voice Interview', icon: Mic, path: '/voice-interview', badge: '+10 credits', description: 'Practice speaking' },
+  { id: 'training', label: 'Training Mode', icon: BookOpen, path: '/training', badge: 'NEW', description: 'Read & record answers' },
   { id: 'tests', label: 'Quick Tests', icon: Target, path: '/tests', description: 'Test your knowledge' },
   { id: 'coding', label: 'Coding Challenges', icon: Code, path: '/coding', description: 'Solve problems' },
   { id: 'review', label: 'Daily Review', icon: Flame, path: '/review', description: 'Spaced repetition' },
@@ -75,7 +76,7 @@ const progressSubNav: NavItem[] = [
 function getActiveSection(location: string): string {
   if (location === '/') return 'home';
   if (location === '/channels' || location.startsWith('/channel/') || location === '/certifications' || location.startsWith('/certification/')) return 'learn';
-  if (location.startsWith('/voice') || location.startsWith('/test') || location.startsWith('/coding') || location === '/review') return 'practice';
+  if (location.startsWith('/voice') || location.startsWith('/test') || location.startsWith('/coding') || location === '/review' || location === '/training') return 'practice';
   if (location === '/stats' || location === '/badges' || location === '/bookmarks' || location === '/profile') return 'progress';
   if (location === '/bot-activity') return 'bots';
   return 'home';
