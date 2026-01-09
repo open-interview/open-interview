@@ -14,6 +14,7 @@ import { useAchievementContext } from '../../context/AchievementContext';
 import { ProgressStorage } from '../../services/storage.service';
 import { DailyReviewCard, notifySRSUpdate } from '../DailyReviewCard';
 import { ListenIconButton } from '../ListenButton';
+import { QuestionFeedback } from '../QuestionFeedback';
 import { loadTests, TestQuestion, Test, getSessionQuestions } from '../../lib/tests';
 import { addToSRS } from '../../lib/spaced-repetition';
 import { 
@@ -609,6 +610,10 @@ function QuickQuizCard({
                 }`}>
                   {currentQuestion.type === 'multiple' ? 'Multi' : 'Single'}
                 </span>
+                {/* Feedback flag */}
+                {currentQuestion.questionId && (
+                  <QuestionFeedback questionId={currentQuestion.questionId} className="ml-auto" />
+                )}
               </div>
 
               {/* Question text */}

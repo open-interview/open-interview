@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import type { Question } from '../lib/data';
 import { GiscusComments } from './GiscusComments';
+import { QuestionFeedback } from './QuestionFeedback';
 import { SimilarQuestions } from './SimilarQuestions';
 import { formatTag } from '../lib/utils';
 import { BlogService } from '../services/api.service';
@@ -633,19 +634,24 @@ export function AnswerPanel({ question }: AnswerPanelProps) {
           </div>
         </ExpandableCard>
 
-        {/* Tags - Compact */}
-        {question.tags && question.tags.length > 0 && (
-          <div className="flex items-start gap-1.5 pt-0.5">
-            <Tag className="w-2.5 h-2.5 text-muted-foreground mt-0.5 flex-shrink-0" />
-            <div className="flex flex-wrap gap-0.5">
-              {question.tags.map(tag => (
-                <span key={tag} className="px-1 py-0.5 bg-muted text-[8px] font-mono text-muted-foreground rounded border border-border">
-                  {formatTag(tag)}
-                </span>
-              ))}
-            </div>
+        {/* Tags - Compact + Feedback */}
+        <div className="flex items-start justify-between gap-1.5 pt-0.5">
+          <div className="flex items-start gap-1.5 flex-1 min-w-0">
+            {question.tags && question.tags.length > 0 && (
+              <>
+                <Tag className="w-2.5 h-2.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <div className="flex flex-wrap gap-0.5">
+                  {question.tags.map(tag => (
+                    <span key={tag} className="px-1 py-0.5 bg-muted text-[8px] font-mono text-muted-foreground rounded border border-border">
+                      {formatTag(tag)}
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
-        )}
+          <QuestionFeedback questionId={question.id} />
+        </div>
 
         {/* References */}
         {(question.sourceUrl || blogPost) && (

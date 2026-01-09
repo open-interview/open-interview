@@ -10,6 +10,7 @@ import {
   Share2, RotateCcw, Home, AlertCircle, Check, X, Zap, ExternalLink, Eye
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
+import { QuestionFeedback } from '../components/QuestionFeedback';
 import {
   Test, TestQuestion, getTestForChannel, getSessionQuestions,
   calculateScore, saveTestAttempt, TestAttempt, getTestProgress,
@@ -405,6 +406,10 @@ export default function TestSession() {
                       }`}>
                         {currentQuestion.difficulty}
                       </span>
+                      {/* Feedback flag */}
+                      {currentQuestion.questionId && (
+                        <QuestionFeedback questionId={currentQuestion.questionId} className="ml-auto" />
+                      )}
                     </div>
 
                     {/* Question text */}
@@ -639,7 +644,7 @@ export default function TestSession() {
 
                     {/* Link to main question */}
                     {item.question.questionId && (
-                      <div className="ml-9 mt-2">
+                      <div className="ml-9 mt-2 flex items-center gap-2">
                         <a
                           href={`/channel/${test.channelId}?q=${item.question.questionId}`}
                           className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
@@ -647,6 +652,7 @@ export default function TestSession() {
                           <ExternalLink className="w-3 h-3" />
                           View full question & answer
                         </a>
+                        <QuestionFeedback questionId={item.question.questionId} />
                       </div>
                     )}
                   </motion.div>

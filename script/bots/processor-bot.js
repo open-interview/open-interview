@@ -64,7 +64,12 @@ const ISSUE_ACTIONS = {
   // Info - Enrichment
   'missing_tags': { action: 'add_tags', priority: 5 },
   'insufficient_tags': { action: 'add_tags', priority: 5 },
-  'verbose_for_voice': { action: 'condense_answer', priority: 5 }
+  'verbose_for_voice': { action: 'condense_answer', priority: 5 },
+  
+  // User Feedback (from QuestionFeedback component)
+  'user_improve': { action: 'improve_content', priority: 2 },
+  'user_rewrite': { action: 'rewrite', priority: 2 },
+  'user_disable': { action: 'disable', priority: 1 }
 };
 
 // ============================================
@@ -1205,6 +1210,165 @@ async function runPipeline(options = {}) {
 }
 
 // ============================================
+// USER FEEDBACK PROCESSING (from GitHub Issues)
+// ============================================
+
+/**
+ * Process pending user feedback from GitHub Issues
+ * Looks for issues with labels: bot:processor, feedback:*
+ * 
+ * To use: Set GITHUB_TOKEN env var with repo access
+ */
+async function processUserFeedback() {
+  console.log('\n📬 [User Feedback] Checking GitHub Issues for feedback...');
+  
+  const token = process.env.GITHUB_TOKEN;
+  const repo = process.env.GITHUB_REPO || 'open-interview/open-interview.github.io';
+  
+  if (!token) {
+    console.log('   GITHUB_TOKEN not set, skipping GitHub feedback processing');
+    return { processed: 0 };
+  }
+  
+  try {
+    // Fetch open issues with bot:processor label
+    const response = await fetch(
+      `https://api.github.com/repos/${repo}/issues?labels=bot:processor&state=open&per_page=20`,
+      {
+        headers: {
+          'Authorization': `token ${token}`,
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      }
+    );
+    
+    if (!response.ok) {
+      console.log(`   GitHub API error: ${response.status}`);
+      return { processed: 0 };
+    }
+    
+    const issues = await response.json();
+    
+    if (issues.length === 0) {
+      console.log('   No pending feedback issues');
+      return { processed: 0 };
+    }
+    
+    console.log(`   Found ${issues.length} feedback issues`);
+    
+    let processed = 0;
+    
+    for (const issue of issues) {
+      // Parse question ID from issue body
+      const questionIdMatch = issue.body?.match(/\*\*Question ID:\*\*\s*`([^`]+)`/);
+      if (!questionIdMatch) {
+        console.log(`   ⚠️ Issue #${issue.number}: Could not parse question ID`);
+        continue;
+      }
+      
+      const questionId = questionIdMatch[1];
+      
+      // Determine feedback type from labels
+      let feedbackType = 'improve';
+      if (issue.labels.some((l: any) => l.name === 'feedback:rewrite')) feedbackType = 'rewrite';
+      if (issue.labels.some((l: any) => l.name === 'feedback:disable')) feedbackType = 'disable';
+      
+      const issueType = `user_${feedbackType}`;
+      const mapping = ISSUE_ACTIONS[issueType];
+      
+      if (!mapping) {
+        console.log(`   ⚠️ Unknown feedback type: ${feedbackType}`);
+        continue;
+      }
+      
+      // Check if question exists
+      const question = db.prepare('SELECT id FROM questions WHERE id = ?').get(questionId);
+      
+      if (!question) {
+        console.log(`   ⚠️ Question ${questionId} not found`);
+        // Close issue with comment
+        await fetch(`https://api.github.com/repos/${repo}/issues/${issue.number}/comments`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ body: '❌ Question not found in database. Closing issue.' })
+        });
+        await fetch(`https://api.github.com/repos/${repo}/issues/${issue.number}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ state: 'closed' })
+        });
+        continue;
+      }
+      
+      // Add to work queue
+      const { addWorkItem } = await import('./shared/queue.js');
+      await addWorkItem({
+        itemType: 'question',
+        itemId: questionId,
+        action: mapping.action,
+        priority: mapping.priority,
+        reason: `GitHub Issue #${issue.number}: ${feedbackType}`,
+        source: 'github_feedback'
+      });
+      
+      console.log(`   ✅ Created work item for ${questionId}: ${mapping.action} (Issue #${issue.number})`);
+      
+      // Add comment to issue
+      await fetch(`https://api.github.com/repos/${repo}/issues/${issue.number}/comments`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `token ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          body: `🤖 Processor bot has queued this for action: **${mapping.action}**\n\nWill process and close when complete.` 
+        })
+      });
+      
+      // Add "in-progress" label
+      await fetch(`https://api.github.com/repos/${repo}/issues/${issue.number}/labels`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `token ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ labels: ['bot:in-progress'] })
+      });
+      
+      processed++;
+      
+      await logAction({
+        bot: BOT_NAME,
+        action: 'process_github_feedback',
+        itemType: 'question',
+        itemId: questionId,
+        details: {
+          issueNumber: issue.number,
+          feedbackType,
+          mappedAction: mapping.action
+        }
+      });
+    }
+    
+    return { processed };
+    
+  } catch (error) {
+    console.error('   Error processing GitHub feedback:', error.message);
+    return { processed: 0 };
+  }
+}
+
+// ============================================
 // MAIN
 // ============================================
 
@@ -1212,6 +1376,12 @@ async function main() {
   console.log('=== ⚙️ Processor Bot - Content Improvement Engine ===\n');
   
   await initBotTables();
+  
+  // Process user feedback first (converts to work items)
+  const feedbackResult = await processUserFeedback();
+  if (feedbackResult.processed > 0) {
+    console.log(`   Converted ${feedbackResult.processed} user feedback items to work items`);
+  }
   
   // Show queue stats
   const queueStats = await getQueueStats();
