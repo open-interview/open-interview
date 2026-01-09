@@ -483,4 +483,36 @@ export function getAvailableScenes() {
 
 export { detectSceneType as detectScene };
 
-export default { generateIllustration, generateBlogIllustrations, generateSceneSVG, getAvailableScenes, detectScene: detectSceneType };
+// Import cartoon generator for alternative style
+import cartoonGenerator from './cartoon-illustration-generator.js';
+import modernGenerator from './modern-illustration-generator.js';
+
+// Re-export cartoon functions
+export const generateCartoonIllustration = cartoonGenerator.generateCartoonIllustration;
+export const generateCartoonSceneSVG = cartoonGenerator.generateCartoonSceneSVG;
+export const getAvailableCartoonScenes = cartoonGenerator.getAvailableCartoonScenes;
+export const detectCartoonScene = cartoonGenerator.detectCartoonScene;
+
+// Re-export modern functions (recommended)
+export const generateModernIllustration = modernGenerator.generateModernIllustration;
+export const generateModernSceneSVG = modernGenerator.generateModernSceneSVG;
+export const getAvailableModernScenes = modernGenerator.getAvailableModernScenes;
+export const detectModernScene = modernGenerator.detectModernScene;
+
+export default { 
+  generateIllustration, 
+  generateBlogIllustrations, 
+  generateSceneSVG, 
+  getAvailableScenes, 
+  detectScene: detectSceneType,
+  // Cartoon style exports
+  generateCartoonIllustration: cartoonGenerator.generateCartoonIllustration,
+  generateCartoonSceneSVG: cartoonGenerator.generateCartoonSceneSVG,
+  getAvailableCartoonScenes: cartoonGenerator.getAvailableCartoonScenes,
+  detectCartoonScene: cartoonGenerator.detectCartoonScene,
+  // Modern style exports (recommended)
+  generateModernIllustration: modernGenerator.generateModernIllustration,
+  generateModernSceneSVG: modernGenerator.generateModernSceneSVG,
+  getAvailableModernScenes: modernGenerator.getAvailableModernScenes,
+  detectModernScene: modernGenerator.detectModernScene,
+};

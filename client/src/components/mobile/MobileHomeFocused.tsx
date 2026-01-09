@@ -15,6 +15,7 @@ import { ProgressStorage } from '../../services/storage.service';
 import { DailyReviewCard, notifySRSUpdate } from '../DailyReviewCard';
 import { ListenIconButton } from '../ListenButton';
 import { QuestionFeedback } from '../QuestionFeedback';
+import { RecentBlogPosts } from '../RecentBlogPosts';
 import { loadTests, TestQuestion, Test, getSessionQuestions } from '../../lib/tests';
 import { addToSRS } from '../../lib/spaced-repetition';
 import { 
@@ -104,10 +105,10 @@ export function MobileHomeFocused() {
 
   return (
     <div className="pb-20 sm:pb-8 max-w-6xl mx-auto px-3 sm:px-4">
-      {/* Desktop: Two-column layout, Mobile: Single column */}
+      {/* Desktop: Two-column layout with equal heights, Mobile: Single column */}
       <div className="lg:grid lg:grid-cols-12 lg:gap-4">
         {/* Main Column - Quiz & Learning */}
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-8 lg:flex lg:flex-col">
           {/* Hero: Quick Quiz or Welcome */}
           {hasChannels ? (
             <QuickQuizCard 
@@ -118,7 +119,7 @@ export function MobileHomeFocused() {
             <WelcomeCard onGetStarted={() => setLocation('/channels')} />
           )}
 
-          {/* Continue Learning - show more channels */}
+          {/* Continue Learning - show more channels - grows to fill space */}
           {hasChannels && (
             <ContinueLearningSection 
               channels={subscribedChannels}
@@ -126,12 +127,13 @@ export function MobileHomeFocused() {
               onChannelClick={(id) => setLocation(`/channel/${id}`)}
               onUnsubscribe={unsubscribeChannel}
               onSeeAll={() => setLocation('/channels')}
+              fillHeight
             />
           )}
         </div>
 
         {/* Sidebar Column - Stats, Actions & Review */}
-        <div className="lg:col-span-4 mt-3 lg:mt-0">
+        <div className="lg:col-span-4 mt-3 lg:mt-0 flex flex-col">
           {/* Premium Stats Card - Matching Profile Design */}
           <div className="bg-card rounded-xl border border-border overflow-hidden mb-3">
             {/* Mini Profile Header - Premium gradient */}
@@ -196,103 +198,52 @@ export function MobileHomeFocused() {
             )}
           </div>
 
+          {/* Adaptive Grid for Sidebar Cards */}
+          {hasChannels && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-2 mb-3">
+              {/* Training Mode - Compact */}
+              <TrainingModeCardCompact onStart={() => setLocation('/training')} />
+              
+              {/* Practice CTAs */}
+              <CodingChallengeCardCompact onStart={() => setLocation('/coding')} />
+              <CertificationCardCompact onStart={() => setLocation('/certifications')} />
+              
+              {/* Quick Links - Compact inline */}
+              <QuickLinksCompact onNavigate={setLocation} />
+            </div>
+          )}
+
           {/* Daily Review - Spaced Repetition */}
           {hasChannels && <DailyReviewCard />}
 
-          {/* Voice Interview CTA - Primary feature */}
+          {/* Voice Interview CTA - Primary feature - Full width */}
           {hasChannels && (
             <VoiceInterviewCard onStart={() => setLocation('/voice-interview')} />
           )}
 
-          {/* Training Mode CTA - New feature */}
-          {hasChannels && (
-            <TrainingModeCard onStart={() => setLocation('/training')} />
-          )}
-
-          {/* Practice CTAs - Combined row */}
-          {hasChannels && (
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <CodingChallengeCardCompact onStart={() => setLocation('/coding')} />
-              <CertificationCardCompact onStart={() => setLocation('/certifications')} />
-            </div>
-          )}
-
-          {/* Quick Links Card */}
-          {hasChannels && (
-            <div className="bg-card rounded-xl border border-border overflow-hidden mb-3">
-              <div className="px-3 py-2 border-b border-border/50">
-                <span className="text-xs font-semibold text-muted-foreground">Quick Links</span>
-              </div>
-              <div className="p-2 grid grid-cols-2 gap-1.5">
-                <button
-                  onClick={() => setLocation('/badges')}
-                  className="flex items-center gap-2 p-2.5 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-                    <Award className="w-4 h-4 text-yellow-500" />
+          {/* Recent Blog Posts & Pro Tip - Side by side on larger screens */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
+            {/* Recent Blog Posts */}
+            <RecentBlogPosts limit={3} className="mb-0" />
+            
+            {/* Pro Tips Card */}
+            {hasChannels && (
+              <div className="bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-indigo-500/10 rounded-xl border border-violet-500/20 p-3 h-fit">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-4 h-4 text-violet-400" />
                   </div>
-                  <div className="text-left">
-                    <div className="text-xs font-medium">Badges</div>
-                    <div className="text-[9px] text-muted-foreground">Achievements</div>
+                  <div>
+                    <div className="text-xs font-semibold text-violet-300 mb-1">Pro Tip</div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Use Voice Interview mode to practice speaking your answers out loud. 
+                      It's the best way to prepare for real interviews!
+                    </p>
                   </div>
-                </button>
-                <button
-                  onClick={() => setLocation('/bookmarks')}
-                  className="flex items-center gap-2 p-2.5 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                    <BookOpen className="w-4 h-4 text-blue-500" />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-xs font-medium">Bookmarks</div>
-                    <div className="text-[9px] text-muted-foreground">Saved items</div>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setLocation('/tests')}
-                  className="flex items-center gap-2 p-2.5 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
-                    <Target className="w-4 h-4 text-green-500" />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-xs font-medium">Tests</div>
-                    <div className="text-[9px] text-muted-foreground">Quick quizzes</div>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setLocation('/stats')}
-                  className="flex items-center gap-2 p-2.5 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                    <Activity className="w-4 h-4 text-purple-500" />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-xs font-medium">Stats</div>
-                    <div className="text-[9px] text-muted-foreground">Your progress</div>
-                  </div>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Pro Tips Card */}
-          {hasChannels && (
-            <div className="bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-indigo-500/10 rounded-xl border border-violet-500/20 p-3 mb-3">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="w-4 h-4 text-violet-400" />
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-violet-300 mb-1">Pro Tip</div>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Use Voice Interview mode to practice speaking your answers out loud. 
-                    It's the best way to prepare for real interviews!
-                  </p>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
@@ -706,13 +657,15 @@ function ContinueLearningSection({
   questionCounts,
   onChannelClick,
   onUnsubscribe,
-  onSeeAll
+  onSeeAll,
+  fillHeight = false
 }: { 
   channels: any[];
   questionCounts: Record<string, number>;
   onChannelClick: (id: string) => void;
   onUnsubscribe: (id: string) => void;
   onSeeAll: () => void;
+  fillHeight?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   
@@ -721,16 +674,19 @@ function ContinueLearningSection({
   const desktopLimit = 6;
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
   const limit = isMobile ? mobileLimit : desktopLimit;
-  const hasMore = channels.length > limit;
-  const visibleChannels = expanded ? channels : channels.slice(0, limit);
   const hiddenCount = channels.length - limit;
+  
+  // If only 1-2 more channels, just show them all (no point hiding so few)
+  const shouldShowAll = hiddenCount <= 2;
+  const hasMore = !shouldShowAll && channels.length > limit;
+  const visibleChannels = (expanded || shouldShowAll) ? channels : channels.slice(0, limit);
 
   return (
-    <section className="mb-3">
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
+    <section className={fillHeight ? 'lg:flex-1 lg:min-h-0 lg:flex lg:flex-col' : 'mb-3'}>
+      <div className={`bg-card rounded-xl border border-border overflow-hidden ${fillHeight ? 'lg:flex-1 lg:flex lg:flex-col lg:min-h-0' : ''}`}>
         <button 
           onClick={onSeeAll}
-          className="w-full px-3 sm:px-4 py-2 sm:py-3 border-b border-border/50 flex items-center justify-between hover:bg-muted/30 transition-colors"
+          className="w-full px-3 sm:px-4 py-2 sm:py-3 border-b border-border/50 flex items-center justify-between hover:bg-muted/30 transition-colors flex-shrink-0"
         >
           <h3 className="font-semibold text-sm sm:text-base">Your Channels</h3>
           <div className="flex items-center gap-1 text-xs sm:text-sm text-primary">
@@ -738,8 +694,8 @@ function ContinueLearningSection({
           </div>
         </button>
         
-        {/* Desktop: Grid layout, Mobile: List */}
-        <div className="sm:hidden divide-y divide-border/50">
+        {/* Desktop: Grid layout, Mobile: List - with scroll when needed */}
+        <div className={`sm:hidden divide-y divide-border/50 ${fillHeight ? 'lg:flex-1 lg:overflow-y-auto lg:min-h-0' : ''}`}>
           {visibleChannels.map((channel) => (
             <ChannelRow
               key={channel.id}
@@ -751,7 +707,7 @@ function ContinueLearningSection({
           ))}
         </div>
         
-        <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3 sm:p-4">
+        <div className={`hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3 sm:p-4 auto-rows-min content-start ${fillHeight ? 'lg:flex-1 lg:overflow-y-auto lg:min-h-0' : ''}`}>
           {visibleChannels.map((channel) => (
             <ChannelCard
               key={channel.id}
@@ -766,7 +722,7 @@ function ContinueLearningSection({
         {hasMore && !expanded && (
           <button 
             onClick={() => setExpanded(true)}
-            className="w-full py-2 sm:py-3 text-xs sm:text-sm text-primary font-medium hover:bg-muted/50 border-t border-border/50"
+            className="w-full py-2 sm:py-3 text-xs sm:text-sm text-primary font-medium hover:bg-muted/50 border-t border-border/50 flex-shrink-0 mt-auto"
           >
             +{hiddenCount} more channels
           </button>
@@ -775,7 +731,7 @@ function ContinueLearningSection({
         {expanded && hasMore && (
           <button 
             onClick={() => setExpanded(false)}
-            className="w-full py-2 sm:py-3 text-xs sm:text-sm text-muted-foreground font-medium hover:bg-muted/50 border-t border-border/50"
+            className="w-full py-2 sm:py-3 text-xs sm:text-sm text-muted-foreground font-medium hover:bg-muted/50 border-t border-border/50 flex-shrink-0 mt-auto"
           >
             Show less
           </button>
@@ -1037,6 +993,60 @@ function CertificationCardCompact({ onStart }: { onStart: () => void }) {
         <p className="text-[10px] text-muted-foreground">AWS, K8s</p>
       </div>
     </button>
+  );
+}
+
+// Training Mode - Compact version for grid
+function TrainingModeCardCompact({ onStart }: { onStart: () => void }) {
+  return (
+    <button
+      onClick={onStart}
+      className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-xl border border-blue-500/20 p-3 flex flex-col items-center gap-2 hover:from-blue-500/15 hover:to-purple-500/15 transition-colors text-center"
+    >
+      <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+        <BookOpen className="w-5 h-5 text-blue-500" />
+      </div>
+      <div>
+        <h3 className="font-semibold text-xs sm:text-sm">Training</h3>
+        <p className="text-[10px] text-muted-foreground">Read & speak</p>
+      </div>
+    </button>
+  );
+}
+
+// Quick Links - Compact inline version
+function QuickLinksCompact({ onNavigate }: { onNavigate: (path: string) => void }) {
+  return (
+    <div className="bg-card rounded-xl border border-border p-2 flex flex-wrap justify-center gap-1.5">
+      <button
+        onClick={() => onNavigate('/badges')}
+        className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
+        title="Badges"
+      >
+        <Award className="w-4 h-4 text-yellow-500" />
+      </button>
+      <button
+        onClick={() => onNavigate('/bookmarks')}
+        className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
+        title="Bookmarks"
+      >
+        <BookOpen className="w-4 h-4 text-blue-500" />
+      </button>
+      <button
+        onClick={() => onNavigate('/tests')}
+        className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
+        title="Tests"
+      >
+        <Target className="w-4 h-4 text-green-500" />
+      </button>
+      <button
+        onClick={() => onNavigate('/stats')}
+        className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
+        title="Stats"
+      >
+        <Activity className="w-4 h-4 text-purple-500" />
+      </button>
+    </div>
   );
 }
 

@@ -2,17 +2,19 @@
  * LangGraph-based LinkedIn Post Generation Pipeline
  * 
  * This graph orchestrates LinkedIn post generation with story-style content,
- * quality checks, URL validation, and duplicate tag removal.
+ * quality checks, URL validation, image generation, and duplicate tag removal.
  * 
  * Flow:
- *   validate_url → generate_story → quality_check_1 → build_post → quality_check_2 → final_validate → end
+ *   validate_url → generate_image → generate_story → quality_check_1 → build_post → quality_check_2 → final_validate → end
  */
 
 import { StateGraph, END, START } from '@langchain/langgraph';
 import { Annotation } from '@langchain/langgraph';
 import ai from '../index.js';
+import { generateLinkedInImage, validateLinkedInImage } from '../utils/linkedin-image-generator.js';
 
 const PRACTICE_LINK = 'https://open-interview.github.io/';
+const IMAGES_DIR = 'blog-output/images';
 
 // Define the state schema using Annotation
 const LinkedInState = Annotation.Root({
@@ -26,6 +28,11 @@ const LinkedInState = Annotation.Root({
   
   // URL validation
   urlValid: Annotation({ reducer: (_, b) => b, default: () => false }),
+  
+  // Image generation
+  imagePath: Annotation({ reducer: (_, b) => b, default: () => '' }),
+  imageValid: Annotation({ reducer: (_, b) => b, default: () => false }),
+  imageScene: Annotation({ reducer: (_, b) => b, default: () => '' }),
   
   // Generated content
   story: Annotation({ reducer: (_, b) => b, default: () => '' }),
@@ -151,7 +158,65 @@ function routeAfterUrlValidation(state) {
     console.log('\n🔀 [ROUTER] URL invalid, stopping pipeline');
     return 'final_validate';
   }
-  return 'generate_story';
+  return 'generate_image';
+}
+
+/**
+ * Node: Generate LinkedIn-compatible image
+ */
+async function generateImageNode(state) {
+  console.log('\n🖼️  [GENERATE_IMAGE] Creating LinkedIn image...');
+  
+  // Skip image generation if disabled
+  if (process.env.SKIP_IMAGE === 'true') {
+    console.log('   ⚠️ Image generation skipped (SKIP_IMAGE=true)');
+    return {
+      imagePath: '',
+      imageValid: false,
+      qualityIssues: ['Image generation skipped']
+    };
+  }
+  
+  try {
+    const result = await generateLinkedInImage(
+      state.title,
+      state.excerpt || '',
+      IMAGES_DIR
+    );
+    
+    if (result.success) {
+      console.log(`   ✅ Image generated: ${result.path}`);
+      console.log(`   Scene: ${result.scene}, Generator: ${result.generatorType}`);
+      
+      // Validate the generated image
+      const validation = validateLinkedInImage(result.path);
+      
+      if (validation.warnings.length > 0) {
+        console.log(`   ⚠️ Warnings: ${validation.warnings.join(', ')}`);
+      }
+      
+      return {
+        imagePath: result.path,
+        imageValid: validation.valid,
+        imageScene: result.scene,
+        qualityIssues: validation.warnings
+      };
+    } else {
+      console.log(`   ❌ Image generation failed: ${result.issues?.join(', ')}`);
+      return {
+        imagePath: '',
+        imageValid: false,
+        qualityIssues: result.issues || ['Image generation failed']
+      };
+    }
+  } catch (error) {
+    console.log(`   ❌ Image generation error: ${error.message}`);
+    return {
+      imagePath: '',
+      imageValid: false,
+      qualityIssues: [`Image error: ${error.message}`]
+    };
+  }
 }
 
 /**
@@ -532,6 +597,7 @@ export function createLinkedInGraph() {
   
   // Add nodes
   graph.addNode('validate_url', validateUrlNode);
+  graph.addNode('generate_image', generateImageNode);
   graph.addNode('generate_story', generateStoryNode);
   graph.addNode('quality_check_1', qualityCheck1Node);
   graph.addNode('build_post', buildPostNode);
@@ -543,9 +609,12 @@ export function createLinkedInGraph() {
   
   // Conditional routing after URL validation
   graph.addConditionalEdges('validate_url', routeAfterUrlValidation, {
-    'generate_story': 'generate_story',
+    'generate_image': 'generate_image',
     'final_validate': 'final_validate'
   });
+  
+  // Image generation leads to story generation
+  graph.addEdge('generate_image', 'generate_story');
   
   // Rest of the flow
   graph.addEdge('generate_story', 'quality_check_1');
@@ -614,12 +683,22 @@ export async function generateLinkedInPost(postData) {
       console.log(`Quality Issues: ${finalResult.qualityIssues.join(', ')}`);
     }
     
+    // Log image info
+    if (finalResult.imagePath) {
+      console.log(`Image: ${finalResult.imagePath} (${finalResult.imageValid ? 'valid' : 'invalid'})`);
+    }
+    
     console.log('═'.repeat(60) + '\n');
     
     return {
       success: true,
       content: finalResult.finalContent,
-      qualityIssues: finalResult.qualityIssues
+      qualityIssues: finalResult.qualityIssues,
+      image: {
+        path: finalResult.imagePath,
+        valid: finalResult.imageValid,
+        scene: finalResult.imageScene
+      }
     };
     
   } catch (error) {

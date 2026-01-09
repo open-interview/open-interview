@@ -42,3 +42,6 @@ export {
 
 // 🆕 Quality Gate (all questions must pass)
 export { createQualityGateGraph, runQualityGate } from './quality-gate-graph.js';
+
+// 🆕 Feedback Processor (GitHub Issues → AI processing → close issue)
+export { buildFeedbackProcessorGraph, processFeedback } from './feedback-processor-graph.js';
