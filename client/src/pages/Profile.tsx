@@ -81,30 +81,30 @@ export default function Profile() {
             animate={{ opacity: 1, y: 0 }}
             className="bg-card rounded-2xl border border-border overflow-hidden"
           >
-            {/* Top gradient section */}
-            <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/70 p-5">
+            {/* Top gradient section - Warm premium colors */}
+            <div className="bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 p-5">
               {/* XP and Level row */}
               <div className="flex items-start justify-between mb-5">
                 {/* XP Progress */}
                 <div className="flex-1 mr-4">
                   <div className="flex items-baseline gap-2 mb-2">
-                    <span className="text-white/80 text-sm">Experience</span>
+                    <span className="text-white/70 text-sm">Experience</span>
                     <span className="text-white text-2xl font-bold">{levelProgress.currentXP.toLocaleString()} XP</span>
                   </div>
                   <div className="w-full max-w-[200px] bg-white/20 rounded-full h-2.5 mb-1.5">
                     <div 
-                      className="bg-white h-2.5 rounded-full transition-all duration-700"
+                      className="bg-gradient-to-r from-amber-400 to-orange-400 h-2.5 rounded-full transition-all duration-700"
                       style={{ width: `${levelProgress.progress}%` }}
                     />
                   </div>
-                  <div className="text-white/70 text-xs">
+                  <div className="text-white/60 text-xs">
                     {levelProgress.xpForNext} XP to next level
                   </div>
                 </div>
                 
                 {/* Level Badge */}
-                <div className="bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5 text-center border border-white/20">
-                  <div className="text-white/80 text-xs font-semibold uppercase tracking-wider">
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2.5 text-center border border-white/20">
+                  <div className="text-amber-300 text-xs font-semibold uppercase tracking-wider">
                     Level {levelProgress.currentLevel.level}
                   </div>
                   <div className="text-white text-lg font-bold">
@@ -117,12 +117,12 @@ export default function Profile() {
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-white text-xl font-bold">Interview Prep</h1>
-                  <p className="text-white/70 text-sm">Mastering technical interviews</p>
+                  <p className="text-white/60 text-sm">Mastering technical interviews</p>
                 </div>
                 {currentStreak > 0 && (
-                  <div className="flex items-center gap-1.5 bg-orange-500/20 px-3 py-1.5 rounded-full border border-orange-400/30">
-                    <Flame className="w-4 h-4 text-orange-300" />
-                    <span className="text-orange-200 text-sm font-medium">{currentStreak} day streak</span>
+                  <div className="flex items-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full border border-amber-400/30">
+                    <Flame className="w-4 h-4 text-amber-400" />
+                    <span className="text-amber-300 text-sm font-medium">{currentStreak} day streak</span>
                   </div>
                 )}
               </div>
@@ -132,8 +132,8 @@ export default function Profile() {
             <div className="px-5 py-4">
               <div className="flex items-center gap-4">
                 {/* Avatar */}
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg flex-shrink-0">
-                  <Code className="w-7 h-7 text-primary-foreground" />
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg flex-shrink-0">
+                  <Code className="w-7 h-7 text-white" />
                 </div>
                 
                 {/* Stats Grid */}
