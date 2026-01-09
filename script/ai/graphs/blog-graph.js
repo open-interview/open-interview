@@ -12,7 +12,7 @@
 import { StateGraph, END, START } from '@langchain/langgraph';
 import { Annotation } from '@langchain/langgraph';
 import ai from '../index.js';
-import { generateBlogIllustrations } from '../utils/blog-illustration-generator.js';
+import { generateBlogIllustrations, generatePixelIllustration } from '../utils/blog-illustration-generator.js';
 import vectorDB from '../services/vector-db.js';
 
 /**
@@ -325,12 +325,12 @@ async function validateCitationsNode(state) {
 }
 
 /**
- * Node: Generate cartoon-style SVG images for the blog
- * Creates contextual illustrations based on blog content
+ * Node: Generate pixel art SVG images for the blog
+ * Creates contextual 16-bit style illustrations based on blog content
  * Uses AI-powered scene selection for dynamic, contextual illustrations
  */
 async function validateImagesNode(state) {
-  console.log('\n🖼️ [GENERATE_IMAGES] Creating cartoon-style illustrations...');
+  console.log('\n🖼️ [GENERATE_IMAGES] Creating pixel art illustrations...');
   
   if (!state.blogContent) {
     return { error: 'No blog content to validate' };
@@ -342,14 +342,10 @@ async function validateImagesNode(state) {
   // Filter to only keep local images (already generated SVGs)
   let validImages = images.filter(img => img?.url?.startsWith('/images/'));
   
-  // Generate new cartoon-style SVG images using the full-featured generator
-  console.log(`   🎨 Generating cartoon-style SVG illustrations...`);
+  // Generate new pixel art SVG images
+  console.log(`   🎮 Generating pixel art SVG illustrations...`);
   
   try {
-    // Prepare blog content for illustration generation
-    // The generator expects an array of posts with title, content, slug, etc.
-    const blogPosts = [];
-    
     // Main hero illustration (after intro)
     const mainContent = [
       state.blogContent.introduction || '',
@@ -357,61 +353,54 @@ async function validateImagesNode(state) {
       state.blogContent.conclusion || ''
     ].join('\n');
     
-    blogPosts.push({
-      title: state.blogContent.title || state.question,
-      content: mainContent,
-      slug: state.questionId || 'main',
-      placement: 'after-intro',
-      channel: state.channel,
-      realWorldExample: state.realWorldCase ? {
-        company: state.realWorldCase.company,
-        scenario: state.realWorldCase.scenario,
-        lesson: state.realWorldCase.lesson
-      } : state.blogContent.realWorldExample
-    });
+    // Generate main pixel art illustration
+    const mainResult = await generatePixelIllustration(
+      state.blogContent.title || state.question,
+      mainContent,
+      `pixel-${state.questionId || 'main'}`,
+      { channel: state.channel }
+    );
+    
+    if (mainResult && mainResult.filename) {
+      validImages.push({
+        url: `/images/${mainResult.filename}`,
+        alt: `${state.blogContent.title} - Pixel Art Illustration`,
+        caption: `${mainResult.scene} scene (16-bit pixel art)`,
+        placement: 'after-intro'
+      });
+      console.log(`      - ${mainResult.filename}: ${mainResult.scene} scene`);
+    }
     
     // Generate section-specific illustrations for longer posts
     const sections = state.blogContent.sections || [];
-    if (sections.length >= 3) {
+    if (sections.length >= 4) {
       // Add illustration for the middle section
       const midIndex = Math.floor(sections.length / 2);
       const midSection = sections[midIndex];
       if (midSection) {
-        blogPosts.push({
-          title: midSection.title || state.blogContent.title,
-          content: midSection.content || '',
-          slug: `${state.questionId || 'section'}-${midIndex}`,
-          placement: 'mid-content',
-          channel: state.channel
-        });
+        const midResult = await generatePixelIllustration(
+          midSection.title || state.blogContent.title,
+          midSection.content || '',
+          `pixel-${state.questionId || 'section'}-${midIndex}`,
+          { channel: state.channel }
+        );
+        
+        if (midResult && midResult.filename) {
+          validImages.push({
+            url: `/images/${midResult.filename}`,
+            alt: `${midSection.title || state.blogContent.title} - Illustration`,
+            caption: `${midResult.scene} scene (16-bit pixel art)`,
+            placement: 'mid-content'
+          });
+          console.log(`      - ${midResult.filename}: ${midResult.scene} scene`);
+        }
       }
     }
     
-    // Generate illustrations using the AI-powered generator
-    const generatedImages = await generateBlogIllustrations(blogPosts);
-    
-    // Convert results to image format expected by blog
-    const newImages = generatedImages
-      .filter(img => !img.error && img.filename)
-      .map((img, index) => ({
-        url: `/images/${img.filename}`,
-        alt: `${state.blogContent.title} - Illustration ${index + 1}`,
-        caption: `${img.scene} scene${img.aiGenerated ? ' (AI-generated)' : ''}`,
-        placement: blogPosts[index]?.placement || 'after-intro'
-      }));
-    
-    validImages = [...validImages, ...newImages];
-    console.log(`   ✅ Generated ${newImages.length} cartoon illustrations`);
-    
-    // Log scene types for debugging
-    generatedImages.forEach(img => {
-      if (!img.error) {
-        console.log(`      - ${img.filename}: ${img.scene} scene (AI: ${img.aiGenerated})`);
-      }
-    });
+    console.log(`   ✅ Generated ${validImages.length} pixel art illustrations`);
     
   } catch (error) {
-    console.log(`   ⚠️ SVG generation failed: ${error.message}`);
+    console.log(`   ⚠️ Pixel art generation failed: ${error.message}`);
     console.log(`   Stack: ${error.stack}`);
   }
   

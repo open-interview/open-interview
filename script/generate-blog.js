@@ -10,7 +10,7 @@ import { createClient } from '@libsql/client';
 import fs from 'fs';
 import path from 'path';
 import { generateBlogPost } from './ai/graphs/blog-graph.js';
-import { generateIllustration } from './ai/utils/blog-illustration-generator.js';
+import { generateIllustration, generatePixelIllustration } from './ai/utils/blog-illustration-generator.js';
 
 // Author info for credits
 const AUTHOR = {
@@ -1724,14 +1724,24 @@ async function main() {
             fs.writeFileSync(outputPath, svgContent[filename]);
             cachedCount++;
           } else {
-            // Generate new SVG
+            // Generate new SVG - use pixel art style for social/hero images
             try {
-              const result = await generateIllustration(
-                article.blogTitle,
-                img.alt || article.blogIntro || article.blogTitle,
-                filenameNoExt,
-                { placement: img.placement || 'after-intro', channel: article.channel }
-              );
+              // Use pixel art for hero/social images, default for others
+              const usePixelArt = img.placement === 'hero' || img.placement === 'social' || img.placement === 'after-intro';
+              
+              const result = usePixelArt 
+                ? await generatePixelIllustration(
+                    article.blogTitle,
+                    img.alt || article.blogIntro || article.blogTitle,
+                    filenameNoExt,
+                    { channel: article.channel }
+                  )
+                : await generateIllustration(
+                    article.blogTitle,
+                    img.alt || article.blogIntro || article.blogTitle,
+                    filenameNoExt,
+                    { placement: img.placement || 'after-intro', channel: article.channel }
+                  );
               
               // Read the generated SVG and cache it
               const svgData = fs.readFileSync(result.path, 'utf-8');
