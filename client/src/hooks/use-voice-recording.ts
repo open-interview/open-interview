@@ -31,6 +31,7 @@ export interface VoiceRecordingState {
 export interface VoiceRecordingOptions {
   autoStart?: boolean;
   maxDuration?: number; // seconds
+  onRecordingStart?: () => void;
   onTranscriptUpdate?: (transcript: string, wordCount: number) => void;
   onRecordingComplete?: (audioBlob: Blob, transcript: string) => void;
   onError?: (error: Error) => void;
@@ -57,10 +58,23 @@ export function useVoiceRecording(options: VoiceRecordingOptions = {}): VoiceRec
   const {
     autoStart = false,
     maxDuration,
+    onRecordingStart,
     onTranscriptUpdate,
     onRecordingComplete,
     onError
   } = options;
+
+  // Store callbacks in refs to avoid stale closures
+  const onRecordingCompleteRef = useRef(onRecordingComplete);
+  const onRecordingStartRef = useRef(onRecordingStart);
+  const onErrorRef = useRef(onError);
+  
+  // Keep refs updated
+  useEffect(() => {
+    onRecordingCompleteRef.current = onRecordingComplete;
+    onRecordingStartRef.current = onRecordingStart;
+    onErrorRef.current = onError;
+  }, [onRecordingComplete, onRecordingStart, onError]);
 
   const [state, setState] = useState<VoiceRecordingState>({
     isRecording: false,
@@ -82,6 +96,7 @@ export function useVoiceRecording(options: VoiceRecordingOptions = {}): VoiceRec
   const recognitionRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playbackIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const finalTranscriptRef = useRef<string>('');
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -109,11 +124,16 @@ export function useVoiceRecording(options: VoiceRecordingOptions = {}): VoiceRec
       const fullTranscript = finalTranscript + interimTranscript;
       const wordCount = countWords(fullTranscript);
       
+      // Update ref for use in callbacks
+      if (finalTranscript) {
+        finalTranscriptRef.current = (finalTranscriptRef.current + finalTranscript).trim();
+      }
+      
       setState(prev => ({ 
         ...prev, 
         wordCount,
         transcript: fullTranscript,
-        finalTranscript: finalTranscript || prev.finalTranscript
+        finalTranscript: finalTranscriptRef.current
       }));
 
       if (onTranscriptUpdate) {
@@ -170,11 +190,12 @@ export function useVoiceRecording(options: VoiceRecordingOptions = {}): VoiceRec
 
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        setState(prev => ({ ...prev, audioBlob }));
+        const transcript = finalTranscriptRef.current;
+        setState(prev => ({ ...prev, audioBlob, finalTranscript: transcript }));
         stream.getTracks().forEach(track => track.stop());
 
-        if (onRecordingComplete) {
-          onRecordingComplete(audioBlob, state.finalTranscript);
+        if (onRecordingCompleteRef.current) {
+          onRecordingCompleteRef.current(audioBlob, transcript);
         }
       };
 
@@ -196,13 +217,18 @@ export function useVoiceRecording(options: VoiceRecordingOptions = {}): VoiceRec
       }, 1000);
 
       setState(prev => ({ ...prev, isRecording: true, isPaused: false }));
+      
+      // Call onRecordingStart callback
+      if (onRecordingStartRef.current) {
+        onRecordingStartRef.current();
+      }
     } catch (error) {
       console.error('Failed to start recording:', error);
-      if (onError) {
-        onError(error as Error);
+      if (onErrorRef.current) {
+        onErrorRef.current(error as Error);
       }
     }
-  }, [onRecordingComplete, onError, state.finalTranscript]);
+  }, []);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -266,6 +292,7 @@ export function useVoiceRecording(options: VoiceRecordingOptions = {}): VoiceRec
 
   const resetRecording = useCallback(() => {
     stopRecording();
+    finalTranscriptRef.current = '';
     setState({
       isRecording: false,
       isPaused: false,

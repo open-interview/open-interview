@@ -1,10 +1,6 @@
 /**
- * Voice Interview Practice Page
- * - Uses Web Speech API for browser-based transcription
- * - Advanced client-side evaluation with semantic matching
- * - Multi-dimensional scoring (technical, structure, communication)
- * - Provides hire/no-hire feedback with detailed scoring
- * - Sarcastic interviewer personality for entertainment
+ * Voice Interview Practice Page - Redesigned
+ * Modern GitHub-inspired dark theme with polished UI
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -15,7 +11,7 @@ import {
   CheckCircle, XCircle, AlertCircle, Volume2, Loader2, Sparkles,
   ThumbsUp, ThumbsDown, Minus, Clock, Target, MessageSquare, Coins, Edit3,
   SkipForward, ExternalLink, Shuffle, ChevronLeft, MoreHorizontal, User,
-  BarChart3, Brain, Lightbulb
+  BarChart3, Brain, Lightbulb, Zap, Award
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
 import { getAllQuestionsAsync } from '../lib/questions-loader';
@@ -27,7 +23,6 @@ import { ListenButton } from '../components/ListenButton';
 import { evaluateVoiceAnswer, type EvaluationResult } from '../lib/voice-evaluation';
 import type { Question } from '../types';
 
-// Interviewer comments type
 interface InterviewerComments {
   skip: string[];
   shuffle: string[];
@@ -43,21 +38,20 @@ interface InterviewerComments {
 
 type InterviewState = 'loading' | 'ready' | 'recording' | 'editing' | 'processing' | 'evaluated';
 
-// Check if Web Speech API is supported
 const isSpeechSupported = typeof window !== 'undefined' && 
   ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
-// Get random comment from category
 function getRandomComment(comments: string[]): string {
   return comments[Math.floor(Math.random() * comments.length)];
 }
 
-// Determine question type from channel
 function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-design' {
   if (channel === 'behavioral' || channel === 'engineering-management') return 'behavioral';
   if (channel === 'system-design') return 'system-design';
   return 'technical';
-}export default function VoiceInterview() {
+}
+
+export default function VoiceInterview() {
   const [, setLocation] = useLocation();
   const [state, setState] = useState<InterviewState>('loading');
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -82,7 +76,6 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
 
   const currentQuestion = questions[currentIndex];
 
-  // Load interviewer comments
   useEffect(() => {
     fetch('/data/interviewer-comments.json')
       .then(res => res.ok ? res.json() : null)
@@ -90,48 +83,26 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
       .catch(() => setComments(null));
   }, []);
 
-  // Show interviewer comment with auto-dismiss
   const showComment = useCallback((category: keyof InterviewerComments) => {
     if (!comments || !comments[category]) return;
-    
-    // Clear any existing timeout
-    if (commentTimeoutRef.current) {
-      clearTimeout(commentTimeoutRef.current);
-    }
-    
+    if (commentTimeoutRef.current) clearTimeout(commentTimeoutRef.current);
     const comment = getRandomComment(comments[category]);
     setInterviewerComment(comment);
-    
-    // Auto-dismiss after 4 seconds
-    commentTimeoutRef.current = setTimeout(() => {
-      setInterviewerComment(null);
-    }, 4000);
+    commentTimeoutRef.current = setTimeout(() => setInterviewerComment(null), 4000);
   }, [comments]);
 
-  // Load random questions for interview practice (only from subscribed channels)
   useEffect(() => {
     async function loadQuestions() {
       try {
         const allQuestions = await getAllQuestionsAsync();
-        
-        // Get subscribed channel IDs
         const subscribedChannelIds = preferences.subscribedChannels;
-        
-        // Filter to questions suitable for voice interview from subscribed channels only
         const suitable = allQuestions.filter((q: Question) => {
-          // Must be from a subscribed channel
           if (!subscribedChannelIds.includes(q.channel)) return false;
-          
-          // If voiceSuitable is explicitly set, use it
           if (q.voiceSuitable === false) return false;
           if (q.voiceSuitable === true && q.voiceKeywords && q.voiceKeywords.length > 0) return true;
-          
-          // Fallback: filter by channel for questions not yet processed
           return ['behavioral', 'system-design', 'sre', 'devops'].includes(q.channel) &&
             q.answer && q.answer.length > 100;
         });
-        
-        // Shuffle and take 10 random questions
         const shuffled = suitable.sort(() => Math.random() - 0.5).slice(0, 10);
         setQuestions(shuffled);
         setState('ready');
@@ -143,23 +114,17 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
     loadQuestions();
   }, [preferences.subscribedChannels]);
 
-  // Show first question comment when ready
   useEffect(() => {
     if (state === 'ready' && currentIndex === 0 && questions.length > 0 && comments) {
-      const timer = setTimeout(() => {
-        showComment('first_question');
-      }, 500);
+      const timer = setTimeout(() => showComment('first_question'), 500);
       return () => clearTimeout(timer);
     }
   }, [state, currentIndex, questions.length, comments, showComment]);
 
-  // Initialize speech recognition
   useEffect(() => {
     if (!isSpeechSupported) return;
-    
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
-    
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
@@ -167,19 +132,12 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
     recognition.onresult = (event: any) => {
       let interim = '';
       let final = '';
-      
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
-        if (result.isFinal) {
-          final += result[0].transcript + ' ';
-        } else {
-          interim += result[0].transcript;
-        }
+        if (result.isFinal) final += result[0].transcript + ' ';
+        else interim += result[0].transcript;
       }
-      
-      if (final) {
-        setTranscript(prev => prev + final);
-      }
+      if (final) setTranscript(prev => prev + final);
       setInterimTranscript(interim);
     };
     
@@ -192,32 +150,19 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
     
     recognition.onend = () => {
       if (state === 'recording') {
-        // Restart if still in recording state (handles auto-stop)
-        try {
-          recognition.start();
-        } catch (e) {
-          // Already started, ignore
-        }
+        try { recognition.start(); } catch (e) { /* ignore */ }
       }
     };
     
     recognitionRef.current = recognition;
-    
-    return () => {
-      recognition.stop();
-    };
+    return () => { recognition.stop(); };
   }, [state]);
 
-  // Recording timer
   useEffect(() => {
     if (state === 'recording') {
-      timerRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
-      }, 1000);
-    } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+      timerRef.current = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
+    } else if (timerRef.current) {
+      clearInterval(timerRef.current);
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -227,13 +172,11 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
 
   const startRecording = useCallback(() => {
     if (!recognitionRef.current) return;
-    
     setTranscript('');
     setInterimTranscript('');
     setRecordingTime(0);
     setEvaluation(null);
     setError(null);
-    
     try {
       recognitionRef.current.start();
       setState('recording');
@@ -244,52 +187,28 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
 
   const stopRecording = useCallback(() => {
     if (!recognitionRef.current) return;
-    
     recognitionRef.current.stop();
-    // Go to editing state to allow user to fix transcript
     setState('editing');
   }, []);
 
-  // Submit the edited transcript for evaluation
   const submitAnswer = useCallback(() => {
     if (!currentQuestion || !transcript.trim()) {
       setError('Please provide an answer before submitting.');
       return;
     }
-    
     setState('processing');
-    
-    // Evaluate the answer using advanced client-side evaluation
     setTimeout(() => {
       const questionType = getQuestionType(currentQuestion.channel);
-      const result = evaluateVoiceAnswer(
-        transcript, 
-        currentQuestion.answer, 
-        currentQuestion.voiceKeywords,
-        questionType
-      );
+      const result = evaluateVoiceAnswer(transcript, currentQuestion.answer, currentQuestion.voiceKeywords, questionType);
       setEvaluation(result);
-      
-      // Award credits for the attempt
       const credits = onVoiceInterview(result.verdict);
       setEarnedCredits({ total: credits.totalCredits, bonus: credits.bonusCredits });
-      
-      // Track achievement event
-      trackEvent({
-        type: 'voice_interview_completed',
-        timestamp: new Date().toISOString(),
-      });
-      
-      // Show appropriate comment based on score
-      if (result.score >= 60) {
-        showComment('good_score');
-      } else {
-        showComment('bad_score');
-      }
-      
+      trackEvent({ type: 'voice_interview_completed', timestamp: new Date().toISOString() });
+      if (result.score >= 60) showComment('good_score');
+      else showComment('bad_score');
       setState('evaluated');
-    }, 800); // Slightly longer delay for "analysis" feel
-  }, [transcript, currentQuestion, onVoiceInterview, showComment]);
+    }, 800);
+  }, [transcript, currentQuestion, onVoiceInterview, showComment, trackEvent]);
 
   const nextQuestion = useCallback(() => {
     if (currentIndex < questions.length - 1) {
@@ -317,11 +236,7 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
   }, [currentIndex]);
 
   const skipQuestion = useCallback(() => {
-    // Stop recording if active
-    if (recognitionRef.current && state === 'recording') {
-      recognitionRef.current.stop();
-    }
-    
+    if (recognitionRef.current && state === 'recording') recognitionRef.current.stop();
     if (currentIndex < questions.length - 1) {
       showComment('skip');
       setCurrentIndex(prev => prev + 1);
@@ -336,9 +251,7 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
   }, [currentIndex, questions.length, state, showComment]);
 
   const goToOriginalQuestion = useCallback(() => {
-    if (currentQuestion) {
-      setLocation(`/channel/${currentQuestion.channel}/${currentQuestion.id}`);
-    }
+    if (currentQuestion) setLocation(`/channel/${currentQuestion.channel}/${currentQuestion.id}`);
   }, [currentQuestion, setLocation]);
 
   const shuffleQuestions = useCallback(() => {
@@ -370,20 +283,21 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Render unsupported browser message
+  // Unsupported browser
   if (!isSpeechSupported) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center p-4">
         <div className="max-w-md text-center">
-          <AlertCircle className="w-16 h-16 text-orange-500 mx-auto mb-4" />
-          <h1 className="text-xl font-bold mb-2">Browser Not Supported</h1>
-          <p className="text-muted-foreground mb-4">
-            Voice interview requires the Web Speech API which is not supported in your browser.
-            Please use Chrome, Edge, or Safari for the best experience.
+          <div className="w-20 h-20 rounded-2xl bg-[#d29922]/20 flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="w-10 h-10 text-[#d29922]" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-3">Browser Not Supported</h1>
+          <p className="text-[#8b949e] mb-6">
+            Voice interview requires the Web Speech API. Please use Chrome, Edge, or Safari.
           </p>
           <button
             onClick={() => setLocation('/')}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+            className="px-6 py-3 bg-[#238636] text-white font-medium rounded-xl hover:bg-[#2ea043] transition-colors"
           >
             Go Home
           </button>
@@ -392,27 +306,33 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
     );
   }
 
+  // Loading
   if (state === 'loading' || questions.length === 0) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading interview questions...</p>
+          <div className="w-16 h-16 rounded-2xl bg-[#58a6ff]/20 flex items-center justify-center mx-auto mb-4">
+            <Loader2 className="w-8 h-8 animate-spin text-[#58a6ff]" />
+          </div>
+          <p className="text-[#8b949e]">Loading interview questions...</p>
         </div>
       </div>
     );
   }
 
+  // Error state
   if (error && !currentQuestion) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center p-4">
         <div className="max-w-md text-center">
-          <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-bold mb-2">Error</h1>
-          <p className="text-muted-foreground mb-4">{error}</p>
+          <div className="w-20 h-20 rounded-2xl bg-[#f85149]/20 flex items-center justify-center mx-auto mb-6">
+            <XCircle className="w-10 h-10 text-[#f85149]" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-3">Error</h1>
+          <p className="text-[#8b949e] mb-6">{error}</p>
           <button
             onClick={() => setLocation('/')}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+            className="px-6 py-3 bg-[#238636] text-white font-medium rounded-xl hover:bg-[#2ea043] transition-colors"
           >
             Go Home
           </button>
@@ -420,6 +340,8 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
       </div>
     );
   }
+
+  const progress = ((currentIndex + 1) / questions.length) * 100;
 
   return (
     <>
@@ -429,254 +351,233 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
         canonical="https://open-interview.github.io/voice-interview"
       />
 
-      <div className="min-h-screen bg-background text-foreground font-mono">
+      <div className="min-h-screen bg-[#0d1117] text-[#e6edf3]">
         {/* Header */}
-        <header className="border-b border-border p-4">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-50 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur-md">
+          <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-4">
               <button
                 onClick={() => setLocation('/')}
-                className="p-2 hover:bg-muted/20 rounded-lg transition-colors"
+                className="p-2 hover:bg-[#21262d] rounded-lg transition-colors"
               >
-                <Home className="w-5 h-5" />
+                <Home className="w-5 h-5 text-[#8b949e]" />
               </button>
-              <div>
-                <h1 className="font-bold flex items-center gap-2">
-                  <Mic className="w-5 h-5 text-primary" />
-                  Voice Interview
-                </h1>
-                <p className="text-xs text-muted-foreground">
-                  Question {currentIndex + 1} of {questions.length}
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#f85149] to-[#ff7b72] flex items-center justify-center">
+                  <Mic className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="font-semibold text-white">Voice Interview</h1>
+                  <p className="text-xs text-[#8b949e]">
+                    Question {currentIndex + 1} of {questions.length}
+                  </p>
+                </div>
               </div>
             </div>
             
             <div className="flex items-center gap-3">
-              {/* Session Mode Link */}
               <button
                 onClick={() => setLocation('/voice-session')}
-                className="px-2 py-1 text-xs bg-primary/20 text-primary rounded hover:bg-primary/30 transition-colors flex items-center gap-1"
-                title="Try focused micro-question sessions"
+                className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm bg-[#21262d] text-[#8b949e] hover:text-white rounded-lg border border-[#30363d] hover:border-[#58a6ff]/50 transition-all"
               >
-                <Target className="w-3 h-3" />
+                <Target className="w-4 h-4" />
                 Sessions
               </button>
-              
-              {/* Credits Display */}
               <CreditsDisplay compact onClick={() => setLocation('/profile')} />
-              
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-1 text-xs rounded ${
-                  currentQuestion?.difficulty === 'beginner' ? 'bg-green-500/20 text-green-400' :
-                  currentQuestion?.difficulty === 'intermediate' ? 'bg-yellow-500/20 text-yellow-400' :
-                  'bg-red-500/20 text-red-400'
-                }`}>
-                  {currentQuestion?.difficulty}
-                </span>
-                <button
-                  onClick={goToOriginalQuestion}
-                  className="px-2 py-1 text-xs bg-primary/20 text-primary rounded hover:bg-primary/30 transition-colors"
-                  title={`View in ${currentQuestion?.channel} channel`}
-                >
-                  {currentQuestion?.channel}
-                </button>
-              </div>
+              <span className={`px-2.5 py-1 text-xs font-medium rounded-lg ${
+                currentQuestion?.difficulty === 'beginner' ? 'bg-[#238636]/20 text-[#3fb950]' :
+                currentQuestion?.difficulty === 'intermediate' ? 'bg-[#d29922]/20 text-[#d29922]' :
+                'bg-[#f85149]/20 text-[#f85149]'
+              }`}>
+                {currentQuestion?.difficulty}
+              </span>
             </div>
           </div>
           
           {/* Progress Bar */}
-          <div className="max-w-4xl mx-auto mt-3">
-            <div className="h-1 bg-muted rounded-full overflow-hidden">
+          <div className="max-w-4xl mx-auto px-4 pb-3">
+            <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
-                animate={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
-                className="h-full bg-primary rounded-full"
+                animate={{ width: `${progress}%` }}
+                className="h-full bg-gradient-to-r from-[#58a6ff] to-[#a371f7] rounded-full"
               />
             </div>
           </div>
         </header>
 
         {/* Main Content */}
-        <main className="max-w-4xl mx-auto p-4">
+        <main className="max-w-4xl mx-auto px-4 py-6">
+
           {/* Question Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-card border border-border rounded-lg p-6 mb-6"
+            className="rounded-2xl border border-[#30363d] bg-[#161b22] overflow-hidden mb-6"
           >
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <div className="flex items-start gap-3 flex-1">
-                <MessageSquare className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
-                <h2 className="text-lg font-medium">{currentQuestion?.question}</h2>
-              </div>
-              
-              {/* View Original Question Link */}
-              <button
-                onClick={goToOriginalQuestion}
-                className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-primary hover:bg-muted/20 rounded transition-colors flex-shrink-0"
-                title="View full question details"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">View Details</span>
-              </button>
-            </div>
-            
-            {/* Question Controls Bar */}
-            <div className="flex items-center justify-between pt-3 border-t border-border/50">
-              <div className="flex items-center gap-2">
-                {/* Question navigation info */}
-                <span className="text-xs text-muted-foreground">
-                  Q{currentIndex + 1}/{questions.length}
-                </span>
-                
-                {/* More Actions Dropdown */}
-                <div className="relative">
-                  <button
-                    onClick={() => setShowActions(!showActions)}
-                    className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/20 rounded transition-colors"
-                    title="More options"
-                  >
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
-                  
-                  <AnimatePresence>
-                    {showActions && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -5 }}
-                        className="absolute left-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg py-1 z-10 min-w-[140px]"
-                      >
-                        <button
-                          onClick={previousQuestion}
-                          disabled={currentIndex === 0}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-muted/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                          Previous
-                        </button>
-                        <button
-                          onClick={skipQuestion}
-                          disabled={currentIndex >= questions.length - 1}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-muted/20 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          <SkipForward className="w-3.5 h-3.5" />
-                          Skip Question
-                        </button>
-                        <button
-                          onClick={shuffleQuestions}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-muted/20 transition-colors"
-                        >
-                          <Shuffle className="w-3.5 h-3.5" />
-                          Shuffle All
-                        </button>
-                        <div className="border-t border-border my-1" />
-                        <button
-                          onClick={goToOriginalQuestion}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-muted/20 transition-colors"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          View Full Question
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+            <div className="p-6">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="flex items-start gap-4 flex-1">
+                  <div className="p-2.5 rounded-xl bg-[#58a6ff]/10 flex-shrink-0">
+                    <MessageSquare className="w-5 h-5 text-[#58a6ff]" />
+                  </div>
+                  <h2 className="text-lg font-medium text-white leading-relaxed">{currentQuestion?.question}</h2>
                 </div>
+                <button
+                  onClick={goToOriginalQuestion}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#8b949e] hover:text-[#58a6ff] hover:bg-[#21262d] rounded-lg transition-colors flex-shrink-0"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">View Details</span>
+                </button>
               </div>
               
-              <div className="flex items-center gap-2">
-                {/* Listen to Question */}
-                <ListenButton 
-                  text={currentQuestion?.question || ''} 
-                  label="Listen"
-                  size="sm"
-                />
+              {/* Question Controls */}
+              <div className="flex items-center justify-between pt-4 border-t border-[#30363d]/50">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-[#6e7681] font-mono">Q{currentIndex + 1}/{questions.length}</span>
+                  
+                  {/* Actions Dropdown */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowActions(!showActions)}
+                      className="p-1.5 text-[#6e7681] hover:text-white hover:bg-[#21262d] rounded-lg transition-colors"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+                    
+                    <AnimatePresence>
+                      {showActions && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -5 }}
+                          className="absolute left-0 top-full mt-1 bg-[#161b22] border border-[#30363d] rounded-xl shadow-xl py-1 z-10 min-w-[160px]"
+                        >
+                          <button
+                            onClick={previousQuestion}
+                            disabled={currentIndex === 0}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors disabled:opacity-30"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                            Previous
+                          </button>
+                          <button
+                            onClick={skipQuestion}
+                            disabled={currentIndex >= questions.length - 1}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors disabled:opacity-30"
+                          >
+                            <SkipForward className="w-4 h-4" />
+                            Skip Question
+                          </button>
+                          <button
+                            onClick={shuffleQuestions}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+                          >
+                            <Shuffle className="w-4 h-4" />
+                            Shuffle All
+                          </button>
+                          <div className="border-t border-[#30363d] my-1" />
+                          <button
+                            onClick={goToOriginalQuestion}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            View Full Question
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
                 
-                {/* Keywords hint */}
-                {currentQuestion?.voiceKeywords && currentQuestion.voiceKeywords.length > 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    {currentQuestion.voiceKeywords.length} key terms
-                  </span>
-                )}
+                <div className="flex items-center gap-3">
+                  <ListenButton text={currentQuestion?.question || ''} label="Listen" size="sm" />
+                  {currentQuestion?.voiceKeywords && currentQuestion.voiceKeywords.length > 0 && (
+                    <span className="text-xs text-[#6e7681]">
+                      {currentQuestion.voiceKeywords.length} key terms
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             
             {error && (
-              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm mt-4">
+              <div className="mx-6 mb-6 p-4 bg-[#f85149]/10 border border-[#f85149]/30 rounded-xl text-[#f85149] text-sm">
                 {error}
               </div>
             )}
           </motion.div>
 
-          {/* Sarcastic Interviewer Comment */}
+          {/* Interviewer Comment */}
           <AnimatePresence>
             {interviewerComment && (
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                className="mb-4 flex items-start gap-3"
+                className="mb-6 flex items-start gap-3"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
-                  <User className="w-4 h-4 text-white" />
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a371f7] to-[#f778ba] flex items-center justify-center flex-shrink-0">
+                  <User className="w-5 h-5 text-white" />
                 </div>
-                <div className="flex-1 p-3 bg-muted/30 border border-border/50 rounded-lg rounded-tl-none">
-                  <p className="text-sm italic text-muted-foreground">"{interviewerComment}"</p>
-                  <p className="text-[10px] text-muted-foreground/60 mt-1">— Your Interviewer</p>
+                <div className="flex-1 p-4 bg-[#21262d] border border-[#30363d] rounded-2xl rounded-tl-none">
+                  <p className="text-sm italic text-[#8b949e]">"{interviewerComment}"</p>
+                  <p className="text-[10px] text-[#6e7681] mt-2">— Your Interviewer</p>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
           {/* Recording Interface */}
-          <div className="bg-card border border-border rounded-lg p-6 mb-6">
+          <div className="rounded-2xl border border-[#30363d] bg-[#161b22] p-6 mb-6">
             {/* Recording Status */}
             <div className="flex items-center justify-center gap-4 mb-6">
               {state === 'recording' && (
-                <>
-                  <div className="flex items-center gap-2 text-red-500">
-                    <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                    <span className="font-mono">{formatTime(recordingTime)}</span>
-                  </div>
-                </>
+                <div className="flex items-center gap-3 px-4 py-2 bg-[#f85149]/10 border border-[#f85149]/30 rounded-full">
+                  <span className="w-3 h-3 bg-[#f85149] rounded-full animate-pulse" />
+                  <span className="font-mono text-[#f85149] font-medium">{formatTime(recordingTime)}</span>
+                </div>
               )}
               
               {state === 'editing' && (
-                <div className="flex items-center gap-2 text-amber-500">
-                  <span className="text-sm">Edit your answer below, then submit for evaluation</span>
+                <div className="flex items-center gap-2 px-4 py-2 bg-[#d29922]/10 border border-[#d29922]/30 rounded-full">
+                  <Edit3 className="w-4 h-4 text-[#d29922]" />
+                  <span className="text-sm text-[#d29922]">Edit your answer, then submit</span>
                 </div>
               )}
               
               {state === 'processing' && (
-                <div className="flex items-center gap-2 text-primary">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Analyzing your answer...</span>
+                <div className="flex items-center gap-3 px-4 py-2 bg-[#58a6ff]/10 border border-[#58a6ff]/30 rounded-full">
+                  <Loader2 className="w-4 h-4 animate-spin text-[#58a6ff]" />
+                  <span className="text-sm text-[#58a6ff]">Analyzing your answer...</span>
                 </div>
               )}
             </div>
 
-            {/* Transcript Display - Editable in editing state */}
+            {/* Transcript Display */}
             {(state === 'recording' || state === 'editing' || transcript) && state !== 'evaluated' && (
               <div className="mb-6">
                 {state === 'editing' ? (
                   <textarea
                     value={transcript}
                     onChange={(e) => setTranscript(e.target.value)}
-                    className="w-full p-4 bg-muted/20 border border-amber-500/30 rounded-lg min-h-[150px] max-h-[300px] text-sm resize-y focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                    className="w-full p-4 bg-[#0d1117] border border-[#d29922]/30 rounded-xl min-h-[150px] max-h-[300px] text-sm text-[#e6edf3] resize-y focus:outline-none focus:ring-2 focus:ring-[#d29922]/50 focus:border-[#d29922]"
                     placeholder="Edit your transcribed answer here..."
                   />
                 ) : (
-                  <div className="p-4 bg-muted/20 rounded-lg min-h-[120px] max-h-[200px] overflow-y-auto">
-                    <p className="text-sm whitespace-pre-wrap">
+                  <div className="p-4 bg-[#0d1117] rounded-xl min-h-[120px] max-h-[200px] overflow-y-auto border border-[#30363d]">
+                    <p className="text-sm text-[#e6edf3] whitespace-pre-wrap leading-relaxed">
                       {transcript}
-                      <span className="text-muted-foreground">{interimTranscript}</span>
-                      {state === 'recording' && <span className="animate-pulse">|</span>}
+                      <span className="text-[#6e7681]">{interimTranscript}</span>
+                      {state === 'recording' && <span className="animate-pulse text-[#58a6ff]">|</span>}
                     </p>
                   </div>
                 )}
                 {state === 'editing' && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    💡 Fix any transcription errors before submitting
+                  <p className="text-xs text-[#6e7681] mt-2 flex items-center gap-1.5">
+                    <Lightbulb className="w-3.5 h-3.5 text-[#d29922]" />
+                    Fix any transcription errors before submitting
                   </p>
                 )}
               </div>
@@ -687,7 +588,7 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
               {state === 'ready' && (
                 <button
                   onClick={startRecording}
-                  className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground font-bold rounded-full hover:bg-primary/90 transition-all hover:scale-105"
+                  className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-[#f85149] to-[#ff7b72] text-white font-semibold rounded-2xl hover:opacity-90 transition-all hover:scale-[1.02] shadow-lg shadow-[#f85149]/20"
                 >
                   <Mic className="w-5 h-5" />
                   Start Recording
@@ -697,7 +598,7 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
               {state === 'recording' && (
                 <button
                   onClick={stopRecording}
-                  className="flex items-center gap-2 px-6 py-3 bg-red-500 text-white font-bold rounded-full hover:bg-red-600 transition-all hover:scale-105"
+                  className="flex items-center gap-3 px-8 py-4 bg-[#f85149] text-white font-semibold rounded-2xl hover:bg-[#da3633] transition-all"
                 >
                   <Square className="w-5 h-5" />
                   Stop Recording
@@ -708,7 +609,7 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
                 <div className="flex gap-3">
                   <button
                     onClick={retryQuestion}
-                    className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted/20 transition-colors"
+                    className="flex items-center gap-2 px-5 py-3 border border-[#30363d] text-[#8b949e] hover:text-white hover:border-[#8b949e] rounded-xl transition-colors"
                   >
                     <RotateCcw className="w-4 h-4" />
                     Re-record
@@ -716,7 +617,7 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
                   <button
                     onClick={submitAnswer}
                     disabled={!transcript.trim()}
-                    className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground font-bold rounded-full hover:bg-primary/90 transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-3 px-8 py-3 bg-[#238636] text-white font-semibold rounded-xl hover:bg-[#2ea043] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <CheckCircle className="w-5 h-5" />
                     Submit Answer
@@ -728,7 +629,7 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
                 <div className="flex gap-3">
                   <button
                     onClick={retryQuestion}
-                    className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted/20 transition-colors"
+                    className="flex items-center gap-2 px-5 py-3 border border-[#30363d] text-[#8b949e] hover:text-white hover:border-[#8b949e] rounded-xl transition-colors"
                   >
                     <RotateCcw className="w-4 h-4" />
                     Try Again
@@ -736,7 +637,7 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
                   {currentIndex < questions.length - 1 && (
                     <button
                       onClick={nextQuestion}
-                      className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-bold rounded-lg hover:bg-primary/90 transition-colors"
+                      className="flex items-center gap-2 px-6 py-3 bg-[#238636] text-white font-semibold rounded-xl hover:bg-[#2ea043] transition-colors"
                     >
                       Next Question
                       <ChevronRight className="w-4 h-4" />
@@ -759,44 +660,47 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
                 {/* Credits Earned Banner */}
                 {earnedCredits && (
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
+                    initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="p-4 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30 rounded-lg flex items-center justify-between"
+                    className="p-4 bg-gradient-to-r from-[#d29922]/20 to-[#f1c40f]/20 border border-[#d29922]/30 rounded-2xl flex items-center justify-between"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-amber-500/30 flex items-center justify-center">
-                        <Coins className="w-5 h-5 text-amber-400" />
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-[#d29922]/20 flex items-center justify-center">
+                        <Coins className="w-6 h-6 text-[#d29922]" />
                       </div>
                       <div>
-                        <div className="font-bold text-amber-400">+{earnedCredits.total} Credits Earned!</div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="font-bold text-[#d29922] text-lg">+{earnedCredits.total} Credits Earned!</div>
+                        <div className="text-xs text-[#8b949e]">
                           {earnedCredits.bonus > 0 
                             ? `${config.VOICE_ATTEMPT} base + ${earnedCredits.bonus} success bonus`
                             : 'Thanks for practicing!'}
                         </div>
                       </div>
                     </div>
+                    <Award className="w-8 h-8 text-[#d29922]/50" />
                   </motion.div>
                 )}
 
                 {/* Verdict Card */}
-                <div className={`p-6 rounded-lg border ${getVerdictStyle(evaluation.verdict)}`}>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      {getVerdictIcon(evaluation.verdict)}
+                <div className={`p-6 rounded-2xl border ${getVerdictStyle(evaluation.verdict)}`}>
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${getVerdictBgStyle(evaluation.verdict)}`}>
+                        {getVerdictIcon(evaluation.verdict)}
+                      </div>
                       <div>
-                        <h3 className="font-bold text-lg">{getVerdictLabel(evaluation.verdict)}</h3>
-                        <p className="text-sm opacity-80">Interview Assessment</p>
+                        <h3 className="font-bold text-xl text-white">{getVerdictLabel(evaluation.verdict)}</h3>
+                        <p className="text-sm text-[#8b949e]">Interview Assessment</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-3xl font-bold">{evaluation.score}%</div>
-                      <div className="text-xs opacity-70">Overall Score</div>
+                      <div className="text-4xl font-bold text-white">{evaluation.score}%</div>
+                      <div className="text-xs text-[#6e7681]">Overall Score</div>
                     </div>
                   </div>
                   
                   {/* Score Bar */}
-                  <div className="h-2 bg-black/20 rounded-full overflow-hidden mb-4">
+                  <div className="h-2 bg-[#21262d] rounded-full overflow-hidden mb-4">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${evaluation.score}%` }}
@@ -805,14 +709,14 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
                     />
                   </div>
                   
-                  <p className="text-sm">{evaluation.feedback}</p>
+                  <p className="text-sm text-[#8b949e] leading-relaxed">{evaluation.feedback}</p>
                 </div>
 
                 {/* Multi-Dimensional Scores */}
                 {evaluation.scores && (
-                  <div className="p-4 bg-card border border-border rounded-lg">
-                    <h4 className="font-bold flex items-center gap-2 mb-4">
-                      <BarChart3 className="w-4 h-4 text-primary" />
+                  <div className="p-6 rounded-2xl border border-[#30363d] bg-[#161b22]">
+                    <h4 className="font-semibold text-white flex items-center gap-2 mb-5">
+                      <BarChart3 className="w-5 h-5 text-[#58a6ff]" />
                       Detailed Analysis
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -844,22 +748,22 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
                     
                     {/* Structure Analysis */}
                     {evaluation.structureAnalysis && (
-                      <div className="mt-4 pt-4 border-t border-border/50">
+                      <div className="mt-5 pt-5 border-t border-[#30363d]">
                         <div className="flex flex-wrap gap-2">
                           {evaluation.structureAnalysis.hasIntroduction && (
-                            <span className="px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded">✓ Introduction</span>
+                            <span className="px-3 py-1.5 text-xs bg-[#238636]/20 text-[#3fb950] rounded-lg font-medium">✓ Introduction</span>
                           )}
                           {evaluation.structureAnalysis.hasExamples && (
-                            <span className="px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded">✓ Examples</span>
+                            <span className="px-3 py-1.5 text-xs bg-[#238636]/20 text-[#3fb950] rounded-lg font-medium">✓ Examples</span>
                           )}
                           {evaluation.structureAnalysis.hasConclusion && (
-                            <span className="px-2 py-1 text-xs bg-green-500/20 text-green-400 rounded">✓ Conclusion</span>
+                            <span className="px-3 py-1.5 text-xs bg-[#238636]/20 text-[#3fb950] rounded-lg font-medium">✓ Conclusion</span>
                           )}
                           {evaluation.structureAnalysis.usesSTAR && (
-                            <span className="px-2 py-1 text-xs bg-primary/20 text-primary rounded">⭐ STAR Method</span>
+                            <span className="px-3 py-1.5 text-xs bg-[#a371f7]/20 text-[#a371f7] rounded-lg font-medium">⭐ STAR Method</span>
                           )}
                           {evaluation.fluencyMetrics && evaluation.fluencyMetrics.fillerWordCount > 3 && (
-                            <span className="px-2 py-1 text-xs bg-orange-500/20 text-orange-400 rounded">
+                            <span className="px-3 py-1.5 text-xs bg-[#d29922]/20 text-[#d29922] rounded-lg font-medium">
                               ⚠ {evaluation.fluencyMetrics.fillerWordCount} filler words
                             </span>
                           )}
@@ -872,15 +776,15 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
                 {/* Key Points */}
                 <div className="grid md:grid-cols-2 gap-4">
                   {/* Covered Points */}
-                  <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
-                    <h4 className="font-bold text-green-400 flex items-center gap-2 mb-3">
-                      <CheckCircle className="w-4 h-4" />
+                  <div className="p-5 rounded-2xl bg-[#238636]/10 border border-[#238636]/30">
+                    <h4 className="font-semibold text-[#3fb950] flex items-center gap-2 mb-4">
+                      <CheckCircle className="w-5 h-5" />
                       Concepts Covered ({evaluation.keyPointsCovered.length})
                     </h4>
                     <ul className="space-y-2">
                       {evaluation.keyPointsCovered.map((point, i) => (
-                        <li key={i} className="text-sm flex items-start gap-2">
-                          <span className="text-green-400 mt-1">✓</span>
+                        <li key={i} className="text-sm flex items-start gap-2 text-[#8b949e]">
+                          <span className="text-[#3fb950] mt-0.5">✓</span>
                           <span>
                             {typeof point === 'object' && 'concept' in point 
                               ? `${point.concept}${point.confidence !== 'exact' ? ` (as "${point.matchedAs}")` : ''}`
@@ -889,26 +793,26 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
                         </li>
                       ))}
                       {evaluation.keyPointsCovered.length === 0 && (
-                        <li className="text-sm text-muted-foreground">No key concepts identified</li>
+                        <li className="text-sm text-[#6e7681]">No key concepts identified</li>
                       )}
                     </ul>
                   </div>
 
                   {/* Missed Points */}
-                  <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-                    <h4 className="font-bold text-red-400 flex items-center gap-2 mb-3">
-                      <XCircle className="w-4 h-4" />
+                  <div className="p-5 rounded-2xl bg-[#f85149]/10 border border-[#f85149]/30">
+                    <h4 className="font-semibold text-[#f85149] flex items-center gap-2 mb-4">
+                      <XCircle className="w-5 h-5" />
                       Concepts to Include ({evaluation.keyPointsMissed.length})
                     </h4>
                     <ul className="space-y-2">
                       {evaluation.keyPointsMissed.map((point, i) => (
-                        <li key={i} className="text-sm flex items-start gap-2">
-                          <span className="text-red-400 mt-1">✗</span>
+                        <li key={i} className="text-sm flex items-start gap-2 text-[#8b949e]">
+                          <span className="text-[#f85149] mt-0.5">✗</span>
                           <span>{point}</span>
                         </li>
                       ))}
                       {evaluation.keyPointsMissed.length === 0 && (
-                        <li className="text-sm text-muted-foreground">Great job covering all concepts!</li>
+                        <li className="text-sm text-[#6e7681]">Great job covering all concepts!</li>
                       )}
                     </ul>
                   </div>
@@ -916,46 +820,49 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
 
                 {/* Strengths & Improvements */}
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-card border border-border rounded-lg">
-                    <h4 className="font-bold flex items-center gap-2 mb-3">
-                      <Sparkles className="w-4 h-4 text-yellow-400" />
+                  <div className="p-5 rounded-2xl border border-[#30363d] bg-[#161b22]">
+                    <h4 className="font-semibold text-white flex items-center gap-2 mb-4">
+                      <Sparkles className="w-5 h-5 text-[#f1c40f]" />
                       Strengths
                     </h4>
-                    <ul className="space-y-1">
+                    <ul className="space-y-2">
                       {evaluation.strengths.map((s, i) => (
-                        <li key={i} className="text-sm text-muted-foreground">• {s}</li>
+                        <li key={i} className="text-sm text-[#8b949e] flex items-start gap-2">
+                          <Zap className="w-4 h-4 text-[#f1c40f] flex-shrink-0 mt-0.5" />
+                          {s}
+                        </li>
                       ))}
                     </ul>
                   </div>
 
-                  <div className="p-4 bg-card border border-border rounded-lg">
-                    <h4 className="font-bold flex items-center gap-2 mb-3">
-                      <Target className="w-4 h-4 text-blue-400" />
+                  <div className="p-5 rounded-2xl border border-[#30363d] bg-[#161b22]">
+                    <h4 className="font-semibold text-white flex items-center gap-2 mb-4">
+                      <Target className="w-5 h-5 text-[#58a6ff]" />
                       Areas to Improve
                     </h4>
-                    <ul className="space-y-1">
+                    <ul className="space-y-2">
                       {evaluation.improvements.map((s, i) => (
-                        <li key={i} className="text-sm text-muted-foreground">• {s}</li>
+                        <li key={i} className="text-sm text-[#8b949e] flex items-start gap-2">
+                          <ChevronRight className="w-4 h-4 text-[#58a6ff] flex-shrink-0 mt-0.5" />
+                          {s}
+                        </li>
                       ))}
                     </ul>
                   </div>
                 </div>
 
                 {/* Ideal Answer Reference */}
-                <details className="p-4 bg-muted/20 border border-border rounded-lg">
-                  <summary className="cursor-pointer font-bold flex items-center gap-2">
-                    <Volume2 className="w-4 h-4" />
+                <details className="p-5 rounded-2xl border border-[#30363d] bg-[#161b22] group">
+                  <summary className="cursor-pointer font-semibold text-white flex items-center gap-2 list-none">
+                    <Volume2 className="w-5 h-5 text-[#a371f7]" />
                     View Ideal Answer
+                    <ChevronRight className="w-4 h-4 text-[#6e7681] ml-auto transition-transform group-open:rotate-90" />
                   </summary>
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-4 pt-4 border-t border-[#30363d] space-y-3">
                     <div className="flex justify-end">
-                      <ListenButton 
-                        text={currentQuestion?.answer || ''} 
-                        label="Listen to Answer"
-                        size="sm"
-                      />
+                      <ListenButton text={currentQuestion?.answer || ''} label="Listen to Answer" size="sm" />
                     </div>
-                    <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    <div className="text-sm text-[#8b949e] whitespace-pre-wrap leading-relaxed bg-[#0d1117] p-4 rounded-xl">
                       {currentQuestion?.answer}
                     </div>
                   </div>
@@ -969,40 +876,32 @@ function getQuestionType(channel: string): 'technical' | 'behavioral' | 'system-
   );
 }
 
-// Score dimension component for detailed analysis
-function ScoreDimension({ 
-  label, 
-  score, 
-  icon, 
-  description 
-}: { 
-  label: string; 
-  score: number; 
-  icon: React.ReactNode; 
-  description: string;
+// Score dimension component
+function ScoreDimension({ label, score, icon, description }: { 
+  label: string; score: number; icon: React.ReactNode; description: string;
 }) {
   const getColor = (s: number) => {
-    if (s >= 70) return 'text-green-400';
-    if (s >= 50) return 'text-yellow-400';
-    if (s >= 30) return 'text-orange-400';
-    return 'text-red-400';
+    if (s >= 70) return 'text-[#3fb950]';
+    if (s >= 50) return 'text-[#d29922]';
+    if (s >= 30) return 'text-[#f0883e]';
+    return 'text-[#f85149]';
   };
   
   const getBgColor = (s: number) => {
-    if (s >= 70) return 'bg-green-500';
-    if (s >= 50) return 'bg-yellow-500';
-    if (s >= 30) return 'bg-orange-500';
-    return 'bg-red-500';
+    if (s >= 70) return 'bg-[#238636]';
+    if (s >= 50) return 'bg-[#d29922]';
+    if (s >= 30) return 'bg-[#f0883e]';
+    return 'bg-[#f85149]';
   };
   
   return (
-    <div className="text-center">
-      <div className={`flex items-center justify-center gap-1 mb-1 ${getColor(score)}`}>
+    <div className="text-center p-4 rounded-xl bg-[#0d1117] border border-[#30363d]">
+      <div className={`flex items-center justify-center gap-1.5 mb-2 ${getColor(score)}`}>
         {icon}
         <span className="text-xs font-medium">{label}</span>
       </div>
-      <div className="text-2xl font-bold">{score}%</div>
-      <div className="h-1 bg-muted rounded-full overflow-hidden mt-1">
+      <div className="text-2xl font-bold text-white">{score}%</div>
+      <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden mt-2">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${score}%` }}
@@ -1010,37 +909,39 @@ function ScoreDimension({
           className={`h-full ${getBgColor(score)}`}
         />
       </div>
-      <div className="text-[10px] text-muted-foreground mt-1">{description}</div>
+      <div className="text-[10px] text-[#6e7681] mt-2">{description}</div>
     </div>
   );
 }
 
-// Helper functions for verdict display
+// Helper functions
 function getVerdictStyle(verdict: EvaluationResult['verdict']): string {
   switch (verdict) {
+    case 'strong-hire': return 'bg-[#238636]/20 border-[#238636]/50';
+    case 'hire': return 'bg-[#3fb950]/20 border-[#3fb950]/50';
+    case 'lean-hire': return 'bg-[#d29922]/20 border-[#d29922]/50';
+    case 'lean-no-hire': return 'bg-[#f0883e]/20 border-[#f0883e]/50';
+    case 'no-hire': return 'bg-[#f85149]/20 border-[#f85149]/50';
+  }
+}
+
+function getVerdictBgStyle(verdict: EvaluationResult['verdict']): string {
+  switch (verdict) {
     case 'strong-hire':
-      return 'bg-green-500/20 border-green-500/50 text-green-100';
-    case 'hire':
-      return 'bg-emerald-500/20 border-emerald-500/50 text-emerald-100';
-    case 'lean-hire':
-      return 'bg-yellow-500/20 border-yellow-500/50 text-yellow-100';
+    case 'hire': return 'bg-[#238636]/30';
+    case 'lean-hire': return 'bg-[#d29922]/30';
     case 'lean-no-hire':
-      return 'bg-orange-500/20 border-orange-500/50 text-orange-100';
-    case 'no-hire':
-      return 'bg-red-500/20 border-red-500/50 text-red-100';
+    case 'no-hire': return 'bg-[#f85149]/30';
   }
 }
 
 function getVerdictIcon(verdict: EvaluationResult['verdict']) {
   switch (verdict) {
     case 'strong-hire':
-    case 'hire':
-      return <ThumbsUp className="w-8 h-8 text-green-400" />;
-    case 'lean-hire':
-      return <Minus className="w-8 h-8 text-yellow-400" />;
+    case 'hire': return <ThumbsUp className="w-7 h-7 text-[#3fb950]" />;
+    case 'lean-hire': return <Minus className="w-7 h-7 text-[#d29922]" />;
     case 'lean-no-hire':
-    case 'no-hire':
-      return <ThumbsDown className="w-8 h-8 text-red-400" />;
+    case 'no-hire': return <ThumbsDown className="w-7 h-7 text-[#f85149]" />;
   }
 }
 
@@ -1055,9 +956,9 @@ function getVerdictLabel(verdict: EvaluationResult['verdict']): string {
 }
 
 function getScoreBarColor(score: number): string {
-  if (score >= 70) return 'bg-green-500';
-  if (score >= 55) return 'bg-emerald-500';
-  if (score >= 40) return 'bg-yellow-500';
-  if (score >= 25) return 'bg-orange-500';
-  return 'bg-red-500';
+  if (score >= 70) return 'bg-gradient-to-r from-[#238636] to-[#3fb950]';
+  if (score >= 55) return 'bg-gradient-to-r from-[#3fb950] to-[#d29922]';
+  if (score >= 40) return 'bg-gradient-to-r from-[#d29922] to-[#f0883e]';
+  if (score >= 25) return 'bg-gradient-to-r from-[#f0883e] to-[#f85149]';
+  return 'bg-[#f85149]';
 }
