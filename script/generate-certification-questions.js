@@ -135,10 +135,18 @@ async function saveCertQuestion(question) {
   const id = question.id || `cert-${question.certificationId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   try {
+    // Store MCQ options in the answer field as JSON
+    // Store additional metadata in tags field
+    const tags = [
+      ...(question.tags || []),
+      'certification-mcq',
+      `domain-weight-${question.domainWeight || 0}`
+    ];
+    
     await dbClient.execute({
       sql: `INSERT OR REPLACE INTO questions 
-            (id, channel, sub_channel, question, answer, explanation, difficulty, tags, status, last_updated, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
+            (id, channel, sub_channel, question, answer, explanation, difficulty, tags, status, last_updated)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)`,
       args: [
         id,
         question.certificationId,
@@ -147,13 +155,8 @@ async function saveCertQuestion(question) {
         JSON.stringify(question.options), // Store options as answer
         question.explanation,
         question.difficulty,
-        JSON.stringify(question.tags || []),
-        new Date().toISOString(),
-        JSON.stringify({
-          type: 'certification-mcq',
-          domainWeight: question.domainWeight,
-          options: question.options
-        })
+        JSON.stringify(tags),
+        new Date().toISOString()
       ]
     });
     

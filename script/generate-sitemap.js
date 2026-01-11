@@ -6,6 +6,17 @@ const BASE_URL = 'https://open-interview.github.io';
 
 // All channels from channels-config.ts with SEO metadata
 const channels = [
+  // CS Fundamentals
+  { id: 'data-structures', name: 'Data Structures', priority: '0.9' },
+  { id: 'complexity-analysis', name: 'Complexity Analysis', priority: '0.8' },
+  { id: 'dynamic-programming', name: 'Dynamic Programming', priority: '0.9' },
+  { id: 'bit-manipulation', name: 'Bit Manipulation', priority: '0.7' },
+  { id: 'design-patterns', name: 'Design Patterns', priority: '0.8' },
+  { id: 'concurrency', name: 'Concurrency', priority: '0.8' },
+  { id: 'math-logic', name: 'Math & Logic', priority: '0.7' },
+  { id: 'low-level', name: 'Low-Level Programming', priority: '0.7' },
+  
+  // Engineering
   { id: 'system-design', name: 'System Design', priority: '0.9' },
   { id: 'algorithms', name: 'Algorithms', priority: '0.9' },
   { id: 'frontend', name: 'Frontend', priority: '0.9' },
@@ -40,16 +51,53 @@ const channels = [
   { id: 'behavioral', name: 'Behavioral', priority: '0.8' }
 ];
 
+// Certification channels
+const certifications = [
+  // AWS
+  { id: 'aws-saa', name: 'AWS Solutions Architect Associate', priority: '0.8' },
+  { id: 'aws-sap', name: 'AWS Solutions Architect Professional', priority: '0.8' },
+  { id: 'aws-dva', name: 'AWS Developer Associate', priority: '0.8' },
+  { id: 'aws-sysops', name: 'AWS SysOps Administrator', priority: '0.7' },
+  { id: 'aws-devops-pro', name: 'AWS DevOps Engineer Professional', priority: '0.7' },
+  { id: 'aws-data-engineer', name: 'AWS Data Engineer', priority: '0.7' },
+  { id: 'aws-ml-specialty', name: 'AWS Machine Learning Specialty', priority: '0.7' },
+  { id: 'aws-security-specialty', name: 'AWS Security Specialty', priority: '0.7' },
+  { id: 'aws-ai-practitioner', name: 'AWS AI Practitioner', priority: '0.7' },
+  
+  // Kubernetes
+  { id: 'cka', name: 'CKA - Kubernetes Administrator', priority: '0.8' },
+  { id: 'ckad', name: 'CKAD - Kubernetes Developer', priority: '0.8' },
+  { id: 'cks', name: 'CKS - Kubernetes Security', priority: '0.7' },
+  
+  // HashiCorp
+  { id: 'terraform-associate', name: 'Terraform Associate', priority: '0.8' },
+  { id: 'vault-associate', name: 'Vault Associate', priority: '0.7' },
+  
+  // GCP
+  { id: 'gcp-cloud-engineer', name: 'GCP Cloud Engineer', priority: '0.7' },
+  { id: 'gcp-cloud-architect', name: 'GCP Cloud Architect', priority: '0.7' },
+  
+  // Azure
+  { id: 'azure-fundamentals', name: 'Azure Fundamentals', priority: '0.7' },
+  { id: 'azure-administrator', name: 'Azure Administrator', priority: '0.7' },
+  { id: 'azure-developer', name: 'Azure Developer', priority: '0.7' },
+];
+
 // Static pages with SEO metadata
 const staticPages = [
   { path: '/', priority: '1.0', changefreq: 'daily', title: 'Home' },
   { path: '/channels', priority: '0.9', changefreq: 'daily', title: 'All Channels' },
+  { path: '/certifications', priority: '0.9', changefreq: 'weekly', title: 'Certification Prep' },
   { path: '/coding', priority: '0.9', changefreq: 'weekly', title: 'Coding Challenges' },
   { path: '/tests', priority: '0.8', changefreq: 'weekly', title: 'Practice Tests' },
+  { path: '/voice-interview', priority: '0.8', changefreq: 'weekly', title: 'Voice Interview Practice' },
+  { path: '/review', priority: '0.8', changefreq: 'daily', title: 'Spaced Repetition Review' },
+  { path: '/training', priority: '0.8', changefreq: 'weekly', title: 'Training Mode' },
   { path: '/badges', priority: '0.7', changefreq: 'weekly', title: 'Badges & Achievements' },
   { path: '/whats-new', priority: '0.8', changefreq: 'daily', title: 'What\'s New' },
   { path: '/about', priority: '0.6', changefreq: 'monthly', title: 'About' },
   { path: '/stats', priority: '0.7', changefreq: 'weekly', title: 'Statistics' },
+  { path: '/documentation', priority: '0.6', changefreq: 'monthly', title: 'Documentation' },
   { path: '/bot-activity', priority: '0.6', changefreq: 'daily', title: 'Bot Activity' },
 ];
 
@@ -77,6 +125,17 @@ function generateSitemap() {
     <lastmod>${today}</lastmod>
     <changefreq>daily</changefreq>
     <priority>${channel.priority}</priority>
+  </url>`;
+  });
+
+  // Add certification pages
+  certifications.forEach(cert => {
+    urls += `
+  <url>
+    <loc>${BASE_URL}/certification/${cert.id}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>${cert.priority}</priority>
   </url>`;
   });
 
@@ -137,7 +196,8 @@ function main() {
   console.log(`   Base URL: ${BASE_URL}`);
   console.log(`   Static pages: ${staticPages.length}`);
   console.log(`   Channel pages: ${channels.length}`);
-  console.log(`   Total URLs: ${staticPages.length + channels.length}`);
+  console.log(`   Certification pages: ${certifications.length}`);
+  console.log(`   Total URLs: ${staticPages.length + channels.length + certifications.length}`);
 }
 
 main();

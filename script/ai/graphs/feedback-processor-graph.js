@@ -474,8 +474,9 @@ async function executeActionNode(state) {
 async function improveQuestion(question, userComment) {
   console.log('   🔧 Improving question with AI...');
   
-  // Check if this is a certification MCQ question
-  const isCertQuestion = question.metadata?.type === 'certification-mcq';
+  // Check if this is a certification MCQ question (check tags array)
+  const tags = typeof question.tags === 'string' ? JSON.parse(question.tags || '[]') : (question.tags || []);
+  const isCertQuestion = tags.includes('certification-mcq');
   
   const context = {
     question: question.question,
@@ -497,11 +498,6 @@ async function improveQuestion(question, userComment) {
       lastUpdated: new Date().toISOString()
     };
     
-    // Preserve certification metadata
-    if (isCertQuestion && question.metadata) {
-      updated.metadata = question.metadata;
-    }
-    
     return updated;
   }
   
@@ -514,8 +510,9 @@ async function improveQuestion(question, userComment) {
 async function rewriteQuestion(question, userComment) {
   console.log('   ✏️ Rewriting question with AI...');
   
-  // Check if this is a certification MCQ question
-  const isCertQuestion = question.metadata?.type === 'certification-mcq';
+  // Check if this is a certification MCQ question (check tags array)
+  const tags = typeof question.tags === 'string' ? JSON.parse(question.tags || '[]') : (question.tags || []);
+  const isCertQuestion = tags.includes('certification-mcq');
   
   const context = {
     question: question.question,
