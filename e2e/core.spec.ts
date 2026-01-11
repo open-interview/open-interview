@@ -3,39 +3,31 @@
  * Fundamental functionality: navigation, responsiveness, basic flows
  */
 
-import { test, expect, setupUser, setupFreshUser, waitForPageReady, checkNoOverflow } from './fixtures';
+import { test, expect, setupUser, setupFreshUser, waitForPageReady, checkNoOverflow, hideMascot } from './fixtures';
 
 test.describe('Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await setupUser(page);
   });
 
-  test('home page loads', async ({ page }) => {
+  test('home page loads with content', async ({ page }) => {
     await page.goto('/');
     await waitForPageReady(page);
-    
-    // Should show credits banner or quick quiz
-    const hasContent = await page.locator('body').textContent();
-    expect(hasContent?.length).toBeGreaterThan(100);
+    await expect(page.locator('body')).toContainText(/.{100,}/);
   });
 
   test('bottom nav visible on mobile', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'Mobile only');
     await page.goto('/');
     await waitForPageReady(page);
-    
-    // Mobile nav is fixed at bottom with lg:hidden
-    const mobileNav = page.locator('nav.fixed.bottom-0');
-    await expect(mobileNav).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('nav.fixed.bottom-0')).toBeVisible();
   });
 
   test('sidebar visible on desktop', async ({ page, isMobile }) => {
     test.skip(isMobile, 'Desktop only');
     await page.goto('/');
     await waitForPageReady(page);
-    
-    const sidebar = page.locator('aside').first();
-    await expect(sidebar).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('aside').first()).toBeVisible();
   });
 
   test('navigate to channels via Learn', async ({ page, isMobile }) => {
@@ -43,35 +35,24 @@ test.describe('Navigation', () => {
     await waitForPageReady(page);
     
     if (isMobile) {
-      // Mobile: tap Learn in bottom nav to open submenu, then tap Channels
-      const learnButton = page.locator('nav.fixed.bottom-0 button').filter({ hasText: 'Learn' });
-      await learnButton.click();
-      await page.waitForTimeout(800);
-      // Click Channels in the submenu that appears
-      const channelsButton = page.locator('.fixed.bottom-20 button, .fixed button').filter({ hasText: 'Channels' }).first();
-      if (await channelsButton.isVisible({ timeout: 3000 })) {
-        await channelsButton.click();
-        await page.waitForTimeout(500);
+      await page.locator('nav.fixed.bottom-0 button').filter({ hasText: 'Learn' }).click();
+      const channelsBtn = page.locator('.fixed button').filter({ hasText: 'Channels' }).first();
+      if (await channelsBtn.isVisible({ timeout: 2000 })) {
+        await channelsBtn.click();
       } else {
-        // Fallback: navigate directly
         await page.goto('/channels');
       }
     } else {
-      // Desktop: try clicking Learn section header to expand, then click Channels
-      const learnButton = page.locator('aside button, aside a').filter({ hasText: 'Learn' }).first();
-      if (await learnButton.isVisible({ timeout: 3000 })) {
-        await learnButton.click();
-        await page.waitForTimeout(300);
-        // Then click Channels in submenu
-        const channelsButton = page.locator('aside button, aside a').filter({ hasText: 'Channels' }).first();
-        if (await channelsButton.isVisible({ timeout: 2000 })) {
-          await channelsButton.click();
-          await page.waitForTimeout(500);
+      const learnBtn = page.locator('aside button, aside a').filter({ hasText: 'Learn' }).first();
+      if (await learnBtn.isVisible({ timeout: 2000 })) {
+        await learnBtn.click();
+        const channelsBtn = page.locator('aside button, aside a').filter({ hasText: 'Channels' }).first();
+        if (await channelsBtn.isVisible({ timeout: 1500 })) {
+          await channelsBtn.click();
         } else {
           await page.goto('/channels');
         }
       } else {
-        // Fallback: navigate directly
         await page.goto('/channels');
       }
     }
@@ -81,25 +62,13 @@ test.describe('Navigation', () => {
   test('navigate to profile via credits', async ({ page, isMobile }) => {
     await page.goto('/');
     await waitForPageReady(page);
+    await hideMascot(page);
     
-    // Hide the pixel mascot that can intercept clicks
-    await page.evaluate(() => {
-      const mascot = document.querySelector('[data-testid="pixel-mascot"]');
-      if (mascot) (mascot as HTMLElement).style.display = 'none';
-    });
+    const creditsSelector = isMobile 
+      ? 'nav.fixed.bottom-0 button:has(svg.lucide-coins)'
+      : 'aside button:has(svg.lucide-coins)';
     
-    // Click on credits display to go to profile - different location on mobile vs desktop
-    if (isMobile) {
-      // Mobile: credits button is in the bottom nav bar (the last button with coins icon)
-      const mobileNav = page.locator('nav.fixed.bottom-0');
-      const creditsButton = mobileNav.locator('button').filter({ has: page.locator('svg.lucide-coins') });
-      await creditsButton.click();
-    } else {
-      // Desktop: credits card in sidebar
-      const creditsButton = page.locator('aside button').filter({ has: page.locator('svg.lucide-coins') }).first();
-      await creditsButton.click();
-    }
-    await page.waitForTimeout(500);
+    await page.locator(creditsSelector).first().click({ force: true });
     await expect(page).toHaveURL(/\/profile/);
   });
 
@@ -109,37 +78,9 @@ test.describe('Navigation', () => {
     await waitForPageReady(page);
     
     await page.keyboard.press('Meta+k');
-    await page.waitForTimeout(300);
-    
-    const searchModal = page.locator('[class*="fixed"][class*="inset"]').filter({ has: page.locator('input') });
+    const searchModal = page.locator('[class*="fixed"][class*="inset"]:has(input)');
     const isVisible = await searchModal.isVisible().catch(() => false);
-    if (isVisible) {
-      await page.keyboard.press('Escape');
-    }
-  });
-
-  test('ESC returns to home from channel', async ({ page, isMobile }) => {
-    // Skip this test - ESC keyboard navigation is flaky in CI environment
-    // The functionality works but headless browser keyboard events are unreliable
-    test.skip(true, 'Keyboard navigation flaky in CI');
-    
-    await page.goto('/channel/system-design');
-    await waitForPageReady(page);
-    
-    // Wait for questions to load (URL gets question ID appended)
-    await page.waitForFunction(() => {
-      return window.location.pathname.includes('/channel/system-design');
-    }, { timeout: 5000 });
-    
-    // Make sure no modal is open by clicking on the page body first
-    await page.locator('body').click();
-    await page.waitForTimeout(300);
-    
-    // Press Escape to go home
-    await page.keyboard.press('Escape');
-    
-    // Wait for navigation with longer timeout
-    await expect(page).toHaveURL('/', { timeout: 5000 });
+    if (isVisible) await page.keyboard.press('Escape');
   });
 });
 
@@ -148,73 +89,36 @@ test.describe('Responsiveness', () => {
     await setupUser(page);
   });
 
-  test('home page no overflow', async ({ page }) => {
-    await page.goto('/');
-    await waitForPageReady(page);
-    await checkNoOverflow(page);
-  });
+  const pages = [
+    { name: 'home', path: '/' },
+    { name: 'channels', path: '/channels' },
+    { name: 'profile', path: '/profile' },
+    { name: 'channel-detail', path: '/channel/system-design' },
+    { name: 'training', path: '/training' },
+    { name: 'certifications', path: '/certifications' },
+    { name: 'documentation', path: '/docs' },
+  ];
 
-  test('channels page no overflow', async ({ page }) => {
-    await page.goto('/channels');
-    await waitForPageReady(page);
-    await checkNoOverflow(page);
-  });
-
-  test('profile page no overflow', async ({ page }) => {
-    await page.goto('/profile');
-    await waitForPageReady(page);
-    await checkNoOverflow(page);
-  });
-
-  test('channel detail no overflow', async ({ page }) => {
-    await page.goto('/channel/system-design');
-    await waitForPageReady(page);
-    await checkNoOverflow(page);
-  });
-
-  test('training page no overflow', async ({ page }) => {
-    await page.goto('/training');
-    await waitForPageReady(page);
-    await checkNoOverflow(page);
-  });
-
-  test('certifications page no overflow', async ({ page }) => {
-    await page.goto('/certifications');
-    await waitForPageReady(page);
-    await checkNoOverflow(page);
-  });
-
-  test('documentation page no overflow', async ({ page }) => {
-    await page.goto('/docs');
-    await waitForPageReady(page);
-    await checkNoOverflow(page);
-  });
+  for (const { name, path } of pages) {
+    test(`${name} page no overflow`, async ({ page }) => {
+      await page.goto(path);
+      await waitForPageReady(page);
+      await checkNoOverflow(page);
+    });
+  }
 });
 
 test.describe('Onboarding', () => {
-  test('shows welcome for new users', async ({ page }) => {
+  test('shows welcome and role selection for new users', async ({ page }) => {
     await setupFreshUser(page);
     await page.goto('/');
     await waitForPageReady(page);
     
     await expect(page.getByText(/Welcome|Get Started|Choose/i).first()).toBeVisible();
-  });
-
-  test('role selection buttons visible', async ({ page }) => {
-    await setupFreshUser(page);
-    await page.goto('/');
-    await waitForPageReady(page);
-    await page.waitForTimeout(1000);
     
-    // Role buttons may be in different formats - check for any role-related content
-    const roleButtons = page.locator('button').filter({ hasText: /Frontend|Backend|Fullstack|DevOps|Engineer/i });
-    const count = await roleButtons.count();
-    
-    // Also check for role selection cards or other UI elements
-    const roleCards = page.locator('[class*="card"], [class*="role"]').filter({ hasText: /Frontend|Backend|Fullstack/i });
-    const cardCount = await roleCards.count();
-    
-    expect(count + cardCount).toBeGreaterThan(0);
+    const roleContent = page.locator('button, [class*="card"], [class*="role"]')
+      .filter({ hasText: /Frontend|Backend|Fullstack|DevOps|Engineer/i });
+    await expect(roleContent.first()).toBeVisible();
   });
 
   test('selecting role proceeds to channel selection', async ({ page }) => {
@@ -225,7 +129,6 @@ test.describe('Onboarding', () => {
     const roleButton = page.locator('button').filter({ hasText: /Fullstack/i }).first();
     if (await roleButton.isVisible()) {
       await roleButton.click();
-      await page.waitForTimeout(500);
     }
   });
 });

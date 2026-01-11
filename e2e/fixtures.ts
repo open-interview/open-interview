@@ -47,17 +47,43 @@ export async function setupFreshUser(page: Page) {
   });
 }
 
-// Wait for page to be ready
+// Wait for page to be ready - optimized version
 export async function waitForPageReady(page: Page) {
   await page.waitForLoadState('domcontentloaded');
+  // Wait for React hydration by checking for interactive elements
+  await page.waitForFunction(() => document.querySelector('button, a, input') !== null, { timeout: 5000 }).catch(() => {});
+}
+
+// Wait for content to render with loading state check
+export async function waitForContent(page: Page, minLength = 100) {
+  // First wait for loading states to disappear (with short timeout)
+  await page.waitForFunction(
+    () => !document.body.textContent?.includes('Loading...') || document.body.textContent.length > 200,
+    { timeout: 5000 }
+  ).catch(() => {});
+  
+  // Then wait for minimum content
+  await page.waitForFunction(
+    (min) => (document.body.textContent?.length ?? 0) > min,
+    minLength,
+    { timeout: 5000 }
+  ).catch(() => {});
+}
+
+// Wait for async data to load (for pages that fetch from API/JSON)
+export async function waitForDataLoad(page: Page) {
+  // Short wait for network to settle - don't use networkidle as it can hang
   await page.waitForTimeout(500);
+  await page.waitForFunction(
+    () => !document.body.textContent?.includes('Loading...'),
+    { timeout: 5000 }
+  ).catch(() => {});
 }
 
 // Check for no horizontal overflow
 export async function checkNoOverflow(page: Page) {
-  const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
-  const viewportWidth = await page.evaluate(() => window.innerWidth);
-  expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 5);
+  const hasOverflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth + 5);
+  expect(hasOverflow).toBe(false);
 }
 
 // Check for console errors
@@ -70,6 +96,14 @@ export function setupErrorCapture(page: Page) {
   return errors;
 }
 
+// Hide mascot overlay that can intercept clicks
+export async function hideMascot(page: Page) {
+  await page.evaluate(() => {
+    const mascot = document.querySelector('[data-testid="pixel-mascot"]');
+    if (mascot) (mascot as HTMLElement).style.display = 'none';
+  });
+}
+
 // Extended test with isMobile fixture based on viewport
 export const test = base.extend<{
   authenticatedPage: Page;
@@ -79,9 +113,7 @@ export const test = base.extend<{
     await setupUser(page);
     await use(page);
   },
-  // Determine isMobile based on project name or viewport - use testInfo
   isMobile: [async ({}, use, testInfo) => {
-    // Check if running in mobile project
     const isMobile = testInfo.project.name === 'mobile-chrome' || 
                      testInfo.project.name.includes('mobile') ||
                      (testInfo.project.use?.viewport?.width ?? 1280) < 1024;

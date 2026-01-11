@@ -6,17 +6,22 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 4 : undefined,
-  reporter: process.env.CI ? 'line' : 'html',
-  timeout: 30000,
+  reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'html',
+  timeout: 20000, // Reduced from 30s
   expect: {
-    timeout: 10000,
+    timeout: 5000, // Reduced from 10s
   },
   use: {
     baseURL: 'http://localhost:5001',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    actionTimeout: 15000,
-    navigationTimeout: 30000,
+    actionTimeout: 10000, // Reduced from 15s
+    navigationTimeout: 20000, // Reduced from 30s
+    // Optimize for speed
+    video: 'off',
+    launchOptions: {
+      args: ['--disable-gpu', '--no-sandbox'],
+    },
   },
   outputDir: 'test-results',
   projects: [
@@ -26,7 +31,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 720 },
       },
-      testIgnore: ['**/mobile.spec.ts'], // Skip mobile-specific tests
+      testIgnore: ['**/mobile.spec.ts'],
     },
     {
       name: 'mobile-chrome',
@@ -35,7 +40,7 @@ export default defineConfig({
         viewport: { width: 390, height: 844 },
         hasTouch: true,
       },
-      testIgnore: ['**/mobile.spec.ts'], // mobile.spec.ts forces its own viewport
+      testIgnore: ['**/mobile.spec.ts'],
     },
   ],
   webServer: {

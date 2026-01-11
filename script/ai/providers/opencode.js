@@ -114,6 +114,13 @@ export function parseResponse(output) {
     try { return JSON.parse(text.substring(firstBrace, lastBrace + 1)); } catch {}
   }
   
+  // Try to extract JSON array
+  const firstBracket = text.indexOf('[');
+  const lastBracket = text.lastIndexOf(']');
+  if (firstBracket !== -1 && lastBracket > firstBracket) {
+    try { return JSON.parse(text.substring(firstBracket, lastBracket + 1)); } catch {}
+  }
+  
   return null;
 }
 

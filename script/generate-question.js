@@ -228,18 +228,26 @@ async function main() {
 
   const inputDifficulty = process.env.INPUT_DIFFICULTY || 'random';
   const inputLimit = parseInt(process.env.INPUT_LIMIT || '0', 10);
-  const inputChannel = process.env.INPUT_CHANNEL || null; // Specific channel to generate for
+  const inputChannelRaw = process.env.INPUT_CHANNEL || null; // Specific channel(s) to generate for
   const balanceChannels = process.env.BALANCE_CHANNELS !== 'false'; // Default to true
   
   // Get all channels from database (not hardcoded list)
   const allChannels = await getAllChannels();
   console.log(`Found ${allChannels.length} channels in database`);
   
-  // Validate input channel if provided
-  if (inputChannel && !allChannels.includes(inputChannel)) {
-    console.error(`❌ Invalid channel: ${inputChannel}`);
-    console.log(`Available channels: ${allChannels.join(', ')}`);
-    process.exit(1);
+  // Parse input channels (can be comma-separated list)
+  let inputChannels = null;
+  if (inputChannelRaw) {
+    inputChannels = inputChannelRaw.split(',').map(ch => ch.trim()).filter(Boolean);
+    
+    // Validate all input channels
+    const invalidChannels = inputChannels.filter(ch => !allChannels.includes(ch));
+    if (invalidChannels.length > 0) {
+      console.error(`❌ Invalid channels: ${invalidChannels.join(', ')}`);
+      console.log(`Available channels: ${allChannels.join(', ')}`);
+      process.exit(1);
+    }
+    console.log(`Input channels: ${inputChannels.join(', ')}`);
   }
   
   // Get channel question counts efficiently (single query instead of fetching all questions)
@@ -282,11 +290,22 @@ async function main() {
     }
   }
   
-  // If specific channel is provided, use only that channel
-  if (inputChannel) {
-    channels = Array(limit).fill(inputChannel);
-    console.log(`\n🎯 Specific channel selected: ${inputChannel} (generating ${limit} question(s))`);
-    console.log(`   Current count: ${channelCounts[inputChannel] || 0} questions`);
+  // If specific channel(s) provided, use those channels
+  if (inputChannels && inputChannels.length > 0) {
+    if (inputChannels.length === 1) {
+      // Single channel: repeat it for the limit
+      channels = Array(limit).fill(inputChannels[0]);
+      console.log(`\n🎯 Specific channel selected: ${inputChannels[0]} (generating ${limit} question(s))`);
+      console.log(`   Current count: ${channelCounts[inputChannels[0]] || 0} questions`);
+    } else {
+      // Multiple channels: use weighted selection among them
+      channels = selectChannelsWeighted(channelCounts, inputChannels, limit);
+      console.log(`\n🎯 Target channels (${inputChannels.length} specified):`);
+      channels.forEach(ch => {
+        const count = channelCounts[ch] || 0;
+        console.log(`   ${ch}: ${count} questions`);
+      });
+    }
   } else if (balanceChannels && inputLimit > 0) {
     // Use weighted selection to prioritize channels with fewer questions
     // This will EXCLUDE channels in the top 25% by question count

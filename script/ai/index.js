@@ -154,17 +154,23 @@ async function run(taskType, context, options = {}) {
   
   // Validate response
   if (options.validate !== false) {
-    const validation = validate(taskType, response, template.schema);
-    
-    if (!validation.valid) {
-      console.log(`⚠️ Validation issues for ${taskType}:`);
-      validation.schemaErrors?.forEach(e => console.log(`  Schema: ${e}`));
-      validation.qualityWarnings?.forEach(w => console.log(`  Quality: ${w}`));
+    // Skip schema validation for array responses (like certification questions)
+    // Arrays are validated at the item level by the calling code
+    if (Array.isArray(response)) {
+      console.log(`   ℹ️ Array response (${response.length} items) - skipping schema validation`);
+    } else {
+      const validation = validate(taskType, response, template.schema);
       
-      // Don't fail on quality warnings, only schema errors
-      if (validation.schemaErrors?.length > 0) {
-        metrics.recordFailure(taskType, 'validation');
-        throw new Error(`Validation failed: ${validation.schemaErrors.join(', ')}`);
+      if (!validation.valid) {
+        console.log(`⚠️ Validation issues for ${taskType}:`);
+        validation.schemaErrors?.forEach(e => console.log(`  Schema: ${e}`));
+        validation.qualityWarnings?.forEach(w => console.log(`  Quality: ${w}`));
+        
+        // Don't fail on quality warnings, only schema errors
+        if (validation.schemaErrors?.length > 0) {
+          metrics.recordFailure(taskType, 'validation');
+          throw new Error(`Validation failed: ${validation.schemaErrors.join(', ')}`);
+        }
       }
     }
   }

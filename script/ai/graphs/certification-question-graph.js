@@ -74,20 +74,31 @@ async function generateQuestionsNode(state) {
       count: state.count
     });
     
+    // Handle array response
     if (Array.isArray(result) && result.length > 0) {
       console.log(`   ✅ Generated ${result.length} questions`);
       return { questions: result };
     }
     
+    // Handle single object response (wrap in array)
+    if (result && typeof result === 'object' && result.question) {
+      console.log(`   ✅ Generated 1 question (single object response)`);
+      return { questions: [result] };
+    }
+    
+    // Handle empty or invalid response
+    console.log(`   ⚠️ Invalid response format:`, typeof result);
     if (state.retryCount < state.maxRetries) {
+      console.log(`   🔄 Retrying (${state.retryCount + 1}/${state.maxRetries})...`);
       return { retryCount: state.retryCount + 1 };
     }
     
-    return { error: 'Failed to generate questions' };
+    return { error: 'Failed to generate questions - invalid response format' };
   } catch (error) {
     console.log(`   ❌ Error: ${error.message}`);
     
     if (state.retryCount < state.maxRetries) {
+      console.log(`   🔄 Retrying (${state.retryCount + 1}/${state.maxRetries})...`);
       return { retryCount: state.retryCount + 1 };
     }
     return { error: error.message };
@@ -100,32 +111,43 @@ async function generateQuestionsNode(state) {
 function validateQualityNode(state) {
   console.log('\n✅ [VALIDATE] Checking question quality...');
   
+  if (!state.questions || state.questions.length === 0) {
+    console.log('   ⚠️ No questions to validate');
+    return { validatedQuestions: [] };
+  }
+  
   const validated = [];
   
   for (const q of state.questions) {
     const issues = [];
     
-    // Check question format
-    if (!q.question || q.question.length < 30) {
-      issues.push('Question too short');
+    // Check question exists and format
+    if (!q || typeof q !== 'object') {
+      issues.push('Invalid question object');
+      console.log(`   ⚠️ Rejected: Invalid question object`);
+      continue;
     }
-    if (!q.question?.trim().endsWith('?')) {
+    
+    if (!q.question || q.question.length < 30) {
+      issues.push('Question too short or missing');
+    }
+    if (q.question && !q.question.trim().endsWith('?')) {
       issues.push('Must end with ?');
     }
     
     // Check options
     if (!Array.isArray(q.options) || q.options.length !== 4) {
       issues.push('Must have exactly 4 options');
-    }
-    
-    const correctCount = q.options?.filter(o => o.isCorrect).length || 0;
-    if (correctCount !== 1) {
-      issues.push('Must have exactly 1 correct answer');
+    } else {
+      const correctCount = q.options.filter(o => o && o.isCorrect).length;
+      if (correctCount !== 1) {
+        issues.push('Must have exactly 1 correct answer');
+      }
     }
     
     // Check explanation
     if (!q.explanation || q.explanation.length < 50) {
-      issues.push('Explanation too short');
+      issues.push('Explanation too short or missing');
     }
     
     if (issues.length === 0) {

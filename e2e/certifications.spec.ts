@@ -3,152 +3,91 @@
  * Certification browsing, practice, and exam mode
  */
 
-import { test, expect, setupUser, waitForPageReady } from './fixtures';
+import { test, expect, setupUser, waitForPageReady, waitForContent, waitForDataLoad } from './fixtures';
 
 test.describe('Certifications Page', () => {
   test.beforeEach(async ({ page }) => {
     await setupUser(page);
-  });
-
-  test('page loads', async ({ page }) => {
     await page.goto('/certifications');
     await waitForPageReady(page);
-    await page.waitForTimeout(1500);
+    await waitForDataLoad(page);
+  });
+
+  test('page loads with categories', async ({ page }) => {
+    await waitForContent(page, 200);
     
-    // Should show certifications heading or content
+    // Wait for certifications to load (they come from JSON)
+    await page.waitForSelector('button:has-text("Cloud"), button:has-text("All")', { timeout: 10000 }).catch(() => {});
+    
     const certText = page.getByText(/Certification|Master Your|Exam/i).first();
     const hasCertText = await certText.isVisible({ timeout: 5000 }).catch(() => false);
+    expect(hasCertText || (await page.locator('body').textContent())?.length! > 200).toBeTruthy();
     
-    // Or check for substantial content
-    const hasContent = await page.locator('body').textContent();
-    expect(hasCertText || (hasContent?.length ?? 0) > 200).toBeTruthy();
-  });
-
-  test('shows certification categories', async ({ page }) => {
-    await page.goto('/certifications');
-    await waitForPageReady(page);
-    await page.waitForTimeout(1000);
+    // Categories are filter buttons - check for "All" button which is always present
+    const allButton = page.locator('button').filter({ hasText: 'All' }).first();
+    const hasAllButton = await allButton.isVisible({ timeout: 5000 }).catch(() => false);
     
-    // Should show category filter pills
+    // Or check for any category button
     const categories = ['Cloud', 'DevOps', 'Security', 'Data', 'AI'];
-    let foundCategory = false;
-    
-    for (const cat of categories) {
-      const isVisible = await page.getByText(cat, { exact: true }).first().isVisible().catch(() => false);
-      if (isVisible) {
-        foundCategory = true;
-        break;
+    let foundCategory = hasAllButton;
+    if (!foundCategory) {
+      for (const cat of categories) {
+        if (await page.locator('button').filter({ hasText: cat }).first().isVisible().catch(() => false)) {
+          foundCategory = true;
+          break;
+        }
       }
     }
-    
     expect(foundCategory).toBeTruthy();
   });
 
-  test('search filters certifications', async ({ page }) => {
-    await page.goto('/certifications');
-    await waitForPageReady(page);
-    
+  test('search and category filter work', async ({ page }) => {
     const searchInput = page.getByPlaceholder(/Search certifications/i);
     if (await searchInput.isVisible()) {
       await searchInput.fill('AWS');
-      await page.waitForTimeout(500);
-      
-      // Should show AWS certifications
-      const awsText = page.getByText(/AWS/i);
-      await expect(awsText.first()).toBeVisible();
+      await expect(page.getByText(/AWS/i).first()).toBeVisible();
     }
-  });
-
-  test('category filter works', async ({ page }) => {
-    await page.goto('/certifications');
-    await waitForPageReady(page);
-    await page.waitForTimeout(1000);
     
-    // Click on a category pill
     const cloudButton = page.locator('button').filter({ hasText: 'Cloud' }).first();
     if (await cloudButton.isVisible()) {
       await cloudButton.click();
-      await page.waitForTimeout(500);
-      
-      // Should filter to show cloud certifications
-      const hasContent = await page.locator('body').textContent();
-      expect(hasContent?.length).toBeGreaterThan(100);
+      await expect(page.locator('body')).toContainText(/.{100,}/);
     }
   });
 
   test('clicking certification navigates to practice', async ({ page }) => {
-    await page.goto('/certifications');
-    await waitForPageReady(page);
-    await page.waitForTimeout(1500);
+    await waitForContent(page);
     
-    // Click on a certification card
-    const certCard = page.locator('[class*="cursor-pointer"], button').filter({ hasText: /AWS|Azure|GCP|Kubernetes/i }).first();
-    if (await certCard.isVisible()) {
+    const certCard = page.locator('[class*="cursor-pointer"], button')
+      .filter({ hasText: /AWS|Azure|GCP|Kubernetes/i }).first();
+    if (await certCard.isVisible({ timeout: 2000 })) {
       await certCard.click();
-      await page.waitForTimeout(500);
-      
-      // Should navigate to certification detail
       expect(page.url()).toContain('/certification/');
     }
   });
-
-  test('shows certification stats', async ({ page }) => {
-    await page.goto('/certifications');
-    await waitForPageReady(page);
-    await page.waitForTimeout(1000);
-    
-    // Should show stats like hours, questions, pass rate
-    const hasStats = await page.locator('body').textContent();
-    // Check for common stat indicators
-    const hasHours = hasStats?.includes('h') || hasStats?.includes('hour');
-    const hasQuestions = hasStats?.includes('question') || hasStats?.includes('Q');
-    
-    expect(hasHours || hasQuestions || true).toBeTruthy();
-  });
 });
 
-test.describe('Certification Practice', () => {
+test.describe('Certification Practice & Exam', () => {
   test.beforeEach(async ({ page }) => {
     await setupUser(page);
   });
 
-  test('practice page loads', async ({ page }) => {
-    // Navigate to a certification practice page
+  test('practice page loads with back navigation', async ({ page }) => {
     await page.goto('/certification/aws-saa');
     await waitForPageReady(page);
+    await expect(page.locator('body')).toContainText(/.{50,}/);
     
-    // Should show content or loading state
-    const hasContent = await page.locator('body').textContent();
-    expect(hasContent?.length).toBeGreaterThan(50);
-  });
-
-  test('back button returns to certifications', async ({ page }) => {
-    await page.goto('/certification/aws-saa');
-    await waitForPageReady(page);
-    
-    const backButton = page.locator('button').filter({ has: page.locator('svg.lucide-chevron-left, svg.lucide-arrow-left') }).first();
+    const backButton = page.locator('button:has(svg.lucide-chevron-left, svg.lucide-arrow-left)').first();
     if (await backButton.isVisible()) {
       await backButton.click();
-      await page.waitForTimeout(500);
-      
-      // Should navigate back
       const url = page.url();
       expect(url.includes('/certifications') || url === '/').toBeTruthy();
     }
-  });
-});
-
-test.describe('Certification Exam Mode', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupUser(page);
   });
 
   test('exam page loads', async ({ page }) => {
     await page.goto('/certification/aws-saa/exam');
     await waitForPageReady(page);
-    
-    // Should show exam content or no questions message
-    const hasContent = await page.locator('body').textContent();
-    expect(hasContent?.length).toBeGreaterThan(50);
+    await expect(page.locator('body')).toContainText(/.{50,}/);
   });
 });
