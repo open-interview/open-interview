@@ -129,6 +129,12 @@ export interface Question {
   channel: string;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   
+  // Additional fields from main Question type
+  explanation?: string;
+  tags?: string[];
+  companies?: string[];
+  subChannel?: string;
+  
   // Format metadata
   detectedPattern?: string;
   appliedPattern?: string;

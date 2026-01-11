@@ -83,6 +83,17 @@ class AchievementStorageManager {
       nightOwlCount: 0,
       totalXP: 0,
       level: 1,
+      // New metrics
+      srsReviews: 0,
+      trainingSessions: 0,
+      codingChallengesCompleted: 0,
+      codingChallengesPassed: 0,
+      certificationsPassed: 0,
+      questionsToday: 0,
+      questionsThisWeek: 0,
+      channelsThisWeek: [],
+      voiceInterviewsThisWeek: 0,
+      quizCorrectToday: 0,
     };
     
     this.cache.set('metrics', defaultMetrics);

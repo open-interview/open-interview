@@ -15,41 +15,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, ChevronRight, Eye, Target,
   CheckCircle, BookOpen, Sparkles, Trophy,
-  Zap, Clock, Award, TrendingUp, Star, Volume2
+  Clock, Award, TrendingUp, Volume2
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { ChannelService } from '../services/api.service';
 import { useVoiceRecording } from '../hooks/use-voice-recording';
 import { RecordingPanel } from '../components/unified/RecordingPanel';
+import { QuestionHistoryIcon } from '../components/unified/QuestionHistory';
+import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
 import type { Question } from '../types';
 
-// Feedback messages based on performance
-const feedbackMessages = {
-  excellent: [
-    "Outstanding! You nailed it! 🌟",
-    "Perfect delivery! You're interview-ready! 💪",
-    "Exceptional! Your articulation was spot-on! 🎯",
-    "Brilliant! That was professional-grade! ⭐",
-  ],
-  good: [
-    "Great job! You covered the key points! 👍",
-    "Well done! Your answer was solid! 🎉",
-    "Nice work! Keep practicing for perfection! 💫",
-    "Good effort! You're making progress! 📈",
-  ],
-  needsWork: [
-    "Good start! Try to include more details next time 📚",
-    "Keep practicing! You're building muscle memory 💪",
-    "Nice try! Focus on the key technical terms 🎯",
-    "You're learning! Each attempt makes you better 🌱",
-  ],
-  tooShort: [
-    "Try to elaborate more on your answer 📝",
-    "Include more details from the reference answer 💡",
-    "Expand your response with examples 🔍",
-  ],
-};
+interface KeyPhrase {
+  phrase: string;
+  matched: boolean;
+  userSaid?: string;
+}
 
 interface RecordingFeedback {
   score: number;
@@ -57,8 +38,83 @@ interface RecordingFeedback {
   targetWords: number;
   duration: number;
   message: string;
-  badges: string[];
-  tips: string[];
+  keyPhrases: KeyPhrase[];
+  matchedCount: number;
+  totalPhrases: number;
+}
+
+// Extract key phrases from the ideal answer (technical terms, important concepts)
+function extractKeyPhrases(answer: string): string[] {
+  // Split into words and find important terms
+  const words = answer.toLowerCase().split(/\s+/);
+  const phrases: string[] = [];
+  
+  // Technical terms patterns
+  const technicalPatterns = [
+    /ci\/cd/i, /api/i, /rest/i, /graphql/i, /docker/i, /kubernetes/i, /k8s/i,
+    /microservices?/i, /database/i, /sql/i, /nosql/i, /cache/i, /redis/i,
+    /aws/i, /azure/i, /gcp/i, /cloud/i, /serverless/i, /lambda/i,
+    /git/i, /github/i, /workflow/i, /pipeline/i, /deploy/i, /build/i, /test/i,
+    /automat\w*/i, /integrat\w*/i, /continuous/i, /delivery/i,
+    /repository/i, /branch/i, /merge/i, /pull request/i, /commit/i,
+    /container/i, /image/i, /yaml/i, /config\w*/i,
+    /event[- ]driven/i, /async\w*/i, /sync\w*/i, /messag\w*/i,
+    /scalab\w*/i, /performance/i, /latency/i, /throughput/i,
+    /security/i, /auth\w*/i, /encrypt\w*/i, /token/i,
+    /monitor\w*/i, /log\w*/i, /metric/i, /alert/i,
+  ];
+  
+  // Extract matching technical terms
+  for (const pattern of technicalPatterns) {
+    const match = answer.match(pattern);
+    if (match) {
+      phrases.push(match[0].toLowerCase());
+    }
+  }
+  
+  // Also extract 2-3 word phrases that seem important
+  const importantPhrases = answer.match(/\b[A-Z][a-z]+(?:\s+[A-Z]?[a-z]+){1,2}\b/g) || [];
+  for (const phrase of importantPhrases.slice(0, 5)) {
+    if (phrase.length > 5 && !phrases.includes(phrase.toLowerCase())) {
+      phrases.push(phrase.toLowerCase());
+    }
+  }
+  
+  // Deduplicate and limit
+  return Array.from(new Set(phrases)).slice(0, 10);
+}
+
+// Check if user's transcript contains a phrase (fuzzy matching)
+function phraseMatches(transcript: string, phrase: string): { matched: boolean; userSaid?: string } {
+  const transcriptLower = transcript.toLowerCase();
+  const phraseLower = phrase.toLowerCase();
+  
+  // Exact match
+  if (transcriptLower.includes(phraseLower)) {
+    return { matched: true, userSaid: phrase };
+  }
+  
+  // Check for similar words (simple fuzzy match)
+  const phraseWords = phraseLower.split(/\s+/);
+  const transcriptWords = transcriptLower.split(/\s+/);
+  
+  for (const phraseWord of phraseWords) {
+    if (phraseWord.length < 4) continue;
+    
+    for (const transcriptWord of transcriptWords) {
+      // Check if words are similar (start with same letters or contain each other)
+      if (transcriptWord.length >= 4) {
+        if (transcriptWord.startsWith(phraseWord.slice(0, 4)) || 
+            phraseWord.startsWith(transcriptWord.slice(0, 4)) ||
+            transcriptWord.includes(phraseWord) ||
+            phraseWord.includes(transcriptWord)) {
+          return { matched: true, userSaid: transcriptWord };
+        }
+      }
+    }
+  }
+  
+  return { matched: false };
 }
 
 function calculateFeedback(
@@ -68,48 +124,40 @@ function calculateFeedback(
 ): RecordingFeedback {
   const wordsSpoken = countWords(transcript);
   const targetWords = countWords(targetAnswer);
-  const wordRatio = wordsSpoken / targetWords;
   
-  // Calculate score based on word coverage
-  let score = Math.min(100, Math.round(wordRatio * 100));
+  // Extract and match key phrases
+  const keyPhraseStrings = extractKeyPhrases(targetAnswer);
+  const keyPhrases: KeyPhrase[] = keyPhraseStrings.map(phrase => {
+    const match = phraseMatches(transcript, phrase);
+    return {
+      phrase,
+      matched: match.matched,
+      userSaid: match.userSaid
+    };
+  });
   
-  // Bonus for speaking at a good pace (100-150 words per minute is ideal)
-  const wordsPerMinute = duration > 0 ? (wordsSpoken / duration) * 60 : 0;
-  const paceBonus = wordsPerMinute >= 80 && wordsPerMinute <= 160 ? 10 : 0;
-  score = Math.min(100, score + paceBonus);
+  const matchedCount = keyPhrases.filter(p => p.matched).length;
+  const totalPhrases = keyPhrases.length;
   
-  // Determine feedback category
+  // Calculate score based on key phrase coverage + word coverage
+  const phraseScore = totalPhrases > 0 ? (matchedCount / totalPhrases) * 70 : 0;
+  const wordScore = Math.min(30, (wordsSpoken / targetWords) * 30);
+  const score = Math.round(phraseScore + wordScore);
+  
+  // Generate specific message based on performance
   let message: string;
-  const badges: string[] = [];
-  const tips: string[] = [];
-  
-  if (wordRatio < 0.3) {
-    message = feedbackMessages.tooShort[Math.floor(Math.random() * feedbackMessages.tooShort.length)];
-    tips.push("Try to cover at least 50% of the reference answer");
-  } else if (score >= 85) {
-    message = feedbackMessages.excellent[Math.floor(Math.random() * feedbackMessages.excellent.length)];
-    badges.push("🏆 Excellent Coverage");
-    if (wordsPerMinute >= 100 && wordsPerMinute <= 140) {
-      badges.push("⚡ Perfect Pace");
-    }
-  } else if (score >= 60) {
-    message = feedbackMessages.good[Math.floor(Math.random() * feedbackMessages.good.length)];
-    badges.push("✅ Good Effort");
-    if (wordRatio < 0.7) {
-      tips.push("Try to include more key concepts");
-    }
+  if (matchedCount === totalPhrases && totalPhrases > 0) {
+    message = "Perfect! You covered all key concepts! 🌟";
+  } else if (matchedCount >= totalPhrases * 0.7) {
+    message = `Great job! You covered ${matchedCount}/${totalPhrases} key terms! 💪`;
+  } else if (matchedCount >= totalPhrases * 0.4) {
+    message = `Good progress! ${matchedCount}/${totalPhrases} key terms matched. Keep practicing! 📈`;
+  } else if (matchedCount > 0) {
+    message = `You got ${matchedCount} key term${matchedCount > 1 ? 's' : ''}. Try to include more technical details. 🎯`;
+  } else if (wordsSpoken > 0) {
+    message = "Try to use the specific technical terms from the answer. 📚";
   } else {
-    message = feedbackMessages.needsWork[Math.floor(Math.random() * feedbackMessages.needsWork.length)];
-    tips.push("Practice reading the full answer aloud");
-    tips.push("Focus on technical terminology");
-  }
-  
-  // Additional badges
-  if (duration >= 30 && duration <= 120) {
-    badges.push("⏱️ Good Timing");
-  }
-  if (wordsSpoken >= 50) {
-    badges.push("💬 Detailed Response");
+    message = "Start speaking to practice the answer! 🎤";
   }
   
   return {
@@ -118,8 +166,9 @@ function calculateFeedback(
     targetWords,
     duration,
     message,
-    badges,
-    tips,
+    keyPhrases,
+    matchedCount,
+    totalPhrases,
   };
 }
 
@@ -153,15 +202,19 @@ export default function TrainingMode() {
     onRecordingStart: () => {
       recordingStartTimeRef.current = Date.now();
       setShowFeedback(false);
+      setCurrentFeedback(null);
     },
     onRecordingComplete: (_audioBlob, transcript) => {
       // Calculate duration
       const duration = Math.round((Date.now() - recordingStartTimeRef.current) / 1000);
       const question = currentQuestionRef.current;
       
+      // Use the transcript from the recording state if callback transcript is empty
+      const finalTranscript = transcript || recording.state.transcript || recording.state.finalTranscript;
+      
       // Calculate feedback
-      if (question && transcript) {
-        const feedback = calculateFeedback(transcript, question.answer, duration);
+      if (question) {
+        const feedback = calculateFeedback(finalTranscript, question.answer, duration);
         setCurrentFeedback(feedback);
         setShowFeedback(true);
         
@@ -282,6 +335,7 @@ export default function TrainingMode() {
         description="Read and record technical interview answers to improve your speaking skills"
       />
 
+      <DesktopSidebarWrapper>
       <div className="min-h-screen bg-[#0d1117] text-[#e6edf3] pb-20">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-[#0d1117]/95 backdrop-blur-md border-b border-[#30363d]">
@@ -349,6 +403,12 @@ export default function TrainingMode() {
                       </span>
                       <span className="text-[#6e7681]">•</span>
                       <span className="text-[#8b949e]">{currentQuestion.channel}</span>
+                      <span className="text-[#6e7681]">•</span>
+                      <QuestionHistoryIcon 
+                        questionId={currentQuestion.id} 
+                        questionType="question"
+                        size="sm"
+                      />
                     </div>
                   </div>
                 </div>
@@ -456,51 +516,50 @@ export default function TrainingMode() {
                         </div>
                         <div className="text-center p-4 bg-[#0d1117] rounded-xl border border-[#30363d]">
                           <div className="flex items-center justify-center gap-1.5 mb-2 text-[#8b949e]">
-                            <Zap className="w-4 h-4" />
-                            <span className="text-xs">Pace</span>
+                            <Target className="w-4 h-4" />
+                            <span className="text-xs">Key Terms</span>
                           </div>
                           <div className="text-2xl font-bold text-white">
-                            {currentFeedback.duration > 0 ? Math.round((currentFeedback.wordsSpoken / currentFeedback.duration) * 60) : 0}
-                            <span className="text-sm text-[#6e7681] font-normal"> wpm</span>
+                            {currentFeedback.matchedCount}
+                            <span className="text-sm text-[#6e7681] font-normal"> / {currentFeedback.totalPhrases}</span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Badges */}
-                      {currentFeedback.badges.length > 0 && (
+                      {/* Key Phrases Matching */}
+                      {currentFeedback.keyPhrases.length > 0 && (
                         <div className="mb-6">
-                          <h4 className="text-sm font-medium text-[#8b949e] mb-3 flex items-center gap-2">
-                            <Star className="w-4 h-4 text-[#f1c40f]" />
-                            Achievements
+                          <h4 className="text-sm font-medium text-white mb-3 flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-[#a371f7]" />
+                            Key Terms from Answer
                           </h4>
                           <div className="flex flex-wrap gap-2">
-                            {currentFeedback.badges.map((badge, i) => (
+                            {currentFeedback.keyPhrases.map((phrase, i) => (
                               <span
                                 key={i}
-                                className="px-3 py-1.5 bg-[#f1c40f]/10 border border-[#f1c40f]/30 text-[#f1c40f] rounded-lg text-sm font-medium"
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 ${
+                                  phrase.matched 
+                                    ? 'bg-[#238636]/20 border border-[#238636]/40 text-[#3fb950]' 
+                                    : 'bg-[#f85149]/10 border border-[#f85149]/30 text-[#f85149]'
+                                }`}
                               >
-                                {badge}
+                                {phrase.matched ? (
+                                  <CheckCircle className="w-3.5 h-3.5" />
+                                ) : (
+                                  <span className="w-3.5 h-3.5 rounded-full border border-current" />
+                                )}
+                                {phrase.phrase}
+                                {phrase.matched && phrase.userSaid && phrase.userSaid !== phrase.phrase && (
+                                  <span className="text-xs opacity-70">({phrase.userSaid})</span>
+                                )}
                               </span>
                             ))}
                           </div>
-                        </div>
-                      )}
-
-                      {/* Tips */}
-                      {currentFeedback.tips.length > 0 && (
-                        <div className="p-4 bg-[#58a6ff]/10 border border-[#58a6ff]/30 rounded-xl">
-                          <h4 className="text-sm font-medium text-[#58a6ff] mb-2 flex items-center gap-2">
-                            <Sparkles className="w-4 h-4" />
-                            Tips for Improvement
-                          </h4>
-                          <ul className="space-y-1">
-                            {currentFeedback.tips.map((tip, i) => (
-                              <li key={i} className="text-sm text-[#8b949e] flex items-start gap-2">
-                                <ChevronRight className="w-4 h-4 text-[#58a6ff] flex-shrink-0 mt-0.5" />
-                                {tip}
-                              </li>
-                            ))}
-                          </ul>
+                          {currentFeedback.matchedCount < currentFeedback.totalPhrases && (
+                            <p className="text-xs text-[#8b949e] mt-3">
+                              💡 Try to include the missing terms in your next attempt
+                            </p>
+                          )}
                         </div>
                       )}
 
@@ -538,6 +597,7 @@ export default function TrainingMode() {
           </AnimatePresence>
         </div>
       </div>
+      </DesktopSidebarWrapper>
     </>
   );
 }

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, Target, Flame, Bookmark, Clock, Check, Building2, Hash, TrendingUp, Brain } from 'lucide-react';
+import { Zap, Target, Flame, Bookmark, Clock, Check, Building2, Hash, TrendingUp, Brain, Sparkles } from 'lucide-react';
 import type { Question } from '../lib/data';
 import { formatTag } from '../lib/utils';
+import { QuestionHistoryIcon } from './unified/QuestionHistory';
 import { 
   getCard, recordReview, addToSRS,
   getMasteryLabel, getMasteryColor, getNextReviewPreview,
@@ -231,6 +232,14 @@ export function QuestionPanel({
             <span className={`text-xs font-medium ${difficultyConfig.color}`}>{difficultyConfig.label}</span>
           </div>
 
+          {/* NEW badge - show for new questions */}
+          {question.isNew && (
+            <div className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-md">
+              <Sparkles className="w-3 h-3 text-purple-500" />
+              <span className="text-xs font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">NEW</span>
+            </div>
+          )}
+
           {/* Completed indicator */}
           {isCompleted && (
             <div className="flex items-center gap-1 px-2 py-1 bg-green-500/10 border border-green-500/20 rounded-md">
@@ -240,17 +249,24 @@ export function QuestionPanel({
           )}
         </div>
 
-        {/* Bookmark button */}
-        <button
-          onClick={onToggleMark}
-          className={`p-1.5 rounded-md transition-colors ${
-            isMarked
-              ? 'bg-primary/10 text-primary border border-primary/20'
-              : 'bg-muted text-muted-foreground hover:text-primary'
-          }`}
-        >
-          <Bookmark className={`w-4 h-4 ${isMarked ? 'fill-current' : ''}`} />
-        </button>
+        {/* History and Bookmark buttons */}
+        <div className="flex items-center gap-1.5">
+          <QuestionHistoryIcon 
+            questionId={question.id} 
+            questionType="question"
+            size="sm"
+          />
+          <button
+            onClick={onToggleMark}
+            className={`p-1.5 rounded-md transition-colors ${
+              isMarked
+                ? 'bg-primary/10 text-primary border border-primary/20'
+                : 'bg-muted text-muted-foreground hover:text-primary'
+            }`}
+          >
+            <Bookmark className={`w-4 h-4 ${isMarked ? 'fill-current' : ''}`} />
+          </button>
+        </div>
       </div>
 
       {/* Main content area - Question */}

@@ -193,8 +193,6 @@ class AchievementEngineClass {
   private getCurrentValue(achievement: Achievement, metrics: UserMetrics): number {
     const req = achievement.requirements[0]; // Simplified: use first requirement
     
-    const metricKey = req.metric as keyof UserMetrics;
-    
     switch (req.metric) {
       case 'total_completed': return metrics.totalCompleted;
       case 'beginner_completed': return metrics.beginnerCompleted;
@@ -205,18 +203,33 @@ class AchievementEngineClass {
       case 'quiz_correct_streak': return metrics.quizCorrectStreak;
       case 'session_questions': return metrics.questionsThisSession;
       case 'weekend_streak': return metrics.weekendStreak;
-      case 'voice_interviews_this_week': return 0; // TODO: Track weekly
-      case 'questions_today': return 0; // TODO: Track daily
-      case 'questions_this_week': return 0; // TODO: Track weekly
-      case 'channels_this_week': return 0; // TODO: Track weekly
-      case 'quiz_correct_today': return 0; // TODO: Track daily
-      case 'channel_completion': return 0; // TODO: Calculate from channel data
+      case 'voice_interviews_this_week': return metrics.voiceInterviewsThisWeek || 0;
+      case 'questions_today': return metrics.questionsToday || 0;
+      case 'questions_this_week': return metrics.questionsThisWeek || 0;
+      case 'channels_this_week': return (metrics.channelsThisWeek || []).length;
+      case 'quiz_correct_today': return metrics.quizCorrectToday || 0;
+      case 'channel_completion': {
+        const completions = Object.values(metrics.channelCompletions || {});
+        return completions.length > 0 ? Math.max(...completions) : 0;
+      }
       case 'study_hour': {
         if (metrics.lastStudyTime) {
           return new Date(metrics.lastStudyTime).getHours();
         }
         return 0;
       }
+      // Voice metrics
+      case 'voice_interviews': return metrics.voiceInterviews;
+      case 'voice_successes': return metrics.voiceSuccesses;
+      // SRS metrics
+      case 'srs_reviews': return metrics.srsReviews || 0;
+      // Training metrics
+      case 'training_sessions': return metrics.trainingSessions || 0;
+      // Coding metrics
+      case 'coding_challenges_completed': return metrics.codingChallengesCompleted || 0;
+      case 'coding_challenges_passed': return metrics.codingChallengesPassed || 0;
+      // Certification metrics
+      case 'certifications_passed': return metrics.certificationsPassed || 0;
       default: return 0;
     }
   }

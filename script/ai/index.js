@@ -38,6 +38,7 @@ import citationSearchTemplate from './prompts/templates/citation-search.js';
 import citationBlogTemplate from './prompts/templates/citation-blog.js';
 import blogImageTemplate from './prompts/templates/blog-image.js';
 import illustrationSceneTemplate from './prompts/templates/illustration-scene.js';
+import certificationQuestionTemplate from './prompts/templates/certification-question.js';
 
 // Template registry
 const templates = {
@@ -62,7 +63,8 @@ const templates = {
   'citationSearch': citationSearchTemplate,
   'citationBlog': citationBlogTemplate,
   'blogImage': blogImageTemplate,
-  'illustrationScene': illustrationSceneTemplate
+  'illustrationScene': illustrationSceneTemplate,
+  'certification-question': certificationQuestionTemplate
 };
 
 // Provider registry

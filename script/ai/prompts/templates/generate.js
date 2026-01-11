@@ -172,7 +172,7 @@ export const guidelines = [
 ];
 
 export function build(context) {
-  const { channel, subChannel, difficulty, tags: rawTags, targetCompanies: rawCompanies, scenarioHint } = context;
+  const { channel, subChannel, difficulty, tags: rawTags, targetCompanies: rawCompanies, scenarioHint, ragContext } = context;
   
   // Parse tags if it's a string (from database)
   let tags = rawTags;
@@ -191,6 +191,29 @@ export function build(context) {
   const isSystemDesign = channel === 'system-design';
   const explanationFormat = isSystemDesign ? systemDesignFormat : standardFormat;
 
+  // Build RAG context section if available
+  let ragSection = '';
+  if (ragContext?.hasContext && ragContext.related?.length > 0) {
+    const existingQuestions = ragContext.related
+      .slice(0, 5)
+      .map((r, i) => `${i + 1}. "${r.question}"`)
+      .join('\n');
+    const coveredConcepts = ragContext.concepts?.slice(0, 8).join(', ') || '';
+    
+    ragSection = `
+EXISTING QUESTIONS IN THIS AREA (DO NOT DUPLICATE - generate something DIFFERENT):
+${existingQuestions}
+
+CONCEPTS ALREADY COVERED: ${coveredConcepts}
+
+IMPORTANT: Your question MUST:
+- Explore a NEW angle not covered by the existing questions above
+- Avoid repeating the same concepts
+- Fill gaps in the existing coverage
+- Be unique and add value to the question bank
+`;
+  }
+
   return `${buildSystemContext('generate')}
 
 Generate a REAL interview question that you would actually ask candidates.
@@ -201,7 +224,7 @@ CONTEXT:
 - Topics: ${tags.join(', ')}
 - Target companies: ${targetCompanies.join(', ')}
 ${scenarioHint ? `- Example scenario for inspiration: ${scenarioHint}` : ''}
-
+${ragSection}
 REQUIREMENTS:
 ${guidelines.map(g => `- ${g}`).join('\n')}
 

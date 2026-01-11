@@ -667,3 +667,7 @@ graph TD
     return answer;
   }
 }
+
+
+// Export a singleton instance
+export const autoFormatter = new AutoFormatter();

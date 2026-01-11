@@ -11,12 +11,12 @@
 import { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Bookmark, Building2, Hash, Clock, Check, Tag,
-  Zap, Target, Flame
+  Bookmark, Building2, Hash, Clock, Check, Sparkles
 } from 'lucide-react';
 import type { Question } from '../../lib/data';
 import { formatTag } from '../../lib/utils';
 import { DifficultyBadge } from './DifficultyBadge';
+import { QuestionHistoryIcon, QuestionType } from './QuestionHistory';
 
 export type QuestionCardVariant = 'default' | 'compact' | 'detailed' | 'minimal';
 export type QuestionCardSize = 'sm' | 'md' | 'lg';
@@ -36,6 +36,10 @@ interface QuestionCardProps {
   showTimer?: boolean;
   showBookmark?: boolean;
   showCompleted?: boolean;
+  showHistory?: boolean;
+  
+  // Question type for history tracking
+  questionType?: QuestionType;
   
   // State
   isMarked?: boolean;
@@ -171,6 +175,8 @@ export function QuestionCard({
   showTimer = false,
   showBookmark = false,
   showCompleted = false,
+  showHistory = true,
+  questionType = 'question',
   isMarked = false,
   isCompleted = false,
   questionNumber,
@@ -209,7 +215,7 @@ export function QuestionCard({
       {variant === 'detailed' && <BackgroundMascot difficulty={question.difficulty} />}
       
       {/* Top bar */}
-      {(showProgress || showDifficulty || showCompleted || showBookmark || showQuestionId || badge) && (
+      {(showProgress || showDifficulty || showCompleted || showBookmark || showQuestionId || showHistory || badge) && (
         <div className="flex items-center justify-between mb-3 sm:mb-4">
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             {/* Question ID - Desktop only */}
@@ -246,26 +252,45 @@ export function QuestionCard({
               </div>
             )}
 
+            {/* NEW badge - show for new questions */}
+            {question.isNew && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-md">
+                <Sparkles className="w-3 h-3 text-purple-500" />
+                <span className={`font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent ${sizeConfig.meta}`}>NEW</span>
+              </div>
+            )}
+
             {/* Custom badge */}
             {badge}
           </div>
 
-          {/* Bookmark button */}
-          {showBookmark && onToggleMark && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleMark();
-              }}
-              className={`p-1.5 rounded-md transition-colors ${
-                isMarked
-                  ? 'bg-primary/10 text-primary border border-primary/20'
-                  : 'bg-muted text-muted-foreground hover:text-primary'
-              }`}
-            >
-              <Bookmark className={`w-4 h-4 ${isMarked ? 'fill-current' : ''}`} />
-            </button>
-          )}
+          <div className="flex items-center gap-1.5">
+            {/* History icon */}
+            {showHistory && question.id && (
+              <QuestionHistoryIcon 
+                questionId={question.id} 
+                questionType={questionType}
+                size={size === 'lg' ? 'md' : 'sm'}
+              />
+            )}
+
+            {/* Bookmark button */}
+            {showBookmark && onToggleMark && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleMark();
+                }}
+                className={`p-1.5 rounded-md transition-colors ${
+                  isMarked
+                    ? 'bg-primary/10 text-primary border border-primary/20'
+                    : 'bg-muted text-muted-foreground hover:text-primary'
+                }`}
+              >
+                <Bookmark className={`w-4 h-4 ${isMarked ? 'fill-current' : ''}`} />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -359,6 +384,8 @@ interface CompactQuestionCardProps {
   isMarked?: boolean;
   isCompleted?: boolean;
   onToggleMark?: () => void;
+  showHistory?: boolean;
+  questionType?: QuestionType;
   className?: string;
 }
 
@@ -368,6 +395,8 @@ export function CompactQuestionCard({
   isMarked = false,
   isCompleted = false,
   onToggleMark,
+  showHistory = true,
+  questionType = 'question',
   className = ''
 }: CompactQuestionCardProps) {
   return (
@@ -399,17 +428,26 @@ export function CompactQuestionCard({
             {question.subChannel}
           </p>
         </div>
-        {onToggleMark && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleMark();
-            }}
-            className={`p-1 rounded ${isMarked ? 'text-primary' : 'text-muted-foreground'}`}
-          >
-            <Bookmark className={`w-4 h-4 ${isMarked ? 'fill-current' : ''}`} />
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {showHistory && question.id && (
+            <QuestionHistoryIcon 
+              questionId={question.id} 
+              questionType={questionType}
+              size="sm"
+            />
+          )}
+          {onToggleMark && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleMark();
+              }}
+              className={`p-1 rounded ${isMarked ? 'text-primary' : 'text-muted-foreground'}`}
+            >
+              <Bookmark className={`w-4 h-4 ${isMarked ? 'fill-current' : ''}`} />
+            </button>
+          )}
+        </div>
       </div>
     </motion.div>
   );

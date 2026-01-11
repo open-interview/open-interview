@@ -12,10 +12,13 @@ import { useProgress, useGlobalStats } from '../../hooks/use-progress';
 import { useCredits } from '../../context/CreditsContext';
 import { useAchievementContext } from '../../context/AchievementContext';
 import { ProgressStorage } from '../../services/storage.service';
+import { RecommendationService } from '../../services/recommendation.service';
 import { DailyReviewCard, notifySRSUpdate } from '../DailyReviewCard';
+import { Recommendations } from '../Recommendations';
 import { ListenIconButton } from '../ListenButton';
 import { QuestionFeedback } from '../QuestionFeedback';
 import { RecentBlogPosts } from '../RecentBlogPosts';
+import { QuestionHistoryIcon } from '../unified/QuestionHistory';
 import { loadTests, TestQuestion, Test, getSessionQuestions } from '../../lib/tests';
 import { addToSRS } from '../../lib/spaced-repetition';
 import { 
@@ -215,6 +218,15 @@ export function MobileHomeFocused() {
 
           {/* Daily Review - Spaced Repetition */}
           {hasChannels && <DailyReviewCard />}
+
+          {/* Personalized Recommendations */}
+          {hasChannels && (
+            <Recommendations 
+              channelQuestionCounts={questionCounts}
+              compact={false}
+              className="mb-3 bg-card rounded-xl border border-border p-3"
+            />
+          )}
 
           {/* Voice Interview CTA - Primary feature - Full width */}
           {hasChannels && (
@@ -561,6 +573,14 @@ function QuickQuizCard({
                 }`}>
                   {currentQuestion.type === 'multiple' ? 'Multi' : 'Single'}
                 </span>
+                {/* History icon */}
+                {currentQuestion.questionId && (
+                  <QuestionHistoryIcon 
+                    questionId={currentQuestion.questionId} 
+                    questionType="test"
+                    size="sm"
+                  />
+                )}
                 {/* Feedback flag */}
                 {currentQuestion.questionId && (
                   <QuestionFeedback questionId={currentQuestion.questionId} className="ml-auto" />

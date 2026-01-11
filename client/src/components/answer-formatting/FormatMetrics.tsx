@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Progress } from '../ui/progress';
 import { 
   metricsCollector, 
-  FormatMetrics, 
+  FormatMetrics as FormatMetricsType, 
   MetricsTrend, 
   PatternUsageStats, 
   ChannelMetrics 
@@ -288,11 +288,11 @@ const ChannelBreakdown: React.FC<{ channels: ChannelMetrics[] }> = ({ channels }
 // Main FormatMetrics Component
 // ============================================================================
 
-export const FormatMetrics: React.FC<FormatMetricsProps> = ({ 
+export const FormatMetricsDashboard: React.FC<FormatMetricsProps> = ({ 
   className = '',
   refreshInterval = 30000 // 30 seconds default
 }) => {
-  const [metrics, setMetrics] = useState<FormatMetrics | null>(null);
+  const [metrics, setMetrics] = useState<FormatMetricsType | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
@@ -479,4 +479,4 @@ export const FormatMetrics: React.FC<FormatMetricsProps> = ({
   );
 };
 
-export default FormatMetrics;
+export default FormatMetricsDashboard;

@@ -5,7 +5,7 @@ import { useLocation } from 'wouter';
 import { searchAll, type UnifiedSearchResult, type SearchResult, type CodingSearchResult } from '../lib/fuzzy-search';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useUserPreferences } from '../context/UserPreferencesContext';
-import { useToast } from '@/hooks/use-toast';
+import { useUnifiedToast } from '@/hooks/use-unified-toast';
 import { allChannelsConfig } from '../lib/channels-config';
 import { formatTag } from '../lib/utils';
 
@@ -35,7 +35,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const mobileInputRef = useRef<HTMLInputElement>(null);
   const [, setLocation] = useLocation();
   const { isSubscribed, subscribeChannel } = useUserPreferences();
-  const { toast } = useToast();
+  const { toast } = useUnifiedToast();
   
   const debouncedQuery = useDebounce(query, 150);
 

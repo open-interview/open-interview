@@ -572,6 +572,339 @@ const WEEKLY_CHALLENGES: Achievement[] = [
 ];
 
 // ============================================
+// VOICE INTERVIEW ACHIEVEMENTS
+// ============================================
+
+const VOICE_ACHIEVEMENTS: Achievement[] = [
+  {
+    id: 'voice-first',
+    type: 'badge',
+    name: 'First Interview',
+    description: 'Complete your first voice interview',
+    category: 'special',
+    tier: 'bronze',
+    icon: 'mic',
+    color: '#cd7f32',
+    gradient: 'from-amber-600 to-amber-800',
+    requirements: [{ type: 'count', metric: 'voice_interviews', target: 1 }],
+    rewards: [
+      { type: 'xp', amount: 100 },
+      { type: 'credits', amount: 100 }
+    ]
+  },
+  {
+    id: 'voice-5',
+    type: 'badge',
+    name: 'Interview Practice',
+    description: 'Complete 5 voice interviews',
+    category: 'special',
+    tier: 'silver',
+    icon: 'mic',
+    color: '#c0c0c0',
+    gradient: 'from-slate-300 to-slate-500',
+    requirements: [{ type: 'count', metric: 'voice_interviews', target: 5 }],
+    rewards: [
+      { type: 'xp', amount: 200 },
+      { type: 'credits', amount: 200 }
+    ]
+  },
+  {
+    id: 'voice-10',
+    type: 'badge',
+    name: 'Interview Pro',
+    description: 'Complete 10 voice interviews',
+    category: 'special',
+    tier: 'gold',
+    icon: 'mic',
+    color: '#ffd700',
+    gradient: 'from-yellow-400 to-amber-600',
+    requirements: [{ type: 'count', metric: 'voice_interviews', target: 10 }],
+    rewards: [
+      { type: 'xp', amount: 500 },
+      { type: 'credits', amount: 500 },
+      { type: 'title', amount: 1, item: 'Interview Pro' }
+    ]
+  },
+  {
+    id: 'voice-success-3',
+    type: 'badge',
+    name: 'Hired!',
+    description: 'Get 3 successful voice interview results',
+    category: 'special',
+    tier: 'gold',
+    icon: 'check-circle',
+    color: '#22c55e',
+    gradient: 'from-green-400 to-green-600',
+    requirements: [{ type: 'count', metric: 'voice_successes', target: 3 }],
+    rewards: [
+      { type: 'xp', amount: 300 },
+      { type: 'credits', amount: 300 },
+      { type: 'title', amount: 1, item: 'Hired' }
+    ]
+  },
+  {
+    id: 'voice-success-10',
+    type: 'badge',
+    name: 'Interview Master',
+    description: 'Get 10 successful voice interview results',
+    category: 'special',
+    tier: 'diamond',
+    icon: 'star',
+    color: '#b9f2ff',
+    gradient: 'from-cyan-300 to-blue-500',
+    requirements: [{ type: 'count', metric: 'voice_successes', target: 10 }],
+    rewards: [
+      { type: 'xp', amount: 1000 },
+      { type: 'credits', amount: 1000 },
+      { type: 'title', amount: 1, item: 'Interview Master' }
+    ]
+  },
+];
+
+// ============================================
+// CERTIFICATION ACHIEVEMENTS
+// ============================================
+
+const CERTIFICATION_ACHIEVEMENTS: Achievement[] = [
+  {
+    id: 'cert-first',
+    type: 'milestone',
+    name: 'First Certification',
+    description: 'Pass your first certification exam',
+    category: 'completion',
+    tier: 'gold',
+    icon: 'award',
+    color: '#ffd700',
+    gradient: 'from-yellow-400 to-amber-600',
+    requirements: [{ type: 'count', metric: 'certifications_passed', target: 1 }],
+    rewards: [
+      { type: 'xp', amount: 500 },
+      { type: 'credits', amount: 500 },
+      { type: 'title', amount: 1, item: 'Certified' }
+    ]
+  },
+  {
+    id: 'cert-3',
+    type: 'milestone',
+    name: 'Triple Certified',
+    description: 'Pass 3 certification exams',
+    category: 'completion',
+    tier: 'platinum',
+    icon: 'award',
+    color: '#e5e4e2',
+    gradient: 'from-slate-200 to-slate-400',
+    requirements: [{ type: 'count', metric: 'certifications_passed', target: 3 }],
+    rewards: [
+      { type: 'xp', amount: 1500 },
+      { type: 'credits', amount: 1500 },
+      { type: 'title', amount: 1, item: 'Multi-Certified' }
+    ]
+  },
+  {
+    id: 'cert-5',
+    type: 'milestone',
+    name: 'Certification Expert',
+    description: 'Pass 5 certification exams',
+    category: 'completion',
+    tier: 'diamond',
+    icon: 'crown',
+    color: '#b9f2ff',
+    gradient: 'from-cyan-300 to-blue-500',
+    requirements: [{ type: 'count', metric: 'certifications_passed', target: 5 }],
+    rewards: [
+      { type: 'xp', amount: 3000 },
+      { type: 'credits', amount: 3000 },
+      { type: 'title', amount: 1, item: 'Certification Expert' }
+    ]
+  },
+];
+
+// ============================================
+// CODING CHALLENGE ACHIEVEMENTS
+// ============================================
+
+const CODING_ACHIEVEMENTS: Achievement[] = [
+  {
+    id: 'code-first',
+    type: 'badge',
+    name: 'First Code',
+    description: 'Complete your first coding challenge',
+    category: 'mastery',
+    tier: 'bronze',
+    icon: 'code',
+    color: '#cd7f32',
+    gradient: 'from-amber-600 to-amber-800',
+    requirements: [{ type: 'count', metric: 'coding_challenges_completed', target: 1 }],
+    rewards: [
+      { type: 'xp', amount: 100 },
+      { type: 'credits', amount: 100 }
+    ]
+  },
+  {
+    id: 'code-10',
+    type: 'badge',
+    name: 'Code Warrior',
+    description: 'Complete 10 coding challenges',
+    category: 'mastery',
+    tier: 'silver',
+    icon: 'code',
+    color: '#c0c0c0',
+    gradient: 'from-slate-300 to-slate-500',
+    requirements: [{ type: 'count', metric: 'coding_challenges_completed', target: 10 }],
+    rewards: [
+      { type: 'xp', amount: 300 },
+      { type: 'credits', amount: 300 }
+    ]
+  },
+  {
+    id: 'code-25',
+    type: 'badge',
+    name: 'Code Master',
+    description: 'Complete 25 coding challenges',
+    category: 'mastery',
+    tier: 'gold',
+    icon: 'code',
+    color: '#ffd700',
+    gradient: 'from-yellow-400 to-amber-600',
+    requirements: [{ type: 'count', metric: 'coding_challenges_completed', target: 25 }],
+    rewards: [
+      { type: 'xp', amount: 750 },
+      { type: 'credits', amount: 750 },
+      { type: 'title', amount: 1, item: 'Code Master' }
+    ]
+  },
+  {
+    id: 'code-pass-10',
+    type: 'badge',
+    name: 'All Tests Pass',
+    description: 'Pass 10 coding challenges with all tests',
+    category: 'mastery',
+    tier: 'gold',
+    icon: 'check-circle',
+    color: '#22c55e',
+    gradient: 'from-green-400 to-green-600',
+    requirements: [{ type: 'count', metric: 'coding_challenges_passed', target: 10 }],
+    rewards: [
+      { type: 'xp', amount: 500 },
+      { type: 'credits', amount: 500 },
+      { type: 'title', amount: 1, item: 'Bug Free' }
+    ]
+  },
+];
+
+// ============================================
+// TRAINING ACHIEVEMENTS
+// ============================================
+
+const TRAINING_ACHIEVEMENTS: Achievement[] = [
+  {
+    id: 'training-first',
+    type: 'badge',
+    name: 'Training Started',
+    description: 'Complete your first training session',
+    category: 'completion',
+    tier: 'bronze',
+    icon: 'dumbbell',
+    color: '#cd7f32',
+    gradient: 'from-amber-600 to-amber-800',
+    requirements: [{ type: 'count', metric: 'training_sessions', target: 1 }],
+    rewards: [
+      { type: 'xp', amount: 50 },
+      { type: 'credits', amount: 50 }
+    ]
+  },
+  {
+    id: 'training-10',
+    type: 'badge',
+    name: 'Training Regular',
+    description: 'Complete 10 training sessions',
+    category: 'completion',
+    tier: 'silver',
+    icon: 'dumbbell',
+    color: '#c0c0c0',
+    gradient: 'from-slate-300 to-slate-500',
+    requirements: [{ type: 'count', metric: 'training_sessions', target: 10 }],
+    rewards: [
+      { type: 'xp', amount: 200 },
+      { type: 'credits', amount: 200 }
+    ]
+  },
+  {
+    id: 'training-25',
+    type: 'badge',
+    name: 'Training Pro',
+    description: 'Complete 25 training sessions',
+    category: 'completion',
+    tier: 'gold',
+    icon: 'dumbbell',
+    color: '#ffd700',
+    gradient: 'from-yellow-400 to-amber-600',
+    requirements: [{ type: 'count', metric: 'training_sessions', target: 25 }],
+    rewards: [
+      { type: 'xp', amount: 500 },
+      { type: 'credits', amount: 500 },
+      { type: 'title', amount: 1, item: 'Training Pro' }
+    ]
+  },
+];
+
+// ============================================
+// SRS REVIEW ACHIEVEMENTS
+// ============================================
+
+const SRS_ACHIEVEMENTS: Achievement[] = [
+  {
+    id: 'srs-first',
+    type: 'badge',
+    name: 'Memory Training',
+    description: 'Complete your first SRS review session',
+    category: 'completion',
+    tier: 'bronze',
+    icon: 'brain',
+    color: '#cd7f32',
+    gradient: 'from-amber-600 to-amber-800',
+    requirements: [{ type: 'count', metric: 'srs_reviews', target: 1 }],
+    rewards: [
+      { type: 'xp', amount: 25 },
+      { type: 'credits', amount: 25 }
+    ]
+  },
+  {
+    id: 'srs-50',
+    type: 'badge',
+    name: 'Memory Builder',
+    description: 'Complete 50 SRS reviews',
+    category: 'completion',
+    tier: 'silver',
+    icon: 'brain',
+    color: '#c0c0c0',
+    gradient: 'from-slate-300 to-slate-500',
+    requirements: [{ type: 'count', metric: 'srs_reviews', target: 50 }],
+    rewards: [
+      { type: 'xp', amount: 150 },
+      { type: 'credits', amount: 150 }
+    ]
+  },
+  {
+    id: 'srs-200',
+    type: 'badge',
+    name: 'Memory Master',
+    description: 'Complete 200 SRS reviews',
+    category: 'completion',
+    tier: 'gold',
+    icon: 'brain',
+    color: '#ffd700',
+    gradient: 'from-yellow-400 to-amber-600',
+    requirements: [{ type: 'count', metric: 'srs_reviews', target: 200 }],
+    rewards: [
+      { type: 'xp', amount: 400 },
+      { type: 'credits', amount: 400 },
+      { type: 'title', amount: 1, item: 'Memory Master' }
+    ]
+  },
+];
+
+// ============================================
 // EXPORT ALL ACHIEVEMENTS
 // ============================================
 
@@ -583,6 +916,11 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
   ...SPECIAL_ACHIEVEMENTS,
   ...DAILY_CHALLENGES,
   ...WEEKLY_CHALLENGES,
+  ...VOICE_ACHIEVEMENTS,
+  ...CERTIFICATION_ACHIEVEMENTS,
+  ...CODING_ACHIEVEMENTS,
+  ...TRAINING_ACHIEVEMENTS,
+  ...SRS_ACHIEVEMENTS,
 ];
 
 // Helper functions

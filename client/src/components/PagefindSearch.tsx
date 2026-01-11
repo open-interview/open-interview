@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'wouter';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useUserPreferences } from '../context/UserPreferencesContext';
-import { useToast } from '@/hooks/use-toast';
+import { useUnifiedToast } from '@/hooks/use-unified-toast';
 import { allChannelsConfig } from '../lib/channels-config';
 
 // Pagefind types
@@ -78,7 +78,7 @@ export function PagefindSearch({ isOpen, onClose }: PagefindSearchProps) {
   const pagefindRef = useRef<Pagefind | null>(null);
   const [, setLocation] = useLocation();
   const { isSubscribed, subscribeChannel } = useUserPreferences();
-  const { toast } = useToast();
+  const { toast } = useUnifiedToast();
   
   const debouncedQuery = useDebounce(query, 200);
 

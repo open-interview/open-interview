@@ -8,23 +8,52 @@
  * - Comments on issue with results
  * - Closes issue when complete
  * 
+ * PRIORITIZATION:
+ * - Issues for channels with fewer questions are processed first
+ * - Certifications and tests get higher priority
+ * - Issues for channels with 0 questions get highest priority
+ * 
+ * CIRCULAR LOOP PREVENTION:
+ * - Tracks processed issues in database to avoid reprocessing
+ * - Uses bot:in-progress label during processing
+ * - Marks completed issues with bot:completed label
+ * - Skips issues that were processed within last 24 hours
+ * 
  * Flow:
- *   fetch_issues → parse_feedback → fetch_question → execute_action → update_question → close_issue → end
+ *   fetch_issues → prioritize_issues → parse_feedback → check_processed → fetch_question → execute_action → update_question → close_issue → end
  */
 
 import { StateGraph, END, START } from '@langchain/langgraph';
 import { Annotation } from '@langchain/langgraph';
 import ai from '../index.js';
-import { dbClient, saveQuestion } from '../../utils.js';
+import { dbClient, saveQuestion, getChannelQuestionCounts } from '../../utils.js';
+import { certificationDomains } from '../prompts/templates/certification-question.js';
 
 // GitHub configuration
 const GITHUB_REPO = process.env.GITHUB_REPO || 'open-interview/open-interview.github.io';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
+// Processing history table for circular loop prevention
+const PROCESSING_HISTORY_TABLE = `
+  CREATE TABLE IF NOT EXISTS feedback_processing_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    issue_number INTEGER NOT NULL,
+    question_id TEXT NOT NULL,
+    feedback_type TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'processing',
+    processed_at TEXT NOT NULL,
+    completed_at TEXT,
+    result TEXT,
+    error TEXT,
+    UNIQUE(issue_number)
+  )
+`;
+
 // Define the state schema
 const FeedbackState = Annotation.Root({
   // Input
   maxIssues: Annotation({ reducer: (_, b) => b, default: () => 10 }),
+  singleIssue: Annotation({ reducer: (_, b) => b, default: () => null }),
   
   // Current issue being processed
   currentIssue: Annotation({ reducer: (_, b) => b, default: () => null }),
@@ -39,11 +68,79 @@ const FeedbackState = Annotation.Root({
   // Processing state
   issues: Annotation({ reducer: (_, b) => b, default: () => [] }),
   processedCount: Annotation({ reducer: (_, b) => b, default: () => 0 }),
+  alreadyProcessed: Annotation({ reducer: (_, b) => b, default: () => false }),
   
   // Results
   results: Annotation({ reducer: (a, b) => [...a, ...b], default: () => [] }),
   error: Annotation({ reducer: (_, b) => b, default: () => null })
 });
+
+/**
+ * Initialize processing history table
+ */
+async function initProcessingHistory() {
+  try {
+    await dbClient.execute(PROCESSING_HISTORY_TABLE);
+  } catch (e) {
+    console.log('   Note: Processing history table may already exist');
+  }
+}
+
+/**
+ * Check if issue was recently processed (within 24 hours)
+ */
+async function wasRecentlyProcessed(issueNumber) {
+  try {
+    const result = await dbClient.execute({
+      sql: `SELECT * FROM feedback_processing_history 
+            WHERE issue_number = ? 
+            AND status = 'completed'
+            AND datetime(completed_at) > datetime('now', '-24 hours')`,
+      args: [issueNumber]
+    });
+    return result.rows.length > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Record processing start
+ */
+async function recordProcessingStart(issueNumber, questionId, feedbackType) {
+  try {
+    await dbClient.execute({
+      sql: `INSERT OR REPLACE INTO feedback_processing_history 
+            (issue_number, question_id, feedback_type, status, processed_at)
+            VALUES (?, ?, ?, 'processing', ?)`,
+      args: [issueNumber, questionId, feedbackType, new Date().toISOString()]
+    });
+  } catch (e) {
+    console.log(`   Warning: Could not record processing start: ${e.message}`);
+  }
+}
+
+/**
+ * Record processing completion
+ */
+async function recordProcessingComplete(issueNumber, success, result = null, error = null) {
+  try {
+    await dbClient.execute({
+      sql: `UPDATE feedback_processing_history 
+            SET status = ?, completed_at = ?, result = ?, error = ?
+            WHERE issue_number = ?`,
+      args: [
+        success ? 'completed' : 'failed',
+        new Date().toISOString(),
+        result ? JSON.stringify(result) : null,
+        error,
+        issueNumber
+      ]
+    });
+  } catch (e) {
+    console.log(`   Warning: Could not record processing completion: ${e.message}`);
+  }
+}
 
 /**
  * GitHub API helper
@@ -82,28 +179,67 @@ async function githubApi(endpoint, options = {}) {
 async function fetchIssuesNode(state) {
   console.log('\n📥 [FETCH_ISSUES] Getting feedback issues from GitHub...');
   
+  // Initialize processing history table
+  await initProcessingHistory();
+  
   if (!GITHUB_TOKEN) {
     console.log('   ⚠️ GITHUB_TOKEN not set, skipping');
     return { error: 'GITHUB_TOKEN not set' };
   }
   
   try {
-    const issues = await githubApi(
-      `/issues?labels=bot:processor&state=open&per_page=${state.maxIssues}`
-    );
+    let issues = [];
     
-    // Filter out issues already being processed
-    const pendingIssues = issues.filter(
+    // If single issue specified, fetch only that one
+    if (state.singleIssue) {
+      console.log(`   Fetching single issue #${state.singleIssue}...`);
+      const issue = await githubApi(`/issues/${state.singleIssue}`);
+      
+      // Verify it has the bot:processor label
+      if (issue.labels.some(l => l.name === 'bot:processor')) {
+        issues = [issue];
+      } else {
+        console.log(`   ⚠️ Issue #${state.singleIssue} does not have bot:processor label`);
+        return { issues: [], error: null };
+      }
+    } else {
+      // Fetch all open issues with bot:processor label
+      issues = await githubApi(
+        `/issues?labels=bot:processor&state=open&per_page=${state.maxIssues}`
+      );
+    }
+    
+    // Filter out issues already being processed (has bot:in-progress label)
+    let pendingIssues = issues.filter(
       issue => !issue.labels.some(l => l.name === 'bot:in-progress')
     );
     
-    console.log(`   Found ${pendingIssues.length} pending feedback issues`);
+    // Filter out issues already completed (has bot:completed label)
+    pendingIssues = pendingIssues.filter(
+      issue => !issue.labels.some(l => l.name === 'bot:completed')
+    );
     
-    if (pendingIssues.length === 0) {
+    // Filter out recently processed issues (within 24 hours) to prevent circular loops
+    const filteredIssues = [];
+    for (const issue of pendingIssues) {
+      const recentlyProcessed = await wasRecentlyProcessed(issue.number);
+      if (recentlyProcessed) {
+        console.log(`   ⏭️ Skipping issue #${issue.number} (recently processed)`);
+      } else {
+        filteredIssues.push(issue);
+      }
+    }
+    
+    console.log(`   Found ${filteredIssues.length} pending feedback issues`);
+    
+    if (filteredIssues.length === 0) {
       return { issues: [], error: null };
     }
     
-    return { issues: pendingIssues };
+    // Prioritize issues based on channel question counts
+    const prioritizedIssues = await prioritizeIssues(filteredIssues);
+    
+    return { issues: prioritizedIssues };
   } catch (error) {
     console.log(`   ❌ Failed to fetch issues: ${error.message}`);
     return { error: error.message };
@@ -111,9 +247,85 @@ async function fetchIssuesNode(state) {
 }
 
 /**
+ * Prioritize issues based on channel question counts
+ * Issues for channels with fewer questions get higher priority
+ */
+async function prioritizeIssues(issues) {
+  if (issues.length <= 1) return issues;
+  
+  console.log('\n📊 [PRIORITIZE] Sorting issues by channel priority...');
+  
+  // Get channel question counts
+  let channelCounts = {};
+  try {
+    channelCounts = await getChannelQuestionCounts();
+  } catch (e) {
+    console.log('   ⚠️ Could not get channel counts, using default order');
+    return issues;
+  }
+  
+  // Certification channel IDs
+  const certChannels = new Set(Object.keys(certificationDomains));
+  
+  // Parse question IDs from issues to get channels
+  const issuesWithPriority = await Promise.all(issues.map(async (issue) => {
+    // Parse question ID from issue body
+    const questionIdMatch = issue.body?.match(/\*\*Question ID:\*\*\s*`([^`]+)`/);
+    if (!questionIdMatch) {
+      return { issue, priority: 100, channel: null }; // Low priority if can't parse
+    }
+    
+    const questionId = questionIdMatch[1];
+    
+    // Get channel from question
+    try {
+      const result = await dbClient.execute({
+        sql: 'SELECT channel FROM questions WHERE id = ?',
+        args: [questionId]
+      });
+      
+      if (result.rows.length === 0) {
+        return { issue, priority: 100, channel: null };
+      }
+      
+      const channel = result.rows[0].channel;
+      const count = channelCounts[channel] || 0;
+      const isCert = certChannels.has(channel);
+      
+      // Calculate priority (lower = higher priority)
+      // - Channels with 0 questions: priority 0
+      // - Certifications: priority = count / 2
+      // - Regular channels: priority = count
+      let priority = count;
+      if (count === 0) {
+        priority = 0;
+      } else if (isCert) {
+        priority = Math.floor(count / 2);
+      }
+      
+      return { issue, priority, channel };
+    } catch (e) {
+      return { issue, priority: 100, channel: null };
+    }
+  }));
+  
+  // Sort by priority (ascending)
+  issuesWithPriority.sort((a, b) => a.priority - b.priority);
+  
+  // Log prioritization
+  console.log('   Issue priority order:');
+  issuesWithPriority.slice(0, 5).forEach(({ issue, priority, channel }) => {
+    const status = priority === 0 ? '🔴 CRITICAL' : priority < 10 ? '🟡 HIGH' : '🟢';
+    console.log(`   #${issue.number}: ${channel || 'unknown'} (priority: ${priority}) ${status}`);
+  });
+  
+  return issuesWithPriority.map(i => i.issue);
+}
+
+/**
  * Node: Parse feedback from current issue
  */
-function parseFeedbackNode(state) {
+async function parseFeedbackNode(state) {
   const issue = state.issues[state.processedCount];
   
   if (!issue) {
@@ -147,6 +359,9 @@ function parseFeedbackNode(state) {
   console.log(`   Question: ${questionId}`);
   console.log(`   Feedback: ${feedbackType}`);
   if (userComment) console.log(`   Comment: ${userComment.substring(0, 50)}...`);
+  
+  // Record processing start to prevent circular loops
+  await recordProcessingStart(issue.number, questionId, feedbackType);
   
   return {
     currentIssue: issue,
@@ -259,6 +474,9 @@ async function executeActionNode(state) {
 async function improveQuestion(question, userComment) {
   console.log('   🔧 Improving question with AI...');
   
+  // Check if this is a certification MCQ question
+  const isCertQuestion = question.metadata?.type === 'certification-mcq';
+  
   const context = {
     question: question.question,
     answer: question.answer,
@@ -270,7 +488,7 @@ async function improveQuestion(question, userComment) {
   const result = await ai.run('improve', context);
   
   if (result) {
-    return {
+    const updated = {
       ...question,
       answer: result.answer || question.answer,
       explanation: result.explanation || question.explanation,
@@ -278,6 +496,13 @@ async function improveQuestion(question, userComment) {
       eli5: result.eli5 || question.eli5,
       lastUpdated: new Date().toISOString()
     };
+    
+    // Preserve certification metadata
+    if (isCertQuestion && question.metadata) {
+      updated.metadata = question.metadata;
+    }
+    
+    return updated;
   }
   
   return null;
@@ -289,6 +514,9 @@ async function improveQuestion(question, userComment) {
 async function rewriteQuestion(question, userComment) {
   console.log('   ✏️ Rewriting question with AI...');
   
+  // Check if this is a certification MCQ question
+  const isCertQuestion = question.metadata?.type === 'certification-mcq';
+  
   const context = {
     question: question.question,
     answer: question.answer,
@@ -299,7 +527,33 @@ async function rewriteQuestion(question, userComment) {
     feedback: userComment || 'User requested complete rewrite - content may be incorrect or outdated'
   };
   
-  // Use generate template with rewrite hint
+  // For certification questions, use the certification-question template
+  if (isCertQuestion) {
+    const result = await ai.run('certification-question', {
+      certificationId: question.channel,
+      domain: question.subChannel,
+      difficulty: question.difficulty,
+      count: 1
+    });
+    
+    if (result && Array.isArray(result) && result.length > 0) {
+      const newQ = result[0];
+      return {
+        ...question,
+        question: newQ.question || question.question,
+        answer: JSON.stringify(newQ.options) || question.answer,
+        explanation: newQ.explanation || question.explanation,
+        tags: newQ.tags || question.tags,
+        metadata: {
+          ...question.metadata,
+          options: newQ.options
+        },
+        lastUpdated: new Date().toISOString()
+      };
+    }
+  }
+  
+  // Use generate template with rewrite hint for regular questions
   const result = await ai.run('generate', {
     ...context,
     scenarioHint: `REWRITE this existing question. Original: "${question.question}". User feedback: ${userComment || 'needs rewrite'}`
@@ -361,6 +615,8 @@ async function closeIssueNode(state) {
   
   console.log(`\n📝 [CLOSE_ISSUE] Updating issue #${state.currentIssue.number}...`);
   
+  const success = !state.error;
+  
   try {
     // Build result comment
     let comment = '';
@@ -393,7 +649,7 @@ async function closeIssueNode(state) {
       body: JSON.stringify({ body: comment })
     });
     
-    // Close issue
+    // Close issue with appropriate labels
     await githubApi(`/issues/${state.currentIssue.number}`, {
       method: 'PATCH',
       body: JSON.stringify({ 
@@ -406,12 +662,20 @@ async function closeIssueNode(state) {
     
     console.log('   ✅ Issue closed');
     
+    // Record processing completion to prevent circular loops
+    await recordProcessingComplete(
+      state.currentIssue.number, 
+      success,
+      success ? { questionId: state.questionId, feedbackType: state.feedbackType } : null,
+      state.error
+    );
+    
     // Record result
     const result = {
       issueNumber: state.currentIssue.number,
       questionId: state.questionId,
       feedbackType: state.feedbackType,
-      success: !state.error,
+      success,
       error: state.error
     };
     
@@ -429,6 +693,10 @@ async function closeIssueNode(state) {
     };
   } catch (error) {
     console.log(`   ❌ Failed to close issue: ${error.message}`);
+    
+    // Still record the failure to prevent reprocessing
+    await recordProcessingComplete(state.currentIssue.number, false, null, error.message);
+    
     return { 
       processedCount: state.processedCount + 1,
       results: [{
@@ -506,10 +774,17 @@ export async function processFeedback(options = {}) {
   console.log('🔄 LANGGRAPH FEEDBACK PROCESSOR PIPELINE');
   console.log('═'.repeat(60));
   
+  if (options.singleIssue) {
+    console.log(`   Mode: Single issue #${options.singleIssue}`);
+  } else {
+    console.log(`   Mode: Batch processing (max ${options.maxIssues || 10} issues)`);
+  }
+  
   const graph = buildFeedbackProcessorGraph();
   
   const initialState = {
-    maxIssues: options.maxIssues || 10
+    maxIssues: options.maxIssues || 10,
+    singleIssue: options.singleIssue || null
   };
   
   const result = await graph.invoke(initialState);

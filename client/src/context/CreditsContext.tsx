@@ -1,6 +1,7 @@
 /**
  * Credits Context
  * Provides global access to credits state and actions
+ * Now integrated with the unified reward system
  */
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
@@ -23,6 +24,7 @@ import {
   type CreditTransaction,
   getTransactionHistory,
 } from '../lib/credits';
+import { rewardStorage, rewardEngine } from '../lib/rewards';
 
 interface CreditsContextType {
   balance: number;
@@ -46,6 +48,10 @@ interface CreditsContextType {
   formatCredits: (amount: number) => string;
   canAfford: (amount: number) => boolean;
   config: typeof CREDIT_CONFIG;
+  // Unified system access
+  level: number;
+  totalXP: number;
+  streak: number;
 }
 
 const CreditsContext = createContext<CreditsContextType | null>(null);
@@ -62,6 +68,9 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   const [history, setHistory] = useState<CreditTransaction[]>([]);
   const [showVoiceReminder, setShowVoiceReminder] = useState(false);
   const [creditChange, setCreditChange] = useState<{ amount: number; show: boolean }>({ amount: 0, show: false });
+  
+  // Unified reward state
+  const [rewardState, setRewardState] = useState(() => rewardStorage.getProgress());
 
   // Show credit splash animation
   const showCreditSplash = useCallback((amount: number) => {
@@ -80,6 +89,23 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refreshBalance();
   }, []);
+  
+  // Subscribe to reward engine updates
+  useEffect(() => {
+    const unsubscribe = rewardEngine.addListener((result) => {
+      setRewardState(rewardStorage.getProgress());
+      // Sync credit balance
+      const newState = getCreditsState();
+      setState(newState);
+      setBalance(newState.balance);
+      
+      // Show splash for credit changes
+      if (result.netCredits !== 0) {
+        showCreditSplash(result.netCredits);
+      }
+    });
+    return unsubscribe;
+  }, [showCreditSplash]);
 
   const refreshBalance = useCallback(() => {
     const newState = getCreditsState();
@@ -87,6 +113,7 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
     setBalance(newState.balance);
     setHistory(getTransactionHistory());
     setShowVoiceReminder(shouldShowVoiceReminder());
+    setRewardState(rewardStorage.getProgress());
   }, []);
 
   const onQuestionView = useCallback(() => {
@@ -94,6 +121,8 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
     if (result.success) {
       setBalance(result.balance);
       showCreditSplash(-result.cost);
+      // Also update unified system
+      rewardStorage.spendCredits(result.cost);
       refreshBalance();
     }
     return { success: result.success, cost: result.cost };
@@ -104,6 +133,14 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
     setBalance(result.newBalance);
     setShowVoiceReminder(false);
     showCreditSplash(result.totalCredits);
+    
+    // Also process through unified system
+    rewardEngine.processActivity({
+      type: 'voice_interview_completed',
+      timestamp: new Date().toISOString(),
+      data: { verdict: verdict as 'strong-hire' | 'hire' | 'no-hire' | 'needs-improvement' },
+    });
+    
     refreshBalance();
     return { totalCredits: result.totalCredits, bonusCredits: result.bonusCredits };
   }, [refreshBalance, showCreditSplash]);
@@ -114,6 +151,8 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
       setBalance(result.newBalance);
       if (result.credits) {
         showCreditSplash(result.credits);
+        // Also update unified system
+        rewardStorage.addCredits(result.credits);
       }
       refreshBalance();
     }
@@ -140,6 +179,14 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
       showCreditSplash(result.amount);
       refreshBalance();
     }
+    
+    // Also process through unified system
+    rewardEngine.processActivity({
+      type: 'quiz_answered',
+      timestamp: new Date().toISOString(),
+      data: { isCorrect },
+    });
+    
     return { amount: result.amount };
   }, [refreshBalance, showCreditSplash]);
 
@@ -150,6 +197,14 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
       showCreditSplash(result.amount);
       refreshBalance();
     }
+    
+    // Also process through unified system
+    rewardEngine.processActivity({
+      type: 'srs_card_rated',
+      timestamp: new Date().toISOString(),
+      data: { rating },
+    });
+    
     return { amount: result.amount };
   }, [refreshBalance, showCreditSplash]);
 
@@ -177,6 +232,10 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
         formatCredits,
         canAfford: canAffordCheck,
         config: CREDIT_CONFIG,
+        // Unified system values
+        level: rewardState.level,
+        totalXP: rewardState.totalXP,
+        streak: rewardState.currentStreak,
       }}
     >
       {children}

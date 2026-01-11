@@ -1220,16 +1220,24 @@ async function processUserFeedback() {
   console.log('\n📬 [User Feedback] Running LangGraph feedback processor...');
   
   const token = process.env.GITHUB_TOKEN;
+  const singleIssue = process.env.SINGLE_ISSUE;
   
   if (!token) {
     console.log('   GITHUB_TOKEN not set, skipping GitHub feedback processing');
     return { processed: 0 };
   }
   
+  if (singleIssue) {
+    console.log(`   Processing single issue: #${singleIssue}`);
+  }
+  
   try {
     // Import and run the LangGraph pipeline
     const { processFeedback } = await import('../ai/graphs/feedback-processor-graph.js');
-    const result = await processFeedback({ maxIssues: 10 });
+    const result = await processFeedback({ 
+      maxIssues: parseInt(process.env.MAX_ISSUES || '10'),
+      singleIssue: singleIssue ? parseInt(singleIssue) : null
+    });
     
     // Log results to ledger
     for (const r of result.results || []) {

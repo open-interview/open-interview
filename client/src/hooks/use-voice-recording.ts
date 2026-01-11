@@ -121,13 +121,14 @@ export function useVoiceRecording(options: VoiceRecordingOptions = {}): VoiceRec
         }
       }
       
-      const fullTranscript = finalTranscript + interimTranscript;
-      const wordCount = countWords(fullTranscript);
-      
-      // Update ref for use in callbacks
+      // Update ref for use in callbacks - accumulate final transcripts
       if (finalTranscript) {
-        finalTranscriptRef.current = (finalTranscriptRef.current + finalTranscript).trim();
+        finalTranscriptRef.current = (finalTranscriptRef.current + ' ' + finalTranscript).trim();
       }
+      
+      // Full transcript = accumulated final + current interim
+      const fullTranscript = (finalTranscriptRef.current + ' ' + interimTranscript).trim();
+      const wordCount = countWords(fullTranscript);
       
       setState(prev => ({ 
         ...prev, 
@@ -181,6 +182,7 @@ export function useVoiceRecording(options: VoiceRecordingOptions = {}): VoiceRec
       const mediaRecorder = new MediaRecorder(stream);
       
       audioChunksRef.current = [];
+      finalTranscriptRef.current = ''; // Clear transcript for new recording
       
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {

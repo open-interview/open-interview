@@ -137,6 +137,24 @@ test.describe('Mobile Responsiveness', () => {
     await waitForPageReady(page);
     await checkNoOverflow(page);
   });
+
+  test('training page no overflow', async ({ page }) => {
+    await page.goto('/training');
+    await waitForPageReady(page);
+    await checkNoOverflow(page);
+  });
+
+  test('certifications page no overflow', async ({ page }) => {
+    await page.goto('/certifications');
+    await waitForPageReady(page);
+    await checkNoOverflow(page);
+  });
+
+  test('documentation page no overflow', async ({ page }) => {
+    await page.goto('/docs');
+    await waitForPageReady(page);
+    await checkNoOverflow(page);
+  });
 });
 
 test.describe('Mobile Quick Quiz', () => {

@@ -21,6 +21,8 @@ import { useUserPreferences } from '../hooks/use-user-preferences';
 import { CreditsDisplay } from '../components/CreditsDisplay';
 import { ListenButton } from '../components/ListenButton';
 import { evaluateVoiceAnswer, type EvaluationResult } from '../lib/voice-evaluation';
+import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
+import { QuestionHistoryIcon } from '../components/unified/QuestionHistory';
 import type { Question } from '../types';
 
 interface InterviewerComments {
@@ -351,6 +353,7 @@ export default function VoiceInterview() {
         canonical="https://open-interview.github.io/voice-interview"
       />
 
+      <DesktopSidebarWrapper>
       <div className="min-h-screen bg-[#0d1117] text-[#e6edf3]">
         {/* Header */}
         <header className="sticky top-0 z-50 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur-md">
@@ -391,6 +394,13 @@ export default function VoiceInterview() {
               }`}>
                 {currentQuestion?.difficulty}
               </span>
+              {currentQuestion?.id && (
+                <QuestionHistoryIcon 
+                  questionId={currentQuestion.id} 
+                  questionType="question"
+                  size="sm"
+                />
+              )}
             </div>
           </div>
           
@@ -872,6 +882,7 @@ export default function VoiceInterview() {
           </AnimatePresence>
         </main>
       </div>
+      </DesktopSidebarWrapper>
     </>
   );
 }

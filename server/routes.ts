@@ -348,5 +348,346 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================
+  // QUESTION HISTORY API
+  // ============================================
+
+  // Helper to parse history record from DB row
+  function parseHistoryRecord(row: any) {
+    return {
+      id: row.id,
+      questionId: row.question_id,
+      questionType: row.question_type,
+      eventType: row.event_type,
+      eventSource: row.event_source,
+      sourceName: row.source_name,
+      changesSummary: row.changes_summary,
+      changedFields: row.changed_fields ? JSON.parse(row.changed_fields) : [],
+      beforeSnapshot: row.before_snapshot ? JSON.parse(row.before_snapshot) : null,
+      afterSnapshot: row.after_snapshot ? JSON.parse(row.after_snapshot) : null,
+      reason: row.reason,
+      metadata: row.metadata ? JSON.parse(row.metadata) : null,
+      createdAt: row.created_at,
+    };
+  }
+
+  // Get history for a specific question
+  app.get("/api/history/:questionId", async (req, res) => {
+    try {
+      const { questionId } = req.params;
+      const { type = 'question', limit = '50' } = req.query;
+      
+      const result = await client.execute({
+        sql: `SELECT * FROM question_history 
+              WHERE question_id = ? AND question_type = ? 
+              ORDER BY created_at DESC 
+              LIMIT ?`,
+        args: [questionId, type as string, parseInt(limit as string)]
+      });
+
+      res.json(result.rows.map(parseHistoryRecord));
+    } catch (error) {
+      console.error("Error fetching question history:", error);
+      // Return empty array if table doesn't exist yet
+      res.json([]);
+    }
+  });
+
+  // Get history summary (count of events) for a question
+  app.get("/api/history/:questionId/summary", async (req, res) => {
+    try {
+      const { questionId } = req.params;
+      const { type = 'question' } = req.query;
+      
+      const result = await client.execute({
+        sql: `SELECT event_type, COUNT(*) as count 
+              FROM question_history 
+              WHERE question_id = ? AND question_type = ?
+              GROUP BY event_type`,
+        args: [questionId, type as string]
+      });
+
+      const summary: Record<string, number> = {};
+      let total = 0;
+      for (const row of result.rows) {
+        const count = Number(row.count);
+        summary[row.event_type as string] = count;
+        total += count;
+      }
+
+      // Get latest event
+      const latestResult = await client.execute({
+        sql: `SELECT * FROM question_history 
+              WHERE question_id = ? AND question_type = ?
+              ORDER BY created_at DESC LIMIT 1`,
+        args: [questionId, type as string]
+      });
+
+      const latest = latestResult.rows.length > 0 
+        ? parseHistoryRecord(latestResult.rows[0]) 
+        : null;
+
+      res.json({ total, byType: summary, latest });
+    } catch (error) {
+      console.error("Error fetching history summary:", error);
+      res.json({ total: 0, byType: {}, latest: null });
+    }
+  });
+
+  // Add a history record (for bots and system use)
+  app.post("/api/history", async (req, res) => {
+    try {
+      const {
+        questionId,
+        questionType = 'question',
+        eventType,
+        eventSource,
+        sourceName,
+        changesSummary,
+        changedFields,
+        beforeSnapshot,
+        afterSnapshot,
+        reason,
+        metadata
+      } = req.body;
+
+      if (!questionId || !eventType || !eventSource) {
+        return res.status(400).json({ 
+          error: "Missing required fields: questionId, eventType, eventSource" 
+        });
+      }
+
+      const result = await client.execute({
+        sql: `INSERT INTO question_history 
+              (question_id, question_type, event_type, event_source, source_name, 
+               changes_summary, changed_fields, before_snapshot, after_snapshot, 
+               reason, metadata, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          questionId,
+          questionType,
+          eventType,
+          eventSource,
+          sourceName || null,
+          changesSummary || null,
+          changedFields ? JSON.stringify(changedFields) : null,
+          beforeSnapshot ? JSON.stringify(beforeSnapshot) : null,
+          afterSnapshot ? JSON.stringify(afterSnapshot) : null,
+          reason || null,
+          metadata ? JSON.stringify(metadata) : null,
+          new Date().toISOString()
+        ]
+      });
+
+      res.json({ success: true, id: result.lastInsertRowid });
+    } catch (error) {
+      console.error("Error adding history record:", error);
+      res.status(500).json({ error: "Failed to add history record" });
+    }
+  });
+
+  // Get recent history across all questions (for admin/dashboard)
+  app.get("/api/history", async (req, res) => {
+    try {
+      const { limit = '100', type, eventType, source } = req.query;
+      
+      let sql = "SELECT * FROM question_history WHERE 1=1";
+      const args: any[] = [];
+
+      if (type && type !== 'all') {
+        sql += " AND question_type = ?";
+        args.push(type);
+      }
+      if (eventType && eventType !== 'all') {
+        sql += " AND event_type = ?";
+        args.push(eventType);
+      }
+      if (source && source !== 'all') {
+        sql += " AND event_source = ?";
+        args.push(source);
+      }
+
+      sql += " ORDER BY created_at DESC LIMIT ?";
+      args.push(parseInt(limit as string));
+
+      const result = await client.execute({ sql, args });
+      res.json(result.rows.map(parseHistoryRecord));
+    } catch (error) {
+      console.error("Error fetching history:", error);
+      res.json([]);
+    }
+  });
+
+  // ============================================
+  // CERTIFICATIONS API
+  // ============================================
+
+  // Helper to parse certification from DB row
+  function parseCertification(row: any) {
+    return {
+      id: row.id,
+      name: row.name,
+      provider: row.provider,
+      description: row.description,
+      icon: row.icon || 'award',
+      color: row.color || 'text-primary',
+      difficulty: row.difficulty,
+      category: row.category,
+      estimatedHours: row.estimated_hours || 40,
+      examCode: row.exam_code,
+      officialUrl: row.official_url,
+      domains: row.domains ? JSON.parse(row.domains) : [],
+      channelMappings: row.channel_mappings ? JSON.parse(row.channel_mappings) : [],
+      tags: row.tags ? JSON.parse(row.tags) : [],
+      prerequisites: row.prerequisites ? JSON.parse(row.prerequisites) : [],
+      status: row.status || 'active',
+      questionCount: row.question_count || 0,
+      passingScore: row.passing_score || 70,
+      examDuration: row.exam_duration || 90,
+      createdAt: row.created_at,
+      lastUpdated: row.last_updated,
+    };
+  }
+
+  // Get all certifications
+  app.get("/api/certifications", async (req, res) => {
+    try {
+      const { category, difficulty, provider, status = 'active' } = req.query;
+      
+      let sql = "SELECT * FROM certifications WHERE status = ?";
+      const args: any[] = [status];
+
+      if (category && category !== 'all') {
+        sql += " AND category = ?";
+        args.push(category);
+      }
+      if (difficulty && difficulty !== 'all') {
+        sql += " AND difficulty = ?";
+        args.push(difficulty);
+      }
+      if (provider && provider !== 'all') {
+        sql += " AND provider LIKE ?";
+        args.push(`%${provider}%`);
+      }
+
+      sql += " ORDER BY name ASC";
+
+      const result = await client.execute({ sql, args });
+      res.json(result.rows.map(parseCertification));
+    } catch (error) {
+      console.error("Error fetching certifications:", error);
+      // Return empty array if table doesn't exist yet
+      res.json([]);
+    }
+  });
+
+  // Get a single certification by ID
+  app.get("/api/certification/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const result = await client.execute({
+        sql: "SELECT * FROM certifications WHERE id = ? LIMIT 1",
+        args: [id]
+      });
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Certification not found" });
+      }
+
+      res.json(parseCertification(result.rows[0]));
+    } catch (error) {
+      console.error("Error fetching certification:", error);
+      res.status(500).json({ error: "Failed to fetch certification" });
+    }
+  });
+
+  // Get certification stats
+  app.get("/api/certifications/stats", async (_req, res) => {
+    try {
+      const result = await client.execute(
+        "SELECT category, difficulty, COUNT(*) as count, SUM(question_count) as questions FROM certifications WHERE status = 'active' GROUP BY category, difficulty"
+      );
+
+      const stats = {
+        total: 0,
+        totalQuestions: 0,
+        byCategory: {} as Record<string, number>,
+        byDifficulty: {} as Record<string, number>,
+      };
+
+      for (const row of result.rows) {
+        const count = Number(row.count);
+        const questions = Number(row.questions) || 0;
+        stats.total += count;
+        stats.totalQuestions += questions;
+        
+        const cat = row.category as string;
+        stats.byCategory[cat] = (stats.byCategory[cat] || 0) + count;
+        
+        const diff = row.difficulty as string;
+        stats.byDifficulty[diff] = (stats.byDifficulty[diff] || 0) + count;
+      }
+
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching certification stats:", error);
+      res.json({ total: 0, totalQuestions: 0, byCategory: {}, byDifficulty: {} });
+    }
+  });
+
+  // Get questions for a certification (by channel)
+  app.get("/api/certification/:id/questions", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { domain, difficulty, limit = '50' } = req.query;
+      
+      let sql = "SELECT * FROM questions WHERE channel = ? AND status != 'deleted'";
+      const args: any[] = [id];
+
+      if (domain && domain !== 'all') {
+        sql += " AND sub_channel = ?";
+        args.push(domain);
+      }
+      if (difficulty && difficulty !== 'all') {
+        sql += " AND difficulty = ?";
+        args.push(difficulty);
+      }
+
+      sql += " ORDER BY RANDOM() LIMIT ?";
+      args.push(parseInt(limit as string));
+
+      const result = await client.execute({ sql, args });
+      res.json(result.rows.map(parseQuestion));
+    } catch (error) {
+      console.error("Error fetching certification questions:", error);
+      res.json([]);
+    }
+  });
+
+  // Update certification question count (called after generating questions)
+  app.post("/api/certification/:id/update-count", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const countResult = await client.execute({
+        sql: "SELECT COUNT(*) as count FROM questions WHERE channel = ? AND status != 'deleted'",
+        args: [id]
+      });
+      
+      const count = countResult.rows[0]?.count || 0;
+      
+      await client.execute({
+        sql: "UPDATE certifications SET question_count = ?, last_updated = ? WHERE id = ?",
+        args: [count, new Date().toISOString(), id]
+      });
+
+      res.json({ success: true, questionCount: count });
+    } catch (error) {
+      console.error("Error updating certification count:", error);
+      res.status(500).json({ error: "Failed to update count" });
+    }
+  });
+
   return httpServer;
 }

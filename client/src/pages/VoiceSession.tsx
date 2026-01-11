@@ -20,6 +20,8 @@ import { useAchievementContext } from '../context/AchievementContext';
 import { useUserPreferences } from '../hooks/use-user-preferences';
 import { CreditsDisplay } from '../components/CreditsDisplay';
 import { ListenButton } from '../components/ListenButton';
+import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
+import { QuestionHistoryIcon } from '../components/unified/QuestionHistory';
 import {
   type VoiceSession,
   type SessionState,
@@ -494,6 +496,11 @@ export default function VoiceSession() {
                 }`}>
                   {currentQuestion.difficulty}
                 </span>
+                <QuestionHistoryIcon 
+                  questionId={currentQuestion.id} 
+                  questionType="question"
+                  size="sm"
+                />
               </div>
               <div className="pb-3">
                 <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden">

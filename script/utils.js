@@ -78,6 +78,7 @@ function parseQuestionRow(row) {
     relevanceScore: row.relevance_score,
     voiceKeywords: row.voice_keywords ? JSON.parse(row.voice_keywords) : null,
     voiceSuitable: row.voice_suitable === 1,
+    isNew: row.is_new === 1, // Parse isNew flag
     lastUpdated: row.last_updated,
     lastRemapped: row.last_remapped,
     createdAt: row.created_at
@@ -140,6 +141,50 @@ export async function getChannelQuestionCounts() {
     counts[row.channel] = row.count;
   }
   return counts;
+}
+
+// Get sub-channel question counts for prioritization (grouped by channel and sub_channel)
+export async function getSubChannelQuestionCounts() {
+  const result = await dbClient.execute(`
+    SELECT channel, sub_channel, COUNT(*) as count 
+    FROM questions 
+    WHERE sub_channel IS NOT NULL
+    GROUP BY channel, sub_channel
+  `);
+  
+  const counts = {};
+  for (const row of result.rows) {
+    if (!counts[row.channel]) {
+      counts[row.channel] = {};
+    }
+    counts[row.channel][row.sub_channel] = row.count;
+  }
+  return counts;
+}
+
+// Get certifications/channels with fewest questions for prioritization
+export async function getPrioritizedChannels(channelList, limit = 10) {
+  if (!channelList || channelList.length === 0) {
+    return [];
+  }
+  
+  // Get counts for all channels
+  const channelCounts = await getChannelQuestionCounts();
+  
+  // Sort by count ascending (prioritize channels with fewer questions)
+  const sorted = channelList.map(ch => ({
+    channel: ch,
+    count: channelCounts[ch] || 0
+  })).sort((a, b) => a.count - b.count);
+  
+  // Return top N channels that need content (prioritize 0-count channels)
+  const zeroCount = sorted.filter(c => c.count === 0);
+  const lowCount = sorted.filter(c => c.count > 0);
+  
+  // Prioritize channels with 0 questions first
+  const prioritized = [...zeroCount, ...lowCount].slice(0, limit);
+  
+  return prioritized.map(c => c.channel);
 }
 
 // Save/update a question in the database
@@ -966,18 +1011,22 @@ export async function logBotActivity(questionId, botType, action, status = 'comp
   
   const now = new Date().toISOString();
   
+  // Include item_type and item_id for backward compatibility with existing schema
   await dbClient.execute({
-    sql: `INSERT INTO work_queue (question_id, bot_type, priority, status, reason, created_by, created_at, started_at, completed_at, result)
-          VALUES (?, ?, 5, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO work_queue (item_type, item_id, question_id, bot_type, action, priority, status, reason, created_by, created_at, started_at, completed_at, result)
+          VALUES (?, ?, ?, ?, ?, 5, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
-      questionId,
-      botType,
-      status,
-      action,
-      botType,
-      now,
-      now,
-      now,
+      'question',      // item_type
+      questionId,      // item_id
+      questionId,      // question_id
+      botType,         // bot_type
+      action,          // action
+      status,          // status
+      action,          // reason
+      botType,         // created_by
+      now,             // created_at
+      now,             // started_at
+      now,             // completed_at
       result ? JSON.stringify(result) : null
     ]
   });

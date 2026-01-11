@@ -11,6 +11,7 @@ import {
   ExternalLink, Search, Menu, X, Home, Sparkles, Box
 } from 'lucide-react';
 import { EnhancedMermaid } from '@/components/EnhancedMermaid';
+import { DesktopSidebarWrapper } from '@/components/layout/DesktopSidebarWrapper';
 
 // Documentation sections
 const sections = [
@@ -34,6 +35,7 @@ export default function Documentation() {
   }, [activeSection]);
 
   return (
+    <DesktopSidebarWrapper>
     <div className="min-h-screen bg-[#0d1117] text-[#e6edf3]">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur-md">
@@ -161,6 +163,7 @@ export default function Documentation() {
         </main>
       </div>
     </div>
+    </DesktopSidebarWrapper>
   );
 }
 

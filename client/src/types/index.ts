@@ -27,6 +27,7 @@ export interface Question {
   relevanceDetails?: RelevanceDetails;
   voiceKeywords?: string[]; // Mandatory keywords for voice interview evaluation
   voiceSuitable?: boolean; // Whether question is suitable for voice interview
+  isNew?: boolean; // Whether question is new (less than 7 days old)
   lastUpdated?: string;
   createdAt?: string;
 }

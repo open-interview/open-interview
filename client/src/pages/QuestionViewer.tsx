@@ -12,13 +12,15 @@ import { useProgress, trackActivity } from '../hooks/use-progress';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { useCredits } from '../context/CreditsContext';
 import { useAchievementContext } from '../context/AchievementContext';
+import { RecommendationService } from '../services/recommendation.service';
 import { SEOHead } from '../components/SEOHead';
 import { QuestionPanel } from '../components/QuestionPanel';
 import { AnswerPanel } from '../components/AnswerPanel';
 import { UnifiedSearch } from '../components/UnifiedSearch';
 import { VoiceReminder } from '../components/VoiceReminder';
+import { ComingSoon } from '../components/ComingSoon';
 import { trackQuestionView } from '../hooks/use-analytics';
-import { useToast } from '../hooks/use-toast';
+import { useUnifiedToast } from '../hooks/use-unified-toast';
 import { useSwipe } from '../hooks/use-swipe';
 import {
   ChevronLeft, ChevronRight, Search,
@@ -60,6 +62,7 @@ export default function QuestionViewer() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [mobileView, setMobileView] = useState<'question' | 'answer'>('question');
+  const [shouldRedirect, setShouldRedirect] = useState(false);
 
   const { companiesWithCounts } = useCompaniesWithCounts(
     channelId || '',
@@ -113,7 +116,7 @@ export default function QuestionViewer() {
 
   const { completed, markCompleted, saveLastVisitedIndex } = useProgress(channelId || '');
   const { isSubscribed, subscribeChannel } = useUserPreferences();
-  const { toast } = useToast();
+  const { toast } = useUnifiedToast();
 
   // Auto-subscribe to channel if not subscribed
   useEffect(() => {
@@ -123,6 +126,10 @@ export default function QuestionViewer() {
         title: "Channel added",
         description: `${channel.name} added to your channels`,
       });
+    }
+    // Track channel visit for recommendations
+    if (channelId) {
+      RecommendationService.trackChannelVisit(channelId);
     }
   }, [channelId, channel]);
 
@@ -251,6 +258,22 @@ export default function QuestionViewer() {
     else setSelectedCompany(value);
   };
 
+  // Handle no questions case - show toast (must be before conditional returns)
+  useEffect(() => {
+    if (!loading && channel && totalQuestions === 0) {
+      const hasFilters = selectedSubChannel !== 'all' || selectedDifficulty !== 'all' || selectedCompany !== 'all';
+      
+      if (!hasFilters) {
+        toast({
+          title: "Content coming soon!",
+          description: `We're preparing questions for "${channel.name}". Check back soon!`,
+          variant: "warning",
+        });
+        setShouldRedirect(true);
+      }
+    }
+  }, [loading, channel, totalQuestions, selectedSubChannel, selectedDifficulty, selectedCompany]);
+
   // Loading state
   if (loading && !currentQuestion) {
     return (
@@ -281,8 +304,31 @@ export default function QuestionViewer() {
     );
   }
 
-  // No questions state
-  if (!currentQuestion || totalQuestions === 0) {
+  // No questions state - show ComingSoon component
+  if (!loading && (!currentQuestion || totalQuestions === 0)) {
+    // Check if filters are applied
+    const hasFilters = selectedSubChannel !== 'all' || selectedDifficulty !== 'all' || selectedCompany !== 'all';
+    
+    if (!hasFilters || shouldRedirect) {
+      // No questions at all for this channel - show coming soon
+      return (
+        <div className="h-screen flex flex-col bg-background">
+          <Header
+            channel={channel}
+            onBack={() => setLocation('/')}
+            onSearch={() => setShowSearchModal(true)}
+          />
+          <ComingSoon 
+            type="channel"
+            name={channel?.name}
+            redirectTo="/channels"
+            redirectDelay={5000}
+          />
+        </div>
+      );
+    }
+    
+    // Has filters - show reset option
     return (
       <div className="h-screen flex flex-col bg-background">
         <Header

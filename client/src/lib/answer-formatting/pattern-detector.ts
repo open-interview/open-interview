@@ -178,7 +178,7 @@ export class PatternDetector implements IPatternDetector {
     }
 
     // Remove duplicates
-    return [...new Set(keywords)];
+    return Array.from(new Set(keywords));
   }
 
   /**

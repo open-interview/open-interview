@@ -60,6 +60,15 @@ export {
 } from './QuestionCard';
 
 export {
+  QuestionHistoryIcon,
+  type QuestionType,
+  type EventType,
+  type EventSource,
+  type HistoryRecord,
+  type HistorySummary
+} from './QuestionHistory';
+
+export {
   MetricCard,
   CompactMetricCard,
   MetricGrid,

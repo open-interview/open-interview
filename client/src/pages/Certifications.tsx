@@ -1,29 +1,52 @@
 /**
  * Certifications Page - Redesigned
  * Browse and select certification tracks with clear practice modes
+ * Now loads certifications dynamically from the database
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
-import { 
-  certificationsConfig, 
-  certificationCategories,
-  CertificationConfig 
-} from '../lib/certifications-config';
-import {
-  getQuestionsForCertification,
-  getExamConfig,
-} from '../lib/certification-questions';
 import { useIsMobile } from '../hooks/use-mobile';
 import { SEOHead } from '../components/SEOHead';
 import {
   Search, Award, Clock, ChevronRight, Play, BookOpen,
   Cloud, Shield, Database, Brain, Code, Users, Box,
   Terminal, Server, Cpu, Layers, Network, GitBranch,
-  Target, Zap, GraduationCap
+  Target, Zap, GraduationCap, Lock, Loader2
 } from 'lucide-react';
+
+// Certification type from API
+interface Certification {
+  id: string;
+  name: string;
+  provider: string;
+  description: string;
+  icon: string;
+  color: string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  category: string;
+  estimatedHours: number;
+  examCode?: string;
+  officialUrl?: string;
+  domains: { id: string; name: string; weight: number }[];
+  prerequisites: string[];
+  questionCount: number;
+  passingScore: number;
+  examDuration: number;
+}
+
+// Certification categories
+const certificationCategories = [
+  { id: 'cloud', name: 'Cloud', icon: 'cloud' },
+  { id: 'devops', name: 'DevOps', icon: 'infinity' },
+  { id: 'security', name: 'Security', icon: 'shield' },
+  { id: 'data', name: 'Data', icon: 'database' },
+  { id: 'ai', name: 'AI & ML', icon: 'brain' },
+  { id: 'development', name: 'Development', icon: 'code' },
+  { id: 'management', name: 'Management', icon: 'users' }
+];
 
 const iconMap: Record<string, React.ReactNode> = {
   'cloud': <Cloud className="w-5 h-5" />,
@@ -48,27 +71,44 @@ const difficultyConfig: Record<string, { color: string; bg: string }> = {
   expert: { color: 'text-red-500', bg: 'bg-red-500/10' }
 };
 
+// Custom hook to fetch certifications from static JSON (built from database)
+function useCertifications() {
+  const [certifications, setCertifications] = useState<Certification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchCertifications() {
+      try {
+        // Fetch from static JSON file (generated at build time from database)
+        const basePath = import.meta.env.BASE_URL || '/';
+        const response = await fetch(`${basePath}data/certifications.json`);
+        if (!response.ok) throw new Error('Failed to fetch certifications');
+        const data = await response.json();
+        setCertifications(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchCertifications();
+  }, []);
+
+  return { certifications, loading, error };
+}
+
 export default function Certifications() {
   const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const isMobile = useIsMobile();
-
-  // Check which certifications have dedicated exam questions
-  const certificationStatus = useMemo(() => {
-    const status: Record<string, { hasExamQuestions: boolean; examQuestionCount: number }> = {};
-    certificationsConfig.forEach(cert => {
-      const examQuestions = getQuestionsForCertification(cert.id);
-      status[cert.id] = {
-        hasExamQuestions: examQuestions.length > 0,
-        examQuestionCount: examQuestions.length,
-      };
-    });
-    return status;
-  }, []);
+  
+  // Fetch certifications from API
+  const { certifications, loading, error } = useCertifications();
 
   // Filter certifications
-  const filteredCertifications = certificationsConfig.filter(cert => {
+  const filteredCertifications = certifications.filter(cert => {
     const matchesSearch = cert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          cert.provider.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          cert.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -82,8 +122,19 @@ export default function Certifications() {
     certifications: filteredCertifications.filter(c => c.category === cat.id)
   })).filter(group => group.certifications.length > 0);
 
-  // Featured certifications (those with exam questions)
-  const featuredCerts = certificationsConfig.filter(c => certificationStatus[c.id]?.hasExamQuestions);
+  // Featured certifications (those with questions)
+  const featuredCerts = certifications.filter(c => c.questionCount > 0);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <AppLayout title="Certifications">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <>
@@ -116,7 +167,7 @@ export default function Certifications() {
               <div className="flex flex-wrap gap-4 mt-6 text-sm">
                 <div className="flex items-center gap-2">
                   <Award className="w-4 h-4 text-primary" />
-                  <span>{certificationsConfig.length} Certifications</span>
+                  <span>{certifications.length} Certifications</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Target className="w-4 h-4 text-primary" />
@@ -149,7 +200,6 @@ export default function Certifications() {
                   <FeaturedCertCard
                     key={cert.id}
                     certification={cert}
-                    examQuestionCount={certificationStatus[cert.id]?.examQuestionCount || 0}
                     index={index}
                     onPractice={() => navigate(`/certification/${cert.id}`)}
                     onExam={() => navigate(`/certification/${cert.id}/exam`)}
@@ -222,7 +272,6 @@ export default function Certifications() {
                     <CertificationCard
                       key={cert.id}
                       certification={cert}
-                      hasExamQuestions={certificationStatus[cert.id]?.hasExamQuestions || false}
                       index={index}
                       onClick={() => navigate(`/certification/${cert.id}`)}
                     />
@@ -252,18 +301,15 @@ export default function Certifications() {
 // Featured certification card with exam mode
 function FeaturedCertCard({ 
   certification, 
-  examQuestionCount,
   index,
   onPractice,
   onExam,
 }: { 
-  certification: CertificationConfig;
-  examQuestionCount: number;
+  certification: Certification;
   index: number;
   onPractice: () => void;
   onExam: () => void;
 }) {
-  const examConfig = getExamConfig(certification.id);
   const diff = difficultyConfig[certification.difficulty];
 
   return (
@@ -304,14 +350,12 @@ function FeaturedCertCard({
           </span>
           <span className="flex items-center gap-1">
             <Target className="w-3.5 h-3.5" />
-            {examQuestionCount} questions
+            {certification.questionCount} questions
           </span>
-          {examConfig && (
-            <span className="flex items-center gap-1">
-              <Award className="w-3.5 h-3.5" />
-              {examConfig.passingScore}% pass
-            </span>
-          )}
+          <span className="flex items-center gap-1">
+            <Award className="w-3.5 h-3.5" />
+            {certification.passingScore}% pass
+          </span>
         </div>
 
         {/* Action Buttons */}
@@ -339,16 +383,15 @@ function FeaturedCertCard({
 // Standard certification card
 function CertificationCard({ 
   certification, 
-  hasExamQuestions,
   index,
   onClick
 }: { 
-  certification: CertificationConfig;
-  hasExamQuestions: boolean;
+  certification: Certification;
   index: number;
   onClick: () => void;
 }) {
   const diff = difficultyConfig[certification.difficulty];
+  const hasQuestions = certification.questionCount > 0;
   
   // Get progress from localStorage
   const progressKey = `cert-progress-${certification.id}`;
@@ -368,7 +411,7 @@ function CertificationCard({
           {iconMap[certification.icon] || <Award className="w-5 h-5" />}
         </div>
         <div className="flex items-center gap-2">
-          {hasExamQuestions && (
+          {hasQuestions && (
             <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-amber-500/10 text-amber-500">
               EXAM
             </span>
@@ -393,6 +436,12 @@ function CertificationCard({
             <Clock className="w-3.5 h-3.5" />
             {certification.estimatedHours}h
           </span>
+          {certification.questionCount > 0 && (
+            <span className="flex items-center gap-1">
+              <Target className="w-3.5 h-3.5" />
+              {certification.questionCount}
+            </span>
+          )}
           {completedCount > 0 && (
             <span className="text-primary font-medium">{completedCount} done</span>
           )}

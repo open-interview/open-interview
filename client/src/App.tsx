@@ -3,8 +3,6 @@ import { useEffect, useState, Suspense } from "react";
 import React from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { MascotToaster } from "./components/MascotToaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { StagingBanner } from "./components/StagingBanner";
@@ -39,8 +37,10 @@ import { UserPreferencesProvider, useUserPreferences } from "./context/UserPrefe
 import { BadgeProvider } from "./context/BadgeContext";
 import { CreditsProvider, useCredits } from "./context/CreditsContext";
 import { AchievementProvider, useAchievementContext } from "./context/AchievementContext";
+import { SidebarProvider } from "./context/SidebarContext";
 import { CreditSplash } from "./components/CreditsDisplay";
 import { AchievementNotificationManager } from "./components/AchievementNotificationManager";
+import { UnifiedNotificationProvider } from "./components/UnifiedNotificationManager";
 import { usePageViewTracking, useSessionTracking, useInteractionTracking } from "./hooks/use-analytics";
 import { preloadQuestions, getQuestionByIdAsync } from "./lib/questions-loader";
 import PixelMascot from "./components/PixelMascot";
@@ -182,7 +182,6 @@ function AppContent() {
     <>
       <Router />
       <PixelMascot />
-      <MascotToaster />
       <BackgroundMascots />
       <GlobalCreditSplash />
       <AchievementNotificationManager />
@@ -209,19 +208,22 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider>
         <UserPreferencesProvider>
-          <QueryClientProvider client={queryClient}>
-            <TooltipProvider>
-              <BadgeProvider>
-                <CreditsProvider>
-                  <AchievementProvider>
-                    <StagingBanner />
-                    <Toaster />
-                    <AppContent />
-                  </AchievementProvider>
-                </CreditsProvider>
-              </BadgeProvider>
-            </TooltipProvider>
-          </QueryClientProvider>
+          <SidebarProvider>
+            <QueryClientProvider client={queryClient}>
+              <TooltipProvider>
+                <BadgeProvider>
+                  <CreditsProvider>
+                    <AchievementProvider>
+                      <UnifiedNotificationProvider>
+                        <StagingBanner />
+                        <AppContent />
+                      </UnifiedNotificationProvider>
+                    </AchievementProvider>
+                  </CreditsProvider>
+                </BadgeProvider>
+              </TooltipProvider>
+            </QueryClientProvider>
+          </SidebarProvider>
         </UserPreferencesProvider>
       </ThemeProvider>
     </ErrorBoundary>

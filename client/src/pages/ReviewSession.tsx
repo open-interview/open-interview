@@ -11,6 +11,7 @@ import {
   ChevronRight, RotateCcw, Check, Zap, Star
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
+import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
 import { 
   getDueCards, recordReview, getSRSStats,
   getMasteryLabel, getMasteryColor, getMasteryEmoji, getNextReviewPreview,
@@ -288,6 +289,7 @@ export default function ReviewSession() {
         description="Spaced repetition review session for optimal learning retention"
       />
 
+      <DesktopSidebarWrapper>
       <Confetti isActive={showConfetti} />
       
       {/* XP Popup */}
@@ -636,6 +638,7 @@ export default function ReviewSession() {
           </AnimatePresence>
         </div>
       </div>
+      </DesktopSidebarWrapper>
     </>
   );
 }

@@ -20,6 +20,7 @@ const QuestionState = Annotation.Root({
   tags: Annotation({ reducer: (_, b) => b, default: () => [] }),
   targetCompanies: Annotation({ reducer: (_, b) => b, default: () => [] }),
   scenarioHint: Annotation({ reducer: (_, b) => b, default: () => '' }),
+  ragContext: Annotation({ reducer: (_, b) => b, default: () => null }), // RAG context for informed generation
   
   // Generated question
   question: Annotation({ reducer: (_, b) => b, default: () => null }),
@@ -116,6 +117,12 @@ async function generateQuestionNode(state) {
   console.log(`   Sub-channel: ${state.subChannel}`);
   console.log(`   Companies: ${state.targetCompanies.join(', ')}`);
   
+  // Log RAG context usage
+  if (state.ragContext?.hasContext) {
+    console.log(`   RAG context: ${state.ragContext.related.length} related questions`);
+    console.log(`   Avoiding concepts: ${state.ragContext.concepts.slice(0, 3).join(', ')}`);
+  }
+  
   try {
     const result = await ai.run('generate', {
       channel: state.channel,
@@ -123,7 +130,8 @@ async function generateQuestionNode(state) {
       difficulty: state.difficulty,
       tags: state.tags,
       targetCompanies: state.targetCompanies,
-      scenarioHint: state.scenarioHint
+      scenarioHint: state.scenarioHint,
+      ragContext: state.ragContext // Pass RAG context to prompt template
     });
     
     if (result && result.question) {
@@ -153,18 +161,36 @@ function validateQualityNode(state) {
     return { status: 'error', error: 'No question generated' };
   }
   
-  const q = state.question.question;
+  let q = state.question.question;
   const issues = [];
+  
+  // Auto-fix: Remove redundant "Question:" prefix
+  if (q.toLowerCase().startsWith('question:')) {
+    q = q.substring(9).trim();
+    console.log(`   🔧 Auto-fixed: Removed "Question:" prefix`);
+  }
   
   // Length check
   if (q.length < 30) {
     issues.push('Question too short (< 30 chars)');
   }
   
-  // Must end with question mark
+  // Auto-fix: Ensure question ends with question mark
   if (!q.trim().endsWith('?')) {
-    issues.push('Question must end with ?');
+    // Try to fix by adding ? or converting period to ?
+    q = q.trim();
+    if (q.endsWith('.')) {
+      q = q.slice(0, -1) + '?';
+    } else if (q.endsWith(':')) {
+      q = q.slice(0, -1) + '?';
+    } else {
+      q = q + '?';
+    }
+    console.log(`   🔧 Auto-fixed: Added question mark`);
   }
+  
+  // Update the question in state
+  state.question.question = q;
   
   // Check for generic questions (except beginner)
   if (state.difficulty !== 'beginner') {
@@ -192,6 +218,34 @@ function validateQualityNode(state) {
     'sre': ['incident', 'monitoring', 'slo', 'availability', 'latency', 'alert'],
     'database': ['query', 'index', 'transaction', 'sql', 'nosql', 'schema'],
     'behavioral': ['time', 'situation', 'challenge', 'team', 'project', 'decision'],
+    // CS Fundamentals
+    'data-structures': ['array', 'linked', 'stack', 'queue', 'tree', 'hash', 'heap', 'trie', 'graph'],
+    'complexity-analysis': ['big-o', 'time', 'space', 'complexity', 'amortized', 'logarithmic'],
+    'dynamic-programming': ['recursion', 'memoization', 'tabulation', 'subproblem', 'optimal'],
+    'bit-manipulation': ['bit', 'binary', 'xor', 'shift', 'mask', 'twos-complement'],
+    'design-patterns': ['pattern', 'singleton', 'factory', 'observer', 'solid', 'adapter'],
+    'concurrency': ['thread', 'lock', 'mutex', 'deadlock', 'async', 'parallel', 'race'],
+    'math-logic': ['probability', 'combinatorics', 'gcd', 'prime', 'modular'],
+    'low-level': ['memory', 'cache', 'cpu', 'compiler', 'garbage', 'stack', 'heap'],
+    // AWS Certifications
+    'aws-saa': ['aws', 's3', 'ec2', 'vpc', 'lambda', 'rds', 'cloudfront', 'iam'],
+    'aws-sap': ['aws', 'multi-region', 'hybrid', 'migration', 'organization'],
+    'aws-dva': ['aws', 'lambda', 'api-gateway', 'dynamodb', 'sqs', 'sns'],
+    'aws-sysops': ['aws', 'cloudwatch', 'systems-manager', 'backup', 'patch'],
+    'aws-devops-pro': ['aws', 'codepipeline', 'codebuild', 'cloudformation', 'opsworks'],
+    // Kubernetes Certifications
+    'cka': ['kubernetes', 'pod', 'deployment', 'service', 'etcd', 'kubectl'],
+    'ckad': ['kubernetes', 'pod', 'container', 'configmap', 'secret', 'probe'],
+    'cks': ['kubernetes', 'security', 'rbac', 'network-policy', 'psp', 'audit'],
+    // HashiCorp Certifications
+    'terraform-associate': ['terraform', 'provider', 'resource', 'module', 'state', 'plan'],
+    'vault-associate': ['vault', 'secret', 'token', 'policy', 'auth', 'seal'],
+    // GCP Certifications
+    'gcp-cloud-engineer': ['gcp', 'compute', 'gke', 'cloud-storage', 'iam', 'vpc'],
+    'gcp-cloud-architect': ['gcp', 'spanner', 'bigquery', 'pub/sub', 'dataflow'],
+    // Azure Certifications
+    'azure-administrator': ['azure', 'vm', 'storage', 'vnet', 'ad', 'monitor'],
+    'azure-solutions-architect': ['azure', 'arm', 'cosmos', 'functions', 'service-bus'],
   };
   
   const keywords = channelKeywords[state.channel] || [];
@@ -208,7 +262,7 @@ function validateQualityNode(state) {
   }
   
   console.log(`   ✅ Quality check passed`);
-  return {};
+  return { question: state.question };
 }
 
 /**
@@ -370,7 +424,7 @@ export function createQuestionGraph() {
  * Run the question generation pipeline
  */
 export async function generateQuestion(options) {
-  const { channel, subChannel, difficulty, tags, targetCompanies, scenarioHint } = options;
+  const { channel, subChannel, difficulty, tags, targetCompanies, scenarioHint, ragContext } = options;
   const graph = createQuestionGraph();
   
   console.log('\n' + '═'.repeat(60));
@@ -379,6 +433,9 @@ export async function generateQuestion(options) {
   console.log(`Channel: ${channel}`);
   console.log(`Sub-channel: ${subChannel}`);
   console.log(`Difficulty: ${difficulty}`);
+  if (ragContext?.hasContext) {
+    console.log(`RAG Context: ${ragContext.related.length} related questions`);
+  }
   
   const initialState = {
     channel,
@@ -387,6 +444,7 @@ export async function generateQuestion(options) {
     tags: tags || [],
     targetCompanies: targetCompanies || [],
     scenarioHint: scenarioHint || '',
+    ragContext: ragContext || null,
     question: null,
     qualityIssues: [],
     validatedVideos: { shortVideo: null, longVideo: null },

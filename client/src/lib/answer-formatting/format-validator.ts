@@ -553,6 +553,43 @@ export class FormatValidator implements IFormatValidator {
   }
 
   /**
+   * Validates consistent indentation in lists
+   */
+  private validateListIndentation(answer: string, patternId: string): void {
+    const lines = answer.split('\n');
+    const listLines = lines.filter(line => /^\s*[-*+]\s/.test(line) || /^\s*\d+\.\s/.test(line));
+    
+    if (listLines.length < 2) return;
+    
+    // Detect the indentation unit used (2 or 4 spaces typically)
+    const indentSizes = new Set<number>();
+    
+    for (const line of listLines) {
+      const indentMatch = line.match(/^(\s*)/);
+      const indentSize = indentMatch ? indentMatch[1].length : 0;
+      if (indentSize > 0) {
+        indentSizes.add(indentSize);
+      }
+    }
+    
+    // Check if indentation is consistent (all multiples of same base)
+    const indentArray = Array.from(indentSizes).sort((a, b) => a - b);
+    if (indentArray.length > 1) {
+      const baseIndent = indentArray[0];
+      const hasInconsistentIndent = indentArray.some(indent => indent % baseIndent !== 0);
+      
+      if (hasInconsistentIndent) {
+        this.addViolation({
+          rule: `${patternId}-inconsistent-indentation`,
+          severity: 'warning',
+          message: 'List items have inconsistent indentation',
+          fix: 'Use consistent indentation (2 or 4 spaces) for all list levels',
+        });
+      }
+    }
+  }
+
+  /**
    * Validates process format sections
    */
   private validateProcessSection(answer: string, section: Section, patternId: string): void {
@@ -2350,3 +2387,7 @@ export class FormatValidator implements IFormatValidator {
     }
   }
 }
+
+
+// Export a singleton instance
+export const formatValidator = new FormatValidator();

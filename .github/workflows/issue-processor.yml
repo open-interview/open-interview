@@ -1,0 +1,191 @@
+name: 🔄 Auto Issue Processor
+
+# Automatically processes GitHub issues created by the QuestionFeedback component
+# Triggers when issues with bot:processor label are created or updated
+# Prevents circular loops with processing state tracking
+
+on:
+  issues:
+    types: [opened, labeled]
+  
+  # Also run on schedule to catch any missed issues
+  schedule:
+    - cron: '*/30 * * * *'  # Every 30 minutes
+  
+  workflow_dispatch:
+    inputs:
+      max_issues:
+        description: 'Maximum issues to process'
+        required: false
+        default: '10'
+      force_reprocess:
+        description: 'Force reprocess completed issues'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  check-trigger:
+    name: 🔍 Check Trigger
+    runs-on: ubuntu-latest
+    outputs:
+      should_process: ${{ steps.check.outputs.should_process }}
+      issue_number: ${{ steps.check.outputs.issue_number }}
+    steps:
+      - name: Check if should process
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { eventName, payload } = context;
+            
+            // For issue events, check if it has the bot:processor label
+            if (eventName === 'issues') {
+              const issue = payload.issue;
+              const labels = issue.labels.map(l => l.name);
+              
+              // Skip if already being processed or completed
+              if (labels.includes('bot:in-progress')) {
+                console.log('Issue already in progress, skipping');
+                core.setOutput('should_process', 'false');
+                return;
+              }
+              
+              if (labels.includes('bot:completed') && !${{ inputs.force_reprocess || false }}) {
+                console.log('Issue already completed, skipping');
+                core.setOutput('should_process', 'false');
+                return;
+              }
+              
+              // Check for processor label
+              if (labels.includes('bot:processor')) {
+                console.log(`Processing issue #${issue.number}`);
+                core.setOutput('should_process', 'true');
+                core.setOutput('issue_number', issue.number.toString());
+                return;
+              }
+              
+              console.log('Issue does not have bot:processor label');
+              core.setOutput('should_process', 'false');
+              return;
+            }
+            
+            // For schedule/manual triggers, always process
+            core.setOutput('should_process', 'true');
+            core.setOutput('issue_number', '');
+
+  process-feedback:
+    name: ⚙️ Process Feedback
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_process == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: ./.github/actions/setup-bot
+      
+      - name: Add in-progress label
+        if: needs.check-trigger.outputs.issue_number != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = parseInt('${{ needs.check-trigger.outputs.issue_number }}');
+            if (issueNumber) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                labels: ['bot:in-progress']
+              });
+              console.log(`Added in-progress label to issue #${issueNumber}`);
+            }
+      
+      - name: Run Feedback Processor
+        id: processor
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+          MAX_ISSUES: ${{ inputs.max_issues || '10' }}
+          SINGLE_ISSUE: ${{ needs.check-trigger.outputs.issue_number }}
+        run: |
+          echo "🔄 Running feedback processor..."
+          
+          # Run the processor bot which handles GitHub issues
+          node script/bots/processor-bot.js
+          
+          echo "processor_ran=true" >> $GITHUB_OUTPUT
+      
+      - name: Sync changes to Vector DB
+        if: steps.processor.outputs.processor_ran == 'true'
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+        run: |
+          echo "📊 Syncing changes to vector DB..."
+          node script/sync-vector-db.js --mode=incremental || true
+      
+      - name: Generate Summary
+        if: always()
+        run: |
+          echo "## 🔄 Issue Processor Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ needs.check-trigger.outputs.issue_number }}" ]; then
+            echo "**Issue:** #${{ needs.check-trigger.outputs.issue_number }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+
+  # Prevent circular loops by cleaning up stale in-progress labels
+  cleanup-stale:
+    name: 🧹 Cleanup Stale
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - name: Remove stale in-progress labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Find issues with bot:in-progress that are older than 1 hour
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+            
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'bot:in-progress',
+              state: 'open',
+              per_page: 50
+            });
+            
+            for (const issue of issues.data) {
+              const updatedAt = new Date(issue.updated_at);
+              
+              if (updatedAt < oneHourAgo) {
+                console.log(`Removing stale in-progress label from issue #${issue.number}`);
+                
+                // Remove in-progress label
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  name: 'bot:in-progress'
+                });
+                
+                // Add comment explaining the reset
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: '⚠️ **Processing Reset**\n\nThis issue was stuck in processing for over 1 hour. The in-progress label has been removed so it can be reprocessed.\n\n*If this keeps happening, please contact maintainers.*'
+                });
+              }
+            }
+            
+            console.log(`Checked ${issues.data.length} in-progress issues`);

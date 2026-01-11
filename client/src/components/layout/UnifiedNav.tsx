@@ -9,7 +9,7 @@
  */
 
 import { useLocation } from 'wouter';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Home,
   GraduationCap,
@@ -26,9 +26,11 @@ import {
   Bookmark,
   Trophy,
   Search,
-  User
+  User,
+  Info
 } from 'lucide-react';
 import { useCredits } from '../../context/CreditsContext';
+import { useSidebar } from '../../context/SidebarContext';
 import { cn } from '../../lib/utils';
 import { useState } from 'react';
 
@@ -71,13 +73,14 @@ const progressSubNav: NavItem[] = [
   { id: 'badges', label: 'Badges', icon: Trophy, path: '/badges', description: 'Achievements' },
   { id: 'bookmarks', label: 'Bookmarks', icon: Bookmark, path: '/bookmarks', description: 'Saved questions' },
   { id: 'profile', label: 'Profile', icon: User, path: '/profile', description: 'Settings & credits' },
+  { id: 'about', label: 'About', icon: Info, path: '/about', description: 'About Code Reels' },
 ];
 
 function getActiveSection(location: string): string {
   if (location === '/') return 'home';
   if (location === '/channels' || location.startsWith('/channel/') || location === '/certifications' || location.startsWith('/certification/')) return 'learn';
   if (location.startsWith('/voice') || location.startsWith('/test') || location.startsWith('/coding') || location === '/review' || location === '/training') return 'practice';
-  if (location === '/stats' || location === '/badges' || location === '/bookmarks' || location === '/profile') return 'progress';
+  if (location === '/stats' || location === '/badges' || location === '/bookmarks' || location === '/profile' || location === '/about') return 'progress';
   if (location === '/bot-activity') return 'bots';
   return 'home';
 }
@@ -299,7 +302,7 @@ export function MobileBottomNav() {
 
 
 // ============================================
-// DESKTOP SIDEBAR
+// DESKTOP SIDEBAR - Collapsible Premium Design
 // ============================================
 
 interface DesktopSidebarProps {
@@ -309,134 +312,201 @@ interface DesktopSidebarProps {
 export function DesktopSidebar({ onSearchClick }: DesktopSidebarProps) {
   const [location, setLocation] = useLocation();
   const { balance, formatCredits } = useCredits();
-  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const { isCollapsed, toggleSidebar } = useSidebar();
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
-  const activeSection = getActiveSection(location);
+  const isActive = (path: string) => 
+    location === path || location.startsWith(path.replace(/\/$/, '') + '/');
 
-  const toggleSection = (sectionId: string) => {
-    setExpandedSection(expandedSection === sectionId ? null : sectionId);
-  };
-
-  const renderNavSection = (title: string, items: NavItem[], sectionId: string) => {
-    const isExpanded = expandedSection === sectionId;
-    const hasActiveItem = items.some(item => 
-      location === item.path || location.startsWith(item.path.replace(/\/$/, '') + '/')
-    );
-
+  const NavItem = ({ item, showLabel = true }: { item: NavItem; showLabel?: boolean }) => {
+    const Icon = item.icon;
+    const active = isActive(item.path);
+    const isVoice = item.id === 'voice';
+    const showTooltip = isCollapsed && hoveredItem === item.id;
+    
     return (
-      <div className="mb-1">
+      <div className="relative">
         <button
-          onClick={() => toggleSection(sectionId)}
+          onClick={() => setLocation(item.path)}
+          onMouseEnter={() => setHoveredItem(item.id)}
+          onMouseLeave={() => setHoveredItem(null)}
           className={cn(
-            "w-full flex items-center justify-between px-3 py-2 text-[10px] font-semibold uppercase tracking-wider rounded-lg transition-colors",
-            hasActiveItem ? "text-primary bg-primary/5" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150 group",
+            active 
+              ? "bg-primary/15 text-primary" 
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
           )}
         >
-          {title}
-          <ChevronRight className={cn("w-3 h-3 transition-transform", isExpanded && "rotate-90")} />
+          <div className={cn(
+            "flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-colors",
+            active 
+              ? "bg-primary text-primary-foreground" 
+              : isVoice
+                ? "bg-primary/20 text-primary"
+                : "bg-transparent group-hover:bg-muted"
+          )}>
+            <Icon className="w-4 h-4" />
+          </div>
+          
+          {showLabel && !isCollapsed && (
+            <span className="text-sm font-medium flex-1 text-left">
+              {item.label}
+            </span>
+          )}
+          
+          {showLabel && !isCollapsed && item.badge && (
+            <span className={cn(
+              "text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0",
+              item.badge === 'NEW' 
+                ? "bg-emerald-500/20 text-emerald-400"
+                : "bg-amber-500/20 text-amber-400"
+            )}>
+              {item.badge}
+            </span>
+          )}
         </button>
         
-        {isExpanded && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mt-0.5 space-y-0.5 ml-2"
-          >
-            {items.map((item) => {
-              const Icon = item.icon;
-              const isActive = location === item.path || location.startsWith(item.path.replace(/\/$/, '') + '/');
-              
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setLocation(item.path)}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-2.5 py-2 rounded-lg transition-all text-left",
-                    isActive 
-                      ? "bg-primary/10 text-primary" 
-                      : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span className="text-xs font-medium">{item.label}</span>
-                  {item.badge && (
-                    <span className="ml-auto text-[9px] px-1.5 py-0.5 bg-amber-500/10 text-amber-500 rounded-full font-medium">
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </motion.div>
-        )}
+        {/* Tooltip */}
+        <AnimatePresence>
+          {showTooltip && (
+            <motion.div
+              initial={{ opacity: 0, x: -4 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -4 }}
+              className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50"
+            >
+              <div className="bg-popover border border-border rounded-lg shadow-xl px-3 py-1.5 whitespace-nowrap flex items-center gap-2">
+                <span className="text-sm font-medium">{item.label}</span>
+                {item.badge && (
+                  <span className={cn(
+                    "text-[10px] px-1.5 py-0.5 rounded font-medium",
+                    item.badge === 'NEW' 
+                      ? "bg-emerald-500/20 text-emerald-400"
+                      : "bg-amber-500/20 text-amber-400"
+                  )}>
+                    {item.badge}
+                  </span>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
+  const SectionHeader = ({ icon: Icon, label }: { icon: React.ElementType; label: string }) => {
+    if (isCollapsed) return <div className="h-px bg-border/50 my-3 mx-2" />;
+    
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+        <Icon className="w-3.5 h-3.5" />
+        <span>{label}</span>
       </div>
     );
   };
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-56 bg-card/50 backdrop-blur-xl border-r border-border/50 z-40 flex flex-col">
-      {/* Logo - Compact */}
-      <div className="p-3 border-b border-border/50">
-        <button onClick={() => setLocation('/')} className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary via-primary to-cyan-500 flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-shadow">
+    <aside className={cn(
+      "fixed left-0 top-0 bottom-0 bg-card/95 backdrop-blur-xl border-r border-border z-40 flex flex-col transition-all duration-200",
+      isCollapsed ? "w-16" : "w-64"
+    )}>
+      {/* Header with Logo and Collapse Toggle */}
+      <div className="h-14 flex items-center justify-between px-3 border-b border-border">
+        <button 
+          onClick={() => setLocation('/')} 
+          className={cn("flex items-center gap-2.5", isCollapsed && "justify-center w-full")}
+        >
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center shrink-0">
             <Mic className="w-4 h-4 text-white" />
           </div>
-          <div>
-            <span className="font-bold text-sm bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">CodeReels</span>
-            <div className="text-[9px] text-muted-foreground -mt-0.5">Interview Prep</div>
-          </div>
+          {!isCollapsed && (
+            <div className="text-left">
+              <div className="font-semibold text-sm leading-tight">CodeReels</div>
+              <div className="text-[10px] text-muted-foreground">Interview Prep</div>
+            </div>
+          )}
         </button>
+        
+        {!isCollapsed && (
+          <button
+            onClick={toggleSidebar}
+            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            title="Collapse sidebar"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
-      {/* Search - Compact */}
-      <div className="px-2 py-2">
+      {/* Expand button when collapsed */}
+      {isCollapsed && (
+        <div className="px-2 py-2">
+          <button
+            onClick={toggleSidebar}
+            className="w-full p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
+            title="Expand sidebar"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Search */}
+      <div className={cn("px-2 py-2", isCollapsed && "px-2")}>
         <button
           onClick={onSearchClick}
-          className="w-full flex items-center gap-2 px-2.5 py-1.5 bg-muted/30 hover:bg-muted/50 rounded-lg text-muted-foreground text-xs transition-colors border border-border/50"
+          className={cn(
+            "w-full flex items-center gap-2 px-3 py-2 bg-muted/50 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors",
+            isCollapsed && "justify-center px-2"
+          )}
         >
-          <Search className="w-3.5 h-3.5" />
-          <span className="flex-1 text-left">Search...</span>
-          <kbd className="text-[9px] px-1 py-0.5 bg-background/50 rounded border border-border/50">⌘K</kbd>
+          <Search className="w-4 h-4 shrink-0" />
+          {!isCollapsed && (
+            <>
+              <span className="text-sm flex-1 text-left">Search</span>
+              <kbd className="text-[10px] px-1.5 py-0.5 bg-background rounded border border-border font-mono">⌘K</kbd>
+            </>
+          )}
         </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-2 py-1 space-y-0.5">
-        {/* Home - Direct link */}
-        <button
-          onClick={() => setLocation('/')}
-          className={cn(
-            "w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all",
-            activeSection === 'home' 
-              ? "bg-gradient-to-r from-primary/15 to-primary/5 text-primary border border-primary/20" 
-              : "hover:bg-muted text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Home className="w-4 h-4" />
-          <span className="text-sm font-medium">Home</span>
-        </button>
-
-        {/* Collapsible Sections */}
-        {renderNavSection('Learn', learnSubNav, 'learn')}
-        {renderNavSection('Practice', practiceSubNav, 'practice')}
-        {renderNavSection('Progress', progressSubNav, 'progress')}
+      <nav className="flex-1 overflow-y-auto px-2 py-1">
+        {/* Home */}
+        <NavItem item={{ id: 'home', label: 'Home', icon: Home, path: '/' }} />
+        
+        {/* Learn Section */}
+        <SectionHeader icon={GraduationCap} label="Learn" />
+        {learnSubNav.map(item => <NavItem key={item.id} item={item} />)}
+        
+        {/* Practice Section */}
+        <SectionHeader icon={Mic} label="Practice" />
+        {practiceSubNav.map(item => <NavItem key={item.id} item={item} />)}
+        
+        {/* Progress Section */}
+        <SectionHeader icon={BarChart3} label="Progress" />
+        {progressSubNav.map(item => <NavItem key={item.id} item={item} />)}
       </nav>
 
-      {/* Credits Footer - Compact */}
-      <div className="p-2 border-t border-border/50">
+      {/* Credits Footer */}
+      <div className="p-2 border-t border-border">
         <button
           onClick={() => setLocation('/profile')}
-          className="w-full flex items-center gap-2 px-2.5 py-2 bg-gradient-to-r from-amber-500/10 to-orange-500/10 hover:from-amber-500/15 hover:to-orange-500/15 rounded-lg transition-all border border-amber-500/20"
+          className={cn(
+            "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 transition-colors",
+            isCollapsed && "justify-center px-2"
+          )}
         >
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-md shadow-amber-500/20">
-            <Coins className="w-3.5 h-3.5 text-white" />
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shrink-0">
+            <Coins className="w-4 h-4 text-white" />
           </div>
-          <div className="flex-1 text-left">
-            <div className="text-[10px] text-muted-foreground">Credits</div>
-            <div className="text-sm font-bold text-amber-500">{formatCredits(balance)}</div>
-          </div>
-          <ChevronRight className="w-3.5 h-3.5 text-amber-500/50" />
+          {!isCollapsed && (
+            <div className="flex-1 text-left">
+              <div className="text-[10px] text-muted-foreground">Credits</div>
+              <div className="text-sm font-bold text-amber-500">{formatCredits(balance)}</div>
+            </div>
+          )}
         </button>
       </div>
     </aside>

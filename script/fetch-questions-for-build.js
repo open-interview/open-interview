@@ -38,6 +38,7 @@ function parseQuestionRow(row) {
     relevanceScore: row.relevance_score,
     voiceKeywords: row.voice_keywords ? JSON.parse(row.voice_keywords) : null,
     voiceSuitable: row.voice_suitable === 1,
+    isNew: row.is_new === 1, // Parse isNew flag from database
     lastUpdated: row.last_updated,
     createdAt: row.created_at,
   };
@@ -589,6 +590,49 @@ async function main() {
     const blogPostsFile = path.join(OUTPUT_DIR, 'blog-posts.json');
     fs.writeFileSync(blogPostsFile, JSON.stringify({}, null, 0));
     console.log(`   ✓ blog-posts.json (empty - table may not exist yet)`);
+  }
+
+  // Fetch certifications from database
+  console.log('\n📥 Fetching certifications...');
+  try {
+    const certsResult = await client.execute(`
+      SELECT id, name, provider, description, icon, color, difficulty, category,
+             estimated_hours, exam_code, official_url, domains, prerequisites,
+             status, question_count, passing_score, exam_duration, created_at, last_updated
+      FROM certifications
+      WHERE status = 'active'
+      ORDER BY name
+    `);
+
+    const certifications = certsResult.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      provider: row.provider,
+      description: row.description,
+      icon: row.icon || 'award',
+      color: row.color || 'text-primary',
+      difficulty: row.difficulty,
+      category: row.category,
+      estimatedHours: row.estimated_hours || 40,
+      examCode: row.exam_code,
+      officialUrl: row.official_url,
+      domains: row.domains ? JSON.parse(row.domains) : [],
+      prerequisites: row.prerequisites ? JSON.parse(row.prerequisites) : [],
+      questionCount: row.question_count || 0,
+      passingScore: row.passing_score || 70,
+      examDuration: row.exam_duration || 90,
+      createdAt: row.created_at,
+      lastUpdated: row.last_updated
+    }));
+
+    const certificationsFile = path.join(OUTPUT_DIR, 'certifications.json');
+    fs.writeFileSync(certificationsFile, JSON.stringify(certifications, null, 0));
+    console.log(`   ✓ certifications.json (${certifications.length} certifications)`);
+  } catch (e) {
+    console.log(`   ⚠️ Could not fetch certifications: ${e.message}`);
+    const certificationsFile = path.join(OUTPUT_DIR, 'certifications.json');
+    fs.writeFileSync(certificationsFile, JSON.stringify([], null, 0));
+    console.log(`   ✓ certifications.json (empty - table may not exist yet)`);
   }
 
   console.log('\n✅ Static data files generated successfully!');

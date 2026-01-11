@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { FormatMetrics } from './FormatMetrics';
+import { FormatMetricsDashboard as FormatMetrics } from './FormatMetrics';
 import { metricsCollector, FormatMetrics as FormatMetricsType } from '../../lib/answer-formatting/metrics-collector';
 
 // Mock the metrics collector

@@ -11,15 +11,21 @@ import {
   getQuestionCount,
   postBotCommentToDiscussion,
   getAllChannelsFromDb,
-  getQuestionsForChannel
+  getQuestionsForChannel,
+  getSubChannelQuestionCounts
 } from './utils.js';
 import { generateQuestion as generateQuestionGraph } from './ai/graphs/question-graph.js';
 import { runQualityGate } from './ai/graphs/quality-gate-graph.js';
 import { channelConfigs, topCompanies as TOP_TECH_COMPANIES, realScenarios as REAL_SCENARIOS } from './ai/prompts/templates/generate.js';
+import { certificationDomains } from './ai/prompts/templates/certification-question.js';
+import ragService from './ai/services/rag-enhanced-generation.js';
 
 // Channel configurations - imported from AI framework template (used for sub-channel info)
 
 const difficulties = ['beginner', 'intermediate', 'advanced'];
+
+// Certification channel IDs (channels that are certification prep)
+const CERTIFICATION_CHANNELS = Object.keys(certificationDomains);
 
 // Top 100 tech companies - imported from AI framework template
 
@@ -29,13 +35,31 @@ function getRandomTopCompanies(count = 3) {
   return shuffled.slice(0, Math.min(count, Math.floor(Math.random() * 3) + 2));
 }
 
-// Get all channels - now fetches from database to include all channels
+// Get all channels - fetches from database AND includes all configured channels (including certifications)
 async function getAllChannels() {
   const dbChannels = await getAllChannelsFromDb();
   // Merge with hardcoded configs to ensure we have sub-channel info
   const hardcodedChannels = Object.keys(channelConfigs);
-  // Return unique channels from both sources, prioritizing DB channels
-  const allChannels = new Set([...dbChannels, ...hardcodedChannels]);
+  // Include certification channels from certificationDomains
+  const certificationChannels = CERTIFICATION_CHANNELS;
+  
+  // Also include fundamentals channels that might not be in channelConfigs
+  const fundamentalsChannels = [
+    'data-structures', 'complexity-analysis', 'dynamic-programming', 
+    'bit-manipulation', 'design-patterns', 'concurrency', 'math-logic', 'low-level'
+  ];
+  
+  // Return unique channels from all sources
+  const allChannels = new Set([
+    ...dbChannels, 
+    ...hardcodedChannels, 
+    ...certificationChannels,
+    ...fundamentalsChannels
+  ]);
+  
+  console.log(`Channel sources: DB=${dbChannels.length}, Config=${hardcodedChannels.length}, Certs=${certificationChannels.length}, Fundamentals=${fundamentalsChannels.length}`);
+  console.log(`Total unique channels: ${allChannels.size}`);
+  
   return Array.from(allChannels);
 }
 
@@ -47,13 +71,46 @@ function getRandomSubChannel(channel) {
   return configs[Math.floor(Math.random() * configs.length)];
 }
 
+/**
+ * Get sub-channel with fewest questions for a given channel
+ * Prioritizes sub-channels that have no questions or fewer questions
+ */
+async function getPrioritizedSubChannel(channel, subChannelCounts) {
+  const configs = channelConfigs[channel];
+  if (!configs || configs.length === 0) {
+    return { subChannel: 'general', tags: [channel] };
+  }
+  
+  // Get counts for this channel's sub-channels
+  const channelSubCounts = subChannelCounts[channel] || {};
+  
+  // Sort sub-channels by question count (ascending)
+  const sortedConfigs = [...configs].map(config => ({
+    ...config,
+    count: channelSubCounts[config.subChannel] || 0
+  })).sort((a, b) => a.count - b.count);
+  
+  // Prioritize sub-channels with 0 questions first
+  const emptySubChannels = sortedConfigs.filter(c => c.count === 0);
+  if (emptySubChannels.length > 0) {
+    // Random selection among empty sub-channels
+    return emptySubChannels[Math.floor(Math.random() * emptySubChannels.length)];
+  }
+  
+  // Otherwise, weighted selection favoring lower counts
+  const minCount = sortedConfigs[0].count;
+  const lowCountSubChannels = sortedConfigs.filter(c => c.count <= minCount * 1.5);
+  return lowCountSubChannels[Math.floor(Math.random() * lowCountSubChannels.length)];
+}
+
 // Prioritize channels with fewer questions using weighted selection
-// Excludes channels in the top percentile to focus on lagging channels
+// ALWAYS selects channels with 0 questions first before using weighted selection
 function selectChannelsWeighted(channelCounts, allChannels, limit) {
   // Sort channels by question count
   const sortedByCount = [...allChannels].map(ch => ({
     channel: ch,
-    count: channelCounts[ch] || 0
+    count: channelCounts[ch] || 0,
+    isCertification: CERTIFICATION_CHANNELS.includes(ch)
   })).sort((a, b) => a.count - b.count);
   
   // Calculate statistics
@@ -62,23 +119,55 @@ function selectChannelsWeighted(channelCounts, allChannels, limit) {
   const medianCount = counts[Math.floor(counts.length / 2)];
   const maxCount = Math.max(...counts, 1);
   
+  // PRIORITY 1: Always select channels with 0 questions first
+  const emptyChannels = sortedByCount.filter(c => c.count === 0).map(c => c.channel);
+  if (emptyChannels.length > 0) {
+    console.log(`\n🎯 PRIORITY: Found ${emptyChannels.length} channels with 0 questions`);
+    emptyChannels.forEach(ch => {
+      const isCert = CERTIFICATION_CHANNELS.includes(ch);
+      console.log(`   ${ch}${isCert ? ' (certification)' : ''}`);
+    });
+    
+    // If we have enough empty channels, just return those
+    if (emptyChannels.length >= limit) {
+      // Prioritize certifications among empty channels
+      const emptyCerts = emptyChannels.filter(ch => CERTIFICATION_CHANNELS.includes(ch));
+      const emptyNonCerts = emptyChannels.filter(ch => !CERTIFICATION_CHANNELS.includes(ch));
+      const prioritized = [...emptyCerts, ...emptyNonCerts].slice(0, limit);
+      console.log(`   Selecting ${limit} empty channels (certs first)`);
+      return prioritized;
+    }
+    
+    // Otherwise, start with all empty channels and fill the rest with weighted selection
+    console.log(`   Will fill remaining ${limit - emptyChannels.length} slots with weighted selection`);
+  }
+  
   // Exclude channels in top 25% (those with most questions)
   const excludeThreshold = counts[Math.floor(counts.length * 0.75)];
   const eligibleChannels = sortedByCount
-    .filter(c => c.count <= excludeThreshold)
+    .filter(c => c.count <= excludeThreshold && c.count > 0) // Exclude empty (already handled)
     .map(c => c.channel);
   
   console.log(`\n📈 Channel Statistics:`);
   console.log(`   Average: ${avgCount.toFixed(1)} questions`);
   console.log(`   Median: ${medianCount} questions`);
   console.log(`   Max: ${maxCount} questions`);
+  console.log(`   Empty channels: ${emptyChannels.length}`);
   console.log(`   Exclude threshold (top 25%): >${excludeThreshold} questions`);
-  console.log(`   Eligible channels: ${eligibleChannels.length}/${allChannels.length}`);
+  console.log(`   Eligible for weighted selection: ${eligibleChannels.length}/${allChannels.length}`);
+  
+  // Start with empty channels
+  const selected = [...emptyChannels];
+  const remainingLimit = limit - selected.length;
+  
+  if (remainingLimit <= 0) {
+    return selected.slice(0, limit);
+  }
   
   // If all channels are excluded (unlikely), fall back to bottom half
   const channelsToUse = eligibleChannels.length > 0 
     ? eligibleChannels 
-    : sortedByCount.slice(0, Math.ceil(sortedByCount.length / 2)).map(c => c.channel);
+    : sortedByCount.filter(c => c.count > 0).slice(0, Math.ceil(sortedByCount.length / 2)).map(c => c.channel);
   
   // Calculate weights - exponential preference for channels with fewer questions
   // Weight formula: (maxCount - count + 1)^3 / maxCount^2
@@ -87,10 +176,16 @@ function selectChannelsWeighted(channelCounts, allChannels, limit) {
     const count = channelCounts[ch] || 0;
     const deficit = maxCount - count + 1;
     // Cubic weight for strong preference toward low-count channels
-    return Math.pow(deficit, 3) / Math.pow(maxCount, 2);
+    let weight = Math.pow(deficit, 3) / Math.pow(maxCount, 2);
+    
+    // Extra boost for certifications (they need more content)
+    if (CERTIFICATION_CHANNELS.includes(ch)) {
+      weight *= 2;
+    }
+    
+    return weight;
   });
   
-  const selected = [];
   const available = [...channelsToUse];
   const availableWeights = [...weights];
   
@@ -152,6 +247,15 @@ async function main() {
   const totalQuestionCount = Object.values(channelCounts).reduce((a, b) => a + b, 0);
   console.log(`Database has ${totalQuestionCount} existing questions`);
   
+  // Get sub-channel counts for prioritization
+  let subChannelCounts = {};
+  try {
+    subChannelCounts = await getSubChannelQuestionCounts();
+    console.log('Loaded sub-channel question counts for prioritization');
+  } catch (e) {
+    console.log('Sub-channel counts not available, using random selection');
+  }
+  
   // Show channel distribution
   console.log('\n📊 Channel Distribution:');
   const sortedChannels = [...allChannels].sort((a, b) => (channelCounts[a] || 0) - (channelCounts[b] || 0));
@@ -207,7 +311,10 @@ async function main() {
 
   for (let i = 0; i < channels.length; i++) {
     const channel = channels[i];
-    const subChannelConfig = getRandomSubChannel(channel);
+    // Use prioritized sub-channel selection (favors sub-channels with fewer questions)
+    const subChannelConfig = Object.keys(subChannelCounts).length > 0
+      ? await getPrioritizedSubChannel(channel, subChannelCounts)
+      : getRandomSubChannel(channel);
     
     console.log(`\n--- Channel ${i + 1}/${channels.length}: ${channel} ---`);
     
@@ -287,6 +394,24 @@ function getScenarioHint(channel) {
 
 const scenarioHint = getScenarioHint(channel);
 
+    // Get RAG context for better generation
+    let ragContext = null;
+    try {
+      console.log('\n🔍 Retrieving RAG context...');
+      ragContext = await ragService.getGenerationContext(
+        `${channel} ${subChannelConfig.subChannel} ${difficulty}`,
+        { channel, limit: 5, includeAnswers: false }
+      );
+      if (ragContext.hasContext) {
+        console.log(`   Found ${ragContext.related.length} related questions`);
+        console.log(`   Key concepts: ${ragContext.concepts.slice(0, 5).join(', ')}`);
+      } else {
+        console.log('   No existing context found (new topic area)');
+      }
+    } catch (e) {
+      console.log(`   RAG context unavailable: ${e.message}`);
+    }
+
     // Use LangGraph pipeline for question generation
     console.log('\n📝 Generating question using LangGraph pipeline...');
     console.log('─'.repeat(50));
@@ -297,7 +422,8 @@ const scenarioHint = getScenarioHint(channel);
       difficulty,
       tags: subChannelConfig.tags,
       targetCompanies,
-      scenarioHint
+      scenarioHint,
+      ragContext // Pass RAG context to the generation pipeline
     });
     
     if (!result.success) {

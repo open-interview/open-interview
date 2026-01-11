@@ -30,9 +30,19 @@ import {
   FileText,
   Mic,
   Coins,
+  Search,
+  X,
+  Layers,
+  Hash,
+  Database,
+  GitBranch,
+  Binary,
+  Braces,
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
 import { CodeEditor, CodeDisplay } from '../components/CodeEditor';
+import { QuestionHistoryIcon } from '../components/unified/QuestionHistory';
+import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
 import {
   CodingChallenge as Challenge,
   Language,
@@ -58,6 +68,21 @@ type ViewState = 'list' | 'challenge';
 // Storage keys for persistence
 const CODING_LANGUAGE_KEY = 'coding-preferred-language';
 const CODING_PROGRESS_PREFIX = 'coding-progress-';
+
+// Category configuration with icons and colors
+const CATEGORY_CONFIG: Record<string, { icon: React.ElementType; color: string; bgColor: string; label: string }> = {
+  arrays: { icon: Layers, color: 'text-blue-500', bgColor: 'bg-blue-500/10 border-blue-500/30', label: 'Arrays' },
+  strings: { icon: Hash, color: 'text-purple-500', bgColor: 'bg-purple-500/10 border-purple-500/30', label: 'Strings' },
+  stacks: { icon: Database, color: 'text-orange-500', bgColor: 'bg-orange-500/10 border-orange-500/30', label: 'Stacks & Queues' },
+  searching: { icon: Search, color: 'text-cyan-500', bgColor: 'bg-cyan-500/10 border-cyan-500/30', label: 'Searching' },
+  'dynamic-programming': { icon: GitBranch, color: 'text-pink-500', bgColor: 'bg-pink-500/10 border-pink-500/30', label: 'Dynamic Programming' },
+  basics: { icon: Binary, color: 'text-green-500', bgColor: 'bg-green-500/10 border-green-500/30', label: 'Basics' },
+  'linked-lists': { icon: GitBranch, color: 'text-teal-500', bgColor: 'bg-teal-500/10 border-teal-500/30', label: 'Linked Lists' },
+  math: { icon: Binary, color: 'text-amber-500', bgColor: 'bg-amber-500/10 border-amber-500/30', label: 'Math' },
+  sorting: { icon: Layers, color: 'text-indigo-500', bgColor: 'bg-indigo-500/10 border-indigo-500/30', label: 'Sorting' },
+  'two-pointers': { icon: ChevronRight, color: 'text-rose-500', bgColor: 'bg-rose-500/10 border-rose-500/30', label: 'Two Pointers' },
+  default: { icon: Braces, color: 'text-gray-500', bgColor: 'bg-gray-500/10 border-gray-500/30', label: 'Other' },
+};
 
 function getStoredLanguage(): Language {
   try {
@@ -103,6 +128,8 @@ export default function CodingChallenge() {
   const [userComplexity, setUserComplexity] = useState<ComplexityAnalysis | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [solvedIds, setSolvedIds] = useState<Set<string>>(() => getSolvedChallengeIds());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   
   // Load challenges from JSON on mount
   useEffect(() => {
@@ -145,6 +172,115 @@ export default function CodingChallenge() {
   
   const stats = getCodingStats();
   const { balance, formatCredits, config } = useCredits();
+
+  // Normalize tag to handle singular/plural
+  const normalizeTag = (tag: string): string => {
+    const normalized = tag.toLowerCase().trim();
+    // Map plural to singular or normalize variations
+    const tagMap: Record<string, string> = {
+      'arrays': 'array',
+      'strings': 'string',
+      'stacks': 'stack',
+      'linked-lists': 'linked-list',
+      'hash-map': 'hashmap',
+      'hash-set': 'hashset',
+      'two-pointers': 'two-pointers',
+      'divide-conquer': 'divide-and-conquer',
+    };
+    return tagMap[normalized] || normalized;
+  };
+
+  // Define organized category hierarchy (using normalized names)
+  const CATEGORY_HIERARCHY: Record<string, { label: string; topics: string[] }> = {
+    'data-structures': {
+      label: '📁 Data Structures',
+      topics: ['array', 'string', 'linked-list', 'stack', 'hashmap', 'hashset', 'tree', 'graph', 'queue']
+    },
+    'algorithms': {
+      label: '📁 Algorithms', 
+      topics: ['searching', 'sorting', 'binary-search', 'dynamic-programming', 'recursion', 'divide-and-conquer', 'greedy', 'backtracking']
+    },
+    'techniques': {
+      label: '📁 Techniques',
+      topics: ['two-pointers', 'sliding-window', 'in-place', 'memoization', 'iteration', 'traversal']
+    },
+    'math': {
+      label: '📁 Math & Logic',
+      topics: ['math', 'prime-factors', 'factorization', 'modular-arithmetic', 'digits', 'exponents', 'floating-point', 'perfect-square', 'product', 'fibonacci']
+    },
+    'misc': {
+      label: '📁 Other',
+      topics: ['basics', 'simulation', 'validation', 'parsing', 'pattern-matching', 'compression', 'manipulation', 'counting', 'finance', 'circular', 'rotation', 'reverse', 'node-deletion', 'pointers', 'frequency', 'custom-comparator', 'bit-manipulation', 'binary', 'regex']
+    }
+  };
+
+  // Filter challenges based on search query
+  const filteredChallenges = challenges.filter((challenge) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      challenge.title.toLowerCase().includes(query) ||
+      challenge.description.toLowerCase().includes(query) ||
+      challenge.category.toLowerCase().includes(query) ||
+      challenge.tags?.some((tag) => tag.toLowerCase().includes(query))
+    );
+  });
+
+  // Group challenges into hierarchy
+  const organizedChallenges = Object.entries(CATEGORY_HIERARCHY).reduce((acc, [groupKey, group]) => {
+    const topicMap: Record<string, Challenge[]> = {};
+    
+    filteredChallenges.forEach((challenge) => {
+      const allTags = [...(challenge.tags || []), challenge.category].map(t => normalizeTag(t));
+      
+      allTags.forEach((tag) => {
+        if (group.topics.includes(tag)) {
+          if (!topicMap[tag]) topicMap[tag] = [];
+          if (!topicMap[tag].find(c => c.id === challenge.id)) {
+            topicMap[tag].push(challenge);
+          }
+        }
+      });
+    });
+    
+    // Only include groups that have challenges
+    const nonEmptyTopics = Object.entries(topicMap).filter(([_, challenges]) => challenges.length > 0);
+    if (nonEmptyTopics.length > 0) {
+      acc[groupKey] = {
+        label: group.label,
+        topics: Object.fromEntries(nonEmptyTopics.sort((a, b) => b[1].length - a[1].length))
+      };
+    }
+    
+    return acc;
+  }, {} as Record<string, { label: string; topics: Record<string, Challenge[]> }>);
+
+  // Toggle expansion for groups and topics
+  const toggleCategory = (key: string) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  // Expand all when searching
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const allKeys = new Set<string>();
+      Object.keys(organizedChallenges).forEach(group => {
+        allKeys.add(group);
+        Object.keys(organizedChallenges[group].topics).forEach(topic => {
+          allKeys.add(`${group}/${topic}`);
+        });
+      });
+      setExpandedCategories(allKeys);
+    }
+  }, [searchQuery]);
 
   // Refresh solved IDs when returning to list or after solving
   useEffect(() => {
@@ -330,6 +466,7 @@ export default function CodingChallenge() {
         canonical="https://open-interview.github.io/coding"
       />
 
+      <DesktopSidebarWrapper>
       <div className="min-h-screen bg-background text-foreground">
         {/* Challenge List View */}
         {viewState === 'list' && (
@@ -408,6 +545,27 @@ export default function CodingChallenge() {
                 </span>
               </motion.button>
 
+              {/* Search Bar */}
+              <div className="relative mb-6">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search challenges by name, category, or tag..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-10 py-3 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                  data-testid="search-input"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
               {/* Quick Start */}
               <div className="flex gap-2 mb-6" data-testid="quick-start">
                 <button
@@ -433,83 +591,112 @@ export default function CodingChallenge() {
                 </button>
               </div>
 
-              {/* Challenge List */}
-              <div className="space-y-3" data-testid="challenge-list">
-                {challenges.map((challenge, i) => {
-                  const isSolved = solvedIds.has(challenge.id);
-                  return (
-                    <motion.div
-                      key={challenge.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      onClick={() => startChallenge(challenge)}
-                      className={`border p-4 bg-card rounded-lg cursor-pointer hover:border-primary/50 transition-colors group ${
-                        isSolved ? 'border-green-500/30' : 'border-border'
-                      }`}
-                      data-testid={`challenge-card-${i}`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            isSolved
-                              ? 'bg-green-500/20'
-                              : challenge.difficulty === 'easy'
-                              ? 'bg-green-500/20'
-                              : 'bg-yellow-500/20'
-                          }`}
-                        >
-                          {isSolved ? (
-                            <CheckCircle className="w-6 h-6 text-green-500" />
-                          ) : (
-                            <Code
-                              className={`w-6 h-6 ${
-                                challenge.difficulty === 'easy' ? 'text-green-500' : 'text-yellow-500'
-                              }`}
-                            />
+              {/* Ultra Compact Hierarchical Tree View */}
+              <div className="font-mono text-xs border border-border rounded-lg bg-card overflow-hidden" data-testid="challenge-list">
+                {filteredChallenges.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-xs">No challenges found</p>
+                  </div>
+                ) : (
+                  <div>
+                    {Object.entries(organizedChallenges).map(([groupKey, group]) => {
+                      const isGroupExpanded = expandedCategories.has(groupKey);
+                      const totalInGroup = Object.values(group.topics).flat().length;
+                      const solvedInGroup = Object.values(group.topics).flat().filter(c => solvedIds.has(c.id)).length;
+                      
+                      return (
+                        <div key={groupKey} className="border-b border-border/30 last:border-b-0">
+                          {/* Group Header */}
+                          <button
+                            onClick={() => toggleCategory(groupKey)}
+                            className="w-full px-2 py-1.5 flex items-center gap-1 hover:bg-muted/50 transition-colors text-left font-medium"
+                          >
+                            {isGroupExpanded ? (
+                              <ChevronDown className="w-3 h-3 text-primary" />
+                            ) : (
+                              <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                            )}
+                            <span className="flex-1">{group.label}</span>
+                            <span className="text-[10px] text-muted-foreground tabular-nums">
+                              {solvedInGroup}/{totalInGroup}
+                            </span>
+                          </button>
+
+                          {/* Topics */}
+                          {isGroupExpanded && (
+                            <div className="bg-muted/10">
+                              {Object.entries(group.topics).map(([topic, topicChallenges]) => {
+                                const topicKey = `${groupKey}/${topic}`;
+                                const isTopicExpanded = expandedCategories.has(topicKey);
+                                const solvedInTopic = topicChallenges.filter(c => solvedIds.has(c.id)).length;
+                                const displayTopic = topic.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+                                return (
+                                  <div key={topicKey}>
+                                    {/* Topic Row */}
+                                    <button
+                                      onClick={() => toggleCategory(topicKey)}
+                                      className="w-full pl-4 pr-2 py-1 flex items-center gap-1 hover:bg-muted/30 transition-colors text-left text-muted-foreground"
+                                    >
+                                      <span className="text-border select-none">├</span>
+                                      {isTopicExpanded ? (
+                                        <ChevronDown className="w-2.5 h-2.5" />
+                                      ) : (
+                                        <ChevronRight className="w-2.5 h-2.5" />
+                                      )}
+                                      <span className="flex-1 truncate">{displayTopic}</span>
+                                      <span className="text-[9px] tabular-nums">
+                                        {solvedInTopic}/{topicChallenges.length}
+                                      </span>
+                                      {solvedInTopic === topicChallenges.length && (
+                                        <CheckCircle className="w-2.5 h-2.5 text-green-500" />
+                                      )}
+                                    </button>
+
+                                    {/* Challenge Files */}
+                                    {isTopicExpanded && (
+                                      <div>
+                                        {topicChallenges.map((challenge, idx) => {
+                                          const isSolved = solvedIds.has(challenge.id);
+                                          const isLast = idx === topicChallenges.length - 1;
+                                          return (
+                                            <button
+                                              key={`${topicKey}-${challenge.id}`}
+                                              onClick={() => startChallenge(challenge)}
+                                              className="w-full pl-8 pr-2 py-0.5 flex items-center gap-1 hover:bg-primary/10 transition-colors text-left group"
+                                            >
+                                              <span className="text-border/50 select-none text-[10px]">{isLast ? '└' : '├'}</span>
+                                              {isSolved ? (
+                                                <CheckCircle className="w-2.5 h-2.5 text-green-500 flex-shrink-0" />
+                                              ) : (
+                                                <Code className="w-2.5 h-2.5 text-muted-foreground/60 flex-shrink-0" />
+                                              )}
+                                              <span className={`flex-1 truncate text-[11px] ${isSolved ? 'text-green-600 dark:text-green-400' : 'text-foreground/80'}`}>
+                                                {challenge.title}
+                                              </span>
+                                              <span
+                                                className={`text-[8px] w-3 text-center ${
+                                                  challenge.difficulty === 'easy' ? 'text-green-500' : 'text-yellow-500'
+                                                }`}
+                                              >
+                                                {challenge.difficulty === 'easy' ? '●' : '◆'}
+                                              </span>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-bold truncate">{challenge.title}</h3>
-                            {isSolved && (
-                              <span className="px-1.5 py-0.5 text-[9px] uppercase rounded bg-green-500/20 text-green-500">
-                                ✓ Solved
-                              </span>
-                            )}
-                            <span
-                              className={`px-1.5 py-0.5 text-[9px] uppercase rounded ${
-                                challenge.difficulty === 'easy'
-                                  ? 'bg-green-500/20 text-green-500'
-                                  : 'bg-yellow-500/20 text-yellow-500'
-                              }`}
-                              data-testid="difficulty-badge"
-                            >
-                              {challenge.difficulty}
-                            </span>
-                          </div>
-                          <p className="text-xs text-muted-foreground line-clamp-1">
-                            {challenge.description}
-                          </p>
-                          <div className="flex items-center gap-2 mt-2 flex-wrap">
-                            {challenge.tags?.slice(0, 3).map((tag) => (
-                              <span
-                                key={tag}
-                                className="px-1.5 py-0.5 text-[9px] bg-primary/10 text-primary rounded font-mono"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                            <span className="text-[10px] text-muted-foreground ml-1">
-                              {challenge.testCases.length} tests • {challenge.timeLimit} min
-                            </span>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
-                      </div>
-                    </motion.div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -539,6 +726,11 @@ export default function CodingChallenge() {
                 >
                   {currentChallenge.difficulty}
                 </span>
+                <QuestionHistoryIcon 
+                  questionId={currentChallenge.id} 
+                  questionType="coding"
+                  size="sm"
+                />
                 <div className="flex items-center gap-1 text-sm bg-muted/30 px-2 py-1 rounded">
                   <Timer className="w-4 h-4 text-muted-foreground" />
                   <span className="font-mono font-bold" data-testid="timer">
@@ -1072,6 +1264,7 @@ export default function CodingChallenge() {
           </div>
         )}
       </div>
+      </DesktopSidebarWrapper>
     </>
   );
 }

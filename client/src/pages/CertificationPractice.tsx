@@ -15,8 +15,9 @@ import { useCredits } from '../context/CreditsContext';
 import { SEOHead } from '../components/SEOHead';
 import { QuestionPanel } from '../components/QuestionPanel';
 import { AnswerPanel } from '../components/AnswerPanel';
+import { ComingSoon } from '../components/ComingSoon';
 import { trackQuestionView } from '../hooks/use-analytics';
-import { useToast } from '../hooks/use-toast';
+import { useUnifiedToast } from '../hooks/use-unified-toast';
 import { useSwipe } from '../hooks/use-swipe';
 import { ChannelService } from '../services/api.service';
 import { loadTests, getSessionQuestions, TestQuestion, Test } from '../lib/tests';
@@ -58,6 +59,7 @@ export default function CertificationPractice() {
   const [mobileView, setMobileView] = useState<'question' | 'answer'>('question');
   const [showInfo, setShowInfo] = useState(false);
   const [markedQuestions, setMarkedQuestions] = useState<Set<string>>(new Set());
+  const [shouldRedirect, setShouldRedirect] = useState(false);
 
   // Test state
   const [availableTests, setAvailableTests] = useState<Test[]>([]);
@@ -72,7 +74,7 @@ export default function CertificationPractice() {
   const [passedCheckpoints, setPassedCheckpoints] = useState<Set<number>>(new Set());
   const [expandedResults, setExpandedResults] = useState<Set<number>>(new Set());
 
-  const { toast } = useToast();
+  const { toast } = useUnifiedToast();
   const { onQuestionSwipe, onQuestionView, balance, formatCredits, refreshBalance } = useCredits();
 
   const progressKey = `cert-progress-${certificationId}`;
@@ -327,6 +329,18 @@ export default function CertificationPractice() {
       startTest();
     }
   }, [currentIndex, isTestCheckpoint, isCheckpointPassed, showTest, loading, startTest]);
+
+  // Handle no questions case - show toast
+  useEffect(() => {
+    if (!loading && certification && questions.length === 0 && !error) {
+      toast({
+        title: "Content coming soon!",
+        description: `We're preparing questions for "${certification.name}". Check back soon!`,
+        variant: "warning",
+      });
+      setShouldRedirect(true);
+    }
+  }, [loading, certification, questions.length, error]);
 
   if (!certification) {
     return (
@@ -720,9 +734,12 @@ export default function CertificationPractice() {
             <div><p className="text-red-500 mb-2">{error}</p><button onClick={() => window.location.reload()} className="text-primary">Retry</button></div>
           </div>
         ) : totalQuestions === 0 ? (
-          <div className="flex items-center justify-center h-[60vh] text-center">
-            <div><Award className="w-12 h-12 mx-auto mb-2 text-muted-foreground/30" /><p>No questions yet</p></div>
-          </div>
+          <ComingSoon 
+            type="certification"
+            name={certification.name}
+            redirectTo="/certifications"
+            redirectDelay={5000}
+          />
         ) : (
           <>
             {/* Desktop - Optimized split layout */}

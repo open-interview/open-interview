@@ -24,17 +24,26 @@ const prefetchedChannels = new Set<string>();
 
 // Related channels mapping for smart prefetching
 const RELATED_CHANNELS: Record<string, string[]> = {
-  'system-design': ['backend', 'database', 'devops'],
-  'algorithms': ['frontend', 'backend', 'system-design'],
+  'system-design': ['backend', 'database', 'devops', 'data-structures'],
+  'algorithms': ['frontend', 'backend', 'system-design', 'data-structures', 'dynamic-programming'],
   'frontend': ['react-native', 'algorithms', 'backend'],
-  'backend': ['database', 'system-design', 'devops'],
+  'backend': ['database', 'system-design', 'devops', 'concurrency'],
   'database': ['backend', 'system-design', 'data-engineering'],
   'devops': ['kubernetes', 'aws', 'sre', 'terraform'],
   'kubernetes': ['devops', 'aws', 'sre'],
   'aws': ['devops', 'kubernetes', 'terraform'],
   'sre': ['devops', 'kubernetes', 'backend'],
   'generative-ai': ['machine-learning', 'llm-ops', 'prompt-engineering'],
-  'machine-learning': ['generative-ai', 'nlp', 'computer-vision'],
+  'machine-learning': ['generative-ai', 'nlp', 'computer-vision', 'math-logic'],
+  // New CS Fundamentals channels
+  'data-structures': ['algorithms', 'complexity-analysis', 'dynamic-programming'],
+  'complexity-analysis': ['algorithms', 'data-structures', 'dynamic-programming'],
+  'dynamic-programming': ['algorithms', 'data-structures', 'complexity-analysis'],
+  'bit-manipulation': ['algorithms', 'low-level', 'concurrency'],
+  'design-patterns': ['backend', 'system-design', 'concurrency'],
+  'concurrency': ['backend', 'operating-systems', 'low-level'],
+  'math-logic': ['algorithms', 'machine-learning', 'complexity-analysis'],
+  'low-level': ['operating-systems', 'concurrency', 'security'],
 };
 
 // Load questions for a channel from static JSON

@@ -1,6 +1,7 @@
 /**
  * Badge Context
  * Manages badge progress and unlock notifications globally
+ * Now uses unified notification system for display
  */
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
@@ -9,7 +10,6 @@ import {
 } from '../lib/badges';
 import { getAllQuestions, getQuestionById } from '../lib/questions-loader';
 import { useGlobalStats } from '../hooks/use-progress';
-import { BadgeUnlockCelebration } from '../components/BadgeUnlockCelebration';
 
 // Storage keys
 const SHOWN_BADGES_KEY = 'shown-badge-unlocks';
@@ -64,6 +64,8 @@ interface BadgeContextType {
   checkForNewUnlocks: () => void;
   totalUnlocked: number;
   resetShownBadges: () => void; // For testing
+  pendingBadges: Badge[];
+  consumePendingBadge: () => Badge | undefined;
 }
 
 const BadgeContext = createContext<BadgeContextType | null>(null);
@@ -71,7 +73,6 @@ const BadgeContext = createContext<BadgeContextType | null>(null);
 export function BadgeProvider({ children }: { children: ReactNode }) {
   const { stats } = useGlobalStats();
   const [badgeProgress, setBadgeProgress] = useState<BadgeProgress[]>([]);
-  const [unlockedBadge, setUnlockedBadge] = useState<Badge | null>(null);
   const [pendingBadges, setPendingBadges] = useState<Badge[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isReady, setIsReady] = useState(false);
@@ -218,21 +219,24 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
     checkForNewUnlocks();
   }, [badgeProgress, checkForNewUnlocks]);
 
-  // Show next pending badge
+  // Show next pending badge - now handled by unified notification system
   useEffect(() => {
-    if (!unlockedBadge && pendingBadges.length > 0) {
+    if (pendingBadges.length > 0) {
       const [next, ...rest] = pendingBadges;
-      setUnlockedBadge(next);
-      setPendingBadges(rest);
       markBadgeAsShown(next.id);
-      // Also add to notifications
+      // Also add to notifications history
       addBadgeNotification(next);
+      // Keep the badge in pending for unified system to consume
     }
-  }, [unlockedBadge, pendingBadges]);
+  }, [pendingBadges]);
 
-  const closeCelebration = useCallback(() => {
-    setUnlockedBadge(null);
-  }, []);
+  // Consume pending badge for unified notification system
+  const consumePendingBadge = useCallback(() => {
+    if (pendingBadges.length === 0) return undefined;
+    const [first, ...rest] = pendingBadges;
+    setPendingBadges(rest);
+    return first;
+  }, [pendingBadges]);
 
   // Reset shown badges (for testing)
   const resetShownBadges = useCallback(() => {
@@ -246,9 +250,15 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <BadgeContext.Provider value={{ badgeProgress, checkForNewUnlocks, totalUnlocked, resetShownBadges }}>
+    <BadgeContext.Provider value={{ 
+      badgeProgress, 
+      checkForNewUnlocks, 
+      totalUnlocked, 
+      resetShownBadges,
+      pendingBadges,
+      consumePendingBadge,
+    }}>
       {children}
-      <BadgeUnlockCelebration badge={unlockedBadge} onClose={closeCelebration} />
     </BadgeContext.Provider>
   );
 }

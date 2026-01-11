@@ -9,7 +9,7 @@ export { PatternSuggestions } from './PatternSuggestions';
 export { FormatPreview } from './FormatPreview';
 export { default as ConfigurationPanel } from './ConfigurationPanel';
 export { default as OverrideManager } from './OverrideManager';
-export { FormatMetrics } from './FormatMetrics';
+export { FormatMetricsDashboard as FormatMetrics } from './FormatMetrics';
 
 // Re-export types for convenience
 export type {

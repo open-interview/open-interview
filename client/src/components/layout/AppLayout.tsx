@@ -6,6 +6,8 @@
 import { useState, useEffect } from 'react';
 import { DesktopSidebar, MobileBottomNav, UnifiedMobileHeader } from './UnifiedNav';
 import { UnifiedSearch } from '../UnifiedSearch';
+import { useSidebar } from '../../context/SidebarContext';
+import { cn } from '../../lib/utils';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -23,6 +25,7 @@ export function AppLayout({
   showBackOnMobile = false 
 }: AppLayoutProps) {
   const [searchOpen, setSearchOpen] = useState(false);
+  const { isCollapsed } = useSidebar();
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -54,8 +57,11 @@ export function AppLayout({
         onSearchClick={() => setSearchOpen(true)}
       />
 
-      {/* Main content area */}
-      <div className="lg:pl-56 transition-all duration-300">
+      {/* Main content area - adjusts based on sidebar collapsed state */}
+      <div className={cn(
+        "transition-all duration-200",
+        isCollapsed ? "lg:pl-16" : "lg:pl-64"
+      )}>
         {/* Page content with bottom padding for mobile nav */}
         <main className={`
           pb-20 lg:pb-4

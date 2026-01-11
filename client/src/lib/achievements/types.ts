@@ -155,6 +155,18 @@ export interface UserMetrics {
   // XP and Level
   totalXP: number;
   level: number;
+  
+  // New metrics for unified system
+  srsReviews: number;
+  trainingSessions: number;
+  codingChallengesCompleted: number;
+  codingChallengesPassed: number;
+  certificationsPassed: number;
+  questionsToday: number;
+  questionsThisWeek: number;
+  channelsThisWeek: string[];
+  voiceInterviewsThisWeek: number;
+  quizCorrectToday: number;
 }
 
 // ============================================

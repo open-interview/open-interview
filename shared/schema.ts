@@ -28,6 +28,7 @@ export const questions = sqliteTable("questions", {
   voiceKeywords: text("voice_keywords"), // JSON array of mandatory keywords for voice interview
   voiceSuitable: integer("voice_suitable"), // 1 = suitable for voice interview, 0 = not suitable
   status: text("status").default("active"), // active, flagged, deleted
+  isNew: integer("is_new").default(1), // 1 = new (less than 7 days old), 0 = not new
   lastUpdated: text("last_updated"),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
 });
@@ -106,14 +107,62 @@ export const voiceSessions = sqliteTable("voice_sessions", {
   lastUpdated: text("last_updated"),
 });
 
+// Certifications table - stores all certification tracks
+export const certifications = sqliteTable("certifications", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  provider: text("provider").notNull(),
+  description: text("description").notNull(),
+  icon: text("icon").default("award"),
+  color: text("color").default("text-primary"),
+  difficulty: text("difficulty").notNull(), // beginner, intermediate, advanced, expert
+  category: text("category").notNull(), // cloud, devops, security, data, ai, development, management
+  estimatedHours: integer("estimated_hours").default(40),
+  examCode: text("exam_code"),
+  officialUrl: text("official_url"),
+  domains: text("domains"), // JSON array of exam domains with weights
+  channelMappings: text("channel_mappings"), // JSON array of channel mappings
+  tags: text("tags"), // JSON array of tags
+  prerequisites: text("prerequisites"), // JSON array of prerequisite cert IDs
+  status: text("status").default("active"), // active, draft, archived
+  questionCount: integer("question_count").default(0), // cached count of questions
+  passingScore: integer("passing_score").default(70), // percentage needed to pass
+  examDuration: integer("exam_duration").default(90), // minutes
+  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+  lastUpdated: text("last_updated"),
+});
+
+// Question history tracking - records all changes and events for each question
+export const questionHistory = sqliteTable("question_history", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  questionId: text("question_id").notNull(), // Can be question ID, test question ID, or coding challenge ID
+  questionType: text("question_type").notNull().default("question"), // 'question', 'test', 'coding'
+  eventType: text("event_type").notNull(), // 'created', 'updated', 'improved', 'flagged', 'verified', 'enriched', 'deleted', 'restored'
+  eventSource: text("event_source").notNull(), // 'bot', 'user', 'system', 'import'
+  sourceName: text("source_name"), // specific bot name or user identifier
+  changesSummary: text("changes_summary"), // human-readable summary of what changed
+  changedFields: text("changed_fields"), // JSON array of field names that changed
+  beforeSnapshot: text("before_snapshot"), // JSON snapshot of relevant fields before change
+  afterSnapshot: text("after_snapshot"), // JSON snapshot of relevant fields after change
+  reason: text("reason"), // why this change was made
+  metadata: text("metadata"), // JSON for additional context (e.g., improvement score, verification result)
+  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
 });
 
 export const insertQuestionSchema = createInsertSchema(questions);
+export const insertQuestionHistorySchema = createInsertSchema(questionHistory);
+export const insertCertificationSchema = createInsertSchema(certifications);
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertQuestion = z.infer<typeof insertQuestionSchema>;
 export type Question = typeof questions.$inferSelect;
+export type InsertQuestionHistory = z.infer<typeof insertQuestionHistorySchema>;
+export type QuestionHistory = typeof questionHistory.$inferSelect;
+export type InsertCertification = z.infer<typeof insertCertificationSchema>;
+export type Certification = typeof certifications.$inferSelect;

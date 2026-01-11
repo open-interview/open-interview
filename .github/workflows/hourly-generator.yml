@@ -1,0 +1,161 @@
+name: 🚀 Aggressive Question Generator
+
+# Runs every hour to aggressively generate questions for new/lagging channels
+# Prioritizes channels with fewer questions to balance content
+
+on:
+  schedule:
+    # Run every hour
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      count:
+        description: 'Number of questions to generate'
+        required: false
+        default: '10'
+      channel:
+        description: 'Specific channel (leave empty for auto-balance)'
+        required: false
+        default: ''
+      aggressive:
+        description: 'Aggressive mode (prioritize new channels)'
+        required: false
+        default: 'true'
+        type: boolean
+
+jobs:
+  generate:
+    name: 📝 Generate Questions
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: ./.github/actions/setup-bot
+      
+      - name: Get dynamic channel lists
+        id: channel-lists
+        run: |
+          NEW_CHANNELS=$(node script/get-channel-lists.js fundamentals)
+          echo "new_channels=$NEW_CHANNELS" >> $GITHUB_OUTPUT
+          echo "Fundamentals channels: $NEW_CHANNELS"
+      
+      - name: Determine target channels
+        id: channels
+        run: |
+          if [ -n "${{ inputs.channel }}" ]; then
+            echo "channels=${{ inputs.channel }}" >> $GITHUB_OUTPUT
+            echo "count=${{ inputs.count || '10' }}" >> $GITHUB_OUTPUT
+          elif [ "${{ inputs.aggressive }}" == "true" ] || [ "${{ github.event_name }}" == "schedule" ]; then
+            # Aggressive mode: prioritize new channels (dynamically loaded)
+            echo "channels=${{ steps.channel-lists.outputs.new_channels }}" >> $GITHUB_OUTPUT
+            echo "count=15" >> $GITHUB_OUTPUT
+          else
+            echo "channels=" >> $GITHUB_OUTPUT
+            echo "count=${{ inputs.count || '5' }}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run Aggressive Generator
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
+          INPUT_LIMIT: ${{ steps.channels.outputs.count }}
+          INPUT_CHANNEL: ${{ steps.channels.outputs.channels }}
+          BALANCE_CHANNELS: 'true'
+          AGGRESSIVE_MODE: 'true'
+        run: |
+          echo "🚀 Starting aggressive question generation..."
+          echo "Target channels: ${INPUT_CHANNEL:-auto-balanced}"
+          echo "Count: ${INPUT_LIMIT}"
+          
+          # Run generator with aggressive settings
+          node script/generate-question.js
+      
+      - name: Sync to Vector DB
+        if: success()
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+        run: |
+          echo "📊 Syncing new questions to vector DB..."
+          node script/sync-vector-db.js --mode=incremental || true
+      
+      - name: Generate Summary
+        if: always()
+        run: |
+          echo "## 🚀 Aggressive Generator Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Mode:** ${{ inputs.aggressive == 'true' && 'Aggressive' || 'Normal' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** ${{ steps.channels.outputs.channels || 'Auto-balanced' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Count:** ${{ steps.channels.outputs.count }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+
+  # Trigger deployment if questions were added
+  trigger-deploy:
+    name: 🚀 Trigger Deploy
+    needs: [generate, generate-certifications]
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger deploy workflow
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Only trigger deploy during business hours to avoid spam
+            const hour = new Date().getUTCHours();
+            if (hour >= 6 && hour <= 22) {
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'deploy-app.yml',
+                ref: 'main'
+              });
+              console.log('Triggered deploy workflow');
+            } else {
+              console.log('Skipping deploy during off-hours');
+            }
+
+  # Generate certification exam questions
+  generate-certifications:
+    name: 🎓 Generate Certification Questions
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: ./.github/actions/setup-bot
+      
+      - name: Get dynamic certification channels
+        id: cert-channels
+        run: |
+          CERT_CHANNELS=$(node script/get-channel-lists.js certifications)
+          echo "cert_channels=$CERT_CHANNELS" >> $GITHUB_OUTPUT
+          echo "Certification channels: $CERT_CHANNELS"
+      
+      - name: Run Certification Generator
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
+          CERT_CHANNELS: ${{ steps.cert-channels.outputs.cert_channels }}
+        run: |
+          echo "🎓 Starting certification question generation..."
+          echo "Target certifications: ${CERT_CHANNELS}"
+          
+          # Run certification question generator
+          node script/generate-certification-questions.js || true
+      
+      - name: Generate Summary
+        if: always()
+        run: |
+          echo "## 🎓 Certification Generator Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY

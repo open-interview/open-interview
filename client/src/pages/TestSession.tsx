@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
 import { QuestionFeedback } from '../components/QuestionFeedback';
+import { QuestionHistoryIcon } from '../components/unified/QuestionHistory';
+import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
 import {
   Test, TestQuestion, getTestForChannel, getSessionQuestions,
   calculateScore, saveTestAttempt, TestAttempt, getTestProgress,
@@ -279,6 +281,7 @@ export default function TestSession() {
         canonical={`https://open-interview.github.io/test/${channelId}`}
       />
 
+      <DesktopSidebarWrapper>
       <div className="min-h-screen bg-background text-foreground font-mono">
         {/* Ready State */}
         {sessionState === 'ready' && (
@@ -406,6 +409,14 @@ export default function TestSession() {
                       }`}>
                         {currentQuestion.difficulty}
                       </span>
+                      {/* History icon */}
+                      {currentQuestion.questionId && (
+                        <QuestionHistoryIcon 
+                          questionId={currentQuestion.questionId} 
+                          questionType="test"
+                          size="sm"
+                        />
+                      )}
                       {/* Feedback flag */}
                       {currentQuestion.questionId && (
                         <QuestionFeedback questionId={currentQuestion.questionId} className="ml-auto" />
@@ -786,6 +797,7 @@ export default function TestSession() {
           </div>
         )}
       </div>
+      </DesktopSidebarWrapper>
     </>
   );
 }
