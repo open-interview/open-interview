@@ -1,7 +1,7 @@
 name: 🤖 Content Pipeline
 
-# Unified content generation and quality assurance pipeline
-# Runs: Creator → Analysis → Verifier → Processor → Blog Generator
+# Comprehensive content generation and quality assurance pipeline
+# Runs: Creator → Analysis → Verifier → Processor → Content Generators
 # Schedule: Daily at 2:00 AM UTC
 #
 # Pipeline Flow:
@@ -10,7 +10,9 @@ name: 🤖 Content Pipeline
 # 3. Verifier Bot: Deep quality validation (legacy, runs in parallel)
 # 4. Processor Bot: Fixes all detected issues from work queue
 # 5. Blog Generator: Creates blog content from questions
-# 6. Monitor Update: Updates bot activity dashboard
+# 6. Voice Sessions: Generates micro-interview sessions for voice practice
+# 7. Interview Intelligence: Pre-computes cognitive patterns and mock interview sets
+# 8. Monitor Update: Updates bot activity dashboard and commits generated data
 
 on:
   schedule:
@@ -29,6 +31,8 @@ on:
           - verifier
           - processor
           - blog-generator
+          - voice-sessions
+          - interview-intelligence
       count:
         description: 'Number of items to process'
         required: false
@@ -152,9 +156,48 @@ jobs:
           OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
         run: node script/generate-blog.js
 
+  voice-sessions:
+    name: 🎤 Voice Sessions Generator
+    if: always() && (github.event_name == 'schedule' || inputs.stage == 'all' || inputs.stage == 'voice-sessions')
+    needs: [processor]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bot
+      - name: Generate Voice Interview Sessions
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+        run: |
+          echo "🎤 Generating voice interview sessions..."
+          node script/generate-voice-sessions.js --use-vector-db --limit=50
+
+  interview-intelligence:
+    name: 🧠 Interview Intelligence
+    if: always() && (github.event_name == 'schedule' || inputs.stage == 'all' || inputs.stage == 'interview-intelligence')
+    needs: [processor]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bot
+      - name: Generate Interview Intelligence Data
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
+        run: |
+          echo "🧠 Generating interview intelligence..."
+          node script/generate-interview-intelligence.js
+
   update-monitor:
     name: 📊 Update Monitor
-    needs: [blog-generator]
+    needs: [blog-generator, voice-sessions, interview-intelligence]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -172,12 +215,14 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add -f client/public/data/bot-monitor.json
-          git diff --staged --quiet || git commit -m "Update bot monitor data [skip ci]"
+          git add -f client/public/data/intelligence/ || true
+          git add -f client/public/data/voice-sessions/ || true
+          git diff --staged --quiet || git commit -m "Update bot monitor and generated data [skip ci]"
           git push
 
   summary:
     name: 📋 Summary
-    needs: [creator, analysis, verifier, processor, blog-generator, update-monitor]
+    needs: [creator, analysis, verifier, processor, blog-generator, voice-sessions, interview-intelligence, update-monitor]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -192,6 +237,8 @@ jobs:
           echo "| ✅ Verifier | ${{ needs.verifier.result == 'success' && '✅' || needs.verifier.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| ⚙️ Processor | ${{ needs.processor.result == 'success' && '✅' || needs.processor.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📰 Blog Generator | ${{ needs.blog-generator.result == 'success' && '✅' || needs.blog-generator.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🎤 Voice Sessions | ${{ needs.voice-sessions.result == 'success' && '✅' || needs.voice-sessions.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧠 Interview Intelligence | ${{ needs.interview-intelligence.result == 'success' && '✅' || needs.interview-intelligence.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📊 Monitor | ${{ needs.update-monitor.result == 'success' && '✅' || needs.update-monitor.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY

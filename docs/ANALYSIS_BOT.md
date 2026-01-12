@@ -265,6 +265,24 @@ Choose what to analyze:
 
 ## Troubleshooting
 
+### Channels/Certifications Showing with 0 Questions
+
+**Fixed in latest version**: All question counting queries now use `WHERE status != 'deleted'` to match the portal's display logic. Previously, the portal API counted all questions (including deleted/draft), while the analysis bot and generators only counted non-deleted questions, causing a mismatch.
+
+**What was changed:**
+- `/api/channels` endpoint now filters deleted questions
+- `/api/stats` endpoint now filters deleted questions  
+- `getChannelQuestionCounts()` in utils.js now filters deleted questions
+- `getSubChannelQuestionCounts()` in utils.js now filters deleted questions
+- `getChannelStats()` in utils.js now filters deleted questions
+- `getUnderservedChannels()` in utils.js now filters deleted questions
+
+This ensures consistency across:
+- Portal display
+- Analysis bot reporting
+- Question generation prioritization
+- Channel statistics
+
 ### No Issues Found
 - Check if questions are already high quality
 - Try different focus areas

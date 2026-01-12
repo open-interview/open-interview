@@ -22,6 +22,7 @@ import { addToQueue } from './shared/queue.js';
 import { startRun, completeRun, failRun, updateRunStats } from './shared/runs.js';
 import { runWithRetries, parseJson, generateUnifiedId, isDuplicateUnified } from '../utils.js';
 import ragService from '../ai/services/rag-enhanced-generation.js';
+import { checkDuplicateBeforeCreate } from '../ai/services/duplicate-prevention.js';
 
 const BOT_NAME = 'creator';
 const db = getDb();
@@ -261,7 +262,7 @@ async function enrichNode(state) {
 
 /**
  * Node 4: Validate Content
- * Checks quality and duplicates, applies Answer Formatting Standards
+ * Checks quality and duplicates using RAG, applies Answer Formatting Standards
  */
 async function validateNode(state) {
   console.log('\n✅ [Validate] Checking quality...');
@@ -269,12 +270,29 @@ async function validateNode(state) {
   const { content, contentType } = state;
   if (!content || state.error) return state;
   
-  // Check for duplicates
-  if (contentType === 'question' && content.question) {
-    const isDupe = await isDuplicateUnified(content.question);
-    if (isDupe) {
-      return { ...state, error: 'Duplicate question detected', skipSave: true };
-    }
+  // Check for duplicates using RAG-based duplicate prevention
+  console.log('   🔍 Running RAG-based duplicate detection...');
+  const duplicateCheck = await checkDuplicateBeforeCreate(content, contentType);
+  
+  if (duplicateCheck.isDuplicate) {
+    const dupeList = duplicateCheck.duplicates
+      .map(d => `${d.id} (${Math.round(d.similarity * 100)}%)`)
+      .join(', ');
+    
+    console.log(`   🚫 DUPLICATE DETECTED: ${duplicateCheck.message}`);
+    console.log(`      Similar to: ${dupeList}`);
+    
+    return { 
+      ...state, 
+      error: `Duplicate ${contentType} detected: ${duplicateCheck.message}`,
+      duplicateInfo: duplicateCheck,
+      skipSave: true 
+    };
+  }
+  
+  // Warn about similar content
+  if (duplicateCheck.similar.length > 0) {
+    console.log(`   ⚠️ Found ${duplicateCheck.similar.length} similar items - proceeding with caution`);
   }
   
   // Validate required fields

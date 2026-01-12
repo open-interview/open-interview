@@ -384,6 +384,7 @@ async function main() {
   
   try {
     // Get questions to analyze
+    // Note: This query matches the portal's filter to ensure consistency
     let query = `
       SELECT * FROM questions 
       WHERE status != 'deleted'

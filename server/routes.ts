@@ -33,7 +33,7 @@ export async function registerRoutes(
   app.get("/api/channels", async (_req, res) => {
     try {
       const result = await client.execute(
-        "SELECT channel, COUNT(*) as count FROM questions GROUP BY channel"
+        "SELECT channel, COUNT(*) as count FROM questions WHERE status != 'deleted' GROUP BY channel"
       );
       res.json(result.rows.map(r => ({ id: r.channel, questionCount: r.count })));
     } catch (error) {
@@ -126,7 +126,7 @@ export async function registerRoutes(
   app.get("/api/stats", async (_req, res) => {
     try {
       const result = await client.execute(
-        "SELECT channel, difficulty, COUNT(*) as count FROM questions GROUP BY channel, difficulty"
+        "SELECT channel, difficulty, COUNT(*) as count FROM questions WHERE status != 'deleted' GROUP BY channel, difficulty"
       );
 
       // Aggregate by channel

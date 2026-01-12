@@ -133,6 +133,7 @@ export async function getChannelQuestionCounts() {
   const result = await dbClient.execute(`
     SELECT channel, COUNT(*) as count 
     FROM questions 
+    WHERE status != 'deleted'
     GROUP BY channel
   `);
   
@@ -148,7 +149,7 @@ export async function getSubChannelQuestionCounts() {
   const result = await dbClient.execute(`
     SELECT channel, sub_channel, COUNT(*) as count 
     FROM questions 
-    WHERE sub_channel IS NOT NULL
+    WHERE sub_channel IS NOT NULL AND status != 'deleted'
     GROUP BY channel, sub_channel
   `);
   
@@ -438,6 +439,7 @@ export async function getChannelStats() {
       SUM(CASE WHEN companies IS NULL OR companies = '[]' THEN 1 ELSE 0 END) as missing_companies,
       MIN(last_updated) as oldest_update
     FROM questions
+    WHERE status != 'deleted'
     GROUP BY channel
     ORDER BY question_count ASC
   `);
@@ -450,6 +452,7 @@ export async function getUnderservedChannels(minQuestions = 10) {
     sql: `
       SELECT channel, COUNT(*) as count
       FROM questions
+      WHERE status != 'deleted'
       GROUP BY channel
       HAVING COUNT(*) < ?
       ORDER BY count ASC

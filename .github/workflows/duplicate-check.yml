@@ -1,0 +1,190 @@
+name: 🔍 Duplicate Detection
+
+on:
+  schedule:
+    # Run weekly on Sunday at midnight UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    inputs:
+      content_type:
+        description: 'Content type to check'
+        required: false
+        default: 'question'
+        type: choice
+        options:
+          - question
+          - challenge
+          - test
+          - certification
+      channel:
+        description: 'Specific channel (leave empty for all)'
+        required: false
+        default: ''
+      auto_fix:
+        description: 'Automatically fix duplicates'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  check-duplicates:
+    name: 🔍 Check for Duplicates
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Initialize Vector DB
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+        run: |
+          echo "Checking vector DB status..."
+          npm run vector:stats || echo "Vector DB not available, will use fallback"
+      
+      - name: Run Duplicate Detection
+        id: duplicate-check
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+        run: |
+          ARGS="--report"
+          
+          if [ -n "${{ inputs.content_type }}" ]; then
+            ARGS="$ARGS --type=${{ inputs.content_type }}"
+          fi
+          
+          if [ -n "${{ inputs.channel }}" ]; then
+            ARGS="$ARGS --channel=${{ inputs.channel }}"
+          fi
+          
+          if [ "${{ inputs.auto_fix }}" == "true" ]; then
+            ARGS="$ARGS --fix"
+          fi
+          
+          echo "Running: node script/check-duplicates.js $ARGS"
+          node script/check-duplicates.js $ARGS
+      
+      - name: Upload Duplicate Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: duplicate-report-${{ github.run_number }}
+          path: duplicate-report-*.json
+          retention-days: 30
+      
+      - name: Generate Summary
+        if: always()
+        run: |
+          echo "## 🔍 Duplicate Detection Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Content Type:** ${{ inputs.content_type || 'question' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Channel:** ${{ inputs.channel || 'all' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Auto-fix:** ${{ inputs.auto_fix }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f duplicate-report-*.json ]; then
+            echo "📄 Detailed report available in artifacts" >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - name: Create Issue if Duplicates Found
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const files = fs.readdirSync('.').filter(f => f.startsWith('duplicate-report-'));
+            
+            if (files.length > 0) {
+              const report = JSON.parse(fs.readFileSync(files[0], 'utf8'));
+              
+              if (report.duplicateCount > 0) {
+                await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title: `🚨 Duplicates Detected: ${report.duplicateCount} pairs found`,
+                  body: `## Duplicate Detection Report
+                  
+**Content Type:** ${report.contentType}
+**Channel:** ${report.channel || 'all'}
+**Total Scanned:** ${report.totalScanned}
+**Duplicate Pairs:** ${report.duplicateCount}
+
+### Action Required
+Review the duplicate pairs and decide whether to:
+1. Delete duplicates
+2. Merge content
+3. Mark as false positive
+
+### Duplicate Pairs
+${report.duplicatePairs.slice(0, 10).map(pair => 
+  `- \`${pair.original}\` has ${pair.duplicates.length} duplicate(s): ${pair.duplicates.map(d => `\`${d.id}\` (${d.similarity}%)`).join(', ')}`
+).join('\n')}
+
+${report.duplicatePairs.length > 10 ? `\n_...and ${report.duplicatePairs.length - 10} more pairs_` : ''}
+
+### How to Fix
+\`\`\`bash
+# Review duplicates
+npm run check:duplicates -- --type=${report.contentType}${report.channel ? ` --channel=${report.channel}` : ''}
+
+# Auto-fix (mark for deletion)
+npm run check:duplicates:fix -- --type=${report.contentType}${report.channel ? ` --channel=${report.channel}` : ''}
+\`\`\`
+
+---
+_Generated by [Duplicate Detection Workflow](${context.payload.repository.html_url}/actions/runs/${context.runId})_`,
+                  labels: ['duplicate', 'content-quality', 'automated']
+                });
+              }
+            }
+
+  # Run reconciliation after duplicate check
+  reconcile-after-cleanup:
+    name: 🔄 Reconcile Content
+    needs: check-duplicates
+    if: inputs.auto_fix == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Run Reconciliation
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+        run: |
+          echo "Running reconciliation after duplicate cleanup..."
+          npm run bot:reconcile -- --threshold=0.75
+      
+      - name: Summary
+        run: |
+          echo "## 🔄 Reconciliation Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Content has been reconciled after duplicate cleanup" >> $GITHUB_STEP_SUMMARY
