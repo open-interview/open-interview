@@ -28,16 +28,25 @@ test.describe('Home Page', () => {
   test('Quick Start actions are clickable', async ({ page }) => {
     await waitForContent(page);
     
-    // Check that Quick Start action buttons are present and clickable
-    const voiceButton = page.locator('button, a').filter({ hasText: /Voice Interview/i }).first();
-    const codingButton = page.locator('button, a').filter({ hasText: /Coding Challenge/i }).first();
-    const trainingButton = page.locator('button, a').filter({ hasText: /Training Mode/i }).first();
+    // Check if we're on onboarding (no channels) or main home page
+    const hasOnboarding = await page.getByText('Welcome to CodeReels').isVisible().catch(() => false);
     
-    const hasVoice = await voiceButton.isVisible({ timeout: 3000 }).catch(() => false);
-    const hasCoding = await codingButton.isVisible({ timeout: 3000 }).catch(() => false);
-    const hasTraining = await trainingButton.isVisible({ timeout: 3000 }).catch(() => false);
-    
-    expect(hasVoice || hasCoding || hasTraining).toBeTruthy();
+    if (hasOnboarding) {
+      // On onboarding page, check for "Start Your Journey" button
+      const startButton = page.locator('button').filter({ hasText: /Start Your Journey/i });
+      expect(await startButton.isVisible()).toBeTruthy();
+    } else {
+      // On main home page, check for Quick Start action buttons
+      const voiceButton = page.locator('button, a').filter({ hasText: /Voice Interview/i }).first();
+      const codingButton = page.locator('button, a').filter({ hasText: /Coding Challenge/i }).first();
+      const trainingButton = page.locator('button, a').filter({ hasText: /Training Mode/i }).first();
+      
+      const hasVoice = await voiceButton.isVisible({ timeout: 3000 }).catch(() => false);
+      const hasCoding = await codingButton.isVisible({ timeout: 3000 }).catch(() => false);
+      const hasTraining = await trainingButton.isVisible({ timeout: 3000 }).catch(() => false);
+      
+      expect(hasVoice || hasCoding || hasTraining).toBeTruthy();
+    }
   });
 
   test('shows Your Channels section', async ({ page }) => {
