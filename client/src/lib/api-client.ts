@@ -63,18 +63,11 @@ const channelCache = new Map<string, ChannelData>();
 const statsCache: { data: ChannelDetailedStats[] | null } = { data: null };
 
 async function fetchJson<T>(url: string): Promise<T> {
-  // Add cache busting parameter to force fresh data
-  // This helps users get latest data without manual cache clear
-  const cacheBuster = `v=${Date.now()}`;
+  // Simple cache busting - add build timestamp
+  const cacheBuster = `v=${BUILD_VERSION}`;
   const urlWithCache = url.includes('?') ? `${url}&${cacheBuster}` : `${url}?${cacheBuster}`;
   
-  const response = await fetch(urlWithCache, {
-    cache: 'no-cache', // Don't use browser cache
-    headers: {
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache'
-    }
-  });
+  const response = await fetch(urlWithCache);
   
   if (!response.ok) {
     throw new Error(`Failed to fetch ${url}: ${response.status}`);
@@ -82,29 +75,25 @@ async function fetchJson<T>(url: string): Promise<T> {
   return response.json();
 }
 
-// Load channel data (questions, subchannels, companies)
-/**
- * Sanitize answer field - remove MCQ JSON format if present
- * This handles any cached or old data that might have MCQ format
- */
+// Build version for cache busting (updated on each build)
+const BUILD_VERSION = '20260113';
+
+// Sanitize answer field if it contains MCQ JSON format
 function sanitizeAnswer(answer: string | undefined): string | undefined {
   if (!answer || typeof answer !== 'string') return answer;
   
-  // Check if answer contains MCQ JSON format
   const trimmed = answer.trim();
   if (trimmed.startsWith('[{')) {
     try {
       const parsed = JSON.parse(trimmed);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Extract correct answer text
         const correctOption = parsed.find((opt: any) => opt.isCorrect === true);
-        if (correctOption && correctOption.text) {
-          console.warn('⚠️ Sanitized MCQ format in answer field (old cached data)');
+        if (correctOption?.text) {
           return correctOption.text;
         }
       }
     } catch (e) {
-      // If parsing fails, return original
+      // Return original if parsing fails
     }
   }
   

@@ -8,12 +8,21 @@ Limited blog generation to only high-value technical channels: SRE, DevOps, AI, 
 
 Blogs are now **only** generated for:
 
+**Infrastructure & Platform Engineering:**
 1. **SRE** (`sre`) - Site Reliability Engineering
 2. **DevOps** (`devops`) - Development Operations
-3. **Generative AI** (`generative-ai`) - GenAI applications
-4. **LLM Ops** (`llm-ops`) - LLM operations and scaling
-5. **Machine Learning** (`machine-learning`) - ML engineering
-6. **Prompt Engineering** (`prompt-engineering`) - Prompt design
+3. **Kubernetes** (`kubernetes`) - Container orchestration
+4. **AWS** (`aws`) - Amazon Web Services
+5. **Terraform** (`terraform`) - Infrastructure as Code
+6. **Docker** (`docker`) - Containerization
+7. **Linux** (`linux`) - Linux systems
+8. **Unix** (`unix`) - Unix systems
+
+**AI & Machine Learning:**
+9. **Generative AI** (`generative-ai`) - GenAI applications
+10. **LLM Ops** (`llm-ops`) - LLM operations and scaling
+11. **Machine Learning** (`machine-learning`) - ML engineering
+12. **Prompt Engineering** (`prompt-engineering`) - Prompt design
 
 ## Implementation
 
@@ -26,6 +35,12 @@ Blogs are now **only** generated for:
 const ALLOWED_BLOG_CHANNELS = [
   'sre',
   'devops',
+  'kubernetes',
+  'aws',
+  'terraform',
+  'docker',
+  'linux',
+  'unix',
   'generative-ai',
   'llm-ops',
   'machine-learning',
@@ -68,11 +83,11 @@ async function getNextQuestionForBlog(limit = 1) {
 
 ### Why These Channels?
 
-✅ **High Demand**: Fastest-growing areas in tech
-✅ **Deep Expertise**: Complex topics benefit from blog format
-✅ **Production Focus**: Real-world impact on systems
-✅ **Career Value**: High-paying roles
-✅ **Content Gap**: Less generic content available
+✅ **High Demand**: Infrastructure, platform, and AI are the fastest-growing areas
+✅ **Production Focus**: These technologies power modern cloud-native systems
+✅ **Deep Expertise**: Complex operational topics benefit from blog format
+✅ **Career Value**: High-paying roles in infrastructure and AI engineering
+✅ **Content Gap**: Less production-level content available vs. tutorials
 
 ### Why Not Others?
 
@@ -125,7 +140,9 @@ Check which channels have questions available:
 sqlite3 questions.db "
   SELECT channel, COUNT(*) as count 
   FROM questions 
-  WHERE channel IN ('sre', 'devops', 'generative-ai', 'llm-ops', 'machine-learning', 'prompt-engineering')
+  WHERE channel IN ('sre', 'devops', 'kubernetes', 'aws', 'terraform', 
+                     'docker', 'linux', 'unix', 'generative-ai', 
+                     'llm-ops', 'machine-learning', 'prompt-engineering')
     AND explanation IS NOT NULL
     AND LENGTH(explanation) > 100
   GROUP BY channel 
@@ -166,6 +183,12 @@ To modify allowed channels, edit:
 const ALLOWED_BLOG_CHANNELS = [
   'sre',
   'devops',
+  'kubernetes',
+  'aws',
+  'terraform',
+  'docker',
+  'linux',
+  'unix',
   'generative-ai',
   'llm-ops',
   'machine-learning',
@@ -185,7 +208,9 @@ SELECT
   COUNT(*) as blog_count,
   ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM blog_posts), 1) as percentage
 FROM blog_posts
-WHERE channel IN ('sre', 'devops', 'generative-ai', 'llm-ops', 'machine-learning', 'prompt-engineering')
+WHERE channel IN ('sre', 'devops', 'kubernetes', 'aws', 'terraform', 
+                   'docker', 'linux', 'unix', 'generative-ai', 
+                   'llm-ops', 'machine-learning', 'prompt-engineering')
 GROUP BY channel
 ORDER BY blog_count DESC;
 ```
@@ -213,12 +238,25 @@ Criteria for addition:
 
 ## Summary
 
-Blog generation is now strategically limited to 6 high-value technical channels:
+Blog generation is now strategically limited to 12 high-value technical channels:
+
+**Infrastructure & Platform (8):**
 
 | Channel | Focus Area |
 |---------|-----------|
 | SRE | System reliability, incident response |
 | DevOps | CI/CD, infrastructure automation |
+| Kubernetes | Container orchestration, K8s ops |
+| AWS | Cloud services, architecture |
+| Terraform | Infrastructure as Code |
+| Docker | Containerization, image optimization |
+| Linux | System administration, performance |
+| Unix | Unix systems, shell scripting |
+
+**AI & Machine Learning (4):**
+
+| Channel | Focus Area |
+|---------|-----------|
 | Generative AI | GenAI applications and models |
 | LLM Ops | Operating LLMs in production |
 | Machine Learning | ML engineering and deployment |
@@ -226,4 +264,4 @@ Blog generation is now strategically limited to 6 high-value technical channels:
 
 This ensures deep, authoritative content in the most impactful technical domains.
 
-**Result**: Focused, production-oriented blogs in high-demand technical areas.
+**Result**: Focused, production-oriented blogs covering infrastructure, platform, and AI engineering.

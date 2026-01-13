@@ -200,9 +200,18 @@ The system ensures balanced coverage:
 
 ### Example Distribution
 ```
+Infrastructure & Platform:
 SRE:                 ████████░░ 15 blogs
 DevOps:              ██████████ 18 blogs
-Generative AI:       ████░░░░░░  8 blogs  ← Next priority
+Kubernetes:          ████░░░░░░  8 blogs  
+AWS:                 ██████░░░░ 12 blogs
+Terraform:           ███░░░░░░░  6 blogs
+Docker:              █████░░░░░ 10 blogs
+Linux:               ████████░░ 14 blogs
+Unix:                ██░░░░░░░░  4 blogs
+
+AI & Machine Learning:
+Generative AI:       ████░░░░░░  8 blogs
 LLM Ops:             ██████░░░░ 12 blogs
 Machine Learning:    ████████░░ 14 blogs
 Prompt Engineering:  ██░░░░░░░░  4 blogs  ← Highest priority
@@ -217,7 +226,9 @@ Track blog distribution by channel:
 sqlite3 questions.db "
   SELECT channel, COUNT(*) as count 
   FROM blog_posts 
-  WHERE channel IN ('sre', 'devops', 'generative-ai', 'llm-ops', 'machine-learning', 'prompt-engineering')
+  WHERE channel IN ('sre', 'devops', 'kubernetes', 'aws', 'terraform', 
+                     'docker', 'linux', 'unix', 'generative-ai', 
+                     'llm-ops', 'machine-learning', 'prompt-engineering')
   GROUP BY channel 
   ORDER BY count DESC
 "
@@ -314,8 +325,18 @@ A: Yes, as new high-value domains emerge (e.g., quantum computing, edge AI).
 ## Summary
 
 Blog generation is strategically limited to:
+
+**Infrastructure & Platform (8 channels):**
 - SRE
 - DevOps  
+- Kubernetes
+- AWS
+- Terraform
+- Docker
+- Linux
+- Unix
+
+**AI & Machine Learning (4 channels):**
 - Generative AI
 - LLM Ops
 - Machine Learning
