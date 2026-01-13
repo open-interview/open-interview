@@ -285,6 +285,20 @@ async function analyzeDuplicates(question) {
 // MAIN ANALYSIS PIPELINE
 // ============================================
 
+/**
+ * Normalize question data from database
+ */
+function normalizeQuestion(row) {
+  return {
+    ...row,
+    tags: row.tags ? JSON.parse(row.tags) : [],
+    companies: row.companies ? JSON.parse(row.companies) : [],
+    videos: row.videos ? JSON.parse(row.videos) : null,
+    voiceKeywords: row.voice_keywords ? JSON.parse(row.voice_keywords) : [],
+    voiceSuitable: row.voice_suitable === 1
+  };
+}
+
 async function analyzeQuestion(question) {
   console.log(`\n📊 Analyzing: ${question.id}`);
   console.log(`   Channel: ${question.channel}`);
@@ -415,21 +429,30 @@ async function main() {
     
     for (const question of questions) {
       try {
-        const issues = await analyzeQuestion(question);
+        // Normalize question data
+        const normalized = normalizeQuestion(question);
+        const issues = await analyzeQuestion(normalized);
         analyzed++;
         
         if (issues.length > 0) {
           issuesFound += issues.length;
-          const created = await createWorkItems(question, issues);
+          const created = await createWorkItems(normalized, issues);
           workItemsCreated += created;
           
           console.log(`   ✅ Created ${created} work items`);
           
           // Log analysis
-          await logAction(BOT_NAME, question.id, 'analyze', 'completed', {
-            issuesFound: issues.length,
-            workItemsCreated: created,
-            issues: issues.map(i => i.type)
+          await logAction({
+            botName: BOT_NAME,
+            itemId: question.id,
+            action: 'analyze',
+            itemType: 'question',
+            reason: JSON.stringify({
+              status: 'completed',
+              issuesFound: issues.length,
+              workItemsCreated: created,
+              issues: issues.map(i => i.type)
+            })
           });
         } else {
           console.log(`   ✓ No issues found`);
@@ -440,17 +463,33 @@ async function main() {
         
       } catch (e) {
         console.log(`   ❌ Analysis failed: ${e.message}`);
-        await logAction(BOT_NAME, question.id, 'analyze', 'failed', { error: e.message });
+        await logAction({
+          botName: BOT_NAME,
+          itemId: question.id,
+          action: 'analyze',
+          itemType: 'question',
+          reason: JSON.stringify({ status: 'failed', error: e.message })
+        });
       }
     }
     
-    await updateRunStats(runId, {
+    await updateRunStats(runId.id, {
+      processed: analyzed,
+      created: workItemsCreated,
+      updated: 0,
+      deleted: 0
+    });
+    
+    await completeRun(runId.id, {
+      processed: analyzed,
+      created: workItemsCreated,
+      updated: 0,
+      deleted: 0
+    }, {
       questionsAnalyzed: analyzed,
       issuesFound,
       workItemsCreated
     });
-    
-    await completeRun(runId);
     
     console.log('\n=== Summary ===');
     console.log(`Questions analyzed: ${analyzed}`);
@@ -460,7 +499,7 @@ async function main() {
     
   } catch (e) {
     console.error('Fatal error:', e);
-    await failRun(runId, e.message);
+    await failRun(runId.id, e.message);
     process.exit(1);
   }
 }
