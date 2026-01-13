@@ -183,10 +183,10 @@ Added support for iOS safe areas:
 ### Build Process
 ```bash
 # Build for production
-npm run build
+pnpm run build
 
 # Preview build locally
-npm run preview
+pnpm run preview
 
 # Deploy to GitHub Pages
 git push origin main

@@ -689,5 +689,176 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================
+  // USER SESSION ENDPOINTS (for resume feature)
+  // ============================================
+
+  // Get all active sessions for a user
+  app.get("/api/user/sessions", async (_req, res) => {
+    try {
+      const result = await client.execute(
+        "SELECT * FROM user_sessions WHERE status = 'active' ORDER BY last_accessed_at DESC"
+      );
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching user sessions:", error);
+      res.status(500).json({ error: "Failed to fetch sessions" });
+    }
+  });
+
+  // Get a specific session
+  app.get("/api/user/sessions/:sessionId", async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const result = await client.execute({
+        sql: "SELECT * FROM user_sessions WHERE id = ?",
+        args: [sessionId]
+      });
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error("Error fetching session:", error);
+      res.status(500).json({ error: "Failed to fetch session" });
+    }
+  });
+
+  // Create or update a session
+  app.post("/api/user/sessions", async (req, res) => {
+    try {
+      const {
+        sessionKey,
+        sessionType,
+        title,
+        subtitle,
+        channelId,
+        certificationId,
+        progress,
+        totalItems,
+        completedItems,
+        sessionData
+      } = req.body;
+
+      // Check if session already exists
+      const existing = await client.execute({
+        sql: "SELECT id FROM user_sessions WHERE session_key = ? AND status = 'active'",
+        args: [sessionKey]
+      });
+
+      if (existing.rows.length > 0) {
+        // Update existing session
+        const sessionId = existing.rows[0].id;
+        await client.execute({
+          sql: `UPDATE user_sessions 
+                SET title = ?, subtitle = ?, progress = ?, completed_items = ?, 
+                    session_data = ?, last_accessed_at = ?
+                WHERE id = ?`,
+          args: [
+            title,
+            subtitle || null,
+            progress,
+            completedItems,
+            JSON.stringify(sessionData),
+            new Date().toISOString(),
+            sessionId
+          ]
+        });
+        res.json({ id: sessionId, updated: true });
+      } else {
+        // Create new session
+        const sessionId = crypto.randomUUID();
+        await client.execute({
+          sql: `INSERT INTO user_sessions 
+                (id, session_key, session_type, title, subtitle, channel_id, certification_id, 
+                 progress, total_items, completed_items, session_data, started_at, last_accessed_at, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [
+            sessionId,
+            sessionKey,
+            sessionType,
+            title,
+            subtitle || null,
+            channelId || null,
+            certificationId || null,
+            progress,
+            totalItems,
+            completedItems,
+            JSON.stringify(sessionData),
+            new Date().toISOString(),
+            new Date().toISOString(),
+            'active'
+          ]
+        });
+        res.json({ id: sessionId, created: true });
+      }
+    } catch (error) {
+      console.error("Error saving session:", error);
+      res.status(500).json({ error: "Failed to save session" });
+    }
+  });
+
+  // Update session progress
+  app.put("/api/user/sessions/:sessionId", async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const { progress, completedItems, sessionData } = req.body;
+
+      await client.execute({
+        sql: `UPDATE user_sessions 
+              SET progress = ?, completed_items = ?, session_data = ?, last_accessed_at = ?
+              WHERE id = ?`,
+        args: [
+          progress,
+          completedItems,
+          JSON.stringify(sessionData),
+          new Date().toISOString(),
+          sessionId
+        ]
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating session:", error);
+      res.status(500).json({ error: "Failed to update session" });
+    }
+  });
+
+  // Delete/abandon a session
+  app.delete("/api/user/sessions/:sessionId", async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      
+      await client.execute({
+        sql: "UPDATE user_sessions SET status = 'abandoned' WHERE id = ?",
+        args: [sessionId]
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting session:", error);
+      res.status(500).json({ error: "Failed to delete session" });
+    }
+  });
+
+  // Complete a session
+  app.post("/api/user/sessions/:sessionId/complete", async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      
+      await client.execute({
+        sql: "UPDATE user_sessions SET status = 'completed', completed_at = ? WHERE id = ?",
+        args: [new Date().toISOString(), sessionId]
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error completing session:", error);
+      res.status(500).json({ error: "Failed to complete session" });
+    }
+  });
+
   return httpServer;
 }

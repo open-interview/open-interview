@@ -211,10 +211,10 @@ import {
 
 ```bash
 # Check diagnostics
-npm run build
+pnpm run build
 
 # Development
-npm run dev
+pnpm run dev
 
 # Type check
 npx tsc --noEmit

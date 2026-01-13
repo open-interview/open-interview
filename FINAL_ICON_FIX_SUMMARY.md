@@ -292,12 +292,12 @@ open test-results/voice-interview-icon-mobile.png
 
 ### Build Project
 ```bash
-npm run build
+pnpm run build
 ```
 
 ### Check Diagnostics
 ```bash
-npm run type-check
+pnpm run type-check
 ```
 
 ---

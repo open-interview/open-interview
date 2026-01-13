@@ -45,7 +45,7 @@ git clone https://github.com/YOUR_USERNAME/code-reels.git
 cd code-reels
 
 # Install dependencies
-pnpm install
+ppnpm install
 
 # Create a feature branch
 git checkout -b feature/your-feature-name
@@ -55,13 +55,13 @@ git checkout -b feature/your-feature-name
 
 ```bash
 # Start development server
-pnpm run dev
+ppnpm run dev
 
 # Type checking
-pnpm run check
+ppnpm run check
 
 # Build for production
-pnpm run build
+ppnpm run build
 ```
 
 ## Adding Questions
@@ -166,7 +166,7 @@ git commit -m "refactor(hooks): simplify progress tracking"
 
 2. **Run checks**
    ```bash
-   pnpm run check
+   ppnpm run check
    ```
 
 3. **Test your changes**

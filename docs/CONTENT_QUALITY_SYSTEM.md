@@ -199,7 +199,7 @@ async function updateQuestion(questionId, updates) {
 
 ```bash
 # Check for duplicates
-npm run check:duplicates
+pnpm run check:duplicates
 
 # Check specific channel
 node script/check-duplicates.js --channel=aws
@@ -211,7 +211,7 @@ node script/check-duplicates.js --type=challenge
 node script/check-duplicates.js --report
 
 # Auto-fix duplicates
-npm run check:duplicates:fix
+pnpm run check:duplicates:fix
 ```
 
 ### For CI/CD Integration
@@ -343,7 +343,7 @@ ORDER BY date DESC, bot_name;
 
 **Solutions:**
 1. Lower similarity thresholds
-2. Sync vector DB: `npm run vector:sync`
+2. Sync vector DB: `pnpm run vector:sync`
 3. Run manual duplicate scan
 4. Check vector DB connection
 
@@ -372,13 +372,13 @@ ORDER BY date DESC, bot_name;
 
 ```bash
 # Rebuild vector DB index
-npm run vector:sync -- --force
+pnpm run vector:sync -- --force
 
 # Check collection stats
-npm run vector:stats
+pnpm run vector:stats
 
 # Optimize for specific channel
-npm run vector:sync -- --channel=system-design
+pnpm run vector:sync -- --channel=system-design
 ```
 
 ### Batch Processing

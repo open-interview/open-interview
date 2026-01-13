@@ -21,7 +21,7 @@ This document shows a complete example of how the LinkedIn Poll workflow works.
 
 ### 1. Script Fetches Question
 ```bash
-$ npm run linkedin:poll:dry
+$ pnpm run linkedin:poll:dry
 
 🔍 Fetching question from database...
    ✅ Found question: q-123
@@ -183,7 +183,7 @@ Result: Shows what would be posted but doesn't actually post
 ```bash
 $ export LINKEDIN_ACCESS_TOKEN="your_token"
 $ export LINKEDIN_PERSON_URN="urn:li:person:XXXXXXXX"
-$ npm run linkedin:poll:dry
+$ pnpm run linkedin:poll:dry
 
 🔍 Fetching question from database...
    ✅ Found question: q-789
@@ -216,7 +216,7 @@ Options:
 ### Post Real Poll
 
 ```bash
-$ npm run linkedin:poll
+$ pnpm run linkedin:poll
 
 # Same output as above, but actually posts to LinkedIn
 ✅ Successfully published poll to LinkedIn!

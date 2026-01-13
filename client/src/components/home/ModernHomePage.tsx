@@ -13,6 +13,7 @@ import { useCredits } from '../../context/CreditsContext';
 import { useAchievementContext } from '../../context/AchievementContext';
 import { ProgressStorage } from '../../services/storage.service';
 import { allChannelsConfig } from '../../lib/channels-config';
+import { ResumeSection } from './ResumeSection';
 import {
   Play, Target, Flame, Trophy, Zap, ChevronRight, Plus,
   BookOpen, Mic, Code, Brain, Star, TrendingUp, Clock,
@@ -114,6 +115,9 @@ export function ModernHomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
           {/* Primary Column */}
           <div className="lg:col-span-8 space-y-6 w-full min-w-0">
+            {/* Resume Section - Continue where you left off */}
+            <ResumeSection />
+            
             {/* Quick Actions */}
             <QuickActionsGrid onNavigate={setLocation} />
             

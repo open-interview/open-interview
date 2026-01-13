@@ -149,6 +149,26 @@ export const questionHistory = sqliteTable("question_history", {
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
 });
 
+// User sessions - track active/in-progress sessions for resume functionality
+export const userSessions = sqliteTable("user_sessions", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id"), // Optional - for future user auth
+  sessionType: text("session_type").notNull(), // 'test', 'voice-interview', 'certification', 'channel'
+  sessionKey: text("session_key").notNull(), // Unique key for the session (e.g., 'test-session-aws')
+  title: text("title").notNull(),
+  subtitle: text("subtitle"),
+  channelId: text("channel_id"),
+  certificationId: text("certification_id"),
+  progress: integer("progress").default(0), // 0-100
+  totalItems: integer("total_items").notNull(),
+  completedItems: integer("completed_items").default(0),
+  sessionData: text("session_data"), // JSON blob with session-specific data
+  startedAt: text("started_at").$defaultFn(() => new Date().toISOString()),
+  lastAccessedAt: text("last_accessed_at").$defaultFn(() => new Date().toISOString()),
+  completedAt: text("completed_at"),
+  status: text("status").default("active"), // 'active', 'completed', 'abandoned'
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -157,6 +177,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export const insertQuestionSchema = createInsertSchema(questions);
 export const insertQuestionHistorySchema = createInsertSchema(questionHistory);
 export const insertCertificationSchema = createInsertSchema(certifications);
+export const insertUserSessionSchema = createInsertSchema(userSessions);
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -166,3 +187,5 @@ export type InsertQuestionHistory = z.infer<typeof insertQuestionHistorySchema>;
 export type QuestionHistory = typeof questionHistory.$inferSelect;
 export type InsertCertification = z.infer<typeof insertCertificationSchema>;
 export type Certification = typeof certifications.$inferSelect;
+export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
+export type UserSession = typeof userSessions.$inferSelect;

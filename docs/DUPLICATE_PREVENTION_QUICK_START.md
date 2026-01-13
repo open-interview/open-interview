@@ -18,19 +18,19 @@ if (check.isDuplicate) {
 
 ```bash
 # Check for duplicates
-npm run check:duplicates
+ppnpm run check:duplicates
 
 # Check specific channel
 node script/check-duplicates.js --channel=aws
 
 # Auto-fix duplicates
-npm run check:duplicates:fix
+ppnpm run check:duplicates:fix
 
 # Run reconciliation
-npm run bot:reconcile
+ppnpm run bot:reconcile
 
 # Sync vector DB
-npm run vector:sync
+ppnpm run vector:sync
 ```
 
 ## Integration Examples
@@ -163,7 +163,7 @@ switch (check.recommendation) {
 
 ### Basic Check
 ```bash
-npm run check:duplicates
+pnpm run check:duplicates
 ```
 
 ### With Options
@@ -181,7 +181,7 @@ node script/check-duplicates.js --limit=100
 node script/check-duplicates.js --report
 
 # Auto-fix
-npm run check:duplicates:fix
+pnpm run check:duplicates:fix
 ```
 
 ## GitHub Actions
@@ -203,7 +203,7 @@ npm run check:duplicates:fix
 **Error:** "Vector DB search failed"
 **Solution:** System automatically falls back to text search. To fix:
 ```bash
-npm run vector:sync
+pnpm run vector:sync
 ```
 
 ### Too Many False Positives
@@ -220,8 +220,8 @@ const THRESHOLDS = {
 ### Duplicates Slipping Through
 **Solution:** 
 1. Lower thresholds
-2. Sync vector DB: `npm run vector:sync`
-3. Run manual scan: `npm run check:duplicates`
+2. Sync vector DB: `pnpm run vector:sync`
+3. Run manual scan: `pnpm run check:duplicates`
 
 ## Monitoring
 

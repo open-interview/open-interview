@@ -162,7 +162,7 @@ Fully automated content generation and quality control:
 ```bash
 git clone https://github.com/open-interview/open-interview.git
 cd open-interview
-pnpm install
+ppnpm install
 pnpm dev
 ```
 

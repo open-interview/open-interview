@@ -456,9 +456,9 @@ export function ExtremeQuestionViewer({ channelId, questionId }: ExtremeQuestion
         {/* Main Content - Desktop: Split View, Mobile: Tabs */}
         <div className="flex-1 flex overflow-hidden isolate" data-testid="reels-content">
           {/* Desktop Split View */}
-          <div className="hidden lg:flex flex-1">
+          <div className="hidden lg:flex flex-1 overflow-hidden">
             {/* Question Panel */}
-            <div className="w-1/2 border-r border-border overflow-hidden">
+            <div className="w-1/2 border-r border-border overflow-hidden flex-shrink-0">
               <ExtremeQuestionPanel
                 question={currentQuestion}
                 questionNumber={currentIndex + 1}
@@ -469,7 +469,7 @@ export function ExtremeQuestionViewer({ channelId, questionId }: ExtremeQuestion
               />
             </div>
             {/* Answer Panel */}
-            <div className="w-1/2 overflow-hidden">
+            <div className="w-1/2 overflow-hidden flex-shrink-0">
               <ExtremeAnswerPanel question={currentQuestion} isCompleted={isCompleted} />
             </div>
           </div>

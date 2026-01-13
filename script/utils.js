@@ -190,64 +190,115 @@ export async function getPrioritizedChannels(channelList, limit = 10) {
 
 // Save/update a question in the database
 export async function saveQuestion(question) {
+  // CRITICAL: Validate before saving to database
+  // Import validation module dynamically to avoid circular dependencies
+  const { validateBeforeInsert, sanitizeQuestion } = await import('./bots/shared/validation.js');
+  
+  try {
+    validateBeforeInsert(question, 'utils.saveQuestion');
+  } catch (error) {
+    console.error(`\n❌ VALIDATION FAILED - Question rejected by saveQuestion:`);
+    console.error(error.message);
+    throw error;
+  }
+  
+  // Sanitize to ensure no JSON in answer field
+  const sanitized = sanitizeQuestion(question);
+  
+  if (sanitized._sanitized) {
+    console.warn(`⚠️  Question ${question.id} had JSON in answer field - sanitized automatically`);
+  }
+  
   await dbClient.execute({
     sql: `INSERT OR REPLACE INTO questions 
           (id, question, answer, explanation, diagram, difficulty, tags, channel, sub_channel, source_url, videos, companies, eli5, tldr, last_updated, created_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM questions WHERE id = ?), ?))`,
     args: [
-      question.id,
-      question.question,
-      question.answer,
-      question.explanation,
-      question.diagram || null,
-      question.difficulty || 'intermediate',
-      question.tags ? JSON.stringify(question.tags) : null,
-      question.channel,
-      question.subChannel,
-      question.sourceUrl || null,
-      question.videos ? JSON.stringify(question.videos) : null,
-      question.companies ? JSON.stringify(question.companies) : null,
-      question.eli5 || null,
-      question.tldr || null,
-      question.lastUpdated || new Date().toISOString(),
-      question.id,
+      sanitized.id,
+      sanitized.question,
+      sanitized.answer,
+      sanitized.explanation,
+      sanitized.diagram || null,
+      sanitized.difficulty || 'intermediate',
+      sanitized.tags ? JSON.stringify(sanitized.tags) : null,
+      sanitized.channel,
+      sanitized.subChannel,
+      sanitized.sourceUrl || null,
+      sanitized.videos ? JSON.stringify(sanitized.videos) : null,
+      sanitized.companies ? JSON.stringify(sanitized.companies) : null,
+      sanitized.eli5 || null,
+      sanitized.tldr || null,
+      sanitized.lastUpdated || new Date().toISOString(),
+      sanitized.id,
       new Date().toISOString()
     ]
   });
+  
+  console.log(`✅ Question ${sanitized.id} validated and saved successfully`);
 }
 
 // Save all questions (batch update)
 export async function saveUnifiedQuestions(questions) {
+  // CRITICAL: Validate all questions before batch save
+  const { validateBeforeInsert, sanitizeQuestion } = await import('./bots/shared/validation.js');
+  
   const batch = [];
+  let validCount = 0;
+  let invalidCount = 0;
+  
   for (const [id, q] of Object.entries(questions)) {
-    batch.push({
-      sql: `INSERT OR REPLACE INTO questions 
-            (id, question, answer, explanation, diagram, difficulty, tags, channel, sub_channel, source_url, videos, companies, eli5, tldr, last_updated)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [
-        id,
-        q.question,
-        q.answer,
-        q.explanation,
-        q.diagram || null,
-        q.difficulty || 'intermediate',
-        q.tags ? JSON.stringify(q.tags) : null,
-        q.channel,
-        q.subChannel,
-        q.sourceUrl || null,
-        q.videos ? JSON.stringify(q.videos) : null,
-        q.companies ? JSON.stringify(q.companies) : null,
-        q.eli5 || null,
-        q.tldr || null,
-        q.lastUpdated || new Date().toISOString()
-      ]
-    });
+    try {
+      // Validate each question
+      validateBeforeInsert(q, 'utils.saveUnifiedQuestions');
+      
+      // Sanitize
+      const sanitized = sanitizeQuestion(q);
+      
+      if (sanitized._sanitized) {
+        console.warn(`⚠️  Question ${id} had JSON in answer field - sanitized automatically`);
+      }
+      
+      batch.push({
+        sql: `INSERT OR REPLACE INTO questions 
+              (id, question, answer, explanation, diagram, difficulty, tags, channel, sub_channel, source_url, videos, companies, eli5, tldr, last_updated)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          id,
+          sanitized.question,
+          sanitized.answer,
+          sanitized.explanation,
+          sanitized.diagram || null,
+          sanitized.difficulty || 'intermediate',
+          sanitized.tags ? JSON.stringify(sanitized.tags) : null,
+          sanitized.channel,
+          sanitized.subChannel,
+          sanitized.sourceUrl || null,
+          sanitized.videos ? JSON.stringify(sanitized.videos) : null,
+          sanitized.companies ? JSON.stringify(sanitized.companies) : null,
+          sanitized.eli5 || null,
+          sanitized.tldr || null,
+          sanitized.lastUpdated || new Date().toISOString()
+        ]
+      });
+      
+      validCount++;
+    } catch (error) {
+      console.error(`❌ Validation failed for question ${id}: ${error.message}`);
+      invalidCount++;
+      // Skip this question - don't add to batch
+    }
   }
+  
+  console.log(`\n📊 Batch validation results:`);
+  console.log(`   ✅ Valid: ${validCount}`);
+  console.log(`   ❌ Invalid (skipped): ${invalidCount}`);
   
   // Execute in batches of 50
   for (let i = 0; i < batch.length; i += 50) {
     await dbClient.batch(batch.slice(i, i + 50));
   }
+  
+  console.log(`✅ Saved ${validCount} validated questions to database`);
 }
 
 // Load channel mappings from database

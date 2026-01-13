@@ -456,7 +456,7 @@ jobs:
           node-version: 18
       
       - name: Install dependencies
-        run: pnpm install
+        run: ppnpm install
       
       - name: Install Playwright
         run: pnpm exec playwright install --with-deps

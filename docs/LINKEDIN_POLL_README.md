@@ -17,7 +17,7 @@ This feature allows you to:
 
 ```bash
 # Test your setup
-npm run linkedin:poll:test
+pnpm run linkedin:poll:test
 
 # If you see errors, follow the setup guide
 # docs/LINKEDIN_POLL_SETUP.md
@@ -27,14 +27,14 @@ npm run linkedin:poll:test
 
 ```bash
 # Test without posting to LinkedIn
-npm run linkedin:poll:dry
+pnpm run linkedin:poll:dry
 ```
 
 ### 3. Post (30 seconds)
 
 ```bash
 # Post a random question as a poll
-npm run linkedin:poll
+pnpm run linkedin:poll
 ```
 
 That's it! 🎉
@@ -54,25 +54,25 @@ That's it! 🎉
 
 ```bash
 # Test setup
-npm run linkedin:poll:test
+pnpm run linkedin:poll:test
 
 # Test without posting
-npm run linkedin:poll:dry
+pnpm run linkedin:poll:dry
 
 # Post random question
-npm run linkedin:poll
+pnpm run linkedin:poll
 
 # Post specific question
-QUESTION_ID=q-123 npm run linkedin:poll
+QUESTION_ID=q-123 pnpm run linkedin:poll
 
 # Filter by channel
-CHANNEL=JavaScript npm run linkedin:poll
+CHANNEL=JavaScript pnpm run linkedin:poll
 
 # Filter by difficulty
-DIFFICULTY=intermediate npm run linkedin:poll
+DIFFICULTY=intermediate pnpm run linkedin:poll
 
 # Custom poll duration (48 hours)
-POLL_DURATION=48 npm run linkedin:poll
+POLL_DURATION=48 pnpm run linkedin:poll
 ```
 
 ### GitHub Actions
@@ -163,7 +163,7 @@ schedule:
 
 | Issue | Solution |
 |-------|----------|
-| Setup test fails | Run `npm run linkedin:poll:test` and follow instructions |
+| Setup test fails | Run `pnpm run linkedin:poll:test` and follow instructions |
 | No questions found | Check database has active questions |
 | Not suitable for poll | Question needs multiple choice format |
 | Token expired | Get new token (expires after 60 days) |
@@ -171,7 +171,7 @@ schedule:
 
 ## 💡 Tips
 
-1. **Test First:** Always use `npm run linkedin:poll:dry` before posting
+1. **Test First:** Always use `pnpm run linkedin:poll:dry` before posting
 2. **Check Format:** Ensure questions have multiple choice options
 3. **Timing:** Post during business hours for max engagement
 4. **Frequency:** Once per day is optimal
@@ -228,16 +228,16 @@ After posting polls, monitor:
 
 ## 🚀 Next Steps
 
-1. ✅ Run setup test: `npm run linkedin:poll:test`
-2. ✅ Test with dry run: `npm run linkedin:poll:dry`
-3. ✅ Post your first poll: `npm run linkedin:poll`
+1. ✅ Run setup test: `pnpm run linkedin:poll:test`
+2. ✅ Test with dry run: `pnpm run linkedin:poll:dry`
+3. ✅ Post your first poll: `pnpm run linkedin:poll`
 4. ✅ Enable scheduled posting in GitHub Actions
 5. ✅ Monitor engagement and adjust strategy
 
 ## 📞 Support
 
 Need help?
-1. Run `npm run linkedin:poll:test` to diagnose issues
+1. Run `pnpm run linkedin:poll:test` to diagnose issues
 2. Check [Setup Guide](./LINKEDIN_POLL_SETUP.md)
 3. Review [Quick Reference](./LINKEDIN_POLL_QUICK_REFERENCE.md)
 4. See [Examples](./LINKEDIN_POLL_EXAMPLE.md)

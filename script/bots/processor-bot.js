@@ -20,6 +20,7 @@ import { logAction } from './shared/ledger.js';
 import { getNextWorkItem, completeWorkItem, failWorkItem, getQueueStats } from './shared/queue.js';
 import { startRun, completeRun, failRun, updateRunStats } from './shared/runs.js';
 import { runWithRetries, parseJson, validateYouTubeVideos, normalizeCompanies } from '../utils.js';
+import { validateBeforeInsert, sanitizeQuestion } from './shared/validation.js';
 
 const BOT_NAME = 'processor';
 const db = getDb();
@@ -1110,6 +1111,22 @@ async function fetchItem(type, id) {
 
 async function saveItem(type, item) {
   if (type === 'question') {
+    // CRITICAL: Validate before updating database
+    try {
+      validateBeforeInsert(item, BOT_NAME);
+    } catch (error) {
+      console.error(`\n❌ VALIDATION FAILED - Question update rejected by ${BOT_NAME}:`);
+      console.error(error.message);
+      throw error;
+    }
+    
+    // Sanitize to ensure no JSON in answer field
+    const sanitized = sanitizeQuestion(item);
+    
+    if (sanitized._sanitized) {
+      console.warn(`⚠️  Question ${item.id} had JSON in answer field - sanitized automatically`);
+    }
+    
     await db.execute({
       sql: `UPDATE questions SET 
             question = ?, answer = ?, explanation = ?, diagram = ?,
@@ -1118,16 +1135,16 @@ async function saveItem(type, item) {
             status = ?, last_updated = ?
             WHERE id = ?`,
       args: [
-        item.question,
-        item.answer,
-        item.explanation,
-        item.diagram || null,
-        item.tags ? JSON.stringify(item.tags) : null,
-        item.videos ? JSON.stringify(item.videos) : null,
-        item.companies ? JSON.stringify(item.companies) : null,
-        item.voiceKeywords ? JSON.stringify(item.voiceKeywords) : null,
-        item.voiceSuitable ? 1 : 0,
-        item.status || 'active',
+        sanitized.question,
+        sanitized.answer,
+        sanitized.explanation,
+        sanitized.diagram || null,
+        sanitized.tags ? JSON.stringify(sanitized.tags) : null,
+        sanitized.videos ? JSON.stringify(sanitized.videos) : null,
+        sanitized.companies ? JSON.stringify(sanitized.companies) : null,
+        sanitized.voiceKeywords ? JSON.stringify(sanitized.voiceKeywords) : null,
+        sanitized.voiceSuitable ? 1 : 0,
+        sanitized.status || 'active',
         item.lastUpdated || new Date().toISOString(),
         item.id
       ]

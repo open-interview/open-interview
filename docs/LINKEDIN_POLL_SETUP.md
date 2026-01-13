@@ -74,10 +74,10 @@ export LINKEDIN_ACCESS_TOKEN="your_token"
 export LINKEDIN_PERSON_URN="urn:li:person:XXXXXXXX"
 
 # Test with dry run (doesn't post)
-npm run linkedin:poll:dry
+pnpm run linkedin:poll:dry
 
 # Post a real poll
-npm run linkedin:poll
+pnpm run linkedin:poll
 ```
 
 ### 4. Run Workflow
@@ -130,32 +130,32 @@ Answer: Binary search is an algorithm that finds the position of a target value.
 
 ### Post Random Question
 ```bash
-npm run linkedin:poll
+pnpm run linkedin:poll
 ```
 
 ### Post Specific Question
 ```bash
-QUESTION_ID=q-123 npm run linkedin:poll
+QUESTION_ID=q-123 pnpm run linkedin:poll
 ```
 
 ### Filter by Channel
 ```bash
-CHANNEL=JavaScript npm run linkedin:poll
+CHANNEL=JavaScript pnpm run linkedin:poll
 ```
 
 ### Filter by Difficulty
 ```bash
-DIFFICULTY=intermediate npm run linkedin:poll
+DIFFICULTY=intermediate pnpm run linkedin:poll
 ```
 
 ### Custom Poll Duration (48 hours)
 ```bash
-POLL_DURATION=48 npm run linkedin:poll
+POLL_DURATION=48 pnpm run linkedin:poll
 ```
 
 ### Test Without Posting
 ```bash
-npm run linkedin:poll:dry
+pnpm run linkedin:poll:dry
 ```
 
 ## 🔧 Troubleshooting

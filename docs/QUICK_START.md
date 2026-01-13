@@ -76,7 +76,7 @@ async function loadData() {
 
 ### 1. Start Server
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ### 2. Test API
@@ -158,7 +158,7 @@ See `client/src/pages/ReelsRedesignedNew.tsx` for a complete example.
 - Test API: `curl http://localhost:5000/api/stats`
 
 **TypeScript errors?**
-- Run `npm run check`
+- Run `pnpm run check`
 - Ensure hooks are imported correctly
 - Check return types match usage
 

@@ -20,6 +20,40 @@ if (!url) {
 
 const client = createClient({ url, authToken });
 
+/**
+ * Quality Gate: Validate question format
+ * Prevents malformed questions from being included in build
+ */
+function validateQuestionFormat(question) {
+  const issues = [];
+  
+  // Check for multiple-choice format in answer field (wrong format)
+  if (question.answer && question.answer.startsWith('[{')) {
+    issues.push('Multiple-choice format in text answer field');
+  }
+  
+  // Check for missing required fields
+  if (!question.question || question.question.length < 10) {
+    issues.push('Question text too short or missing');
+  }
+  
+  if (!question.answer || question.answer.length < 10) {
+    issues.push('Answer text too short or missing');
+  }
+  
+  // Check for placeholder content
+  const placeholders = ['TODO', 'FIXME', 'TBD', 'placeholder', 'lorem ipsum'];
+  const content = `${question.question} ${question.answer}`.toLowerCase();
+  if (placeholders.some(p => content.includes(p.toLowerCase()))) {
+    issues.push('Contains placeholder content');
+  }
+  
+  return {
+    isValid: issues.length === 0,
+    issues
+  };
+}
+
 function parseQuestionRow(row) {
   return {
     id: row.id,
@@ -62,8 +96,31 @@ async function main() {
   // Fetch all questions
   console.log('📥 Fetching all questions...');
   const result = await client.execute('SELECT * FROM questions ORDER BY channel, sub_channel, id');
-  const questions = result.rows.map(parseQuestionRow);
-  console.log(`   Found ${questions.length} questions`);
+  const allQuestions = result.rows.map(parseQuestionRow);
+  console.log(`   Found ${allQuestions.length} questions`);
+
+  // Apply quality gate
+  console.log('\n🔒 Applying quality gate...');
+  const questions = [];
+  const rejected = [];
+  
+  for (const q of allQuestions) {
+    const validation = validateQuestionFormat(q);
+    if (validation.isValid) {
+      questions.push(q);
+    } else {
+      rejected.push({ id: q.id, issues: validation.issues });
+      console.log(`   ❌ Rejected ${q.id}: ${validation.issues.join(', ')}`);
+    }
+  }
+  
+  console.log(`   ✓ Accepted: ${questions.length} questions`);
+  console.log(`   ✗ Rejected: ${rejected.length} questions`);
+  
+  if (rejected.length > 0) {
+    console.log('\n⚠️  Rejected questions need to be fixed in the database');
+    console.log('   Run: node script/fix-cert-questions-with-bots.js');
+  }
 
   // Group questions by channel
   const channelData = {};
@@ -339,6 +396,9 @@ async function main() {
       ORDER BY channel_name
     `);
 
+    // Create a map of questions for enrichment
+    const questionMap = new Map(questions.map(q => [q.id, q]));
+
     // Filter out irrelevant questions that reference specific scenarios/case studies
     const isIrrelevantQuestion = (q) => {
       const text = (q.question || '').toLowerCase();
@@ -358,8 +418,26 @@ async function main() {
 
     const tests = testsResult.rows.map(row => {
       const allQuestions = JSON.parse(row.questions);
-      // Filter out irrelevant questions
-      const filteredQuestions = allQuestions.filter(q => !isIrrelevantQuestion(q));
+      // Filter out irrelevant questions and enrich with channel/subChannel
+      const filteredQuestions = allQuestions
+        .filter(q => !isIrrelevantQuestion(q))
+        .map(tq => {
+          // Enrich test question with channel and subChannel from original question
+          const originalQuestion = questionMap.get(tq.questionId);
+          if (originalQuestion) {
+            return {
+              ...tq,
+              channel: originalQuestion.channel,
+              subChannel: originalQuestion.subChannel
+            };
+          }
+          // Fallback: use test's channel if original question not found
+          return {
+            ...tq,
+            channel: tq.channel || row.channel_id,
+            subChannel: tq.subChannel || 'general'
+          };
+        });
       
       return {
         id: row.id,

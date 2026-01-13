@@ -4,13 +4,13 @@
 
 ### 1. Verify Build
 ```bash
-npm run build
+pnpm run build
 ```
 ✅ Build completed successfully
 
 ### 2. Test Locally (Optional)
 ```bash
-npm run preview
+pnpm run preview
 ```
 Then test on mobile devices using your local network IP.
 

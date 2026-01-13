@@ -3,7 +3,7 @@
 ## Quick Start
 
 ```bash
-pnpm install
+ppnpm install
 pnpm dev          # http://localhost:5001
 ```
 
@@ -269,7 +269,7 @@ lsof -ti:5001 | xargs kill -9
 ### Build errors
 ```bash
 rm -rf node_modules dist
-pnpm install
+ppnpm install
 pnpm build
 ```
 

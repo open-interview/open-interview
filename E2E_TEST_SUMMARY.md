@@ -170,7 +170,7 @@
 
 ### Install Dependencies
 ```bash
-pnpm install
+ppnpm install
 pnpm exec playwright install --with-deps
 ```
 

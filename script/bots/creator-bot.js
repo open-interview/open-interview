@@ -23,6 +23,7 @@ import { startRun, completeRun, failRun, updateRunStats } from './shared/runs.js
 import { runWithRetries, parseJson, generateUnifiedId, isDuplicateUnified } from '../utils.js';
 import ragService from '../ai/services/rag-enhanced-generation.js';
 import { checkDuplicateBeforeCreate } from '../ai/services/duplicate-prevention.js';
+import { validateBeforeInsert, sanitizeQuestion } from './shared/validation.js';
 
 const BOT_NAME = 'creator';
 const db = getDb();
@@ -622,28 +623,46 @@ function validateContent(content, type) {
 // ============================================
 
 async function saveQuestion(content) {
+  // CRITICAL: Validate before inserting into database
+  try {
+    validateBeforeInsert(content, BOT_NAME);
+  } catch (error) {
+    console.error(`\n❌ VALIDATION FAILED - Question rejected by ${BOT_NAME}:`);
+    console.error(error.message);
+    throw error;
+  }
+  
+  // Sanitize to ensure no JSON in answer field
+  const sanitized = sanitizeQuestion(content);
+  
+  if (sanitized._sanitized) {
+    console.warn(`⚠️  Question ${content.id} had JSON in answer field - sanitized automatically`);
+  }
+  
   await db.execute({
     sql: `INSERT INTO questions (id, question, answer, explanation, diagram, difficulty, tags, channel, sub_channel, companies, voice_keywords, voice_suitable, status, last_updated, created_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
-      content.id,
-      content.question,
-      content.answer,
-      content.explanation,
-      content.diagram || null,
-      content.difficulty,
-      JSON.stringify(content.tags || []),
-      content.channel,
-      content.subChannel,
-      JSON.stringify(content.companies || []),
-      content.voiceKeywords ? JSON.stringify(content.voiceKeywords) : null,
-      content.voiceSuitable ? 1 : 0,
+      sanitized.id,
+      sanitized.question,
+      sanitized.answer,
+      sanitized.explanation,
+      sanitized.diagram || null,
+      sanitized.difficulty,
+      JSON.stringify(sanitized.tags || []),
+      sanitized.channel,
+      sanitized.subChannel,
+      JSON.stringify(sanitized.companies || []),
+      sanitized.voiceKeywords ? JSON.stringify(sanitized.voiceKeywords) : null,
+      sanitized.voiceSuitable ? 1 : 0,
       'active',
       new Date().toISOString(),
       new Date().toISOString()
     ]
   });
-  return content.id;
+  
+  console.log(`✅ Question ${sanitized.id} validated and saved successfully`);
+  return sanitized.id;
 }
 
 async function saveChallenge(content) {

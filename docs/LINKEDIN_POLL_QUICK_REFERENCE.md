@@ -6,25 +6,25 @@ Quick commands and tips for posting questions as LinkedIn polls.
 
 ```bash
 # Test without posting
-npm run linkedin:poll:dry
+pnpm run linkedin:poll:dry
 
 # Post random question
-npm run linkedin:poll
+pnpm run linkedin:poll
 
 # Post specific question
-QUESTION_ID=q-123 npm run linkedin:poll
+QUESTION_ID=q-123 pnpm run linkedin:poll
 
 # Filter by channel
-CHANNEL=JavaScript npm run linkedin:poll
+CHANNEL=JavaScript pnpm run linkedin:poll
 
 # Filter by difficulty
-DIFFICULTY=intermediate npm run linkedin:poll
+DIFFICULTY=intermediate pnpm run linkedin:poll
 
 # Custom poll duration (48 hours)
-POLL_DURATION=48 npm run linkedin:poll
+POLL_DURATION=48 pnpm run linkedin:poll
 
 # Combine filters
-CHANNEL=Python DIFFICULTY=beginner POLL_DURATION=72 npm run linkedin:poll
+CHANNEL=Python DIFFICULTY=beginner POLL_DURATION=72 pnpm run linkedin:poll
 ```
 
 ## 📋 Required Secrets

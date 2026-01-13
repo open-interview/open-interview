@@ -640,7 +640,11 @@ const SESSION_HISTORY_KEY = 'voice-session-history';
 
 export function saveSessionState(state: SessionState): void {
   try {
-    localStorage.setItem(SESSION_STATE_KEY, JSON.stringify(state));
+    const stateWithTimestamp = {
+      ...state,
+      lastAccessedAt: new Date().toISOString()
+    };
+    localStorage.setItem(SESSION_STATE_KEY, JSON.stringify(stateWithTimestamp));
   } catch (e) {
     console.error('Failed to save session state:', e);
   }

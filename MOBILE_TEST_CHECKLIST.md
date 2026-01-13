@@ -155,7 +155,7 @@
 ### Lighthouse Audit
 ```bash
 # Run Lighthouse audit
-npm install -g lighthouse
+pnpm install -g lighthouse
 lighthouse https://open-interview.github.io --view
 ```
 
@@ -168,16 +168,16 @@ Enter: https://open-interview.github.io
 ### Playwright Mobile Tests
 ```bash
 # Run mobile-specific tests
-npm run test -- --grep mobile
+pnpm run test -- --grep mobile
 
 # Run with specific device
-npm run test -- --device="iPhone 14"
+pnpm run test -- --device="iPhone 14"
 ```
 
 ### Visual Regression Testing
 ```bash
 # Take screenshots for comparison
-npm run test -- --update-snapshots
+pnpm run test -- --update-snapshots
 ```
 
 ## Deployment Verification

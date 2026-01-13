@@ -110,7 +110,7 @@ import {
 3. **Map** - Convert color classes to variants
 4. **Replace** - Update JSX with unified component
 5. **Import** - Add to imports from `@/components/unified`
-6. **Test** - Run `npm run build`
+6. **Test** - Run `pnpm run build`
 7. **Verify** - Check visual appearance
 8. **Commit** - Save changes
 
@@ -130,10 +130,10 @@ import {
 ### Commands
 ```bash
 # Build
-npm run build
+pnpm run build
 
 # Development
-npm run dev
+pnpm run dev
 
 # Type check
 npx tsc --noEmit

@@ -49,8 +49,8 @@ A complete automated workflow to post questions from your test database as Linke
 
 ### 4. Package Scripts
 **`package.json`** (updated)
-- `npm run linkedin:poll` - Post a poll
-- `npm run linkedin:poll:dry` - Test without posting
+- `pnpm run linkedin:poll` - Post a poll
+- `pnpm run linkedin:poll:dry` - Test without posting
 
 ## 🚀 How It Works
 
@@ -152,22 +152,22 @@ export LINKEDIN_ACCESS_TOKEN="your_token"
 export LINKEDIN_PERSON_URN="urn:li:person:XXXXXXXX"
 
 # Test without posting
-npm run linkedin:poll:dry
+pnpm run linkedin:poll:dry
 
 # Post random question
-npm run linkedin:poll
+pnpm run linkedin:poll
 
 # Post specific question
-QUESTION_ID=q-123 npm run linkedin:poll
+QUESTION_ID=q-123 pnpm run linkedin:poll
 
 # Filter by channel
-CHANNEL=JavaScript npm run linkedin:poll
+CHANNEL=JavaScript pnpm run linkedin:poll
 
 # Filter by difficulty
-DIFFICULTY=intermediate npm run linkedin:poll
+DIFFICULTY=intermediate pnpm run linkedin:poll
 
 # Custom poll duration
-POLL_DURATION=48 npm run linkedin:poll
+POLL_DURATION=48 pnpm run linkedin:poll
 ```
 
 ### GitHub Actions

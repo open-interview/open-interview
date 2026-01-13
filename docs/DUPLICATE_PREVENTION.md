@@ -123,7 +123,7 @@ Different content types have different thresholds:
 
 ```bash
 # Check all questions
-npm run check:duplicates
+ppnpm run check:duplicates
 
 # Check specific channel
 node script/check-duplicates.js --channel=aws
@@ -138,7 +138,7 @@ node script/check-duplicates.js --limit=100
 node script/check-duplicates.js --report
 
 # Auto-fix duplicates (mark for deletion)
-npm run check:duplicates:fix
+ppnpm run check:duplicates:fix
 ```
 
 ### Output Example
@@ -349,10 +349,10 @@ await bulkImport(safeToImport);
 
 ```bash
 # Run weekly to find duplicates that slipped through
-npm run check:duplicates -- --report
+ppnpm run check:duplicates -- --report
 
 # Review report and fix
-npm run check:duplicates:fix
+ppnpm run check:duplicates:fix
 ```
 
 ## GitHub Actions Integration
@@ -378,7 +378,7 @@ jobs:
           node-version: '18'
       
       - name: Install dependencies
-        run: npm install
+        run: ppnpm install
       
       - name: Check for duplicates
         env:
@@ -387,7 +387,7 @@ jobs:
           QDRANT_URL: ${{ secrets.QDRANT_URL }}
           QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
         run: |
-          npm run check:duplicates -- --report
+          ppnpm run check:duplicates -- --report
       
       - name: Upload report
         uses: actions/upload-artifact@v4
@@ -414,10 +414,10 @@ Error: Vector DB search failed: Connection refused
 **Solution:** The system automatically falls back to text-based search. To fix:
 ```bash
 # Check vector DB status
-npm run vector:stats
+ppnpm run vector:stats
 
 # Re-sync if needed
-npm run vector:sync
+ppnpm run vector:sync
 ```
 
 ### False Positives

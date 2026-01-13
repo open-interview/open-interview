@@ -36,8 +36,8 @@ findExistingDuplicates(contentType, options)
 
 **Usage:**
 ```bash
-npm run check:duplicates
-npm run check:duplicates:fix
+pnpm run check:duplicates
+pnpm run check:duplicates:fix
 node script/check-duplicates.js --channel=aws --report
 ```
 
@@ -70,8 +70,8 @@ if (duplicateCheck.isDuplicate) {
 
 **Usage:**
 ```bash
-npm run bot:reconcile
-npm run bot:reconcile:dry
+pnpm run bot:reconcile
+pnpm run bot:reconcile:dry
 node script/bots/reconciliation-bot.js --channel=aws --threshold=0.8
 ```
 
@@ -130,9 +130,9 @@ node script/bots/reconciliation-bot.js --channel=aws --threshold=0.8
 
 2. **CLI Commands**
    ```bash
-   npm run check:duplicates
-   npm run check:duplicates:fix
-   npm run bot:reconcile
+   pnpm run check:duplicates
+   pnpm run check:duplicates:fix
+   pnpm run bot:reconcile
    ```
 
 3. **GitHub Actions**
@@ -250,13 +250,13 @@ CREATE TABLE duplicate_checks (
 
 ```bash
 # Test duplicate detection
-npm run check:duplicates -- --limit=10
+pnpm run check:duplicates -- --limit=10
 
 # Test reconciliation
-npm run bot:reconcile:dry -- --limit=10
+pnpm run bot:reconcile:dry -- --limit=10
 
 # Test creator bot with duplicate check
-INPUT_TOPIC="What is load balancing?" npm run bot:creator
+INPUT_TOPIC="What is load balancing?" pnpm run bot:creator
 ```
 
 ### Automated Testing
@@ -297,8 +297,8 @@ LIMIT 20;
 
 1. **Test the System**
    ```bash
-   npm run check:duplicates -- --limit=50
-   npm run bot:reconcile:dry -- --limit=50
+   pnpm run check:duplicates -- --limit=50
+   pnpm run bot:reconcile:dry -- --limit=50
    ```
 
 2. **Review Results**
@@ -383,16 +383,16 @@ await createQuestion(...);
 
 ```bash
 # Weekly duplicate check
-npm run check:duplicates
+pnpm run check:duplicates
 
 # Fix duplicates
-npm run check:duplicates:fix
+pnpm run check:duplicates:fix
 
 # Reconcile channels
-npm run bot:reconcile
+pnpm run bot:reconcile
 
 # Sync vector DB
-npm run vector:sync
+pnpm run vector:sync
 ```
 
 ## Support

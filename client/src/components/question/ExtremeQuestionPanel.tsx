@@ -30,19 +30,34 @@ interface ExtremeQuestionPanelProps {
 
 function renderWithInlineCode(text: string): React.ReactNode {
   if (!text) return null;
-  const parts = text.split(/`([^`]+)`/g);
-  return parts.map((part, index) => {
-    if (index % 2 === 1) {
-      return (
-        <code 
-          key={index}
-          className="px-2 py-1 mx-1 bg-primary/10 text-primary rounded-md text-[0.95em] font-mono border border-primary/20"
-        >
-          {part}
-        </code>
-      );
-    }
-    return part;
+  
+  // First split by newlines to preserve line breaks
+  const lines = text.split('\n');
+  
+  return lines.map((line, lineIndex) => {
+    // Then split each line by inline code blocks
+    const parts = line.split(/`([^`]+)`/g);
+    const renderedLine = parts.map((part, index) => {
+      if (index % 2 === 1) {
+        return (
+          <code 
+            key={`${lineIndex}-${index}`}
+            className="px-2 py-1 mx-1 bg-primary/10 text-primary rounded-md text-[0.95em] font-mono border border-primary/20"
+          >
+            {part}
+          </code>
+        );
+      }
+      return part;
+    });
+    
+    // Add line break after each line except the last one
+    return (
+      <span key={lineIndex}>
+        {renderedLine}
+        {lineIndex < lines.length - 1 && <br />}
+      </span>
+    );
   });
 }
 
@@ -170,8 +185,8 @@ export function ExtremeQuestionPanel({
         </div>
       )}
 
-      {/* Content Container */}
-      <div className="relative z-10 flex flex-col h-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      {/* Content Container - Scrollable */}
+      <div className="relative z-10 flex flex-col h-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 overflow-y-auto">
         
         {/* Top Bar - Single Row with All Info */}
         <motion.div 

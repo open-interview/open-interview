@@ -268,7 +268,7 @@ Keep completion stats, but remove time-based stats.
 ## Testing Checklist
 
 After each file refactor:
-- [ ] Build successful (`npm run build`)
+- [ ] Build successful (`pnpm run build`)
 - [ ] No TypeScript errors
 - [ ] No timer displays visible
 - [ ] Single progress counter only
@@ -281,13 +281,13 @@ After each file refactor:
 
 ```bash
 # Build and check for errors
-npm run build
+pnpm run build
 
 # Check specific file diagnostics
 # (use getDiagnostics tool)
 
 # Test in browser
-npm run dev
+pnpm run dev
 ```
 
 ---
