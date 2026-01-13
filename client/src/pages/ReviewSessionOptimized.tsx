@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
-  ChevronLeft, Brain, Flame, Trophy, Zap, Star, Check, X, Target, Eye, EyeOff
+  ChevronLeft, Brain, Flame, Trophy, Zap, Star, Check, X, Target, Eye, EyeOff, Copy
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
 import { UnifiedSearch } from '../components/UnifiedSearch';
@@ -22,8 +22,31 @@ import { useCredits } from '../context/CreditsContext';
 import { useAchievementContext } from '../context/AchievementContext';
 import type { Question } from '../types';
 import { cn } from '../lib/utils';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 type SessionState = 'loading' | 'reviewing' | 'checkpoint' | 'completed';
+
+// Markdown preprocessing helper
+function preprocessMarkdown(text: string): string {
+  if (!text) return '';
+  let processed = text;
+  
+  // Fix code fences
+  processed = processed.replace(/([^\n])(```)/g, '$1\n$2');
+  processed = processed.replace(/(```\w*)\s*\n?\s*([^\n`])/g, '$1\n$2');
+  
+  // Fix bold markers
+  processed = processed.replace(/^\*\*\s*$/gm, '');
+  processed = processed.replace(/\*\*\s*\n\s*([^*]+)\*\*/g, '**$1**');
+  
+  // Fix bullet points
+  processed = processed.replace(/^[•·]\s*/gm, '- ');
+  
+  return processed;
+}
 
 export default function ReviewSessionOptimized() {
   const [, setLocation] = useLocation();
@@ -39,6 +62,7 @@ export default function ReviewSessionOptimized() {
   const [recentCards, setRecentCards] = useState<ReviewCard[]>([]);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const shouldReduceMotion = useReducedMotion();
   
   const { onSRSReview } = useCredits();
@@ -148,6 +172,12 @@ export default function ReviewSessionOptimized() {
     setShowSearch(true);
     triggerHaptic('light');
   }, [triggerHaptic]);
+
+  const handleCopyCode = useCallback((code: string, id: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(id);
+    setTimeout(() => setCopiedCode(null), 2000);
+  }, []);
 
   return (
     <>
@@ -290,23 +320,123 @@ export default function ReviewSessionOptimized() {
                         </div>
                       )}
 
-                      {/* Answer - COMPACT */}
+                      {/* Answer - COMPACT with Markdown */}
                       <div className="p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
                         <div className="flex items-center gap-1.5 mb-1">
                           <Check className="w-3 h-3 text-green-400" />
                           <span className="text-xs font-bold text-green-400">ANSWER</span>
                         </div>
-                        <p className="text-sm leading-relaxed">{currentQuestion.answer}</p>
+                        <div className="prose prose-invert prose-sm max-w-none text-sm">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              code({ className, children, ...props }: any) {
+                                const match = /language-(\w+)/.exec(className || '');
+                                const codeString = String(children).replace(/\n$/, '');
+                                const codeId = `answer-code-${Math.random().toString(36).substr(2, 9)}`;
+                                const inline = !match;
+
+                                if (!inline && match) {
+                                  return (
+                                    <div className="relative group my-2">
+                                      <button
+                                        onClick={() => handleCopyCode(codeString, codeId)}
+                                        className="absolute top-1 right-1 p-1.5 rounded-lg bg-secondary/80 hover:bg-secondary transition-all opacity-0 group-hover:opacity-100 z-10"
+                                      >
+                                        {copiedCode === codeId ? (
+                                          <Check className="w-3 h-3 text-green-400" />
+                                        ) : (
+                                          <Copy className="w-3 h-3" />
+                                        )}
+                                      </button>
+                                      <SyntaxHighlighter
+                                        style={vscDarkPlus}
+                                        language={match[1]}
+                                        PreTag="div"
+                                        className="rounded-lg !bg-black/40 !my-0 !text-xs !p-2"
+                                        {...props}
+                                      >
+                                        {codeString}
+                                      </SyntaxHighlighter>
+                                    </div>
+                                  );
+                                }
+
+                                return (
+                                  <code className="px-1 py-0.5 rounded bg-primary/15 text-primary text-xs font-mono" {...props}>
+                                    {children}
+                                  </code>
+                                );
+                              },
+                              p: ({ children }) => <p className="text-sm leading-relaxed mb-2 last:mb-0">{children}</p>,
+                              ul: ({ children }) => <ul className="text-sm space-y-1 mb-2">{children}</ul>,
+                              ol: ({ children }) => <ol className="text-sm space-y-1 mb-2">{children}</ol>,
+                              li: ({ children }) => <li className="text-sm">{children}</li>,
+                            }}
+                          >
+                            {preprocessMarkdown(currentQuestion.answer)}
+                          </ReactMarkdown>
+                        </div>
                       </div>
 
-                      {/* Explanation - COMPACT */}
+                      {/* Explanation - COMPACT with Markdown */}
                       {currentQuestion.explanation && (
                         <div className="p-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
                           <div className="flex items-center gap-1.5 mb-1">
                             <Brain className="w-3 h-3 text-orange-400" />
                             <span className="text-xs font-bold text-orange-400">EXPLANATION</span>
                           </div>
-                          <p className="text-xs leading-relaxed text-foreground/80">{currentQuestion.explanation}</p>
+                          <div className="prose prose-invert prose-sm max-w-none text-xs">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                code({ className, children, ...props }: any) {
+                                  const match = /language-(\w+)/.exec(className || '');
+                                  const codeString = String(children).replace(/\n$/, '');
+                                  const codeId = `exp-code-${Math.random().toString(36).substr(2, 9)}`;
+                                  const inline = !match;
+
+                                  if (!inline && match) {
+                                    return (
+                                      <div className="relative group my-2">
+                                        <button
+                                          onClick={() => handleCopyCode(codeString, codeId)}
+                                          className="absolute top-1 right-1 p-1.5 rounded-lg bg-secondary/80 hover:bg-secondary transition-all opacity-0 group-hover:opacity-100 z-10"
+                                        >
+                                          {copiedCode === codeId ? (
+                                            <Check className="w-3 h-3 text-green-400" />
+                                          ) : (
+                                            <Copy className="w-3 h-3" />
+                                          )}
+                                        </button>
+                                        <SyntaxHighlighter
+                                          style={vscDarkPlus}
+                                          language={match[1]}
+                                          PreTag="div"
+                                          className="rounded-lg !bg-black/40 !my-0 !text-xs !p-2"
+                                          {...props}
+                                        >
+                                          {codeString}
+                                        </SyntaxHighlighter>
+                                      </div>
+                                    );
+                                  }
+
+                                  return (
+                                    <code className="px-1 py-0.5 rounded bg-primary/15 text-primary text-xs font-mono" {...props}>
+                                      {children}
+                                    </code>
+                                  );
+                                },
+                                p: ({ children }) => <p className="text-xs leading-relaxed text-foreground/80 mb-2 last:mb-0">{children}</p>,
+                                ul: ({ children }) => <ul className="text-xs space-y-1 mb-2">{children}</ul>,
+                                ol: ({ children }) => <ol className="text-xs space-y-1 mb-2">{children}</ol>,
+                                li: ({ children }) => <li className="text-xs">{children}</li>,
+                              }}
+                            >
+                              {preprocessMarkdown(currentQuestion.explanation)}
+                            </ReactMarkdown>
+                          </div>
                         </div>
                       )}
                     </motion.div>
@@ -414,6 +544,7 @@ function CheckpointTest({
   const [answers, setAnswers] = useState<Record<number, boolean>>({});
   const [showResult, setShowResult] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   
   // Get the last 5 reviewed cards for checkpoint
   const checkpointCards = recentCards.slice(-5);
@@ -423,6 +554,12 @@ function CheckpointTest({
   const totalQuestions = checkpointCards.length;
   const answeredCount = Object.keys(answers).length;
   const score = Object.values(answers).filter(Boolean).length;
+
+  const handleCopyCode = (code: string, id: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(id);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
 
   const handleAnswer = (isCorrect: boolean) => {
     setAnswers(prev => ({ ...prev, [currentQuestionIndex]: isCorrect }));
@@ -503,7 +640,57 @@ function CheckpointTest({
                     <Check className="w-3 h-3 text-green-400" />
                     <span className="text-xs font-bold text-green-400">ANSWER</span>
                   </div>
-                  <p className="text-sm">{currentQuestion.answer}</p>
+                  <div className="prose prose-invert prose-sm max-w-none text-sm">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code({ className, children, ...props }: any) {
+                          const match = /language-(\w+)/.exec(className || '');
+                          const codeString = String(children).replace(/\n$/, '');
+                          const codeId = `checkpoint-code-${Math.random().toString(36).substr(2, 9)}`;
+                          const inline = !match;
+
+                          if (!inline && match) {
+                            return (
+                              <div className="relative group my-2">
+                                <button
+                                  onClick={() => handleCopyCode(codeString, codeId)}
+                                  className="absolute top-1 right-1 p-1.5 rounded-lg bg-secondary/80 hover:bg-secondary transition-all opacity-0 group-hover:opacity-100 z-10"
+                                >
+                                  {copiedCode === codeId ? (
+                                    <Check className="w-3 h-3 text-green-400" />
+                                  ) : (
+                                    <Copy className="w-3 h-3" />
+                                  )}
+                                </button>
+                                <SyntaxHighlighter
+                                  style={vscDarkPlus}
+                                  language={match[1]}
+                                  PreTag="div"
+                                  className="rounded-lg !bg-black/40 !my-0 !text-xs !p-2"
+                                  {...props}
+                                >
+                                  {codeString}
+                                </SyntaxHighlighter>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <code className="px-1 py-0.5 rounded bg-primary/15 text-primary text-xs font-mono" {...props}>
+                              {children}
+                            </code>
+                          );
+                        },
+                        p: ({ children }) => <p className="text-sm leading-relaxed mb-2 last:mb-0">{children}</p>,
+                        ul: ({ children }) => <ul className="text-sm space-y-1 mb-2">{children}</ul>,
+                        ol: ({ children }) => <ol className="text-sm space-y-1 mb-2">{children}</ol>,
+                        li: ({ children }) => <li className="text-sm">{children}</li>,
+                      }}
+                    >
+                      {preprocessMarkdown(currentQuestion.answer)}
+                    </ReactMarkdown>
+                  </div>
                 </motion.div>
               )}
             </motion.div>

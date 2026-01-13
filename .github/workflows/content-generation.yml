@@ -1,0 +1,293 @@
+name: 🤖 Content Generation
+
+# Unified content generation workflow
+# Combines: content-pipeline.yml + hourly-generator.yml
+# Hourly: Quick question generation | Daily: Full pipeline
+
+on:
+  schedule:
+    - cron: '0 * * * *'    # Hourly: Quick generation
+    - cron: '0 2 * * *'    # Daily: Full pipeline
+  
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Generation mode'
+        required: true
+        default: 'full-pipeline'
+        type: choice
+        options:
+          - full-pipeline
+          - quick-generate
+          - specific-stage
+      stage:
+        description: 'Specific stage'
+        required: false
+        type: choice
+        options:
+          - creator
+          - analysis
+          - verifier
+          - processor
+          - blog-generator
+          - voice-sessions
+          - interview-intelligence
+      count:
+        description: 'Items to process'
+        required: false
+        default: '10'
+      channel:
+        description: 'Specific channel'
+        required: false
+        default: ''
+      aggressive:
+        description: 'Prioritize empty channels'
+        required: false
+        default: 'true'
+        type: boolean
+
+jobs:
+  quick-generate:
+    name: 🚀 Quick Generate
+    if: |
+      (github.event.schedule == '0 * * * *') ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'quick-generate')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bot
+      
+      - name: Determine channels
+        id: channels
+        run: |
+          if [ -n "${{ inputs.channel }}" ]; then
+            echo "channels=${{ inputs.channel }}" >> $GITHUB_OUTPUT
+            echo "count=${{ inputs.count || '10' }}" >> $GITHUB_OUTPUT
+          elif [ "${{ inputs.aggressive }}" == "true" ] || [ "${{ github.event_name }}" == "schedule" ]; then
+            echo "channels=" >> $GITHUB_OUTPUT
+            echo "count=25" >> $GITHUB_OUTPUT
+          else
+            echo "channels=" >> $GITHUB_OUTPUT
+            echo "count=${{ inputs.count || '5' }}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Generate questions
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
+          INPUT_LIMIT: ${{ steps.channels.outputs.count }}
+          INPUT_CHANNEL: ${{ steps.channels.outputs.channels }}
+          BALANCE_CHANNELS: 'true'
+          AGGRESSIVE_MODE: 'true'
+          ENSURE_MINIMUM: 'true'
+        run: node script/generate-question.js
+      
+      - name: Sync to Vector DB
+        if: success()
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+        run: node script/sync-vector-db.js --mode=incremental || true
+
+  creator:
+    name: 📝 Creator Bot
+    if: |
+      (github.event.schedule == '0 2 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.mode == 'full-pipeline' || inputs.stage == 'creator'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bot
+      - name: Run Creator Bot
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
+          COUNT: ${{ inputs.count || '5' }}
+        run: node script/bots/creator-bot.js
+
+  analysis:
+    name: 🔍 Analysis Bot
+    if: |
+      always() &&
+      ((github.event.schedule == '0 2 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.mode == 'full-pipeline' || inputs.stage == 'analysis')))
+    needs: [creator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bot
+      - name: Run Analysis Bot
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
+        run: node script/bots/analysis-bot.js --limit=${{ inputs.count || '100' }}
+
+  verifier:
+    name: ✅ Verifier Bot
+    if: |
+      always() &&
+      ((github.event.schedule == '0 2 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.mode == 'full-pipeline' || inputs.stage == 'verifier')))
+    needs: [analysis]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bot
+      - name: Run Verifier Bot
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
+          MODE: scan
+          LIMIT: ${{ inputs.count || '10' }}
+        run: node script/bots/verifier-bot.js
+
+  processor:
+    name: ⚙️ Processor Bot
+    if: |
+      always() &&
+      ((github.event.schedule == '0 2 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.mode == 'full-pipeline' || inputs.stage == 'processor')))
+    needs: [verifier]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bot
+      - name: Run Processor Bot
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
+          MAX_ITEMS: ${{ inputs.count || '10' }}
+        run: node script/bots/processor-bot.js
+
+  blog-generator:
+    name: 📰 Blog Generator
+    if: |
+      always() &&
+      ((github.event.schedule == '0 2 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.mode == 'full-pipeline' || inputs.stage == 'blog-generator')))
+    needs: [processor]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bot
+      - name: Generate Blog
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
+        run: node script/generate-blog.js
+
+  voice-sessions:
+    name: 🎤 Voice Sessions
+    if: |
+      always() &&
+      ((github.event.schedule == '0 2 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.mode == 'full-pipeline' || inputs.stage == 'voice-sessions')))
+    needs: [processor]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bot
+      - name: Generate Voice Sessions
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+        run: node script/generate-voice-sessions.js --use-vector-db --limit=50
+
+  interview-intelligence:
+    name: 🧠 Interview Intelligence
+    if: |
+      always() &&
+      ((github.event.schedule == '0 2 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.mode == 'full-pipeline' || inputs.stage == 'interview-intelligence')))
+    needs: [processor]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bot
+      - name: Generate Intelligence
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
+        run: node script/generate-interview-intelligence.js
+
+  update-monitor:
+    name: 📊 Update Monitor
+    needs: [blog-generator, voice-sessions, interview-intelligence]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-pnpm
+      - name: Generate monitor data
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: node script/fetch-bot-monitor-data.js
+      - name: Commit and push
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -f client/public/data/bot-monitor.json
+          git add -f client/public/data/intelligence/ || true
+          git add -f client/public/data/voice-sessions/ || true
+          git diff --staged --quiet || git commit -m "Update bot monitor [skip ci]"
+          git push
+
+  summary:
+    name: 📋 Summary
+    needs: [quick-generate, creator, analysis, verifier, processor, blog-generator, voice-sessions, interview-intelligence, update-monitor]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## 🤖 Content Generation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🚀 Quick | ${{ needs.quick-generate.result == 'success' && '✅' || needs.quick-generate.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📝 Creator | ${{ needs.creator.result == 'success' && '✅' || needs.creator.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔍 Analysis | ${{ needs.analysis.result == 'success' && '✅' || needs.analysis.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ✅ Verifier | ${{ needs.verifier.result == 'success' && '✅' || needs.verifier.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ⚙️ Processor | ${{ needs.processor.result == 'success' && '✅' || needs.processor.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📰 Blog | ${{ needs.blog-generator.result == 'success' && '✅' || needs.blog-generator.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🎤 Voice | ${{ needs.voice-sessions.result == 'success' && '✅' || needs.voice-sessions.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧠 Intelligence | ${{ needs.interview-intelligence.result == 'success' && '✅' || needs.interview-intelligence.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📊 Monitor | ${{ needs.update-monitor.result == 'success' && '✅' || needs.update-monitor.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
