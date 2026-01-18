@@ -77,13 +77,54 @@ function generateExcerpt(intro, maxLength = 200) {
   return excerpt;
 }
 
-function formatTags(tags, channel) {
+function formatTags(tags, channel, title = '', excerpt = '') {
   const tagList = tags ? JSON.parse(tags) : [];
-  const allTags = [channel, ...tagList].filter(Boolean);
   
-  // Convert to hashtags
-  return allTags
-    .slice(0, 5)
+  // Channel-specific hashtags for better reach
+  const channelHashtags = {
+    'aws': ['AWS', 'Cloud', 'CloudComputing'],
+    'kubernetes': ['Kubernetes', 'K8s', 'CloudNative', 'DevOps'],
+    'system-design': ['SystemDesign', 'Architecture', 'SoftwareEngineering'],
+    'frontend': ['Frontend', 'WebDev', 'JavaScript', 'React'],
+    'backend': ['Backend', 'API', 'Microservices'],
+    'database': ['Database', 'SQL', 'DataEngineering'],
+    'devops': ['DevOps', 'CI', 'CD', 'Automation'],
+    'security': ['CyberSecurity', 'InfoSec', 'Security'],
+    'machine-learning': ['MachineLearning', 'AI', 'DataScience'],
+    'terraform': ['Terraform', 'IaC', 'InfrastructureAsCode'],
+    'docker': ['Docker', 'Containers', 'CloudNative'],
+    'networking': ['Networking', 'CloudNetworking', 'VPC'],
+    'sre': ['SRE', 'Reliability', 'Observability'],
+    'testing': ['Testing', 'QA', 'TestAutomation']
+  };
+  
+  // Extract keywords from title (simple approach)
+  const titleKeywords = title
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(word => word.length > 4 && !['about', 'using', 'guide', 'learn'].includes(word))
+    .slice(0, 3);
+  
+  // Combine all sources
+  const allTags = [
+    channel,
+    ...tagList,
+    ...(channelHashtags[channel] || []),
+    ...titleKeywords
+  ].filter(Boolean);
+  
+  // Deduplicate (case-insensitive)
+  const seen = new Set();
+  const uniqueTags = allTags.filter(tag => {
+    const lower = tag.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (seen.has(lower)) return false;
+    seen.add(lower);
+    return true;
+  });
+  
+  // Convert to hashtags (limit to 10 for optimal LinkedIn performance)
+  return uniqueTags
+    .slice(0, 10)
     .map(tag => '#' + tag.replace(/[^a-zA-Z0-9]/g, ''))
     .join(' ');
 }
@@ -109,7 +150,7 @@ async function main() {
   // URL structure: /posts/{question_id}/{slug}/
   const postUrl = `${BLOG_BASE_URL}/posts/${post.question_id}/${post.slug}/`;
   const excerpt = generateExcerpt(post.introduction);
-  const tags = formatTags(post.tags, post.channel);
+  const tags = formatTags(post.tags, post.channel, post.title, excerpt);
   
   console.log(`📝 Found post: ${post.title}`);
   console.log(`   URL: ${postUrl}`);

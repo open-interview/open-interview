@@ -15,6 +15,7 @@ import {
   getSubChannelQuestionCounts
 } from './utils.js';
 import { generateQuestion as generateQuestionGraph } from './ai/graphs/question-graph.js';
+import { generateQuestionWithCertifications, hasRelatedCertifications } from './ai/graphs/enhanced-question-generator.js';
 import { runQualityGate } from './ai/graphs/quality-gate-graph.js';
 import { channelConfigs, topCompanies as TOP_TECH_COMPANIES, realScenarios as REAL_SCENARIOS } from './ai/prompts/templates/generate.js';
 import { certificationDomains } from './ai/prompts/templates/certification-question.js';
@@ -455,19 +456,162 @@ const scenarioHint = getScenarioHint(channel);
 
     // Use LangGraph pipeline for question generation with graceful error handling
     console.log('\n📝 Generating question using LangGraph pipeline...');
+    
+    // Check if this channel has related certifications
+    const hasCerts = hasRelatedCertifications(channel);
+    if (hasCerts) {
+      console.log(`   🎓 Channel has related certifications - will generate cert MCQs too`);
+    }
+    
     console.log('─'.repeat(50));
     
     try {
-      const result = await generateQuestionGraph({
-        channel,
-        subChannel: subChannelConfig.subChannel,
-        difficulty,
-        tags: subChannelConfig.tags,
-        targetCompanies,
-        scenarioHint,
-        ragContext // Pass RAG context to the generation pipeline
-      });
+      // Use enhanced generator if channel has certifications
+      const result = hasCerts 
+        ? await generateQuestionWithCertifications({
+            channel,
+            subChannel: subChannelConfig.subChannel,
+            difficulty,
+            tags: subChannelConfig.tags,
+            targetCompanies,
+            scenarioHint,
+            ragContext, // Pass RAG context to the generation pipeline
+            includeCertifications: true,
+            certQuestionsPerCert: 1 // Generate 1 MCQ per related cert
+          })
+        : await generateQuestionGraph({
+            channel,
+            subChannel: subChannelConfig.subChannel,
+            difficulty,
+            tags: subChannelConfig.tags,
+            targetCompanies,
+            scenarioHint,
+            ragContext
+          });
       
+      // Handle enhanced result (with certifications)
+      if (hasCerts && result.regular) {
+        const regularResult = result.regular;
+        
+        if (!regularResult.success) {
+          console.log(`❌ Regular question generation failed: ${regularResult.error}`);
+          failedAttempts.push({ channel, reason: regularResult.error || 'Generation failed' });
+          continue;
+        }
+        
+        // Process regular question
+        const data = regularResult.question;
+        
+        if (!validateQuestion(data)) {
+          console.log('❌ Invalid response format.');
+          failedAttempts.push({ channel, reason: 'Invalid JSON format' });
+          continue;
+        }
+
+        if (await isDuplicateUnified(data.question)) {
+          console.log('❌ Duplicate question detected.');
+          failedAttempts.push({ channel, reason: 'Duplicate detected' });
+          continue;
+        }
+
+        // Run quality gate for regular question
+        console.log('\n🚦 Running Quality Gate for regular question...');
+        console.log('─'.repeat(50));
+        
+        const existingQuestions = await getQuestionsForChannel(channel);
+        
+        const qualityResult = await runQualityGate(data, {
+          channel,
+          subChannel: subChannelConfig.subChannel,
+          difficulty,
+          existingQuestions,
+          passThreshold: 70
+        });
+        
+        if (!qualityResult.success) {
+          console.log(`❌ Quality gate failed: ${qualityResult.decision}`);
+          console.log(`   Score: ${qualityResult.score}/100`);
+          if (qualityResult.issues.length > 0) {
+            console.log(`   Issues: ${qualityResult.issues.join(', ')}`);
+          }
+          failedAttempts.push({ 
+            channel, 
+            reason: `Quality gate: ${qualityResult.decision} (score: ${qualityResult.score})`,
+            issues: qualityResult.issues
+          });
+          continue;
+        }
+        
+        // Save regular question
+        console.log(`\n✅ Quality gate passed (${qualityResult.score}/100)`);
+        
+        const id = generateUnifiedId();
+        const normalizedCompanies = normalizeCompanies(data.companies || []);
+        
+        await addUnifiedQuestion({
+          id,
+          channel,
+          subChannel: subChannelConfig.subChannel,
+          question: data.question,
+          answer: data.answer,
+          explanation: data.explanation,
+          difficulty,
+          tags: JSON.stringify(data.tags || subChannelConfig.tags),
+          companies: JSON.stringify(normalizedCompanies),
+          tldr: data.tldr || null,
+          diagram: data.diagram || null,
+          diagramType: data.diagramType || null,
+          diagramLabel: data.diagramLabel || null,
+          shortVideo: data.shortVideo || null,
+          longVideo: data.longVideo || null,
+          status: 'active'
+        });
+        
+        questionsAdded++;
+        console.log(`✅ Question added successfully (ID: ${id})`);
+        
+        // Process certification questions
+        if (result.certifications && result.certifications.length > 0) {
+          console.log(`\n🎓 Processing ${result.certifications.length} certification results...`);
+          
+          for (const certResult of result.certifications) {
+            if (certResult.result.success && certResult.result.questions) {
+              console.log(`   📋 ${certResult.certId}: ${certResult.result.questions.length} MCQs generated`);
+              
+              // Save certification questions (they're already in the right format)
+              for (const certQ of certResult.result.questions) {
+                try {
+                  const certId = `cert-${certResult.certId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                  
+                  await addUnifiedQuestion({
+                    id: certId,
+                    channel: certResult.certId,
+                    subChannel: certQ.domain || 'general',
+                    question: certQ.question,
+                    answer: JSON.stringify(certQ.options), // MCQ options
+                    explanation: certQ.explanation,
+                    difficulty: certQ.difficulty || difficulty,
+                    tags: JSON.stringify([...(certQ.tags || []), 'certification-mcq']),
+                    companies: JSON.stringify([]),
+                    status: 'active'
+                  });
+                  
+                  questionsAdded++;
+                  console.log(`   ✅ Saved cert MCQ: ${certQ.question.substring(0, 50)}...`);
+                } catch (error) {
+                  console.log(`   ⚠️ Failed to save cert MCQ: ${error.message}`);
+                }
+              }
+            } else {
+              console.log(`   ⚠️ ${certResult.certId}: Generation failed`);
+            }
+          }
+        }
+        
+        continue; // Move to next channel
+      }
+      
+      // Handle regular result (no certifications)
       if (!result.success) {
         console.log(`❌ Generation failed: ${result.error}`);
         failedAttempts.push({ channel, reason: result.error || 'Generation failed' });

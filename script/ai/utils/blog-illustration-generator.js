@@ -9,7 +9,7 @@ import path from 'path';
 import crypto from 'crypto';
 
 const IMAGES_DIR = 'blog-output/images';
-const W = 700, H = 420;  // Increased height for multi-line title
+const W = 700, H = 480;  // Increased height from 420 to 480 for better title accommodation
 
 // GitHub dark theme
 const C = {
@@ -127,9 +127,9 @@ const terminalBlock = (x, y, w, h, lines) => `
   }).join('')}
 `;
 
-// Title bar at bottom - multi-line support for long titles
+// Title bar at bottom - multi-line support for long titles with NO CLIPPING
 const titleBar = (text) => {
-  const maxCharsPerLine = 60;
+  const maxCharsPerLine = 55;  // Slightly reduced for better wrapping
   const words = text.split(' ');
   const lines = [];
   let currentLine = '';
@@ -144,18 +144,26 @@ const titleBar = (text) => {
   }
   if (currentLine) lines.push(currentLine);
   
-  // Limit to 2 lines max
-  if (lines.length > 2) {
-    lines[1] = lines[1].substring(0, maxCharsPerLine - 3) + '...';
-    lines.length = 2;
+  // Limit to 3 lines max (increased from 2)
+  if (lines.length > 3) {
+    lines[2] = lines[2].substring(0, maxCharsPerLine - 3) + '...';
+    lines.length = 3;
   }
   
-  const boxHeight = lines.length === 1 ? 36 : 50;
-  const startY = H - boxHeight - 8;
+  // Dynamic sizing based on number of lines
+  const lineHeight = 18;  // Increased from 16 for better readability
+  const padding = 16;
+  const boxHeight = (lines.length * lineHeight) + (padding * 2);
+  const startY = H - boxHeight - 12;  // 12px from bottom
   
   return `
   <rect x="30" y="${startY}" width="${W - 60}" height="${boxHeight}" rx="8" fill="${C.card}" stroke="${C.border}"/>
-  ${lines.map((line, i) => `<text x="${W/2}" y="${startY + 22 + i * 16}" text-anchor="middle" fill="${C.text}" font-size="11" font-family="${FONT}">${esc(line)}</text>`).join('')}`;
+  ${lines.map((line, i) => 
+    `<text x="${W/2}" y="${startY + padding + 14 + (i * lineHeight)}" 
+           text-anchor="middle" fill="${C.text}" 
+           font-size="13" font-family="${FONT}" 
+           font-weight="500">${esc(line)}</text>`
+  ).join('')}`;
 };
 
 
