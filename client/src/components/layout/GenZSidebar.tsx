@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 import { useCredits } from '../../context/CreditsContext';
 import {
   Home, BookOpen, Award, Mic, Code, Target, Zap,
-  BarChart2, Trophy, Bookmark, Flame, Sparkles, Brain
+  BarChart2, Trophy, Bookmark, Flame, Sparkles, Brain, Coins
 } from 'lucide-react';
 
 const navItems = [
@@ -202,7 +202,7 @@ export function GenZSidebar() {
         className="m-4 p-4 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30 rounded-[16px] flex items-center gap-3"
       >
         <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-full flex items-center justify-center">
-          <Zap className="w-5 h-5 text-black" strokeWidth={2.5} />
+          <Coins className="w-5 h-5 text-black" strokeWidth={2.5} />
         </div>
         <div className="flex-1 text-left">
           <div className="text-xs text-[#a0a0a0]">Credits</div>
