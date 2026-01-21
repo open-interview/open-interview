@@ -12,6 +12,7 @@ import { useProgress, trackActivity } from '../hooks/use-progress';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { useCredits } from '../context/CreditsContext';
 import { useAchievementContext } from '../context/AchievementContext';
+import { useTheme } from '../context/ThemeContext';
 import { SEOHead } from '../components/SEOHead';
 import { UnifiedSearch } from '../components/UnifiedSearch';
 import { VoiceReminder } from '../components/VoiceReminder';
@@ -67,6 +68,10 @@ export default function QuestionViewerGenZ() {
   const [srsCard, setSrsCard] = useState<ReviewCard | null>(null);
   const [showRatingButtons, setShowRatingButtons] = useState(false);
   const [hasRated, setHasRated] = useState(false);
+  
+  // Get current theme from context
+  const { theme } = useTheme();
+  const isLightMode = theme === 'genz-light';
 
   const { companiesWithCounts } = useCompaniesWithCounts(
     channelId || '',
@@ -400,7 +405,13 @@ export default function QuestionViewerGenZ() {
               />
             </div>
             {/* Answer Panel */}
-            <div className="w-1/2 overflow-y-auto p-8 bg-background">
+            <div 
+              className="w-1/2 overflow-y-auto p-8"
+              style={{
+                backgroundColor: isLightMode ? 'hsl(0 0% 100%)' : 'hsl(0 0% 0%)',
+                color: isLightMode ? 'hsl(0 0% 5%)' : 'hsl(0 0% 100%)'
+              }}
+            >
               <GenZAnswerPanel 
                 question={currentQuestion} 
                 isCompleted={isCompleted}

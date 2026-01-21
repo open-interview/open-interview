@@ -13,8 +13,11 @@
 
 import 'dotenv/config';
 import { dbClient } from './utils.js';
+import fs from 'fs';
+import path from 'path';
 
 const db = dbClient;
+const OUTPUT_DIR = 'client/public/data';
 
 // Get all questions with their metadata
 async function getAllQuestions() {
@@ -599,6 +602,46 @@ async function main() {
   console.log(`   📊 Summary: ${created} created, ${updated} updated, ${unchanged - updated} unchanged`);
   console.log(`\n💡 Paths are stored in database and will be enhanced on next run.`);
   console.log(`   Run this script daily to keep paths fresh with latest content.`);
+
+  // Export to JSON for static site
+  console.log(`\n📦 Exporting to static JSON file...`);
+  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  
+  // Fetch all active paths from database
+  const exportResult = await db.execute({
+    sql: 'SELECT * FROM learning_paths WHERE status = ? ORDER BY popularity DESC, created_at DESC',
+    args: ['active']
+  });
+  
+  // Map to frontend format
+  const exportPaths = exportResult.rows.map(row => ({
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    pathType: row.path_type,
+    targetCompany: row.target_company,
+    targetJobTitle: row.target_job_title,
+    difficulty: row.difficulty,
+    estimatedHours: row.estimated_hours,
+    questionIds: row.question_ids,
+    channels: row.channels,
+    tags: row.tags,
+    prerequisites: row.prerequisites,
+    learningObjectives: row.learning_objectives,
+    milestones: row.milestones,
+    popularity: row.popularity || 0,
+    completionRate: row.completion_rate || 0,
+    averageRating: row.average_rating || 0,
+    metadata: row.metadata,
+    status: row.status,
+    createdAt: row.created_at,
+    lastUpdated: row.last_updated,
+    lastGenerated: row.last_generated
+  }));
+  
+  const outputPath = path.join(OUTPUT_DIR, 'learning-paths.json');
+  fs.writeFileSync(outputPath, JSON.stringify(exportPaths, null, 2));
+  console.log(`   ✅ Exported ${exportPaths.length} paths to ${outputPath}`);
 }
 
 main().catch(console.error);

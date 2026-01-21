@@ -3,6 +3,7 @@
  * Built different 🔥
  */
 
+import React from 'react';
 import { motion } from 'framer-motion';
 import { useLocation } from 'wouter';
 import { useGlobalStats } from '../../hooks/use-progress';
@@ -90,8 +91,28 @@ export function GenZHomePage() {
   
   const totalCompleted = ProgressStorage.getAllCompletedIds().size;
   
-  // Get active learning paths from localStorage (can have multiple)
-  const activePaths = (() => {
+  // Load curated paths from database
+  const [curatedPaths, setCuratedPaths] = React.useState<any[]>([]);
+  const [activePaths, setActivePaths] = React.useState<any[]>([]);
+  
+  React.useEffect(() => {
+    async function loadCuratedPaths() {
+      try {
+        const basePath = import.meta.env.BASE_URL || '/';
+        const response = await fetch(`${basePath}data/learning-paths.json`);
+        if (response.ok) {
+          const data = await response.json();
+          setCuratedPaths(data);
+        }
+      } catch (e) {
+        console.error('Failed to load curated paths:', e);
+      }
+    }
+    loadCuratedPaths();
+  }, []);
+  
+  // Update active paths when curated paths load
+  React.useEffect(() => {
     try {
       // Check for new format (plural - array)
       let saved = localStorage.getItem('activeLearningPaths');
@@ -108,13 +129,19 @@ export function GenZHomePage() {
         }
       }
       
-      if (!saved) return [];
+      if (!saved) {
+        setActivePaths([]);
+        return;
+      }
       
       const pathIds = JSON.parse(saved);
-      if (!Array.isArray(pathIds)) return [];
+      if (!Array.isArray(pathIds)) {
+        setActivePaths([]);
+        return;
+      }
       
       // Load custom paths from localStorage
-      const customPathsData = localStorage.getItem('customPaths');
+      const customPathsData = localStorage.getItem('customLearningPaths');
       const customPaths = customPathsData ? JSON.parse(customPathsData) : [];
       
       const paths = pathIds.map((pathId: string) => {
@@ -141,15 +168,35 @@ export function GenZHomePage() {
           }
         }
         
-        // Otherwise find curated path
+        // Check if it's a curated path from database
+        const curatedPath = curatedPaths.find((p: any) => p.id === pathId);
+        if (curatedPath) {
+          const channelIds = Array.isArray(curatedPath.channels) ? curatedPath.channels : JSON.parse(curatedPath.channels || '[]');
+          return {
+            id: curatedPath.id,
+            name: curatedPath.title,
+            icon: Brain,
+            color: 'from-green-500 to-emerald-500',
+            description: curatedPath.description,
+            channels: channelIds,
+            difficulty: curatedPath.difficulty.charAt(0).toUpperCase() + curatedPath.difficulty.slice(1),
+            duration: `${curatedPath.estimatedHours}h`,
+            totalQuestions: Array.isArray(curatedPath.questionIds) ? curatedPath.questionIds.length : JSON.parse(curatedPath.questionIds || '[]').length,
+            jobs: Array.isArray(curatedPath.learningObjectives) ? curatedPath.learningObjectives.slice(0, 3) : (curatedPath.learningObjectives ? JSON.parse(curatedPath.learningObjectives).slice(0, 3) : []),
+            skills: Array.isArray(curatedPath.tags) ? curatedPath.tags.slice(0, 5) : JSON.parse(curatedPath.tags || '[]').slice(0, 5),
+            salary: 'Varies'
+          };
+        }
+        
+        // Otherwise find hardcoded path
         return learningPaths.find(p => p.id === pathId);
       }).filter((path): path is NonNullable<typeof path> => path !== null && path !== undefined); // Type guard to remove undefined
       
-      return paths;
+      setActivePaths(paths);
     } catch {
-      return [];
+      setActivePaths([]);
     }
-  })();
+  }, [curatedPaths]); // Re-run when curatedPaths loads
   
   // Calculate streak
   const streak = (() => {
@@ -368,6 +415,25 @@ export function GenZHomePage() {
 
               {activePaths.map((path, index) => {
                 const Icon = path.icon;
+                
+                // Calculate completed questions for THIS specific path
+                const allCompletedIds = ProgressStorage.getAllCompletedIds();
+                let pathCompletedCount = 0;
+                
+                // If path has questionIds (curated paths), count only those
+                if (path.questionIds && Array.isArray(path.questionIds)) {
+                  pathCompletedCount = path.questionIds.filter((qId: string) => 
+                    allCompletedIds.has(qId)
+                  ).length;
+                } else {
+                  // For custom paths without specific questionIds, estimate based on channels
+                  // This is an approximation - ideally we'd fetch actual question IDs for these channels
+                  pathCompletedCount = totalCompleted; // Fallback to global for now
+                }
+                
+                const pathTotalQuestions = path.totalQuestions || path.questionIds?.length || 500;
+                const pathProgress = Math.min(Math.round((pathCompletedCount / pathTotalQuestions) * 100), 100);
+                
                 return (
                   <motion.div
                     key={path.id}
@@ -406,12 +472,12 @@ export function GenZHomePage() {
                       <div className="grid grid-cols-4 gap-3">
                         <div className="p-3 bg-background/30 rounded-[12px]">
                           <div className="text-xs text-muted-foreground mb-1">Completed</div>
-                          <div className="text-lg font-black">{totalCompleted}</div>
+                          <div className="text-lg font-black">{pathCompletedCount}</div>
                           <div className="text-[10px] text-muted-foreground">questions</div>
                         </div>
                         <div className="p-3 bg-background/30 rounded-[12px]">
                           <div className="text-xs text-muted-foreground mb-1">Progress</div>
-                          <div className="text-lg font-black">{Math.min(Math.round((totalCompleted / 500) * 100), 100)}%</div>
+                          <div className="text-lg font-black">{pathProgress}%</div>
                           <div className="text-[10px] text-muted-foreground">of path</div>
                         </div>
                         <div className="p-3 bg-background/30 rounded-[12px]">

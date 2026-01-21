@@ -20,6 +20,7 @@ import { GiscusComments } from '../GiscusComments';
 import { SimilarQuestions } from '../SimilarQuestions';
 import { formatTag } from '../../lib/utils';
 import { BlogService } from '../../services/api.service';
+import { useTheme } from '../../context/ThemeContext';
 
 type MediaTab = 'tldr' | 'diagram' | 'eli5' | 'video';
 
@@ -128,7 +129,7 @@ function renderWithInlineCode(text: string): React.ReactNode {
       return (
         <code 
           key={index}
-          className="px-2 py-1 mx-1 bg-[#00ff88]/20 text-[#00ff88] rounded-lg text-[0.9em] font-mono border border-primary/30"
+          className="px-2 py-1 mx-1 bg-primary/20 text-primary rounded-lg text-[0.9em] font-mono border border-primary/30"
         >
           {part}
         </code>
@@ -439,6 +440,10 @@ export function GenZAnswerPanel({ question, isCompleted }: { question: Question;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isMobileView = typeof window !== 'undefined' && window.innerWidth < 640;
   const [blogPost, setBlogPost] = useState<{ title: string; slug: string; url: string } | null>(null);
+  
+  // Get current theme from context
+  const { theme } = useTheme();
+  const isLightMode = theme === 'genz-light';
 
   useEffect(() => {
     BlogService.getByQuestionId(question.id).then(setBlogPost);
@@ -465,7 +470,7 @@ export function GenZAnswerPanel({ question, isCompleted }: { question: Question;
             
             if (isInline) {
               return (
-                <code className="px-2 py-1 bg-[#00ff88]/20 text-[#00ff88] rounded-lg text-[0.9em] font-mono border border-primary/30">
+                <code className="px-2 py-1 bg-primary/20 text-primary rounded-lg text-[0.9em] font-mono border border-primary/30">
                   {children}
                 </code>
               );
@@ -579,7 +584,11 @@ export function GenZAnswerPanel({ question, isCompleted }: { question: Question;
       ref={scrollContainerRef}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="w-full h-full overflow-y-auto overflow-x-hidden bg-gradient-to-br from-background via-muted/10 to-background"
+      className="w-full h-full overflow-y-auto overflow-x-hidden"
+      style={{
+        backgroundColor: isLightMode ? 'hsl(0 0% 100%)' : 'hsl(0 0% 0%)',
+        color: isLightMode ? 'hsl(0 0% 5%)' : 'hsl(0 0% 100%)'
+      }}
     >
       <div className="w-full px-4 sm:px-6 py-4 sm:py-6 pb-32 space-y-6">
 

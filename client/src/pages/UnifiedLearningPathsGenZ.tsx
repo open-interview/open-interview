@@ -41,6 +41,7 @@ export default function UnifiedLearningPathsGenZ() {
   const [selectedPath, setSelectedPath] = useState<any>(null);
   const [modalTab, setModalTab] = useState<'channels' | 'certifications'>('channels');
   const [searchQuery, setSearchQuery] = useState('');
+  const [curatedSearchQuery, setCuratedSearchQuery] = useState(''); // Search for curated paths
   
   // Custom path form
   const [customForm, setCustomForm] = useState({
@@ -84,31 +85,41 @@ export default function UnifiedLearningPathsGenZ() {
     loadCerts();
   }, []);
 
-  // Load curated paths from database
+  // Load curated paths from static JSON file
   useEffect(() => {
     async function loadCuratedPaths() {
       try {
-        const response = await fetch('/api/learning-paths');
+        const basePath = import.meta.env.BASE_URL || '/';
+        const response = await fetch(`${basePath}data/learning-paths.json`);
         if (response.ok) {
           const data = await response.json();
           // Map database paths to UI format
-          const mappedPaths = data.map((path: any) => ({
-            id: path.id,
-            name: path.title,
-            icon: getIconForPath(path.pathType),
-            color: getColorForPath(path.pathType),
-            description: path.description,
-            channels: JSON.parse(path.channels || '[]'),
-            difficulty: path.difficulty.charAt(0).toUpperCase() + path.difficulty.slice(1),
-            duration: `${path.estimatedHours}h`,
-            totalQuestions: JSON.parse(path.questionIds || '[]').length,
-            jobs: path.learningObjectives ? JSON.parse(path.learningObjectives).slice(0, 3) : [],
-            skills: JSON.parse(path.tags || '[]').slice(0, 5),
-            salary: getSalaryRange(path.targetJobTitle),
-            pathType: path.pathType,
-            targetCompany: path.targetCompany,
-            milestones: JSON.parse(path.milestones || '[]')
-          }));
+          const mappedPaths = data.map((path: any) => {
+            // Parse JSON strings if needed
+            const questionIds = typeof path.questionIds === 'string' ? JSON.parse(path.questionIds) : path.questionIds;
+            const channels = typeof path.channels === 'string' ? JSON.parse(path.channels) : path.channels;
+            const tags = typeof path.tags === 'string' ? JSON.parse(path.tags) : path.tags;
+            const learningObjectives = typeof path.learningObjectives === 'string' ? JSON.parse(path.learningObjectives) : path.learningObjectives;
+            const milestones = typeof path.milestones === 'string' ? JSON.parse(path.milestones) : path.milestones;
+            
+            return {
+              id: path.id,
+              name: path.title,
+              icon: getIconForPath(path.pathType),
+              color: getColorForPath(path.pathType),
+              description: path.description,
+              channels: channels || [],
+              difficulty: path.difficulty.charAt(0).toUpperCase() + path.difficulty.slice(1),
+              duration: `${path.estimatedHours}h`,
+              totalQuestions: questionIds?.length || 0,
+              jobs: learningObjectives?.slice(0, 3) || [],
+              skills: tags?.slice(0, 5) || [],
+              salary: getSalaryRange(path.targetJobTitle),
+              pathType: path.pathType,
+              targetCompany: path.targetCompany,
+              milestones: milestones || []
+            };
+          });
           setCuratedPaths(mappedPaths);
         }
       } catch (e) {
@@ -153,23 +164,29 @@ export default function UnifiedLearningPathsGenZ() {
     return jobTitle ? salaryMap[jobTitle] || '$80k - $150k' : '';
   };
 
-  // Get active paths
-  const activePaths = (() => {
+  // Get active paths - use state to react to curated paths loading
+  const [activePaths, setActivePaths] = useState<any[]>([]);
+  
+  useEffect(() => {
     try {
       const saved = localStorage.getItem('activeLearningPaths');
       if (saved) {
         const pathIds = JSON.parse(saved);
-        return pathIds.map((id: string) => {
+        const paths = pathIds.map((id: string) => {
           const custom = customPaths.find(p => p.id === id);
           if (custom) return { ...custom, type: 'custom' };
           const curated = curatedPaths.find(p => p.id === id);
           if (curated) return { ...curated, type: 'curated' };
           return null;
         }).filter(Boolean);
+        setActivePaths(paths);
+      } else {
+        setActivePaths([]);
       }
-    } catch {}
-    return [];
-  })();
+    } catch {
+      setActivePaths([]);
+    }
+  }, [customPaths, curatedPaths]);
 
   const activateCustomPath = (pathId: string) => {
     try {
@@ -302,6 +319,42 @@ export default function UnifiedLearningPathsGenZ() {
     cert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     cert.provider.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Helper function to filter curated paths
+  const filterCuratedPaths = (paths: any[], query: string) => {
+    if (!query) return paths;
+    const q = query.toLowerCase();
+    
+    return paths.filter(path => {
+      // Search in basic fields
+      if (path.name.toLowerCase().includes(q)) return true;
+      if (path.description.toLowerCase().includes(q)) return true;
+      if (path.pathType.toLowerCase().includes(q)) return true;
+      
+      // Search in company
+      if (path.targetCompany && path.targetCompany.toLowerCase().includes(q)) return true;
+      
+      // Search in channels/topics (e.g., "devops", "kubernetes", "aws")
+      if (path.channels && Array.isArray(path.channels)) {
+        if (path.channels.some((channel: string) => channel.toLowerCase().includes(q))) return true;
+      }
+      
+      // Search in skills/tags
+      if (path.skills && Array.isArray(path.skills)) {
+        if (path.skills.some((skill: string) => skill.toLowerCase().includes(q))) return true;
+      }
+      
+      // Search in learning objectives
+      if (path.jobs && Array.isArray(path.jobs)) {
+        if (path.jobs.some((job: string) => job.toLowerCase().includes(q))) return true;
+      }
+      
+      // Search in difficulty
+      if (path.difficulty && path.difficulty.toLowerCase().includes(q)) return true;
+      
+      return false;
+    });
+  };
 
   const isReadonly = modalMode === 'view';
   const currentChannels = modalMode === 'create' ? customForm.channels : (modalMode === 'edit' ? editForm.channels : selectedPath?.channels || []);
@@ -502,12 +555,80 @@ export default function UnifiedLearningPathsGenZ() {
             {/* Curated Paths Section */}
             {(view === 'all' || view === 'curated') && (
               <div>
-                <h2 className="text-3xl font-black mb-6 flex items-center gap-3">
-                  <Star className="w-8 h-8 text-amber-400" />
-                  Curated Career Paths
-                </h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-3xl font-black flex items-center gap-3">
+                    <Star className="w-8 h-8 text-amber-400" />
+                    Curated Career Paths
+                    {curatedSearchQuery && (
+                      <span className="text-lg font-normal text-gray-600 dark:text-gray-400">
+                        ({filterCuratedPaths(curatedPaths, curatedSearchQuery).length} results)
+                      </span>
+                    )}
+                  </h2>
+                </div>
+                
+                {/* Search Box for Curated Paths */}
+                <div className="mb-6">
+                  <div className="relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600 dark:text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search paths by name, company, certification, or topic..."
+                      value={curatedSearchQuery}
+                      onChange={(e) => setCuratedSearchQuery(e.target.value)}
+                      className="w-full pl-12 pr-4 py-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-[16px] text-base focus:outline-none focus:border-primary transition-all"
+                    />
+                    {curatedSearchQuery && (
+                      <button
+                        onClick={() => setCuratedSearchQuery('')}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  {curatedSearchQuery && (
+                    <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                      💡 Searching in: path names, descriptions, companies, certifications, topics, and skills
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid md:grid-cols-2 gap-6">
-                  {curatedPaths.map((path) => {
+                  {curatedPaths
+                    .filter(path => {
+                      if (!curatedSearchQuery) return true;
+                      const query = curatedSearchQuery.toLowerCase();
+                      
+                      // Search in basic fields
+                      if (path.name.toLowerCase().includes(query)) return true;
+                      if (path.description.toLowerCase().includes(query)) return true;
+                      if (path.pathType.toLowerCase().includes(query)) return true;
+                      
+                      // Search in company
+                      if (path.targetCompany && path.targetCompany.toLowerCase().includes(query)) return true;
+                      
+                      // Search in channels/topics (e.g., "devops", "kubernetes", "aws")
+                      if (path.channels && Array.isArray(path.channels)) {
+                        if (path.channels.some((channel: string) => channel.toLowerCase().includes(query))) return true;
+                      }
+                      
+                      // Search in skills/tags
+                      if (path.skills && Array.isArray(path.skills)) {
+                        if (path.skills.some((skill: string) => skill.toLowerCase().includes(query))) return true;
+                      }
+                      
+                      // Search in learning objectives
+                      if (path.jobs && Array.isArray(path.jobs)) {
+                        if (path.jobs.some((job: string) => job.toLowerCase().includes(query))) return true;
+                      }
+                      
+                      // Search in difficulty
+                      if (path.difficulty && path.difficulty.toLowerCase().includes(query)) return true;
+                      
+                      return false;
+                    })
+                    .map((path) => {
                     const Icon = path.icon;
                     const isActive = activePaths.some((p: any) => p.id === path.id);
                     
@@ -558,6 +679,27 @@ export default function UnifiedLearningPathsGenZ() {
                     );
                   })}
                 </div>
+                
+                {/* No Results Message */}
+                {curatedSearchQuery && filterCuratedPaths(curatedPaths, curatedSearchQuery).length === 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-center py-12"
+                  >
+                    <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-2xl font-bold mb-2">No paths found</h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      Try searching for something else or{' '}
+                      <button
+                        onClick={() => setCuratedSearchQuery('')}
+                        className="text-primary hover:underline font-bold"
+                      >
+                        clear your search
+                      </button>
+                    </p>
+                  </motion.div>
+                )}
               </div>
             )}
           </div>
@@ -611,7 +753,63 @@ export default function UnifiedLearningPathsGenZ() {
                   )}
 
                   {isReadonly && selectedPath?.description && (
-                    <p className="text-gray-600 dark:text-gray-400 mt-2">{selectedPath.description}</p>
+                    <div className="mt-4">
+                      <p className="text-gray-600 dark:text-gray-400">{selectedPath.description}</p>
+                      
+                      {/* Path Stats */}
+                      <div className="grid grid-cols-3 gap-4 mt-4">
+                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-[12px]">
+                          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-xs mb-1">
+                            <Clock className="w-3 h-3" />
+                            Duration
+                          </div>
+                          <div className="font-bold">{selectedPath.duration}</div>
+                        </div>
+                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-[12px]">
+                          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-xs mb-1">
+                            <Target className="w-3 h-3" />
+                            Questions
+                          </div>
+                          <div className="font-bold">{selectedPath.totalQuestions}</div>
+                        </div>
+                        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-[12px]">
+                          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-xs mb-1">
+                            <Trophy className="w-3 h-3" />
+                            Level
+                          </div>
+                          <div className="font-bold">{selectedPath.difficulty}</div>
+                        </div>
+                      </div>
+                      
+                      {/* Learning Objectives */}
+                      {selectedPath.jobs && selectedPath.jobs.length > 0 && (
+                        <div className="mt-4">
+                          <div className="text-sm font-bold mb-2">What you'll learn:</div>
+                          <div className="space-y-2">
+                            {selectedPath.jobs.map((objective: string, idx: number) => (
+                              <div key={idx} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                                <span>{objective}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Skills */}
+                      {selectedPath.skills && selectedPath.skills.length > 0 && (
+                        <div className="mt-4">
+                          <div className="text-sm font-bold mb-2">Skills covered:</div>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedPath.skills.map((skill: string, idx: number) => (
+                              <span key={idx} className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
 

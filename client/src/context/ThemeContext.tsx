@@ -33,6 +33,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   });
 
   const [autoRotate, setAutoRotate] = useState(false);
+  
+  // Listen to storage events for theme changes (for testing and cross-tab sync)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'theme' && e.newValue) {
+        const newTheme = e.newValue as Theme;
+        if (newTheme === 'genz-dark' || newTheme === 'genz-light') {
+          setThemeState(newTheme);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // Apply theme to DOM and save to localStorage
   useEffect(() => {
