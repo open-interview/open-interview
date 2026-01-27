@@ -10,7 +10,15 @@ import {
   Sparkles, X, Settings, Send, Loader2, Minimize2, Maximize2,
   Volume2, VolumeX, RotateCcw, Copy, Check, Trash2, MessageSquare, Mic, MicOff
 } from 'lucide-react';
-import * as webllm from '@mlc-ai/web-llm';
+// Disabled: AI Companion not in use
+// import * as webllm from '@mlc-ai/web-llm';
+
+// Type stub for webllm (component disabled, avoiding build error)
+const webllm = {
+  MLCEngine: class {},
+  CreateMLCEngine: async () => null,
+  ChatCompletionMessageParam: {} as any,
+};
 
 import { useUnifiedToast } from '../hooks/use-unified-toast';
 import { SITEMAP_RAG, searchRoutes, findRoutesByKeywords, getRouteByPath } from '../data/sitemap-rag';
