@@ -6,15 +6,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
-import { Switch } from '../ui/switch';
-import { Label } from '../ui/label';
-import { Slider } from '../ui/slider';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Badge } from '../ui/badge';
-import { Alert, AlertDescription } from '../ui/alert';
-import { Separator } from '../ui/separator';
+import { 
+  Card, CardContent, CardHeader, CardTitle, Button, Badge,
+  Switch, Label, Slider, Tabs, TabsContent, TabsList, TabsTrigger,
+  Alert, AlertDescription, Separator
+} from '../../ui';
 import { 
   configurationManager, 
   ConfigurationSettings, 
@@ -153,11 +149,11 @@ export const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
         {/* Settings Tab */}
         <TabsContent value="settings" className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle>General Settings</CardTitle>
-              <CardDescription>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">General Settings</CardTitle>
+              <p className="text-sm text-muted-foreground">
                 Configure how the answer formatting system behaves
-              </CardDescription>
+              </p>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
@@ -273,11 +269,11 @@ export const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
         {/* Validation Rules Tab */}
         <TabsContent value="rules" className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Validation Rules</CardTitle>
-              <CardDescription>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Validation Rules</CardTitle>
+              <p className="text-sm text-muted-foreground">
                 Enable or disable specific validation rules
-              </CardDescription>
+              </p>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -311,11 +307,11 @@ export const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
         {/* Overrides Tab */}
         <TabsContent value="overrides" className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Manual Overrides</CardTitle>
-              <CardDescription>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Manual Overrides</CardTitle>
+              <p className="text-sm text-muted-foreground">
                 View and manage manual formatting overrides
-              </CardDescription>
+              </p>
             </CardHeader>
             <CardContent>
               {overrides.length === 0 ? (
@@ -406,8 +402,8 @@ export const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
           </div>
 
           <Card>
-            <CardHeader>
-              <CardTitle>System Information</CardTitle>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">System Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex justify-between">
