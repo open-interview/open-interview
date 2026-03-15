@@ -19,6 +19,7 @@ import crypto from 'crypto';
 import { generateSVG } from '../../../packages/tech-svg-generator/dist/index.js';
 import { generateModernSceneSVG, detectModernScene } from './modern-illustration-generator.js';
 import { generateSceneSVG as generateBlogSVG, detectScene as detectBlogScene } from './blog-illustration-generator.js';
+import { generateAISvg } from './ai-svg-generator.js';
 
 // LinkedIn image specifications
 const LINKEDIN_SPECS = {
@@ -364,18 +365,36 @@ export function generateImageFilename(title, format = 'png') {
 
 /**
  * Main function: Generate LinkedIn-ready image for a post
+ * Tries AI-generated SVG first (big-pickle, free), falls back to template generators.
  */
-export async function generateLinkedInImage(title, content = '', outputDir = 'blog-output/images') {
+export async function generateLinkedInImage(title, content = '', outputDir = 'blog-output/images', options = {}) {
   console.log(`\n🖼️  Generating LinkedIn image for: "${title.substring(0, 50)}..."`);
-  
+
   // Ensure output directory exists
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
-  
-  // Generate SVG
-  const { svg, scene, generatorType } = generateSVGForPost(title, content);
-  console.log(`   Generator: ${generatorType}, Scene: ${scene}`);
+
+  const channel = options.channel || '';
+  const excerpt = options.excerpt || (typeof content === 'string' ? content.substring(0, 120) : '');
+
+  // --- Primary: AI-generated SVG (opencode/big-pickle, free) ---
+  let svg, scene, generatorType;
+  const aiSvg = await generateAISvg(title, channel, excerpt);
+
+  if (aiSvg) {
+    svg = aiSvg;
+    scene = 'ai-generated';
+    generatorType = 'ai';
+    console.log(`   Generator: ai (big-pickle), Scene: custom`);
+  } else {
+    // --- Fallback: template-based generators ---
+    const fallback = generateSVGForPost(title, content);
+    svg = fallback.svg;
+    scene = fallback.scene;
+    generatorType = fallback.generatorType;
+    console.log(`   Generator: ${generatorType} (fallback), Scene: ${scene}`);
+  }
   
   // Generate filename
   const filename = generateImageFilename(title, 'png');
