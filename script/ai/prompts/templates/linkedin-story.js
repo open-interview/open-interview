@@ -58,7 +58,7 @@ const HOOK_PATTERNS = [
 
 export function build(context) {
   const { title, excerpt, channel, tags: rawTags } = context;
-  
+
   // Parse tags if it's a string
   let tags = rawTags;
   if (typeof tags === 'string') {
@@ -69,149 +69,90 @@ export function build(context) {
     }
   }
   tags = Array.isArray(tags) ? tags : [];
-  
+
   // Find relevant recent trends
   const contentText = `${title} ${excerpt} ${channel} ${tags.join(' ')}`.toLowerCase();
   const relevantTrends = RECENT_TECH_TRENDS.filter(t => contentText.includes(t.keyword));
-  
-  const trendContext = relevantTrends.length > 0 
-    ? `\nRECENT TECH CONTEXT (mention if relevant):
-${relevantTrends.map(t => `- ${t.keyword.toUpperCase()}: ${t.trend}`).join('\n')}`
+
+  const trendLines = relevantTrends.map(t => `- ${t.trend}`).join('\n');
+  const trendContext = relevantTrends.length > 0
+    ? `\nRelevant 2025 context you can weave in naturally:\n${trendLines}`
     : '';
 
-  // Select a random hook pattern to ensure variety
-  const hookPattern = HOOK_PATTERNS[Math.floor(Math.random() * HOOK_PATTERNS.length)];
+  // Select a random hook style to ensure variety
+  const hookStyle = HOOK_PATTERNS[Math.floor(Math.random() * HOOK_PATTERNS.length)];
+  const jsonFormat = String.raw`{"story": "your post text here with \n\n between paragraphs and \n between bullet points"}`;
 
-  return `Create an ENGAGING and INFORMATIVE LinkedIn post for a technical blog article.
+  return `You are a senior SRE/DevOps engineer with 10+ years of experience writing on LinkedIn. Write a post about the article below in your own voice — like you're sharing a genuine insight with peers, not filling in a template.
 
-CRITICAL: This post should be EDUCATIONAL and include enough technical detail that someone unfamiliar with the topic can understand what it's about and why it matters.
-
-Article Title: ${title}
-Topic/Channel: ${channel || 'tech'}
+Article: ${title}
+Topic: ${channel || 'tech'}
 Summary: ${excerpt || 'Technical interview preparation content'}
 ${trendContext}
 
-HOOK PATTERN FOR THIS POST: ${hookPattern}
-Use this pattern to create a UNIQUE opening that fits the content.
+Hook style to use: "${hookStyle}"
+Examples of each style (these are patterns, NOT templates to copy):
+- question: "Why do 90% of engineers get X wrong?"
+- statistic: "73% of production outages trace back to this one thing."
+- contrarian: "Everyone optimizes for X. The real bottleneck is Y."
+- story: "Our deploy took down prod last week. Cause? One missing label."
+- problem: "You've seen this error. Here's what it actually means."
+- insight: "After reviewing 100+ PRs, I keep seeing the same gap."
+- trend: "The way teams handle X in 2025 is completely different."
+- mistake: "Spent 3 days chasing this bug. The fix was 4 characters."
 
-═══════════════════════════════════════════════════════════════
-CRITICAL: LINKEDIN FORMATTING RULES
-═══════════════════════════════════════════════════════════════
+WRITE THE POST AS FLOWING TEXT — no headers, no labels, no "Section 1", no structure markers of any kind. Just write it naturally like a human would.
 
-LinkedIn renders posts as plain text. To create visual structure:
+The post should:
+- Open with the hook style above (1-2 punchy lines)
+- Briefly explain the concept in plain language (what it is, why it matters)
+- Share 4-5 specific insights as emoji bullet points on separate lines
+- Close with one memorable line that sticks
 
-1. USE BLANK LINES to separate paragraphs (\\n\\n)
-2. USE BULLET POINTS with emojis at line start
-3. KEEP PARAGRAPHS SHORT (2-3 sentences max)
-4. USE LINE BREAKS between distinct ideas
-
-═══════════════════════════════════════════════════════════════
-REQUIRED POST STRUCTURE (follow this EXACTLY)
-═══════════════════════════════════════════════════════════════
-
-SECTION 1 - HOOK (1-2 lines)
-Create an attention-grabbing hook using the "${hookPattern}" pattern:
-
-• question: "Why do 90% of engineers get X wrong?"
-• statistic: "73% of production outages trace back to this one thing."
-• contrarian: "Everyone optimizes for X. The real bottleneck is Y."
-• story: "Last Tuesday, our API went down. The root cause surprised everyone."
-• problem: "You've seen this error message. Here's what it really means."
-• insight: "After 50 interviews, I noticed a pattern most engineers miss."
-• trend: "In 2025, the way we approach X is fundamentally different."
-• mistake: "I spent 3 days debugging. The fix was one line."
-
-SECTION 2 - TECHNICAL CONTEXT (3-4 lines, separated by blank line)
-Explain the WHAT and WHY with enough detail for newcomers:
-- What is the technology/concept?
-- Why does it matter?
-- What problem does it solve?
-- Include 1-2 specific technical terms with brief context
-
-SECTION 3 - KEY INSIGHTS (4-5 bullet points)
-Use emoji bullets with CONCRETE, ACTIONABLE points:
-🔍 Specific technical insight with context
-⚡ Performance/efficiency gain with numbers if possible
-🎯 Best practice or pattern to follow
-🛡️ Common pitfall to avoid
-💡 Practical takeaway or next step
-
-SECTION 4 - TAKEAWAY (1-2 lines)
-End with actionable insight that reinforces learning value.
-
-═══════════════════════════════════════════════════════════════
-EXAMPLE OUTPUT FORMAT (using "statistic" hook)
-═══════════════════════════════════════════════════════════════
-
+GOOD EXAMPLE:
+---
 67% of Kubernetes clusters are misconfigured in production.
 
-The issue? Most teams focus on deployment but overlook resource limits and requests. These settings control how the scheduler allocates pods across nodes. Without proper configuration, you get cascading failures during traffic spikes.
+Most teams nail the deployment but skip resource limits. These tell the scheduler how much CPU/memory a pod actually needs. Without them, one noisy neighbour pod can starve everything else.
 
-Here's what actually matters:
+What actually matters:
 
-🔍 Requests define minimum guaranteed resources - set too low and pods get evicted
-⚡ Limits cap maximum usage - set too high and you waste money, too low and you throttle
-🎯 Use Vertical Pod Autoscaler to discover optimal values from real usage data
-🛡️ Always set memory limits - OOM kills are harder to debug than CPU throttling
-💡 Start with conservative requests, then tune based on P95 metrics
+🔍 Requests = minimum guarantee — set too low and pods get evicted under pressure
+⚡ Limits = hard cap — too high wastes money, too low causes silent CPU throttling
+🎯 Use Vertical Pod Autoscaler to learn real usage before setting hard numbers
+🛡️ Always set memory limits — OOM kills are silent and brutal to debug
+💡 Start conservative, then tune from P95 metrics after a week of real traffic
 
-Proper resource management isn't optional - it's the difference between stable and chaotic deployments.
+Resource management is not optional. It's the difference between a stable cluster and 3am pages.
+---
 
-═══════════════════════════════════════════════════════════════
-EXAMPLE OUTPUT FORMAT (using "question" hook)
-═══════════════════════════════════════════════════════════════
+ANOTHER GOOD EXAMPLE:
+---
+Why do senior engineers obsess over idempotency?
 
-Why do senior engineers always talk about "idempotency"?
+Because networks lie. Requests time out, retries happen, and the same message can arrive twice. Idempotency means your system produces the same result whether the operation runs once or ten times — which is everything in distributed systems.
 
-Because distributed systems fail in unpredictable ways. Idempotency means an operation produces the same result whether you run it once or multiple times. This is critical when network requests can timeout, retry, or duplicate.
+Core ideas:
 
-Key principles:
+🔍 Use unique request IDs so duplicates are detected and silently skipped
+⚡ Design endpoints so POST /order with the same ID returns the existing order, not an error
+🎯 Database upserts (INSERT ... ON CONFLICT UPDATE) are your best friend here
+🛡️ Never increment a counter directly — derive state from events instead
+💡 Write explicit retry tests — if you haven't tested it, it will break in production
 
-🔍 Use unique request IDs to detect and skip duplicate operations
-⚡ Design APIs where POST /orders with same ID returns existing order, not error
-🎯 Database upserts (INSERT ... ON CONFLICT UPDATE) are your friend
-🛡️ Avoid incrementing counters directly - use SET operations instead
-💡 Test retry scenarios explicitly - they will happen in production
+The systems that survive are the ones built assuming failure will happen.
+---
 
-The best systems assume failure and handle it gracefully.
+RULES:
+- No section headers or labels whatsoever
+- No markdown (no **, no ##)
+- No hashtags or URLs (added separately)
+- Short paragraphs, blank lines between them
+- 600-900 characters total
+- Emoji bullets on their own lines only
 
-═══════════════════════════════════════════════════════════════
-FORMATTING RULES
-═══════════════════════════════════════════════════════════════
-
-✅ DO:
-- Use \\n\\n (double newline) between paragraphs
-- Start bullet points with emoji + space
-- Keep each bullet on its own line
-- Include specific technical terms with brief explanations
-- Use 5-6 emojis total (🔍 ⚡ 🎯 🛡️ 💡 🚀 ✅ ❌ 📈)
-- Make it educational - someone new should learn something concrete
-- Total length: 600-900 characters
-
-❌ DON'T:
-- Write wall-of-text paragraphs
-- Use ASCII art or box characters
-- Include hashtags (added separately)
-- Include URLs (added separately)
-- Use markdown formatting (**, ##, etc.)
-- Assume reader knows all the jargon - explain briefly
-- Repeat the same hook pattern (it was 2am, etc.)
-
-═══════════════════════════════════════════════════════════════
-OUTPUT
-═══════════════════════════════════════════════════════════════
-
-Output ONLY valid JSON with the story field containing properly formatted text:
-
-{
-  "story": "Hook line here.\\n\\nTechnical context with explanations here.\\n\\nKey insights:\\n\\n🔍 Point one with specifics\\n⚡ Point two with context\\n🎯 Point three with actionable advice\\n🛡️ Point four avoiding pitfalls\\n💡 Point five with takeaway\\n\\nFinal insight that reinforces learning."
-}
-
-IMPORTANT: 
-- Use \\n for line breaks and \\n\\n for paragraph breaks in the JSON string
-- Include enough technical detail that a newcomer can understand the concept
-- Vary your hook - don't always use story-based openings
-- Make it educational AND engaging`;
+Output ONLY valid JSON:
+${jsonFormat}`;
 }
 
 export default { schema, build };
