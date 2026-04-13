@@ -20,7 +20,7 @@ import { createClient } from '@libsql/client';
 import { addWorkItem, initWorkQueue } from './utils.js';
 
 const client = createClient({
-  url: process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL,
+  url: process.env.SQLITE_URL ?? process.env.TURSO_DATABASE_URL ?? 'file:local.db',
   authToken: process.env.TURSO_AUTH_TOKEN
 });
 

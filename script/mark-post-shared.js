@@ -7,12 +7,12 @@
 import 'dotenv/config';
 import { createClient } from '@libsql/client';
 
-const url = process.env.TURSO_DATABASE_URL;
+const url = process.env.SQLITE_URL ?? process.env.TURSO_DATABASE_URL ?? 'file:local.db';
 const authToken = process.env.TURSO_AUTH_TOKEN;
 const postId = process.env.POST_ID;
 
-if (!url || !postId) {
-  console.error('❌ Missing required environment variables');
+if (!postId) {
+  console.error('❌ Missing POST_ID environment variable');
   process.exit(1);
 }
 

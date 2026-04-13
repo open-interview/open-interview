@@ -12,13 +12,8 @@
 import 'dotenv/config';
 import { createClient } from '@libsql/client';
 
-const url = process.env.TURSO_DATABASE_URL;
+const url = process.env.SQLITE_URL ?? process.env.TURSO_DATABASE_URL ?? 'file:local.db';
 const authToken = process.env.TURSO_AUTH_TOKEN;
-
-if (!url || !authToken) {
-  console.error('❌ Missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN');
-  process.exit(1);
-}
 
 const client = createClient({ url, authToken });
 

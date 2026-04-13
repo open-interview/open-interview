@@ -21,7 +21,7 @@ const PAGES_REPO_OWNER = process.env.PAGES_REPO_OWNER || 'open-interview';
 const PAGES_REPO_NAME = process.env.PAGES_REPO_NAME || 'open-interview.github.io';
 
 const db = createClient({
-  url: process.env.TURSO_DATABASE_URL,
+  url: process.env.SQLITE_URL ?? process.env.TURSO_DATABASE_URL ?? 'file:local.db',
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 

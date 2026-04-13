@@ -10,13 +10,10 @@ import path from 'path';
 const OUTPUT_DIR = 'client/public/data';
 
 // Use read-only credentials
-const url = process.env.TURSO_DATABASE_URL_RO || process.env.TURSO_DATABASE_URL;
+const url = process.env.SQLITE_URL ?? process.env.TURSO_DATABASE_URL ?? 'file:local.db';
 const authToken = process.env.TURSO_AUTH_TOKEN_RO || process.env.TURSO_AUTH_TOKEN;
 
-if (!url) {
-  console.error('❌ Missing TURSO_DATABASE_URL environment variable');
-  process.exit(1);
-}
+// URL defaults to file:local.db if not set
 
 const client = createClient({ url, authToken });
 

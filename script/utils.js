@@ -8,26 +8,20 @@ import fs from 'fs';
 // DATABASE CONNECTION
 // ============================================
 
-const url = process.env.TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL_RO;
+const url = process.env.SQLITE_URL ?? process.env.TURSO_DATABASE_URL ?? process.env.TURSO_DATABASE_URL_RO ?? 'file:local.db';
 const authToken = process.env.TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN_RO;
 
-// Create database client lazily - only fail when actually used if URL is missing
+// Create database client lazily
 let _dbClient = null;
 export const dbClient = {
   get execute() {
     if (!_dbClient) {
-      if (!url) {
-        throw new Error('Missing TURSO_DATABASE_URL environment variable');
-      }
       _dbClient = createClient({ url, authToken });
     }
     return _dbClient.execute.bind(_dbClient);
   },
   get batch() {
     if (!_dbClient) {
-      if (!url) {
-        throw new Error('Missing TURSO_DATABASE_URL environment variable');
-      }
       _dbClient = createClient({ url, authToken });
     }
     return _dbClient.batch.bind(_dbClient);

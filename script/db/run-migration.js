@@ -13,13 +13,10 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const url = process.env.TURSO_DATABASE_URL;
+const url = process.env.SQLITE_URL ?? process.env.TURSO_DATABASE_URL ?? 'file:local.db';
 const authToken = process.env.TURSO_AUTH_TOKEN;
 
-if (!url) {
-  console.error('❌ Missing TURSO_DATABASE_URL environment variable');
-  process.exit(1);
-}
+// URL defaults to file:local.db if not set
 
 const db = createClient({ url, authToken });
 
