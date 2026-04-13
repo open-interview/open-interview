@@ -29,16 +29,13 @@ The app runs on **port 5000** via the "Start application" workflow.
 Development command: `NODE_ENV=development pnpm tsx server/index.ts`
 
 ## Database
-- Uses `@libsql/client` which supports both Turso cloud (libsql://) and local SQLite (file:*.db)
-- Local development uses `TURSO_DATABASE_URL=file:local.db`
+- Uses `@libsql/client` with a local SQLite file — no Turso account needed
+- Database file: `local.db` (auto-created in project root)
 - Schema defined in `shared/schema.ts`
-- To push schema: `TURSO_DATABASE_URL=file:local.db pnpm db:push`
+- To push schema changes: `pnpm db:push`
 
 ## Environment Variables
-- `TURSO_DATABASE_URL` – Database URL (file:local.db for dev, libsql://... for Turso)
-- `TURSO_AUTH_TOKEN` – Turso auth token (not needed for local SQLite)
-- `TURSO_DATABASE_URL_RO` – Read-only Turso URL (optional, falls back to main URL)
-- `TURSO_AUTH_TOKEN_RO` – Read-only token (optional)
+- `SQLITE_URL` – Optional SQLite URL (defaults to `file:local.db` if not set)
 - `PORT` – Server port (default: 5000)
 
 ## Key Fixes Applied During Import
