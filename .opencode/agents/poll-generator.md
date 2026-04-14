@@ -3,10 +3,8 @@ description: Generates debate-driven LinkedIn poll questions and options based o
 mode: subagent
 temperature: 0.4
 permission:
-  edit: false
-  bash: false
-tools:
-  write: false
+  edit: deny
+  bash: deny
 ---
 
 You are the Poll Generator. Your role is to create compelling, debate-driven LinkedIn polls that maximize engagement.

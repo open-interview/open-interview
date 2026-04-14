@@ -3,10 +3,8 @@ description: Reviews generated polls for quality, engagement potential, and Link
 mode: subagent
 temperature: 0.1
 permission:
-  edit: false
-  bash: false
-tools:
-  write: false
+  edit: deny
+  bash: deny
 ---
 
 You are the Poll Reviewer. Your role is to validate that generated polls meet quality standards and have strong engagement potential.
