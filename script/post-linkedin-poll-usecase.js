@@ -1,21 +1,22 @@
 #!/usr/bin/env node
 /**
  * LinkedIn Poll with Real-World Use Case
+ * Uses Poll Generator Agent for high-quality poll generation
  * 
  * Better flow:
  * 1. Select topic, subtopic, concept
- * 2. Search for real-world use case
- * 3. Generate poll with use case as the hook
+ * 2. Agent decomposes and searches for real-world use case
+ * 3. Agent generates opinion-based poll with story hook
+ * 4. Post to LinkedIn (or dry run)
  * 
  * Usage:
- *   node script/post-linkedin-poll-usecase.js --topic sre --subtopic "on-call" --concept "incident response" --channel sre
- *   node script/post-linkedin-poll-usecase.js --topic kubernetes --subtopic "networking" --concept "cgroups" --channel kubernetes
+ *   DRY_RUN=true node script/post-linkedin-poll-usecase.js --topic sre --subtopic "on-call" --concept "incident response"
+ *   node script/post-linkedin-poll-usecase.js --topic kubernetes --subtopic "networking" --concept "pod communication"
  */
 
 import 'dotenv/config';
 import fs from 'node:fs';
-import ai from './ai/index.js';
-import { webSearch } from './ai/utils/web-search.js';
+import { generatePollAgent } from './agents/poll-generator-agent.js';
 
 const args = process.argv.slice(2).reduce((acc, arg, i, arr) => {
   if (arg.startsWith('--')) {
@@ -25,11 +26,11 @@ const args = process.argv.slice(2).reduce((acc, arg, i, arr) => {
   return acc;
 }, {});
 
-const TOPIC = args.topic || 'sre';
-const SUBTOPIC = args.subtopic || 'on-call';
-const CONCEPT = args.concept || 'incident response';
-const CHANNEL = args.channel || 'sre';
-const DRY_RUN = process.env.DRY_RUN === 'true' || args.dry;
+const TOPIC = args.topic || process.env.TOPIC || 'devops';
+const SUBTOPIC = args.subtopic || process.env.SUBTOPIC || 'deployment';
+const CONCEPT = args.concept || process.env.CONCEPT || 'canary deployments';
+const CHANNEL = args.channel || process.env.CHANNEL || TOPIC;
+const DRY_RUN = process.env.DRY_RUN === 'true' || args.dry === true;
 
 function writeGitHubOutput(key, value) {
   if (process.env.GITHUB_OUTPUT) {
@@ -37,117 +38,8 @@ function writeGitHubOutput(key, value) {
   }
 }
 
-const MAX_POLL_QUESTION_LENGTH = 140;
-const MAX_POLL_OPTIONS = 4;
-
 /**
- * Search for real-world use cases
- */
-async function searchUseCase(topic, subtopic, concept) {
-  console.log(`\n🔍 Searching for real-world use cases...`);
-  console.log(`   Topic: ${topic}`);
-  console.log(`   Subtopic: ${subtopic}`);
-  console.log(`   Concept: ${concept}`);
-
-  const queries = [
-    `${concept} ${topic} production incident case study`,
-    `${concept} ${subtopic} ${topic} outage story`,
-    `${concept} DevOps SRE real world example`,
-    `Netflix Uber Airbnb ${concept} ${topic}`
-  ];
-
-  for (const query of queries) {
-    try {
-      console.log(`\n   Query: "${query}"`);
-      const results = await webSearch(query, { numResults: 5 });
-      
-      if (results && results.length > 0) {
-        const result = results[0];
-        console.log(`   ✅ Found: ${result.title}`);
-        console.log(`   URL: ${result.url}`);
-        
-        return {
-          company: extractCompany(result.title) || guessCompany(result.url),
-          situation: result.snippet || `A ${concept} challenge in ${topic}`,
-          challenge: `How to handle ${concept} in ${subtopic} scenario`,
-          solution: `Applied ${concept} best practices`,
-          outcome: result.snippet || 'Improved reliability',
-          lesson: `Key insight about ${concept}`,
-          sourceUrl: result.url,
-          sourceTitle: result.title
-        };
-      }
-    } catch (err) {
-      console.log(`   ⚠️ Search failed: ${err.message}`);
-    }
-  }
-
-  console.log(`   ⚠️ No use case found via search`);
-  return null;
-}
-
-/**
- * Extract company name from title
- */
-function extractCompany(title) {
-  const companies = ['Netflix', 'Uber', 'Airbnb', 'Stripe', 'Amazon', 'Google', 'Meta', 'Apple', 'Microsoft', 'Spotify', 'Twitter', 'LinkedIn', 'Slack', 'Discord', 'Cloudflare', 'Datadog', 'PagerDuty', 'GitHub'];
-  for (const company of companies) {
-    if (title.toLowerCase().includes(company.toLowerCase())) {
-      return company;
-    }
-  }
-  return null;
-}
-
-/**
- * Guess company from URL
- */
-function guessCompany(url) {
-  const host = new URL(url).hostname;
-  if (host.includes('netflix')) return 'Netflix';
-  if (host.includes('uber')) return 'Uber';
-  if (host.includes('airbnb')) return 'Airbnb';
-  if (host.includes('stripe')) return 'Stripe';
-  if (host.includes('aws') || host.includes('amazon')) return 'Amazon';
-  if (host.includes('google')) return 'Google';
-  return 'A tech company';
-}
-
-/**
- * Generate poll content with use case
- */
-async function generatePollWithUseCase(topic, subtopic, concept, useCase, channel) {
-  console.log(`\n🤖 Generating poll with use case...`);
-
-  const result = await ai.run('linkedinPollUsecase', {
-    topic,
-    subtopic,
-    concept,
-    useCase,
-    channel
-  });
-
-  if (!result || !result.pollQuestion) {
-    throw new Error('AI returned invalid poll structure');
-  }
-
-  const pollQuestion = result.pollQuestion.substring(0, MAX_POLL_QUESTION_LENGTH);
-  const options = result.options.slice(0, MAX_POLL_OPTIONS).map(o => String(o).substring(0, 30));
-
-  console.log(`   Poll question: ${pollQuestion}`);
-  options.forEach((o, i) => console.log(`   ${i + 1}. ${o}${i === result.correctIndex ? ' (correct)' : ''}`));
-
-  return {
-    text: result.introText,
-    question: pollQuestion,
-    options,
-    correctIndex: result.correctIndex,
-    useCase
-  };
-}
-
-/**
- * Fetch with timeout
+ * Fetch with timeout and retry
  */
 async function fetchWithRetry(url, options, retries = 3, delay = 2000) {
   for (let attempt = 1; attempt <= retries; attempt++) {
@@ -223,7 +115,7 @@ async function postToLinkedIn(pollContent, durationHours = 48) {
 
 async function main() {
   console.log('═'.repeat(60));
-  console.log('📊 LinkedIn Poll with Real-World Use Case');
+  console.log('📊 LinkedIn Poll Generator (Agent-Based)');
   console.log('═'.repeat(60));
   console.log(`Topic: ${TOPIC}`);
   console.log(`Subtopic: ${SUBTOPIC}`);
@@ -233,30 +125,60 @@ async function main() {
   console.log('─'.repeat(60));
 
   try {
-    // Step 1: Search for real-world use case
-    const useCase = await searchUseCase(TOPIC, SUBTOPIC, CONCEPT);
+    // Invoke the specialized poll generator agent
+    const result = await generatePollAgent({
+      topic: TOPIC,
+      subtopic: SUBTOPIC,
+      concept: CONCEPT,
+      channel: CHANNEL,
+      verbose: true
+    });
 
-    // Step 2: Generate poll with use case
-    const pollContent = await generatePollWithUseCase(TOPIC, SUBTOPIC, CONCEPT, useCase, CHANNEL);
+    if (!result.success) {
+      throw new Error(result.error || 'Agent failed');
+    }
+
+    const poll = result.poll;
+
+    // Display final poll
+    console.log('\n📋 GENERATED POLL:');
+    console.log('─'.repeat(60));
+    console.log(poll.text);
+    console.log('─'.repeat(60));
+    console.log(`Question: ${poll.question}`);
+    console.log(`Options:`);
+    poll.options.forEach((o, i) => console.log(`  ${i + 1}. ${o}`));
+    console.log('─'.repeat(60));
+    console.log(`Metadata:`);
+    console.log(`  Real-World Case: ${poll.metadata.hasRealWorldCase ? 'Yes' : 'No'}`);
+    if (poll.metadata.useCase) {
+      console.log(`  Company: ${poll.metadata.useCase.company}`);
+    }
+    console.log(`  Template: ${poll.metadata.templateUsed}`);
+    console.log(`  Estimated Engagement: ${poll.metadata.estimatedEngagement}`);
+    console.log('─'.repeat(60));
 
     if (DRY_RUN) {
-      console.log('\n🧪 DRY RUN - Would post:');
-      console.log('─'.repeat(40));
-      console.log(pollContent.text);
-      console.log('─'.repeat(40));
-      console.log(`Question: ${pollContent.question}`);
-      pollContent.options.forEach((o, i) => console.log(`  ${i + 1}. ${o}`));
+      console.log('\n🧪 DRY RUN - Would post above poll');
       writeGitHubOutput('dry_run', 'true');
-      writeGitHubOutput('poll_question', pollContent.question);
+      writeGitHubOutput('poll_question', poll.question);
+      writeGitHubOutput('has_use_case', poll.metadata.hasRealWorldCase ? 'true' : 'false');
       return;
     }
 
-    // Step 3: Post to LinkedIn
-    const result = await postToLinkedIn(pollContent);
-    
-    writeGitHubOutput('linkedin_post_id', result.id);
-    writeGitHubOutput('use_case_company', useCase?.company || 'N/A');
-    writeGitHubOutput('poll_question', pollContent.question);
+    // Post to LinkedIn
+    const linkedinResult = await postToLinkedIn({
+      text: poll.text,
+      question: poll.question,
+      options: poll.options
+    });
+
+    writeGitHubOutput('linkedin_post_id', linkedinResult.id);
+    writeGitHubOutput('poll_question', poll.question);
+    writeGitHubOutput('has_use_case', poll.metadata.hasRealWorldCase ? 'true' : 'false');
+    if (poll.metadata.useCase) {
+      writeGitHubOutput('use_case_company', poll.metadata.useCase.company);
+    }
 
     console.log('\n✅ Done!');
     console.log('═'.repeat(60));
