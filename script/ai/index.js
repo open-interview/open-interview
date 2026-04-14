@@ -40,6 +40,7 @@ import blogImageTemplate from './prompts/templates/blog-image.js';
 import illustrationSceneTemplate from './prompts/templates/illustration-scene.js';
 import certificationQuestionTemplate from './prompts/templates/certification-question.js';
 import linkedinPollMcqTemplate from './prompts/templates/linkedin-poll-mcq.js';
+import linkedinPollUsecaseTemplate from './prompts/templates/linkedin-poll-usecase.js';
 
 // Template registry
 const templates = {
@@ -66,7 +67,8 @@ const templates = {
   'blogImage': blogImageTemplate,
   'illustrationScene': illustrationSceneTemplate,
   'certification-question': certificationQuestionTemplate,
-  'linkedinPollMcq': linkedinPollMcqTemplate
+  'linkedinPollMcq': linkedinPollMcqTemplate,
+  'linkedinPollUsecase': linkedinPollUsecaseTemplate
 };
 
 // Provider registry
