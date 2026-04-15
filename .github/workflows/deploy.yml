@@ -1,0 +1,195 @@
+name: 🚀 Deploy
+
+# Consolidated deployment workflow
+# Replaces: deploy-app.yml (push) + scheduled-deploy.yml (daily schedule)
+# Features: Race condition prevention, concurrency control, single source of truth
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.github/workflows/content-generation.yml'
+      - '.github/workflows/deploy-blog.yml'
+      - '.github/workflows/social-media.yml'
+  schedule:
+    # Run daily at 2 AM UTC (after content generation completes)
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - staging
+          - production
+      reason:
+        description: 'Reason for manual deployment'
+        required: false
+        default: 'Manual trigger'
+
+# Concurrency: Prevent simultaneous deployments (race condition protection)
+concurrency:
+  group: deployment-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 🔨 Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      deploy-staging: ${{ steps.determine-env.outputs.staging }}
+      deploy-production: ${{ steps.determine-env.outputs.production }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-pnpm
+
+      - name: Determine deployment environments
+        id: determine-env
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "staging=true" >> $GITHUB_OUTPUT
+            echo "production=true" >> $GITHUB_OUTPUT
+            echo "trigger=push" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "staging=false" >> $GITHUB_OUTPUT
+            echo "production=true" >> $GITHUB_OUTPUT
+            echo "trigger=scheduled" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ github.event.inputs.environment }}" == "staging" ]]; then
+              echo "staging=true" >> $GITHUB_OUTPUT
+              echo "production=false" >> $GITHUB_OUTPUT
+            elif [[ "${{ github.event.inputs.environment }}" == "production" ]]; then
+              echo "staging=false" >> $GITHUB_OUTPUT
+              echo "production=true" >> $GITHUB_OUTPUT
+            else
+              echo "staging=true" >> $GITHUB_OUTPUT
+              echo "production=true" >> $GITHUB_OUTPUT
+            fi
+            echo "trigger=manual" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fetch data from Turso
+        run: |
+          node script/fetch-questions-for-build.js
+          node script/fetch-question-history.js
+          node script/generate-curated-paths.js
+          node script/generate-rss.js
+          node script/generate-sitemap.js
+          node script/fetch-bot-monitor-data.js
+        env:
+          TURSO_DATABASE_URL_RO: ${{ secrets.TURSO_DATABASE_URL_RO }}
+          TURSO_AUTH_TOKEN_RO: ${{ secrets.TURSO_AUTH_TOKEN_RO }}
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+
+      - name: Install Playwright
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build application
+        run: |
+          pnpm run build
+          pnpm run build:pagefind
+
+      - name: Run E2E tests
+        run: |
+          # Run only core smoke tests in CI
+          pnpm exec playwright test e2e/core.spec.ts --project=chromium-desktop
+        env:
+          CI: 'true'
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 3
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: dist/public
+          retention-days: 1
+
+  staging:
+    name: 🧪 Deploy Staging
+    needs: build
+    if: needs.build.outputs.deploy-staging == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://stage-open-interview.github.io
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: dist
+
+      - uses: ./.github/actions/deploy-pages
+        with:
+          source-dir: dist
+          repo: stage-open-interview/stage-open-interview.github.io
+          branch: main
+          token: ${{ secrets.GH_TOKEN }}
+          commit-message: 'Deploy: ${{ github.sha }} [skip ci]'
+          preserve-cname: 'false'
+
+  production:
+    name: 🌐 Deploy Production
+    needs: [build, staging]
+    if: |
+      always() &&
+      needs.build.outputs.deploy-production == 'true' &&
+      (needs.staging.result == 'success' || needs.staging.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://open-interview.github.io
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-pnpm
+        with:
+          install: 'false'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: dist
+
+      - uses: ./.github/actions/deploy-pages
+        with:
+          source-dir: dist
+          repo: open-interview/open-interview.github.io
+          branch: gh-pages
+          token: ${{ secrets.GH_TOKEN }}
+          commit-message: 'Deploy: ${{ github.sha }} [skip ci]'
+          preserve-cname: 'true'
+
+      - name: Ping search engines
+        run: node script/ping-search-engines.js
+        continue-on-error: true
+
+      - name: Post-deployment summary
+        run: |
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Environments** | Staging → Production |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Trigger** | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | [\`${{ github.sha }}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Production URL** | https://open-interview.github.io |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Deployment Details" >> $GITHUB_STEP_SUMMARY
+          echo "- Build: ✅ Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- Staging: ${{ needs.staging.result == 'success' && '✅ Deployed' || needs.staging.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Production: 🚀 Active" >> $GITHUB_STEP_SUMMARY
+          echo "- Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY

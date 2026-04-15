@@ -258,15 +258,72 @@ jobs:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
         run: node script/fetch-bot-monitor-data.js
-      - name: Commit and push
+      
+      - name: Commit and push with retry
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add -f client/public/data/bot-monitor.json
-          git add -f client/public/data/intelligence/ || true
-          git add -f client/public/data/voice-sessions/ || true
-          git diff --staged --quiet || git commit -m "Update bot monitor [skip ci]"
-          git push
+          
+          MAX_RETRIES=3
+          RETRY_DELAY=5
+          
+          for attempt in $(seq 1 $MAX_RETRIES); do
+            echo "Attempt $attempt/$MAX_RETRIES: Committing and pushing changes..."
+            
+            # Add files
+            git add -f client/public/data/bot-monitor.json || true
+            git add -f client/public/data/intelligence/ || true
+            git add -f client/public/data/voice-sessions/ || true
+            
+            # Check if there are staged changes
+            if ! git diff --staged --quiet; then
+              echo "Changes detected, committing..."
+              git commit -m "Update bot monitor [skip ci]" || {
+                echo "Commit failed, retrying..."
+                continue
+              }
+            else
+              echo "No changes to commit, skipping..."
+              exit 0
+            fi
+            
+            # Sync with remote before pushing
+            echo "Syncing with remote..."
+            git fetch origin main --quiet
+            if ! git merge-base --is-ancestor HEAD origin/main; then
+              echo "Local branch is behind remote, rebasing..."
+              git rebase origin/main || {
+                echo "Rebase failed, cleaning up..."
+                git rebase --abort 2>/dev/null || true
+                git reset --hard origin/main
+                # Regenerate monitor data on latest state
+                node script/fetch-bot-monitor-data.js
+                git add -f client/public/data/bot-monitor.json || true
+                git add -f client/public/data/intelligence/ || true
+                git add -f client/public/data/voice-sessions/ || true
+                if ! git diff --staged --quiet; then
+                  git commit -m "Update bot monitor [skip ci]" || true
+                fi
+              }
+            fi
+            
+            # Try to push
+            if git push origin main; then
+              echo "✅ Push succeeded on attempt $attempt"
+              exit 0
+            else
+              echo "❌ Push failed on attempt $attempt"
+              if [ $attempt -lt $MAX_RETRIES ]; then
+                echo "Waiting ${RETRY_DELAY}s before retry..."
+                sleep $RETRY_DELAY
+                # Reset for next attempt
+                git reset --hard origin/main
+              fi
+            fi
+          done
+          
+          echo "❌ Failed to push after $MAX_RETRIES attempts"
+          exit 1
 
   summary:
     name: 📋 Summary
