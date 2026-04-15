@@ -1,14 +1,17 @@
 /**
- * Mobile-First App Layout
- * Uses unified navigation for consistent experience
+ * App Layout — Mobile-first shell
+ * Safe area CSS vars, Framer Motion page transitions, scroll restoration
  */
 
-import { useState, useEffect } from 'react';
-import { GenZSidebar } from './GenZSidebar';
+import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'wouter';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sidebar } from './Sidebar';
 import { MobileBottomNav, UnifiedMobileHeader } from './UnifiedNav';
+import { MobileHeader } from './MobileHeader';
 import { UnifiedSearch } from '../UnifiedSearch';
 import { ThemeToggle } from '../ThemeToggle';
-import { cn } from '../../lib/utils';
+import { useSidebar } from '../../context/SidebarContext';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -18,75 +21,134 @@ interface AppLayoutProps {
   showBackOnMobile?: boolean;
 }
 
-export function AppLayout({ 
-  children, 
-  title, 
-  fullWidth = false, 
+const pageVariants = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit:    { opacity: 0, y: -4 },
+};
+
+const pageTransition = {
+  type: 'tween' as const,
+  ease: 'easeOut' as const,
+  duration: 0.22,
+};
+
+export function AppLayout({
+  children,
+  title,
+  fullWidth = false,
   hideNav = false,
-  showBackOnMobile = false 
+  showBackOnMobile = false,
 }: AppLayoutProps) {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [location] = useLocation();
+  const { isCollapsed } = useSidebar();
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Handle keyboard shortcuts
+  // Keyboard shortcut: ⌘K / Ctrl+K
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setSearchOpen(true);
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
+
+  // Scroll restoration on route change
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0, behavior: 'instant' });
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [location]);
 
   if (hideNav) {
     return (
       <>
         {children}
-        {/* Theme Toggle - Always visible */}
         <ThemeToggle />
       </>
     );
   }
 
+  // Desktop sidebar width: 280px expanded, 72px collapsed
+  const sidebarWidth = isCollapsed ? 72 : 280;
+
   return (
-    <div className="min-h-screen min-h-dvh bg-background overflow-x-hidden w-full">
-      {/* Desktop Sidebar - hidden on mobile */}
+    <div
+      className="min-h-screen min-h-dvh bg-background overflow-x-hidden w-full"
+      style={{
+        '--safe-top': 'env(safe-area-inset-top, 0px)',
+        '--safe-bottom': 'env(safe-area-inset-bottom, 0px)',
+        '--safe-left': 'env(safe-area-inset-left, 0px)',
+        '--safe-right': 'env(safe-area-inset-right, 0px)',
+      } as React.CSSProperties}
+    >
+      {/* Desktop Sidebar */}
       <div className="hidden lg:block">
-        <GenZSidebar />
+        <Sidebar />
       </div>
 
-      {/* Mobile Header - visible only on mobile */}
-      <UnifiedMobileHeader 
+      {/* Mobile Header */}
+      <MobileHeader
         title={title}
         showBack={showBackOnMobile}
         onSearchClick={() => setSearchOpen(true)}
       />
 
-      {/* Main content area - fixed padding for Gen Z sidebar */}
-      <div className="lg:pl-64 w-full overflow-x-hidden">
-        {/* Page content with bottom padding for mobile nav + safe area */}
-        {/* iPhone 13 FIX: mobile-content-padding accounts for nav (64px) + padding (16px) + safe area */}
-        <main className={`
-          mobile-content-padding lg:pb-4 w-full overflow-x-hidden
-          ${fullWidth ? '' : 'max-w-7xl mx-auto px-3 lg:px-6 py-3 lg:py-6'}
-        `}>
-          {children}
-        </main>
+      {/* Content area — offset by sidebar on desktop */}
+      <motion.div
+        animate={{ paddingLeft: sidebarWidth }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        className="hidden lg:block"
+        style={{ paddingLeft: sidebarWidth }}
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.main
+            key={location}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={pageTransition}
+            ref={scrollRef as React.RefObject<HTMLElement>}
+            className={fullWidth ? 'w-full overflow-x-hidden' : 'max-w-7xl mx-auto px-6 py-6 w-full overflow-x-hidden'}
+          >
+            {children}
+          </motion.main>
+        </AnimatePresence>
+      </motion.div>
+
+      {/* Mobile content — below header, above bottom nav */}
+      <div className="lg:hidden">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.main
+            key={location}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={pageTransition}
+            className={fullWidth
+              ? 'w-full overflow-x-hidden pb-[calc(56px+env(safe-area-inset-bottom,0px))]'
+              : 'max-w-7xl mx-auto px-3 py-3 w-full overflow-x-hidden pb-[calc(56px+env(safe-area-inset-bottom,0px))]'
+            }
+          >
+            {children}
+          </motion.main>
+        </AnimatePresence>
       </div>
 
-      {/* Mobile Bottom Navigation */}
+      {/* Mobile Bottom Nav */}
       <MobileBottomNav />
 
-      {/* Footer - Hidden but provides landmark for accessibility */}
       <footer className="sr-only" role="contentinfo">
-        Code Reels - Technical Interview Preparation Platform
+        Code Reels — Technical Interview Preparation
       </footer>
 
-      {/* Theme Toggle - Floating button */}
       <ThemeToggle />
 
-      {/* Search Modal */}
       <UnifiedSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );

@@ -13,6 +13,135 @@ import {
   SkipForward, ExternalLink, Shuffle, ChevronLeft, MoreHorizontal, User,
   BarChart3, Brain, Lightbulb, Zap, Award
 } from 'lucide-react';
+
+// ── Waveform Visualizer ──────────────────────────────────────
+const BAR_COUNT = 24;
+
+function WaveformVisualizer({ isActive }: { isActive: boolean }) {
+  const [heights, setHeights] = useState<number[]>(Array(BAR_COUNT).fill(3));
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!isActive) {
+      setHeights(Array(BAR_COUNT).fill(3));
+      return;
+    }
+    const animate = () => {
+      setHeights(prev =>
+        prev.map((h, i) => {
+          const target = isActive ? 8 + Math.random() * 52 : 3;
+          return h + (target - h) * 0.35;
+        })
+      );
+      rafRef.current = requestAnimationFrame(animate);
+    };
+    rafRef.current = requestAnimationFrame(animate);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [isActive]);
+
+  return (
+    <div className="flex items-center justify-center gap-[3px] h-14" aria-hidden>
+      {heights.map((h, i) => (
+        <div
+          key={i}
+          style={{
+            height: `${h}px`,
+            background: `linear-gradient(to top, #7c3aed, #06b6d4)`,
+            opacity: isActive ? 0.85 + (i % 3) * 0.05 : 0.3,
+            transition: 'height 80ms ease, opacity 300ms ease',
+            borderRadius: '2px',
+            width: '4px',
+            flexShrink: 0,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Recording Timer ──────────────────────────────────────────
+function RecordingTimer({ isRunning }: { isRunning: boolean }) {
+  const [seconds, setSeconds] = useState(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (isRunning) {
+      setSeconds(0);
+      intervalRef.current = setInterval(() => setSeconds(s => s + 1), 1000);
+    } else {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [isRunning]);
+
+  const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+  const ss = String(seconds % 60).padStart(2, '0');
+  return <span className="font-mono text-sm tabular-nums text-[#e6edf3]">{mm}:{ss}</span>;
+}
+
+// ── Keyword-highlighted Transcript ──────────────────────────
+function HighlightedTranscript({ text, keywords }: { text: string; keywords: string[] }) {
+  if (!keywords.length || !text) return <span>{text}</span>;
+  const pattern = new RegExp(`(${keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+  const parts = text.split(pattern);
+  return (
+    <>
+      {parts.map((part, i) =>
+        keywords.some(k => k.toLowerCase() === part.toLowerCase())
+          ? <mark key={i} className="bg-violet-500/25 text-violet-300 rounded px-0.5 not-italic">{part}</mark>
+          : <span key={i}>{part}</span>
+      )}
+    </>
+  );
+}
+
+// ── Word Count Progress ──────────────────────────────────────
+function WordCountBar({ text, target = 150 }: { text: string; target?: number }) {
+  const count = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const pct = Math.min(count / target, 1);
+  const color = pct >= 1 ? '#3fb950' : pct >= 0.5 ? '#d29922' : '#58a6ff';
+  return (
+    <div className="flex items-center gap-2 mt-2">
+      <div className="flex-1 h-1 bg-[#21262d] rounded-full overflow-hidden">
+        <motion.div
+          animate={{ width: `${pct * 100}%` }}
+          transition={{ duration: 0.2 }}
+          className="h-full rounded-full"
+          style={{ background: color }}
+        />
+      </div>
+      <span className="text-xs tabular-nums text-[#6e7681]">{count} / {target}w</span>
+    </div>
+  );
+}
+
+// ── Circular Score Ring ──────────────────────────────────────
+function ScoreRing({ score }: { score: number }) {
+  const r = 44;
+  const circ = 2 * Math.PI * r;
+  const dash = (score / 100) * circ;
+  const color = score >= 70 ? '#3fb950' : score >= 50 ? '#d29922' : '#f85149';
+  return (
+    <div className="relative w-28 h-28 flex items-center justify-center">
+      <svg className="absolute inset-0 -rotate-90" width="112" height="112">
+        <circle cx="56" cy="56" r={r} fill="none" stroke="#21262d" strokeWidth="8" />
+        <motion.circle
+          cx="56" cy="56" r={r} fill="none"
+          stroke={color} strokeWidth="8"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          initial={{ strokeDashoffset: circ }}
+          animate={{ strokeDashoffset: circ - dash }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+        />
+      </svg>
+      <div className="text-center">
+        <div className="text-2xl font-bold text-white">{score}</div>
+        <div className="text-[10px] text-[#6e7681]">score</div>
+      </div>
+    </div>
+  );
+}
 import { SEOHead } from '../components/SEOHead';
 import { getAllQuestionsAsync } from '../lib/questions-loader';
 import { useCredits } from '../context/CreditsContext';
@@ -38,7 +167,7 @@ interface InterviewerComments {
   idle: string[];
 }
 
-type InterviewState = 'loading' | 'ready' | 'recording' | 'editing' | 'processing' | 'evaluated';
+type InterviewState = 'loading' | 'ready' | 'recording' | 'editing' | 'processing' | 'evaluated' | 'summary';
 
 const isSpeechSupported = typeof window !== 'undefined' && 
   ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
@@ -68,6 +197,7 @@ export default function VoiceInterview() {
   const [showActions, setShowActions] = useState(false);
   const [sessionId, setSessionId] = useState<string>('voice-session-state');
   const [showAnswer, setShowAnswer] = useState(false); // Hide answer until after recording
+  const [sessionScores, setSessionScores] = useState<Array<{ score: number; missed: string[] }>>([]);
   
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -222,6 +352,7 @@ export default function VoiceInterview() {
     };
   }, [state]);
 
+  // Space bar shortcut to toggle recording
   const startRecording = useCallback(() => {
     if (!recognitionRef.current) return;
     setTranscript('');
@@ -242,6 +373,17 @@ export default function VoiceInterview() {
     setState('editing');
   }, []);
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.code !== 'Space' || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
+      e.preventDefault();
+      if (state === 'ready') startRecording();
+      else if (state === 'recording') stopRecording();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [state, startRecording, stopRecording]);
+
   const submitAnswer = useCallback(() => {
     if (!currentQuestion || !transcript.trim()) {
       setError('Please provide an answer before submitting.');
@@ -258,6 +400,7 @@ export default function VoiceInterview() {
       if (result.score >= 60) showComment('good_score');
       else showComment('bad_score');
       setShowAnswer(true); // Reveal answer after evaluation
+      setSessionScores(prev => [...prev, { score: result.score, missed: result.keyPointsMissed as string[] }]);
       setState('evaluated');
     }, 800);
   }, [transcript, currentQuestion, onVoiceInterview, showComment, trackEvent]);
@@ -273,8 +416,9 @@ export default function VoiceInterview() {
       setState('ready');
       saveSessionProgress();
     } else {
-      // Clear session when completed
+      // Show summary screen
       localStorage.removeItem(sessionId);
+      setState('summary');
     }
   }, [currentIndex, questions.length, sessionId]);
 
@@ -410,6 +554,84 @@ export default function VoiceInterview() {
           </button>
         </div>
       </div>
+    );
+  }
+
+  // Session Summary
+  if (state === 'summary') {
+    const avg = sessionScores.length ? Math.round(sessionScores.reduce((s, r) => s + r.score, 0) / sessionScores.length) : 0;
+    const missedAll = sessionScores.flatMap(r => r.missed);
+    const missedCounts: Record<string, number> = {};
+    for (const m of missedAll) missedCounts[m] = (missedCounts[m] || 0) + 1;
+    const topMissed = Object.entries(missedCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k]) => k);
+
+    const handleShare = () => {
+      const text = `I scored ${avg}% on a Voice Interview session on Code Reels! 🎤`;
+      if (navigator.share) navigator.share({ title: 'Code Reels Voice Interview', text }).catch(() => {});
+      else navigator.clipboard.writeText(text).catch(() => {});
+    };
+
+    return (
+      <DesktopSidebarWrapper>
+        <div className="min-h-screen bg-[#0d1117] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.93, y: 24 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            className="max-w-lg w-full"
+          >
+            <div className="rounded-2xl border border-[#30363d] bg-[#161b22] p-8">
+              <div className="flex flex-col items-center mb-8">
+                <ScoreRing score={avg} />
+                <h2 className="text-xl font-bold text-white mt-4">Session Complete!</h2>
+                <p className="text-sm text-[#8b949e] mt-1">{questions.length} questions answered</p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 mb-8">
+                <div className="bg-[#0d1117] rounded-xl p-4 text-center border border-[#30363d]">
+                  <div className="text-2xl font-bold text-white">{questions.length}</div>
+                  <div className="text-xs text-[#6e7681] mt-1">Questions</div>
+                </div>
+                <div className="bg-[#0d1117] rounded-xl p-4 text-center border border-[#30363d]">
+                  <div className="text-2xl font-bold text-[#3fb950]">{sessionScores.filter(s => s.score >= 60).length}</div>
+                  <div className="text-xs text-[#6e7681] mt-1">Passed</div>
+                </div>
+                <div className="bg-[#0d1117] rounded-xl p-4 text-center border border-[#30363d]">
+                  <div className="text-2xl font-bold text-[#f85149]">{sessionScores.filter(s => s.score < 60).length}</div>
+                  <div className="text-xs text-[#6e7681] mt-1">Missed</div>
+                </div>
+              </div>
+
+              {topMissed.length > 0 && (
+                <div className="mb-8">
+                  <p className="text-xs font-semibold text-[#6e7681] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <Brain className="w-3.5 h-3.5" /> Top missed concepts
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {topMissed.map(m => (
+                      <span key={m} className="px-2.5 py-1 bg-[#f85149]/10 border border-[#f85149]/20 rounded-full text-xs text-[#f85149]">{m}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button onClick={handleShare} className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-[#30363d] text-[#8b949e] hover:text-white hover:border-[#8b949e] rounded-xl transition-colors text-sm">
+                  <ExternalLink className="w-4 h-4" /> Share
+                </button>
+                <button onClick={() => { setSessionScores([]); setCurrentIndex(0); setTranscript(''); setEvaluation(null); setState('ready'); }}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-[#30363d] text-[#8b949e] hover:text-white hover:border-[#8b949e] rounded-xl transition-colors text-sm">
+                  <RotateCcw className="w-4 h-4" /> Again
+                </button>
+                <button onClick={() => setLocation('/')}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#238636] text-white font-medium rounded-xl hover:bg-[#2ea043] transition-colors text-sm">
+                  <Home className="w-4 h-4" /> Home
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </DesktopSidebarWrapper>
     );
   }
 
@@ -592,13 +814,55 @@ export default function VoiceInterview() {
             )}
           </motion.div>
 
+          {/* Tips & Keywords Panel - fills dead space when in 'ready' state */}
+          {state === 'ready' && currentQuestion && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl border border-[#30363d] bg-[#161b22] p-5 mb-6 w-full"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Lightbulb className="w-4 h-4 text-[#d29922]" />
+                <span className="text-sm font-semibold text-[#e6edf3]">How to answer well</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                {[
+                  { icon: '🎯', tip: 'State your approach first, then explain the details' },
+                  { icon: '📊', tip: 'Use concrete examples or numbers when possible' },
+                  { icon: '⚡', tip: 'Mention trade-offs — interviewers love nuanced answers' },
+                  { icon: '🔄', tip: 'Summarize your answer at the end' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-[#8b949e]">
+                    <span className="flex-shrink-0">{item.icon}</span>
+                    <span>{item.tip}</span>
+                  </div>
+                ))}
+              </div>
+              {currentQuestion.voiceKeywords && currentQuestion.voiceKeywords.length > 0 && (
+                <div>
+                  <div className="text-xs text-[#6e7681] mb-2 flex items-center gap-1.5">
+                    <Brain className="w-3.5 h-3.5" />
+                    Key terms to mention:
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {currentQuestion.voiceKeywords.map((kw: string) => (
+                      <span key={kw} className="px-2 py-0.5 bg-[#58a6ff]/10 border border-[#58a6ff]/20 rounded-full text-[11px] text-[#58a6ff]">
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
           {/* Interviewer Comment */}
           <AnimatePresence>
             {interviewerComment && (
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0, transition: { duration: 0.25, ease: 'easeOut' } }}
+                exit={{ opacity: 0, x: 20, transition: { duration: 0.15, ease: 'easeIn' } }}
                 className="mb-6 flex items-start gap-3"
               >
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a371f7] to-[#f778ba] flex items-center justify-center flex-shrink-0">
@@ -614,59 +878,105 @@ export default function VoiceInterview() {
 
           {/* Recording Interface */}
           <div className="rounded-2xl border border-[#30363d] bg-[#161b22] p-6 mb-6 w-full overflow-hidden" style={{ maxWidth: '100%' }}>
-            {/* Recording Status */}
-            <div className="flex items-center justify-center gap-4 mb-6">
-              {state === 'recording' && (
-                <div className="flex items-center gap-3 px-4 py-2 bg-[#f85149]/10 border border-[#f85149]/30 rounded-full">
-                  <span className="w-3 h-3 bg-[#f85149] rounded-full animate-pulse" />
-                  <span className="text-sm text-[#f85149]">Recording</span>
-                  {!transcript && !interimTranscript && (
-                    <span className="text-xs text-[#6e7681]">(Listening...)</span>
-                  )}
-                </div>
-              )}
-              
-              {state === 'editing' && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-[#d29922]/10 border border-[#d29922]/30 rounded-full">
-                  <Edit3 className="w-4 h-4 text-[#d29922]" />
-                  <span className="text-sm text-[#d29922]">Edit your answer, then submit</span>
-                </div>
-              )}
-              
-              {state === 'processing' && (
-                <div className="flex items-center gap-3 px-4 py-2 bg-[#58a6ff]/10 border border-[#58a6ff]/30 rounded-full">
-                  <Loader2 className="w-4 h-4 animate-spin text-[#58a6ff]" />
-                  <span className="text-sm text-[#58a6ff]">Analyzing your answer...</span>
-                </div>
+
+            {/* State Header */}
+            <div className="flex items-center justify-between mb-5">
+              <AnimatePresence mode="wait">
+                {state === 'ready' && (
+                  <motion.div key="ready" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+                    className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-[#21262d] flex items-center justify-center">
+                      <Mic className="w-4 h-4 text-[#8b949e]" />
+                    </div>
+                    <span className="text-sm font-medium text-[#8b949e]">Ready</span>
+                  </motion.div>
+                )}
+                {state === 'recording' && (
+                  <motion.div key="recording" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+                    className="flex items-center gap-3">
+                    <span className="w-3 h-3 bg-[#f85149] rounded-full animate-pulse shadow-[0_0_8px_#f85149]" />
+                    <span className="text-sm font-semibold text-[#f85149]">Listening...</span>
+                    <RecordingTimer isRunning={state === 'recording'} />
+                  </motion.div>
+                )}
+                {state === 'editing' && (
+                  <motion.div key="editing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+                    className="flex items-center gap-2">
+                    <Edit3 className="w-4 h-4 text-[#d29922]" />
+                    <span className="text-sm font-medium text-[#d29922]">Review & Edit</span>
+                  </motion.div>
+                )}
+                {state === 'processing' && (
+                  <motion.div key="processing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+                    className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-[#58a6ff]" />
+                    <span className="text-sm font-medium text-[#58a6ff]">Processing...</span>
+                  </motion.div>
+                )}
+                {state === 'evaluated' && (
+                  <motion.div key="evaluated" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+                    className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-[#3fb950]" />
+                    <span className="text-sm font-medium text-[#3fb950]">Evaluated</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Word count when transcript exists */}
+              {transcript && state !== 'evaluated' && (
+                <span className="text-xs text-[#6e7681] tabular-nums">
+                  {transcript.trim().split(/\s+/).filter(Boolean).length} words
+                </span>
               )}
             </div>
+
+            {/* Waveform — shown during recording */}
+            <AnimatePresence>
+              {(state === 'recording' || state === 'processing') && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="mb-5 overflow-hidden"
+                >
+                  <WaveformVisualizer isActive={state === 'recording'} />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Transcript Display */}
             {(state === 'recording' || state === 'editing' || transcript) && state !== 'evaluated' && (
               <div className="mb-6">
                 {state === 'editing' ? (
-                  <textarea
-                    value={transcript}
-                    onChange={(e) => setTranscript(e.target.value)}
-                    className="w-full p-4 bg-[#0d1117] border border-[#d29922]/30 rounded-xl min-h-[150px] max-h-[300px] text-sm text-[#e6edf3] resize-y focus:outline-none focus:ring-2 focus:ring-[#d29922]/50 focus:border-[#d29922]"
-                    placeholder="Edit your transcribed answer here..."
-                  />
+                  <>
+                    <textarea
+                      value={transcript}
+                      onChange={(e) => setTranscript(e.target.value)}
+                      className="w-full p-4 bg-[#0d1117] border border-[#d29922]/30 rounded-xl min-h-[150px] max-h-[300px] text-sm text-[#e6edf3] resize-y focus:outline-none focus:ring-2 focus:ring-[#d29922]/50 focus:border-[#d29922]"
+                      placeholder="Edit your transcribed answer here..."
+                    />
+                    <WordCountBar text={transcript} />
+                  </>
                 ) : (
-                  <div className="p-4 bg-[#0d1117] rounded-xl min-h-[120px] max-h-[200px] overflow-y-auto border border-[#30363d]">
-                    {transcript || interimTranscript ? (
-                      <p className="text-sm text-[#e6edf3] whitespace-pre-wrap leading-relaxed">
-                        {transcript}
-                        <span className="text-[#6e7681]">{interimTranscript}</span>
-                        {state === 'recording' && <span className="animate-pulse text-[#58a6ff]">|</span>}
-                      </p>
-                    ) : (
-                      <p className="text-sm text-[#6e7681] italic">
-                        {state === 'recording' 
-                          ? 'Start speaking... Your words will appear here.'
-                          : 'No transcript yet'}
-                      </p>
-                    )}
-                  </div>
+                  <>
+                    <div className="p-4 bg-[#0d1117] rounded-xl min-h-[100px] max-h-[200px] overflow-y-auto border border-[#30363d]">
+                      {transcript || interimTranscript ? (
+                        <p className="text-sm text-[#e6edf3] whitespace-pre-wrap leading-relaxed">
+                          <HighlightedTranscript text={transcript} keywords={currentQuestion?.voiceKeywords || []} />
+                          <span className="text-[#6e7681]">{interimTranscript}</span>
+                          {state === 'recording' && <span className="animate-pulse text-[#58a6ff]">|</span>}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-[#6e7681] italic">
+                          {state === 'recording'
+                            ? 'Start speaking... Your words will appear here.'
+                            : 'No transcript yet'}
+                        </p>
+                      )}
+                    </div>
+                    {transcript && <WordCountBar text={transcript} />}
+                  </>
                 )}
                 {state === 'editing' && (
                   <p className="text-xs text-[#6e7681] mt-2 flex items-center gap-1.5">
@@ -678,27 +988,40 @@ export default function VoiceInterview() {
             )}
 
             {/* Recording Controls */}
-            <div className="flex items-center justify-center gap-4">
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex items-center justify-center gap-4">
               {state === 'ready' && (
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                   onClick={startRecording}
-                  className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-[#f85149] to-[#ff7b72] text-white font-semibold rounded-2xl hover:opacity-90 transition-all hover:scale-[1.02] shadow-lg shadow-[#f85149]/20"
+                  className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-[#f85149] to-[#ff7b72] text-white font-semibold rounded-2xl shadow-lg shadow-[#f85149]/20 transition-opacity hover:opacity-90"
                 >
                   <Mic className="w-5 h-5" />
                   Start Recording
-                </button>
+                </motion.button>
               )}
-              
+
               {state === 'recording' && (
-                <button
-                  onClick={stopRecording}
-                  className="flex items-center gap-3 px-8 py-4 bg-[#f85149] text-white font-semibold rounded-2xl hover:bg-[#da3633] transition-all"
-                >
-                  <Square className="w-5 h-5" />
-                  Stop Recording
-                </button>
+                <div className="flex items-center gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                    onClick={stopRecording}
+                    className="flex items-center gap-3 px-8 py-4 bg-[#f85149] text-white font-semibold rounded-2xl hover:bg-[#da3633] transition-colors"
+                  >
+                    <Square className="w-5 h-5" />
+                    Stop
+                  </motion.button>
+                  <button
+                    onClick={skipQuestion}
+                    disabled={currentIndex >= questions.length - 1}
+                    className="flex items-center gap-2 px-4 py-4 border border-[#30363d] text-[#8b949e] hover:text-white hover:border-[#8b949e] rounded-2xl transition-colors disabled:opacity-30"
+                  >
+                    <SkipForward className="w-4 h-4" />
+                    Skip
+                  </button>
+                </div>
               )}
-              
+
               {state === 'editing' && (
                 <div className="flex gap-3">
                   <button
@@ -708,17 +1031,18 @@ export default function VoiceInterview() {
                     <RotateCcw className="w-4 h-4" />
                     Re-record
                   </button>
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                     onClick={submitAnswer}
                     disabled={!transcript.trim()}
                     className="flex items-center gap-3 px-8 py-3 bg-[#238636] text-white font-semibold rounded-xl hover:bg-[#2ea043] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <CheckCircle className="w-5 h-5" />
                     Submit Answer
-                  </button>
+                  </motion.button>
                 </div>
               )}
-              
+
               {state === 'evaluated' && (
                 <div className="flex gap-3">
                   <button
@@ -728,17 +1052,22 @@ export default function VoiceInterview() {
                     <RotateCcw className="w-4 h-4" />
                     Try Again
                   </button>
-                  {currentIndex < questions.length - 1 && (
-                    <button
-                      onClick={nextQuestion}
-                      className="flex items-center gap-2 px-6 py-3 bg-[#238636] text-white font-semibold rounded-xl hover:bg-[#2ea043] transition-colors"
-                    >
-                      Next Question
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  )}
+                  <motion.button
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    onClick={nextQuestion}
+                    className="flex items-center gap-2 px-6 py-3 bg-[#238636] text-white font-semibold rounded-xl hover:bg-[#2ea043] transition-colors"
+                  >
+                    {currentIndex < questions.length - 1 ? 'Next Question' : 'View Results'}
+                    <ChevronRight className="w-4 h-4" />
+                  </motion.button>
                 </div>
               )}
+            </div>
+            {(state === 'ready' || state === 'recording') && (
+              <p className="text-center text-[10px] text-[#6e7681] mt-3">
+                Press <kbd className="px-1.5 py-0.5 bg-[#21262d] border border-[#30363d] rounded text-[10px] font-mono">Space</kbd> to {state === 'recording' ? 'stop' : 'start'}
+              </p>
+            )}
             </div>
           </div>
 
@@ -746,9 +1075,10 @@ export default function VoiceInterview() {
           <AnimatePresence>
             {evaluation && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                 className="space-y-4"
               >
                 {/* Credits Earned Banner */}
@@ -756,6 +1086,7 @@ export default function VoiceInterview() {
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.1 }}
                     className="p-4 bg-gradient-to-r from-[#d29922]/20 to-[#f1c40f]/20 border border-[#d29922]/30 rounded-2xl flex items-center justify-between"
                   >
                     <div className="flex items-center gap-4">
@@ -765,7 +1096,7 @@ export default function VoiceInterview() {
                       <div>
                         <div className="font-bold text-[#d29922] text-lg">+{earnedCredits.total} Credits Earned!</div>
                         <div className="text-xs text-[#8b949e]">
-                          {earnedCredits.bonus > 0 
+                          {earnedCredits.bonus > 0
                             ? `${config.VOICE_ATTEMPT} base + ${earnedCredits.bonus} success bonus`
                             : 'Thanks for practicing!'}
                         </div>
@@ -775,112 +1106,45 @@ export default function VoiceInterview() {
                   </motion.div>
                 )}
 
-                {/* Verdict Card */}
-                <div className={`p-6 rounded-2xl border ${getVerdictStyle(evaluation.verdict)}`}>
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${getVerdictBgStyle(evaluation.verdict)}`}>
-                        {getVerdictIcon(evaluation.verdict)}
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-xl text-white">{getVerdictLabel(evaluation.verdict)}</h3>
-                        <p className="text-sm text-[#8b949e]">Interview Assessment</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-4xl font-bold text-white">{evaluation.score}%</div>
-                      <div className="text-xs text-[#6e7681]">Overall Score</div>
-                    </div>
-                  </div>
-                  
-                  {/* Score Bar */}
-                  <div className="h-2 bg-[#21262d] rounded-full overflow-hidden mb-4">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${evaluation.score}%` }}
-                      transition={{ duration: 0.8, ease: 'easeOut' }}
-                      className={`h-full ${getScoreBarColor(evaluation.score)}`}
-                    />
-                  </div>
-                  
-                  <p className="text-sm text-[#8b949e] leading-relaxed">{evaluation.feedback}</p>
-                </div>
-
-                {/* Multi-Dimensional Scores */}
-                {evaluation.scores && (
-                  <div className="p-6 rounded-2xl border border-[#30363d] bg-[#161b22]">
-                    <h4 className="font-semibold text-white flex items-center gap-2 mb-5">
-                      <BarChart3 className="w-5 h-5 text-[#58a6ff]" />
-                      Detailed Analysis
-                    </h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <ScoreDimension 
-                        label="Technical" 
-                        score={evaluation.scores.technical} 
-                        icon={<Brain className="w-4 h-4" />}
-                        description="Accuracy & depth"
-                      />
-                      <ScoreDimension 
-                        label="Completeness" 
-                        score={evaluation.scores.completeness} 
-                        icon={<Target className="w-4 h-4" />}
-                        description="Coverage of concepts"
-                      />
-                      <ScoreDimension 
-                        label="Structure" 
-                        score={evaluation.scores.structure} 
-                        icon={<Lightbulb className="w-4 h-4" />}
-                        description="Organization"
-                      />
-                      <ScoreDimension 
-                        label="Communication" 
-                        score={evaluation.scores.communication} 
-                        icon={<MessageSquare className="w-4 h-4" />}
-                        description="Clarity & fluency"
-                      />
-                    </div>
-                    
-                    {/* Structure Analysis */}
-                    {evaluation.structureAnalysis && (
-                      <div className="mt-5 pt-5 border-t border-[#30363d]">
-                        <div className="flex flex-wrap gap-2">
-                          {evaluation.structureAnalysis.hasIntroduction && (
-                            <span className="px-3 py-1.5 text-xs bg-[#238636]/20 text-[#3fb950] rounded-lg font-medium">✓ Introduction</span>
-                          )}
-                          {evaluation.structureAnalysis.hasExamples && (
-                            <span className="px-3 py-1.5 text-xs bg-[#238636]/20 text-[#3fb950] rounded-lg font-medium">✓ Examples</span>
-                          )}
-                          {evaluation.structureAnalysis.hasConclusion && (
-                            <span className="px-3 py-1.5 text-xs bg-[#238636]/20 text-[#3fb950] rounded-lg font-medium">✓ Conclusion</span>
-                          )}
-                          {evaluation.structureAnalysis.usesSTAR && (
-                            <span className="px-3 py-1.5 text-xs bg-[#a371f7]/20 text-[#a371f7] rounded-lg font-medium">⭐ STAR Method</span>
-                          )}
-                          {evaluation.fluencyMetrics && evaluation.fluencyMetrics.fillerWordCount > 3 && (
-                            <span className="px-3 py-1.5 text-xs bg-[#d29922]/20 text-[#d29922] rounded-lg font-medium">
-                              ⚠ {evaluation.fluencyMetrics.fillerWordCount} filler words
-                            </span>
-                          )}
+                {/* Verdict Card — circular score ring */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.97 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.05, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                  className={`p-6 rounded-2xl border ${getVerdictStyle(evaluation.verdict)}`}
+                >
+                  <div className="flex items-center gap-6 mb-4">
+                    <ScoreRing score={evaluation.score} />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-1">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${getVerdictBgStyle(evaluation.verdict)}`}>
+                          {getVerdictIcon(evaluation.verdict)}
                         </div>
+                        <h3 className="font-bold text-xl text-white">{getVerdictLabel(evaluation.verdict)}</h3>
                       </div>
-                    )}
+                      <p className="text-sm text-[#8b949e] leading-relaxed">{evaluation.feedback}</p>
+                    </div>
                   </div>
-                )}
+                </motion.div>
 
-                {/* Key Points */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  {/* Covered Points */}
+                {/* Key Points — checkmarks & X marks */}
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="grid md:grid-cols-2 gap-4"
+                >
                   <div className="p-5 rounded-2xl bg-[#238636]/10 border border-[#238636]/30">
                     <h4 className="font-semibold text-[#3fb950] flex items-center gap-2 mb-4">
                       <CheckCircle className="w-5 h-5" />
-                      Concepts Covered ({evaluation.keyPointsCovered.length})
+                      Covered ({evaluation.keyPointsCovered.length})
                     </h4>
                     <ul className="space-y-2">
                       {evaluation.keyPointsCovered.map((point, i) => (
                         <li key={i} className="text-sm flex items-start gap-2 text-[#8b949e]">
-                          <span className="text-[#3fb950] mt-0.5">✓</span>
+                          <span className="text-[#3fb950] mt-0.5 flex-shrink-0">✓</span>
                           <span>
-                            {typeof point === 'object' && 'concept' in point 
+                            {typeof point === 'object' && 'concept' in point
                               ? `${point.concept}${point.confidence !== 'exact' ? ` (as "${point.matchedAs}")` : ''}`
                               : point}
                           </span>
@@ -892,16 +1156,15 @@ export default function VoiceInterview() {
                     </ul>
                   </div>
 
-                  {/* Missed Points */}
                   <div className="p-5 rounded-2xl bg-[#f85149]/10 border border-[#f85149]/30">
                     <h4 className="font-semibold text-[#f85149] flex items-center gap-2 mb-4">
                       <XCircle className="w-5 h-5" />
-                      Concepts to Include ({evaluation.keyPointsMissed.length})
+                      Missed ({evaluation.keyPointsMissed.length})
                     </h4>
                     <ul className="space-y-2">
                       {evaluation.keyPointsMissed.map((point, i) => (
                         <li key={i} className="text-sm flex items-start gap-2 text-[#8b949e]">
-                          <span className="text-[#f85149] mt-0.5">✗</span>
+                          <span className="text-[#f85149] mt-0.5 flex-shrink-0">✗</span>
                           <span>{point}</span>
                         </li>
                       ))}
@@ -910,10 +1173,58 @@ export default function VoiceInterview() {
                       )}
                     </ul>
                   </div>
-                </div>
+                </motion.div>
+
+                {/* Multi-Dimensional Scores */}
+                {evaluation.scores && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="p-6 rounded-2xl border border-[#30363d] bg-[#161b22]"
+                  >
+                    <h4 className="font-semibold text-white flex items-center gap-2 mb-5">
+                      <BarChart3 className="w-5 h-5 text-[#58a6ff]" />
+                      Detailed Analysis
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <ScoreDimension label="Technical" score={evaluation.scores.technical} icon={<Brain className="w-4 h-4" />} description="Accuracy & depth" />
+                      <ScoreDimension label="Completeness" score={evaluation.scores.completeness} icon={<Target className="w-4 h-4" />} description="Coverage" />
+                      <ScoreDimension label="Structure" score={evaluation.scores.structure} icon={<Lightbulb className="w-4 h-4" />} description="Organization" />
+                      <ScoreDimension label="Communication" score={evaluation.scores.communication} icon={<MessageSquare className="w-4 h-4" />} description="Clarity" />
+                    </div>
+
+                    {evaluation.structureAnalysis && (
+                      <div className="mt-5 pt-5 border-t border-[#30363d] flex flex-wrap gap-2">
+                        {evaluation.structureAnalysis.hasIntroduction && (
+                          <span className="px-3 py-1.5 text-xs bg-[#238636]/20 text-[#3fb950] rounded-lg font-medium">✓ Introduction</span>
+                        )}
+                        {evaluation.structureAnalysis.hasExamples && (
+                          <span className="px-3 py-1.5 text-xs bg-[#238636]/20 text-[#3fb950] rounded-lg font-medium">✓ Examples</span>
+                        )}
+                        {evaluation.structureAnalysis.hasConclusion && (
+                          <span className="px-3 py-1.5 text-xs bg-[#238636]/20 text-[#3fb950] rounded-lg font-medium">✓ Conclusion</span>
+                        )}
+                        {evaluation.structureAnalysis.usesSTAR && (
+                          <span className="px-3 py-1.5 text-xs bg-[#a371f7]/20 text-[#a371f7] rounded-lg font-medium">⭐ STAR Method</span>
+                        )}
+                        {evaluation.fluencyMetrics && evaluation.fluencyMetrics.fillerWordCount > 3 && (
+                          <span className="px-3 py-1.5 text-xs bg-[#d29922]/20 text-[#d29922] rounded-lg font-medium">
+                            ⚠ {evaluation.fluencyMetrics.fillerWordCount} filler words
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </motion.div>
+                )}
 
                 {/* Strengths & Improvements */}
-                <div className="grid md:grid-cols-2 gap-4">
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                  className="grid md:grid-cols-2 gap-4"
+                >
                   <div className="p-5 rounded-2xl border border-[#30363d] bg-[#161b22]">
                     <h4 className="font-semibold text-white flex items-center gap-2 mb-4">
                       <Sparkles className="w-5 h-5 text-[#f1c40f]" />
@@ -943,11 +1254,16 @@ export default function VoiceInterview() {
                       ))}
                     </ul>
                   </div>
-                </div>
+                </motion.div>
 
-                {/* Ideal Answer Reference - Only show after answer is revealed */}
+                {/* Ideal Answer Reference */}
                 {showAnswer && (
-                  <details className="p-5 rounded-2xl border border-[#30363d] bg-[#161b22] group">
+                  <motion.details
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                    className="p-5 rounded-2xl border border-[#30363d] bg-[#161b22] group"
+                  >
                     <summary className="cursor-pointer font-semibold text-white flex items-center gap-2 list-none">
                       <Volume2 className="w-5 h-5 text-[#a371f7]" />
                       View Ideal Answer
@@ -961,7 +1277,7 @@ export default function VoiceInterview() {
                         {currentQuestion?.answer}
                       </div>
                     </div>
-                  </details>
+                  </motion.details>
                 )}
               </motion.div>
             )}
@@ -1000,9 +1316,10 @@ function ScoreDimension({ label, score, icon, description }: {
       <div className="text-2xl font-bold text-white">{score}%</div>
       <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden mt-2">
         <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${score}%` }}
-          transition={{ duration: 0.6, delay: 0.2 }}
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: score / 100 }}
+          transition={{ duration: 0.25, delay: 0.1, ease: 'easeOut' }}
+          style={{ transformOrigin: 'left' }}
           className={`h-full ${getBgColor(score)}`}
         />
       </div>
@@ -1052,10 +1369,4 @@ function getVerdictLabel(verdict: EvaluationResult['verdict']): string {
   }
 }
 
-function getScoreBarColor(score: number): string {
-  if (score >= 70) return 'bg-gradient-to-r from-[#238636] to-[#3fb950]';
-  if (score >= 55) return 'bg-gradient-to-r from-[#3fb950] to-[#d29922]';
-  if (score >= 40) return 'bg-gradient-to-r from-[#d29922] to-[#f0883e]';
-  if (score >= 25) return 'bg-gradient-to-r from-[#f0883e] to-[#f85149]';
-  return 'bg-[#f85149]';
-}
+function getScoreBarColor(_score: number): string { return ''; }

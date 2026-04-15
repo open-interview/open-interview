@@ -1,511 +1,500 @@
 /**
- * Badges Page - Apple Watch-style achievement showcase
- * Shows all badges, progress, and what's needed to unlock each
+ * Badges Page — spectacular gamification UI
  */
 
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { useLocation } from 'wouter';
-import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { 
-  ArrowLeft, Trophy, Flame, Target, Compass, Sparkles, Star,
-  ChevronRight, Lock, Check, X
-} from 'lucide-react';
-import { SEOHead } from '../components/SEOHead';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
-import { BadgeRing } from '../components/BadgeDisplay';
-import { 
-  BADGES, Badge, BadgeProgress, calculateBadgeProgress, 
-  getCategoryLabel, getTierColor, getUnlockedBadges 
-} from '../lib/badges';
-import { channels, getQuestions, getAllQuestions, getQuestionDifficulty } from '../lib/data';
-import { useGlobalStats } from '../hooks/use-progress';
+import { SEOHead } from '../components/SEOHead';
+import { useAchievements } from '../hooks/use-achievements';
+import { AchievementProgress } from '../lib/achievements/types';
+import { Trophy, Lock, Sparkles, Share2, X, Star } from 'lucide-react';
 
-const categoryIcons: Record<string, React.ReactNode> = {
-  streak: <Flame className="w-4 h-4" />,
-  completion: <Target className="w-4 h-4" />,
-  mastery: <Trophy className="w-4 h-4" />,
-  explorer: <Compass className="w-4 h-4" />,
-  special: <Sparkles className="w-4 h-4" />,
+// ── Tier config ──────────────────────────────────────────────
+const TIER_GRADIENT: Record<string, string> = {
+  bronze:   'from-[#cd7f32] to-[#8b4513]',
+  silver:   'from-[#c0c0c0] to-[#808080]',
+  gold:     'from-[#ffd700] to-[#ff8c00]',
+  platinum: 'from-[#e5e4e2] to-[#b0b0b0]',
+  diamond:  'from-[#b9f2ff] to-cyan-500',
 };
 
-// 3D Tilt Card Component - iOS-style depth effect
-function Tilt3DCard({ children, className }: { children: React.ReactNode; className?: string }) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  
-  const springConfig = { damping: 20, stiffness: 300 };
-  const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [8, -8]), springConfig);
-  const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-8, 8]), springConfig);
-  
-  const handleMove = (clientX: number, clientY: number) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    x.set((clientX - centerX) / rect.width);
-    y.set((clientY - centerY) / rect.height);
-  };
-  
-  const handleMouseMove = (e: React.MouseEvent) => handleMove(e.clientX, e.clientY);
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches[0]) handleMove(e.touches[0].clientX, e.touches[0].clientY);
-  };
-  
-  const handleLeave = () => {
-    x.set(0);
-    y.set(0);
-  };
+const TIER_GLOW: Record<string, string> = {
+  bronze:   '0 0 20px rgba(205,127,50,0.5)',
+  silver:   '0 0 20px rgba(192,192,192,0.5)',
+  gold:     '0 0 24px rgba(255,215,0,0.6)',
+  platinum: '0 0 24px rgba(229,228,226,0.5)',
+  diamond:  '0 0 28px rgba(185,242,255,0.7)',
+};
 
+const TIER_XP: Record<string, number> = {
+  bronze: 50, silver: 100, gold: 200, platinum: 500, diamond: 1000,
+};
+
+const CATEGORY_TABS = ['all', 'unlocked', 'locked', 'streak', 'completion', 'mastery', 'explorer', 'special'] as const;
+type CategoryTab = typeof CATEGORY_TABS[number];
+
+// ── Confetti burst (CSS-only, no extra dep) ──────────────────
+function ConfettiBurst({ active }: { active: boolean }) {
+  if (!active) return null;
+  const pieces = Array.from({ length: 18 }, (_, i) => i);
+  const colors = ['#ffd700', '#ff8c00', '#7c3aed', '#06b6d4', '#10b981', '#f43f5e'];
   return (
-    <motion.div
-      ref={cardRef}
-      style={{ 
-        rotateX, 
-        rotateY,
-        transformStyle: 'preserve-3d',
-        perspective: 1000
-      }}
-      onMouseMove={handleMouseMove}
-      onTouchMove={handleTouchMove}
-      onMouseLeave={handleLeave}
-      onTouchEnd={handleLeave}
-      className={className}
-    >
-      {children}
-    </motion.div>
+    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
+      {pieces.map(i => (
+        <motion.div
+          key={i}
+          className="absolute w-2 h-2 rounded-sm"
+          style={{
+            background: colors[i % colors.length],
+            left: `${10 + (i * 5) % 80}%`,
+            top: '40%',
+          }}
+          initial={{ y: 0, opacity: 1, scale: 1, rotate: 0 }}
+          animate={{
+            y: [-10, -60 - Math.random() * 40],
+            x: [(i % 2 === 0 ? 1 : -1) * (10 + (i * 7) % 30)],
+            opacity: [1, 0],
+            scale: [1, 0.5],
+            rotate: [0, 360],
+          }}
+          transition={{ duration: 0.8 + Math.random() * 0.4, ease: 'easeOut' }}
+        />
+      ))}
+    </div>
   );
 }
 
+// ── Badge Card ───────────────────────────────────────────────
+function BadgeCard({
+  bp,
+  index,
+  onClick,
+}: {
+  bp: AchievementProgress;
+  index: number;
+  onClick: (bp: AchievementProgress) => void;
+}) {
+  const { achievement: badge, isUnlocked } = bp;
+  const tier = badge.tier as string;
 
-const tierOrder = ['bronze', 'silver', 'gold', 'platinum', 'diamond'] as const;
+  return (
+    <motion.button
+      initial={{ opacity: 0, scale: 0.85 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: Math.min(index * 0.04, 0.4), type: 'spring', stiffness: 200, damping: 20 }}
+      whileHover={isUnlocked ? { scale: 1.05 } : {}}
+      whileTap={{ scale: 0.97 }}
+      onClick={() => onClick(bp)}
+      className={`relative flex flex-col items-center p-4 rounded-xl border text-left w-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-violet)] ${
+        isUnlocked
+          ? 'bg-[var(--surface-2)] border-[var(--color-border)] cursor-pointer'
+          : 'bg-[var(--surface-1)] border-[var(--color-border-subtle)] opacity-60 cursor-pointer'
+      }`}
+      style={isUnlocked ? { boxShadow: TIER_GLOW[tier] } : undefined}
+    >
+      {/* Icon circle */}
+      <div
+        className={`w-14 h-14 mb-3 rounded-full flex items-center justify-center flex-shrink-0 relative ${
+          isUnlocked
+            ? `bg-gradient-to-br ${TIER_GRADIENT[tier] ?? TIER_GRADIENT.bronze}`
+            : 'bg-[var(--surface-3)]'
+        }`}
+      >
+        {isUnlocked ? (
+          <Trophy className="w-7 h-7 text-white" strokeWidth={2.5} />
+        ) : (
+          <>
+            <Trophy className="w-7 h-7 text-[var(--text-disabled)]" strokeWidth={2} />
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[var(--surface-3)] border border-[var(--color-border)] flex items-center justify-center">
+              <Lock className="w-2.5 h-2.5 text-[var(--text-tertiary)]" />
+            </div>
+          </>
+        )}
+      </div>
 
-export default function Badges() {
-  const [_, setLocation] = useLocation();
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedBadge, setSelectedBadge] = useState<BadgeProgress | null>(null);
-  const { stats } = useGlobalStats();
+      {/* Info */}
+      <div className="text-center space-y-1 w-full">
+        <p className="font-bold text-xs leading-tight line-clamp-1">{badge.name}</p>
+        <p className="text-[11px] text-[var(--text-tertiary)] line-clamp-2 leading-snug">{badge.description}</p>
 
-  const goBack = () => {
-    if (window.history.length > 1) {
-      window.history.back();
-    } else {
-      setLocation('/');
-    }
-  };
+        {/* Progress bar (locked) */}
+        {!isUnlocked && bp.current > 0 && bp.target > 0 && (
+          <div className="pt-1 space-y-0.5">
+            <div className="h-1 bg-[var(--surface-3)] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)]"
+                style={{ width: `${Math.min((bp.current / bp.target) * 100, 100)}%` }}
+              />
+            </div>
+            <p className="text-[10px] text-[var(--text-tertiary)]">{bp.current}/{bp.target}</p>
+          </div>
+        )}
 
-  // Calculate user stats
-  const userStats = useMemo(() => {
-    const allQuestions = getAllQuestions();
-    const allCompletedIds = new Set<string>();
-    const channelsWithProgress: string[] = [];
-    const channelCompletionPcts: number[] = [];
-    const difficultyStats = { beginner: 0, intermediate: 0, advanced: 0 };
+        {/* Tier pill */}
+        <div
+          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold capitalize mt-1 ${
+            isUnlocked
+              ? `bg-gradient-to-r ${TIER_GRADIENT[tier] ?? TIER_GRADIENT.bronze} text-white`
+              : 'bg-[var(--surface-3)] text-[var(--text-tertiary)]'
+          }`}
+        >
+          {badge.tier} · +{TIER_XP[tier] ?? 50} XP
+        </div>
+      </div>
+    </motion.button>
+  );
+}
 
-    channels.forEach(ch => {
-      const questions = getQuestions(ch.id);
-      const stored = localStorage.getItem(`progress-${ch.id}`);
-      const completedIds = stored ? new Set(JSON.parse(stored)) : new Set<string>();
-      
-      Array.from(completedIds).forEach((id) => allCompletedIds.add(id as string));
-      
-      if (completedIds.size > 0) {
-        channelsWithProgress.push(ch.id);
-      }
-      
-      if (questions.length > 0) {
-        // Cap at 100% to handle recategorized questions
-        channelCompletionPcts.push(Math.min(100, Math.round((completedIds.size / questions.length) * 100)));
-      }
-      
-      questions.forEach(q => {
-        if (completedIds.has(q.id)) {
-          const d = getQuestionDifficulty(q);
-          difficultyStats[d]++;
-        }
-      });
-    });
+// ── Badge Detail Modal ───────────────────────────────────────
+function BadgeModal({
+  bp,
+  onClose,
+}: {
+  bp: AchievementProgress | null;
+  onClose: () => void;
+}) {
+  const [confetti, setConfetti] = useState(false);
 
-    // Calculate streak
-    let streak = 0;
-    for (let i = 0; i < 365; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      if (stats.find(x => x.date === d.toISOString().split('T')[0])) {
-        streak++;
-      } else {
-        break;
-      }
-    }
-
-    return {
-      totalCompleted: allCompletedIds.size,
-      streak,
-      channelsExplored: channelsWithProgress,
-      difficultyStats,
-      channelCompletionPcts,
-      totalChannels: channels.length,
-    };
-  }, [stats]);
-
-  // Calculate badge progress
-  const badgeProgress = useMemo(() => {
-    return calculateBadgeProgress(
-      userStats.totalCompleted,
-      userStats.streak,
-      userStats.channelsExplored,
-      userStats.difficultyStats,
-      userStats.channelCompletionPcts,
-      userStats.totalChannels
-    );
-  }, [userStats]);
-
-  // Group badges by category
-  const badgesByCategory = useMemo(() => {
-    const grouped: Record<string, BadgeProgress[]> = {};
-    badgeProgress.forEach(bp => {
-      if (!grouped[bp.badge.category]) {
-        grouped[bp.badge.category] = [];
-      }
-      grouped[bp.badge.category].push(bp);
-    });
-    // Sort by tier within each category
-    Object.keys(grouped).forEach(cat => {
-      grouped[cat].sort((a, b) => 
-        tierOrder.indexOf(a.badge.tier) - tierOrder.indexOf(b.badge.tier)
-      );
-    });
-    return grouped;
-  }, [badgeProgress]);
-
-  // Stats summary
-  const unlockedCount = badgeProgress.filter(b => b.isUnlocked).length;
-  const totalBadges = BADGES.length;
-  const overallProgress = Math.round((unlockedCount / totalBadges) * 100);
-
-  // Keyboard navigation
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (selectedBadge) {
-          setSelectedBadge(null);
-        } else {
-          goBack();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedBadge]);
+    if (bp?.isUnlocked) {
+      setConfetti(true);
+      const t = setTimeout(() => setConfetti(false), 1000);
+      return () => clearTimeout(t);
+    }
+  }, [bp]);
 
-  const categories: Array<'streak' | 'completion' | 'mastery' | 'explorer' | 'special'> = ['streak', 'completion', 'mastery', 'explorer', 'special'];
+  return (
+    <AnimatePresence>
+      {bp && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[var(--z-modal)]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+          />
+
+          {/* Panel */}
+          <motion.div
+            className="fixed inset-x-4 bottom-0 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-96 z-[var(--z-modal)] bg-[var(--surface-2)] border border-[var(--color-border)] rounded-t-2xl md:rounded-2xl p-6 shadow-2xl"
+            initial={{ y: '100%', opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: '100%', opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          >
+            <ConfettiBurst active={confetti} />
+
+            {/* Close */}
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[var(--surface-3)] flex items-center justify-center hover:bg-[var(--surface-4)] transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Icon */}
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div
+                className={`w-24 h-24 rounded-full flex items-center justify-center ${
+                  bp.isUnlocked
+                    ? `bg-gradient-to-br ${TIER_GRADIENT[bp.achievement.tier] ?? TIER_GRADIENT.bronze}`
+                    : 'bg-[var(--surface-3)]'
+                }`}
+                style={bp.isUnlocked ? { boxShadow: TIER_GLOW[bp.achievement.tier] } : undefined}
+              >
+                {bp.isUnlocked ? (
+                  <Trophy className="w-12 h-12 text-white" strokeWidth={2} />
+                ) : (
+                  <Lock className="w-12 h-12 text-[var(--text-disabled)]" />
+                )}
+              </div>
+
+              <div>
+                <h2 className="text-xl font-black">{bp.achievement.name}</h2>
+                <p className="text-sm text-[var(--text-secondary)] mt-1">{bp.achievement.description}</p>
+              </div>
+
+              {/* XP reward */}
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--surface-3)] border border-[var(--color-border)]">
+                <Star className="w-4 h-4 text-[var(--color-xp)]" />
+                <span className="text-sm font-bold text-[var(--color-xp)]">+{TIER_XP[bp.achievement.tier] ?? 50} XP</span>
+                <span className="text-xs text-[var(--text-tertiary)] capitalize">· {bp.achievement.tier}</span>
+              </div>
+
+              {/* Earned date or how to earn */}
+              {bp.isUnlocked && bp.unlockedAt ? (
+                <p className="text-sm text-[var(--color-success)]">
+                  ✓ Earned {new Date(bp.unlockedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </p>
+              ) : (
+                <div className="w-full p-3 rounded-xl bg-[var(--surface-3)] border border-[var(--color-border-subtle)] text-left space-y-2">
+                  <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wide">How to earn</p>
+                  <p className="text-sm text-[var(--text-secondary)]">{bp.achievement.description}</p>
+                  {bp.current > 0 && bp.target > 0 && (
+                    <div className="space-y-1">
+                      <div className="h-1.5 bg-[var(--surface-4)] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)]"
+                          style={{ width: `${Math.min((bp.current / bp.target) * 100, 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-[var(--text-tertiary)]">{bp.current} / {bp.target}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Share */}
+              {bp.isUnlocked && (
+                <button
+                  onClick={() => {
+                    const text = `I just earned the "${bp.achievement.name}" badge on Code Reels! 🏆`;
+                    if (navigator.share) {
+                      navigator.share({ text, url: 'https://open-interview.github.io/' });
+                    } else {
+                      navigator.clipboard.writeText(text);
+                    }
+                  }}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-indigo)] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Share Badge
+                </button>
+              )}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// ── Main Page ────────────────────────────────────────────────
+export default function BadgesPage() {
+  const { progress: allBadges, unlocked: unlockedBadges, stats, nextUp, isLoading } = useAchievements();
+  const [activeTab, setActiveTab] = useState<CategoryTab>('all');
+  const [selectedBadge, setSelectedBadge] = useState<AchievementProgress | null>(null);
+
+  const filteredBadges = activeTab === 'all'
+    ? allBadges
+    : activeTab === 'unlocked'
+    ? allBadges.filter(b => b.isUnlocked)
+    : activeTab === 'locked'
+    ? allBadges.filter(b => !b.isUnlocked)
+    : allBadges.filter(b => b.achievement.category === activeTab);
+
+  const xpFromBadges = unlockedBadges.reduce((sum, b) => sum + (TIER_XP[b.achievement.tier] ?? 50), 0);
+
+  const rarestBadge = unlockedBadges.length > 0
+    ? unlockedBadges.reduce((rarest, b) => {
+        const tierOrder = ['bronze', 'silver', 'gold', 'platinum', 'diamond'];
+        return tierOrder.indexOf(b.achievement.tier) > tierOrder.indexOf(rarest.achievement.tier) ? b : rarest;
+      })
+    : null;
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="min-h-dvh flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-6xl mb-4">⏳</div>
+            <h2 className="text-2xl font-bold">Loading achievements...</h2>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!allBadges || allBadges.length === 0) {
+    return (
+      <AppLayout>
+        <div className="min-h-dvh flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-6xl mb-4">🏆</div>
+            <h2 className="text-2xl font-bold mb-2">No badges yet</h2>
+            <p className="text-[var(--text-secondary)]">Start completing challenges to earn badges!</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <>
       <SEOHead
-        title="Achievement Badges - Track Your Interview Prep Progress | Code Reels"
-        description="Earn badges as you master technical interview questions. Track your streaks, completion milestones, and explore different topics to unlock achievements."
-        keywords="achievement badges, gamification, interview prep progress, study streaks, learning milestones"
+        title="Achievements — Your Badges 🏆"
+        description="View your earned badges and achievements"
         canonical="https://open-interview.github.io/badges"
       />
-      
-      <AppLayout title="Badges" showBackOnMobile>
-        <div className="max-w-4xl mx-auto pb-8">
 
-          {/* Overall Progress */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="border border-border p-4 bg-card rounded-lg mb-6"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-primary" />
-                <span className="font-bold">Your Collection</span>
-              </div>
-              <span className="text-2xl font-bold text-primary">{unlockedCount}/{totalBadges}</span>
-            </div>
-            <div className="h-2 bg-muted/30 rounded-full overflow-hidden mb-2">
-              <motion.div
-                className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full"
-                initial={{ width: 0 }}
-                animate={{ width: `${overallProgress}%` }}
-                transition={{ duration: 1, ease: 'easeOut' }}
-              />
-            </div>
-            <div className="flex justify-between text-[10px] text-muted-foreground">
-              <span>{overallProgress}% Complete</span>
-              <span>{totalBadges - unlockedCount} badges remaining</span>
-            </div>
-          </motion.div>
+      <AppLayout>
+        <div className="min-h-dvh bg-background text-foreground w-full overflow-x-hidden pb-24 lg:pb-0">
+          <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
 
-          {/* Category Tabs */}
-          <div className="flex gap-2 mb-4 overflow-x-auto pb-2 -mx-4 px-4 no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <button
-              onClick={() => setSelectedCategory(null)}
-              className={`px-3 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex-shrink-0
-                ${!selectedCategory ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted'}`}
+            {/* ── Header ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center space-y-2"
             >
-              All
-            </button>
-            {categories.map(cat => {
-              const catBadges = badgesByCategory[cat] || [];
-              const catUnlocked = catBadges.filter(b => b.isUnlocked).length;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 flex-shrink-0
-                    ${selectedCategory === cat ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted'}`}
-                >
-                  {categoryIcons[cat]}
-                  <span>{getCategoryLabel(cat)}</span>
-                  <span className="opacity-70 text-[10px]">{catUnlocked}/{catBadges.length}</span>
-                </button>
-              );
-            })}
-          </div>
+              <h1 className="text-3xl md:text-4xl font-black">
+                Your{' '}
+                <span className="bg-gradient-to-r from-[#ffd700] to-[#ff8c00] bg-clip-text text-transparent">
+                  Achievements
+                </span>
+              </h1>
+            </motion.div>
 
-          {/* Badge Grid by Category */}
-          <div className="space-y-6">
-            {categories
-              .filter(cat => !selectedCategory || selectedCategory === cat)
-              .map(cat => {
-                const catBadges = badgesByCategory[cat] || [];
-                if (catBadges.length === 0) return null;
-                
-                return (
-                  <motion.div
-                    key={cat}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="border border-border p-4 bg-card rounded-lg"
-                  >
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="p-1.5 rounded bg-primary/10 text-primary">
-                        {categoryIcons[cat]}
-                      </div>
-                      <span className="font-bold uppercase text-sm">{getCategoryLabel(cat)}</span>
-                      <span className="text-[10px] text-muted-foreground ml-auto">
-                        {catBadges.filter(b => b.isUnlocked).length}/{catBadges.length}
-                      </span>
-                    </div>
-                    
-                    <div className="grid grid-cols-4 gap-2 sm:gap-4">
-                      {catBadges.map((bp, i) => (
-                        <motion.div
-                          key={bp.badge.id}
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: i * 0.03 }}
-                          className="flex justify-center"
-                        >
-                          <BadgeRing
-                            progress={bp}
-                            size="md"
-                            onClick={() => setSelectedBadge(bp)}
-                          />
-                        </motion.div>
-                      ))}
-                    </div>
-                  </motion.div>
-                );
-              })}
-          </div>
+            {/* ── Stats Header ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="grid grid-cols-3 gap-3"
+            >
+              {/* Badges earned */}
+              <div className="glass-card rounded-xl p-4 text-center space-y-1">
+                <p className="text-2xl font-black text-[var(--color-xp)]">{stats.unlocked}<span className="text-[var(--text-tertiary)] font-normal text-base">/{stats.total}</span></p>
+                <p className="text-xs text-[var(--text-tertiary)]">Badges Earned</p>
+              </div>
 
-          {/* Next Badges to Unlock */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="border border-border p-4 bg-card rounded-lg mt-6"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <Target className="w-4 h-4 text-primary" />
-              <span className="font-bold uppercase text-sm">Next Up</span>
-            </div>
-            <div className="space-y-3">
-              {badgeProgress
-                .filter(b => !b.isUnlocked && b.progress > 0)
-                .sort((a, b) => b.progress - a.progress)
-                .slice(0, 3)
-                .map((bp, i) => (
-                  <motion.div
-                    key={bp.badge.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 + i * 0.1 }}
-                    className="flex items-center gap-3 p-2 bg-muted/10 rounded cursor-pointer hover:bg-muted/20 transition-colors"
-                    onClick={() => setSelectedBadge(bp)}
-                  >
-                    <BadgeRing progress={bp} size="sm" showProgress={false} />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-bold">{bp.badge.name}</div>
-                      <div className="h-1.5 bg-muted/30 rounded-full overflow-hidden mt-1">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{ 
-                            width: `${bp.progress}%`,
-                            backgroundColor: getTierColor(bp.badge.tier)
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs font-bold" style={{ color: getTierColor(bp.badge.tier) }}>
-                        {Math.round(bp.progress)}%
-                      </div>
-                      <div className="text-[9px] text-muted-foreground">
-                        {bp.current}/{bp.badge.requirement}
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  </motion.div>
-                ))}
-              {badgeProgress.filter(b => !b.isUnlocked && b.progress > 0).length === 0 && (
-                <div className="text-center text-muted-foreground text-sm py-4">
-                  Complete some questions to start earning badges!
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </div>
-      </AppLayout>
+              {/* XP from badges */}
+              <div className="glass-card rounded-xl p-4 text-center space-y-1">
+                <p className="text-2xl font-black text-[var(--color-accent-violet-light)]">+{xpFromBadges.toLocaleString()}</p>
+                <p className="text-xs text-[var(--text-tertiary)]">XP from Badges</p>
+              </div>
 
-      {/* Badge Detail Modal - Using Portal to ensure proper centering */}
-      {createPortal(
-        <AnimatePresence>
-          {selectedBadge && (
+              {/* Rarest badge */}
+              <div className="glass-card rounded-xl p-4 text-center space-y-1">
+                {rarestBadge ? (
+                  <>
+                    <p
+                      className={`text-sm font-black capitalize bg-gradient-to-r ${TIER_GRADIENT[rarestBadge.achievement.tier]} bg-clip-text text-transparent`}
+                    >
+                      {rarestBadge.achievement.tier}
+                    </p>
+                    <p className="text-[10px] text-[var(--text-tertiary)] line-clamp-1">{rarestBadge.achievement.name}</p>
+                  </>
+                ) : (
+                  <p className="text-xs text-[var(--text-tertiary)]">No badges yet</p>
+                )}
+                <p className="text-xs text-[var(--text-tertiary)]">Rarest Badge</p>
+              </div>
+            </motion.div>
+
+            {/* ── Overall progress bar ── */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
-              style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, perspective: 1000 }}
-              onClick={() => setSelectedBadge(null)}
+              transition={{ delay: 0.15 }}
+              className="space-y-1.5"
             >
-              <Tilt3DCard className="relative">
+              <div className="flex justify-between text-xs text-[var(--text-tertiary)]">
+                <span>{stats.percentage}% complete</span>
+                <span>{stats.locked} remaining</span>
+              </div>
+              <div className="h-2 bg-[var(--surface-3)] rounded-full overflow-hidden">
                 <motion.div
-                  initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                  animate={{ scale: 1, opacity: 1, y: 0 }}
-                  exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                  className="relative bg-card border border-border rounded-2xl p-6 max-w-xs w-full shadow-2xl"
-                  style={{ transformStyle: 'preserve-3d' }}
-                  onClick={e => e.stopPropagation()}
-                >
-                  {/* Floating close button with 3D depth */}
-                  <button
-                    onClick={() => setSelectedBadge(null)}
-                    className="absolute top-4 left-4 p-2 hover:bg-muted rounded-full transition-colors"
-                    style={{ transform: 'translateZ(20px)' }}
-                  >
-                    <X className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                  
-                  <div className="flex flex-col items-center text-center pt-2">
-                    {/* Badge Icon with 3D pop-out effect */}
-                    <div 
-                      className={`relative ${selectedBadge.isUnlocked ? 'drop-shadow-[0_0_25px_rgba(var(--primary-rgb),0.4)]' : ''}`}
-                      style={{ transform: 'translateZ(40px)' }}
-                    >
-                      <BadgeRing progress={selectedBadge} size="lg" showProgress={false} />
-                    </div>
-                    
-                    {/* Badge Name with slight depth */}
-                    <h3 
-                      className="text-xl font-bold mt-4 tracking-tight"
-                      style={{ transform: 'translateZ(25px)' }}
-                    >
-                      {selectedBadge.badge.name}
-                    </h3>
-                    
-                    {/* Description */}
-                    <p 
-                      className="text-sm text-muted-foreground mt-2 leading-relaxed"
-                      style={{ transform: 'translateZ(15px)' }}
-                    >
-                      {selectedBadge.badge.description}
-                    </p>
-                    
-                    {/* Tier & Category Tags with depth */}
-                    <div 
-                      className="flex items-center gap-2 mt-4"
-                      style={{ transform: 'translateZ(20px)' }}
-                    >
-                      <span
-                        className="px-2.5 py-1 rounded-full text-[10px] uppercase font-bold tracking-wide"
-                        style={{ 
-                          backgroundColor: `${getTierColor(selectedBadge.badge.tier)}15`,
-                          color: getTierColor(selectedBadge.badge.tier),
-                          border: `1px solid ${getTierColor(selectedBadge.badge.tier)}30`
-                        }}
-                      >
-                        {selectedBadge.badge.tier}
-                      </span>
-                      <span className="px-2.5 py-1 rounded-full text-[10px] uppercase font-medium tracking-wide bg-muted/50 text-muted-foreground">
-                        {getCategoryLabel(selectedBadge.badge.category)}
-                      </span>
-                    </div>
-                    
-                    {/* Progress Section - slightly recessed */}
-                    <div 
-                      className="w-full mt-6 p-4 bg-muted/20 rounded-xl"
-                      style={{ transform: 'translateZ(5px)' }}
-                    >
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-bold">
-                          {selectedBadge.current}/{selectedBadge.badge.requirement} {selectedBadge.badge.unit}
-                        </span>
-                      </div>
-                      <div className="h-2.5 bg-muted/40 rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full rounded-full"
-                          style={{ backgroundColor: getTierColor(selectedBadge.badge.tier) }}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.min(selectedBadge.progress, 100)}%` }}
-                          transition={{ duration: 0.6, ease: 'easeOut' }}
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Status - Unlocked or Locked */}
-                    <div 
-                      className="mt-5 w-full"
-                      style={{ transform: 'translateZ(10px)' }}
-                    >
-                      {selectedBadge.isUnlocked ? (
-                        <div className="flex items-center justify-center gap-2 py-2.5 px-4 bg-green-500/10 rounded-xl border border-green-500/20">
-                          <Check className="w-4 h-4 text-green-500" />
-                          <span className="text-sm font-medium text-green-500">
-                            Unlocked {selectedBadge.unlockedAt 
-                              ? new Date(selectedBadge.unlockedAt).toLocaleDateString('en-GB', { 
-                                  day: '2-digit', 
-                                  month: '2-digit', 
-                                  year: 'numeric' 
-                                }).replace(/\//g, '/')
-                              : 'recently'}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center gap-2 py-2.5 px-4 bg-muted/30 rounded-xl">
-                          <Lock className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">
-                            {selectedBadge.badge.requirement - selectedBadge.current} {selectedBadge.badge.unit} to unlock
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              </Tilt3DCard>
+                  initial={{ width: 0 }}
+                  animate={{ width: `${stats.percentage}%` }}
+                  transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  className="h-full bg-gradient-to-r from-[#ffd700] to-[#ff8c00] rounded-full"
+                  style={{ boxShadow: '0 0 8px rgba(255,215,0,0.5)' }}
+                />
+              </div>
             </motion.div>
-          )}
-        </AnimatePresence>,
-        document.body
-      )}
+
+            {/* ── Category Tabs ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="flex flex-wrap gap-2"
+            >
+            {CATEGORY_TABS.map(tab => {
+                const count = tab === 'all' ? allBadges.length
+                  : tab === 'unlocked' ? allBadges.filter(b => b.isUnlocked).length
+                  : tab === 'locked' ? allBadges.filter(b => !b.isUnlocked).length
+                  : allBadges.filter(b => b.achievement.category === tab).length;
+                const isSpecial = tab === 'unlocked' || tab === 'locked';
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-4 py-2 rounded-full text-sm font-semibold capitalize transition-all flex items-center gap-1.5 ${
+                      activeTab === tab
+                        ? tab === 'unlocked'
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                          : tab === 'locked'
+                          ? 'bg-gradient-to-r from-slate-500 to-slate-600 text-white'
+                          : 'bg-gradient-to-r from-[#ffd700] to-[#ff8c00] text-black shadow-[0_0_12px_rgba(255,215,0,0.4)]'
+                        : 'bg-[var(--surface-2)] border border-[var(--color-border)] hover:border-[var(--color-border-strong)] text-[var(--text-secondary)]'
+                    }`}
+                  >
+                    {tab}
+                    {count > 0 && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                        activeTab === tab ? 'bg-black/20 text-white' : 'bg-[var(--surface-3)] text-[var(--text-tertiary)]'
+                      }`}>{count}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </motion.div>
+
+            {/* ── Badge Grid ── */}
+            <div className="grid grid-cols-3 gap-3 md:gap-4">
+              {filteredBadges.map((bp, i) => (
+                <BadgeCard key={bp.achievement.id} bp={bp} index={i} onClick={setSelectedBadge} />
+              ))}
+            </div>
+
+            {/* ── Next Up ── */}
+            {nextUp.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="p-6 bg-gradient-to-br from-[var(--color-accent-violet)]/10 to-[var(--color-accent-cyan)]/10 rounded-xl border border-[var(--color-accent-violet)]/20"
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles className="w-5 h-5 text-[var(--color-accent-violet-light)]" />
+                  <h2 className="text-lg font-bold">Almost There!</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {nextUp.slice(0, 4).map(bp => (
+                    <button
+                      key={bp.achievement.id}
+                      onClick={() => setSelectedBadge(bp)}
+                      className="flex items-center gap-3 p-3 bg-[var(--surface-2)] rounded-xl border border-[var(--color-border)] hover:border-[var(--color-border-strong)] transition-all text-left"
+                    >
+                      <div className="w-10 h-10 bg-[var(--surface-3)] rounded-full flex items-center justify-center flex-shrink-0">
+                        <Trophy className="w-5 h-5 text-[var(--color-accent-violet-light)]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold truncate">{bp.achievement.name}</p>
+                        <div className="h-1 bg-[var(--surface-3)] rounded-full overflow-hidden mt-1.5">
+                          <div
+                            className="h-full bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)]"
+                            style={{ width: `${Math.min((bp.current / bp.target) * 100, 100)}%` }}
+                          />
+                        </div>
+                        <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">{bp.current}/{bp.target}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </div>
+        </div>
+      </AppLayout>
+
+      {/* ── Badge Detail Modal ── */}
+      <BadgeModal bp={selectedBadge} onClose={() => setSelectedBadge(null)} />
     </>
   );
 }

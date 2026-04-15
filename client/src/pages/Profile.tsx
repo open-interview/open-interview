@@ -1,668 +1,343 @@
 /**
- * Profile Page
- * User stats, achievements, and settings
+ * Profile Page — Settings & Preferences
  */
 
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
-import { useChannelStats } from '../hooks/use-stats';
-import { useUserPreferences } from '../context/UserPreferencesContext';
-import { useGlobalStats } from '../hooks/use-progress';
-import { useCredits } from '../context/CreditsContext';
-import { useLevel } from '../hooks/use-level';
 import { SEOHead } from '../components/SEOHead';
-import { MetricCard } from '../components/unified';
+import { useUserPreferences } from '../context/UserPreferencesContext';
+import { useCredits } from '../context/CreditsContext';
+import { useAchievements } from '../hooks/use-achievements';
+import { getAllQuestions, channels, getQuestions } from '../lib/data';
 import {
-  Code, Trophy, Target, Flame, BookOpen, ChevronRight,
-  Bell, HelpCircle, Zap, Calendar, TrendingUp, Bookmark, Shuffle, Eye,
-  Coins, Gift, History, Mic, Volume2, Play, Award
+  User, Settings, Zap, Trophy, Target, Sparkles,
+  Volume2, Shuffle, Eye, ChevronRight, Edit2, Check, X, Download, BookOpen, Code2, GraduationCap
 } from 'lucide-react';
-import {
-  isTTSSupported,
-  getVoices,
-  getSavedVoiceName,
-  saveVoicePreference,
-  getSavedRate,
-  saveRatePreference,
-  speak,
-  stop
-} from '../lib/text-to-speech';
 
-export default function Profile() {
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function getInitials(name: string) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <button
+      onClick={onToggle}
+      role="switch"
+      aria-checked={on}
+      className="w-12 h-6 rounded-full transition-all flex-shrink-0 relative"
+      style={{ background: on ? 'var(--gradient-primary)' : 'var(--surface-4)' }}
+    >
+      <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${on ? 'translate-x-6' : 'translate-x-0.5'}`} />
+    </button>
+  );
+}
+
+function SettingRow({ icon, label, description, children }: {
+  icon: React.ReactNode; label: string; description?: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between py-3 px-4 rounded-[var(--radius-md)] transition-colors hover:bg-[var(--surface-3)]">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{ background: 'var(--surface-3)' }}>
+          {icon}
+        </div>
+        <div>
+          <div className="text-sm font-medium">{label}</div>
+          {description && <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{description}</div>}
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── main component ────────────────────────────────────────────────────────────
+
+export default function ProfilePage() {
   const [, setLocation] = useLocation();
-  const { stats: channelStats } = useChannelStats();
-  const { getSubscribedChannels, preferences, toggleShuffleQuestions, togglePrioritizeUnvisited, toggleHideCertifications } = useUserPreferences();
-  const { stats: activityStats } = useGlobalStats();
-  const { balance, state: creditsState, history, onRedeemCoupon, formatCredits, config } = useCredits();
-  const { levelProgress, currentStreak } = useLevel();
-  const subscribedChannels = getSubscribedChannels();
-  
-  const [couponCode, setCouponCode] = useState('');
-  const [couponMessage, setCouponMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const { preferences, toggleShuffleQuestions, togglePrioritizeUnvisited } = useUserPreferences();
+  const { balance } = useCredits();
+  const { unlocked: unlockedBadges } = useAchievements();
+  const [totalCompleted, setTotalCompleted] = useState(0);
+  const [editingName, setEditingName] = useState(false);
+  const [displayName, setDisplayName] = useState(() => localStorage.getItem('user-display-name') || 'Learner');
+  const [nameInput, setNameInput] = useState(displayName);
 
-  // Calculate stats
-  const totalQuestions = channelStats.reduce((sum, s) => sum + s.total, 0);
-  const totalCompleted = subscribedChannels.reduce((sum, channel) => {
-    const channelProgress = JSON.parse(localStorage.getItem(`progress-${channel.id}`) || '[]');
-    return sum + channelProgress.length;
-  }, 0);
+  useEffect(() => {
+    const allQuestions = getAllQuestions();
+    const allCompletedIds = new Set<string>();
+    allQuestions.forEach(q => {
+      const stored = localStorage.getItem(`progress-${q.channel}`);
+      if (stored) {
+        const ids = new Set(JSON.parse(stored));
+        if (ids.has(q.id)) allCompletedIds.add(q.id);
+      }
+    });
+    setTotalCompleted(allCompletedIds.size);
+  }, []);
 
-  const streak = (() => {
-    let s = 0;
-    for (let i = 0; i < 365; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      if (activityStats.find(x => x.date === d.toISOString().split('T')[0])) s++;
-      else break;
-    }
-    return s;
+  const learningSummary = (() => {
+    const certKeywords = ['aws','kubernetes','terraform','gcp','azure','comptia','cisco','cka','ckad','cks'];
+    const codeKeywords = ['algorithm','coding','frontend','backend'];
+    let topicsStudied = 0, certsPracticed = 0, codingDone = 0;
+    channels.forEach(ch => {
+      const stored = localStorage.getItem(`progress-${ch.id}`);
+      if (!stored) return;
+      const completed = JSON.parse(stored) as string[];
+      if (completed.length === 0) return;
+      topicsStudied++;
+      const id = ch.id.toLowerCase();
+      if (certKeywords.some(k => id.includes(k))) certsPracticed++;
+      if (codeKeywords.some(k => id.includes(k))) codingDone += completed.length;
+    });
+    return { topicsStudied, certsPracticed, codingDone };
   })();
 
-  const daysActive = activityStats.length;
+  const exportData = () => {
+    const data: Record<string, unknown> = { exportedAt: new Date().toISOString(), xp: balance, level, totalCompleted };
+    Object.keys(localStorage).forEach(k => { data[k] = localStorage.getItem(k); });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'code-reels-data.json'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const level = Math.floor(balance / 100);
+  const xpInLevel = balance % 100;
+  const initials = getInitials(displayName);
+
+  const saveName = () => {
+    const trimmed = nameInput.trim() || 'Learner';
+    setDisplayName(trimmed);
+    localStorage.setItem('user-display-name', trimmed);
+    setEditingName(false);
+  };
+
+  const fadeUp = (delay = 0) => ({
+    initial: { opacity: 0, y: 16 },
+    animate: { opacity: 1, y: 0 },
+    transition: { delay, duration: 0.35 },
+  });
 
   return (
     <>
       <SEOHead
-        title="Profile - Code Reels"
-        description="View your learning progress and achievements"
+        title="Profile - Your Settings ⚙️"
+        description="Customize your learning experience"
+        canonical="https://open-interview.github.io/profile"
       />
-      
-      <AppLayout title="Profile" showBackOnMobile>
-        <div className="max-w-6xl mx-auto pb-8">
-          {/* Desktop: Two column layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-            {/* Left Column - Profile & Stats */}
-            <div className="space-y-4">
-          {/* Profile Header - Clean Premium Design */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-card rounded-2xl border border-border overflow-hidden"
-          >
-            {/* Top gradient section - Warm premium colors */}
-            <div className="bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 p-5">
-              {/* XP and Level row */}
-              <div className="flex items-start justify-between mb-5">
-                {/* XP Progress */}
-                <div className="flex-1 mr-4">
-                  <div className="flex items-baseline gap-2 mb-2">
-                    <span className="text-white/70 text-sm">Experience</span>
-                    <span className="text-white text-2xl font-bold">{levelProgress.currentXP.toLocaleString()} XP</span>
+      <AppLayout>
+        <div className="min-h-screen pb-24 lg:pb-8" style={{ background: 'var(--surface-0)', color: 'var(--text-primary)' }}>
+          <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+
+            {/* ── Profile Card ───────────────────────────────────────────── */}
+            <motion.div {...fadeUp(0)} className="glass-card rounded-[var(--radius-2xl)] p-6">
+              <div className="flex flex-col items-center gap-4">
+                {/* Avatar with gradient border */}
+                <div className="p-0.5 rounded-full" style={{ background: 'var(--gradient-primary)' }}>
+                  <div className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold text-white"
+                    style={{ background: 'var(--surface-2)' }}>
+                    {initials}
                   </div>
-                  <div className="w-full max-w-[200px] bg-white/20 rounded-full h-2.5 mb-1.5">
-                    <div 
-                      className="bg-gradient-to-r from-amber-400 to-orange-400 h-2.5 rounded-full transition-all duration-700"
-                      style={{ width: `${levelProgress.progress}%` }}
+                </div>
+
+                {/* Name (editable) */}
+                {editingName ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      autoFocus
+                      value={nameInput}
+                      onChange={e => setNameInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditingName(false); }}
+                      className="text-center text-xl font-bold bg-transparent border-b-2 outline-none px-2"
+                      style={{ borderColor: 'var(--color-accent-violet)', color: 'var(--text-primary)' }}
                     />
+                    <button onClick={saveName} className="p-1 rounded-full hover:bg-green-500/20 text-green-400"><Check className="w-4 h-4" /></button>
+                    <button onClick={() => setEditingName(false)} className="p-1 rounded-full hover:bg-red-500/20 text-red-400"><X className="w-4 h-4" /></button>
                   </div>
-                  <div className="text-white/60 text-xs">
-                    {levelProgress.xpForNext} XP to next level
-                  </div>
-                </div>
-                
-                {/* Level Badge */}
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2.5 text-center border border-white/20">
-                  <div className="text-amber-300 text-xs font-semibold uppercase tracking-wider">
-                    Level {levelProgress.currentLevel.level}
-                  </div>
-                  <div className="text-white text-lg font-bold">
-                    {levelProgress.currentLevel.title}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Title and Streak row */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-white text-xl font-bold">Interview Prep</h1>
-                  <p className="text-white/60 text-sm">Mastering technical interviews</p>
-                </div>
-                {currentStreak > 0 && (
-                  <div className="flex items-center gap-1.5 bg-amber-500/20 px-3 py-1.5 rounded-full border border-amber-400/30">
-                    <Flame className="w-4 h-4 text-amber-400" />
-                    <span className="text-amber-300 text-sm font-medium">{currentStreak} day streak</span>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl font-bold">{displayName}</h1>
+                    <button onClick={() => { setNameInput(displayName); setEditingName(true); }}
+                      className="p-1 rounded-full transition-colors hover:bg-white/10"
+                      style={{ color: 'var(--text-tertiary)' }}>
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 )}
-              </div>
-            </div>
-            
-            {/* Bottom stats section */}
-            <div className="px-5 py-4">
-              <div className="flex items-center gap-4">
-                {/* Avatar */}
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg flex-shrink-0">
-                  <Code className="w-7 h-7 text-white" />
-                </div>
-                
-                {/* Stats Grid */}
-                <div className="flex-1 grid grid-cols-3 gap-3">
-                  <div className="text-center">
-                    <div className="text-xl font-bold">{totalCompleted}</div>
-                    <div className="text-xs text-muted-foreground">Completed</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xl font-bold">{subscribedChannels.length}</div>
-                    <div className="text-xs text-muted-foreground">Topics</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xl font-bold">{daysActive}</div>
-                    <div className="text-xs text-muted-foreground">Days Active</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.section>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Software Engineer</p>
 
-          {/* Stats Cards */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="grid grid-cols-2 gap-3"
-          >
-            <MetricCard
-              icon={<Flame className="w-5 h-5" />}
-              value={streak.toString()}
-              label="Day Streak"
-              variant="warning"
-              size="md"
-            />
-            <MetricCard
-              icon={<Target className="w-5 h-5" />}
-              value={`${Math.round((totalCompleted / totalQuestions) * 100) || 0}%`}
-              label="Progress"
-              variant="success"
-              size="md"
-            />
-            <MetricCard
-              icon={<Calendar className="w-5 h-5" />}
-              value={daysActive.toString()}
-              label="Days Active"
-              variant="info"
-              size="md"
-            />
-            <MetricCard
-              icon={<TrendingUp className="w-5 h-5" />}
-              value={totalCompleted.toString()}
-              label="Questions Done"
-              variant="default"
-              size="md"
-            />
-          </motion.section>
-
-          {/* Achievements - in left column on desktop */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-card rounded-2xl border border-border overflow-hidden"
-          >
-            <button
-              onClick={() => setLocation('/badges')}
-              className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center">
-                  <Trophy className="w-5 h-5 text-yellow-500" />
-                </div>
-                <div className="text-left">
-                  <h3 className="font-semibold">Achievements</h3>
-                  <p className="text-sm text-muted-foreground">View your badges</p>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
-            </button>
-          </motion.section>
-
-          {/* Settings - in left column on desktop */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            className="bg-card rounded-2xl border border-border overflow-hidden"
-          >
-            <div className="px-4 py-3 border-b border-border/50">
-              <h3 className="text-sm font-semibold text-muted-foreground">Settings</h3>
-            </div>
-            <div className="divide-y divide-border/50">
-              <ToggleItem
-                icon={<Shuffle className="w-5 h-5" />}
-                label="Shuffle Questions"
-                sublabel="Randomize question order"
-                enabled={preferences.shuffleQuestions !== false}
-                onToggle={toggleShuffleQuestions}
-              />
-              <ToggleItem
-                icon={<Eye className="w-5 h-5" />}
-                label="Unvisited First"
-                sublabel="Show new questions first"
-                enabled={preferences.prioritizeUnvisited !== false}
-                onToggle={togglePrioritizeUnvisited}
-              />
-              <ToggleItem
-                icon={<Award className="w-5 h-5" />}
-                label="Hide Certifications"
-                sublabel="Remove certifications from navigation"
-                enabled={preferences.hideCertifications === true}
-                onToggle={toggleHideCertifications}
-              />
-              <MenuItem
-                icon={<Bell className="w-5 h-5" />}
-                label="Notifications"
-                sublabel="View all alerts"
-                onClick={() => setLocation('/notifications')}
-              />
-              <MenuItem
-                icon={<HelpCircle className="w-5 h-5" />}
-                label="About"
-                sublabel="App information"
-                onClick={() => setLocation('/about')}
-              />
-            </div>
-          </motion.section>
-            </div>
-
-            {/* Right Column - Credits & Menu */}
-            <div className="space-y-4">
-          {/* Credits Section */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="bg-gradient-to-r from-amber-500/10 to-yellow-500/10 rounded-2xl border border-amber-500/20 p-4"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                  <Coins className="w-6 h-6 text-amber-500" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg">{formatCredits(balance)} Credits</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Earned: {formatCredits(creditsState.totalEarned)} · Spent: {formatCredits(creditsState.totalSpent)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* How to earn */}
-            <div className="bg-black/10 rounded-lg p-3 mb-4">
-              <h4 className="text-xs font-semibold text-amber-400 mb-2 flex items-center gap-1">
-                <Mic className="w-3 h-3" /> Earn Credits
-              </h4>
-              <div className="space-y-1 text-xs text-muted-foreground">
-                <div className="flex justify-between">
-                  <span>Voice interview attempt</span>
-                  <span className="text-amber-400">+{config.VOICE_ATTEMPT}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Successful interview (hire)</span>
-                  <span className="text-amber-400">+{config.VOICE_SUCCESS_BONUS} bonus</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>View question</span>
-                  <span className="text-red-400">-{config.QUESTION_VIEW_COST}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Coupon Redemption */}
-            <div>
-              <h4 className="text-xs font-semibold mb-2 flex items-center gap-1">
-                <Gift className="w-3 h-3" /> Redeem Coupon
-              </h4>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                  placeholder="Enter code"
-                  className="flex-1 px-3 py-2 bg-black/20 border border-border rounded-lg text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
-                />
-                <button
-                  onClick={() => {
-                    if (!couponCode.trim()) return;
-                    const result = onRedeemCoupon(couponCode);
-                    setCouponMessage({
-                      type: result.success ? 'success' : 'error',
-                      text: result.message
-                    });
-                    if (result.success) setCouponCode('');
-                    setTimeout(() => setCouponMessage(null), 3000);
-                  }}
-                  className="px-4 py-2 bg-amber-500 text-white text-sm font-bold rounded-lg hover:bg-amber-600 transition-colors"
-                >
-                  Apply
-                </button>
-              </div>
-              {couponMessage && (
-                <p className={`text-xs mt-2 ${couponMessage.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
-                  {couponMessage.text}
-                </p>
-              )}
-            </div>
-
-            {/* Recent Transactions */}
-            {history.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-amber-500/20">
-                <h4 className="text-xs font-semibold mb-2 flex items-center gap-1">
-                  <History className="w-3 h-3" /> Recent Activity
-                </h4>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {history.slice(0, 5).map((tx) => (
-                    <div key={tx.id} className="flex justify-between text-xs">
-                      <span className="text-muted-foreground truncate flex-1">{tx.description}</span>
-                      <span className={tx.amount > 0 ? 'text-green-400' : 'text-red-400'}>
-                        {tx.amount > 0 ? '+' : ''}{tx.amount}
-                      </span>
+                {/* Stats summary row */}
+                <div className="flex gap-6 pt-2 border-t w-full justify-center" style={{ borderColor: 'var(--color-border)' }}>
+                  {[
+                    { label: 'XP', value: balance, color: 'var(--color-xp)' },
+                    { label: 'Level', value: level, color: 'var(--color-accent-violet-light)' },
+                    { label: 'Done', value: totalCompleted, color: 'var(--color-accent-cyan)' },
+                    { label: 'Badges', value: unlockedBadges.length, color: 'var(--color-success)' },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} className="text-center">
+                      <div className="text-lg font-bold" style={{ color }}>{value}</div>
+                      <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{label}</div>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-          </motion.section>
 
-          {/* Menu Items */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-card rounded-2xl border border-border overflow-hidden"
-          >
-            <MenuItem
-              icon={<Bookmark className="w-5 h-5" />}
-              label="Bookmarks"
-              sublabel="Saved questions"
-              onClick={() => setLocation('/bookmarks')}
-            />
-            <MenuItem
-              icon={<BookOpen className="w-5 h-5" />}
-              label="My Channels"
-              sublabel={`${subscribedChannels.length} subscribed`}
-              onClick={() => setLocation('/channels')}
-            />
-            <MenuItem
-              icon={<Zap className="w-5 h-5" />}
-              label="Coding Challenges"
-              sublabel="Practice coding"
-              onClick={() => setLocation('/coding')}
-            />
-            <MenuItem
-              icon={<Target className="w-5 h-5" />}
-              label="Mock Tests"
-              sublabel="Test your knowledge"
-              onClick={() => setLocation('/tests')}
-            />
-            <MenuItem
-              icon={<TrendingUp className="w-5 h-5" />}
-              label="Statistics"
-              sublabel="View detailed stats"
-              onClick={() => setLocation('/stats')}
-            />
-          </motion.section>
-
-          {/* Voice Settings */}
-          {isTTSSupported() && (
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="bg-card rounded-2xl border border-border overflow-hidden"
-            >
-              <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
-                <Volume2 className="w-4 h-4 text-muted-foreground" />
-                <h3 className="text-sm font-semibold text-muted-foreground">Voice Settings</h3>
+                {/* Level bar */}
+                <div className="w-full">
+                  <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+                    <span>Level {level}</span><span>{xpInLevel}/100 XP</span>
+                  </div>
+                  <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-4)' }}>
+                    <motion.div
+                      initial={{ width: 0 }} animate={{ width: `${xpInLevel}%` }}
+                      transition={{ duration: 1 }}
+                      className="h-full rounded-full"
+                      style={{ background: 'var(--gradient-primary)' }}
+                    />
+                  </div>
+                </div>
               </div>
-              <VoiceSettings />
-            </motion.section>
-          )}
-            </div>
+            </motion.div>
+
+            {/* ── Achievement Showcase ────────────────────────────────────── */}
+            <motion.div {...fadeUp(0.1)} className="glass-card rounded-[var(--radius-2xl)] p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-bold flex items-center gap-2">
+                  <Trophy className="w-4 h-4" style={{ color: 'var(--color-xp)' }} />
+                  Achievements
+                </h2>
+                <button onClick={() => setLocation('/badges')}
+                  className="text-xs flex items-center gap-1 transition-colors hover:opacity-80"
+                  style={{ color: 'var(--color-accent-violet-light)' }}>
+                  View All <ChevronRight className="w-3 h-3" />
+                </button>
+              </div>
+
+              {unlockedBadges.length > 0 ? (
+                <div className="grid grid-cols-6 gap-3">
+                  {unlockedBadges.slice(0, 6).map((badge, i) => (
+                    <motion.div key={badge.achievement.id}
+                      initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.15 + i * 0.05 }}
+                      title={badge.achievement.name}
+                      className="aspect-square rounded-xl flex items-center justify-center text-xs font-bold cursor-pointer transition-transform hover:scale-110"
+                      style={{ background: badge.achievement.gradient || 'var(--surface-3)', border: '1px solid var(--color-border)', color: '#fff' }}>
+                      <Trophy className="w-5 h-5" />
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-center py-4" style={{ color: 'var(--text-tertiary)' }}>
+                  Complete challenges to earn badges
+                </p>
+              )}
+            </motion.div>
+
+            {/* ── Learning Preferences ────────────────────────────────────── */}
+            <motion.div {...fadeUp(0.2)} className="glass-card rounded-[var(--radius-2xl)] p-6">
+              <h2 className="font-bold mb-3 flex items-center gap-2">
+                <Settings className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />
+                Learning Preferences
+              </h2>
+              <div className="space-y-1">
+                <SettingRow
+                  icon={<Shuffle className="w-4 h-4" style={{ color: 'var(--color-accent-violet-light)' }} />}
+                  label="Shuffle Questions"
+                  description="Randomize question order">
+                  <Toggle on={preferences.shuffleQuestions !== false} onToggle={toggleShuffleQuestions} />
+                </SettingRow>
+                <SettingRow
+                  icon={<Eye className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />}
+                  label="Prioritize New"
+                  description="Show unvisited questions first">
+                  <Toggle on={preferences.prioritizeUnvisited !== false} onToggle={togglePrioritizeUnvisited} />
+                </SettingRow>
+                <SettingRow
+                  icon={<Volume2 className="w-4 h-4" style={{ color: 'var(--color-accent-violet-light)' }} />}
+                  label="Auto-play Audio"
+                  description="Automatically read questions">
+                  <Toggle
+                    on={!!((preferences as unknown as Record<string, unknown>)['autoPlayTTS'])}
+                    onToggle={() => {
+                      const stored = localStorage.getItem('user-preferences');
+                      try {
+                        const p = stored ? JSON.parse(stored) : {};
+                        p.autoPlayTTS = !p.autoPlayTTS;
+                        localStorage.setItem('user-preferences', JSON.stringify(p));
+                        window.location.reload();
+                      } catch { /* ignore */ }
+                    }}
+                  />
+                </SettingRow>
+              </div>
+            </motion.div>
+
+            {/* ── Learning Summary ────────────────────────────────────────── */}
+            <motion.div {...fadeUp(0.25)} className="glass-card rounded-[var(--radius-2xl)] p-6">
+              <h2 className="font-bold mb-4 flex items-center gap-2">
+                <BookOpen className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />
+                Learning Summary
+              </h2>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { icon: Target, label: 'Topics Studied', value: learningSummary.topicsStudied, color: 'var(--color-accent-violet-light)', bg: 'rgba(124,58,237,0.1)' },
+                  { icon: GraduationCap, label: 'Certs Practiced', value: learningSummary.certsPracticed, color: 'var(--color-xp)', bg: 'rgba(245,158,11,0.1)' },
+                  { icon: Code2, label: 'Coding Done', value: learningSummary.codingDone, color: 'var(--color-accent-cyan)', bg: 'rgba(6,182,212,0.1)' },
+                ].map(({ icon: Icon, label, value, color, bg }) => (
+                  <div key={label} className="rounded-[var(--radius-xl)] p-4 text-center"
+                    style={{ background: bg, border: `1px solid ${bg.replace('0.1', '0.25')}` }}>
+                    <Icon className="w-5 h-5 mx-auto mb-1" style={{ color }} />
+                    <div className="text-2xl font-black">{value}</div>
+                    <div className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{label}</div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* ── Data Export ─────────────────────────────────────────────── */}
+            <motion.div {...fadeUp(0.28)} className="glass-card rounded-[var(--radius-2xl)] p-6">
+              <h2 className="font-bold mb-3 flex items-center gap-2">
+                <Download className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />
+                Data
+              </h2>
+              <button onClick={exportData}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-[var(--radius-lg)] transition-colors hover:opacity-80"
+                style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', color: 'var(--color-accent-cyan)' }}>
+                <span className="text-sm font-medium">Export my data</span>
+                <Download className="w-4 h-4" />
+              </button>
+            </motion.div>
+
+            {/* ── Quick Actions ───────────────────────────────────────────── */}
+            <motion.div {...fadeUp(0.3)} className="grid grid-cols-2 gap-4">
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                onClick={() => setLocation('/stats')}
+                className="p-5 rounded-[var(--radius-xl)] text-left transition-colors"
+                style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)' }}>
+                <Sparkles className="w-6 h-6 mb-2" style={{ color: 'var(--color-accent-violet-light)' }} />
+                <div className="font-semibold text-sm">Statistics</div>
+                <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>View your progress</div>
+              </motion.button>
+
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                onClick={() => setLocation('/badges')}
+                className="p-5 rounded-[var(--radius-xl)] text-left transition-colors"
+                style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)' }}>
+                <Trophy className="w-6 h-6 mb-2" style={{ color: 'var(--color-xp)' }} />
+                <div className="font-semibold text-sm">Achievements</div>
+                <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>View your badges</div>
+              </motion.button>
+            </motion.div>
+
           </div>
         </div>
       </AppLayout>
     </>
   );
-}
-
-function MenuItem({ 
-  icon, 
-  label, 
-  sublabel, 
-  onClick 
-}: { 
-  icon: React.ReactNode;
-  label: string;
-  sublabel: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors border-b border-border/50 last:border-b-0 active:bg-muted/70 cursor-pointer touch-manipulation"
-    >
-      <div className="flex items-center gap-3 pointer-events-none">
-        <span className="text-muted-foreground">{icon}</span>
-        <div className="text-left">
-          <h4 className="font-medium text-sm">{label}</h4>
-          <p className="text-xs text-muted-foreground">{sublabel}</p>
-        </div>
-      </div>
-      <ChevronRight className="w-5 h-5 text-muted-foreground pointer-events-none" />
-    </button>
-  );
-}
-
-function ToggleItem({ 
-  icon, 
-  label, 
-  sublabel, 
-  enabled,
-  onToggle
-}: { 
-  icon: React.ReactNode;
-  label: string;
-  sublabel: string;
-  enabled: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors border-b border-border/50 last:border-b-0 active:bg-muted/70 cursor-pointer touch-manipulation"
-      aria-label={`${label}: ${enabled ? 'enabled' : 'disabled'}`}
-      aria-pressed={enabled}
-    >
-      <div className="flex items-center gap-3 pointer-events-none">
-        <span className={enabled ? 'text-primary' : 'text-muted-foreground'}>{icon}</span>
-        <div className="text-left">
-          <h4 className="font-medium text-sm">{label}</h4>
-          <p className="text-xs text-muted-foreground">{sublabel}</p>
-        </div>
-      </div>
-      <div 
-        className={`w-11 h-6 rounded-full transition-colors relative ${
-          enabled ? 'bg-primary' : 'bg-muted'
-        }`}
-        aria-hidden="true"
-      >
-        <div 
-          className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-            enabled ? 'translate-x-6' : 'translate-x-1'
-          }`}
-        />
-      </div>
-    </button>
-  );
-}
-
-// Voice Settings Component
-function VoiceSettings() {
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [selectedVoice, setSelectedVoice] = useState<string>('');
-  const [rate, setRate] = useState(0.9);
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  // Load voices
-  useEffect(() => {
-    const loadVoices = () => {
-      const availableVoices = getVoices();
-      setVoices(availableVoices);
-      
-      // Set initial selection
-      const saved = getSavedVoiceName();
-      if (saved && availableVoices.find(v => v.name === saved)) {
-        setSelectedVoice(saved);
-      } else if (availableVoices.length > 0) {
-        // Default to first English voice
-        const englishVoice = availableVoices.find(v => v.lang.startsWith('en'));
-        setSelectedVoice(englishVoice?.name || availableVoices[0].name);
-      }
-    };
-
-    loadVoices();
-    setRate(getSavedRate());
-
-    // Chrome loads voices async
-    if (speechSynthesis.onvoiceschanged !== undefined) {
-      speechSynthesis.onvoiceschanged = loadVoices;
-    }
-  }, []);
-
-  const handleVoiceChange = (voiceName: string) => {
-    setSelectedVoice(voiceName);
-    saveVoicePreference(voiceName);
-  };
-
-  const handleRateChange = (newRate: number) => {
-    setRate(newRate);
-    saveRatePreference(newRate);
-  };
-
-  const testVoice = () => {
-    if (isPlaying) {
-      stop();
-      setIsPlaying(false);
-      return;
-    }
-
-    setIsPlaying(true);
-    speak(
-      "Hello! This is how I will read the answers for you. You can adjust the speed using the slider below.",
-      {
-        onEnd: () => setIsPlaying(false),
-        onError: () => setIsPlaying(false),
-      }
-    );
-  };
-
-  // Group voices by language
-  const groupedVoices = voices.reduce((acc, voice) => {
-    const lang = voice.lang;
-    const langName = getLangDisplayName(lang);
-    if (!acc[langName]) {
-      acc[langName] = [];
-    }
-    acc[langName].push(voice);
-    return acc;
-  }, {} as Record<string, SpeechSynthesisVoice[]>);
-
-  // Sort: English first, then alphabetically
-  const sortedLangs = Object.keys(groupedVoices).sort((a, b) => {
-    if (a.startsWith('English') && !b.startsWith('English')) return -1;
-    if (!a.startsWith('English') && b.startsWith('English')) return 1;
-    return a.localeCompare(b);
-  });
-
-  return (
-    <div className="p-4 space-y-4">
-      {/* Voice Selection */}
-      <div>
-        <label className="text-xs font-medium text-muted-foreground mb-2 block">
-          Voice
-        </label>
-        <select
-          value={selectedVoice}
-          onChange={(e) => handleVoiceChange(e.target.value)}
-          className="w-full px-3 py-2.5 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-        >
-          {sortedLangs.map(lang => (
-            <optgroup key={lang} label={lang}>
-              {groupedVoices[lang].map(voice => (
-                <option key={voice.name} value={voice.name}>
-                  {voice.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-      </div>
-
-      {/* Speed Slider */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-xs font-medium text-muted-foreground">
-            Speed
-          </label>
-          <span className="text-xs text-muted-foreground">
-            {rate.toFixed(1)}x
-          </span>
-        </div>
-        <input
-          type="range"
-          min="0.5"
-          max="1.5"
-          step="0.1"
-          value={rate}
-          onChange={(e) => handleRateChange(parseFloat(e.target.value))}
-          className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-        />
-        <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-          <span>Slower</span>
-          <span>Faster</span>
-        </div>
-      </div>
-
-      {/* Test Button */}
-      <button
-        onClick={testVoice}
-        className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors ${
-          isPlaying
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-primary/10 text-primary hover:bg-primary/20'
-        }`}
-      >
-        <Play className={`w-4 h-4 ${isPlaying ? 'animate-pulse' : ''}`} />
-        {isPlaying ? 'Playing...' : 'Test Voice'}
-      </button>
-    </div>
-  );
-}
-
-// Helper to get display name for language code
-function getLangDisplayName(langCode: string): string {
-  const langMap: Record<string, string> = {
-    'en-US': 'English (US)',
-    'en-GB': 'English (UK)',
-    'en-AU': 'English (Australia)',
-    'en-IN': 'English (India)',
-    'en-ZA': 'English (South Africa)',
-    'en-IE': 'English (Ireland)',
-    'en-NZ': 'English (New Zealand)',
-    'en': 'English',
-    'hi-IN': 'Hindi',
-    'ta-IN': 'Tamil',
-    'te-IN': 'Telugu',
-    'mr-IN': 'Marathi',
-    'bn-IN': 'Bengali',
-    'gu-IN': 'Gujarati',
-    'kn-IN': 'Kannada',
-    'ml-IN': 'Malayalam',
-    'pa-IN': 'Punjabi',
-  };
-  
-  return langMap[langCode] || langCode;
 }

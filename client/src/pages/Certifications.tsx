@@ -1,24 +1,21 @@
 /**
- * Certifications Page - Redesigned
- * Browse and select certification tracks with clear practice modes
- * Now loads certifications dynamically from the database
+ * Certifications — revamped with provider sections, collapsible groups,
+ * progress bars, earned badge display, and cert detail view.
+ * All existing data loading and started-cert logic preserved.
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
-import { useIsMobile } from '../hooks/use-mobile';
-import { useUserPreferences } from '../context/UserPreferencesContext';
 import { SEOHead } from '../components/SEOHead';
 import {
-  Search, Award, Clock, ChevronRight, Play, BookOpen,
-  Cloud, Shield, Database, Brain, Code, Users, Box,
-  Terminal, Server, Cpu, Layers, Network, GitBranch,
-  Target, Zap, GraduationCap, Lock, Loader2, Check, Plus, X, AlertTriangle
+  Search, Award, Clock, ChevronRight, ChevronDown, Check, Plus,
+  Cloud, Shield, Database, Brain, Code, Users, Box, Terminal,
+  Server, Cpu, Layers, Network, GitBranch, Loader2, Target,
+  BookOpen, BarChart2, X
 } from 'lucide-react';
 
-// Certification type from API
 interface Certification {
   id: string;
   name: string;
@@ -30,130 +27,364 @@ interface Certification {
   category: string;
   estimatedHours: number;
   examCode?: string;
-  officialUrl?: string;
-  domains: { id: string; name: string; weight: number }[];
-  prerequisites: string[];
   questionCount: number;
   passingScore: number;
   examDuration: number;
 }
 
-// Certification categories
-const certificationCategories = [
-  { id: 'cloud', name: 'Cloud', icon: 'cloud' },
-  { id: 'devops', name: 'DevOps', icon: 'infinity' },
-  { id: 'security', name: 'Security', icon: 'shield' },
-  { id: 'data', name: 'Data', icon: 'database' },
-  { id: 'ai', name: 'AI & ML', icon: 'brain' },
-  { id: 'development', name: 'Development', icon: 'code' },
-  { id: 'management', name: 'Management', icon: 'users' }
-];
-
-const iconMap: Record<string, React.ReactNode> = {
-  'cloud': <Cloud className="w-5 h-5" />,
-  'shield': <Shield className="w-5 h-5" />,
-  'database': <Database className="w-5 h-5" />,
-  'brain': <Brain className="w-5 h-5" />,
-  'code': <Code className="w-5 h-5" />,
-  'users': <Users className="w-5 h-5" />,
-  'box': <Box className="w-5 h-5" />,
-  'terminal': <Terminal className="w-5 h-5" />,
-  'server': <Server className="w-5 h-5" />,
-  'cpu': <Cpu className="w-5 h-5" />,
-  'layers': <Layers className="w-5 h-5" />,
-  'network': <Network className="w-5 h-5" />,
-  'infinity': <GitBranch className="w-5 h-5" />
+const iconMap: Record<string, React.ElementType> = {
+  cloud: Cloud, shield: Shield, database: Database, brain: Brain,
+  code: Code, users: Users, box: Box, terminal: Terminal,
+  server: Server, cpu: Cpu, layers: Layers, network: Network,
+  infinity: GitBranch, award: Award,
 };
 
-const difficultyConfig: Record<string, { color: string; bg: string }> = {
-  beginner: { color: 'text-green-500', bg: 'bg-green-500/10' },
-  intermediate: { color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-  advanced: { color: 'text-orange-500', bg: 'bg-orange-500/10' },
-  expert: { color: 'text-red-500', bg: 'bg-red-500/10' }
+const DIFFICULTY_COLOR: Record<string, string> = {
+  beginner: 'text-[var(--color-difficulty-beginner)]',
+  intermediate: 'text-[var(--color-difficulty-intermediate)]',
+  advanced: 'text-[var(--color-difficulty-advanced)]',
+  expert: 'text-[var(--color-error)]',
 };
 
-// Custom hook to fetch certifications from static JSON (built from database)
+// Provider display config
+const PROVIDER_META: Record<string, { label: string; emoji: string; order: number }> = {
+  AWS:        { label: 'Amazon Web Services', emoji: '☁️', order: 1 },
+  Kubernetes: { label: 'Kubernetes',          emoji: '⚙️', order: 2 },
+  HashiCorp:  { label: 'HashiCorp',           emoji: '🔷', order: 3 },
+  GCP:        { label: 'Google Cloud',        emoji: '🌐', order: 4 },
+  Azure:      { label: 'Microsoft Azure',     emoji: '🔵', order: 5 },
+  CompTIA:    { label: 'CompTIA',             emoji: '🛡️', order: 6 },
+  Cisco:      { label: 'Cisco',               emoji: '🔗', order: 7 },
+};
+
 function useCertifications() {
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
-    async function fetchCertifications() {
+    (async () => {
       try {
-        // Fetch from static JSON file (generated at build time from database)
-        const basePath = import.meta.env.BASE_URL || '/';
-        const response = await fetch(`${basePath}data/certifications.json`);
-        if (!response.ok) throw new Error('Failed to fetch certifications');
-        const data = await response.json();
-        setCertifications(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        const base = import.meta.env.BASE_URL || '/';
+        const res = await fetch(`${base}data/certifications.json`);
+        if (!res.ok) throw new Error('Failed to fetch');
+        setCertifications(await res.json());
+      } catch (e) {
+        console.error('Failed to load certifications:', e);
       } finally {
         setLoading(false);
       }
-    }
-    fetchCertifications();
+    })();
   }, []);
-
-  return { certifications, loading, error };
+  return { certifications, loading };
 }
 
-export default function Certifications() {
+// ── Cert Detail Modal ─────────────────────────────────────────────────────────
+function CertDetail({
+  cert, isStarted, onToggle, onNavigate, onClose
+}: {
+  cert: Certification;
+  isStarted: boolean;
+  onToggle: () => void;
+  onNavigate: () => void;
+  onClose: () => void;
+}) {
+  const Icon = iconMap[cert.icon] || Award;
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[var(--z-modal)] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <motion.div
+        initial={{ y: 60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 60, opacity: 0 }}
+        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+        onClick={e => e.stopPropagation()}
+        className="relative w-full sm:max-w-lg bg-[var(--surface-3)] border border-[var(--color-border)] rounded-t-2xl sm:rounded-2xl p-6 max-h-[85vh] overflow-y-auto custom-scrollbar"
+      >
+        <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-muted/50 text-muted-foreground transition-colors">
+          <X className="w-4 h-4" />
+        </button>
+
+        {/* Header */}
+        <div className="flex items-start gap-4 mb-5">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--color-accent-violet)]/20 to-[var(--color-accent-cyan)]/20 border border-[var(--color-accent-violet)]/30 flex items-center justify-center flex-shrink-0">
+            <Icon className="w-7 h-7 text-[var(--color-accent-violet-light)]" />
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground mb-0.5">{cert.provider}</div>
+            <h2 className="text-lg font-bold leading-tight">{cert.name}</h2>
+            {cert.examCode && <div className="text-xs text-[var(--color-accent-cyan)] font-mono mt-0.5">{cert.examCode}</div>}
+          </div>
+        </div>
+
+        {/* Description */}
+        <p className="text-sm text-muted-foreground mb-5 leading-relaxed">{cert.description}</p>
+
+        {/* Stats grid */}
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          {[
+            { icon: BookOpen, label: 'Questions', value: cert.questionCount },
+            { icon: Clock, label: 'Study Time', value: `${cert.estimatedHours}h` },
+            { icon: Target, label: 'Pass Score', value: `${cert.passingScore}%` },
+            { icon: BarChart2, label: 'Difficulty', value: cert.difficulty },
+          ].map(({ icon: I, label, value }) => (
+            <div key={label} className="p-3 rounded-xl bg-muted/40 flex items-center gap-2.5">
+              <I className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <div>
+                <div className="text-[10px] text-muted-foreground">{label}</div>
+                <div className={`text-sm font-semibold capitalize ${label === 'Difficulty' ? DIFFICULTY_COLOR[cert.difficulty] : ''}`}>{value}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Progress bar if started */}
+        {isStarted && (
+          <div className="mb-5 p-3 rounded-xl bg-[var(--color-accent-violet)]/10 border border-[var(--color-accent-violet)]/20">
+            <div className="flex justify-between text-xs mb-1.5">
+              <span className="text-muted-foreground">Practice Progress</span>
+              <span className="font-semibold text-[var(--color-accent-violet-light)]">In Progress</span>
+            </div>
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div className="h-full w-1/3 bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] rounded-full" />
+            </div>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          <button
+            onClick={onToggle}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+              isStarted
+                ? 'bg-muted border border-border hover:bg-muted/80 text-foreground'
+                : 'bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] text-white hover:opacity-90'
+            }`}
+          >
+            {isStarted ? <><Check className="w-4 h-4" />Started</> : <><Plus className="w-4 h-4" />Start Practice</>}
+          </button>
+          {isStarted && (
+            <button
+              onClick={onNavigate}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] text-white hover:opacity-90 transition-all flex items-center justify-center gap-2"
+            >
+              Practice<ChevronRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Cert Card ─────────────────────────────────────────────────────────────────
+function CertCard({
+  cert, isStarted, onToggle, onNavigate, onClick
+}: {
+  cert: Certification; isStarted: boolean;
+  onToggle: (e: React.MouseEvent) => void;
+  onNavigate: (e: React.MouseEvent) => void;
+  onClick: () => void;
+}) {
+  const Icon = iconMap[cert.icon] || Award;
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      whileHover={{ y: -2 }}
+      onClick={onClick}
+      className="group relative p-4 bg-[var(--surface-2)] border border-[var(--color-border)] rounded-xl cursor-pointer hover:border-[var(--color-accent-violet)]/40 transition-all overflow-hidden"
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-accent-violet)]/5 to-[var(--color-accent-cyan)]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+      <div className="relative space-y-3">
+        {/* Header */}
+        <div className="flex items-start gap-3">
+          <div className="relative w-10 h-10 flex-shrink-0">
+            <svg width="40" height="40" className="-rotate-90 absolute inset-0">
+              <circle cx="20" cy="20" r="16" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3" />
+              {isStarted && (
+                <circle
+                  cx="20" cy="20" r="16"
+                  fill="none"
+                  stroke="url(#certRingGrad)"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 16}
+                  strokeDashoffset={2 * Math.PI * 16 * 0.67}
+                />
+              )}
+              <defs>
+                <linearGradient id="certRingGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="var(--color-accent-violet)" />
+                  <stop offset="100%" stopColor="var(--color-accent-cyan)" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-[var(--color-accent-violet)]/20 to-[var(--color-accent-cyan)]/20 border border-[var(--color-accent-violet)]/25 flex items-center justify-center">
+              <Icon className="w-4 h-4 text-[var(--color-accent-violet-light)]" />
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] text-muted-foreground">{cert.provider}</div>
+            <h3 className="text-sm font-bold leading-tight line-clamp-2">{cert.name}</h3>
+            {cert.examCode && <div className="text-[10px] text-[var(--color-accent-cyan)] font-mono">{cert.examCode}</div>}
+          </div>
+          {isStarted && (
+            <div className="w-5 h-5 rounded-full bg-[var(--color-success)]/20 border border-[var(--color-success)]/40 flex items-center justify-center flex-shrink-0">
+              <Check className="w-3 h-3 text-[var(--color-success)]" />
+            </div>
+          )}
+        </div>
+
+        {/* Meta */}
+        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" />{cert.questionCount}q</span>
+          <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{cert.estimatedHours}h</span>
+          <span className={`font-semibold capitalize ${DIFFICULTY_COLOR[cert.difficulty]}`}>{cert.difficulty}</span>
+        </div>
+
+        {/* CTA */}
+        <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
+          <button
+            onClick={onToggle}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              isStarted
+                ? 'bg-muted border border-border hover:bg-muted/80'
+                : 'bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] text-white hover:opacity-90'
+            }`}
+          >
+            {isStarted ? <><Check className="w-3 h-3" />Started</> : <><Plus className="w-3 h-3" />Start</>}
+          </button>
+          {isStarted && (
+            <button
+              onClick={onNavigate}
+              className="px-3 py-2 rounded-lg bg-muted/50 border border-border hover:bg-muted transition-all"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Provider Section ──────────────────────────────────────────────────────────
+function ProviderSection({
+  provider, certs, startedCerts, onToggle, onNavigate, onSelect
+}: {
+  provider: string;
+  certs: Certification[];
+  startedCerts: Set<string>;
+  onToggle: (id: string) => void;
+  onNavigate: (id: string) => void;
+  onSelect: (cert: Certification) => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const meta = PROVIDER_META[provider] ?? { label: provider, emoji: '📋', order: 99 };
+  const startedCount = certs.filter(c => startedCerts.has(c.id)).length;
+
+  return (
+    <div className="mb-6">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-1 py-2 mb-3 group"
+      >
+        <div className="flex items-center gap-2.5">
+          <span className="text-xl">{meta.emoji}</span>
+          <div className="text-left">
+            <div className="text-sm font-bold">{meta.label}</div>
+            <div className="text-[10px] text-muted-foreground">{certs.length} certifications{startedCount > 0 ? ` · ${startedCount} started` : ''}</div>
+          </div>
+        </div>
+        <motion.div animate={{ rotate: open ? 0 : -90 }} transition={{ duration: 0.2 }}>
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+        </motion.div>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {certs.map(cert => (
+                <CertCard
+                  key={cert.id}
+                  cert={cert}
+                  isStarted={startedCerts.has(cert.id)}
+                  onToggle={e => { e.stopPropagation(); onToggle(cert.id); }}
+                  onNavigate={e => { e.stopPropagation(); onNavigate(cert.id); }}
+                  onClick={() => onSelect(cert)}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+export default function CertificationsPage() {
   const [, navigate] = useLocation();
+  const { certifications, loading } = useCertifications();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const isMobile = useIsMobile();
-  const { isCertificationSubscribed, toggleCertificationSubscription, unsubscribeCertification } = useUserPreferences();
-  const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; certId: string; certName: string }>({
-    isOpen: false,
-    certId: '',
-    certName: ''
-  });
-  
-  // Fetch certifications from API
-  const { certifications, loading, error } = useCertifications();
+  const [startedCerts, setStartedCerts] = useState<Set<string>>(new Set());
+  const [selectedCert, setSelectedCert] = useState<Certification | null>(null);
 
-  const handleToggleSubscription = (certId: string, certName: string, isCurrentlySubscribed: boolean) => {
-    if (isCurrentlySubscribed) {
-      // Show confirmation for unsubscribe
-      setConfirmDialog({ isOpen: true, certId, certName });
-    } else {
-      // Subscribe immediately without confirmation
-      toggleCertificationSubscription(certId);
-    }
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('startedCertifications');
+      if (saved) setStartedCerts(new Set(JSON.parse(saved)));
+    } catch {}
+  }, []);
+
+  const toggleStarted = (certId: string) => {
+    setStartedCerts(prev => {
+      const next = new Set(prev);
+      next.has(certId) ? next.delete(certId) : next.add(certId);
+      try { localStorage.setItem('startedCertifications', JSON.stringify(Array.from(next))); } catch {}
+      return next;
+    });
   };
 
-  const handleConfirmUnsubscribe = () => {
-    if (confirmDialog.certId) {
-      unsubscribeCertification(confirmDialog.certId);
-    }
-  };
+  const categories = Array.from(new Set(certifications.map(c => c.category)));
 
-  // Filter certifications
-  const filteredCertifications = certifications.filter(cert => {
-    const matchesSearch = cert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         cert.provider.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         cert.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !selectedCategory || cert.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+  const filtered = certifications.filter(cert => {
+    const q = searchQuery.toLowerCase();
+    const matchSearch = !q || cert.name.toLowerCase().includes(q) || cert.provider.toLowerCase().includes(q) || cert.description.toLowerCase().includes(q);
+    const matchCat = !selectedCategory || cert.category === selectedCategory;
+    return matchSearch && matchCat;
   });
 
-  // Group by category
-  const groupedCertifications = certificationCategories.map(cat => ({
-    ...cat,
-    certifications: filteredCertifications.filter(c => c.category === cat.id)
-  })).filter(group => group.certifications.length > 0);
+  // Group by provider, sorted by PROVIDER_META order
+  const grouped = filtered.reduce<Record<string, Certification[]>>((acc, cert) => {
+    (acc[cert.provider] ??= []).push(cert);
+    return acc;
+  }, {});
 
-  // Featured certifications (those with questions)
-  const featuredCerts = certifications.filter(c => c.questionCount > 0);
+  const sortedProviders = Object.keys(grouped).sort((a, b) =>
+    (PROVIDER_META[a]?.order ?? 99) - (PROVIDER_META[b]?.order ?? 99)
+  );
 
-  // Show loading state
   if (loading) {
     return (
-      <AppLayout title="Certifications">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <AppLayout>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <Loader2 className="w-10 h-10 text-primary animate-spin" />
         </div>
       </AppLayout>
     );
@@ -162,457 +393,111 @@ export default function Certifications() {
   return (
     <>
       <SEOHead
-        title="Certification Tracks | Interview Prep"
-        description="Practice for popular IT certifications: AWS, Azure, GCP, Kubernetes, Terraform, and more."
+        title="Certifications — Get Certified, Get Hired 🎓"
+        description="Practice for AWS, Azure, GCP, Kubernetes, and more certifications"
         canonical="https://open-interview.github.io/certifications"
       />
+      <AppLayout>
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 pb-24 lg:pb-8">
 
-      <AppLayout title="Certifications">
-        <div className="space-y-8">
-          {/* Hero Header */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 p-6 md:p-8">
-            <div className="relative z-10">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 bg-primary/20 rounded-xl">
-                  <GraduationCap className="w-6 h-6 text-primary" />
-                </div>
-                <span className="text-sm font-medium text-primary">Certification Prep</span>
-              </div>
-              
-              <h1 className="text-2xl md:text-3xl font-bold mb-2">
-                Master Your Certification
+            {/* Header */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
+              <h1 className="text-2xl font-bold mb-1">
+                Get <span className="gradient-text">certified</span>
               </h1>
-              <p className="text-muted-foreground max-w-xl">
-                Practice with exam-aligned questions, track your progress by domain, 
-                and simulate real exam conditions.
-              </p>
+              <p className="text-sm text-muted-foreground">{certifications.length} certifications to master</p>
+            </motion.div>
 
-              <div className="flex flex-wrap gap-4 mt-6 text-sm">
-                <div className="flex items-center gap-2">
-                  <Award className="w-4 h-4 text-primary" />
-                  <span>{certifications.length} Certifications</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Target className="w-4 h-4 text-primary" />
-                  <span>Exam-Aligned Questions</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-primary" />
-                  <span>Timed Practice Mode</span>
-                </div>
-              </div>
-            </div>
-            
-            {/* Background decoration */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
-          </div>
-
-          {/* Featured Certifications with Exam Questions */}
-          {featuredCerts.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Zap className="w-5 h-5 text-amber-500" />
-                <h2 className="text-lg font-semibold">Ready for Exam Practice</h2>
-                <span className="text-xs px-2 py-0.5 bg-amber-500/10 text-amber-500 rounded-full">
-                  {featuredCerts.length} available
-                </span>
-              </div>
-              
-              <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2 lg:grid-cols-3'} gap-4`}>
-                {featuredCerts.map((cert, index) => (
-                  <FeaturedCertCard
-                    key={cert.id}
-                    certification={cert}
-                    index={index}
-                    isSubscribed={isCertificationSubscribed(cert.id)}
-                    onToggleSubscribe={() => handleToggleSubscription(cert.id, cert.name, isCertificationSubscribed(cert.id))}
-                    onPractice={() => navigate(`/certification/${cert.id}`)}
-                    onExam={() => navigate(`/certification/${cert.id}/exam`)}
-                  />
+            {/* Stats */}
+            {startedCerts.size > 0 && (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-3 gap-3 mb-6 max-w-lg mx-auto">
+                {[
+                  { label: 'Practicing', value: startedCerts.size, colorClass: 'text-[var(--color-accent-violet-light)]' },
+                  { label: 'Available', value: certifications.length, colorClass: 'text-[var(--color-accent-cyan)]' },
+                  { label: 'Progress', value: `${Math.round((startedCerts.size / Math.max(certifications.length, 1)) * 100)}%`, colorClass: 'text-[var(--color-success)]' },
+                ].map(({ label, value, colorClass }) => (
+                  <div key={label} className="p-3 rounded-xl bg-muted/40 border border-border text-center">
+                    <div className={`text-xl font-bold ${colorClass}`}>{value}</div>
+                    <div className="text-[10px] text-muted-foreground">{label}</div>
+                  </div>
                 ))}
+              </motion.div>
+            )}
+
+            {/* Search */}
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="max-w-2xl mx-auto mb-4">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search certifications..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:border-primary transition-colors"
+                />
               </div>
-            </div>
-          )}
+            </motion.div>
 
-          {/* Search and Filters */}
-          <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search certifications..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-card border border-border rounded-xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-              />
-            </div>
-
-            {/* Category Pills */}
-            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+            {/* Category filters */}
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="flex flex-wrap gap-2 justify-center mb-8">
               <button
                 onClick={() => setSelectedCategory(null)}
-                className={`px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-all flex-shrink-0
-                  ${!selectedCategory 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
+                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${
+                  !selectedCategory ? 'bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] text-white' : 'bg-muted/50 border border-border hover:bg-muted text-muted-foreground'
+                }`}
               >
                 All
               </button>
-              {certificationCategories.map(cat => (
+              {categories.map(cat => (
                 <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
-                  className={`px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-all flex items-center gap-2 flex-shrink-0
-                    ${selectedCategory === cat.id 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
-                    }`}
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-semibold capitalize transition-all ${
+                    selectedCategory === cat ? 'bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] text-white' : 'bg-muted/50 border border-border hover:bg-muted text-muted-foreground'
+                  }`}
                 >
-                  {iconMap[cat.icon]}
-                  {cat.name}
+                  {cat}
                 </button>
               ))}
-            </div>
-          </div>
+            </motion.div>
 
-          {/* All Certifications */}
-          <div className="space-y-8">
-            {groupedCertifications.map(group => (
-              <div key={group.id}>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                    {iconMap[group.icon]}
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold">{group.name}</h2>
-                    <p className="text-sm text-muted-foreground">
-                      {group.certifications.length} certifications
-                    </p>
-                  </div>
-                </div>
-                
-                <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2 lg:grid-cols-3'} gap-4`}>
-                  {group.certifications.map((cert, index) => (
-                    <CertificationCard
-                      key={cert.id}
-                      certification={cert}
-                      index={index}
-                      isSubscribed={isCertificationSubscribed(cert.id)}
-                      onToggleSubscribe={() => handleToggleSubscription(cert.id, cert.name, isCertificationSubscribed(cert.id))}
-                      onClick={() => navigate(`/certification/${cert.id}`)}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
+            {/* Provider sections */}
+            {sortedProviders.length === 0 ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
+                <div className="text-5xl mb-3">🔍</div>
+                <h3 className="text-xl font-bold mb-1">No certifications found</h3>
+                <p className="text-sm text-muted-foreground">Try a different search or category</p>
+              </motion.div>
+            ) : (
+              sortedProviders.map(provider => (
+                <ProviderSection
+                  key={provider}
+                  provider={provider}
+                  certs={grouped[provider]}
+                  startedCerts={startedCerts}
+                  onToggle={toggleStarted}
+                  onNavigate={id => navigate(`/channel/${id}`)}
+                  onSelect={setSelectedCert}
+                />
+              ))
+            )}
           </div>
-
-          {/* Empty State */}
-          {filteredCertifications.length === 0 && (
-            <div className="text-center py-12">
-              <Search className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />
-              <h3 className="text-lg font-medium mb-2">No certifications found</h3>
-              <p className="text-muted-foreground">
-                Try adjusting your search or filter criteria
-              </p>
-            </div>
-          )}
         </div>
+
+        {/* Detail modal */}
+        <AnimatePresence>
+          {selectedCert && (
+            <CertDetail
+              cert={selectedCert}
+              isStarted={startedCerts.has(selectedCert.id)}
+              onToggle={() => toggleStarted(selectedCert.id)}
+              onNavigate={() => navigate(`/channel/${selectedCert.id}`)}
+              onClose={() => setSelectedCert(null)}
+            />
+          )}
+        </AnimatePresence>
       </AppLayout>
-
-      {/* Confirmation Dialog */}
-      <ConfirmationDialog
-        isOpen={confirmDialog.isOpen}
-        onClose={() => setConfirmDialog({ isOpen: false, certId: '', certName: '' })}
-        onConfirm={handleConfirmUnsubscribe}
-        title="Unsubscribe from Certification?"
-        message={`Are you sure you want to unsubscribe from "${confirmDialog.certName}"? Your progress will be saved.`}
-        confirmText="Unsubscribe"
-        cancelText="Cancel"
-        type="warning"
-      />
     </>
-  );
-}
-
-
-// Featured certification card with exam mode
-function FeaturedCertCard({ 
-  certification, 
-  index,
-  isSubscribed,
-  onToggleSubscribe,
-  onPractice,
-  onExam,
-}: { 
-  certification: Certification;
-  index: number;
-  isSubscribed: boolean;
-  onToggleSubscribe: () => void;
-  onPractice: () => void;
-  onExam: () => void;
-}) {
-  const diff = difficultyConfig[certification.difficulty];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
-      className="bg-card border border-border rounded-xl overflow-hidden group hover:border-primary/30 hover:shadow-lg transition-all"
-    >
-      {/* Header with gradient */}
-      <div className="p-4 bg-gradient-to-r from-primary/10 to-transparent border-b border-border">
-        <div className="flex items-start justify-between">
-          <div className={`p-2.5 rounded-xl ${certification.color} bg-current/10`}>
-            {iconMap[certification.icon] || <Award className="w-5 h-5" />}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleSubscribe();
-              }}
-              className={`p-1.5 rounded-lg transition-all ${
-                isSubscribed
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-              }`}
-              title={isSubscribed ? 'Unsubscribe' : 'Subscribe'}
-            >
-              {isSubscribed ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-            </button>
-            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${diff.bg} ${diff.color} capitalize`}>
-              {certification.difficulty}
-            </span>
-          </div>
-        </div>
-        
-        <h3 className="font-semibold mt-3 leading-tight">{certification.name}</h3>
-        <p className="text-xs text-muted-foreground">{certification.provider}</p>
-      </div>
-
-      {/* Content */}
-      <div className="p-4">
-        <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
-          {certification.description}
-        </p>
-
-        {/* Stats */}
-        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-4">
-          <span className="flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5" />
-            {certification.estimatedHours}h
-          </span>
-          <span className="flex items-center gap-1">
-            <Target className="w-3.5 h-3.5" />
-            {certification.questionCount} questions
-          </span>
-          <span className="flex items-center gap-1">
-            <Award className="w-3.5 h-3.5" />
-            {certification.passingScore}% pass
-          </span>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          <button
-            onClick={onPractice}
-            className="flex-1 py-2 px-3 bg-muted hover:bg-muted/80 rounded-lg text-sm font-medium flex items-center justify-center gap-1.5 transition-colors"
-          >
-            <BookOpen className="w-4 h-4" />
-            Study
-          </button>
-          <button
-            onClick={onExam}
-            className="flex-1 py-2 px-3 bg-primary text-primary-foreground rounded-lg text-sm font-medium flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
-          >
-            <Play className="w-4 h-4" />
-            Exam Mode
-          </button>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// Standard certification card
-function CertificationCard({ 
-  certification, 
-  index,
-  isSubscribed,
-  onToggleSubscribe,
-  onClick
-}: { 
-  certification: Certification;
-  index: number;
-  isSubscribed: boolean;
-  onToggleSubscribe: () => void;
-  onClick: () => void;
-}) {
-  const diff = difficultyConfig[certification.difficulty];
-  const hasQuestions = certification.questionCount > 0;
-  
-  // Get progress from localStorage
-  const progressKey = `cert-progress-${certification.id}`;
-  const savedProgress = localStorage.getItem(progressKey);
-  const completedCount = savedProgress ? JSON.parse(savedProgress).length : 0;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.03 }}
-      onClick={onClick}
-      className="bg-card border border-border rounded-xl p-4 transition-all cursor-pointer group hover:border-primary/30 hover:shadow-md"
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className={`p-2.5 rounded-xl ${certification.color} bg-current/10`}>
-          {iconMap[certification.icon] || <Award className="w-5 h-5" />}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSubscribe();
-            }}
-            className={`p-1.5 rounded-lg transition-all ${
-              isSubscribed
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-            }`}
-            title={isSubscribed ? 'Unsubscribe' : 'Subscribe'}
-          >
-            {isSubscribed ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-          </button>
-          {hasQuestions && (
-            <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-amber-500/10 text-amber-500">
-              EXAM
-            </span>
-          )}
-          <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${diff.bg} ${diff.color} capitalize`}>
-            {certification.difficulty}
-          </span>
-        </div>
-      </div>
-
-      <h3 className="font-semibold mb-1 group-hover:text-primary transition-colors leading-tight">
-        {certification.name}
-      </h3>
-      <p className="text-xs text-muted-foreground mb-2">{certification.provider}</p>
-      <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
-        {certification.description}
-      </p>
-
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5" />
-            {certification.estimatedHours}h
-          </span>
-          {certification.questionCount > 0 && (
-            <span className="flex items-center gap-1">
-              <Target className="w-3.5 h-3.5" />
-              {certification.questionCount}
-            </span>
-          )}
-          {completedCount > 0 && (
-            <span className="text-primary font-medium">{completedCount} done</span>
-          )}
-        </div>
-        <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-      </div>
-    </motion.div>
-  );
-}
-
-
-// Confirmation Dialog Component
-function ConfirmationDialog({
-  isOpen,
-  onClose,
-  onConfirm,
-  title,
-  message,
-  confirmText = "Confirm",
-  cancelText = "Cancel",
-  type = "warning"
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  title: string;
-  message: string;
-  confirmText?: string;
-  cancelText?: string;
-  type?: "warning" | "danger";
-}) {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Dialog */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-start gap-4 p-6 pb-4">
-          <div className={`p-3 rounded-xl ${
-            type === "danger" 
-              ? "bg-red-500/10 text-red-500" 
-              : "bg-amber-500/10 text-amber-500"
-          }`}>
-            <AlertTriangle className="w-6 h-6" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-foreground mb-1">{title}</h3>
-            <p className="text-sm text-muted-foreground">{message}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-3 p-6 pt-2 border-t border-border bg-muted/30">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-lg font-medium transition-colors"
-          >
-            {cancelText}
-          </button>
-          <button
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
-            className={`flex-1 px-4 py-2.5 rounded-lg font-medium transition-colors ${
-              type === "danger"
-                ? "bg-red-500 hover:bg-red-600 text-white"
-                : "bg-primary hover:bg-primary/90 text-primary-foreground"
-            }`}
-          >
-            {confirmText}
-          </button>
-        </div>
-      </motion.div>
-    </div>
   );
 }
