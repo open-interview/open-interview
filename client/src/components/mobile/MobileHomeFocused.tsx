@@ -13,14 +13,13 @@ import { useCredits } from '../../context/CreditsContext';
 import { useAchievementContext } from '../../context/AchievementContext';
 import { ProgressStorage } from '../../services/storage.service';
 import { RecommendationService } from '../../services/recommendation.service';
-import { DailyReviewCard, notifySRSUpdate } from '../DailyReviewCard';
+import { DailyReviewCard } from '../DailyReviewCard';
 import { Recommendations } from '../Recommendations';
 import { ListenIconButton } from '../ListenButton';
 import { QuestionFeedback } from '../QuestionFeedback';
 import { RecentBlogPosts } from '../RecentBlogPosts';
 import { QuestionHistoryIcon } from '../unified/QuestionHistory';
 import { loadTests, TestQuestion, Test, getSessionQuestions } from '../../lib/tests';
-import { addToSRS } from '../../lib/spaced-repetition';
 import { 
   initializeQuizSession, 
   updateSession, 
@@ -409,14 +408,9 @@ function QuickQuizCard({
     
     if (isCorrect) {
       setCorrectCount(prev => prev + 1);
-    } else {
-      // Add wrong answer's question to SRS for spaced repetition review
-      if (currentQuestion.questionId && currentTest) {
-        addToSRS(currentQuestion.questionId, currentTest.channelId, currentQuestion.difficulty);
-        // Notify DailyReviewCard to refresh
-        notifySRSUpdate();
-      }
     }
+    
+    // Note: SRS items are now user-marked only, not automatically added on wrong answers
     
     // Auto-advance after feedback - LONGER delay for wrong answers
     const advanceDelay = isCorrect ? 800 : 3500; // Increased from 1500ms to 3500ms
