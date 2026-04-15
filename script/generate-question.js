@@ -31,10 +31,175 @@ const CERTIFICATION_CHANNELS = Object.keys(certificationDomains);
 
 // Top 100 tech companies - imported from AI framework template
 
-// Get random companies from the top list (2-4 companies)
-function getRandomTopCompanies(count = 3) {
-  const shuffled = [...TOP_TECH_COMPANIES].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, Math.min(count, Math.floor(Math.random() * 3) + 2));
+// Helper function to process a single channel - extracted from main loop
+async function processChannel(channel, index, total, subChannelCounts, inputDifficulty, allChannels) {
+  const subChannelConfig = Object.keys(subChannelCounts).length > 0
+    ? await getPrioritizedSubChannel(channel, subChannelCounts)
+    : getRandomSubChannel(channel);
+  
+  console.log(`[${index}/${total}] Processing: ${channel}`);
+  
+  const difficulty = inputDifficulty === 'random'
+    ? difficulties[Math.floor(Math.random() * difficulties.length)]
+    : inputDifficulty;
+
+  const targetCompanies = getRandomTopCompanies(3);
+  
+  function getScenarioHint(chan) {
+    const REAL_SCENARIOS_MAP = {
+      'system-design': [
+        { scenario: 'Design Twitter/X feed', scale: '500M users, 10K tweets/sec', focus: 'fan-out, caching, real-time' },
+        { scenario: 'Design Uber ride matching', scale: '1M concurrent rides', focus: 'geospatial, real-time, matching' },
+        { scenario: 'Design Netflix video streaming', scale: '200M subscribers', focus: 'CDN, encoding, recommendations' },
+      ],
+      'algorithms': [
+        { problem: 'LRU Cache', pattern: 'HashMap + Doubly Linked List', complexity: 'O(1) get/put' },
+        { problem: 'Merge K sorted lists', pattern: 'Min Heap', complexity: 'O(N log K)' },
+      ],
+    };
+    const scenarios = REAL_SCENARIOS_MAP[chan];
+    if (!scenarios || scenarios.length === 0) return '';
+    const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+    return JSON.stringify(scenario);
+  }
+
+  const scenarioHint = getScenarioHint(channel);
+
+  let ragContext = null;
+  try {
+    ragContext = await ragService.getGenerationContext(
+      `${channel} ${subChannelConfig.subChannel} ${difficulty}`,
+      { channel, limit: 5, includeAnswers: false }
+    );
+  } catch (e) {
+    // Silently fail - will retry
+  }
+
+  const hasCerts = hasRelatedCertifications(channel);
+  
+  let result;
+  try {
+    result = hasCerts 
+      ? await generateQuestionWithCertifications({
+          channel,
+          subChannel: subChannelConfig.subChannel,
+          difficulty,
+          tags: subChannelConfig.tags,
+          targetCompanies,
+          scenarioHint,
+          ragContext,
+          includeCertifications: true,
+          certQuestionsPerCert: 1
+        })
+      : await generateQuestionGraph({
+          channel,
+          subChannel: subChannelConfig.subChannel,
+          difficulty,
+          tags: subChannelConfig.tags,
+          targetCompanies,
+          scenarioHint,
+          ragContext
+        });
+  } catch (error) {
+    return { success: false, error: error.message, channel };
+  }
+
+  // Validation and dedup checks
+  if (!result || !result.success) {
+    return { success: false, error: result?.error || 'Unknown error', channel };
+  }
+
+  const data = result.question || result.regular?.question;
+  if (!data || !validateQuestion(data)) {
+    return { success: false, error: 'Invalid response format', channel };
+  }
+
+  if (await isDuplicateUnified(data.question)) {
+    return { success: false, error: 'Duplicate detected', channel };
+  }
+
+  // Quality gate
+  const existingQuestions = await getQuestionsForChannel(channel);
+  const qualityResult = await runQualityGate(data, {
+    channel,
+    subChannel: subChannelConfig.subChannel,
+    difficulty,
+    existingQuestions,
+    passThreshold: 70
+  });
+
+  if (!qualityResult.success) {
+    return { success: false, error: `Quality gate failed (${qualityResult.score}/100)`, channel };
+  }
+
+  // Save question
+  const id = await generateUnifiedId();
+  const normalizedCompanies = normalizeCompanies(data.companies || []);
+  
+  try {
+    await addUnifiedQuestion({
+      id,
+      channel,
+      subChannel: subChannelConfig.subChannel,
+      question: data.question,
+      answer: data.answer,
+      explanation: data.explanation,
+      difficulty,
+      tags: data.tags || subChannelConfig.tags,
+      companies: normalizedCompanies,
+      status: 'active'
+    }, [{ channel, subChannel: subChannelConfig.subChannel }]);
+
+    console.log(`  ✅ [${channel}] Saved: ${data.question.substring(0, 50)}...`);
+    
+    return { 
+      success: true, 
+      channel, 
+      question: {
+        id,
+        question: data.question,
+        difficulty,
+        channel,
+        subChannel: subChannelConfig.subChannel
+      }
+    };
+  } catch (error) {
+    return { success: false, error: `Failed to save: ${error.message}`, channel };
+  }
+}
+
+// Process channels with concurrency limit
+async function processChannelsWithConcurrency(channels, subChannelCounts, inputDifficulty, allChannels, concurrency = 3) {
+  const results = [];
+  const errors = [];
+  
+  for (let i = 0; i < channels.length; i += concurrency) {
+    const batch = channels.slice(i, i + concurrency);
+    console.log(`\n🔄 Processing batch ${Math.floor(i / concurrency) + 1}/${Math.ceil(channels.length / concurrency)} (${batch.length} channels)`);
+    
+    const promises = batch.map((channel, batchIdx) =>
+      processChannel(channel, i + batchIdx + 1, channels.length, subChannelCounts, inputDifficulty, allChannels)
+        .catch(error => ({
+          success: false,
+          error: error.message,
+          channel: 'unknown'
+        }))
+    );
+
+    const batchResults = await Promise.all(promises);
+    batchResults.forEach(res => {
+      if (res.success) {
+        results.push(res.question);
+      } else {
+        errors.push({ channel: res.channel, reason: res.error });
+      }
+    });
+
+    // Progress update
+    console.log(`   Batch complete: ${batchResults.filter(r => r.success).length}/${batch.length} successful`);
+  }
+
+  return { results, errors };
 }
 
 // Get all channels - fetches from database AND includes all configured channels (including certifications)
@@ -349,420 +514,15 @@ async function main() {
     console.log(`\nProcessing all ${channels.length} channels`);
   }
 
-  const addedQuestions = [];
-  const failedAttempts = [];
-
-  for (let i = 0; i < channels.length; i++) {
-    const channel = channels[i];
-    // Use prioritized sub-channel selection (favors sub-channels with fewer questions)
-    const subChannelConfig = Object.keys(subChannelCounts).length > 0
-      ? await getPrioritizedSubChannel(channel, subChannelCounts)
-      : getRandomSubChannel(channel);
-    
-    console.log(`\n--- Channel ${i + 1}/${channels.length}: ${channel} ---`);
-    
-    const difficulty = inputDifficulty === 'random'
-      ? difficulties[Math.floor(Math.random() * difficulties.length)]
-      : inputDifficulty;
-
-    console.log(`Sub-channel: ${subChannelConfig.subChannel}`);
-    console.log(`Difficulty: ${difficulty}`);
-
-    // Select random top companies for this question
-    const targetCompanies = getRandomTopCompanies(3);
-    console.log(`Target companies: ${targetCompanies.join(', ')}`);
-
-    // Real interview scenarios by channel - used to provide context in prompts
-const REAL_SCENARIOS = {
-  'system-design': [
-    { scenario: 'Design Twitter/X feed', scale: '500M users, 10K tweets/sec', focus: 'fan-out, caching, real-time' },
-    { scenario: 'Design Uber ride matching', scale: '1M concurrent rides', focus: 'geospatial, real-time, matching' },
-    { scenario: 'Design Netflix video streaming', scale: '200M subscribers', focus: 'CDN, encoding, recommendations' },
-    { scenario: 'Design Slack messaging', scale: '10M concurrent users', focus: 'websockets, presence, search' },
-    { scenario: 'Design payment processing', scale: '$1B daily transactions', focus: 'consistency, idempotency, fraud' },
-    { scenario: 'Design notification system', scale: '1B push notifications/day', focus: 'delivery, batching, preferences' },
-    { scenario: 'Design rate limiter', scale: '10M requests/minute', focus: 'distributed, algorithms, fairness' },
-    { scenario: 'Design URL shortener', scale: '100M URLs', focus: 'hashing, redirection, analytics' },
-  ],
-  'algorithms': [
-    { problem: 'LRU Cache', pattern: 'HashMap + Doubly Linked List', complexity: 'O(1) get/put' },
-    { problem: 'Merge K sorted lists', pattern: 'Min Heap', complexity: 'O(N log K)' },
-    { problem: 'Word ladder', pattern: 'BFS', complexity: 'O(M² × N)' },
-    { problem: 'Meeting rooms II', pattern: 'Interval + Heap', complexity: 'O(N log N)' },
-    { problem: 'Serialize binary tree', pattern: 'Preorder DFS', complexity: 'O(N)' },
-    { problem: 'Median finder', pattern: 'Two Heaps', complexity: 'O(log N) insert' },
-    { problem: 'Trapping rain water', pattern: 'Two Pointers', complexity: 'O(N)' },
-    { problem: 'Course schedule', pattern: 'Topological Sort', complexity: 'O(V + E)' },
-  ],
-  'frontend': [
-    { topic: 'Virtual DOM diffing', context: 'React reconciliation algorithm' },
-    { topic: 'State management', context: 'Redux vs Context vs Zustand trade-offs' },
-    { topic: 'Bundle optimization', context: 'Code splitting, tree shaking, lazy loading' },
-    { topic: 'Accessibility', context: 'ARIA, keyboard navigation, screen readers' },
-    { topic: 'SSR vs CSR vs SSG', context: 'Next.js rendering strategies' },
-  ],
-  'devops': [
-    { scenario: 'Blue-green deployment', context: 'Zero-downtime releases' },
-    { scenario: 'GitOps workflow', context: 'ArgoCD, Flux, declarative infrastructure' },
-    { scenario: 'Secret management', context: 'Vault, AWS Secrets Manager, rotation' },
-    { scenario: 'Multi-stage Docker builds', context: 'Image optimization, security' },
-  ],
-  'sre': [
-    { scenario: 'Production incident', context: 'On-call response, root cause analysis' },
-    { scenario: 'Error budget exhaustion', context: 'SLO negotiation, feature freeze' },
-    { scenario: 'Capacity planning', context: 'Load testing, forecasting, autoscaling' },
-    { scenario: 'Chaos experiment', context: 'Failure injection, blast radius' },
-  ],
-  'database': [
-    { topic: 'Query optimization', context: 'EXPLAIN plans, index selection' },
-    { topic: 'Sharding strategy', context: 'Horizontal partitioning, consistent hashing' },
-    { topic: 'ACID vs BASE', context: 'Consistency trade-offs, CAP theorem' },
-    { topic: 'Connection pooling', context: 'PgBouncer, HikariCP, connection limits' },
-  ],
-  'behavioral': [
-    { scenario: 'Technical disagreement', context: 'Conflict resolution, influence without authority' },
-    { scenario: 'Project failure', context: 'Learning from mistakes, accountability' },
-    { scenario: 'Tight deadline', context: 'Prioritization, scope negotiation' },
-    { scenario: 'Mentoring junior', context: 'Knowledge transfer, patience' },
-  ],
-};
-
-// Get a random scenario hint for the channel
-function getScenarioHint(channel) {
-  const scenarios = REAL_SCENARIOS[channel];
-  if (!scenarios || scenarios.length === 0) return '';
-  const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
-  return JSON.stringify(scenario);
-}
-
-const scenarioHint = getScenarioHint(channel);
-
-    // Get RAG context for better generation
-    let ragContext = null;
-    try {
-      console.log('\n🔍 Retrieving RAG context...');
-      ragContext = await ragService.getGenerationContext(
-        `${channel} ${subChannelConfig.subChannel} ${difficulty}`,
-        { channel, limit: 5, includeAnswers: false }
-      );
-      if (ragContext.hasContext) {
-        console.log(`   Found ${ragContext.related.length} related questions`);
-        console.log(`   Key concepts: ${ragContext.concepts.slice(0, 5).join(', ')}`);
-      } else {
-        console.log('   No existing context found (new topic area)');
-      }
-    } catch (e) {
-      console.log(`   RAG context unavailable: ${e.message}`);
-    }
-
-    // Use LangGraph pipeline for question generation with graceful error handling
-    console.log('\n📝 Generating question using LangGraph pipeline...');
-    
-    // Check if this channel has related certifications
-    const hasCerts = hasRelatedCertifications(channel);
-    if (hasCerts) {
-      console.log(`   🎓 Channel has related certifications - will generate cert MCQs too`);
-    }
-    
-    console.log('─'.repeat(50));
-    
-    try {
-      // Use enhanced generator if channel has certifications
-      const result = hasCerts 
-        ? await generateQuestionWithCertifications({
-            channel,
-            subChannel: subChannelConfig.subChannel,
-            difficulty,
-            tags: subChannelConfig.tags,
-            targetCompanies,
-            scenarioHint,
-            ragContext, // Pass RAG context to the generation pipeline
-            includeCertifications: true,
-            certQuestionsPerCert: 1 // Generate 1 MCQ per related cert
-          })
-        : await generateQuestionGraph({
-            channel,
-            subChannel: subChannelConfig.subChannel,
-            difficulty,
-            tags: subChannelConfig.tags,
-            targetCompanies,
-            scenarioHint,
-            ragContext
-          });
-      
-      // Handle enhanced result (with certifications)
-      if (hasCerts && result.regular) {
-        const regularResult = result.regular;
-        
-        if (!regularResult.success) {
-          console.log(`❌ Regular question generation failed: ${regularResult.error}`);
-          failedAttempts.push({ channel, reason: regularResult.error || 'Generation failed' });
-          continue;
-        }
-        
-        // Process regular question
-        const data = regularResult.question;
-        
-        if (!validateQuestion(data)) {
-          console.log('❌ Invalid response format.');
-          failedAttempts.push({ channel, reason: 'Invalid JSON format' });
-          continue;
-        }
-
-        if (await isDuplicateUnified(data.question)) {
-          console.log('❌ Duplicate question detected.');
-          failedAttempts.push({ channel, reason: 'Duplicate detected' });
-          continue;
-        }
-
-        // Run quality gate for regular question
-        console.log('\n🚦 Running Quality Gate for regular question...');
-        console.log('─'.repeat(50));
-        
-        const existingQuestions = await getQuestionsForChannel(channel);
-        
-        const qualityResult = await runQualityGate(data, {
-          channel,
-          subChannel: subChannelConfig.subChannel,
-          difficulty,
-          existingQuestions,
-          passThreshold: 70
-        });
-        
-        if (!qualityResult.success) {
-          console.log(`❌ Quality gate failed: ${qualityResult.decision}`);
-          console.log(`   Score: ${qualityResult.score}/100`);
-          if (qualityResult.issues.length > 0) {
-            console.log(`   Issues: ${qualityResult.issues.join(', ')}`);
-          }
-          failedAttempts.push({ 
-            channel, 
-            reason: `Quality gate: ${qualityResult.decision} (score: ${qualityResult.score})`,
-            issues: qualityResult.issues
-          });
-          continue;
-        }
-        
-        // Save regular question
-        console.log(`\n✅ Quality gate passed (${qualityResult.score}/100)`);
-        
-        const id = await generateUnifiedId();
-        const normalizedCompanies = normalizeCompanies(data.companies || []);
-        
-        // Enrich with job title relevance
-        const enrichedData = jobTitleService.enrichQuestionWithJobTitleData({
-          ...data,
-          channel,
-          subChannel: subChannelConfig.subChannel,
-          difficulty
-        });
-        
-        console.log(`📊 Job title relevance calculated for ${Object.keys(JSON.parse(enrichedData.jobTitleRelevance)).length} roles`);
-        
-        await addUnifiedQuestion({
-          id,
-          channel,
-          subChannel: subChannelConfig.subChannel,
-          question: data.question,
-          answer: data.answer,
-          explanation: data.explanation,
-          difficulty,
-          tags: data.tags || subChannelConfig.tags, // Keep as array
-          companies: normalizedCompanies, // Keep as array
-          tldr: data.tldr || null,
-          diagram: data.diagram || null,
-          diagramType: data.diagramType || null,
-          diagramLabel: data.diagramLabel || null,
-          shortVideo: data.shortVideo || null,
-          longVideo: data.longVideo || null,
-          jobTitleRelevance: enrichedData.jobTitleRelevance,
-          experienceLevelTags: enrichedData.experienceLevelTags,
-          status: 'active'
-        }, [{ channel, subChannel: subChannelConfig.subChannel }]);
-        
-        // Add to results
-        const regularQuestion = {
-          id,
-          question: data.question,
-          answer: data.answer?.substring(0, 200) || '',
-          explanation: data.explanation || '',
-          tags: data.tags || subChannelConfig.tags,
-          difficulty,
-          diagram: data.diagram || null,
-          companies: normalizedCompanies,
-          mappedChannels: [{ channel, subChannel: subChannelConfig.subChannel }]
-        };
-        addedQuestions.push(regularQuestion);
-        
-        console.log(`✅ Question added successfully (ID: ${id})`);
-        
-        // Process certification questions
-        if (result.certifications && result.certifications.length > 0) {
-          console.log(`\n🎓 Processing ${result.certifications.length} certification results...`);
-          
-          for (const certResult of result.certifications) {
-            if (certResult.result.success && certResult.result.questions) {
-              console.log(`   📋 ${certResult.certId}: ${certResult.result.questions.length} MCQs generated`);
-              
-              // Save certification questions (they're already in the right format)
-              for (const certQ of certResult.result.questions) {
-                try {
-                  const certId = `cert-${certResult.certId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                  
-                  await addUnifiedQuestion({
-                    id: certId,
-                    channel: certResult.certId,
-                    subChannel: certQ.domain || 'general',
-                    question: certQ.question,
-                    answer: JSON.stringify(certQ.options), // MCQ options as JSON
-                    explanation: certQ.explanation,
-                    difficulty: certQ.difficulty || difficulty,
-                    tags: [...(certQ.tags || []), 'certification-mcq'], // Keep as array
-                    companies: [], // Keep as array
-                    status: 'active'
-                  }, [{ channel: certResult.certId, subChannel: certQ.domain || 'general' }]);
-                  
-                  // Add to results
-                  const certQuestion = {
-                    id: certId,
-                    question: certQ.question,
-                    answer: JSON.stringify(certQ.options),
-                    explanation: certQ.explanation || '',
-                    tags: [...(certQ.tags || []), 'certification-mcq'],
-                    difficulty: certQ.difficulty || difficulty,
-                    companies: [],
-                    mappedChannels: [{ channel: certResult.certId, subChannel: certQ.domain || 'general' }]
-                  };
-                  addedQuestions.push(certQuestion);
-                  
-                  console.log(`   ✅ Saved cert MCQ: ${certQ.question.substring(0, 50)}...`);
-                } catch (error) {
-                  console.log(`   ⚠️ Failed to save cert MCQ: ${error.message}`);
-                }
-              }
-            } else {
-              console.log(`   ⚠️ ${certResult.certId}: Generation failed`);
-            }
-          }
-        }
-        
-        continue; // Move to next channel
-      }
-      
-      // Handle regular result (no certifications)
-      if (!result.success) {
-        console.log(`❌ Generation failed: ${result.error}`);
-        failedAttempts.push({ channel, reason: result.error || 'Generation failed' });
-        continue; // Continue with next channel instead of crashing
-      }
-      
-      const data = result.question;
-      
-      if (!validateQuestion(data)) {
-        console.log('❌ Invalid response format.');
-        failedAttempts.push({ channel, reason: 'Invalid JSON format' });
-        continue;
-      }
-
-      if (await isDuplicateUnified(data.question)) {
-        console.log('❌ Duplicate question detected.');
-        failedAttempts.push({ channel, reason: 'Duplicate detected' });
-        continue;
-      }
-
-      // Run quality gate - all questions must pass
-      console.log('\n🚦 Running Quality Gate...');
-      console.log('─'.repeat(50));
-      
-      // Get existing questions for duplicate detection
-      const existingQuestions = await getQuestionsForChannel(channel);
-      
-      const qualityResult = await runQualityGate(data, {
-        channel,
-        subChannel: subChannelConfig.subChannel,
-        difficulty,
-        existingQuestions,
-        passThreshold: 70
-      });
-      
-      if (!qualityResult.success) {
-        console.log(`❌ Quality gate failed: ${qualityResult.decision}`);
-        console.log(`   Score: ${qualityResult.score}/100`);
-        if (qualityResult.issues.length > 0) {
-          console.log(`   Issues: ${qualityResult.issues.join(', ')}`);
-        }
-        if (qualityResult.warnings.length > 0) {
-          console.log(`   Warnings: ${qualityResult.warnings.join(', ')}`);
-        }
-        failedAttempts.push({ 
-          channel, 
-          reason: `Quality gate: ${qualityResult.decision} (score: ${qualityResult.score})`,
-          issues: qualityResult.issues,
-          warnings: qualityResult.warnings
-        });
-        continue;
-      }
-      
-      console.log(`✅ Quality gate passed (score: ${qualityResult.score}/100)`);
-      if (qualityResult.warnings.length > 0) {
-        console.log(`   Warnings: ${qualityResult.warnings.join(', ')}`);
-      }
-
-      const newQuestion = {
-        id: await generateUnifiedId(),
-        question: data.question,
-        answer: data.answer?.substring(0, 200) || '',
-        explanation: data.explanation || '',
-        tags: subChannelConfig.tags,
-        difficulty: difficulty,
-        diagram: data.diagram || null,
-        sourceUrl: data.sourceUrl || null,
-        videos: data.videos || { shortVideo: null, longVideo: null },
-        companies: normalizeCompanies(data.companies),
-        lastUpdated: new Date().toISOString()
-      };
-
-      const channelMappings = [{ channel, subChannel: subChannelConfig.subChannel }];
-
-      await addUnifiedQuestion(newQuestion, channelMappings);
-      
-      // Log bot activity
-      await logBotActivity(newQuestion.id, 'generate', 'new question created', 'completed', {
-        channel,
-        subChannel: subChannelConfig.subChannel,
-        difficulty
-      });
-      
-      // Post comment to Giscus discussion
-      await postBotCommentToDiscussion(newQuestion.id, 'Question Generator Bot', 'generated', {
-        summary: `New ${difficulty} question generated for ${channel}/${subChannelConfig.subChannel}`,
-        changes: [
-          `Channel: ${channel}`,
-          `Sub-channel: ${subChannelConfig.subChannel}`,
-          `Difficulty: ${difficulty}`,
-          `Tags: ${newQuestion.tags.join(', ')}`,
-          newQuestion.diagram ? 'Includes diagram' : 'No diagram',
-          newQuestion.companies?.length > 0 ? `Companies: ${newQuestion.companies.join(', ')}` : null
-        ].filter(Boolean)
-      });
-      
-      addedQuestions.push({ ...newQuestion, mappedChannels: channelMappings });
-
-      console.log(`✅ Added: ${newQuestion.id}`);
-      console.log(`Q: ${newQuestion.question.substring(0, 60)}...`);
-      
-    } catch (error) {
-      // Catch any unexpected errors and continue with next channel
-      console.log(`❌ Unexpected error: ${error.message}`);
-      console.log(`   Stack trace:`);
-      console.log(error.stack);
-      failedAttempts.push({ 
-        channel, 
-        reason: `Unexpected error: ${error.message}` 
-      });
-      continue;
-    }
-  }
+  // Use concurrent processing with limit of 3 simultaneous channels
+  console.log(`\n🚀 Starting concurrent question generation (3 channels at a time)...`);
+  const { results: addedQuestions, errors: failedAttempts } = await processChannelsWithConcurrency(
+    channels,
+    subChannelCounts,
+    inputDifficulty,
+    allChannels,
+    3  // Concurrency limit
+  );
 
   const totalQuestions = await getQuestionCount();
   console.log('\n\n=== SUMMARY ===');

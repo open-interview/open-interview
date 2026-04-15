@@ -106,12 +106,12 @@ async function applyAnswerFormattingStandards(content) {
 }
 
 /**
- * Logs Answer Formatting validation results for monitoring
- */
+  * Logs Answer Formatting validation results for monitoring
+  */
 async function logAnswerFormattingValidation(validationData) {
   try {
     // Create validation reports table if it doesn't exist
-    db.exec(`
+    await db.execute(`
       CREATE TABLE IF NOT EXISTS answer_formatting_reports (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         question_id TEXT NOT NULL,
@@ -126,21 +126,22 @@ async function logAnswerFormattingValidation(validationData) {
     `);
     
     // Insert validation report
-    const stmt = db.prepare(`
-      INSERT INTO answer_formatting_reports 
-      (question_id, pattern, score, violations_count, violations, auto_formatted, timestamp)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-    
-    stmt.run(
-      validationData.questionId,
-      validationData.pattern,
-      validationData.score,
-      validationData.violations.length,
-      JSON.stringify(validationData.violations),
-      validationData.autoFormatted ? 1 : 0,
-      validationData.timestamp
-    );
+    await db.execute({
+      sql: `
+        INSERT INTO answer_formatting_reports 
+        (question_id, pattern, score, violations_count, violations, auto_formatted, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+      args: [
+        validationData.questionId,
+        validationData.pattern,
+        validationData.score,
+        validationData.violations.length,
+        JSON.stringify(validationData.violations),
+        validationData.autoFormatted ? 1 : 0,
+        validationData.timestamp
+      ]
+    });
     
     console.log(`   Logged validation report for question ${validationData.questionId}`);
   } catch (error) {
