@@ -2,21 +2,42 @@
 
 ## Automated Workflows
 
-### 🔄 scheduled-deploy.yml
-**Purpose:** Automatically redeploy website to keep it fresh with latest content
+### 🚀 deploy.yml
+**Purpose:** Consolidated deployment workflow (push and scheduled triggers)
 
-**Schedule:**
-- **Daily 2 AM UTC (0 2 * * *):** After content generation completes
+**Triggers:**
+- **Push to main:** Deploys to staging + production
+- **Daily 2 AM UTC:** Deploys to production (after content generation)
+- **Manual dispatch:** With optional environment override
+
+**Environments:**
+- Staging: stage-open-interview.github.io
+- Production: open-interview.github.io
 
 **Manual Trigger:**
 ```bash
-gh workflow run scheduled-deploy.yml -f reason="Manual deploy for testing"
+# Auto-select environment based on trigger
+gh workflow run deploy.yml
+
+# Override environment (staging/production/all)
+gh workflow run deploy.yml -f environment=staging -f reason="Testing deployment"
 ```
 
 **What it does:**
-- Builds the website with latest content
-- Deploys to GitHub Pages
-- Ensures users always see fresh questions and blog posts
+- Builds application with latest content
+- Race condition prevention via concurrency control
+- Deploys to appropriate environments
+- Ensures users always see fresh content
+- Single deployment history source
+
+---
+
+### 🔄 scheduled-deploy.yml ⚠️ DEPRECATED
+**⚠️ This workflow has been consolidated into deploy.yml**
+
+Use `deploy.yml` instead. This file will be removed on 2026-05-15.
+
+**Legacy Purpose:** Automatically redeploy website to keep it fresh with latest content
 
 ---
 
@@ -113,16 +134,12 @@ gh workflow run social-media.yml -f task=all
 
 ---
 
-### 🚀 deploy-app.yml
-**Purpose:** Deploy main application to GitHub Pages
+### 🚀 deploy-app.yml ⚠️ DEPRECATED
+**⚠️ This workflow has been consolidated into deploy.yml**
 
-**Triggers:**
-- Push to main branch
-- Manual dispatch
+Use `deploy.yml` instead. This file will be removed on 2026-05-15.
 
-**Environments:**
-- Staging: stage-open-interview.github.io
-- Production: open-interview.github.io
+**Legacy Purpose:** Deploy main application to GitHub Pages (on push)
 
 ---
 
@@ -235,8 +252,11 @@ gh workflow run social-media.yml -f task=linkedin-poll -f difficulty=intermediat
 
 ### Deploy
 ```bash
-# Deploy app
-gh workflow run deploy-app.yml
+# Deploy app (push-triggered + scheduled)
+gh workflow run deploy.yml
+
+# Override environment for manual deployment
+gh workflow run deploy.yml -f environment=production -f reason="Emergency deploy"
 
 # Deploy blog
 gh workflow run deploy-blog.yml
