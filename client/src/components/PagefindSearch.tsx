@@ -94,17 +94,18 @@ export function PagefindSearch({ isOpen, onClose }: PagefindSearchProps) {
   useEffect(() => {
     async function initPagefind() {
       try {
+        const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         if (!document.querySelector('link[href*="pagefind"]')) {
           const link = document.createElement('link');
           link.rel = 'stylesheet';
-          link.href = '/pagefind/pagefind-ui.css';
+          link.href = `${base}/pagefind/pagefind-ui.css`;
           document.head.appendChild(link);
         }
 
         if (!window.pagefind) {
           await new Promise<void>((resolve, reject) => {
             const script = document.createElement('script');
-            script.src = '/pagefind/pagefind.js';
+            script.src = `${base}/pagefind/pagefind.js`;
             script.type = 'module';
             script.onload = () => resolve();
             script.onerror = () => reject(new Error('Failed to load Pagefind script'));

@@ -437,6 +437,49 @@ export const CacheUtils = {
 };
 
 // ============================================
+// FLASHCARD SERVICE
+// ============================================
+export interface DbFlashcard {
+  id: string;
+  question_id: string | null;
+  channel: string | null;
+  difficulty: string | null;
+  tags: string | null;
+  front: string;
+  back: string;
+  hint: string | null;
+  mnemonic: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+const API_BASE = '/api';
+
+export const FlashcardService = {
+  async getByChannel(channel: string, limit = 100, offset = 0): Promise<DbFlashcard[]> {
+    try {
+      const params = new URLSearchParams({ channel, limit: String(limit), offset: String(offset) });
+      const res = await fetch(`${API_BASE}/flashcards?${params}`);
+      if (!res.ok) return [];
+      return res.json();
+    } catch {
+      return [];
+    }
+  },
+
+  async getAll(limit = 200, offset = 0): Promise<DbFlashcard[]> {
+    try {
+      const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+      const res = await fetch(`${API_BASE}/flashcards?${params}`);
+      if (!res.ok) return [];
+      return res.json();
+    } catch {
+      return [];
+    }
+  },
+};
+
+// ============================================
 // EXPORT DEFAULT API OBJECT
 // ============================================
 export const api = {
@@ -445,6 +488,7 @@ export const api = {
   stats: StatsService,
   coding: CodingService,
   blog: BlogService,
+  flashcards: FlashcardService,
   cache: CacheUtils,
 };
 
