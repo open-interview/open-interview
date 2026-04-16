@@ -20,7 +20,7 @@
 <p align="center">
   <img src="https://img.shields.io/github/stars/open-interview/open-interview?style=for-the-badge&logo=github&color=yellow" alt="Stars" />
   <img src="https://img.shields.io/badge/questions-1000+-blue?style=for-the-badge" alt="Questions" />
-  <img src="https://img.shields.io/badge/certifications-41+-green?style=for-the-badge" alt="Certifications" />
+  <img src="https://img.shields.io/badge/certifications-53+-green?style=for-the-badge" alt="Certifications" />
   <img src="https://img.shields.io/badge/topics-40+-orange?style=for-the-badge" alt="Topics" />
   <img src="https://img.shields.io/badge/AI_Powered-Vector_DB-purple?style=for-the-badge" alt="AI" />
 </p>
