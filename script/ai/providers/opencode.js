@@ -4,15 +4,38 @@
  */
 
 import { spawn } from 'child_process';
+import os from 'os';
 import config from '../config.js';
 
 const TIMEOUT_MS = 300000; // 5 minutes
+
+// Cap each OpenCode process to 512 MB so N parallel instances stay bounded.
+// Total memory used = MEMORY_PER_PROCESS_MB * concurrency.
+const MEMORY_PER_PROCESS_MB = parseInt(process.env.OPENCODE_MEMORY_MB || '512');
+
+/**
+ * How many parallel OpenCode processes are safe given available RAM.
+ * Leaves 20% of total RAM free as headroom.
+ */
+export function safeConcurrency(requested = 10) {
+  const freeMb  = Math.floor(os.freemem()  / 1024 / 1024);
+  const totalMb = Math.floor(os.totalmem() / 1024 / 1024);
+  const usableMb = Math.floor(totalMb * 0.8);
+  const maxSafe  = Math.max(1, Math.floor(usableMb / MEMORY_PER_PROCESS_MB));
+  return Math.min(requested, maxSafe);
+}
 
 /**
  * Run OpenCode CLI with a prompt
  */
 export async function call(prompt, options = {}) {
   const model = options.model || config.defaultModel;
+
+  // Inherit parent env but cap heap for this child process
+  const childEnv = {
+    ...process.env,
+    NODE_OPTIONS: `--max-old-space-size=${MEMORY_PER_PROCESS_MB}`,
+  };
   
   return new Promise((resolve, reject) => {
     let output = '';
@@ -20,7 +43,8 @@ export async function call(prompt, options = {}) {
     
     const proc = spawn('opencode', ['run', '--model', model, '--format', 'json', prompt], {
       timeout: TIMEOUT_MS,
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: childEnv,
     });
     
     const timeout = setTimeout(() => {
@@ -124,4 +148,4 @@ export function parseResponse(output) {
   return null;
 }
 
-export default { call, parseResponse };
+export default { call, parseResponse, safeConcurrency };

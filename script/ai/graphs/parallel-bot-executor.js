@@ -341,10 +341,19 @@ export async function generateChallengesParallel(challenges, options = {}) {
   return pool.execute();
 }
 
+/**
+ * Parallel flashcard generator
+ */
+export async function generateFlashcardsParallel(questions, options = {}) {
+  const { generateFlashcardsParallel: run } = await import('./flashcard-graph.js');
+  return run(questions, options);
+}
+
 export default {
   WorkerPool,
   generateQuestionsParallel,
   generateBlogsParallel,
   generateLinkedInPostsParallel,
-  generateChallengesParallel
+  generateChallengesParallel,
+  generateFlashcardsParallel
 };

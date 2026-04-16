@@ -12,22 +12,14 @@ import { ProgressStorage } from '../../services/storage.service';
 import { useReducedMotion } from '../../hooks/use-reduced-motion';
 import {
   Flame, Zap, Trophy, Target, Mic, Code, Brain,
-  ChevronRight, Sparkles, TrendingUp, Star, Award, Rocket, Server, Plus,
+  ChevronRight, Sparkles, TrendingUp, Star, Award, Plus,
   RotateCcw, Check, X, BookOpen, Calendar, Clock, Activity, Settings2,
 } from 'lucide-react';
 import { PullToRefresh, SwipeableCard, SkeletonList } from '../mobile';
 import { useUserPreferences } from '../../context/UserPreferencesContext';
 import { allChannelsConfig } from '../../lib/channels-config';
 
-// ─── Learning Paths ───────────────────────────────────────────────────────────
-const learningPaths = [
-  { id: 'frontend', name: 'Frontend Developer', icon: Code, color: 'from-blue-500 to-cyan-500', description: 'Master React, JavaScript, and modern web development', channels: ['frontend', 'react-native', 'javascript', 'algorithms'], difficulty: 'Beginner Friendly', duration: '3-6 months', jobs: ['Frontend Developer', 'React Developer', 'UI Engineer'] },
-  { id: 'backend', name: 'Backend Engineer', icon: Server, color: 'from-green-500 to-emerald-500', description: 'Build scalable APIs and microservices', channels: ['backend', 'database', 'system-design', 'algorithms'], difficulty: 'Intermediate', duration: '4-8 months', jobs: ['Backend Engineer', 'API Developer', 'Systems Engineer'] },
-  { id: 'fullstack', name: 'Full Stack Developer', icon: Rocket, color: 'from-purple-500 to-pink-500', description: 'End-to-end application development', channels: ['frontend', 'backend', 'database', 'devops', 'system-design'], difficulty: 'Advanced', duration: '6-12 months', jobs: ['Full Stack Developer', 'Software Engineer', 'Tech Lead'] },
-  { id: 'devops', name: 'DevOps Engineer', icon: Target, color: 'from-orange-500 to-red-500', description: 'Infrastructure, CI/CD, and cloud platforms', channels: ['devops', 'kubernetes', 'aws', 'terraform', 'docker'], difficulty: 'Advanced', duration: '4-8 months', jobs: ['DevOps Engineer', 'SRE', 'Cloud Engineer'] },
-  { id: 'mobile', name: 'Mobile Developer', icon: Sparkles, color: 'from-pink-500 to-rose-500', description: 'iOS and Android app development', channels: ['react-native', 'ios', 'android', 'frontend'], difficulty: 'Intermediate', duration: '4-6 months', jobs: ['Mobile Developer', 'iOS Developer', 'Android Developer'] },
-  { id: 'data', name: 'Data Engineer', icon: Brain, color: 'from-indigo-500 to-purple-500', description: 'Data pipelines, warehousing, and analytics', channels: ['data-engineering', 'database', 'python', 'aws'], difficulty: 'Advanced', duration: '6-10 months', jobs: ['Data Engineer', 'Analytics Engineer', 'ML Engineer'] },
-];
+
 
 // ─── Animation variants ───────────────────────────────────────────────────────
 const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } };
@@ -341,7 +333,7 @@ export function HomePage() {
           const channelIds = Array.isArray(cp2.channels) ? cp2.channels : JSON.parse(cp2.channels || '[]');
           return { id: cp2.id, name: cp2.title, icon: Brain, color: 'from-green-500 to-emerald-500', description: cp2.description, channels: channelIds, difficulty: cp2.difficulty.charAt(0).toUpperCase() + cp2.difficulty.slice(1), duration: `${cp2.estimatedHours}h`, totalQuestions: Array.isArray(cp2.questionIds) ? cp2.questionIds.length : JSON.parse(cp2.questionIds || '[]').length, jobs: Array.isArray(cp2.learningObjectives) ? cp2.learningObjectives.slice(0, 3) : JSON.parse(cp2.learningObjectives || '[]').slice(0, 3), skills: Array.isArray(cp2.tags) ? cp2.tags.slice(0, 5) : JSON.parse(cp2.tags || '[]').slice(0, 5), salary: 'Varies' };
         }
-        return learningPaths.find(p => p.id === pathId);
+        return null;
       }).filter(Boolean);
       setActivePaths(paths);
     } catch { setActivePaths([]); }

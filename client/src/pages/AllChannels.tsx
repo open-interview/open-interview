@@ -183,12 +183,16 @@ function ChannelCard({ channel, index, questionCount, navigate, isSubscribed, to
 
 export default function AllChannelsGenZ() {
   const [, navigate] = useLocation();
-  const { isSubscribed, toggleSubscription } = useUserPreferences();
+  const { isSubscribed, toggleSubscription, preferences } = useUserPreferences();
   const { stats } = useChannelStats();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('az');
   const [progressFilter, setProgressFilter] = useState<'all' | 'not-started' | 'in-progress' | 'completed'>('all');
+  const [subscribedOnly, setSubscribedOnly] = useState(true);
+
+  const subscribedIds = new Set(preferences.subscribedChannels);
+  const hasSubscriptions = subscribedIds.size > 0;
 
   const questionCounts: Record<string, number> = {};
   stats.forEach(s => { questionCounts[s.id] = s.total; });
@@ -202,6 +206,7 @@ export default function AllChannelsGenZ() {
   };
 
   const channels = allChannelsConfig.filter(ch => {
+    if (subscribedOnly && hasSubscriptions && !subscribedIds.has(ch.id)) return false;
     const matchSearch = ch.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                         ch.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchCat = !selectedCategory || ch.category === selectedCategory;
@@ -228,9 +233,23 @@ export default function AllChannelsGenZ() {
       />
       <AppLayout>
         <div className="min-h-screen bg-background pb-24">
-          <div className="px-4 pt-6 pb-4 lg:px-8">
-            <h1 className="text-2xl font-bold text-foreground">Channels</h1>
-            <p className="text-sm text-muted-foreground mt-1">{channels.length} channels to master</p>
+          <div className="px-4 pt-6 pb-4 lg:px-8 flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Channels</h1>
+              <p className="text-sm text-muted-foreground mt-1">{channels.length} {subscribedOnly && hasSubscriptions ? 'subscribed' : ''} channels</p>
+            </div>
+            {hasSubscriptions && (
+              <button
+                onClick={() => setSubscribedOnly(s => !s)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                  subscribedOnly
+                    ? 'bg-[var(--color-accent-violet)]/15 border-[var(--color-accent-violet)] text-[var(--color-accent-violet-light)]'
+                    : 'bg-muted/50 border-border text-muted-foreground'
+                }`}
+              >
+                {subscribedOnly ? '★ My Topics' : 'All Topics'}
+              </button>
+            )}
           </div>
           <div className="max-w-7xl mx-auto px-4 md:px-6 pb-8 md:pb-12">
 
@@ -367,8 +386,22 @@ export default function AllChannelsGenZ() {
             {channels.length === 0 && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
                 <Search className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--text-tertiary)' }} />
-                <h3 className="text-xl font-bold mb-2">No channels found</h3>
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Try a different search or category</p>
+                <h3 className="text-xl font-bold mb-2">
+                  {subscribedOnly && hasSubscriptions ? 'No subscribed channels match' : 'No channels found'}
+                </h3>
+                <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+                  {subscribedOnly && hasSubscriptions
+                    ? 'Try clearing filters or browse all topics'
+                    : 'Try a different search or category'}
+                </p>
+                {subscribedOnly && hasSubscriptions && (
+                  <button
+                    onClick={() => setSubscribedOnly(false)}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] text-white"
+                  >
+                    Browse All Channels
+                  </button>
+                )}
               </motion.div>
             )}
 

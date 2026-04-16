@@ -5,19 +5,6 @@
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { allChannelsConfig, getRecommendedChannels } from '../lib/channels-config';
 
-const CERT_STORAGE_KEY = 'subscribedCertifications';
-
-function loadSubscribedCerts(): Set<string> {
-  try {
-    const raw = localStorage.getItem(CERT_STORAGE_KEY);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch { return new Set(); }
-}
-
-function saveSubscribedCerts(ids: Set<string>) {
-  try { localStorage.setItem(CERT_STORAGE_KEY, JSON.stringify(Array.from(ids))); } catch {}
-}
-
 export function useSubscriptions() {
   const {
     preferences,
@@ -25,9 +12,13 @@ export function useSubscriptions() {
     toggleSubscription,
     skipOnboarding,
     needsOnboarding,
+    isSubscribed,
+    isCertificationSubscribed,
+    toggleCertificationSubscription,
   } = useUserPreferences();
 
   const subscribedChannelIds = preferences.subscribedChannels;
+  const subscribedCertificationIds = preferences.subscribedCertifications ?? [];
 
   const subscribedChannels = allChannelsConfig.filter(
     c => !c.isCertification && subscribedChannelIds.includes(c.id)
@@ -39,18 +30,30 @@ export function useSubscriptions() {
 
   const isChannelSubscribed = (id: string) => subscribedChannelIds.includes(id);
 
+  /** True when user has at least one topic subscription */
+  const hasSubscriptions = subscribedChannelIds.length > 0;
+
+  /** True when user has at least one cert subscription */
+  const hasCertSubscriptions = subscribedCertificationIds.length > 0;
+
   const getRecommendedForRole = (roleId: string) =>
     getRecommendedChannels(roleId).filter(c => !c.isCertification);
 
   return {
     subscribedChannelIds,
+    subscribedCertificationIds,
     subscribedChannels,
     subscribedCertChannels,
     isChannelSubscribed,
+    isSubscribed,
+    isCertificationSubscribed,
     toggleSubscription,
+    toggleCertificationSubscription,
     setRole,
     skipOnboarding,
     needsOnboarding,
+    hasSubscriptions,
+    hasCertSubscriptions,
     role: preferences.role,
     onboardingComplete: preferences.onboardingComplete,
     getRecommendedForRole,

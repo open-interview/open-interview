@@ -10,6 +10,7 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { SEOHead } from '../components/SEOHead';
 import { allChannelsConfig } from '../lib/channels-config';
 import { FloatingButton } from '../components/mobile';
+import { useUserPreferences } from '../context/UserPreferencesContext';
 import {
   Plus, Trash2, Edit, ChevronRight, Brain, Check, Target, Clock, Sparkles, Award,
   Code, Server, Rocket, X, Search, Star, Zap, Trophy, Building2
@@ -66,6 +67,7 @@ const roleGradients: Record<string, string> = {
 
 export default function UnifiedLearningPathsGenZ() {
   const [, setLocation] = useLocation();
+  const { preferences } = useUserPreferences();
   const [view, setView] = useState<'all' | 'custom' | 'curated'>('all');
   const [customPaths, setCustomPaths] = useState<CustomPath[]>([]);
   const [certifications, setCertifications] = useState<Certification[]>([]);
@@ -264,11 +266,20 @@ export default function UnifiedLearningPathsGenZ() {
   const dailyDone = getDailyProgress();
   const DAILY_GOAL = 10;
 
-  const filteredChannels = Object.values(allChannelsConfig).filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
-  const filteredCerts = certifications.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.provider.toLowerCase().includes(searchQuery.toLowerCase()));
+  const subscribedSet = new Set(preferences.subscribedChannels);
+  const hasSubscriptions = subscribedSet.size > 0;
+
+  const filteredChannels = Object.values(allChannelsConfig)
+    .filter(c => !hasSubscriptions || subscribedSet.has(c.id))
+    .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+  const filteredCerts = certifications
+    .filter(c => !hasSubscriptions || subscribedSet.has(c.id))
+    .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.provider.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const filterCuratedPaths = (paths: any[]) => {
     return paths.filter(path => {
+      if (hasSubscriptions && path.channels?.length > 0 && !path.channels.some((c: string) => subscribedSet.has(c))) return false;
       const q = curatedSearchQuery.toLowerCase();
       const matchesSearch = !q || path.name.toLowerCase().includes(q) || path.description.toLowerCase().includes(q)
         || (path.targetCompany && path.targetCompany.toLowerCase().includes(q))
@@ -299,7 +310,7 @@ export default function UnifiedLearningPathsGenZ() {
 
             {/* Header */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 md:mb-12">
-              <h1 className="text-4xl md:text-6xl font-bold mb-3 tracking-tight" style={{ letterSpacing: 'var(--tracking-tight)' }}>
+              <h1 className="text-4xl md:text-6xl font-bold mb-3 tracking-tight">
                 Learning
                 <br />
                 <span className="gradient-text">Paths</span>
@@ -322,7 +333,7 @@ export default function UnifiedLearningPathsGenZ() {
                   onClick={() => setView(id)}
                   className="flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold transition-all whitespace-nowrap text-sm"
                   style={view === id
-                    ? { background: 'var(--gradient-primary)', color: '#fff' }
+                    ? { background: 'var(--gradient-primary)', color: 'var(--btn-primary-text)' }
                     : { background: 'var(--surface-3)', color: 'var(--text-secondary)' }}
                 >
                   <Icon className="w-4 h-4" />
@@ -337,11 +348,11 @@ export default function UnifiedLearningPathsGenZ() {
               whileTap={{ scale: 0.98 }}
               onClick={() => openPathModal(null, 'create')}
               className="w-full p-5 md:p-7 rounded-2xl border-2 border-dashed mb-8 transition-all group flex items-center justify-between"
-              style={{ background: 'rgba(124,58,237,0.08)', borderColor: 'rgba(124,58,237,0.3)' }}
+              style={{ background: 'color-mix(in srgb, var(--color-accent-violet) 8%, transparent)', borderColor: 'color-mix(in srgb, var(--color-accent-violet) 30%, transparent)' }}
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--gradient-primary)' }}>
-                  <Plus className="w-6 h-6 text-white" strokeWidth={3} />
+                  <Plus className="w-6 h-6" style={{ color: 'var(--btn-primary-text)' }} strokeWidth={3} />
                 </div>
                 <div className="text-left">
                   <h3 className="text-lg font-bold">Create Custom Path</h3>
@@ -359,13 +370,13 @@ export default function UnifiedLearningPathsGenZ() {
                     <Zap className="w-6 h-6" style={{ color: 'var(--color-accent-violet)' }} />
                     My Active Paths
                   </h2>
-                  <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: 'rgba(124,58,237,0.15)', color: 'var(--color-accent-violet-light)' }}>
+                  <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: 'color-mix(in srgb, var(--color-accent-violet) 15%, transparent)', color: 'var(--color-accent-violet-light)' }}>
                     {activePaths.length} active
                   </span>
                 </div>
 
                 {/* Daily goal bar */}
-                <div className="mb-4 p-4 rounded-2xl border" style={{ background: 'rgba(124,58,237,0.06)', borderColor: 'rgba(124,58,237,0.2)' }}>
+                <div className="mb-4 p-4 rounded-2xl border" style={{ background: 'color-mix(in srgb, var(--color-accent-violet) 6%, transparent)', borderColor: 'color-mix(in srgb, var(--color-accent-violet) 20%, transparent)' }}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-semibold flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
                       <Target className="w-3.5 h-3.5" style={{ color: 'var(--color-accent-violet)' }} />
@@ -396,7 +407,7 @@ export default function UnifiedLearningPathsGenZ() {
                         animate={{ opacity: 1, x: 0 }}
                         whileHover={{ y: -4, boxShadow: 'var(--glow-violet)' }}
                         className="flex-shrink-0 w-72 rounded-2xl p-4 border relative overflow-hidden"
-                        style={{ background: 'var(--surface-2)', borderColor: 'rgba(124,58,237,0.35)' }}
+                        style={{ background: 'var(--surface-2)', borderColor: 'color-mix(in srgb, var(--color-accent-violet) 35%, transparent)' }}
                       >
                         {/* gradient accent border top */}
                         <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl" style={{ background: path.gradient || 'var(--gradient-primary)' }} />
@@ -404,7 +415,7 @@ export default function UnifiedLearningPathsGenZ() {
                         <div className="flex items-center justify-between mb-3 mt-1">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: path.gradient || 'var(--gradient-primary)' }}>
-                              <Icon className="w-5 h-5 text-white" strokeWidth={2.5} />
+                              <Icon className="w-5 h-5" style={{ color: 'var(--btn-primary-text)' }} strokeWidth={2.5} />
                             </div>
                             <div className="min-w-0">
                               <p className="font-bold text-sm truncate">{path.name}</p>
@@ -413,12 +424,12 @@ export default function UnifiedLearningPathsGenZ() {
                           </div>
                           <div className="relative flex-shrink-0">
                             <ProgressRing progress={pathProgress} size={40} stroke={3} color="var(--color-accent-violet)" />
-                            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">{pathProgress}%</span>
+                            <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">{pathProgress}%</span>
                           </div>
                         </div>
 
                         {/* Progress bar */}
-                        <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: 'var(--text-tertiary)' }}>
+                        <div className="mb-1 flex items-center justify-between text-xs" style={{ color: 'var(--text-tertiary)' }}>
                           <span>Progress</span><span>{pathProgress}%</span>
                         </div>
                         <div className="h-1.5 rounded-full overflow-hidden mb-3" style={{ background: 'var(--surface-4)' }}>
@@ -427,7 +438,7 @@ export default function UnifiedLearningPathsGenZ() {
 
                         {/* Chapter breadcrumb */}
                         {path.channels?.length > 0 && (
-                          <p className="text-[10px] mb-3 truncate" style={{ color: 'var(--text-tertiary)' }}>
+                          <p className="text-xs mb-3 truncate" style={{ color: 'var(--text-tertiary)' }}>
                             {path.channels.slice(0, 3).map((c: string) =>
                               Object.values(allChannelsConfig).find(ch => ch.id === c)?.name || c
                             ).join(' → ')}
@@ -473,7 +484,7 @@ export default function UnifiedLearningPathsGenZ() {
                         variants={fadeUp}
                         whileHover={{ y: -3, boxShadow: 'var(--shadow-md)' }}
                         className="p-5 rounded-2xl border transition-all"
-                        style={{ background: 'var(--surface-2)', borderColor: isActive ? 'rgba(124,58,237,0.4)' : 'var(--color-border)' }}
+                        style={{ background: 'var(--surface-2)', borderColor: isActive ? 'color-mix(in srgb, var(--color-accent-violet) 40%, transparent)' : 'var(--color-border)' }}
                       >
                         <div className="flex items-start justify-between mb-3">
                           <h3 className="text-base font-bold flex-1 min-w-0 truncate">{path.name}</h3>
@@ -494,7 +505,7 @@ export default function UnifiedLearningPathsGenZ() {
                           className="w-full py-2.5 rounded-xl font-semibold text-sm transition-all"
                           style={isActive
                             ? { background: 'var(--surface-3)', color: 'var(--text-secondary)' }
-                            : { background: 'var(--gradient-primary)', color: '#fff' }}
+                            : { background: 'var(--gradient-primary)', color: 'var(--btn-primary-text)' }}
                         >
                           {isActive ? 'Deactivate' : 'Activate Path'}
                         </button>
@@ -510,7 +521,7 @@ export default function UnifiedLearningPathsGenZ() {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-2xl font-bold flex items-center gap-2">
-                    <Star className="w-6 h-6" style={{ color: 'var(--accent-gold)' }} />
+                    <Star className="w-6 h-6" style={{ color: 'var(--color-brand-tertiary)' }} />
                     Curated Paths
                     {curatedSearchQuery && (
                       <span className="text-base font-normal" style={{ color: 'var(--text-tertiary)' }}>
@@ -584,12 +595,12 @@ export default function UnifiedLearningPathsGenZ() {
                         <div className="p-5">
                           <div className="flex items-start gap-3 mb-3">
                             <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: path.gradient }}>
-                              <Icon className="w-6 h-6 text-white" strokeWidth={2.5} />
+                              <Icon className="w-6 h-6" style={{ color: 'var(--btn-primary-text)' }} strokeWidth={2.5} />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                                 <h3 className="text-base font-bold line-clamp-1">{path.name}</h3>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${diffColor}22`, color: diffColor, border: `1px solid ${diffColor}44` }}>
+                                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: `${diffColor}22`, color: diffColor, border: `1px solid ${diffColor}44` }}>
                                   {path.difficulty}
                                 </span>
                               </div>
@@ -599,7 +610,7 @@ export default function UnifiedLearningPathsGenZ() {
 
                           {/* Chapter breadcrumb */}
                           {path.channels?.length > 0 && (
-                            <p className="text-[10px] mb-2 truncate" style={{ color: 'var(--text-tertiary)' }}>
+                            <p className="text-xs mb-2 truncate" style={{ color: 'var(--text-tertiary)' }}>
                               {path.channels.slice(0, 4).map((c: string) =>
                                 Object.values(allChannelsConfig).find(ch => ch.id === c)?.name || c
                               ).join(' → ')}
@@ -619,7 +630,7 @@ export default function UnifiedLearningPathsGenZ() {
                           )}
 
                           {/* Progress bar (always shown, 0% if not started) */}
-                          <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: 'var(--text-tertiary)' }}>
+                          <div className="mb-1 flex items-center justify-between text-xs" style={{ color: 'var(--text-tertiary)' }}>
                             <span>{isActive && pathProgress > 0 ? `${pathProgress}% complete` : isActive ? 'In progress' : 'Not started'}</span>
                             <span className="flex items-center gap-1"><Clock className="w-2.5 h-2.5" />{path.duration} est.</span>
                           </div>
@@ -685,7 +696,7 @@ export default function UnifiedLearningPathsGenZ() {
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-6"
-              style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
+              style={{ background: 'var(--surface-overlay, rgba(0,0,0,0.6))', backdropFilter: 'blur(8px)' }}
               onClick={closePathModal}
             >
               <motion.div
@@ -693,7 +704,7 @@ export default function UnifiedLearningPathsGenZ() {
                 transition={{ type: 'spring', damping: 30, stiffness: 300 }}
                 onClick={(e) => e.stopPropagation()}
                 className="w-full max-w-3xl h-[90vh] md:h-auto md:max-h-[85vh] flex flex-col overflow-hidden md:mb-0 mb-16"
-                style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', borderRadius: '24px 24px 0 0' }}
+                style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-3xl) var(--radius-3xl) 0 0' }}
               >
                 {/* Drag handle */}
                 <div className="flex justify-center pt-3 pb-1 md:hidden">
@@ -746,7 +757,7 @@ export default function UnifiedLearningPathsGenZ() {
                               const ch = Object.values(allChannelsConfig).find(ch => ch.id === c);
                               return (
                                 <div key={c} className="flex items-center gap-2.5 p-2 rounded-xl" style={{ background: 'var(--surface-3)' }}>
-                                  <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold" style={{ background: 'rgba(124,58,237,0.2)', color: 'var(--color-accent-violet-light)' }}>{i + 1}</div>
+                                  <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold" style={{ background: 'color-mix(in srgb, var(--color-accent-violet) 20%, transparent)', color: 'var(--color-accent-violet-light)' }}>{i + 1}</div>
                                   <span className="text-xs font-medium flex-1">{ch?.name || c}</span>
                                   <Check className="w-3.5 h-3.5 opacity-20 flex-shrink-0" style={{ color: 'var(--color-success)' }} />
                                 </div>
@@ -771,7 +782,7 @@ export default function UnifiedLearningPathsGenZ() {
                       {selectedPath.skills?.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 mt-2">
                           {selectedPath.skills.map((s: string, i: number) => (
-                            <span key={i} className="px-2 py-0.5 rounded-full text-xs" style={{ background: 'rgba(124,58,237,0.15)', color: 'var(--color-accent-violet-light)' }}>{s}</span>
+                            <span key={i} className="px-2 py-0.5 rounded-full text-xs" style={{ background: 'color-mix(in srgb, var(--color-accent-violet) 15%, transparent)', color: 'var(--color-accent-violet-light)' }}>{s}</span>
                           ))}
                         </div>
                       )}
@@ -831,7 +842,7 @@ export default function UnifiedLearningPathsGenZ() {
                               }}
                               disabled={isReadonly}
                               className="p-3 rounded-xl border text-left transition-all"
-                              style={{ background: isSelected ? 'rgba(124,58,237,0.12)' : 'var(--surface-3)', borderColor: isSelected ? 'var(--color-accent-violet)' : 'var(--color-border)' }}
+                              style={{ background: isSelected ? 'color-mix(in srgb, var(--color-accent-violet) 12%, transparent)' : 'var(--surface-3)', borderColor: isSelected ? 'var(--color-accent-violet)' : 'var(--color-border)' }}
                             >
                               <div className="flex items-center justify-between">
                                 <span className="font-medium text-sm">{channel.name}</span>
@@ -855,11 +866,11 @@ export default function UnifiedLearningPathsGenZ() {
                               }}
                               disabled={isReadonly}
                               className="p-3 rounded-xl border text-left transition-all"
-                              style={{ background: isSelected ? 'rgba(124,58,237,0.12)' : 'var(--surface-3)', borderColor: isSelected ? 'var(--color-accent-violet)' : 'var(--color-border)' }}
+                              style={{ background: isSelected ? 'color-mix(in srgb, var(--color-accent-violet) 12%, transparent)' : 'var(--surface-3)', borderColor: isSelected ? 'var(--color-accent-violet)' : 'var(--color-border)' }}
                             >
                               <div className="flex items-center justify-between gap-2">
                                 <div className="min-w-0">
-                                  <div className="text-[10px] mb-0.5" style={{ color: 'var(--text-tertiary)' }}>{cert.provider}</div>
+                                  <div className="text-xs mb-0.5" style={{ color: 'var(--text-tertiary)' }}>{cert.provider}</div>
                                   <div className="font-medium text-xs truncate">{cert.name}</div>
                                 </div>
                                 {isSelected && <Check className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--color-accent-violet)' }} />}

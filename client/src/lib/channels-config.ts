@@ -548,6 +548,126 @@ export const allChannelsConfig: ChannelConfig[] = [
     roles: ['backend', 'fullstack', 'devops', 'sre'],
     isCertification: true
   },
+  {
+    id: 'kcsa',
+    name: 'Kubernetes and Cloud Security Associate',
+    description: 'KCSA exam prep: security principles in cloud native and Kubernetes environments',
+    icon: 'shield',
+    color: 'text-blue-500',
+    category: 'certification',
+    roles: ['security', 'devops', 'sre'],
+    isCertification: true
+  },
+  {
+    id: 'ckne',
+    name: 'Certified Kubernetes Network Engineer',
+    description: 'CKNE exam prep: advanced Kubernetes networking, CNI plugins & service mesh',
+    icon: 'network',
+    color: 'text-blue-600',
+    category: 'certification',
+    roles: ['devops', 'sre', 'platform'],
+    isCertification: true
+  },
+  {
+    id: 'capa',
+    name: 'Certified Argo Project Associate',
+    description: 'CAPA exam prep: Argo ecosystem for GitOps, workflows & application delivery',
+    icon: 'git-branch',
+    color: 'text-orange-500',
+    category: 'certification',
+    roles: ['devops', 'sre', 'platform'],
+    isCertification: true
+  },
+  {
+    id: 'cgoa',
+    name: 'GitOps Certified Associate',
+    description: 'CGOA exam prep: GitOps principles and tools for continuous delivery',
+    icon: 'git-branch',
+    color: 'text-green-500',
+    category: 'certification',
+    roles: ['devops', 'sre', 'platform'],
+    isCertification: true
+  },
+  {
+    id: 'cca',
+    name: 'Cilium Certified Associate',
+    description: 'CCA exam prep: cloud-native networking, security & observability using Cilium',
+    icon: 'network',
+    color: 'text-yellow-500',
+    category: 'certification',
+    roles: ['devops', 'sre', 'security'],
+    isCertification: true
+  },
+  {
+    id: 'ica',
+    name: 'Istio Certified Associate',
+    description: 'ICA exam prep: service mesh management and traffic networking with Istio',
+    icon: 'network',
+    color: 'text-blue-400',
+    category: 'certification',
+    roles: ['devops', 'sre', 'backend'],
+    isCertification: true
+  },
+  {
+    id: 'kca',
+    name: 'Kyverno Certified Associate',
+    description: 'KCA exam prep: Kubernetes policy management using Kyverno',
+    icon: 'shield',
+    color: 'text-green-600',
+    category: 'certification',
+    roles: ['devops', 'sre', 'security'],
+    isCertification: true
+  },
+  {
+    id: 'otca',
+    name: 'OpenTelemetry Certified Associate',
+    description: 'OTCA exam prep: implementing and maintaining OpenTelemetry-based observability',
+    icon: 'activity',
+    color: 'text-purple-400',
+    category: 'certification',
+    roles: ['sre', 'devops', 'backend'],
+    isCertification: true
+  },
+  {
+    id: 'pca',
+    name: 'Prometheus Certified Associate',
+    description: 'PCA exam prep: open-source monitoring and observability using Prometheus',
+    icon: 'activity',
+    color: 'text-orange-400',
+    category: 'certification',
+    roles: ['sre', 'devops', 'platform'],
+    isCertification: true
+  },
+  {
+    id: 'cba',
+    name: 'Certified Backstage Associate',
+    description: 'CBA exam prep: Backstage platform for building developer portals',
+    icon: 'layers',
+    color: 'text-teal-500',
+    category: 'certification',
+    roles: ['platform', 'devops'],
+    isCertification: true
+  },
+  {
+    id: 'cnpa',
+    name: 'Cloud Native Platform Engineering Associate',
+    description: 'CNPA exam prep: modern platform engineering and developer experience',
+    icon: 'layers',
+    color: 'text-cyan-500',
+    category: 'certification',
+    roles: ['platform', 'devops', 'sre'],
+    isCertification: true
+  },
+  {
+    id: 'cnf-certification',
+    name: 'Cloud Native Network Functions Certification',
+    description: 'CNF exam prep: cloud native network functions for telecommunications',
+    icon: 'network',
+    color: 'text-indigo-500',
+    category: 'certification',
+    roles: ['devops', 'sre', 'platform'],
+    isCertification: true
+  },
 
   // ==========================================
   // HashiCorp Certifications

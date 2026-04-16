@@ -8,7 +8,7 @@ import { X, Check, Search, Settings2 } from 'lucide-react';
 import { allChannelsConfig, categories } from '../lib/channels-config';
 import { certificationsConfig } from '../lib/certifications-config';
 import { useUserPreferences } from '../context/UserPreferencesContext';
-import { AppLayout } from './layout/AppLayout';
+import { AppLayout } from '../components/layout/AppLayout';
 
 const CERT_PROVIDERS = ['Amazon Web Services', 'Kubernetes', 'HashiCorp', 'Google Cloud', 'Microsoft Azure'];
 

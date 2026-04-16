@@ -31,17 +31,18 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { id: 'home',     label: 'Home',     icon: Home,       path: '/' },
-  { id: 'paths',    label: 'Paths',    icon: Brain,      path: '/learning-paths' },
-  { id: 'practice', label: 'Practice', icon: Mic,        path: '/voice-interview', highlight: true },
+  { id: 'home',     label: 'Home',     icon: Home,          path: '/' },
   { id: 'learn',    label: 'Learn',    icon: GraduationCap, path: '/channels' },
-  { id: 'progress', label: 'Progress', icon: BarChart3,  path: '/stats' },
+  { id: 'practice', label: 'Practice', icon: Mic,           path: '/voice-interview', highlight: true },
+  { id: 'progress', label: 'Progress', icon: BarChart3,     path: '/stats' },
+  { id: 'profile',  label: 'Profile',  icon: User,          path: '/profile' },
 ];
 
 const learnSubNav: NavItem[] = [
-  { id: 'channels',       label: 'Channels',       icon: BookOpen, path: '/channels',       description: 'Browse by topic',       shortcut: 'C' },
-  { id: 'certifications', label: 'Certifications', icon: Award,    path: '/certifications', description: 'Exam prep',             shortcut: 'E' },
-  { id: 'my-path',        label: 'My Path',        icon: Brain,    path: '/my-path',        description: 'Your learning journey', badge: 'NEW' },
+  { id: 'channels',       label: 'Channels',        icon: BookOpen,      path: '/channels',        description: 'Browse by topic',       shortcut: 'C' },
+  { id: 'certifications', label: 'Certifications',  icon: Award,         path: '/certifications',  description: 'Exam prep',             shortcut: 'E' },
+  { id: 'paths',          label: 'Learning Paths',  icon: Brain,         path: '/learning-paths',  description: 'Structured curricula',  badge: 'NEW' },
+  { id: 'my-path',        label: 'My Path',         icon: Target,        path: '/my-path',         description: 'Your learning journey' },
 ];
 
 const practiceSubNav: NavItem[] = [
@@ -56,16 +57,15 @@ const progressSubNav: NavItem[] = [
   { id: 'stats',     label: 'Statistics', icon: BarChart3, path: '/stats',     description: 'Your progress',   shortcut: 'S' },
   { id: 'badges',    label: 'Badges',     icon: Trophy,    path: '/badges',    description: 'Achievements' },
   { id: 'bookmarks', label: 'Bookmarks',  icon: Bookmark,  path: '/bookmarks', description: 'Saved questions' },
-  { id: 'profile',   label: 'Profile',    icon: User,      path: '/profile',   description: 'Settings & credits' },
   { id: 'about',     label: 'About',      icon: Info,      path: '/about',     description: 'About Open-Interview' },
 ];
 
 function getActiveSection(location: string): string {
   if (location === '/') return 'home';
-  if (location === '/learning-paths' || location.startsWith('/learning-path/')) return 'paths';
-  if (location === '/channels' || location.startsWith('/channel/') || location === '/certifications' || location.startsWith('/certification/') || location === '/my-path') return 'learn';
+  if (location === '/channels' || location.startsWith('/channel/') || location === '/certifications' || location.startsWith('/certification/') || location === '/my-path' || location === '/learning-paths' || location.startsWith('/learning-path/')) return 'learn';
   if (location.startsWith('/voice') || location.startsWith('/test') || location.startsWith('/coding') || location === '/review' || location === '/training' || location === '/flashcards') return 'practice';
-  if (location === '/stats' || location === '/badges' || location === '/bookmarks' || location === '/profile' || location === '/about') return 'progress';
+  if (location === '/stats' || location === '/badges' || location === '/bookmarks' || location === '/about') return 'progress';
+  if (location === '/profile') return 'profile';
   return 'home';
 }
 
@@ -78,10 +78,7 @@ export function MobileBottomNav() {
   const activeSection = getActiveSection(location);
 
   const handleNavClick = (item: NavItem) => {
-    if (item.id === 'paths') {
-      setShowMenu(null);
-      setLocation(item.path);
-    } else if (['practice', 'learn', 'progress'].includes(item.id)) {
+    if (['practice', 'learn', 'progress'].includes(item.id)) {
       setShowMenu(showMenu === item.id ? null : item.id);
     } else {
       setShowMenu(null);
