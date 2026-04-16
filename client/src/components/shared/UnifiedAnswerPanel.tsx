@@ -145,7 +145,7 @@ export function UnifiedAnswerPanel({
 
               {expandedSections.has('main') && (
                 <div className="px-4 pb-4">
-                  <div className="prose prose-invert prose-sm max-w-none">
+                  <div className="prose prose-sm max-w-none">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
@@ -171,7 +171,7 @@ export function UnifiedAnswerPanel({
                                   style={vscDarkPlus}
                                   language={match[1]}
                                   PreTag="div"
-                                  className="rounded-xl !bg-black/40 !my-0"
+                                  className="rounded-xl !bg-[var(--surface-0)] !my-0"
                                   {...props}
                                 >
                                   {codeString}
@@ -217,7 +217,7 @@ export function UnifiedAnswerPanel({
 
                 {expandedSections.has('explanation') && (
                   <div className="px-4 pb-4">
-                    <div className="prose prose-invert prose-sm max-w-none">
+                    <div className="prose prose-sm max-w-none">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {preprocessMarkdown(question.explanation)}
                       </ReactMarkdown>

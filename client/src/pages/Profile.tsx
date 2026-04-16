@@ -2,7 +2,7 @@
  * Profile Page — Settings & Preferences
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
@@ -10,10 +10,11 @@ import { SEOHead } from '../components/SEOHead';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { useCredits } from '../context/CreditsContext';
 import { useAchievements } from '../hooks/use-achievements';
+import { useGlobalStats } from '../hooks/use-progress';
 import { getAllQuestions, channels, getQuestions } from '../lib/data';
 import {
   User, Settings, Zap, Trophy, Target, Sparkles,
-  Volume2, Shuffle, Eye, ChevronRight, Edit2, Check, X, Download, BookOpen, Code2, GraduationCap
+  Volume2, Shuffle, Eye, ChevronRight, Edit2, Check, X, Download, BookOpen, Code2, GraduationCap, Flame, Calendar
 } from 'lucide-react';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -63,10 +64,33 @@ export default function ProfilePage() {
   const { preferences, toggleShuffleQuestions, togglePrioritizeUnvisited } = useUserPreferences();
   const { balance } = useCredits();
   const { unlocked: unlockedBadges } = useAchievements();
+  const { stats } = useGlobalStats();
   const [totalCompleted, setTotalCompleted] = useState(0);
   const [editingName, setEditingName] = useState(false);
   const [displayName, setDisplayName] = useState(() => localStorage.getItem('user-display-name') || 'Learner');
   const [nameInput, setNameInput] = useState(displayName);
+
+  const streak = useMemo(() => {
+    let s = 0;
+    for (let i = 0; i < 365; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      if (stats.find(x => x.date === d.toISOString().split('T')[0])) s++;
+      else break;
+    }
+    return s;
+  }, [stats]);
+
+  const memberSince = useMemo(() => {
+    try {
+      const stored = localStorage.getItem('user-preferences');
+      if (stored) {
+        const prefs = JSON.parse(stored);
+        if (prefs.createdAt) return new Date(prefs.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      }
+    } catch { /* ignore */ }
+    return 'Recently';
+  }, []);
 
   useEffect(() => {
     const allQuestions = getAllQuestions();
@@ -128,13 +152,18 @@ export default function ProfilePage() {
   return (
     <>
       <SEOHead
-        title="Profile - Your Settings ⚙️"
+        title="Profile - Your Settings"
         description="Customize your learning experience"
         canonical="https://open-interview.github.io/profile"
       />
       <AppLayout>
-        <div className="min-h-screen pb-24 lg:pb-8" style={{ background: 'var(--surface-0)', color: 'var(--text-primary)' }}>
+        <div className="min-h-screen pb-24 lg:pb-8 bg-background text-foreground">
           <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+
+            {/* ── Page Header ─────────────────────────────────────────────── */}
+            <div className="px-4 py-6">
+              <h1 className="text-2xl font-bold">Profile</h1>
+            </div>
 
             {/* ── Profile Card ───────────────────────────────────────────── */}
             <motion.div {...fadeUp(0)} className="glass-card rounded-[var(--radius-2xl)] p-6">

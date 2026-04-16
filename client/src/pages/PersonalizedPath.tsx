@@ -67,7 +67,7 @@ export default function PersonalizedPath() {
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
                   <User className="w-8 h-8 text-primary" />
                 </div>
-                <h1 className="text-3xl font-black text-foreground mb-2">
+                <h1 className="text-3xl font-bold text-foreground mb-2">
                   Let's Personalize Your Journey
                 </h1>
                 <p className="text-muted-foreground">
@@ -170,7 +170,7 @@ export default function PersonalizedPath() {
                   <Briefcase className="w-7 h-7 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-foreground mb-1">
+                  <h2 className="text-2xl font-bold text-foreground mb-1">
                     {profile.jobTitle.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                   </h2>
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">

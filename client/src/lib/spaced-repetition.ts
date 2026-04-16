@@ -340,6 +340,12 @@ export function isInSRS(questionId: string): boolean {
   return getAllCards().has(questionId);
 }
 
+export function removeFromSRS(questionId: string): void {
+  const cards = getAllCards();
+  cards.delete(questionId);
+  saveAllCards(cards);
+}
+
 /**
  * Get mastery level label
  */

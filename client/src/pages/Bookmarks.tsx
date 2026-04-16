@@ -15,10 +15,10 @@ import { ProgressStorage } from '../services/storage.service';
 import { STORAGE_KEYS } from '../lib/constants';
 import type { Question } from '../types';
 import {
-  Bookmark, Trash2, Play, ChevronRight, Filter,
+  Bookmark, Trash2, Play, Filter,
   Zap, Target, Flame, Building2, CheckCircle,
   Cpu, Terminal, Layout, Database, Activity, GitBranch, Server,
-  Layers, Code, X
+  Layers, X, Search, ArrowUpDown
 } from 'lucide-react';
 
 const channelIcons: Record<string, React.ReactNode> = {
@@ -34,14 +34,25 @@ const channelIcons: Record<string, React.ReactNode> = {
 
 interface BookmarkedQuestion extends Question {
   channelId: string;
+  savedAt: number;
 }
+
+const DIFFICULTY_CONFIG = {
+  beginner:     { icon: Zap,    color: 'text-green-400',  bg: 'bg-green-500/10',  border: 'border-green-500/30',  label: 'Easy' },
+  intermediate: { icon: Target, color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', label: 'Medium' },
+  advanced:     { icon: Flame,  color: 'text-red-400',    bg: 'bg-red-500/10',    border: 'border-red-500/30',    label: 'Hard' },
+} as const;
+
+type SortKey = 'newest' | 'oldest' | 'topic';
 
 export default function Bookmarks() {
   const [, setLocation] = useLocation();
   const { getSubscribedChannels } = useUserPreferences();
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState<BookmarkedQuestion[]>([]);
+  const [search, setSearch] = useState('');
   const [filterChannel, setFilterChannel] = useState<string>('all');
   const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
+  const [sort, setSort] = useState<SortKey>('newest');
 
   // Load all bookmarked questions
   useEffect(() => {
@@ -49,71 +60,61 @@ export default function Bookmarks() {
     const allQuestions = getAllQuestions();
     const bookmarked: BookmarkedQuestion[] = [];
 
-    // Get all channel IDs that might have bookmarks
     const channelIds = new Set<string>();
     subscribedChannels.forEach(c => channelIds.add(c.id));
-    
-    // Also check localStorage for any marked- keys
+
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key?.startsWith(STORAGE_KEYS.MARKED_PREFIX)) {
-        const channelId = key.replace(STORAGE_KEYS.MARKED_PREFIX, '');
-        channelIds.add(channelId);
+        channelIds.add(key.replace(STORAGE_KEYS.MARKED_PREFIX, ''));
       }
     }
 
-    // Get bookmarked questions from each channel
     channelIds.forEach(channelId => {
       const markedIds = ProgressStorage.getMarked(channelId);
       markedIds.forEach(questionId => {
         const question = allQuestions.find(q => q.id === questionId);
         if (question) {
-          bookmarked.push({ ...question, channelId });
+          bookmarked.push({ ...question, channelId, savedAt: Date.now() });
         }
       });
     });
 
     setBookmarkedQuestions(bookmarked);
-  }, []); // Run once on mount - bookmarks are loaded from localStorage
+  }, []);
 
-  // Get unique channels from bookmarked questions
   const channelsWithBookmarks = useMemo(() => {
-    const channels = new Set(bookmarkedQuestions.map(q => q.channelId));
-    return Array.from(channels);
+    return Array.from(new Set(bookmarkedQuestions.map(q => q.channelId)));
   }, [bookmarkedQuestions]);
 
-  // Filter questions
   const filteredQuestions = useMemo(() => {
-    return bookmarkedQuestions.filter(q => {
+    let result = bookmarkedQuestions.filter(q => {
       if (filterChannel !== 'all' && q.channelId !== filterChannel) return false;
       if (filterDifficulty !== 'all' && q.difficulty !== filterDifficulty) return false;
+      if (search.trim()) {
+        const s = search.toLowerCase();
+        if (!q.question.toLowerCase().includes(s) && !q.channelId.includes(s)) return false;
+      }
       return true;
     });
-  }, [bookmarkedQuestions, filterChannel, filterDifficulty]);
 
-  // Remove bookmark
+    if (sort === 'newest') result = [...result].reverse();
+    else if (sort === 'oldest') { /* already in insertion order */ }
+    else if (sort === 'topic') result = [...result].sort((a, b) => a.channelId.localeCompare(b.channelId));
+
+    return result;
+  }, [bookmarkedQuestions, filterChannel, filterDifficulty, search, sort]);
+
   const removeBookmark = (question: BookmarkedQuestion) => {
     ProgressStorage.toggleMarked(question.channelId, question.id);
     setBookmarkedQuestions(prev => prev.filter(q => q.id !== question.id));
   };
 
-  // Navigate to question using question ID in URL
   const goToQuestion = (question: BookmarkedQuestion) => {
     setLocation(`/channel/${question.channelId}/${question.id}`);
   };
 
-  const getDifficultyConfig = (difficulty: string) => {
-    switch (difficulty) {
-      case 'beginner':
-        return { icon: Zap, color: 'text-green-500', bg: 'bg-green-500/10', label: 'Easy' };
-      case 'intermediate':
-        return { icon: Target, color: 'text-yellow-500', bg: 'bg-yellow-500/10', label: 'Medium' };
-      case 'advanced':
-        return { icon: Flame, color: 'text-red-500', bg: 'bg-red-500/10', label: 'Hard' };
-      default:
-        return { icon: Target, color: 'text-muted-foreground', bg: 'bg-muted', label: 'Unknown' };
-    }
-  };
+  const hasFilters = filterChannel !== 'all' || filterDifficulty !== 'all' || search.trim();
 
   return (
     <>
@@ -121,92 +122,105 @@ export default function Bookmarks() {
         title="Bookmarked Questions - Code Reels"
         description="View and manage your bookmarked interview questions"
       />
-      
       <AppLayout>
-        <div className="max-w-4xl mx-auto px-3 sm:px-0 pb-20 sm:pb-8">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 sm:p-3 rounded-xl bg-primary/10">
-                <Bookmark className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-lg sm:text-2xl font-bold">Bookmarks</h1>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  {bookmarkedQuestions.length} saved question{bookmarkedQuestions.length !== 1 ? 's' : ''}
-                </p>
-              </div>
-            </div>
+        <div className="min-h-screen bg-background pb-24 lg:pb-8">
+          <div className="px-4 pt-6 pb-4 lg:px-8">
+            <h1 className="text-2xl font-bold text-foreground">Bookmarks</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {bookmarkedQuestions.length} saved question{bookmarkedQuestions.length !== 1 ? 's' : ''}
+            </p>
           </div>
+          <div className="max-w-3xl mx-auto px-4">
 
-          {/* Filters */}
+          {/* Filter Bar */}
           {bookmarkedQuestions.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
-              {/* Channel filter */}
-              <select
-                value={filterChannel}
-                onChange={(e) => setFilterChannel(e.target.value)}
-                className="px-3 py-1.5 sm:py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-              >
-                <option value="all">All Channels</option>
-                {channelsWithBookmarks.map(channel => (
-                  <option key={channel} value={channel}>
-                    {channel.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+              className="flex flex-wrap gap-2 mb-5">
+              {/* Search */}
+              <div className="relative flex-1 min-w-[180px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--text-tertiary)' }} />
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search bookmarks…"
+                  className="w-full pl-8 pr-3 py-2 text-sm rounded-lg outline-none focus:ring-2"
+                  style={{
+                    background: 'var(--surface-2)',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--text-primary)',
+                    // @ts-ignore
+                    '--tw-ring-color': 'rgba(99,102,241,0.4)',
+                  }}
+                />
+              </div>
+
+              {/* Topic filter */}
+              <select value={filterChannel} onChange={e => setFilterChannel(e.target.value)}
+                className="px-3 py-2 text-sm rounded-lg outline-none"
+                style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}>
+                <option value="all">All Topics</option>
+                {channelsWithBookmarks.map(ch => (
+                  <option key={ch} value={ch}>
+                    {ch.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                   </option>
                 ))}
               </select>
 
               {/* Difficulty filter */}
-              <select
-                value={filterDifficulty}
-                onChange={(e) => setFilterDifficulty(e.target.value)}
-                className="px-3 py-1.5 sm:py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-              >
-                <option value="all">All Difficulties</option>
+              <select value={filterDifficulty} onChange={e => setFilterDifficulty(e.target.value)}
+                className="px-3 py-2 text-sm rounded-lg outline-none"
+                style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}>
+                <option value="all">All Levels</option>
                 <option value="beginner">Easy</option>
                 <option value="intermediate">Medium</option>
                 <option value="advanced">Hard</option>
               </select>
 
-              {/* Clear filters */}
-              {(filterChannel !== 'all' || filterDifficulty !== 'all') && (
-                <button
-                  onClick={() => { setFilterChannel('all'); setFilterDifficulty('all'); }}
-                  className="px-3 py-1.5 sm:py-2 text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
-                >
-                  <X className="w-3 h-3" /> Clear
+              {/* Sort */}
+              <select value={sort} onChange={e => setSort(e.target.value as SortKey)}
+                className="px-3 py-2 text-sm rounded-lg outline-none"
+                style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}>
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+                <option value="topic">By Topic</option>
+              </select>
+
+              {/* Clear */}
+              {hasFilters && (
+                <button onClick={() => { setSearch(''); setFilterChannel('all'); setFilterDifficulty('all'); }}
+                  className="px-3 py-2 text-sm flex items-center gap-1 rounded-lg transition-colors hover:bg-white/5"
+                  style={{ color: 'var(--text-tertiary)' }}>
+                  <X className="w-3.5 h-3.5" /> Clear
                 </button>
               )}
-            </div>
+            </motion.div>
           )}
 
           {/* Empty state */}
           {bookmarkedQuestions.length === 0 ? (
             <EmptyState
-              icon={<Bookmark className="w-8 h-8 sm:w-10 sm:h-10" />}
+              icon={<Bookmark className="w-10 h-10" />}
               title="No bookmarks yet"
               description="Tap the bookmark icon on any question to save it for later review"
-              action={
-                <Button 
-                  variant="primary" 
-                  onClick={() => setLocation('/channels')}
-                >
-                  Browse Questions
-                </Button>
-              }
+              action={<Button variant="primary" onClick={() => setLocation('/channels')}>Browse Questions</Button>}
               size="lg"
               animated={true}
             />
           ) : filteredQuestions.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">No questions match your filters</p>
+            <div className="text-center py-16">
+              <Filter className="w-8 h-8 mx-auto mb-3 opacity-30" />
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No questions match your filters</p>
+              <button onClick={() => { setSearch(''); setFilterChannel('all'); setFilterDifficulty('all'); }}
+                className="mt-3 text-sm underline" style={{ color: 'var(--color-accent-violet-light)' }}>
+                Clear filters
+              </button>
             </div>
           ) : (
-            /* Question list */
-            <div className="space-y-2 sm:space-y-3">
+            <div className="space-y-3">
               {filteredQuestions.map((question, index) => {
-                const diffConfig = getDifficultyConfig(question.difficulty);
-                const DiffIcon = diffConfig.icon;
+                const diff = DIFFICULTY_CONFIG[question.difficulty as keyof typeof DIFFICULTY_CONFIG]
+                  || { icon: Target, color: 'text-muted-foreground', bg: 'bg-muted', border: 'border-muted', label: 'Unknown' };
+                const DiffIcon = diff.icon;
                 const isCompleted = ProgressStorage.getCompleted(question.channelId).includes(question.id);
 
                 return (
@@ -216,11 +230,13 @@ export default function Bookmarks() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.03 }}
                     onClick={() => goToQuestion(question)}
-                    className="bg-card border border-border rounded-xl sm:rounded-2xl p-3 sm:p-4 hover:border-primary/30 transition-colors cursor-pointer"
+                    className="rounded-[var(--radius-xl)] p-4 cursor-pointer transition-all hover:border-violet-500/30"
+                    style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)' }}
                   >
                     <div className="flex items-start gap-3">
                       {/* Channel icon */}
-                      <div className="p-2 rounded-lg bg-primary/10 text-primary flex-shrink-0 hidden sm:flex">
+                      <div className="p-2 rounded-lg flex-shrink-0 hidden sm:flex"
+                        style={{ background: 'rgba(99,102,241,0.12)', color: 'var(--color-accent-violet-light)' }}>
                         {channelIcons[question.channelId] || channelIcons.default}
                       </div>
 
@@ -228,15 +244,15 @@ export default function Bookmarks() {
                       <div className="flex-1 min-w-0">
                         {/* Meta row */}
                         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                          <span className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider">
+                          <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>
                             {question.channelId.split('-').join(' ')}
                           </span>
-                          <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] sm:text-xs ${diffConfig.bg} ${diffConfig.color}`}>
+                          <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs border ${diff.bg} ${diff.color} ${diff.border}`}>
                             <DiffIcon className="w-3 h-3" />
-                            {diffConfig.label}
+                            {diff.label}
                           </span>
                           {isCompleted && (
-                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] sm:text-xs bg-green-500/10 text-green-500">
+                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-green-500/10 text-green-400 border border-green-500/30">
                               <CheckCircle className="w-3 h-3" />
                               Done
                             </span>
@@ -244,44 +260,38 @@ export default function Bookmarks() {
                         </div>
 
                         {/* Question text */}
-                        <h3 className="font-medium text-foreground text-sm sm:text-base line-clamp-2 mb-2">
+                        <h3 className="font-medium text-sm sm:text-base line-clamp-2 mb-2" style={{ color: 'var(--text-primary)' }}>
                           {question.question}
                         </h3>
 
                         {/* Companies */}
                         {question.companies && question.companies.length > 0 && (
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <Building2 className="w-3 h-3 text-muted-foreground" />
-                            <div className="flex flex-wrap gap-1">
-                              {question.companies.slice(0, 3).map((company, i) => (
-                                <span key={i} className="text-[10px] text-muted-foreground">
-                                  {company}{i < Math.min(question.companies!.length, 3) - 1 ? ',' : ''}
-                                </span>
-                              ))}
-                              {question.companies.length > 3 && (
-                                <span className="text-[10px] text-muted-foreground">
-                                  +{question.companies.length - 3}
-                                </span>
-                              )}
-                            </div>
+                          <div className="flex items-center gap-1.5">
+                            <Building2 className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }} />
+                            <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                              {question.companies.slice(0, 3).join(', ')}
+                              {question.companies.length > 3 && ` +${question.companies.length - 3}`}
+                            </span>
                           </div>
                         )}
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                      <div className="flex items-center gap-1 flex-shrink-0">
                         <button
-                          onClick={(e) => { e.stopPropagation(); removeBookmark(question); }}
-                          className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                          onClick={e => { e.stopPropagation(); removeBookmark(question); }}
+                          className="p-2 rounded-lg transition-colors hover:bg-red-500/10 hover:text-red-400"
+                          style={{ color: 'var(--text-tertiary)' }}
                           title="Remove bookmark"
-                        >
+                          aria-label="Remove bookmark">
                           <Trash2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); goToQuestion(question); }}
-                          className="p-2 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition-colors"
-                          title="Go to question"
-                        >
+                          onClick={e => { e.stopPropagation(); goToQuestion(question); }}
+                          className="p-2 rounded-lg transition-colors"
+                          style={{ background: 'rgba(99,102,241,0.15)', color: 'var(--color-accent-violet-light)' }}
+                          title="Review question"
+                          aria-label="Review question">
                           <Play className="w-4 h-4" fill="currentColor" />
                         </button>
                       </div>
@@ -291,6 +301,7 @@ export default function Bookmarks() {
               })}
             </div>
           )}
+        </div>
         </div>
       </AppLayout>
     </>

@@ -49,7 +49,7 @@ function ProgressRing({ progress, size = 44, stroke = 3 }: { progress: number; s
   const offset = circ - (progress / 100) * circ;
   return (
     <svg width={size} height={size} className="rotate-[-90deg]">
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--surface-4)" strokeWidth={stroke} />
       <circle
         cx={size/2} cy={size/2} r={r} fill="none"
         stroke="var(--color-accent-violet)" strokeWidth={stroke}
@@ -222,25 +222,17 @@ export default function AllChannelsGenZ() {
   return (
     <>
       <SEOHead
-        title="Browse Channels - Level Up Your Skills 🚀"
+        title="Browse Channels - Level Up Your Skills"
         description="Explore all topics and start learning. Frontend, backend, DevOps, and more."
         canonical="https://open-interview.github.io/channels"
       />
       <AppLayout>
-        <div className="min-h-screen pb-24" style={{ background: 'var(--surface-0)', color: 'var(--text-primary)' }}>
-          <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
-
-            {/* Header */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-              <h1 className="text-4xl md:text-6xl font-bold mb-2 tracking-tight">
-                Browse
-                <br />
-                <span className="gradient-text">Channels</span>
-              </h1>
-              <p className="text-base" style={{ color: 'var(--text-secondary)' }}>
-                {channels.length} channels to master
-              </p>
-            </motion.div>
+        <div className="min-h-screen bg-background pb-24">
+          <div className="px-4 pt-6 pb-4 lg:px-8">
+            <h1 className="text-2xl font-bold text-foreground">Channels</h1>
+            <p className="text-sm text-muted-foreground mt-1">{channels.length} channels to master</p>
+          </div>
+          <div className="max-w-7xl mx-auto px-4 md:px-6 pb-8 md:pb-12">
 
             {/* Filter Bar */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-6 space-y-3">
@@ -305,17 +297,17 @@ export default function AllChannelsGenZ() {
             {/* Grid — grouped by category when no filter active */}
             {(() => {
               const categoryMeta: Record<string, { label: string; icon: any; color: string }> = {
-                engineering: { label: '🏗️ Engineering', icon: Code, color: 'var(--color-accent-violet)' },
-                cloud:       { label: '☁️ Cloud', icon: Cloud, color: 'var(--color-accent-cyan)' },
-                security:    { label: '🔒 Security', icon: Shield, color: 'var(--color-error)' },
-                ai:          { label: '🤖 AI / ML', icon: Brain, color: 'var(--color-accent-pink)' },
-                testing:     { label: '🧪 Testing', icon: CheckCircle, color: 'var(--color-success)' },
-                soft:        { label: '👥 Soft Skills', icon: Users, color: 'var(--accent-gold)' },
-                data:        { label: '📊 Data', icon: Database, color: 'var(--color-accent-cyan)' },
-                mobile:      { label: '📱 Mobile', icon: Smartphone, color: 'var(--color-accent-violet)' },
-                fundamentals:{ label: '📚 Fundamentals', icon: Layers, color: 'var(--text-secondary)' },
-                management:  { label: '🗂️ Management', icon: Users, color: 'var(--accent-gold)' },
-                certification:{ label: '🎓 Certification', icon: Award, color: 'var(--accent-gold)' },
+                engineering: { label: 'Engineering', icon: Code, color: 'var(--color-accent-violet)' },
+                cloud:       { label: 'Cloud', icon: Cloud, color: 'var(--color-accent-cyan)' },
+                security:    { label: 'Security', icon: Shield, color: 'var(--color-error)' },
+                ai:          { label: 'AI / ML', icon: Brain, color: 'var(--color-accent-pink)' },
+                testing:     { label: 'Testing', icon: CheckCircle, color: 'var(--color-success)' },
+                soft:        { label: 'Soft Skills', icon: Users, color: 'var(--accent-gold)' },
+                data:        { label: 'Data', icon: Database, color: 'var(--color-accent-cyan)' },
+                mobile:      { label: 'Mobile', icon: Smartphone, color: 'var(--color-accent-violet)' },
+                fundamentals:{ label: 'Fundamentals', icon: Layers, color: 'var(--text-secondary)' },
+                management:  { label: 'Management', icon: Users, color: 'var(--accent-gold)' },
+                certification:{ label: 'Certification', icon: Award, color: 'var(--accent-gold)' },
               };
 
               // When a category is selected or search active, show flat grid
@@ -374,7 +366,7 @@ export default function AllChannelsGenZ() {
             {/* Empty state */}
             {channels.length === 0 && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
-                <div className="text-5xl mb-4">🔍</div>
+                <Search className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--text-tertiary)' }} />
                 <h3 className="text-xl font-bold mb-2">No channels found</h3>
                 <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Try a different search or category</p>
               </motion.div>

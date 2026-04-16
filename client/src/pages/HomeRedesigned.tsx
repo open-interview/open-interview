@@ -5,7 +5,7 @@
  */
 
 import { AppLayout } from '../components/layout/AppLayout';
-import { GenZHomePage } from '../components/home/GenZHomePage';
+import { HomePage } from '../components/home/HomePage';
 import { SEOHead } from '../components/SEOHead';
 
 export default function HomeRedesigned() {
@@ -18,8 +18,8 @@ export default function HomeRedesigned() {
       />
       
       {/* iPhone 13 FIX: Use fullWidth to prevent double padding */}
-      <AppLayout fullWidth>
-        <GenZHomePage />
+      <AppLayout fullWidth title="Code Reels">
+        <HomePage />
       </AppLayout>
     </>
   );

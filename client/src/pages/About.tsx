@@ -344,7 +344,7 @@ export default function About() {
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: 0.2 }}
                 >
-                  <h1 className="text-4xl sm:text-6xl font-black mb-4">
+                  <h1 className="text-4xl sm:text-6xl font-bold mb-4">
                     <span className="text-primary">&gt;</span> <GlitchText>Code_Reels</GlitchText>
                   </h1>
                 </motion.div>
@@ -368,7 +368,7 @@ export default function About() {
                       className="p-4 bg-card/50 backdrop-blur border border-border/50 rounded-xl"
                     >
                       <div className="text-primary mb-2">{stat.icon}</div>
-                      <div className="text-2xl sm:text-3xl font-black">
+                      <div className="text-2xl sm:text-3xl font-bold">
                         <AnimatedCounter value={stat.value} />
                         {stat.suffix}
                       </div>
@@ -469,7 +469,7 @@ export default function About() {
                     {/* Mission Statement */}
                     <div className="relative p-6 sm:p-8 border border-border rounded-2xl bg-gradient-to-br from-card to-card/50 overflow-hidden">
                       <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
-                      <h2 className="text-2xl sm:text-3xl font-black mb-4 flex items-center gap-3">
+                      <h2 className="text-2xl sm:text-3xl font-bold mb-4 flex items-center gap-3">
                         <Rocket className="w-8 h-8 text-primary" />
                         Our Mission
                       </h2>
@@ -730,7 +730,7 @@ git push origin feature/awesome-feature`} />
                     
                     {/* Profile Info - with space for avatar overlap */}
                     <div className="px-4 sm:px-6 pb-6 pt-16 sm:pt-20 text-center">
-                      <h2 className="text-xl sm:text-2xl font-black mb-1">Satishkumar Dhule</h2>
+                      <h2 className="text-xl sm:text-2xl font-bold mb-1">Satishkumar Dhule</h2>
                       <p className="text-muted-foreground flex items-center justify-center gap-2 text-sm mb-4">
                         <Briefcase className="w-4 h-4 shrink-0" /> Software Engineer
                       </p>

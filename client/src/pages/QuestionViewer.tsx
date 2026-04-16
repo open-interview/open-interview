@@ -14,6 +14,9 @@ import { useCredits } from '../context/CreditsContext';
 import { useAchievementContext } from '../context/AchievementContext';
 import { useTheme } from '../context/ThemeContext';
 import { SEOHead } from '../components/SEOHead';
+import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
+import { MobileBottomNav } from '../components/layout/UnifiedNav';
+import { MobileHeader } from '../components/layout/MobileHeader';
 import { UnifiedSearch } from '../components/UnifiedSearch';
 import { VoiceReminder } from '../components/VoiceReminder';
 import { AnswerPanel } from '../components/question/AnswerPanel';
@@ -30,9 +33,10 @@ import {
   type ReviewCard, type ConfidenceRating
 } from '../lib/spaced-repetition';
 import {
-  ChevronLeft, ChevronRight, Search, X, Bookmark, Share2,
-  Filter, Brain, RotateCcw, Check, Zap, Eye
+  ChevronLeft, ChevronRight, ChevronDown, Search, X, Bookmark, Share2,
+  Filter, Brain, RotateCcw, Check, Zap, Eye, BookOpen
 } from 'lucide-react';
+import { ProgressRing } from '../components/ProgressRing';
 
 export default function QuestionViewerGenZ() {
   const [location, setLocation] = useLocation();
@@ -338,53 +342,71 @@ export default function QuestionViewerGenZ() {
     }
   };
 
-  if (loading && !currentQuestion) {
+  // Loading state
+  if (loading && questions.length === 0) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center pt-safe pb-safe">
-        <div className="text-center px-4">
-          <div className="text-6xl mb-4">⏳</div>
-          <p className="text-muted-foreground">Loading questions...</p>
+      <DesktopSidebarWrapper>
+        <div className="lg:hidden"><MobileHeader title="Questions" showBack={true} /></div>
+        <div className="min-h-screen bg-background flex flex-col">
+          <div className="h-14 border-b border-border/50 bg-background/80 animate-pulse" />
+          <div className="flex-1 p-4 md:p-6 space-y-4 max-w-3xl mx-auto w-full">
+            <div className="flex gap-2">
+              <div className="h-6 w-24 bg-muted/60 rounded-full animate-pulse" />
+              <div className="h-6 w-16 bg-muted/60 rounded-full animate-pulse" />
+            </div>
+            <div className="h-48 bg-muted/40 rounded-3xl animate-pulse" />
+            <div className="h-4 w-3/4 bg-muted/40 rounded-full animate-pulse" />
+            <div className="h-4 w-1/2 bg-muted/40 rounded-full animate-pulse" />
+            <div className="h-12 bg-muted/40 rounded-2xl animate-pulse" />
+          </div>
         </div>
-      </div>
+        <MobileBottomNav />
+      </DesktopSidebarWrapper>
     );
   }
 
   if (error || !channel) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center pt-safe pb-safe">
-        <div className="text-center px-4">
-          <h2 className="text-xl md:text-2xl font-bold mb-2">Channel not found</h2>
-          <p className="text-sm md:text-base text-muted-foreground mb-4">The channel "{channelId}" doesn't exist.</p>
+      <DesktopSidebarWrapper>
+        <div className="lg:hidden"><MobileHeader title="Questions" showBack={true} /></div>
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4 text-center">
+          <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
+            <X className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold mb-1">Channel not found</h2>
+            <p className="text-sm text-muted-foreground">The channel "{channelId}" doesn't exist.</p>
+          </div>
           <button
             onClick={() => setLocation('/channels')}
-            className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground font-bold rounded-full text-sm md:text-base"
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-full text-sm"
           >
-            Go to Channels
+            <ChevronLeft className="w-4 h-4" />
+            Back to Channels
           </button>
         </div>
-      </div>
+        <MobileBottomNav />
+      </DesktopSidebarWrapper>
     );
   }
 
   if (!loading && (!currentQuestion || totalQuestions === 0)) {
     const hasFilters = selectedSubChannel !== 'all' || selectedDifficulty !== 'all' || selectedCompany !== 'all';
-    
+
     return (
-      <div className="min-h-screen bg-background text-foreground flex flex-col pt-safe">
-        <Header
-          channel={channel}
-          onBack={() => setLocation('/channels')}
-          onSearch={() => setShowSearchModal(true)}
-          currentIndex={currentIndex}
-          totalQuestions={totalQuestions}
-        />
-        <div className="flex-1 flex items-center justify-center pb-safe">
-          <div className="text-center px-4">
-            <div className="text-6xl mb-4">📝</div>
-            <h2 className="text-xl md:text-2xl font-bold mb-2">No questions found</h2>
-            <p className="text-sm md:text-base text-muted-foreground mb-4">
-              {hasFilters ? 'Try adjusting your filters.' : 'Check back soon for new content!'}
+      <DesktopSidebarWrapper>
+        <div className="lg:hidden"><MobileHeader title="Questions" showBack={true} /></div>
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4 text-center">
+          <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center">
+            <BookOpen className="w-10 h-10 text-muted-foreground/50" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold mb-1">No questions found</h2>
+            <p className="text-sm text-muted-foreground">
+              {hasFilters ? 'Try adjusting or clearing your filters.' : 'Check back soon for new content!'}
             </p>
+          </div>
+          <div className="flex gap-2">
             {hasFilters && (
               <button
                 onClick={() => {
@@ -392,14 +414,23 @@ export default function QuestionViewerGenZ() {
                   setSelectedDifficulty('all');
                   setSelectedCompany('all');
                 }}
-                className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground font-bold rounded-full text-sm md:text-base"
+                className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-full text-sm"
               >
-                Reset Filters
+                <X className="w-4 h-4" />
+                Clear filters
               </button>
             )}
+            <button
+              onClick={() => setLocation('/channels')}
+              className="flex items-center gap-2 px-5 py-2.5 bg-muted text-foreground font-semibold rounded-full text-sm"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Back
+            </button>
           </div>
         </div>
-      </div>
+        <MobileBottomNav />
+      </DesktopSidebarWrapper>
     );
   }
 
@@ -417,9 +448,13 @@ export default function QuestionViewerGenZ() {
         canonical={`https://open-interview.github.io/channel/${channelId}/${currentQuestion.id}`}
       />
 
-      <div className="min-h-screen bg-background text-foreground flex flex-col pt-safe">
+      <DesktopSidebarWrapper>
+      <div className="min-h-screen bg-background text-foreground flex flex-col">
+        <div className="lg:hidden">
+          <MobileHeader title="Questions" showBack={true} />
+        </div>
         {/* Progress bar — top of page */}
-        <div className="h-1 bg-muted/40 w-full">
+        <div className="h-1 bg-muted/40 w-full" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} aria-label="Question progress">
           <motion.div
             className="h-full bg-gradient-to-r from-primary to-cyan-500"
             initial={{ width: 0 }}
@@ -468,36 +503,47 @@ export default function QuestionViewerGenZ() {
 
         {/* Main Content */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Desktop Split View */}
+          {/* Desktop split view */}
           <div className="hidden lg:flex flex-1 overflow-hidden">
-            {/* Question Panel */}
-            <div className="w-1/2 border-r border-border overflow-y-auto p-6 md:p-8">
-              <QuestionContent
-                question={currentQuestion}
-                questionNumber={currentIndex + 1}
-                totalQuestions={totalQuestions}
-                isMarked={isMarked}
-                isCompleted={isCompleted}
-                srsCard={srsCard}
-                showRatingButtons={showRatingButtons}
-                hasRated={hasRated}
-                onAddToSRS={handleAddToSRS}
-                onSRSRating={handleSRSRating}
-                onToggleMark={toggleMark}
-                onShare={handleShare}
-              />
+            {/* Left: Question */}
+            <div className="flex-1 overflow-y-auto p-8 border-r border-border/50">
+              {currentQuestion ? (
+                <QuestionContent
+                  question={currentQuestion}
+                  questionNumber={currentIndex + 1}
+                  totalQuestions={totalQuestions}
+                  isMarked={markedQuestions.includes(currentQuestion.id)}
+                  isCompleted={completed.includes(currentQuestion.id)}
+                  srsCard={srsCard}
+                  showRatingButtons={showRatingButtons}
+                  hasRated={hasRated}
+                  onAddToSRS={handleAddToSRS}
+                  onSRSRating={handleSRSRating}
+                  onToggleMark={toggleMark}
+                  onShare={handleShare}
+                />
+              ) : null}
             </div>
-            {/* Answer Panel — desktop always visible */}
-            <div className="w-1/2 overflow-y-auto p-6 md:p-8">
-              <AnswerPanel
-                question={currentQuestion}
-                isCompleted={isCompleted}
-                srsCard={srsCard}
-                showRatingButtons={showRatingButtons}
-                hasRated={hasRated}
-                onAddToSRS={handleAddToSRS}
-                onSRSRating={handleSRSRating}
-              />
+            {/* Right: Answer always visible */}
+            <div className="w-[55%] xl:w-[50%] overflow-y-auto bg-muted/20">
+              {currentQuestion ? (
+                <AnswerPanel
+                  question={currentQuestion}
+                  isCompleted={completed.includes(currentQuestion.id)}
+                  srsCard={srsCard}
+                  showRatingButtons={showRatingButtons}
+                  hasRated={hasRated}
+                  onAddToSRS={handleAddToSRS}
+                  onSRSRating={handleSRSRating}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <div className="text-center space-y-2">
+                    <Eye className="w-12 h-12 mx-auto opacity-20" />
+                    <p className="text-sm">Select a question to see the answer</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -510,7 +556,7 @@ export default function QuestionViewerGenZ() {
               dragElastic={0.15}
               style={{ x, opacity }}
               onDragEnd={handleDragEnd}
-              className="flex-1 overflow-y-auto p-4 pb-36 relative"
+              className="flex-1 overflow-y-auto p-4 pb-[calc(80px+env(safe-area-inset-bottom,0px))] pt-14 lg:pt-0 relative"
             >
               {/* Swipe direction indicators */}
               <motion.div
@@ -544,19 +590,19 @@ export default function QuestionViewerGenZ() {
 
             {/* Reveal Answer button — fixed above nav */}
             {!showAnswer && (
-              <div className="absolute bottom-20 left-0 right-0 px-4 z-20 pointer-events-none">
+              <div className="absolute bottom-24 inset-x-0 flex justify-center px-6 z-20 pointer-events-none">
                 <motion.button
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3, duration: 0.25, ease: 'easeOut' }}
+                  initial={{ opacity: 0, y: 16, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ delay: 0.2, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                   onClick={() => setShowAnswer(true)}
-                  className="pointer-events-auto w-full sm:w-auto sm:mx-auto sm:flex sm:justify-center flex items-center justify-center gap-2.5 px-8 py-3.5 bg-gradient-to-r from-violet-600 to-primary text-primary-foreground font-bold rounded-2xl shadow-lg shadow-primary/25 text-base"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
+                  className="pointer-events-auto flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-primary via-violet-500 to-cyan-500 text-white font-bold rounded-2xl shadow-2xl shadow-primary/40 text-base tracking-wide"
+                  whileHover={{ scale: 1.04, boxShadow: '0 20px 40px rgba(124,58,237,0.5)' }}
+                  whileTap={{ scale: 0.96 }}
                 >
                   <Eye className="w-5 h-5" />
                   Reveal Answer
-                  <span className="hidden sm:inline text-xs opacity-60 ml-1">(Space)</span>
+                  <kbd className="hidden sm:inline text-xs opacity-50 bg-white/20 px-1.5 py-0.5 rounded font-mono">Space</kbd>
                 </motion.button>
               </div>
             )}
@@ -577,23 +623,20 @@ export default function QuestionViewerGenZ() {
                       setShowAnswer(false);
                     }
                   }}
-                  className="absolute inset-0 z-30 flex flex-col"
-                  style={{
-                    background: 'rgba(15, 22, 41, 0.92)',
-                    backdropFilter: 'blur(20px) saturate(180%)',
-                    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-                  }}
+                  className="absolute inset-0 z-30 flex flex-col bg-background/95 backdrop-blur-[20px] saturate-180"
                 >
+                  {/* Top gradient accent */}
+                  <div className="bg-gradient-to-b from-primary/5 to-transparent h-1 w-full flex-shrink-0" />
                   {/* Drag handle */}
                   <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
                     <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
                   </div>
-                  {/* Close button */}
+                  {/* Header */}
                   <div className="flex items-center justify-between px-4 pb-2 flex-shrink-0">
-                    <span className="text-sm font-semibold text-muted-foreground">Answer</span>
+                    <span className="text-base font-bold">{channel.name || 'Answer'}</span>
                     <button
                       onClick={() => setShowAnswer(false)}
-                      className="p-2 rounded-full hover:bg-muted/50 transition-colors"
+                      className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -604,11 +647,43 @@ export default function QuestionViewerGenZ() {
                       question={currentQuestion}
                       isCompleted={isCompleted}
                       srsCard={srsCard}
-                      showRatingButtons={showRatingButtons}
+                      showRatingButtons={false}
                       hasRated={hasRated}
-                      onAddToSRS={handleAddToSRS}
-                      onSRSRating={handleSRSRating}
+                      onAddToSRS={undefined}
+                      onSRSRating={undefined}
                     />
+                  </div>
+                  {/* SRS controls — pinned outside scroll so always visible */}
+                  <div className="flex-shrink-0 border-t border-border bg-background/95 px-4 py-3 pb-[calc(12px+env(safe-area-inset-bottom,0px))]">
+                    {hasRated ? (
+                      <div className="flex items-center justify-center gap-2 text-emerald-400 text-sm font-semibold py-1">
+                        <Check className="w-4 h-4" />
+                        Review recorded
+                      </div>
+                    ) : showRatingButtons && srsCard ? (
+                      <div className="grid grid-cols-4 gap-2">
+                        {(['again', 'hard', 'good', 'easy'] as ConfidenceRating[]).map((rating) => {
+                          const cfg: Record<string, { cls: string; label: string }> = {
+                            again: { cls: 'bg-red-500/15 border-red-500/30 text-red-400', label: 'Again' },
+                            hard:  { cls: 'bg-orange-500/15 border-orange-500/30 text-orange-400', label: 'Hard' },
+                            good:  { cls: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400', label: 'Good' },
+                            easy:  { cls: 'bg-blue-500/15 border-blue-500/30 text-blue-400', label: 'Easy' },
+                          };
+                          return (
+                            <button key={rating} onClick={() => handleSRSRating(rating)}
+                              className={`py-2.5 border rounded-xl text-xs font-bold transition-all ${cfg[rating].cls}`}>
+                              {cfg[rating].label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <button onClick={handleAddToSRS}
+                        className="w-full flex items-center justify-center gap-2 py-3 bg-purple-500/15 border border-purple-500/25 rounded-xl text-sm font-semibold text-purple-400 hover:bg-purple-500/25 transition-all">
+                        <Brain className="w-4 h-4" />
+                        Add to SRS Review
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -685,6 +760,8 @@ export default function QuestionViewerGenZ() {
           </div>
         </div>
       </div>
+      <MobileBottomNav />
+      </DesktopSidebarWrapper>
 
       <SwipeHint />
       <UnifiedSearch isOpen={showSearchModal} onClose={() => setShowSearchModal(false)} />
@@ -780,12 +857,27 @@ function Header({ channel, onBack, onSearch, currentIndex, totalQuestions, progr
             <div className="min-w-0 flex-1">
               <h1 className="font-bold text-sm md:text-lg truncate">{channel.name}</h1>
               {totalQuestions > 0 && (
-                <p className="text-xs text-muted-foreground truncate">
-                  Question {currentIndex + 1} of {totalQuestions}
+                <p className="text-xs text-muted-foreground truncate tabular-nums">
+                  {currentIndex + 1} / {totalQuestions}
                 </p>
               )}
             </div>
           </div>
+
+          {/* Progress ring — desktop only */}
+          {totalQuestions > 0 && progress != null && (
+            <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+              <ProgressRing
+                progress={progress}
+                size={40}
+                strokeWidth={4}
+                color="#6366f1"
+                bgColor="rgba(99,102,241,0.15)"
+              >
+                <span className="text-[9px] font-bold tabular-nums text-foreground">{progress}%</span>
+              </ProgressRing>
+            </div>
+          )}
 
           {/* Right */}
           <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
@@ -843,49 +935,58 @@ function FiltersPanel({ channel, selectedSubChannel, selectedDifficulty, selecte
           {channel.subChannels && channel.subChannels.length > 1 && (
             <div>
               <label className="text-xs md:text-sm font-semibold text-muted-foreground mb-2 block">Topic</label>
-              <select
-                value={selectedSubChannel}
-                onChange={(e) => onSubChannelChange(e.target.value)}
-                className="w-full px-3 md:px-4 py-2 md:py-3 bg-muted/50 border border-border rounded-xl text-sm md:text-base text-foreground focus:outline-none focus:border-primary transition-colors"
-              >
-                {channel.subChannels.map((sc: any) => (
-                  <option key={sc.id} value={sc.id}>{sc.name}</option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  value={selectedSubChannel}
+                  onChange={(e) => onSubChannelChange(e.target.value)}
+                  className="w-full px-4 py-3 bg-background border border-border/60 rounded-2xl text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all appearance-none cursor-pointer"
+                >
+                  {channel.subChannels.map((sc: any) => (
+                    <option key={sc.id} value={sc.id}>{sc.name}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              </div>
             </div>
           )}
 
           {/* Difficulty */}
           <div>
             <label className="text-xs md:text-sm font-semibold text-muted-foreground mb-2 block">Difficulty</label>
-            <select
-              value={selectedDifficulty}
-              onChange={(e) => onDifficultyChange(e.target.value)}
-              className="w-full px-3 md:px-4 py-2 md:py-3 bg-muted/50 border border-border rounded-xl text-sm md:text-base text-foreground focus:outline-none focus:border-primary transition-colors"
-            >
-              <option value="all">All Levels</option>
-              <option value="beginner">Beginner</option>
-              <option value="intermediate">Intermediate</option>
-              <option value="advanced">Advanced</option>
-            </select>
+            <div className="relative">
+              <select
+                value={selectedDifficulty}
+                onChange={(e) => onDifficultyChange(e.target.value)}
+                className="w-full px-4 py-3 bg-background border border-border/60 rounded-2xl text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all appearance-none cursor-pointer"
+              >
+                <option value="all">All Levels</option>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            </div>
           </div>
 
           {/* Company */}
           {companiesWithCounts.length > 0 && (
             <div>
               <label className="text-xs md:text-sm font-semibold text-muted-foreground mb-2 block">Company</label>
-              <select
-                value={selectedCompany}
-                onChange={(e) => onCompanyChange(e.target.value)}
-                className="w-full px-3 md:px-4 py-2 md:py-3 bg-muted/50 border border-border rounded-xl text-sm md:text-base text-foreground focus:outline-none focus:border-primary transition-colors"
-              >
-                <option value="all">All Companies</option>
-                {companiesWithCounts.map((c: any) => (
-                  <option key={c.company} value={c.company}>
-                    {c.company} ({c.count})
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  value={selectedCompany}
+                  onChange={(e) => onCompanyChange(e.target.value)}
+                  className="w-full px-4 py-3 bg-background border border-border/60 rounded-2xl text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all appearance-none cursor-pointer"
+                >
+                  <option value="all">All Companies</option>
+                  {companiesWithCounts.map((c: any) => (
+                    <option key={c.company} value={c.company}>
+                      {c.company} ({c.count})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              </div>
             </div>
           )}
         </div>
@@ -897,149 +998,107 @@ function FiltersPanel({ channel, selectedSubChannel, selectedDifficulty, selecte
 // Question Content
 function QuestionContent({ question, questionNumber, totalQuestions, isMarked, isCompleted, srsCard, showRatingButtons, hasRated, onAddToSRS, onSRSRating, onToggleMark, onShare }: any) {
   return (
-    <div className="space-y-5 md:space-y-6">
-      {/* Header row: number indicator + badges */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        {/* Question number */}
-        <span className="text-xs font-semibold text-muted-foreground tabular-nums">
-          {questionNumber} / {totalQuestions}
-        </span>
-
-        {/* Badges */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Topic badge */}
-          {question.subChannel && (
-            <span className="px-2.5 py-1 bg-muted/60 border border-border rounded-full text-xs font-semibold text-muted-foreground">
-              {question.subChannel.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-            </span>
-          )}
-          {/* Difficulty badge */}
-          <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
-            question.difficulty === 'advanced'
-              ? 'bg-red-500/15 border-red-500/30 text-red-400'
-              : question.difficulty === 'intermediate'
-              ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
-              : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-          }`}>
-            {question.difficulty}
+    <div className="space-y-4">
+      {/* Badges row */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {question.subChannel && (
+          <span className="px-3 py-1 bg-primary/10 border border-primary/20 rounded-full text-xs font-semibold text-primary">
+            {question.subChannel.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
           </span>
-          {/* Company badge */}
-          {question.company && (
-            <span className="px-2.5 py-1 bg-muted/60 border border-border rounded-full text-xs font-semibold text-muted-foreground">
-              {question.company}
-            </span>
-          )}
-          {/* Completed badge */}
-          {isCompleted && (
-            <span className="px-2.5 py-1 bg-emerald-500/15 border border-emerald-500/30 rounded-full text-xs font-bold text-emerald-400">
-              ✓ Done
-            </span>
-          )}
-          {/* SRS mastery badge */}
-          {srsCard && !showRatingButtons && !hasRated && (
-            <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${getMasteryColor(srsCard.easeFactor)}`}>
-              {getMasteryLabel(srsCard.easeFactor)}
-            </span>
-          )}
-        </div>
+        )}
+        {question.difficulty && (
+          <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
+            question.difficulty === 'advanced' ? 'bg-red-500/15 border-red-500/30 text-red-400'
+            : question.difficulty === 'intermediate' ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+            : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+          }`}>
+            {question.difficulty.charAt(0).toUpperCase() + question.difficulty.slice(1)}
+          </span>
+        )}
+        {question.company && (
+          <span className="px-3 py-1 bg-muted/60 border border-border rounded-full text-xs font-semibold text-muted-foreground">
+            {question.company}
+          </span>
+        )}
+        {isCompleted && (
+          <span className="px-3 py-1 bg-emerald-500/15 border border-emerald-500/30 rounded-full text-xs font-bold text-emerald-400">✓ Done</span>
+        )}
       </div>
 
-      {/* Question text — large, readable */}
-      <div className="relative rounded-2xl p-[1px] bg-gradient-to-br from-primary/40 via-cyan-500/20 to-transparent shadow-lg">
-        <div className="rounded-2xl bg-[#0f1629] p-5 md:p-6">
-          <h2 className="text-xl md:text-2xl font-bold leading-snug tracking-tight text-foreground">
+      {/* Question card — premium glassmorphism */}
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-cyan-500/10 to-purple-500/10 rounded-3xl blur-xl" />
+        <div className="relative rounded-3xl border border-primary/20 bg-card/80 backdrop-blur-sm p-6 md:p-8 shadow-2xl">
+          <div className="flex items-start justify-between gap-3 mb-1">
+            <span className="text-xs font-mono text-muted-foreground/60 tabular-nums">{questionNumber} / {totalQuestions}</span>
+            <div className="flex gap-1.5">
+              <motion.button onClick={onToggleMark} whileTap={{ scale: 0.9 }}
+                className={`p-2 rounded-xl transition-all ${
+                  isMarked ? 'bg-amber-500/20 text-amber-400' : 'bg-muted/50 text-muted-foreground hover:text-amber-400'
+                }`}>
+                <Bookmark className={`w-4 h-4 ${isMarked ? 'fill-current' : ''}`} />
+              </motion.button>
+              {onShare && (
+                <motion.button onClick={onShare} whileTap={{ scale: 0.9 }}
+                  className="p-2 rounded-xl bg-muted/50 text-muted-foreground hover:text-foreground transition-all">
+                  <Share2 className="w-4 h-4" />
+                </motion.button>
+              )}
+            </div>
+          </div>
+          <h2 className="text-xl md:text-2xl lg:text-3xl font-bold leading-snug tracking-tight text-foreground mt-3">
             {question.question}
           </h2>
+          {question.tags && question.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-4">
+              {question.tags.slice(0, 5).map((tag: string) => (
+                <span key={tag} className="px-2 py-0.5 bg-muted/40 rounded-full text-xs text-muted-foreground/70">#{tag}</span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Action row */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {/* Bookmark */}
-        <motion.button
-          onClick={onToggleMark}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-            isMarked
-              ? 'bg-amber-500/20 border border-amber-500/30 text-amber-400'
-              : 'bg-muted/50 border border-border text-muted-foreground hover:border-amber-500/30 hover:text-amber-400'
-          }`}
-        >
-          <Bookmark className={`w-3.5 h-3.5 ${isMarked ? 'fill-current' : ''}`} />
-          <span className="hidden sm:inline">{isMarked ? 'Bookmarked' : 'Bookmark'}</span>
-        </motion.button>
-
-        {/* Share */}
-        {onShare && (
-          <motion.button
-            onClick={onShare}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="px-3 py-2 bg-muted/50 border border-border rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground transition-all flex items-center gap-1.5"
-          >
-            <Share2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Share</span>
-          </motion.button>
-        )}
-
-        {/* SRS controls */}
-        {hasRated ? (
-          <span className="px-3 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-            <Check className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Review Recorded</span>
-          </span>
-        ) : showRatingButtons && srsCard ? (
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-xs text-muted-foreground hidden sm:inline">Rate:</span>
+      {/* SRS controls */}
+      {hasRated ? (
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
+          <Check className="w-4 h-4 text-emerald-400" />
+          <span className="text-sm font-semibold text-emerald-400">Review recorded</span>
+        </div>
+      ) : showRatingButtons && srsCard ? (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">How well did you know this?</p>
+          <div className="grid grid-cols-4 gap-2">
             {(['again', 'hard', 'good', 'easy'] as ConfidenceRating[]).map((rating) => {
-              const cfg: Record<string, { cls: string; icon: React.ReactNode }> = {
-                again: { cls: 'bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30', icon: <RotateCcw className="w-3 h-3" /> },
-                hard:  { cls: 'bg-orange-500/20 border-orange-500/30 text-orange-400 hover:bg-orange-500/30', icon: <Brain className="w-3 h-3" /> },
-                good:  { cls: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30', icon: <Check className="w-3 h-3" /> },
-                easy:  { cls: 'bg-blue-500/20 border-blue-500/30 text-blue-400 hover:bg-blue-500/30', icon: <Zap className="w-3 h-3" /> },
+              const cfg: Record<string, { cls: string; icon: React.ReactNode; label: string }> = {
+                again: { cls: 'bg-red-500/15 border-red-500/30 text-red-400 hover:bg-red-500/25', icon: <RotateCcw className="w-3.5 h-3.5" />, label: 'Again' },
+                hard:  { cls: 'bg-orange-500/15 border-orange-500/30 text-orange-400 hover:bg-orange-500/25', icon: <Brain className="w-3.5 h-3.5" />, label: 'Hard' },
+                good:  { cls: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25', icon: <Check className="w-3.5 h-3.5" />, label: 'Good' },
+                easy:  { cls: 'bg-blue-500/15 border-blue-500/30 text-blue-400 hover:bg-blue-500/25', icon: <Zap className="w-3.5 h-3.5" />, label: 'Easy' },
               };
               return (
-                <motion.button
-                  key={rating}
-                  onClick={() => onSRSRating(rating)}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className={`px-2.5 py-1.5 border rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${cfg[rating].cls}`}
-                >
+                <motion.button key={rating} onClick={() => onSRSRating(rating)}
+                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.95 }}
+                  className={`flex flex-col items-center gap-1 py-3 border rounded-2xl text-xs font-bold transition-all ${cfg[rating].cls}`}>
                   {cfg[rating].icon}
-                  <span className="hidden sm:inline capitalize">{rating}</span>
+                  {cfg[rating].label}
                 </motion.button>
               );
             })}
           </div>
-        ) : (
-          <motion.button
-            onClick={onAddToSRS}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="px-3 py-2 bg-purple-500/20 border border-purple-500/30 rounded-xl text-xs font-bold text-purple-400 hover:bg-purple-500/30 transition-all flex items-center gap-1.5"
-          >
-            <Brain className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Add to SRS</span>
-          </motion.button>
-        )}
-
-        {/* Flag */}
-        <QuestionFeedback questionId={question.id} />
-      </div>
-
-      {/* Tags */}
-      {question.tags && question.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {question.tags.map((tag: string) => (
-            <span key={tag} className="px-2.5 py-1 bg-muted/40 rounded-full text-xs text-muted-foreground">
-              #{tag}
-            </span>
-          ))}
         </div>
+      ) : (
+        <motion.button onClick={onAddToSRS} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+          className="flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 border border-purple-500/20 rounded-2xl text-sm font-semibold text-purple-400 hover:bg-purple-500/20 transition-all">
+          <Brain className="w-4 h-4" />
+          Add to Spaced Repetition
+        </motion.button>
       )}
+
+      <QuestionFeedback questionId={question.id} />
     </div>
   );
 }
+
+
 

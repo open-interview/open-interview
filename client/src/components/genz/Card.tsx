@@ -1,4 +1,9 @@
 /**
+ * @deprecated Use `@/components/unified/Card` instead.
+ * This component duplicates unified/Card.tsx and will be removed in a future cleanup.
+ */
+
+/**
  * GenZ Card Component - Glassmorphism card with neon accents
  */
 
@@ -11,7 +16,7 @@ interface GenZCardProps {
   gradient?: string;
 }
 
-export function GenZCard({ children, className, neonBorder, gradient }: GenZCardProps) {
+export function Card({ children, className, neonBorder, gradient }: GenZCardProps) {
   return (
     <div
       className={cn(

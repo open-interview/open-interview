@@ -1,148 +1,229 @@
 /**
- * Review Session Page
- * Dedicated SRS review interface for spaced repetition
+ * Gen Z SRS Review - Spaced Repetition Made Addictive
+ * Swipe cards, earn XP, level up your memory
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  ChevronLeft, Brain, Flame, Trophy, Eye,
-  ChevronRight, RotateCcw, Check, Zap, Star
-} from 'lucide-react';
+import { AppLayout } from '../components/layout/AppLayout';
 import { SEOHead } from '../components/SEOHead';
-import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
-import { 
-  getDueCards, recordReview, getSRSStats,
-  getMasteryLabel, getMasteryColor, getMasteryEmoji, getNextReviewPreview,
-  calculateXP, addXP, getUserXP,
-  type ReviewCard, type ConfidenceRating 
-} from '../lib/spaced-repetition';
-import { getQuestionById } from '../lib/questions-loader';
 import { useCredits } from '../context/CreditsContext';
-import { useAchievementContext } from '../context/AchievementContext';
-import { ListenButton } from '../components/ListenButton';
-import type { Question } from '../types';
 import { EnhancedMermaid } from '../components/EnhancedMermaid';
-import { Confetti } from '../components/Confetti';
-import { ProgressRing } from '../components/ProgressRing';
+import { ListenButton } from '../components/ListenButton';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import {
+  Brain, ChevronLeft, Eye, Flame, Sparkles, Zap, Check, CheckCircle, RotateCcw, Trash2
+} from 'lucide-react';
+import { getDueCards, recordReview, removeFromSRS, type ReviewCard } from '../lib/spaced-repetition';
+import { getQuestionByIdAsync } from '../lib/questions-loader';
 
-/**
- * Renders text with inline code (backticks) as styled code elements
- */
-function renderWithInlineCode(text: string): React.ReactNode {
-  if (!text) return null;
-  
-  // Split by backticks, alternating between text and code
-  const parts = text.split(/`([^`]+)`/g);
-  
-  return parts.map((part, index) => {
-    // Odd indices are code (content between backticks)
-    if (index % 2 === 1) {
-      return (
-        <code 
-          key={index}
-          className="px-1.5 py-0.5 mx-0.5 bg-cyan-500/20 text-cyan-300 rounded text-[0.9em] font-mono"
-        >
-          {part}
-        </code>
-      );
-    }
-    // Even indices are regular text
-    return part;
-  });
-}
+// Fallback data if no SRS cards available
+const FALLBACK_CARDS = [
+  {
+    id: 'q-1',
+    question: 'How would you find all processes running on port 8080 and terminate them safely?',
+    answer: 'Use `lsof -ti:8080 | xargs kill -9` or `netstat -tulpn | grep 8080` to find PIDs, then `kill -15 <PID>` for graceful shutdown.',
+    tldr: 'Use lsof or netstat to find PIDs, then kill -15 for graceful termination',
+    codeInterpretation: `\`\`\`bash
+lsof -ti:8080 | xargs kill -15
+\`\`\`
 
-/**
- * Preprocess markdown text to fix common formatting issues
- */
-function preprocessMarkdown(text: string): string {
-  if (!text) return '';
-  
-  let processed = text;
-  
-  // Fix code fences that are not on their own line
-  // Pattern: text followed by ``` on same line
-  processed = processed.replace(/([^\n])(```)/g, '$1\n$2');
-  // Pattern: ``` followed by text on same line (except language identifier)
-  processed = processed.replace(/(```\w*)\s*\n?\s*([^\n`])/g, '$1\n$2');
-  
-  // Fix broken bold markers - standalone ** on their own line
-  processed = processed.replace(/^\*\*\s*$/gm, '');
-  
-  // Fix bold markers that are split across lines
-  processed = processed.replace(/\*\*\s*\n\s*([^*]+)\*\*/g, '**$1**');
-  
-  // Fix unclosed bold markers
-  const lines = processed.split('\n');
-  const fixedLines: string[] = [];
-  
-  for (let i = 0; i < lines.length; i++) {
-    let line = lines[i];
-    const boldMarkers = (line.match(/\*\*/g) || []).length;
-    
-    if (boldMarkers % 2 === 1) {
-      if (line.trim().startsWith('**') && boldMarkers === 1) {
-        line = line.replace(/^\s*\*\*\s*/, '');
-      } else if (line.trim().endsWith('**') && boldMarkers === 1) {
-        line = line.replace(/\s*\*\*\s*$/, '');
-      }
-    }
-    
-    fixedLines.push(line);
+**Line-by-line breakdown:**
+
+1. \`lsof -ti:8080\`
+   - \`lsof\` = List Open Files command
+   - \`-t\` = Output PIDs only (terse mode)
+   - \`-i:8080\` = Filter by internet connections on port 8080
+   - Returns: Space-separated list of process IDs
+
+2. \`|\` = Pipe operator
+   - Takes output from left command
+   - Passes it as input to right command
+
+3. \`xargs kill -15\`
+   - \`xargs\` = Converts input into arguments
+   - \`kill -15\` = Send SIGTERM signal (graceful shutdown)
+   - Each PID becomes: \`kill -15 <PID>\`
+
+**Example execution:**
+\`\`\`bash
+# If PIDs are 1234 and 5678
+lsof -ti:8080        # Returns: 1234 5678
+xargs kill -15       # Executes: kill -15 1234 5678
+\`\`\``,
+    explanation: `**Finding Processes:**
+- \`lsof -ti:8080\` - Lists PIDs using port 8080
+- \`netstat -tulpn | grep 8080\` - Alternative method
+
+**Terminating Safely:**
+- \`kill -15 <PID>\` - SIGTERM (graceful shutdown)
+- \`kill -9 <PID>\` - SIGKILL (force kill, last resort)
+
+**Best Practice:** Always try SIGTERM first to allow cleanup.`,
+    diagram: `graph LR
+    A[Port 8080] --> B[lsof -ti:8080]
+    B --> C[Get PIDs]
+    C --> D[kill -15 PID]
+    D --> E{Process Stopped?}
+    E -->|Yes| F[Done]
+    E -->|No| G[kill -9 PID]`,
+    difficulty: 'intermediate',
+    channel: 'linux',
+    dueDate: new Date(),
+    interval: 1,
+    easeFactor: 2.5
+  },
+  {
+    id: 'q-2',
+    question: 'What is the difference between TCP and UDP?',
+    answer: 'TCP is connection-oriented, reliable, ordered delivery. UDP is connectionless, faster, no guaranteed delivery. TCP for accuracy, UDP for speed.',
+    tldr: 'TCP = reliable & ordered, UDP = fast & connectionless',
+    codeInterpretation: `\`\`\`python
+# TCP Socket Example
+import socket
+
+# Create TCP socket
+tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+tcp_socket.connect(('server.com', 80))
+tcp_socket.send(b'GET / HTTP/1.1')
+\`\`\`
+
+**Line-by-line breakdown:**
+
+1. \`socket.socket(socket.AF_INET, socket.SOCK_STREAM)\`
+   - \`AF_INET\` = IPv4 address family
+   - \`SOCK_STREAM\` = TCP protocol (stream-based)
+   - Creates a TCP socket object
+
+2. \`tcp_socket.connect(('server.com', 80))\`
+   - Initiates 3-way handshake
+   - Establishes connection before data transfer
+   - Blocks until connection established
+
+3. \`tcp_socket.send(b'GET / HTTP/1.1')\`
+   - Sends data reliably
+   - Guarantees delivery and order
+   - Waits for acknowledgment
+
+**UDP Alternative:**
+\`\`\`python
+# UDP Socket - No connection needed
+udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+udp_socket.sendto(b'data', ('server.com', 53))  # Fire and forget
+\`\`\``,
+    explanation: `**TCP (Transmission Control Protocol):**
+- Connection-oriented (3-way handshake)
+- Guaranteed delivery with acknowledgments
+- Ordered packet delivery
+- Flow control and congestion control
+- Use cases: HTTP, FTP, Email
+
+**UDP (User Datagram Protocol):**
+- Connectionless (no handshake)
+- No delivery guarantees
+- No ordering
+- Lower overhead, faster
+- Use cases: DNS, Video streaming, Gaming`,
+    difficulty: 'beginner',
+    channel: 'networking',
+    dueDate: new Date(),
+    interval: 1,
+    easeFactor: 2.5
+  },
+  {
+    id: 'q-3',
+    question: 'Explain the CAP theorem',
+    answer: 'CAP theorem states distributed systems can only guarantee 2 of 3: Consistency, Availability, Partition tolerance. Must choose based on requirements.',
+    tldr: 'Pick 2 of 3: Consistency, Availability, Partition tolerance',
+    codeInterpretation: `\`\`\`javascript
+// CP System Example (MongoDB)
+const result = await db.collection.findOneAndUpdate(
+  { _id: userId },
+  { $inc: { balance: -100 } },
+  { writeConcern: { w: 'majority' } }  // Wait for majority acknowledgment
+);
+\`\`\`
+
+**Line-by-line breakdown:**
+
+1. \`findOneAndUpdate({ _id: userId }, ...)\`
+   - Atomic operation on single document
+   - Finds document by ID and updates it
+
+2. \`{ $inc: { balance: -100 } }\`
+   - \`$inc\` = Increment operator
+   - Decrements balance by 100
+   - Atomic operation ensures consistency
+
+3. \`{ writeConcern: { w: 'majority' } }\`
+   - \`w: 'majority'\` = Wait for majority of nodes
+   - Ensures **Consistency** across replicas
+   - Sacrifices **Availability** during network partition
+   - This is a **CP choice** (Consistency + Partition tolerance)
+
+**AP System Alternative (Cassandra):**
+\`\`\`javascript
+// AP System - Always available, eventual consistency
+await client.execute(
+  'UPDATE users SET balance = balance - 100 WHERE id = ?',
+  [userId],
+  { consistency: cassandra.types.consistencies.one }  // Any node responds
+);
+\`\`\``,
+    explanation: `**The Three Guarantees:**
+
+1. **Consistency (C):** All nodes see the same data at the same time
+2. **Availability (A):** Every request receives a response
+3. **Partition Tolerance (P):** System continues despite network failures
+
+**Trade-offs:**
+- **CP Systems:** Consistent + Partition tolerant (MongoDB, HBase)
+- **AP Systems:** Available + Partition tolerant (Cassandra, DynamoDB)
+- **CA Systems:** Consistent + Available (Traditional RDBMS, but not truly distributed)
+
+In practice, partition tolerance is mandatory for distributed systems, so you choose between CP or AP.`,
+    diagram: `graph TD
+    CAP[CAP Theorem] --> C[Consistency]
+    CAP --> A[Availability]
+    CAP --> P[Partition Tolerance]
+    C --> CP[CP: MongoDB]
+    A --> AP[AP: Cassandra]
+    P --> CP
+    P --> AP`,
+    difficulty: 'advanced',
+    channel: 'system-design',
+    dueDate: new Date(),
+    interval: 1,
+    easeFactor: 2.5
   }
-  processed = fixedLines.join('\n');
-  
-  // Fix inline bullet points
-  processed = processed.replace(/^[•·]\s*/gm, '- ');
-  
-  if (processed.includes('•') || processed.includes('·')) {
-    const bulletLines = processed.split('\n');
-    const processedLines = bulletLines.map(line => {
-      const bulletCount = (line.match(/[•·]/g) || []).length;
-      if (bulletCount > 1 || (bulletCount === 1 && !line.trim().startsWith('•') && !line.trim().startsWith('·'))) {
-        const parts = line.split(/[•·]/).map(p => p.trim()).filter(p => p);
-        if (parts.length > 1) {
-          return parts.map(p => `- ${p}`).join('\n');
-        }
-      }
-      return line.replace(/^[•·]\s*/, '- ');
-    });
-    processed = processedLines.join('\n');
-  }
-  
-  processed = processed.replace(/(\d+[.)]\s+[^0-9]+?)(?=\s+\d+[.)])/g, '$1\n');
-  processed = processed.replace(/(?<!\n)(\d+[.)]\s+)/g, '\n$1');
-  processed = processed.replace(/\n{3,}/g, '\n\n');
-  processed = processed.replace(/^\n+/, '');
-  
-  return processed;
-}
+];
 
-type SessionState = 'loading' | 'reviewing' | 'reveal' | 'completed';
+const confidenceLevels = [
+  { id: 'again', label: 'Again', cls: 'bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30', icon: <RotateCcw className="w-3 h-3" />, interval: 1 },
+  { id: 'hard',  label: 'Hard',  cls: 'bg-orange-500/20 border-orange-500/30 text-orange-400 hover:bg-orange-500/30', icon: <Brain className="w-3 h-3" />, interval: 2 },
+  { id: 'good',  label: 'Good',  cls: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30', icon: <Check className="w-3 h-3" />, interval: 4 },
+  { id: 'easy',  label: 'Easy',  cls: 'bg-blue-500/20 border-blue-500/30 text-blue-400 hover:bg-blue-500/30', icon: <Zap className="w-3 h-3" />, interval: 7 }
+];
 
-// Diagram section that hides itself if rendering fails - Vibrant purple style
+// Diagram section with error handling
 function DiagramSection({ diagram }: { diagram: string }) {
   const [renderSuccess, setRenderSuccess] = useState<boolean | null>(null);
   
-  // Don't render the section at all if diagram failed
-  if (renderSuccess === false) {
-    return null;
-  }
+  if (renderSuccess === false) return null;
   
   return (
-    <div className="p-4 bg-gradient-to-br from-purple-500/10 via-violet-500/10 to-fuchsia-500/10 border border-purple-500/30 rounded-2xl backdrop-blur-sm">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="p-1.5 bg-purple-500/20 rounded-lg">
-          <Eye className="w-4 h-4 text-purple-400" />
+    <div className="p-6 bg-muted/50 backdrop-blur-xl rounded-xl border border-border">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="p-2 bg-purple-500/20 rounded-lg">
+          <Eye className="w-5 h-5 text-purple-400" />
         </div>
-        <span className="text-xs font-bold text-purple-400 uppercase tracking-wider">Diagram</span>
+        <span className="text-sm font-bold text-purple-400 uppercase tracking-wider">Diagram</span>
       </div>
-      <div className="bg-black/30 rounded-xl p-4 overflow-x-auto border border-white/5">
+      <div className="bg-background/30 rounded-xl p-4 overflow-x-auto">
         <EnhancedMermaid 
           chart={diagram} 
           onRenderResult={(success) => setRenderSuccess(success)}
@@ -152,724 +233,526 @@ function DiagramSection({ diagram }: { diagram: string }) {
   );
 }
 
-export default function ReviewSession() {
+// Markdown preprocessing
+function preprocessMarkdown(text: string): string {
+  if (!text) return '';
+  let processed = text;
+  processed = processed.replace(/([^\n])(```)/g, '$1\n$2');
+  processed = processed.replace(/(```\w*)\s*\n?\s*([^\n`])/g, '$1\n$2');
+  processed = processed.replace(/^\*\*\s*$/gm, '');
+  processed = processed.replace(/\*\*\s*\n\s*([^*]+)\*\*/g, '**$1**');
+  processed = processed.replace(/^[•·]\s*/gm, '- ');
+  processed = processed.replace(/\n{3,}/g, '\n\n');
+  return processed.trim();
+}
+
+export default function ReviewSessionGenZ() {
   const [, setLocation] = useLocation();
-  const [sessionState, setSessionState] = useState<SessionState>('loading');
-  const [dueCards, setDueCards] = useState<ReviewCard[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
-  const [currentCard, setCurrentCard] = useState<ReviewCard | null>(null);
-  const [reviewedCount, setReviewedCount] = useState(0);
-  const [sessionStats, setSessionStats] = useState({ again: 0, hard: 0, good: 0, easy: 0 });
-  const [sessionXP, setSessionXP] = useState(0);
-  const [sessionCredits, setSessionCredits] = useState(0);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [xpPopup, setXpPopup] = useState<{ amount: number; show: boolean }>({ amount: 0, show: false });
-  const [creditPopup, setCreditPopup] = useState<{ amount: number; show: boolean }>({ amount: 0, show: false });
-  const { onSRSReview, config } = useCredits();
-  const { trackEvent } = useAchievementContext();
+  const { onSRSReview } = useCredits();
+  const [cards, setCards] = useState<any[]>([]);
+  const [loadingCards, setLoadingCards] = useState(true);
 
-  // Load due cards
   useEffect(() => {
-    const cards = getDueCards();
-    setDueCards(cards);
-    
-    if (cards.length === 0) {
-      setSessionState('completed');
-    } else {
-      loadQuestion(cards[0]);
-    }
-  }, []);
-
-  const loadQuestion = useCallback((card: ReviewCard) => {
-    const question = getQuestionById(card.questionId);
-    if (question) {
-      setCurrentQuestion(question);
-      setCurrentCard(card);
-      setSessionState('reviewing');
-    } else {
-      // Question not found, skip to next
-      handleSkip();
-    }
-  }, []);
-
-  const handleReveal = () => {
-    setSessionState('reveal');
-  };
-
-  const handleRate = (rating: ConfidenceRating) => {
-    if (!currentCard || !currentQuestion) return;
-
-    // Record the review
-    recordReview(
-      currentCard.questionId,
-      currentCard.channel,
-      currentCard.difficulty,
-      rating
-    );
-
-    // Calculate and add XP
-    const xpEarned = calculateXP(rating, currentCard.masteryLevel);
-    addXP(xpEarned);
-    setSessionXP(prev => prev + xpEarned);
-    
-    // Show XP popup
-    setXpPopup({ amount: xpEarned, show: true });
-    setTimeout(() => setXpPopup({ amount: 0, show: false }), 1000);
-
-    // Process credits for SRS review
-    const creditResult = onSRSReview(rating);
-    if (creditResult.amount !== 0) {
-      setSessionCredits(prev => prev + creditResult.amount);
-      setCreditPopup({ amount: creditResult.amount, show: true });
-      setTimeout(() => setCreditPopup({ amount: 0, show: false }), 1200);
-    }
-    
-    // Track achievement event
-    trackEvent({
-      type: 'srs_review',
-      timestamp: new Date().toISOString(),
-      data: { rating },
+    const dueCards = getDueCards();
+    if (dueCards.length === 0) { setLoadingCards(false); return; }
+    Promise.all(
+      dueCards.map(async card => {
+        const question = await getQuestionByIdAsync(card.questionId);
+        return question ? {
+          id: card.questionId,
+          question: question.question,
+          answer: question.answer,
+          explanation: question.explanation,
+          diagram: question.diagram,
+          difficulty: card.difficulty,
+          channel: card.channel,
+          tldr: undefined,
+          codeInterpretation: undefined,
+        } : null;
+      })
+    ).then(results => {
+      setCards(results.filter(Boolean));
+      setLoadingCards(false);
     });
+  }, []);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [reviewedCount, setReviewedCount] = useState(0);
+  const [streak, setStreak] = useState(0);
 
-    // Update session stats
-    setSessionStats(prev => ({ ...prev, [rating]: prev[rating] + 1 }));
+  const currentCard = cards[currentIndex];
+  const progress = ((reviewedCount / cards.length) * 100).toFixed(0);
+
+  const handleConfidence = (level: string) => {
+    // Award credits based on confidence using the unified system
+    const rating = level as 'again' | 'hard' | 'good' | 'easy';
+    onSRSReview(rating);
+
+    // Record the review in SRS system
+    if (currentCard?.id && currentCard?.channel && currentCard?.difficulty) {
+      recordReview(currentCard.id, currentCard.channel, currentCard.difficulty, rating);
+    }
+
     setReviewedCount(prev => prev + 1);
+    setStreak(prev => level === 'easy' || level === 'good' ? prev + 1 : 0);
+    setShowAnswer(false);
 
     // Move to next card
-    const nextIndex = currentIndex + 1;
-    if (nextIndex < dueCards.length) {
-      setCurrentIndex(nextIndex);
-      loadQuestion(dueCards[nextIndex]);
+    if (currentIndex < cards.length - 1) {
+      setCurrentIndex(prev => prev + 1);
     } else {
-      setShowConfetti(true);
-      setSessionState('completed');
+      // Session complete
+      setLocation('/stats');
     }
+  };
+
+  const handleRevealAnswer = () => {
+    setShowAnswer(true);
   };
 
   const handleSkip = () => {
-    const nextIndex = currentIndex + 1;
-    if (nextIndex < dueCards.length) {
-      setCurrentIndex(nextIndex);
-      loadQuestion(dueCards[nextIndex]);
-    } else {
-      setSessionState('completed');
+    if (currentIndex < cards.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+      setShowAnswer(false);
     }
   };
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (sessionState === 'reviewing') {
-        if (e.key === ' ' || e.key === 'Enter') {
-          e.preventDefault();
-          handleReveal();
-        }
-      } else if (sessionState === 'reveal') {
-        if (e.key === '1') handleRate('again');
-        else if (e.key === '2') handleRate('hard');
-        else if (e.key === '3') handleRate('good');
-        else if (e.key === '4') handleRate('easy');
-      }
-      if (e.key === 'Escape') {
-        setLocation('/');
-      }
-    };
+  const handleDelete = () => {
+    if (!currentCard?.id) return;
+    removeFromSRS(currentCard.id);
+    const updated = cards.filter(c => c?.id !== currentCard.id);
+    setCards(updated);
+    setShowAnswer(false);
+    setCurrentIndex(i => Math.min(i, updated.length - 1));
+  };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sessionState]);
+  if (loadingCards) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-muted-foreground animate-pulse">Loading review cards…</div>
+        </div>
+      </AppLayout>
+    );
+  }
 
-  const progress = dueCards.length > 0 ? Math.round((reviewedCount / dueCards.length) * 100) : 0;
+  if (cards.length === 0) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+          <div className="text-center space-y-4 px-6">
+            <Brain className="w-16 h-16 text-muted-foreground/30 mx-auto" />
+            <h2 className="text-2xl font-bold">No cards due</h2>
+            <p className="text-muted-foreground text-sm max-w-xs mx-auto">
+              Add questions to your SRS deck by tapping "Add to SRS" while reviewing questions.
+            </p>
+            <button onClick={() => setLocation('/channels')}
+              className="px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-bold text-sm">
+              Browse Questions
+            </button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!currentCard) {
+    return (
+      <AppLayout>
+        <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+          <div className="text-center">
+            <CheckCircle className="w-16 h-16 text-primary mx-auto mb-4" />
+            <h2 className="text-3xl font-bold mb-2">Review Complete!</h2>
+            <p className="text-muted-foreground mb-6">You've reviewed all cards for today</p>
+            <button
+              onClick={() => setLocation('/')}
+              className="px-8 py-4 bg-gradient-to-r from-primary to-cyan-500 rounded-[16px] font-bold text-black"
+            >
+              Back to Home
+            </button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <>
       <SEOHead
-        title="Review Session | Code Reels"
-        description="Spaced repetition review session for optimal learning retention"
+        title="SRS Review - Spaced Repetition"
+        description="Review your cards with spaced repetition"
+        canonical="https://open-interview.github.io/review"
       />
 
-      <DesktopSidebarWrapper>
-      <Confetti isActive={showConfetti} />
-      
-      {/* XP Popup */}
-      <AnimatePresence>
-        {xpPopup.show && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.8 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-purple-500 text-white rounded-full font-bold shadow-lg"
-          >
-            +{xpPopup.amount} XP ⚡
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AppLayout>
+        {/* iPhone 13 FIX: Ensure content fits within viewport with safe areas */}
+        <div className="min-h-screen bg-background text-foreground overflow-x-hidden w-full pb-24 lg:pb-0">
+          <div className="max-w-4xl mx-auto px-6 py-8 w-full overflow-x-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8">
+              <button
+                onClick={() => setLocation('/')}
+                className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5" />
+                <span>Back</span>
+              </button>
 
-      {/* Credit Popup */}
-      <AnimatePresence>
-        {creditPopup.show && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, x: 20 }}
-            animate={{ opacity: 1, scale: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            className={`fixed bottom-24 right-4 z-50 px-4 py-2 rounded-xl font-bold shadow-lg ${
-              creditPopup.amount > 0 
-                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white' 
-                : 'bg-gradient-to-r from-red-500 to-rose-500 text-white'
-            }`}
-          >
-            {creditPopup.amount > 0 ? '+' : ''}{creditPopup.amount} 💰
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="min-h-screen bg-background flex flex-col">
-        {/* Header */}
-        <header className="h-14 bg-card border-b border-border flex items-center px-4 gap-4 shrink-0">
-          <button 
-            onClick={() => setLocation('/')} 
-            className="p-2 hover:bg-muted rounded-lg transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <Brain className="w-4 h-4 text-purple-500" />
-              <h1 className="font-semibold">Review Session</h1>
-            </div>
-            {dueCards.length > 0 && sessionState !== 'completed' && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>{reviewedCount + 1} of {dueCards.length}</span>
-                <div className="flex-1 max-w-[100px] h-1 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-purple-500 rounded-full transition-all" 
-                    style={{ width: `${progress}%` }} 
-                  />
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-orange-500" />
+                  <span className="font-bold">{streak}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-primary" />
+                  <span className="font-bold">{reviewedCount}/{cards.length}</span>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
 
-          {sessionState !== 'completed' && (
-            <button
-              onClick={handleSkip}
-              className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground"
-              title="Skip this card"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          )}
-        </header>
+            {/* Progress Bar */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="text-muted-foreground">Progress</span>
+                <span className="font-bold">{progress}%</span>
+              </div>
+              <div className="h-3 bg-muted rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  className="h-full bg-gradient-to-r from-primary to-cyan-500"
+                />
+              </div>
+            </div>
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <AnimatePresence mode="wait">
-            {sessionState === 'loading' && (
+            {/* Card */}
+            <AnimatePresence mode="wait">
               <motion.div
-                key="loading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex-1 flex items-center justify-center"
-              >
-                <div className="text-center">
-                  <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                  <p className="text-muted-foreground">Loading review cards...</p>
-                </div>
-              </motion.div>
-            )}
-
-            {(sessionState === 'reviewing' || sessionState === 'reveal') && currentQuestion && currentCard && (
-              <motion.div
-                key={currentCard.questionId}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="flex-1 flex flex-col overflow-hidden"
+                key={currentCard.id}
+                initial={{ opacity: 0, scale: 0.9, rotateY: -10 }}
+                animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+                exit={{ opacity: 0, scale: 0.9, rotateY: 10 }}
+                transition={{ duration: 0.3 }}
+                className="relative w-full overflow-hidden"
               >
                 {/* Question Card */}
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-                  <div className="max-w-3xl mx-auto space-y-4">
-                    {/* Card header badges */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400 text-xs font-semibold rounded-full border border-cyan-500/30">
+                <div className="p-8 bg-muted/50 backdrop-blur-xl rounded-xl border border-border min-h-[400px] flex flex-col w-full overflow-hidden">
+                  {/* Tags */}
+                  <div className="flex items-center justify-between gap-2 mb-6">
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 bg-[#00ff88]/20 text-primary rounded-full text-xs font-bold uppercase">
                         {currentCard.channel}
                       </span>
-                      <span className={`px-3 py-1.5 text-xs font-semibold rounded-full border ${
-                        currentCard.difficulty === 'beginner' 
-                          ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-400 border-green-500/30' 
-                          : currentCard.difficulty === 'intermediate' 
-                          ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 border-yellow-500/30' 
-                          : 'bg-gradient-to-r from-red-500/20 to-pink-500/20 text-red-400 border-red-500/30'
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                        currentCard.difficulty === 'beginner' ? 'bg-green-500/20 text-green-500' :
+                        currentCard.difficulty === 'intermediate' ? 'bg-yellow-500/20 text-yellow-500' :
+                        'bg-red-500/20 text-red-500'
                       }`}>
                         {currentCard.difficulty}
                       </span>
-                      <span className={`px-3 py-1.5 text-xs font-semibold rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center gap-1.5 ${getMasteryColor(currentCard.masteryLevel)}`}>
-                        <span>{getMasteryEmoji(currentCard.masteryLevel)}</span>
-                        {getMasteryLabel(currentCard.masteryLevel)}
-                      </span>
                     </div>
+                    <button
+                      onClick={handleDelete}
+                      title="Remove from SRS"
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
 
-                    {/* Question */}
-                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight">
-                      {currentQuestion.question}
+                  {/* Question */}
+                  <div className="flex-1 flex items-center justify-center">
+                    <h2 className="text-lg font-semibold text-center leading-relaxed">
+                      {currentCard.question}
                     </h2>
+                  </div>
 
-                    {/* Answer (revealed) */}
-                    <AnimatePresence>
-                      {sessionState === 'reveal' && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="space-y-4 pt-2"
-                        >
-                          {/* TLDR Card - Vibrant cyan */}
-                          {currentQuestion.tldr && (
-                            <motion.div 
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: 0.1 }}
-                              className="p-4 bg-gradient-to-br from-cyan-500/10 via-blue-500/10 to-purple-500/10 border border-cyan-500/30 rounded-2xl backdrop-blur-sm"
-                            >
-                              <div className="flex items-center gap-2 mb-2">
-                                <div className="p-1.5 bg-cyan-500/20 rounded-lg">
-                                  <Zap className="w-4 h-4 text-cyan-400" />
-                                </div>
-                                <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">TL;DR</span>
-                              </div>
-                              <p className="text-sm sm:text-base text-foreground/90 leading-relaxed">{renderWithInlineCode(currentQuestion.tldr)}</p>
-                            </motion.div>
-                          )}
-
-                          {/* Answer Card - Vibrant green */}
-                          <motion.div 
+                  {/* Answer (Hidden/Shown) */}
+                  <AnimatePresence>
+                    {showAnswer && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-6 space-y-4"
+                      >
+                        {/* TLDR */}
+                        {currentCard.tldr && (
+                          <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.15 }}
-                            className="p-4 bg-gradient-to-br from-green-500/10 via-emerald-500/10 to-teal-500/10 border border-green-500/30 rounded-2xl backdrop-blur-sm"
+                            transition={{ delay: 0.1 }}
+                            className="p-4 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-[20px] backdrop-blur-sm"
                           >
-                            <div className="flex items-center justify-between gap-2 mb-2">
-                              <div className="flex items-center gap-2">
-                                <div className="p-1.5 bg-green-500/20 rounded-lg">
-                                  <Check className="w-4 h-4 text-green-400" />
-                                </div>
-                                <span className="text-xs font-bold text-green-400 uppercase tracking-wider">Answer</span>
-                              </div>
-                              <ListenButton 
-                                text={`${currentQuestion.answer}${currentQuestion.explanation ? '. ' + currentQuestion.explanation : ''}`}
-                                label="Listen"
-                                size="sm"
-                              />
+                            <div className="flex items-center gap-2 mb-2">
+                              <Zap className="w-4 h-4 text-cyan-400" />
+                              <span className="text-xs font-bold text-cyan-400 uppercase">TL;DR</span>
                             </div>
-                            <p className="text-base sm:text-lg leading-relaxed text-foreground/90">{renderWithInlineCode(currentQuestion.answer)}</p>
+                            <p className="text-sm text-foreground">{currentCard.tldr}</p>
                           </motion.div>
+                        )}
 
-                          {/* Diagram Card - Vibrant purple */}
-                          {currentQuestion.diagram && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: 0.2 }}
-                            >
-                              <DiagramSection diagram={currentQuestion.diagram} />
-                            </motion.div>
-                          )}
-
-                          {/* Explanation Card - Vibrant orange */}
-                          {currentQuestion.explanation && (
-                            <motion.div 
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: 0.25 }}
-                              className="p-4 bg-gradient-to-br from-orange-500/10 via-amber-500/10 to-yellow-500/10 border border-orange-500/30 rounded-2xl backdrop-blur-sm"
-                            >
-                              <div className="flex items-center gap-2 mb-3">
-                                <div className="p-1.5 bg-orange-500/20 rounded-lg">
-                                  <Brain className="w-4 h-4 text-orange-400" />
-                                </div>
-                                <span className="text-xs font-bold text-orange-400 uppercase tracking-wider">Explanation</span>
-                              </div>
-                              <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none">
-                                <ReactMarkdown
-                                  remarkPlugins={[remarkGfm]}
-                                  components={{
-                                    code({ className, children }) {
-                                      const match = /language-(\w+)/.exec(className || '');
-                                      const language = match ? match[1] : '';
-                                      const codeContent = String(children).replace(/\n$/, '');
-                                      const isInline = !match && !String(children).includes('\n');
-                                      
-                                      if (isInline) {
-                                        return (
-                                          <code className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[0.85em] font-mono">
-                                            {children}
-                                          </code>
-                                        );
-                                      }
-                                      
-                                      return (
-                                        <div className="my-3 rounded-xl overflow-hidden border border-white/10 shadow-lg">
-                                          <SyntaxHighlighter
-                                            language={language || 'text'}
-                                            style={vscDarkPlus}
-                                            customStyle={{ 
-                                              margin: 0, 
-                                              padding: '1rem', 
-                                              background: '#0d0d0d',
-                                              fontSize: '0.8rem',
-                                              lineHeight: '1.5',
-                                            }}
-                                            wrapLines={true}
-                                            wrapLongLines={true}
-                                          >
-                                            {codeContent}
-                                          </SyntaxHighlighter>
-                                        </div>
-                                      );
-                                    },
-                                    p({ children }) {
-                                      return <p className="mb-3 leading-relaxed text-foreground/90 text-sm sm:text-base">{children}</p>;
-                                    },
-                                    h1({ children }) {
-                                      return <h1 className="text-lg font-bold mb-3 mt-4 text-foreground border-b border-border pb-2">{children}</h1>;
-                                    },
-                                    h2({ children }) {
-                                      return <h2 className="text-base font-bold mb-2 mt-4 text-foreground">{children}</h2>;
-                                    },
-                                    h3({ children }) {
-                                      return <h3 className="text-sm font-semibold mb-2 mt-3 text-foreground/90">{children}</h3>;
-                                    },
-                                    strong({ children }) {
-                                      return <strong className="font-semibold text-foreground">{children}</strong>;
-                                    },
-                                    ul({ children }) {
-                                      return <ul className="space-y-1.5 mb-3 ml-1">{children}</ul>;
-                                    },
-                                    ol({ children }) {
-                                      return <ol className="space-y-1.5 mb-3 ml-1 list-decimal list-inside">{children}</ol>;
-                                    },
-                                    li({ children }) {
-                                      return (
-                                        <li className="flex gap-2 text-foreground/90 text-sm sm:text-base">
-                                          <span className="shrink-0 text-primary mt-0.5">•</span>
-                                          <span className="flex-1">{children}</span>
-                                        </li>
-                                      );
-                                    },
-                                    a({ href, children }) {
-                                      return (
-                                        <a href={href} className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">
-                                          {children}
-                                        </a>
-                                      );
-                                    },
-                                    blockquote({ children }) {
-                                      return (
-                                        <blockquote className="border-l-4 border-primary/50 pl-4 py-1 my-3 bg-primary/5 text-muted-foreground italic">
-                                          {children}
-                                        </blockquote>
-                                      );
-                                    },
-                                  }}
-                                >
-                                  {preprocessMarkdown(currentQuestion.explanation)}
-                                </ReactMarkdown>
-                              </div>
-                            </motion.div>
-                          )}
+                        {/* Answer */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.15 }}
+                          className="p-6 bg-muted/50 backdrop-blur-xl rounded-xl border border-border"
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <Sparkles className="w-5 h-5 text-primary" />
+                              <span className="font-bold text-primary">Answer</span>
+                            </div>
+                            <ListenButton 
+                              text={`${currentCard.answer}${currentCard.explanation ? '. ' + currentCard.explanation : ''}`}
+                              label="Listen"
+                              size="sm"
+                            />
+                          </div>
+                          <p className="text-lg text-foreground leading-relaxed">
+                            {currentCard.answer}
+                          </p>
                         </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+
+                        {/* Code Interpretation */}
+                        {currentCard.codeInterpretation && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.18 }}
+                            className="p-6 bg-gradient-to-br from-pink-500/10 to-purple-500/10 border border-pink-500/30 rounded-xl backdrop-blur-sm"
+                          >
+                            <div className="flex items-center gap-2 mb-4">
+                              <Check className="w-5 h-5 text-pink-400" />
+                              <span className="font-bold text-pink-400 uppercase text-sm">Code Interpretation</span>
+                            </div>
+                            <div className="prose prose-invert max-w-none">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  code({ className, children }) {
+                                    const match = /language-(\w+)/.exec(className || '');
+                                    const isInline = !match && !String(children).includes('\n');
+                                    
+                                    if (isInline) {
+                                      return (
+                                        <code className="px-2 py-1 bg-cyan-500/20 text-cyan-300 rounded text-sm font-mono">
+                                          {children}
+                                        </code>
+                                      );
+                                    }
+                                    
+                                    return (
+                                      <div className="my-4 rounded-xl overflow-hidden">
+                                        <SyntaxHighlighter
+                                          language={match ? match[1] : 'text'}
+                                          style={vscDarkPlus}
+                                          customStyle={{ 
+                                            margin: 0, 
+                                            padding: '1.5rem',
+                                            background: 'var(--surface-code, #0a0a0a)',
+                                            fontSize: '0.9rem',
+                                          }}
+                                        >
+                                          {String(children).replace(/\n$/, '')}
+                                        </SyntaxHighlighter>
+                                      </div>
+                                    );
+                                  },
+                                  p({ children }) {
+                                    return <p className="mb-3 text-[#e0e0e0] leading-relaxed">{children}</p>;
+                                  },
+                                  h1({ children }) {
+                                    return <h1 className="text-xl font-bold mb-3 mt-4 text-foreground">{children}</h1>;
+                                  },
+                                  h2({ children }) {
+                                    return <h2 className="text-lg font-bold mb-2 mt-4 text-foreground">{children}</h2>;
+                                  },
+                                  strong({ children }) {
+                                    return <strong className="font-bold text-foreground">{children}</strong>;
+                                  },
+                                  ul({ children }) {
+                                    return <ul className="space-y-2 mb-3">{children}</ul>;
+                                  },
+                                  ol({ children }) {
+                                    return <ol className="space-y-2 mb-3 list-decimal list-inside">{children}</ol>;
+                                  },
+                                  li({ children }) {
+                                    return (
+                                      <li className="flex gap-2 text-[#e0e0e0]">
+                                        <span className="text-pink-400 mt-1">•</span>
+                                        <span className="flex-1">{children}</span>
+                                      </li>
+                                    );
+                                  },
+                                }}
+                              >
+                                {preprocessMarkdown(currentCard.codeInterpretation)}
+                              </ReactMarkdown>
+                            </div>
+                          </motion.div>
+                        )}
+
+                        {/* Diagram */}
+                        {currentCard.diagram && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                          >
+                            <DiagramSection diagram={currentCard.diagram} />
+                          </motion.div>
+                        )}
+
+                        {/* Explanation */}
+                        {currentCard.explanation && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.25 }}
+                            className="p-6 bg-muted/50 backdrop-blur-xl rounded-xl border border-border"
+                          >
+                            <div className="flex items-center gap-2 mb-4">
+                              <Brain className="w-5 h-5 text-orange-400" />
+                              <span className="font-bold text-orange-400 uppercase text-sm">Explanation</span>
+                            </div>
+                            <div className="prose prose-invert max-w-none">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  code({ className, children }) {
+                                    const match = /language-(\w+)/.exec(className || '');
+                                    const isInline = !match && !String(children).includes('\n');
+                                    
+                                    if (isInline) {
+                                      return (
+                                        <code className="px-2 py-1 bg-cyan-500/20 text-cyan-300 rounded text-sm font-mono">
+                                          {children}
+                                        </code>
+                                      );
+                                    }
+                                    
+                                    return (
+                                      <div className="my-4 rounded-xl overflow-hidden">
+                                        <SyntaxHighlighter
+                                          language={match ? match[1] : 'text'}
+                                          style={vscDarkPlus}
+                                          customStyle={{ 
+                                            margin: 0, 
+                                            padding: '1.5rem',
+                                            background: 'var(--surface-code, #0a0a0a)',
+                                            fontSize: '0.9rem',
+                                          }}
+                                        >
+                                          {String(children).replace(/\n$/, '')}
+                                        </SyntaxHighlighter>
+                                      </div>
+                                    );
+                                  },
+                                  p({ children }) {
+                                    return <p className="mb-3 text-[#e0e0e0] leading-relaxed">{children}</p>;
+                                  },
+                                  h1({ children }) {
+                                    return <h1 className="text-xl font-bold mb-3 mt-4 text-foreground">{children}</h1>;
+                                  },
+                                  h2({ children }) {
+                                    return <h2 className="text-lg font-bold mb-2 mt-4 text-foreground">{children}</h2>;
+                                  },
+                                  strong({ children }) {
+                                    return <strong className="font-bold text-foreground">{children}</strong>;
+                                  },
+                                  ul({ children }) {
+                                    return <ul className="space-y-2 mb-3">{children}</ul>;
+                                  },
+                                  li({ children }) {
+                                    return (
+                                      <li className="flex gap-2 text-[#e0e0e0]">
+                                        <span className="text-primary mt-1">•</span>
+                                        <span className="flex-1">{children}</span>
+                                      </li>
+                                    );
+                                  },
+                                }}
+                              >
+                                {preprocessMarkdown(currentCard.explanation)}
+                              </ReactMarkdown>
+                            </div>
+                          </motion.div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
-                {/* Action buttons */}
-                <div className="shrink-0 border-t border-border bg-card p-4">
-                  <div className="max-w-3xl mx-auto">
-                    {sessionState === 'reviewing' ? (
-                      <button
-                        onClick={handleReveal}
-                        className="w-full py-3 bg-purple-500 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-purple-600 transition-colors"
-                      >
-                        <Eye className="w-5 h-5" />
-                        Show Answer
-                        <span className="text-xs opacity-70 ml-2">(Space)</span>
-                      </button>
-                    ) : (
-                      <RatingButtons card={currentCard} onRate={handleRate} />
-                    )}
-                  </div>
+                {/* Actions */}
+                <div className="mt-6">
+                  {!showAnswer ? (
+                    // Reveal Answer Button
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleRevealAnswer}
+                      className="w-full py-6 bg-gradient-to-r from-primary to-cyan-500 rounded-[20px] font-bold text-xl text-black flex items-center justify-center gap-3"
+                    >
+                      <Eye className="w-6 h-6" />
+                      Tap to reveal answer
+                    </motion.button>
+                  ) : (
+                    // Confidence Buttons
+                    <div className="space-y-3">
+                      <div className="text-center text-sm text-muted-foreground mb-4">
+                        How well did you know this?
+                      </div>
+                      <div className="flex items-center justify-center gap-2 flex-wrap">
+                        {confidenceLevels.map((level) => (
+                          <motion.button
+                            key={level.id}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleConfidence(level.id)}
+                            className={`px-3 py-2 border rounded-lg text-sm font-bold transition-all flex items-center gap-1.5 ${level.cls}`}
+                          >
+                            {level.icon}
+                            <span className="capitalize">{level.label}</span>
+                            <span className="opacity-60 text-xs">+{level.interval}d</span>
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Skip Button */}
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={handleSkip}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Skip this card
+                  </button>
                 </div>
               </motion.div>
-            )}
+            </AnimatePresence>
 
-            {sessionState === 'completed' && (
-              <CompletedScreen 
-                stats={sessionStats} 
-                totalReviewed={reviewedCount}
-                sessionXP={sessionXP}
-                sessionCredits={sessionCredits}
-                onGoHome={() => setLocation('/')}
-                onContinue={() => {
-                  // Reload to check for more due cards
-                  const cards = getDueCards();
-                  if (cards.length > 0) {
-                    setDueCards(cards);
-                    setCurrentIndex(0);
-                    setReviewedCount(0);
-                    setSessionStats({ again: 0, hard: 0, good: 0, easy: 0 });
-                    setSessionXP(0);
-                    setSessionCredits(0);
-                    setShowConfetti(false);
-                    // Load first card directly
-                    const question = getQuestionById(cards[0].questionId);
-                    if (question) {
-                      setCurrentQuestion(question);
-                      setCurrentCard(cards[0]);
-                      setSessionState('reviewing');
-                    }
-                  }
-                }}
-              />
-            )}
-          </AnimatePresence>
+            {/* Stats Footer */}
+            <div className="mt-8 grid grid-cols-3 gap-4 w-full">
+              <div className="p-4 bg-muted/50 rounded-lg text-center">
+                <div className="text-2xl font-bold">{cards.length}</div>
+                <div className="text-xs text-muted-foreground">Total Cards</div>
+              </div>
+              <div className="p-4 bg-muted/50 rounded-lg text-center">
+                <div className="text-2xl font-bold">{reviewedCount}</div>
+                <div className="text-xs text-muted-foreground">Reviewed</div>
+              </div>
+              <div className="p-4 bg-muted/50 rounded-lg text-center">
+                <div className="text-2xl font-bold">{cards.length - reviewedCount}</div>
+                <div className="text-xs text-muted-foreground">Remaining</div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-      </DesktopSidebarWrapper>
+      </AppLayout>
     </>
-  );
-}
-
-// Rating buttons component
-function RatingButtons({ card, onRate }: { card: ReviewCard; onRate: (rating: ConfidenceRating) => void }) {
-  const previews = getNextReviewPreview(card);
-  const { config } = useCredits();
-
-  const buttons: { rating: ConfidenceRating; label: string; preview: string; icon: React.ReactNode; color: string; key: string; credits: number }[] = [
-    { rating: 'again', label: 'Again', preview: previews.again, icon: <RotateCcw className="w-4 h-4" />, color: 'bg-red-500 hover:bg-red-600', key: '1', credits: config.SRS_AGAIN },
-    { rating: 'hard', label: 'Hard', preview: previews.hard, icon: <Brain className="w-4 h-4" />, color: 'bg-orange-500 hover:bg-orange-600', key: '2', credits: config.SRS_HARD },
-    { rating: 'good', label: 'Good', preview: previews.good, icon: <Check className="w-4 h-4" />, color: 'bg-green-500 hover:bg-green-600', key: '3', credits: config.SRS_GOOD },
-    { rating: 'easy', label: 'Easy', preview: previews.easy, icon: <Zap className="w-4 h-4" />, color: 'bg-blue-500 hover:bg-blue-600', key: '4', credits: config.SRS_EASY },
-  ];
-
-  return (
-    <div className="space-y-2">
-      <p className="text-center text-xs text-muted-foreground mb-3">
-        How well did you remember this?
-      </p>
-      <div className="grid grid-cols-4 gap-2">
-        {buttons.map((btn) => (
-          <button
-            key={btn.rating}
-            onClick={() => onRate(btn.rating)}
-            className={`flex flex-col items-center gap-1 py-3 rounded-xl text-white transition-colors ${btn.color}`}
-          >
-            {btn.icon}
-            <span className="text-xs font-medium">{btn.label}</span>
-            <span className="text-[10px] opacity-70">{btn.preview}</span>
-            {btn.credits !== 0 && (
-              <span className={`text-[9px] font-bold ${btn.credits > 0 ? 'text-amber-200' : 'text-red-200'}`}>
-                {btn.credits > 0 ? '+' : ''}{btn.credits} 💰
-              </span>
-            )}
-            <span className="text-[10px] opacity-50">({btn.key})</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// Completed screen component
-function CompletedScreen({ 
-  stats, 
-  totalReviewed,
-  sessionXP,
-  sessionCredits,
-  onGoHome,
-  onContinue
-}: { 
-  stats: { again: number; hard: number; good: number; easy: number };
-  totalReviewed: number;
-  sessionXP: number;
-  sessionCredits: number;
-  onGoHome: () => void;
-  onContinue: () => void;
-}) {
-  const srsStats = getSRSStats();
-  const userXP = getUserXP();
-  const hasMoreDue = srsStats.dueToday > 0;
-
-  return (
-    <motion.div
-      key="completed"
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="flex-1 flex items-center justify-center p-4 overflow-y-auto"
-    >
-      <div className="text-center max-w-md w-full my-auto py-4">
-        {/* Trophy animation */}
-        <motion.div
-          initial={{ scale: 0, rotate: -180 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: 'spring', delay: 0.2, duration: 0.8 }}
-          className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-yellow-400/20 to-orange-500/20 flex items-center justify-center mx-auto mb-4 sm:mb-6 relative"
-        >
-          <Trophy className="w-10 h-10 sm:w-12 sm:h-12 text-yellow-500" />
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: [0, 1.2, 1] }}
-            transition={{ delay: 0.5, duration: 0.5 }}
-            className="absolute -top-1 -right-1"
-          >
-            <Star className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-400 fill-yellow-400" />
-          </motion.div>
-        </motion.div>
-
-        <motion.h2 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="text-xl sm:text-2xl font-bold mb-2"
-        >
-          {totalReviewed === 0 ? 'All Caught Up!' : '🎉 Session Complete!'}
-        </motion.h2>
-        
-        <motion.p 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="text-sm sm:text-base text-muted-foreground mb-3 sm:mb-4"
-        >
-          {totalReviewed === 0 
-            ? 'No cards due for review right now.'
-            : `You reviewed ${totalReviewed} cards. Amazing work!`
-          }
-        </motion.p>
-
-        {/* XP and Credits Earned */}
-        {(sessionXP > 0 || sessionCredits !== 0) && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.5 }}
-            className="flex items-center justify-center gap-3 mb-4 sm:mb-6"
-          >
-            {sessionXP > 0 && (
-              <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-500/20 rounded-full">
-                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-                <span className="text-base sm:text-lg font-bold text-purple-400">+{sessionXP} XP</span>
-              </div>
-            )}
-            {sessionCredits !== 0 && (
-              <div className={`inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full ${
-                sessionCredits > 0 ? 'bg-amber-500/20' : 'bg-red-500/20'
-              }`}>
-                <span className="text-base sm:text-lg">💰</span>
-                <span className={`text-base sm:text-lg font-bold ${
-                  sessionCredits > 0 ? 'text-amber-400' : 'text-red-400'
-                }`}>
-                  {sessionCredits > 0 ? '+' : ''}{sessionCredits}
-                </span>
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* Level Progress */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="mb-4 sm:mb-6 p-3 sm:p-4 bg-muted/30 rounded-xl"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Level {userXP.level}</span>
-            <span className="text-xs text-muted-foreground">{userXP.xpToNext} XP to next</span>
-          </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${userXP.progress}%` }}
-              transition={{ delay: 0.8, duration: 0.5 }}
-              className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"
-            />
-          </div>
-        </motion.div>
-
-        {totalReviewed > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-            className="grid grid-cols-4 gap-1.5 sm:gap-2 mb-4 sm:mb-6 p-3 sm:p-4 bg-muted/30 rounded-xl"
-          >
-            <div className="text-center">
-              <div className="text-base sm:text-lg font-bold text-red-500">{stats.again}</div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground">Again</div>
-            </div>
-            <div className="text-center">
-              <div className="text-base sm:text-lg font-bold text-orange-500">{stats.hard}</div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground">Hard</div>
-            </div>
-            <div className="text-center">
-              <div className="text-base sm:text-lg font-bold text-green-500">{stats.good}</div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground">Good</div>
-            </div>
-            <div className="text-center">
-              <div className="text-base sm:text-lg font-bold text-blue-500">{stats.easy}</div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground">Easy</div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Streak info */}
-        {srsStats.reviewStreak > 0 && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-            className="flex items-center justify-center gap-2 mb-4 sm:mb-6"
-          >
-            <motion.div
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 1 }}
-            >
-              <Flame className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500" />
-            </motion.div>
-            <span className="text-sm sm:text-base font-bold text-orange-500">{srsStats.reviewStreak} day streak! 🔥</span>
-          </motion.div>
-        )}
-
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.9 }}
-          className="space-y-2 sm:space-y-3"
-        >
-          {hasMoreDue && (
-            <button
-              onClick={onContinue}
-              className="w-full py-2.5 sm:py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl font-medium hover:opacity-90 transition-opacity text-sm sm:text-base"
-            >
-              Continue Reviewing ({srsStats.dueToday} more)
-            </button>
-          )}
-          <button
-            onClick={onGoHome}
-            className={`w-full py-2.5 sm:py-3 rounded-xl font-medium transition-colors text-sm sm:text-base ${
-              hasMoreDue 
-                ? 'bg-muted text-foreground hover:bg-muted/80' 
-                : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:opacity-90'
-            }`}
-          >
-            Back to Home
-          </button>
-        </motion.div>
-      </div>
-    </motion.div>
   );
 }

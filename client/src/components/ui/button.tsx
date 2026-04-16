@@ -20,10 +20,10 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm border-destructive-border",
         outline:
-          "border [border-color:var(--button-outline)] shadow-xs active:shadow-none",
+          "border border-border shadow-xs active:shadow-none",
         secondary:
           "border bg-secondary text-secondary-foreground border border-secondary-border",
-        ghost: "border border-transparent",
+        ghost: "border border-transparent hover:bg-muted",
         link: "text-primary underline-offset-4 hover:underline hover:scale-100 hover:brightness-100",
         glow:
           "bg-primary text-primary-foreground border border-primary-border" +

@@ -324,7 +324,7 @@ export default function MyPathGenZ() {
   return (
     <>
       <SEOHead
-        title="My Path - Custom Learning Journeys 🎯"
+        title="My Path - Custom Learning Journeys"
         description="View and manage your custom learning paths"
         canonical="https://open-interview.github.io/my-path"
       />
@@ -350,7 +350,7 @@ export default function MyPathGenZ() {
                 {/* Header */}
                 <div className="p-8 border-b border-border">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-3xl font-black">Edit Path</h2>
+                    <h2 className="text-3xl font-bold">Edit Path</h2>
                     <button
                       onClick={() => setShowEditModal(false)}
                       className="w-10 h-10 bg-muted/50 hover:bg-muted rounded-full flex items-center justify-center transition-all"
@@ -474,7 +474,7 @@ export default function MyPathGenZ() {
               animate={{ opacity: 1, y: 0 }}
               className="mb-12"
             >
-              <h1 className="text-6xl md:text-7xl font-black mb-4">
+              <h1 className="text-6xl md:text-7xl font-bold mb-4">
                 My
                 <br />
                 <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">
@@ -654,7 +654,7 @@ export default function MyPathGenZ() {
                 transition={{ delay: 0.3 }}
                 className="mb-8"
               >
-                <h2 className="text-4xl font-black mb-2">Curated Paths</h2>
+                <h2 className="text-4xl font-bold mb-2">Curated Paths</h2>
                 <p className="text-muted-foreground">Pre-built learning journeys for popular career paths</p>
               </motion.div>
 

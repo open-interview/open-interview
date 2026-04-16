@@ -1,3 +1,4 @@
+// Primary notification system — Sonner (ui/sonner.tsx) is used for simple toasts only
 /**
  * Unified Notification Manager
  * Single queue system for all notifications - achievements, badges, toasts, and system messages
@@ -363,6 +364,31 @@ function AchievementCard({
   );
 }
 
+// Level Up Confetti
+function LevelUpConfetti() {
+  const colors = ['#ffd700', '#ff8c00', '#7c3aed', '#06b6d4', '#10b981', '#f43f5e', '#a78bfa'];
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
+      {Array.from({ length: 24 }, (_, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-1.5 h-1.5 rounded-sm"
+          style={{ background: colors[i % colors.length], left: `${5 + (i * 3.8) % 90}%`, top: '60%' }}
+          initial={{ y: 0, opacity: 1, scale: 1, rotate: 0 }}
+          animate={{
+            y: [-8, -70 - (i % 5) * 18],
+            x: [(i % 2 === 0 ? 1 : -1) * (6 + (i * 5) % 28)],
+            opacity: [1, 0],
+            scale: [1, 0.3],
+            rotate: [0, (i % 2 === 0 ? 1 : -1) * 540],
+          }}
+          transition={{ duration: 0.9 + (i % 4) * 0.12, ease: 'easeOut', delay: i * 0.02 }}
+        />
+      ))}
+    </div>
+  );
+}
+
 // Level Up Card
 function LevelUpCard({ 
   notification, 
@@ -372,39 +398,59 @@ function LevelUpCard({
   onDismiss: () => void;
 }) {
   return (
-    <div className="w-[300px] rounded-xl shadow-2xl overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-primary/80">
-      <div className="p-5 text-center">
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', stiffness: 200 }}
-          className="w-20 h-20 mx-auto mb-3 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center"
-        >
-          <span className="text-3xl font-bold text-white">{notification.to}</span>
-        </motion.div>
-        
-        <div className="text-xs font-bold text-white/80 uppercase tracking-wider mb-1">
-          Level Up!
+    <div className="relative w-[300px] rounded-xl shadow-2xl overflow-hidden bg-gradient-to-br from-amber-500 via-orange-500 to-violet-600">
+      <LevelUpConfetti />
+
+      <div className="relative p-5 text-center">
+        {/* Stars decoration */}
+        <div className="absolute top-3 left-4 text-yellow-200/60 text-lg">✦</div>
+        <div className="absolute top-5 right-8 text-yellow-200/40 text-sm">✦</div>
+
+        <div className="text-[10px] font-black text-white/80 uppercase tracking-[0.2em] mb-2">
+          ⚡ Level Up!
         </div>
-        <h2 className="text-xl font-bold text-white mb-1">
+
+        <motion.div
+          initial={{ scale: 0, rotate: -20 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.05 }}
+          className="w-20 h-20 mx-auto mb-3 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center border-2 border-white/40"
+          style={{ boxShadow: '0 0 32px rgba(255,215,0,0.6)' }}
+        >
+          <span className="text-4xl font-black text-white">{notification.to}</span>
+        </motion.div>
+
+        <motion.h2
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="text-lg font-black text-white mb-0.5"
+        >
           {notification.title}
-        </h2>
-        
+        </motion.h2>
+        <p className="text-xs text-white/70 mb-3">Level {notification.from} → {notification.to}</p>
+
         {notification.rewards.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-2 mt-3">
+          <div className="flex flex-wrap justify-center gap-2">
             {notification.rewards.map((reward, i) => (
-              <div key={i} className="flex items-center gap-1 px-2 py-1 bg-white/20 rounded-full">
-                {reward.type === 'xp' && <Zap className="w-3 h-3 text-white" />}
-                {reward.type === 'credits' && <Coins className="w-3 h-3 text-white" />}
-                {reward.type === 'unlock' && <Star className="w-3 h-3 text-white" />}
-                <span className="text-xs font-semibold text-white">
-                  {reward.type === 'unlock' ? reward.item?.replace(/_/g, ' ') : `+${reward.amount}`}
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3 + i * 0.08 }}
+                className="flex items-center gap-1 px-2.5 py-1 bg-white/20 rounded-full"
+              >
+                {reward.type === 'xp' && <Zap className="w-3 h-3 text-yellow-200" />}
+                {reward.type === 'credits' && <Coins className="w-3 h-3 text-yellow-200" />}
+                {reward.type === 'unlock' && <Star className="w-3 h-3 text-yellow-200" />}
+                <span className="text-xs font-bold text-white">
+                  {reward.type === 'unlock' ? reward.item?.replace(/_/g, ' ') : `+${reward.amount} ${reward.type.toUpperCase()}`}
                 </span>
-              </div>
+              </motion.div>
             ))}
           </div>
         )}
-        
+
         <button
           onClick={onDismiss}
           className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"

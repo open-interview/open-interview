@@ -45,7 +45,7 @@ export default function NotFound() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="text-8xl font-black text-primary mb-4"
+            className="text-8xl font-bold text-primary mb-4"
           >
             404
           </motion.h1>

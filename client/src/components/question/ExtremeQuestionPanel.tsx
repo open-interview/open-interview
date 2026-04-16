@@ -309,7 +309,7 @@ export function ExtremeQuestionPanel({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className={`font-black text-foreground leading-[1.2] mb-4 ${
+            className={`font-bold text-foreground leading-[1.2] mb-4 ${
               question.question.length > 200 
                 ? 'text-xl sm:text-2xl lg:text-3xl' 
                 : question.question.length > 100

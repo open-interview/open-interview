@@ -41,7 +41,7 @@ interface ToastItem {
 function RewardToast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: string) => void }) {
   const { result } = item;
   const hasBadge = result.achievementsUnlocked.length > 0;
-  const headerText = hasBadge ? '🏆 Achievement Unlocked!' : '⚡ Rewards Earned!';
+  const headerText = hasBadge ? 'Achievement Unlocked!' : 'Rewards Earned!';
 
   return (
     <motion.div
@@ -135,7 +135,7 @@ function RewardToast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: str
       {/* Footer */}
       {result.currentStreak > 0 && (
         <div className="px-4 py-2 border-t border-[var(--color-border-subtle)]">
-          <span className="text-xs text-[var(--text-tertiary)]">🔥 {result.currentStreak} day streak</span>
+          <span className="text-xs text-[var(--text-tertiary)]">{result.currentStreak} day streak</span>
         </div>
       )}
 

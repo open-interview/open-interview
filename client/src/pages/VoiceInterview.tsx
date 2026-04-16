@@ -46,7 +46,7 @@ function WaveformVisualizer({ isActive }: { isActive: boolean }) {
           key={i}
           style={{
             height: `${h}px`,
-            background: `linear-gradient(to top, #7c3aed, #06b6d4)`,
+            background: `linear-gradient(to top, var(--color-violet-600, #7c3aed), var(--color-cyan-500, #06b6d4))`,
             opacity: isActive ? 0.85 + (i % 3) * 0.05 : 0.3,
             transition: 'height 80ms ease, opacity 300ms ease',
             borderRadius: '2px',
@@ -76,7 +76,7 @@ function RecordingTimer({ isRunning }: { isRunning: boolean }) {
 
   const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
   const ss = String(seconds % 60).padStart(2, '0');
-  return <span className="font-mono text-sm tabular-nums text-[#e6edf3]">{mm}:{ss}</span>;
+  return <span className="font-mono text-sm tabular-nums text-foreground">{mm}:{ss}</span>;
 }
 
 // ── Keyword-highlighted Transcript ──────────────────────────
@@ -99,18 +99,17 @@ function HighlightedTranscript({ text, keywords }: { text: string; keywords: str
 function WordCountBar({ text, target = 150 }: { text: string; target?: number }) {
   const count = text.trim() ? text.trim().split(/\s+/).length : 0;
   const pct = Math.min(count / target, 1);
-  const color = pct >= 1 ? '#3fb950' : pct >= 0.5 ? '#d29922' : '#58a6ff';
+  const barClass = pct >= 1 ? 'bg-[#3fb950]' : pct >= 0.5 ? 'bg-[#d29922]' : 'bg-primary';
   return (
     <div className="flex items-center gap-2 mt-2">
-      <div className="flex-1 h-1 bg-[#21262d] rounded-full overflow-hidden">
+      <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
         <motion.div
           animate={{ width: `${pct * 100}%` }}
           transition={{ duration: 0.2 }}
-          className="h-full rounded-full"
-          style={{ background: color }}
+          className={`h-full rounded-full ${barClass}`}
         />
       </div>
-      <span className="text-xs tabular-nums text-[#6e7681]">{count} / {target}w</span>
+      <span className="text-xs tabular-nums text-muted-foreground">{count} / {target}w</span>
     </div>
   );
 }
@@ -124,7 +123,7 @@ function ScoreRing({ score }: { score: number }) {
   return (
     <div className="relative w-28 h-28 flex items-center justify-center">
       <svg className="absolute inset-0 -rotate-90" width="112" height="112">
-        <circle cx="56" cy="56" r={r} fill="none" stroke="#21262d" strokeWidth="8" />
+        <circle cx="56" cy="56" r={r} fill="none" stroke="var(--surface-2)" strokeWidth="8" />
         <motion.circle
           cx="56" cy="56" r={r} fill="none"
           stroke={color} strokeWidth="8"
@@ -136,8 +135,8 @@ function ScoreRing({ score }: { score: number }) {
         />
       </svg>
       <div className="text-center">
-        <div className="text-2xl font-bold text-white">{score}</div>
-        <div className="text-[10px] text-[#6e7681]">score</div>
+        <div className="text-2xl font-bold text-foreground">{score}</div>
+        <div className="text-[10px] text-muted-foreground">score</div>
       </div>
     </div>
   );
@@ -151,6 +150,8 @@ import { CreditsDisplay } from '../components/CreditsDisplay';
 import { ListenButton } from '../components/ListenButton';
 import { evaluateVoiceAnswer, type EvaluationResult } from '../lib/voice-evaluation';
 import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
+import { MobileBottomNav } from '../components/layout/UnifiedNav';
+import { MobileHeader } from '../components/layout/MobileHeader';
 import { QuestionHistoryIcon } from '../components/unified/QuestionHistory';
 import type { Question } from '../types';
 
@@ -502,13 +503,13 @@ export default function VoiceInterview() {
   // Unsupported browser
   if (!isSpeechSupported) {
     return (
-      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="max-w-md text-center">
           <div className="w-20 h-20 rounded-2xl bg-[#d29922]/20 flex items-center justify-center mx-auto mb-6">
             <AlertCircle className="w-10 h-10 text-[#d29922]" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-3">Browser Not Supported</h1>
-          <p className="text-[#8b949e] mb-6">
+          <h1 className="text-2xl font-bold text-foreground mb-3">Browser Not Supported</h1>
+          <p className="text-muted-foreground mb-6">
             Voice interview requires the Web Speech API. Please use Chrome, Edge, or Safari.
           </p>
           <button
@@ -525,12 +526,12 @@ export default function VoiceInterview() {
   // Loading
   if (state === 'loading' || questions.length === 0) {
     return (
-      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 rounded-2xl bg-[#58a6ff]/20 flex items-center justify-center mx-auto mb-4">
             <Loader2 className="w-8 h-8 animate-spin text-[#58a6ff]" />
           </div>
-          <p className="text-[#8b949e]">Loading interview questions...</p>
+          <p className="text-muted-foreground">Loading interview questions...</p>
         </div>
       </div>
     );
@@ -539,13 +540,13 @@ export default function VoiceInterview() {
   // Error state
   if (error && !currentQuestion) {
     return (
-      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="max-w-md text-center">
           <div className="w-20 h-20 rounded-2xl bg-[#f85149]/20 flex items-center justify-center mx-auto mb-6">
             <XCircle className="w-10 h-10 text-[#f85149]" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-3">Error</h1>
-          <p className="text-[#8b949e] mb-6">{error}</p>
+          <h1 className="text-2xl font-bold text-foreground mb-3">Error</h1>
+          <p className="text-muted-foreground mb-6">{error}</p>
           <button
             onClick={() => setLocation('/')}
             className="px-6 py-3 bg-[#238636] text-white font-medium rounded-xl hover:bg-[#2ea043] transition-colors"
@@ -573,38 +574,39 @@ export default function VoiceInterview() {
 
     return (
       <DesktopSidebarWrapper>
-        <div className="min-h-screen bg-[#0d1117] flex items-center justify-center p-4">
+        <div className="lg:hidden"><MobileHeader title="Voice Interview" showBack={true} /></div>
+        <div className="min-h-screen bg-background flex items-center justify-center p-4 pb-[calc(56px+env(safe-area-inset-bottom,0px))] lg:pb-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.93, y: 24 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             className="max-w-lg w-full"
           >
-            <div className="rounded-2xl border border-[#30363d] bg-[#161b22] p-8">
+            <div className="rounded-2xl border border-border bg-surface-1 p-8">
               <div className="flex flex-col items-center mb-8">
                 <ScoreRing score={avg} />
-                <h2 className="text-xl font-bold text-white mt-4">Session Complete!</h2>
-                <p className="text-sm text-[#8b949e] mt-1">{questions.length} questions answered</p>
+                <h2 className="text-xl font-bold text-foreground mt-4">Session Complete!</h2>
+                <p className="text-sm text-muted-foreground mt-1">{questions.length} questions answered</p>
               </div>
 
               <div className="grid grid-cols-3 gap-3 mb-8">
-                <div className="bg-[#0d1117] rounded-xl p-4 text-center border border-[#30363d]">
-                  <div className="text-2xl font-bold text-white">{questions.length}</div>
-                  <div className="text-xs text-[#6e7681] mt-1">Questions</div>
+                <div className="bg-surface-0 rounded-xl p-4 text-center border border-border">
+                  <div className="text-2xl font-bold text-foreground">{questions.length}</div>
+                  <div className="text-xs text-muted-foreground mt-1">Questions</div>
                 </div>
-                <div className="bg-[#0d1117] rounded-xl p-4 text-center border border-[#30363d]">
+                <div className="bg-surface-0 rounded-xl p-4 text-center border border-border">
                   <div className="text-2xl font-bold text-[#3fb950]">{sessionScores.filter(s => s.score >= 60).length}</div>
-                  <div className="text-xs text-[#6e7681] mt-1">Passed</div>
+                  <div className="text-xs text-muted-foreground mt-1">Passed</div>
                 </div>
-                <div className="bg-[#0d1117] rounded-xl p-4 text-center border border-[#30363d]">
+                <div className="bg-surface-0 rounded-xl p-4 text-center border border-border">
                   <div className="text-2xl font-bold text-[#f85149]">{sessionScores.filter(s => s.score < 60).length}</div>
-                  <div className="text-xs text-[#6e7681] mt-1">Missed</div>
+                  <div className="text-xs text-muted-foreground mt-1">Missed</div>
                 </div>
               </div>
 
               {topMissed.length > 0 && (
                 <div className="mb-8">
-                  <p className="text-xs font-semibold text-[#6e7681] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
                     <Brain className="w-3.5 h-3.5" /> Top missed concepts
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -616,11 +618,11 @@ export default function VoiceInterview() {
               )}
 
               <div className="flex gap-3">
-                <button onClick={handleShare} className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-[#30363d] text-[#8b949e] hover:text-white hover:border-[#8b949e] rounded-xl transition-colors text-sm">
+                <button onClick={handleShare} className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground rounded-xl transition-colors text-sm">
                   <ExternalLink className="w-4 h-4" /> Share
                 </button>
                 <button onClick={() => { setSessionScores([]); setCurrentIndex(0); setTranscript(''); setEvaluation(null); setState('ready'); }}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-[#30363d] text-[#8b949e] hover:text-white hover:border-[#8b949e] rounded-xl transition-colors text-sm">
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground rounded-xl transition-colors text-sm">
                   <RotateCcw className="w-4 h-4" /> Again
                 </button>
                 <button onClick={() => setLocation('/')}
@@ -631,6 +633,7 @@ export default function VoiceInterview() {
             </div>
           </motion.div>
         </div>
+        <MobileBottomNav />
       </DesktopSidebarWrapper>
     );
   }
@@ -646,26 +649,27 @@ export default function VoiceInterview() {
       />
 
       <DesktopSidebarWrapper>
+      <div className="lg:hidden"><MobileHeader title="Voice Interview" showBack={true} /></div>
       {/* iPhone 13 FIX: Ensure content fits within viewport with safe areas */}
-      <div className="min-h-screen bg-[#0d1117] text-[#e6edf3] overflow-x-hidden w-full">
+      <div className="min-h-screen bg-background text-foreground overflow-x-hidden w-full pb-[calc(56px+env(safe-area-inset-bottom,0px))] lg:pb-0">
         {/* Header - COMPACT */}
-        <header className="sticky top-0 z-50 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur-md">
+        <header className="hidden lg:block sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
           <div className="max-w-4xl mx-auto px-3 h-14 flex items-center justify-between w-full" style={{ maxWidth: '100vw' }}>
             <div className="flex items-center gap-3">
               <button
                 onClick={exitInterview}
-                className="p-1.5 hover:bg-[#21262d] rounded-lg transition-colors"
+                className="p-1.5 hover:bg-muted rounded-lg transition-colors"
                 title="Exit and save progress"
               >
-                <Home className="w-4 h-4 text-[#8b949e]" />
+                <Home className="w-4 h-4 text-muted-foreground" />
               </button>
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#f85149] to-[#ff7b72] flex items-center justify-center">
                   <Mic className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <h1 className="font-semibold text-white text-sm">Voice Interview</h1>
-                  <p className="text-[10px] text-[#8b949e]">
+                  <h1 className="font-semibold text-foreground text-sm">Voice Interview</h1>
+                  <p className="text-[10px] text-muted-foreground">
                     Q{currentIndex + 1}/{questions.length}
                   </p>
                 </div>
@@ -675,7 +679,7 @@ export default function VoiceInterview() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setLocation('/voice-session')}
-                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs bg-[#21262d] text-[#8b949e] hover:text-white rounded-lg border border-[#30363d] hover:border-[#58a6ff]/50 transition-all"
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs bg-muted text-muted-foreground hover:text-foreground rounded-lg border border-border hover:border-[#58a6ff]/50 transition-all"
               >
                 <Target className="w-3.5 h-3.5" />
                 Sessions
@@ -700,7 +704,7 @@ export default function VoiceInterview() {
           
           {/* Progress Bar */}
           <div className="max-w-4xl mx-auto px-3 pb-2 w-full" style={{ maxWidth: '100vw' }}>
-            <div className="h-1 bg-[#21262d] rounded-full overflow-hidden">
+            <div className="h-1 bg-muted rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
@@ -717,7 +721,7 @@ export default function VoiceInterview() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border border-[#30363d] bg-[#161b22] overflow-hidden mb-6 w-full"
+            className="rounded-2xl border border-border bg-surface-1 overflow-hidden mb-6 w-full"
             style={{ maxWidth: '100%' }}
           >
             <div className="p-6">
@@ -726,11 +730,11 @@ export default function VoiceInterview() {
                   <div className="p-2.5 rounded-xl bg-[#58a6ff]/10 flex-shrink-0">
                     <MessageSquare className="w-5 h-5 text-[#58a6ff]" />
                   </div>
-                  <h2 className="text-lg font-medium text-white leading-relaxed">{currentQuestion?.question}</h2>
+                  <h2 className="text-lg font-medium text-foreground leading-relaxed">{currentQuestion?.question}</h2>
                 </div>
                 <button
                   onClick={goToOriginalQuestion}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#8b949e] hover:text-[#58a6ff] hover:bg-[#21262d] rounded-lg transition-colors flex-shrink-0"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-[#58a6ff] hover:bg-muted rounded-lg transition-colors flex-shrink-0"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">View Details</span>
@@ -738,15 +742,15 @@ export default function VoiceInterview() {
               </div>
               
               {/* Question Controls */}
-              <div className="flex items-center justify-between pt-4 border-t border-[#30363d]/50">
+              <div className="flex items-center justify-between pt-4 border-t border-border/50">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-[#6e7681] font-mono">Q{currentIndex + 1}/{questions.length}</span>
+                  <span className="text-xs text-muted-foreground font-mono">Q{currentIndex + 1}/{questions.length}</span>
                   
                   {/* Actions Dropdown */}
                   <div className="relative">
                     <button
                       onClick={() => setShowActions(!showActions)}
-                      className="p-1.5 text-[#6e7681] hover:text-white hover:bg-[#21262d] rounded-lg transition-colors"
+                      className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                     >
                       <MoreHorizontal className="w-4 h-4" />
                     </button>
@@ -757,12 +761,12 @@ export default function VoiceInterview() {
                           initial={{ opacity: 0, y: -5 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -5 }}
-                          className="absolute left-0 top-full mt-1 bg-[#161b22] border border-[#30363d] rounded-xl shadow-xl py-1 z-10 min-w-[160px]"
+                          className="absolute left-0 top-full mt-1 bg-surface-1 border border-border rounded-xl shadow-xl py-1 z-10 min-w-[160px]"
                         >
                           <button
                             onClick={previousQuestion}
                             disabled={currentIndex === 0}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors disabled:opacity-30"
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30"
                           >
                             <ChevronLeft className="w-4 h-4" />
                             Previous
@@ -770,22 +774,22 @@ export default function VoiceInterview() {
                           <button
                             onClick={skipQuestion}
                             disabled={currentIndex >= questions.length - 1}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors disabled:opacity-30"
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30"
                           >
                             <SkipForward className="w-4 h-4" />
                             Skip Question
                           </button>
                           <button
                             onClick={shuffleQuestions}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                           >
                             <Shuffle className="w-4 h-4" />
                             Shuffle All
                           </button>
-                          <div className="border-t border-[#30363d] my-1" />
+                          <div className="border-t border-border my-1" />
                           <button
                             onClick={goToOriginalQuestion}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[#8b949e] hover:text-white hover:bg-[#21262d] transition-colors"
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                           >
                             <ExternalLink className="w-4 h-4" />
                             View Full Question
@@ -799,7 +803,7 @@ export default function VoiceInterview() {
                 <div className="flex items-center gap-3">
                   <ListenButton text={currentQuestion?.question || ''} label="Listen" size="sm" />
                   {currentQuestion?.voiceKeywords && currentQuestion.voiceKeywords.length > 0 && (
-                    <span className="text-xs text-[#6e7681]">
+                    <span className="text-xs text-muted-foreground">
                       {currentQuestion.voiceKeywords.length} key terms
                     </span>
                   )}
@@ -819,28 +823,28 @@ export default function VoiceInterview() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl border border-[#30363d] bg-[#161b22] p-5 mb-6 w-full"
+              className="rounded-2xl border border-border bg-surface-1 p-5 mb-6 w-full"
             >
               <div className="flex items-center gap-2 mb-4">
                 <Lightbulb className="w-4 h-4 text-[#d29922]" />
-                <span className="text-sm font-semibold text-[#e6edf3]">How to answer well</span>
+                <span className="text-sm font-semibold text-foreground">How to answer well</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                 {[
-                  { icon: '🎯', tip: 'State your approach first, then explain the details' },
-                  { icon: '📊', tip: 'Use concrete examples or numbers when possible' },
-                  { icon: '⚡', tip: 'Mention trade-offs — interviewers love nuanced answers' },
-                  { icon: '🔄', tip: 'Summarize your answer at the end' },
+                  { tip: 'State your approach first, then explain the details' },
+                  { tip: 'Use concrete examples or numbers when possible' },
+                  { tip: 'Mention trade-offs — interviewers love nuanced answers' },
+                  { tip: 'Summarize your answer at the end' },
                 ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-2 text-xs text-[#8b949e]">
-                    <span className="flex-shrink-0">{item.icon}</span>
+                  <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <ChevronRight className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-[#58a6ff]" />
                     <span>{item.tip}</span>
                   </div>
                 ))}
               </div>
               {currentQuestion.voiceKeywords && currentQuestion.voiceKeywords.length > 0 && (
                 <div>
-                  <div className="text-xs text-[#6e7681] mb-2 flex items-center gap-1.5">
+                  <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
                     <Brain className="w-3.5 h-3.5" />
                     Key terms to mention:
                   </div>
@@ -868,16 +872,23 @@ export default function VoiceInterview() {
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a371f7] to-[#f778ba] flex items-center justify-center flex-shrink-0">
                   <User className="w-5 h-5 text-white" />
                 </div>
-                <div className="flex-1 p-4 bg-[#21262d] border border-[#30363d] rounded-2xl rounded-tl-none">
-                  <p className="text-sm italic text-[#8b949e]">"{interviewerComment}"</p>
-                  <p className="text-[10px] text-[#6e7681] mt-2">— Your Interviewer</p>
+                <div className="flex-1 p-4 bg-muted border border-border rounded-2xl rounded-tl-none">
+                  <p className="text-sm italic text-muted-foreground">"{interviewerComment}"</p>
+                  <p className="text-[10px] text-muted-foreground mt-2">— Your Interviewer</p>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
           {/* Recording Interface */}
-          <div className="rounded-2xl border border-[#30363d] bg-[#161b22] p-6 mb-6 w-full overflow-hidden" style={{ maxWidth: '100%' }}>
+          <div
+            className="rounded-2xl border bg-surface-1 p-6 mb-6 w-full overflow-hidden transition-colors duration-300"
+            style={{
+              maxWidth: '100%',
+              borderColor: state === 'recording' ? 'rgba(248,81,73,0.5)' : state === 'evaluated' ? 'rgba(63,185,80,0.4)' : 'var(--color-border)',
+              boxShadow: state === 'recording' ? '0 0 0 1px rgba(248,81,73,0.2)' : 'none',
+            }}
+          >
 
             {/* State Header */}
             <div className="flex items-center justify-between mb-5">
@@ -885,10 +896,10 @@ export default function VoiceInterview() {
                 {state === 'ready' && (
                   <motion.div key="ready" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
                     className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-[#21262d] flex items-center justify-center">
-                      <Mic className="w-4 h-4 text-[#8b949e]" />
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                      <Mic className="w-4 h-4 text-muted-foreground" />
                     </div>
-                    <span className="text-sm font-medium text-[#8b949e]">Ready</span>
+                    <span className="text-sm font-medium text-muted-foreground">Ready</span>
                   </motion.div>
                 )}
                 {state === 'recording' && (
@@ -924,26 +935,18 @@ export default function VoiceInterview() {
 
               {/* Word count when transcript exists */}
               {transcript && state !== 'evaluated' && (
-                <span className="text-xs text-[#6e7681] tabular-nums">
+                <span className="text-xs text-muted-foreground tabular-nums">
                   {transcript.trim().split(/\s+/).filter(Boolean).length} words
                 </span>
               )}
             </div>
 
-            {/* Waveform — shown during recording */}
-            <AnimatePresence>
-              {(state === 'recording' || state === 'processing') && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="mb-5 overflow-hidden"
-                >
-                  <WaveformVisualizer isActive={state === 'recording'} />
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Waveform — always visible; animated when recording, flat when idle */}
+            {state !== 'evaluated' && (
+              <div className="mb-5">
+                <WaveformVisualizer isActive={state === 'recording'} />
+              </div>
+            )}
 
             {/* Transcript Display */}
             {(state === 'recording' || state === 'editing' || transcript) && state !== 'evaluated' && (
@@ -953,22 +956,22 @@ export default function VoiceInterview() {
                     <textarea
                       value={transcript}
                       onChange={(e) => setTranscript(e.target.value)}
-                      className="w-full p-4 bg-[#0d1117] border border-[#d29922]/30 rounded-xl min-h-[150px] max-h-[300px] text-sm text-[#e6edf3] resize-y focus:outline-none focus:ring-2 focus:ring-[#d29922]/50 focus:border-[#d29922]"
+                      className="w-full p-4 bg-background border border-[#d29922]/30 rounded-xl min-h-[150px] max-h-[300px] text-sm text-foreground resize-y focus:outline-none focus:ring-2 focus:ring-[#d29922]/50 focus:border-[#d29922]"
                       placeholder="Edit your transcribed answer here..."
                     />
                     <WordCountBar text={transcript} />
                   </>
                 ) : (
                   <>
-                    <div className="p-4 bg-[#0d1117] rounded-xl min-h-[100px] max-h-[200px] overflow-y-auto border border-[#30363d]">
+                    <div className="p-4 bg-background rounded-xl min-h-[100px] max-h-[200px] overflow-y-auto border border-border">
                       {transcript || interimTranscript ? (
-                        <p className="text-sm text-[#e6edf3] whitespace-pre-wrap leading-relaxed">
+                        <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                           <HighlightedTranscript text={transcript} keywords={currentQuestion?.voiceKeywords || []} />
-                          <span className="text-[#6e7681]">{interimTranscript}</span>
+                          <span className="text-muted-foreground">{interimTranscript}</span>
                           {state === 'recording' && <span className="animate-pulse text-[#58a6ff]">|</span>}
                         </p>
                       ) : (
-                        <p className="text-sm text-[#6e7681] italic">
+                        <p className="text-sm text-muted-foreground italic">
                           {state === 'recording'
                             ? 'Start speaking... Your words will appear here.'
                             : 'No transcript yet'}
@@ -979,7 +982,7 @@ export default function VoiceInterview() {
                   </>
                 )}
                 {state === 'editing' && (
-                  <p className="text-xs text-[#6e7681] mt-2 flex items-center gap-1.5">
+                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
                     <Lightbulb className="w-3.5 h-3.5 text-[#d29922]" />
                     Fix any transcription errors before submitting
                   </p>
@@ -1014,7 +1017,7 @@ export default function VoiceInterview() {
                   <button
                     onClick={skipQuestion}
                     disabled={currentIndex >= questions.length - 1}
-                    className="flex items-center gap-2 px-4 py-4 border border-[#30363d] text-[#8b949e] hover:text-white hover:border-[#8b949e] rounded-2xl transition-colors disabled:opacity-30"
+                    className="flex items-center gap-2 px-4 py-4 border border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground rounded-2xl transition-colors disabled:opacity-30"
                   >
                     <SkipForward className="w-4 h-4" />
                     Skip
@@ -1026,7 +1029,7 @@ export default function VoiceInterview() {
                 <div className="flex gap-3">
                   <button
                     onClick={retryQuestion}
-                    className="flex items-center gap-2 px-5 py-3 border border-[#30363d] text-[#8b949e] hover:text-white hover:border-[#8b949e] rounded-xl transition-colors"
+                    className="flex items-center gap-2 px-5 py-3 border border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground rounded-xl transition-colors"
                   >
                     <RotateCcw className="w-4 h-4" />
                     Re-record
@@ -1047,7 +1050,7 @@ export default function VoiceInterview() {
                 <div className="flex gap-3">
                   <button
                     onClick={retryQuestion}
-                    className="flex items-center gap-2 px-5 py-3 border border-[#30363d] text-[#8b949e] hover:text-white hover:border-[#8b949e] rounded-xl transition-colors"
+                    className="flex items-center gap-2 px-5 py-3 border border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground rounded-xl transition-colors"
                   >
                     <RotateCcw className="w-4 h-4" />
                     Try Again
@@ -1064,8 +1067,8 @@ export default function VoiceInterview() {
               )}
             </div>
             {(state === 'ready' || state === 'recording') && (
-              <p className="text-center text-[10px] text-[#6e7681] mt-3">
-                Press <kbd className="px-1.5 py-0.5 bg-[#21262d] border border-[#30363d] rounded text-[10px] font-mono">Space</kbd> to {state === 'recording' ? 'stop' : 'start'}
+              <p className="text-center text-[10px] text-muted-foreground mt-3">
+                Press <kbd className="px-1.5 py-0.5 bg-muted border border-border rounded text-[10px] font-mono">Space</kbd> to {state === 'recording' ? 'stop' : 'start'}
               </p>
             )}
             </div>
@@ -1095,7 +1098,7 @@ export default function VoiceInterview() {
                       </div>
                       <div>
                         <div className="font-bold text-[#d29922] text-lg">+{earnedCredits.total} Credits Earned!</div>
-                        <div className="text-xs text-[#8b949e]">
+                        <div className="text-xs text-muted-foreground">
                           {earnedCredits.bonus > 0
                             ? `${config.VOICE_ATTEMPT} base + ${earnedCredits.bonus} success bonus`
                             : 'Thanks for practicing!'}
@@ -1120,9 +1123,9 @@ export default function VoiceInterview() {
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${getVerdictBgStyle(evaluation.verdict)}`}>
                           {getVerdictIcon(evaluation.verdict)}
                         </div>
-                        <h3 className="font-bold text-xl text-white">{getVerdictLabel(evaluation.verdict)}</h3>
+                        <h3 className="font-bold text-xl text-foreground">{getVerdictLabel(evaluation.verdict)}</h3>
                       </div>
-                      <p className="text-sm text-[#8b949e] leading-relaxed">{evaluation.feedback}</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{evaluation.feedback}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -1141,7 +1144,7 @@ export default function VoiceInterview() {
                     </h4>
                     <ul className="space-y-2">
                       {evaluation.keyPointsCovered.map((point, i) => (
-                        <li key={i} className="text-sm flex items-start gap-2 text-[#8b949e]">
+                        <li key={i} className="text-sm flex items-start gap-2 text-muted-foreground">
                           <span className="text-[#3fb950] mt-0.5 flex-shrink-0">✓</span>
                           <span>
                             {typeof point === 'object' && 'concept' in point
@@ -1151,7 +1154,7 @@ export default function VoiceInterview() {
                         </li>
                       ))}
                       {evaluation.keyPointsCovered.length === 0 && (
-                        <li className="text-sm text-[#6e7681]">No key concepts identified</li>
+                        <li className="text-sm text-muted-foreground">No key concepts identified</li>
                       )}
                     </ul>
                   </div>
@@ -1163,13 +1166,13 @@ export default function VoiceInterview() {
                     </h4>
                     <ul className="space-y-2">
                       {evaluation.keyPointsMissed.map((point, i) => (
-                        <li key={i} className="text-sm flex items-start gap-2 text-[#8b949e]">
+                        <li key={i} className="text-sm flex items-start gap-2 text-muted-foreground">
                           <span className="text-[#f85149] mt-0.5 flex-shrink-0">✗</span>
                           <span>{point}</span>
                         </li>
                       ))}
                       {evaluation.keyPointsMissed.length === 0 && (
-                        <li className="text-sm text-[#6e7681]">Great job covering all concepts!</li>
+                        <li className="text-sm text-muted-foreground">Great job covering all concepts!</li>
                       )}
                     </ul>
                   </div>
@@ -1181,9 +1184,9 @@ export default function VoiceInterview() {
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="p-6 rounded-2xl border border-[#30363d] bg-[#161b22]"
+                    className="p-6 rounded-2xl border border-border bg-surface-1"
                   >
-                    <h4 className="font-semibold text-white flex items-center gap-2 mb-5">
+                    <h4 className="font-semibold text-foreground flex items-center gap-2 mb-5">
                       <BarChart3 className="w-5 h-5 text-[#58a6ff]" />
                       Detailed Analysis
                     </h4>
@@ -1195,7 +1198,7 @@ export default function VoiceInterview() {
                     </div>
 
                     {evaluation.structureAnalysis && (
-                      <div className="mt-5 pt-5 border-t border-[#30363d] flex flex-wrap gap-2">
+                      <div className="mt-5 pt-5 border-t border-border flex flex-wrap gap-2">
                         {evaluation.structureAnalysis.hasIntroduction && (
                           <span className="px-3 py-1.5 text-xs bg-[#238636]/20 text-[#3fb950] rounded-lg font-medium">✓ Introduction</span>
                         )}
@@ -1206,11 +1209,11 @@ export default function VoiceInterview() {
                           <span className="px-3 py-1.5 text-xs bg-[#238636]/20 text-[#3fb950] rounded-lg font-medium">✓ Conclusion</span>
                         )}
                         {evaluation.structureAnalysis.usesSTAR && (
-                          <span className="px-3 py-1.5 text-xs bg-[#a371f7]/20 text-[#a371f7] rounded-lg font-medium">⭐ STAR Method</span>
+                          <span className="px-3 py-1.5 text-xs bg-[#a371f7]/20 text-[#a371f7] rounded-lg font-medium">STAR Method</span>
                         )}
                         {evaluation.fluencyMetrics && evaluation.fluencyMetrics.fillerWordCount > 3 && (
                           <span className="px-3 py-1.5 text-xs bg-[#d29922]/20 text-[#d29922] rounded-lg font-medium">
-                            ⚠ {evaluation.fluencyMetrics.fillerWordCount} filler words
+                            {evaluation.fluencyMetrics.fillerWordCount} filler words
                           </span>
                         )}
                       </div>
@@ -1225,14 +1228,14 @@ export default function VoiceInterview() {
                   transition={{ delay: 0.25 }}
                   className="grid md:grid-cols-2 gap-4"
                 >
-                  <div className="p-5 rounded-2xl border border-[#30363d] bg-[#161b22]">
-                    <h4 className="font-semibold text-white flex items-center gap-2 mb-4">
+                  <div className="p-5 rounded-2xl border border-border bg-surface-1">
+                    <h4 className="font-semibold text-foreground flex items-center gap-2 mb-4">
                       <Sparkles className="w-5 h-5 text-[#f1c40f]" />
                       Strengths
                     </h4>
                     <ul className="space-y-2">
                       {evaluation.strengths.map((s, i) => (
-                        <li key={i} className="text-sm text-[#8b949e] flex items-start gap-2">
+                        <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                           <Zap className="w-4 h-4 text-[#f1c40f] flex-shrink-0 mt-0.5" />
                           {s}
                         </li>
@@ -1240,14 +1243,14 @@ export default function VoiceInterview() {
                     </ul>
                   </div>
 
-                  <div className="p-5 rounded-2xl border border-[#30363d] bg-[#161b22]">
-                    <h4 className="font-semibold text-white flex items-center gap-2 mb-4">
+                  <div className="p-5 rounded-2xl border border-border bg-surface-1">
+                    <h4 className="font-semibold text-foreground flex items-center gap-2 mb-4">
                       <Target className="w-5 h-5 text-[#58a6ff]" />
                       Areas to Improve
                     </h4>
                     <ul className="space-y-2">
                       {evaluation.improvements.map((s, i) => (
-                        <li key={i} className="text-sm text-[#8b949e] flex items-start gap-2">
+                        <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                           <ChevronRight className="w-4 h-4 text-[#58a6ff] flex-shrink-0 mt-0.5" />
                           {s}
                         </li>
@@ -1262,18 +1265,18 @@ export default function VoiceInterview() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.3 }}
-                    className="p-5 rounded-2xl border border-[#30363d] bg-[#161b22] group"
+                    className="p-5 rounded-2xl border border-border bg-surface-1 group"
                   >
-                    <summary className="cursor-pointer font-semibold text-white flex items-center gap-2 list-none">
+                    <summary className="cursor-pointer font-semibold text-foreground flex items-center gap-2 list-none">
                       <Volume2 className="w-5 h-5 text-[#a371f7]" />
                       View Ideal Answer
-                      <ChevronRight className="w-4 h-4 text-[#6e7681] ml-auto transition-transform group-open:rotate-90" />
+                      <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto transition-transform group-open:rotate-90" />
                     </summary>
-                    <div className="mt-4 pt-4 border-t border-[#30363d] space-y-3">
+                    <div className="mt-4 pt-4 border-t border-border space-y-3">
                       <div className="flex justify-end">
                         <ListenButton text={currentQuestion?.answer || ''} label="Listen to Answer" size="sm" />
                       </div>
-                      <div className="text-sm text-[#8b949e] whitespace-pre-wrap leading-relaxed bg-[#0d1117] p-4 rounded-xl">
+                      <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed bg-background p-4 rounded-xl">
                         {currentQuestion?.answer}
                       </div>
                     </div>
@@ -1284,6 +1287,7 @@ export default function VoiceInterview() {
           </AnimatePresence>
         </main>
       </div>
+      <MobileBottomNav />
       </DesktopSidebarWrapper>
     </>
   );
@@ -1308,13 +1312,13 @@ function ScoreDimension({ label, score, icon, description }: {
   };
   
   return (
-    <div className="text-center p-4 rounded-xl bg-[#0d1117] border border-[#30363d]">
+    <div className="text-center p-4 rounded-xl bg-background border border-border">
       <div className={`flex items-center justify-center gap-1.5 mb-2 ${getColor(score)}`}>
         {icon}
         <span className="text-xs font-medium">{label}</span>
       </div>
-      <div className="text-2xl font-bold text-white">{score}%</div>
-      <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden mt-2">
+      <div className="text-2xl font-bold text-foreground">{score}%</div>
+      <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-2">
         <motion.div
           initial={{ scaleX: 0 }}
           animate={{ scaleX: score / 100 }}
@@ -1323,7 +1327,7 @@ function ScoreDimension({ label, score, icon, description }: {
           className={`h-full ${getBgColor(score)}`}
         />
       </div>
-      <div className="text-[10px] text-[#6e7681] mt-2">{description}</div>
+      <div className="text-[10px] text-muted-foreground mt-2">{description}</div>
     </div>
   );
 }

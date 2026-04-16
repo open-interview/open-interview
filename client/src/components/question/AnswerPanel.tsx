@@ -268,16 +268,16 @@ function TabbedMediaPanel({
       animate={{ opacity: 1, y: 0 }}
       className="rounded-2xl border border-border bg-card backdrop-blur-xl overflow-hidden shadow-xl"
     >
-      {/* Tab Headers - Theme Colors */}
-      <div className="flex border-b border-border bg-muted/30 p-1.5 gap-1">
+      {/* Tab Headers - Premium Styling */}
+      <div className="flex border-b border-border p-1 bg-muted/40 gap-1">
         {availableTabs.map((tab) => (
           <motion.button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold transition-all rounded-lg ${
+            className={`flex-1 flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold transition-all rounded-xl ${
               activeTab === tab 
-                ? 'text-primary-foreground bg-primary shadow-sm' 
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 rounded-xl' 
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl'
             }`}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -589,6 +589,8 @@ export function AnswerPanel({ question, isCompleted, srsCard, showRatingButtons,
       transition={{ duration: 0.25, ease: 'easeOut' }}
       className="w-full h-full overflow-y-auto overflow-x-hidden"
     >
+      {/* Premium top gradient accent */}
+      <div className="h-0.5 bg-gradient-to-r from-primary via-cyan-500 to-purple-500" />
       {/* Difficulty accent line */}
       <div className={`h-1 w-full flex-shrink-0 ${
         question.difficulty === 'advanced'
@@ -617,7 +619,7 @@ export function AnswerPanel({ question, isCompleted, srsCard, showRatingButtons,
           defaultExpanded={true}
           badge={question.explanation ? `${Math.ceil(question.explanation.split(' ').length / 200)} min read` : undefined}
         >
-          <div className="prose prose-invert prose-lg max-w-none">
+          <div className="prose prose-lg max-w-none leading-relaxed text-base prose-headings:font-bold prose-headings:text-foreground prose-p:text-foreground/90 prose-strong:text-foreground prose-code:text-primary prose-code:bg-primary/10 prose-code:rounded prose-code:px-1">
             {renderMarkdown(question.explanation)}
           </div>
         </ExpandableCard>
@@ -678,12 +680,7 @@ export function AnswerPanel({ question, isCompleted, srsCard, showRatingButtons,
 
         {/* SRS Rating — pinned at bottom of content */}
         {(onAddToSRS || onSRSRating) && (
-          <div className="sticky bottom-0 -mx-4 sm:-mx-6 px-4 sm:px-6 py-4 mt-4 border-t border-border"
-            style={{
-              background: 'rgba(15, 22, 41, 0.88)',
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-            }}
+          <div className="sticky bottom-0 -mx-4 sm:-mx-6 px-4 sm:px-6 py-4 mt-4 border-t border-border bg-background/90 backdrop-blur-[16px]"
           >
             {hasRated ? (
               <div className="flex items-center justify-center gap-2 text-emerald-400 text-sm font-semibold">
@@ -693,7 +690,7 @@ export function AnswerPanel({ question, isCompleted, srsCard, showRatingButtons,
             ) : showRatingButtons && srsCard ? (
               <div className="space-y-2">
                 <p className="text-xs text-center text-muted-foreground font-medium">How well did you know this?</p>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-4 gap-2 p-4">
                   {([
                     { rating: 'again' as ConfidenceRating, label: 'Again', cls: 'bg-red-500/20 border-red-500/40 text-red-400 hover:bg-red-500/30', icon: <RotateCcw className="w-4 h-4" /> },
                     { rating: 'hard'  as ConfidenceRating, label: 'Hard',  cls: 'bg-orange-500/20 border-orange-500/40 text-orange-400 hover:bg-orange-500/30', icon: <Brain className="w-4 h-4" /> },
@@ -705,7 +702,7 @@ export function AnswerPanel({ question, isCompleted, srsCard, showRatingButtons,
                       onClick={() => onSRSRating?.(rating)}
                       whileHover={{ scale: 1.04 }}
                       whileTap={{ scale: 0.96 }}
-                      className={`flex flex-col items-center gap-1 py-2.5 border rounded-xl text-xs font-bold transition-all ${cls}`}
+                      className={`flex flex-col items-center gap-1.5 py-3 border rounded-2xl font-bold text-sm transition-all ${cls}`}
                     >
                       {icon}
                       {label}

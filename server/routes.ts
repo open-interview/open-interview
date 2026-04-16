@@ -1057,5 +1057,120 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================================
+  // FLASHCARDS API
+  // ============================================================
+
+  app.get("/api/flashcards", async (req, res) => {
+    try {
+      const { channel, limit = "50", offset = "0" } = req.query as Record<string, string>;
+      let sql = "SELECT * FROM flashcards WHERE 1=1";
+      const args: any[] = [];
+      if (channel) { sql += " AND channel = ?"; args.push(channel); }
+      sql += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+      args.push(parseInt(limit), parseInt(offset));
+      const result = await client.execute({ sql, args });
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching flashcards:", error);
+      res.status(500).json({ error: "Failed to fetch flashcards" });
+    }
+  });
+
+  app.get("/api/flashcards/:id", async (req, res) => {
+    try {
+      const result = await client.execute({
+        sql: "SELECT * FROM flashcards WHERE id = ?",
+        args: [req.params.id]
+      });
+      if (result.rows.length === 0) return res.status(404).json({ error: "Flashcard not found" });
+      res.json(result.rows[0]);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch flashcard" });
+    }
+  });
+
+  app.get("/api/flashcards/question/:questionId", async (req, res) => {
+    try {
+      const result = await client.execute({
+        sql: "SELECT * FROM flashcards WHERE question_id = ?",
+        args: [req.params.questionId]
+      });
+      res.json(result.rows[0] || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch flashcard" });
+    }
+  });
+
+  // ============================================================
+  // VOICE SESSIONS API
+  // ============================================================
+
+  app.get("/api/voice-sessions", async (req, res) => {
+    try {
+      const { channel, difficulty } = req.query as Record<string, string>;
+      let sql = "SELECT * FROM voice_sessions WHERE 1=1";
+      const args: any[] = [];
+      if (channel) { sql += " AND channel = ?"; args.push(channel); }
+      if (difficulty) { sql += " AND difficulty = ?"; args.push(difficulty); }
+      sql += " ORDER BY last_updated DESC";
+      const result = await client.execute({ sql, args });
+      res.json(result.rows.map(r => ({
+        ...r,
+        questionIds: r.question_ids ? JSON.parse(r.question_ids as string) : []
+      })));
+    } catch (error) {
+      console.error("Error fetching voice sessions:", error);
+      res.status(500).json({ error: "Failed to fetch voice sessions" });
+    }
+  });
+
+  app.get("/api/voice-sessions/:id", async (req, res) => {
+    try {
+      const result = await client.execute({
+        sql: "SELECT * FROM voice_sessions WHERE id = ?",
+        args: [req.params.id]
+      });
+      if (result.rows.length === 0) return res.status(404).json({ error: "Voice session not found" });
+      const row = result.rows[0];
+      res.json({ ...row, questionIds: row.question_ids ? JSON.parse(row.question_ids as string) : [] });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch voice session" });
+    }
+  });
+
+  // ============================================================
+  // TESTS API
+  // ============================================================
+
+  app.get("/api/tests", async (req, res) => {
+    try {
+      const { channelId } = req.query as Record<string, string>;
+      let sql = "SELECT id, channel_id, channel_name, title, description, passing_score, version, created_at, last_updated FROM tests WHERE 1=1";
+      const args: any[] = [];
+      if (channelId) { sql += " AND channel_id = ?"; args.push(channelId); }
+      sql += " ORDER BY channel_name";
+      const result = await client.execute({ sql, args });
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching tests:", error);
+      res.status(500).json({ error: "Failed to fetch tests" });
+    }
+  });
+
+  app.get("/api/tests/:id", async (req, res) => {
+    try {
+      const result = await client.execute({
+        sql: "SELECT * FROM tests WHERE id = ?",
+        args: [req.params.id]
+      });
+      if (result.rows.length === 0) return res.status(404).json({ error: "Test not found" });
+      const row = result.rows[0];
+      res.json({ ...row, questions: row.questions ? JSON.parse(row.questions as string) : [] });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch test" });
+    }
+  });
+
   return httpServer;
 }

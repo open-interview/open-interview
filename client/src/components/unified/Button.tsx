@@ -1,4 +1,9 @@
 /**
+ * @deprecated Use `@/components/ui/button` instead.
+ * This component duplicates ui/button.tsx and will be removed in a future cleanup.
+ */
+
+/**
  * Unified Button Component
  * 
  * Consistent button styling across the entire application

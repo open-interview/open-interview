@@ -143,20 +143,27 @@ export function MobileHomeFocused() {
               onClick={() => setLocation('/profile')}
               className="w-full bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 p-3 hover:from-violet-500 hover:via-purple-500 hover:to-indigo-600 transition-all"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
                     <Coins className="w-5 h-5 text-white" />
                   </div>
                   <div className="text-left">
                     <div className="text-xl font-bold text-white">{formatCredits(balance)}</div>
-                    <div className="text-[10px] text-white/60">Credits</div>
+                    <div className="text-[10px] text-white/80">Level {Math.floor(balance / 100)} · {balance % 100}/100 XP</div>
                   </div>
                 </div>
                 <div className="text-right text-[10px]">
-                  <div className="text-green-300">+{config.VOICE_ATTEMPT} voice</div>
-                  <div className="text-red-300/80">-{config.QUESTION_VIEW_COST}/q</div>
+                  <div className="text-green-200">+{config.VOICE_ATTEMPT} voice</div>
+                  <div className="text-red-200">-{config.QUESTION_VIEW_COST}/q</div>
                 </div>
+              </div>
+              {/* Level progress bar */}
+              <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-full transition-all"
+                  style={{ width: `${(balance % 100)}%` }}
+                />
               </div>
             </button>
 
@@ -164,15 +171,15 @@ export function MobileHomeFocused() {
             {hasChannels && (
               <button 
                 onClick={() => setLocation('/stats')}
-                className="w-full p-3 flex items-center justify-around hover:bg-muted/30 transition-colors"
+                className="w-full p-3 flex items-center justify-around hover:bg-muted/30 transition-colors border-t border-border/50"
               >
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
                     <Target className="w-4 h-4 text-violet-500" />
                   </div>
                   <div className="text-left">
-                    <div className="font-bold text-sm">{totalCompleted}</div>
-                    <div className="text-[9px] text-muted-foreground">Done</div>
+                    <div className="font-bold text-sm">{totalCompleted > 0 ? totalCompleted : '—'}</div>
+                    <div className="text-[9px] text-muted-foreground">{totalCompleted > 0 ? 'Done' : 'Start!'}</div>
                   </div>
                 </div>
                 <div className="w-px h-8 bg-border" />
@@ -181,8 +188,8 @@ export function MobileHomeFocused() {
                     <Flame className="w-4 h-4 text-amber-500" />
                   </div>
                   <div className="text-left">
-                    <div className="font-bold text-sm">{streak}</div>
-                    <div className="text-[9px] text-muted-foreground">Streak</div>
+                    <div className="font-bold text-sm">{streak > 0 ? streak : '—'}</div>
+                    <div className="text-[9px] text-muted-foreground">{streak > 0 ? 'Streak' : 'No streak'}</div>
                   </div>
                 </div>
                 <div className="w-px h-8 bg-border" />
@@ -606,7 +613,7 @@ function QuickQuizCard({
                           : isSelected
                           ? 'border-primary bg-primary/10'
                           : 'border-border hover:border-primary/50'
-                      } ${showFeedback ? 'cursor-default' : ''}`}
+                      } ${showFeedback && !showCorrect && !showWrong && !isSelected ? 'opacity-50 cursor-default' : showFeedback ? 'cursor-default' : ''}`}
                     >
                       <div className="flex items-center gap-2.5">
                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
@@ -1059,29 +1066,29 @@ function QuickLinksCompact({ onNavigate }: { onNavigate: (path: string) => void 
     <div className="bg-card rounded-xl border border-border p-2 flex flex-wrap justify-center gap-1.5">
       <button
         onClick={() => onNavigate('/badges')}
-        className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
-        title="Badges"
+        className="p-3 rounded-lg hover:bg-muted/50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+        aria-label="Badges"
       >
         <Award className="w-4 h-4 text-yellow-500" />
       </button>
       <button
         onClick={() => onNavigate('/bookmarks')}
-        className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
-        title="Bookmarks"
+        className="p-3 rounded-lg hover:bg-muted/50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+        aria-label="Bookmarks"
       >
         <BookOpen className="w-4 h-4 text-blue-500" />
       </button>
       <button
         onClick={() => onNavigate('/tests')}
-        className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
-        title="Tests"
+        className="p-3 rounded-lg hover:bg-muted/50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+        aria-label="Tests"
       >
         <Target className="w-4 h-4 text-green-500" />
       </button>
       <button
         onClick={() => onNavigate('/stats')}
-        className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
-        title="Stats"
+        className="p-3 rounded-lg hover:bg-muted/50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+        aria-label="Stats"
       >
         <Activity className="w-4 h-4 text-purple-500" />
       </button>

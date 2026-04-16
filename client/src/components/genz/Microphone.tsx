@@ -12,7 +12,7 @@ interface GenZMicrophoneProps {
   disabled?: boolean;
 }
 
-export function GenZMicrophone({
+export function Microphone({
   isRecording,
   onStart,
   onStop,

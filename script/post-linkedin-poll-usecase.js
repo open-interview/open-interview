@@ -61,7 +61,7 @@ async function fetchWithRetry(url, options, retries = 3, delay = 2000) {
 /**
  * Post poll to LinkedIn
  */
-async function postToLinkedIn(pollContent, durationHours = 48) {
+async function postToLinkedIn(pollContent, durationEnum = 'TWO_WEEKS') {
   const accessToken = process.env.LINKEDIN_ACCESS_TOKEN?.trim();
   const personUrn = process.env.LINKEDIN_PERSON_URN?.trim();
 
@@ -73,19 +73,24 @@ async function postToLinkedIn(pollContent, durationHours = 48) {
 
   const payload = {
     author: personUrn,
-    lifecycleState: 'PUBLISHED',
-    visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
+    commentary: pollContent.text,
+    visibility: 'PUBLIC',
+    distribution: {
+      feedDistribution: 'MAIN_FEED',
+      targetEntities: [],
+      thirdPartyDistributionChannels: []
+    },
     content: {
-      'com.linkedin.ugc.ShareContent': {
-        shareCommentary: { text: pollContent.text },
-        shareMediaCategory: 'NONE'
+      poll: {
+        question: pollContent.question,
+        options: pollContent.options.map(text => ({ text })),
+        settings: {
+          duration: durationEnum
+        }
       }
     },
-    poll: {
-      question: pollContent.question,
-      options: pollContent.options,
-      pollDuration: durationHours * 60 * 60 * 1000 // Convert to milliseconds
-    }
+    lifecycleState: 'PUBLISHED',
+    isReshareDisabledByAuthor: false
   };
 
   console.log(`\n📤 Posting to LinkedIn...`);
@@ -171,7 +176,7 @@ async function main() {
       text: poll.text,
       question: poll.question,
       options: poll.options
-    });
+    }, 'TWO_WEEKS');
 
     writeGitHubOutput('linkedin_post_id', linkedinResult.id);
     writeGitHubOutput('poll_question', poll.question);

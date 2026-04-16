@@ -8,7 +8,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useCredits } from '../../context/CreditsContext';
 import { useSidebar } from '../../context/SidebarContext';
 import { useUserPreferences } from '../../context/UserPreferencesContext';
-import { useRewardContext } from '../../context/RewardContext';
 import { cn } from '../../lib/utils';
 import { useState } from 'react';
 import {
@@ -56,6 +55,7 @@ const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] =
       { id: 'badges',    label: 'Badges',     icon: Trophy,    path: '/badges' },
       { id: 'bookmarks', label: 'Bookmarks',  icon: Bookmark,  path: '/bookmarks' },
       { id: 'profile',   label: 'Profile',    icon: User,      path: '/profile' },
+      { id: 'manage-subscriptions', label: 'My Subscriptions', icon: Settings, path: '/manage-subscriptions' },
       { id: 'about',     label: 'About',      icon: Info,      path: '/about' },
     ],
   },
@@ -63,10 +63,10 @@ const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] =
 
 export function Sidebar() {
   const [location, setLocation] = useLocation();
-  const { balance, formatCredits } = useCredits();
+  const { balance, formatCredits, level } = useCredits();
+  const totalXP = balance;
   const { isCollapsed, toggleSidebar } = useSidebar();
   const { preferences } = useUserPreferences();
-  const { level, totalXP } = useRewardContext();
   const [hovered, setHovered] = useState<string | null>(null);
 
   const isActive = (path: string) =>
@@ -89,6 +89,7 @@ export function Sidebar() {
           onClick={() => setLocation(item.path)}
           onMouseEnter={() => setHovered(item.id)}
           onMouseLeave={() => setHovered(null)}
+          style={active ? { boxShadow: '0 0 12px rgba(124,58,237,0.12)' } : undefined}
           className={cn(
             'w-full flex items-center gap-3 rounded-lg transition-all duration-150 group relative overflow-hidden',
             isCollapsed ? 'justify-center p-2' : 'px-3 py-2',

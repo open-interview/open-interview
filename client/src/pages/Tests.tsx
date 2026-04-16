@@ -12,8 +12,9 @@ import {
 } from '../lib/tests';
 import {
   Target, Clock, CheckCircle, XCircle, Search, Star,
-  AlertTriangle, ChevronRight, SlidersHorizontal
+  AlertTriangle, ChevronRight, SlidersHorizontal, Settings2
 } from 'lucide-react';
+import { useUserPreferences } from '../context/UserPreferencesContext';
 
 type FilterTab = 'all' | 'passed' | 'failed' | 'not-attempted';
 type SortKey = 'name' | 'last-attempt' | 'score';
@@ -50,8 +51,11 @@ export default function TestsPage() {
   const [filter, setFilter] = useState<FilterTab>('all');
   const [sort, setSort] = useState<SortKey>('name');
   const [showSort, setShowSort] = useState(false);
+  const [subscribedOnly, setSubscribedOnly] = useState(true);
   const progress = getAllTestProgress();
   const stats = getTestStats();
+  const { preferences } = useUserPreferences();
+  const subscribedIds = new Set(preferences.subscribedChannels);
 
   useEffect(() => {
     (async () => {
@@ -70,6 +74,11 @@ export default function TestsPage() {
       t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.channelName.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    // Subscribed-only filter
+    if (subscribedOnly && subscribedIds.size > 0) {
+      list = list.filter(t => subscribedIds.has(t.channelId));
+    }
 
     if (filter === 'passed') list = list.filter(t => progress[t.channelId]?.passed && !progress[t.channelId]?.expired);
     else if (filter === 'failed') list = list.filter(t => {
@@ -102,22 +111,17 @@ export default function TestsPage() {
   return (
     <>
       <SEOHead
-        title="Tests — Challenge Yourself 🎯"
+        title="Tests — Challenge Yourself"
         description="Take knowledge tests and earn badges"
         canonical="https://open-interview.github.io/tests"
       />
       <AppLayout>
-        <div className="min-h-screen bg-background text-foreground pb-24 lg:pb-0">
-          <div className="max-w-7xl mx-auto px-4 md:px-6 py-10">
-
-            {/* Header */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
-              <h1 className="text-2xl font-bold mb-1">
-                Test your{' '}
-                <span className="gradient-text">knowledge</span>
-              </h1>
-              <p className="text-sm text-muted-foreground">Prove what you know 💪</p>
-            </motion.div>
+        <div className="min-h-screen bg-background pb-24 lg:pb-0">
+          <div className="px-4 pt-6 pb-4 lg:px-8">
+            <h1 className="text-2xl font-bold text-foreground">Channel Tests</h1>
+            <p className="text-sm text-muted-foreground mt-1">Prove what you know across every topic</p>
+          </div>
+          <div className="max-w-7xl mx-auto px-4 md:px-6 pb-10">
 
             {/* Stats */}
             <div className="grid grid-cols-3 md:grid-cols-4 gap-3 mb-8">
@@ -153,6 +157,17 @@ export default function TestsPage() {
                   className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:border-primary transition-colors"
                 />
               </div>
+              {/* Subscribed toggle */}
+              <button
+                onClick={() => setSubscribedOnly(s => !s)}
+                className={`px-3 py-2.5 rounded-lg text-xs font-semibold border transition-all whitespace-nowrap ${
+                  subscribedOnly
+                    ? 'bg-[var(--color-accent-violet)]/15 border-[var(--color-accent-violet)] text-[var(--color-accent-violet-light)]'
+                    : 'bg-muted/50 border-border text-muted-foreground hover:border-primary/50'
+                }`}
+              >
+                {subscribedOnly ? '★ My Topics' : 'All Topics'}
+              </button>
               <div className="relative">
                 <button
                   onClick={() => setShowSort(s => !s)}
@@ -167,7 +182,7 @@ export default function TestsPage() {
                       initial={{ opacity: 0, y: -8, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                      className="absolute right-0 top-full mt-1 w-44 bg-[var(--surface-3)] border border-border rounded-lg shadow-lg z-10 overflow-hidden"
+                      className="absolute right-0 top-full mt-1 w-44 bg-card border border-border rounded-lg shadow-lg z-10 overflow-hidden"
                     >
                       {([['name', 'Name'], ['last-attempt', 'Last Attempt'], ['score', 'Score']] as [SortKey, string][]).map(([key, label]) => (
                         <button
@@ -209,7 +224,7 @@ export default function TestsPage() {
               </div>
             ) : filtered.length === 0 ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
-                <div className="text-5xl mb-3">🔍</div>
+                <Search className="w-12 h-12 mx-auto mb-3 text-muted-foreground/40" />
                 <h3 className="text-xl font-bold mb-1">No tests found</h3>
                 <p className="text-sm text-muted-foreground">Try a different filter or search term</p>
               </motion.div>
@@ -239,7 +254,7 @@ export default function TestsPage() {
                         whileHover={{ scale: 1.02, y: -3 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setLocation(`/test/${test.channelId}`)}
-                        className={`group relative p-5 bg-[var(--surface-2)] border rounded-xl text-left overflow-hidden transition-all ${
+                        className={`group relative p-5 bg-card border rounded-xl text-left overflow-hidden transition-all ${
                           isPassed ? 'border-[var(--color-success)]/40 hover:border-[var(--color-success)]/70'
                           : isFailed ? 'border-[var(--color-error)]/40 hover:border-[var(--color-error)]/70'
                           : 'border-[var(--color-border)] hover:border-primary/50'
@@ -260,7 +275,7 @@ export default function TestsPage() {
                               {p ? (
                                 <div className="relative w-12 h-12 flex items-center justify-center">
                                   <svg width="48" height="48" className="-rotate-90">
-                                    <circle cx="24" cy="24" r="18" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3.5" />
+                                    <circle cx="24" cy="24" r="18" fill="none" stroke="currentColor" strokeOpacity="0.1" strokeWidth="3.5" />
                                     <motion.circle
                                       cx="24" cy="24" r="18"
                                       fill="none"

@@ -40,7 +40,7 @@ function ProgressRing({ progress, size = 56, stroke = 4, color = 'var(--color-ac
   const offset = circ - (progress / 100) * circ;
   return (
     <svg width={size} height={size} className="rotate-[-90deg]">
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--surface-4)" strokeWidth={stroke} />
       <circle
         cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
         strokeDasharray={circ} strokeDashoffset={offset}
@@ -230,6 +230,40 @@ export default function UnifiedLearningPathsGenZ() {
     closePathModal(); activateCustomPath(newPath.id);
   };
 
+  // Read per-channel progress from localStorage (same key as AllChannels)
+  const getChannelCompleted = (channelId: string): number => {
+    try {
+      const raw = localStorage.getItem(`progress_${channelId}`);
+      return raw ? (JSON.parse(raw) as string[]).length : 0;
+    } catch { return 0; }
+  };
+
+  // Aggregate progress across all channels in a path (0–100)
+  const getPathProgress = (path: any): number => {
+    const channels: string[] = path.channels || [];
+    if (channels.length === 0) return 0;
+    const total = path.totalQuestions || channels.reduce((sum: number, id: string) => {
+      const ch = Object.values(allChannelsConfig).find(c => c.id === id);
+      return sum + (ch ? 10 : 0); // fallback estimate
+    }, 0);
+    if (total === 0) return 0;
+    const done = channels.reduce((sum: number, id: string) => sum + getChannelCompleted(id), 0);
+    return Math.min(100, Math.round((done / total) * 100));
+  };
+
+  // Daily goal: count questions answered today across active path channels
+  const getDailyProgress = (): number => {
+    const today = new Date().toDateString();
+    try {
+      const raw = localStorage.getItem('dailyProgress');
+      if (!raw) return 0;
+      const data = JSON.parse(raw);
+      return data.date === today ? (data.count || 0) : 0;
+    } catch { return 0; }
+  };
+  const dailyDone = getDailyProgress();
+  const DAILY_GOAL = 10;
+
   const filteredChannels = Object.values(allChannelsConfig).filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
   const filteredCerts = certifications.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.provider.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -337,13 +371,13 @@ export default function UnifiedLearningPathsGenZ() {
                       <Target className="w-3.5 h-3.5" style={{ color: 'var(--color-accent-violet)' }} />
                       Daily Goal
                     </span>
-                    <span className="text-xs font-bold" style={{ color: 'var(--color-accent-violet-light)' }}>0 / 10 questions</span>
+                    <span className="text-xs font-bold" style={{ color: 'var(--color-accent-violet-light)' }}>{dailyDone} / {DAILY_GOAL} questions</span>
                   </div>
                   <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-4)' }}>
-                    <div className="h-full rounded-full w-0" style={{ background: 'var(--gradient-primary)' }} />
+                    <div className="h-full rounded-full transition-all" style={{ background: 'var(--gradient-primary)', width: `${Math.min(100, (dailyDone / DAILY_GOAL) * 100)}%` }} />
                   </div>
                   <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>
-                    💡 Recommended next: <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    Recommended next: <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
                       {activePaths[0]?.channels?.[0]
                         ? Object.values(allChannelsConfig).find(c => c.id === activePaths[0].channels[0])?.name || activePaths[0].channels[0]
                         : activePaths[0]?.name}
@@ -354,6 +388,7 @@ export default function UnifiedLearningPathsGenZ() {
                 <div className="flex gap-4 overflow-x-auto pb-3 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
                   {activePaths.slice(0, 3).map((path: any) => {
                     const Icon = path.icon || Brain;
+                    const pathProgress = getPathProgress(path);
                     return (
                       <motion.div
                         key={path.id}
@@ -377,17 +412,17 @@ export default function UnifiedLearningPathsGenZ() {
                             </div>
                           </div>
                           <div className="relative flex-shrink-0">
-                            <ProgressRing progress={0} size={40} stroke={3} color="var(--color-accent-violet)" />
-                            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">0%</span>
+                            <ProgressRing progress={pathProgress} size={40} stroke={3} color="var(--color-accent-violet)" />
+                            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">{pathProgress}%</span>
                           </div>
                         </div>
 
                         {/* Progress bar */}
                         <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: 'var(--text-tertiary)' }}>
-                          <span>Progress</span><span>0%</span>
+                          <span>Progress</span><span>{pathProgress}%</span>
                         </div>
                         <div className="h-1.5 rounded-full overflow-hidden mb-3" style={{ background: 'var(--surface-4)' }}>
-                          <div className="h-full rounded-full w-0" style={{ background: path.gradient || 'var(--gradient-primary)' }} />
+                          <div className="h-full rounded-full transition-all" style={{ background: path.gradient || 'var(--gradient-primary)', width: `${pathProgress}%` }} />
                         </div>
 
                         {/* Chapter breadcrumb */}
@@ -533,6 +568,7 @@ export default function UnifiedLearningPathsGenZ() {
                     const Icon = path.icon;
                     const isActive = activePaths.some((p: any) => p.id === path.id);
                     const diffColor = difficultyColors[path.difficulty] || 'var(--color-accent-violet)';
+                    const pathProgress = isActive ? getPathProgress(path) : 0;
                     return (
                       <motion.div
                         key={path.id}
@@ -584,11 +620,11 @@ export default function UnifiedLearningPathsGenZ() {
 
                           {/* Progress bar (always shown, 0% if not started) */}
                           <div className="mb-1 flex items-center justify-between text-[10px]" style={{ color: 'var(--text-tertiary)' }}>
-                            <span>{isActive ? 'In progress' : 'Not started'}</span>
+                            <span>{isActive && pathProgress > 0 ? `${pathProgress}% complete` : isActive ? 'In progress' : 'Not started'}</span>
                             <span className="flex items-center gap-1"><Clock className="w-2.5 h-2.5" />{path.duration} est.</span>
                           </div>
                           <div className="h-1.5 rounded-full overflow-hidden mb-3" style={{ background: 'var(--surface-4)' }}>
-                            <div className="h-full rounded-full w-0" style={{ background: path.gradient }} />
+                            <div className="h-full rounded-full transition-all" style={{ background: path.gradient, width: `${pathProgress}%` }} />
                           </div>
 
                           <div className="flex items-center gap-3 text-xs mb-4" style={{ color: 'var(--text-tertiary)' }}>
@@ -649,7 +685,7 @@ export default function UnifiedLearningPathsGenZ() {
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-6"
-              style={{ background: 'rgba(7,11,20,0.85)', backdropFilter: 'blur(8px)' }}
+              style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
               onClick={closePathModal}
             >
               <motion.div
@@ -843,7 +879,7 @@ export default function UnifiedLearningPathsGenZ() {
                       className="w-full py-3.5 rounded-xl font-bold text-white transition-all hover:opacity-90 active:scale-95"
                       style={{ background: selectedPath?.gradient || 'var(--gradient-primary)' }}
                     >
-                      {activePaths.some(p => p.id === selectedPath?.id) ? '▶ Resume Path' : '🚀 Start Path'}
+                      {activePaths.some(p => p.id === selectedPath?.id) ? 'Resume Path' : 'Start Path'}
                     </button>
                   ) : (
                     <button

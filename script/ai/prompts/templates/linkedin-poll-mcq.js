@@ -19,7 +19,15 @@ export const schema = {
 };
 
 export function build(context) {
-  const { question, answer, channel } = context;
+  const { question, answer, explanation, tags, channel } = context;
+
+  const tagsLine = Array.isArray(tags) && tags.length
+    ? `Tags: ${tags.join(', ')}`
+    : (tags ? `Tags: ${tags}` : '');
+
+  const explanationLine = explanation
+    ? `\nEXPLANATION (use to craft better distractors and introText):\n${explanation}`
+    : '';
 
   return `You are a technical educator creating an engaging LinkedIn poll about core technology fundamentals.
 
@@ -32,8 +40,10 @@ ${question}
 
 ANSWER (use this to understand the correct concept):
 ${answer}
+${explanationLine}
 
 CHANNEL/TOPIC: ${channel || 'software engineering'}
+${tagsLine}
 
 POLL QUESTION STYLE — keep it simple and conceptual, like:
 - "What does a Kubernetes LimitRange do?"
@@ -47,11 +57,12 @@ RULES:
 - options: exactly 4 options, EACH MUST BE 30 CHARACTERS OR FEWER. Plain text only, no labels, no markdown. Count characters carefully.
 - correctIndex: 0-based index of the correct option. Randomize position (not always index 0).
 - introText: 3-4 lines that hook the reader. Follow this structure:
-    Line 1: Emoji + punchy hook (challenge or bold statement)
+    Line 1: Emoji + punchy hook (challenge or bold statement — do NOT use fabricated statistics)
     Line 2: Emoji + 1 sentence on why this concept matters day-to-day
     Line 3: Emoji + CTA like "Vote below!" or "Test your basics — vote now!"
     Line 4: 2-3 relevant hashtags
   Use varied emojis (🚀 ⚡ 🔥 🎯 💡 🛠️ 🤔 👇). Do NOT reveal the answer.
+  ATTRIBUTION RULE: Do NOT use statistics or percentages unless they are well-known documented facts. Prefer conceptual hooks over unverified numbers.
 
 INTROTEXT EXAMPLES:
 "🤔 Do you know your Kubernetes basics?\n⚡ This concept trips up engineers in every K8s interview.\n👇 Vote and see how others do!\n#Kubernetes #DevOps #CloudNative"

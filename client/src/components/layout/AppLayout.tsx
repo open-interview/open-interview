@@ -10,7 +10,6 @@ import { Sidebar } from './Sidebar';
 import { MobileBottomNav, UnifiedMobileHeader } from './UnifiedNav';
 import { MobileHeader } from './MobileHeader';
 import { UnifiedSearch } from '../UnifiedSearch';
-import { ThemeToggle } from '../ThemeToggle';
 import { useSidebar } from '../../context/SidebarContext';
 
 interface AppLayoutProps {
@@ -64,12 +63,7 @@ export function AppLayout({
   }, [location]);
 
   if (hideNav) {
-    return (
-      <>
-        {children}
-        <ThemeToggle />
-      </>
-    );
+    return <>{children}</>;
   }
 
   // Desktop sidebar width: 280px expanded, 72px collapsed
@@ -146,8 +140,6 @@ export function AppLayout({
       <footer className="sr-only" role="contentinfo">
         Code Reels — Technical Interview Preparation
       </footer>
-
-      <ThemeToggle />
 
       <UnifiedSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>

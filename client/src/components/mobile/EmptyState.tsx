@@ -1,4 +1,9 @@
 /**
+ * @deprecated Use `@/components/unified/EmptyState` instead.
+ * This component duplicates unified/EmptyState.tsx and will be removed in a future cleanup.
+ */
+
+/**
  * Empty State Component
  * Shows helpful prompts when sections have no content
  */
@@ -66,8 +71,8 @@ export function EmptyState({ type, title, description }: EmptyStateProps) {
       animate={{ opacity: 1, y: 0 }}
       className="flex flex-col items-center justify-center py-12 px-6 text-center"
     >
-      <div className={`w-16 h-16 rounded-2xl ${config.bgColor} flex items-center justify-center mb-4`}>
-        <Icon className={`w-8 h-8 ${config.color}`} />
+      <div className={`w-12 h-12 rounded-2xl ${config.bgColor} flex items-center justify-center mb-4`}>
+        <Icon className={`w-6 h-6 ${config.color}`} />
       </div>
       
       <h3 className="font-semibold text-lg mb-2">

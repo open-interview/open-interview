@@ -89,7 +89,7 @@ export function XPBar({ currentXP, className = '', compact = false }: XPBarProps
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <motion.div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black text-white"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black text-foreground"
             style={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: leveledUp ? '0 0 20px #f59e0b' : '0 0 8px #f59e0b60' }}
             animate={leveledUp ? { scale: [1, 1.3, 1], boxShadow: ['0 0 8px #f59e0b60', '0 0 24px #ffd700', '0 0 8px #f59e0b60'] } : {}}
             transition={{ duration: 0.8 }}
@@ -167,7 +167,7 @@ export function XPBar({ currentXP, className = '', compact = false }: XPBarProps
             role="status"
             aria-live="polite"
           >
-            ✨ Level Up! You reached Level {level.level}!
+            Level Up! You reached Level {level.level}!
           </motion.div>
         )}
       </AnimatePresence>

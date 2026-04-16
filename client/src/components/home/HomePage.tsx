@@ -13,9 +13,11 @@ import { useReducedMotion } from '../../hooks/use-reduced-motion';
 import {
   Flame, Zap, Trophy, Target, Mic, Code, Brain,
   ChevronRight, Sparkles, TrendingUp, Star, Award, Rocket, Server, Plus,
-  RotateCcw, Check, X, BookOpen, Calendar, Clock, Activity,
+  RotateCcw, Check, X, BookOpen, Calendar, Clock, Activity, Settings2,
 } from 'lucide-react';
 import { PullToRefresh, SwipeableCard, SkeletonList } from '../mobile';
+import { useUserPreferences } from '../../context/UserPreferencesContext';
+import { allChannelsConfig } from '../../lib/channels-config';
 
 // ─── Learning Paths ───────────────────────────────────────────────────────────
 const learningPaths = [
@@ -34,7 +36,7 @@ const stagger = { show: { transition: { staggerChildren: 0.08 } } };
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 function Skeleton({ className = '' }: { className?: string }) {
   return (
-    <div className={`relative overflow-hidden rounded-lg bg-white/5 ${className}`}>
+    <div className={`relative overflow-hidden rounded-lg bg-muted ${className}`}>
       <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/8 to-transparent" />
     </div>
   );
@@ -49,11 +51,11 @@ function getGreeting() {
 }
 
 function getStreakMotivation(streak: number) {
-  if (streak === 0) return 'Start your streak today! 🚀';
-  if (streak < 3) return `${streak} day streak — keep it going! 💪`;
-  if (streak < 7) return `${streak} days strong — you're on fire! 🔥`;
-  if (streak < 30) return `${streak} day streak — unstoppable! ⚡`;
-  return `${streak} days — absolute legend! 🏆`;
+  if (streak === 0) return 'Start your streak today!';
+  if (streak < 3) return `${streak} day streak — keep it going!`;
+  if (streak < 7) return `${streak} days strong — you're on fire!`;
+  if (streak < 30) return `${streak} day streak — unstoppable!`;
+  return `${streak} days — absolute legend!`;
 }
 
 // ─── Progress Ring ────────────────────────────────────────────────────────────
@@ -63,7 +65,7 @@ function ProgressRing({ pct, size = 56, stroke = 4, color = '#7c3aed' }: { pct: 
   const offset = circ - (pct / 100) * circ;
   return (
     <svg width={size} height={size} className="-rotate-90">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeOpacity={0.12} strokeWidth={stroke} />
       <motion.circle
         cx={size / 2} cy={size / 2} r={r} fill="none"
         stroke={color} strokeWidth={stroke} strokeLinecap="round"
@@ -79,7 +81,7 @@ function ProgressRing({ pct, size = 56, stroke = 4, color = '#7c3aed' }: { pct: 
 // ─── Stat Pill ────────────────────────────────────────────────────────────────
 function StatPill({ icon: Icon, value, label, color }: { icon: React.ElementType; value: string | number; label: string; color: string }) {
   return (
-    <motion.div variants={fadeUp} className="flex-shrink-0 flex flex-col items-center gap-1.5 px-4 py-3 rounded-2xl bg-white/5 border border-white/8 min-w-[80px]">
+    <motion.div variants={fadeUp} className="flex-shrink-0 flex flex-col items-center gap-1.5 px-4 py-3 rounded-2xl bg-muted border border-border min-w-[80px]">
       <Icon className={`w-4 h-4 ${color}`} />
       <span className="text-lg font-bold leading-none">{value}</span>
       <span className="text-[10px] text-muted-foreground leading-none text-center">{label}</span>
@@ -103,7 +105,7 @@ function ActionCard({
       className={`group relative flex flex-col gap-3 p-4 rounded-2xl border text-left overflow-hidden transition-colors
         ${primary
           ? 'bg-gradient-to-br from-violet-600/30 to-cyan-500/20 border-violet-500/40 col-span-2 sm:col-span-1'
-          : 'bg-white/4 border-white/8 hover:border-white/16'
+          : 'bg-muted border-border hover:border-border'
         }`}
     >
       <div className={`absolute inset-0 bg-gradient-to-br ${color} opacity-0 group-hover:opacity-10 transition-opacity`} />
@@ -202,7 +204,7 @@ function DailyChallengeCard({ onNavigate }: { onNavigate: (path: string) => void
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
       className={`relative p-[1px] rounded-2xl overflow-hidden ${done ? '' : 'bg-gradient-to-br from-violet-500/50 via-cyan-500/30 to-transparent'}`}>
-      <div className={`relative p-4 rounded-2xl overflow-hidden ${done ? 'bg-green-500/8 border border-green-500/25' : 'bg-[#0d0d14]'}`}>
+      <div className={`relative p-4 rounded-2xl overflow-hidden ${done ? 'bg-green-500/8 border border-green-500/25' : 'bg-card border border-border'}`}>
       <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-15"
         style={{ background: done ? '#10b981' : 'radial-gradient(circle, #ff0080, #ff8c00)' }} />
       <div className="relative space-y-3">
@@ -223,7 +225,7 @@ function DailyChallengeCard({ onNavigate }: { onNavigate: (path: string) => void
         </p>
         <div className="flex items-center gap-2">
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${diffColor}`}>{challenge.difficulty}</span>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/8 border border-white/10 text-muted-foreground">{challenge.topic}</span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted border border-border text-muted-foreground">{challenge.topic}</span>
           <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1"><Award className="w-3 h-3 text-amber-400" />+50 XP</span>
         </div>
         {!done ? (
@@ -242,6 +244,47 @@ function DailyChallengeCard({ onNavigate }: { onNavigate: (path: string) => void
       </div>
     </div>
     </motion.div>
+  );
+}
+
+// ─── My Topics Feed ───────────────────────────────────────────────────────────
+function MyTopicsFeed({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const { preferences } = useUserPreferences();
+  const subscribedIds = preferences.subscribedChannels;
+
+  const subscribedChannels = allChannelsConfig.filter(
+    c => !c.isCertification && subscribedIds.includes(c.id)
+  );
+
+  if (subscribedChannels.length === 0) return null;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">My Topics</h2>
+        <button
+          onClick={() => onNavigate('/manage-subscriptions')}
+          className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 transition-colors"
+        >
+          <Settings2 className="w-3 h-3" /> Manage
+        </button>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar -mx-4 px-4">
+        {subscribedChannels.map(ch => (
+          <motion.button
+            key={ch.id}
+            whileTap={{ scale: 0.96 }}
+            onClick={() => onNavigate(`/channel/${ch.id}`)}
+            className="flex-shrink-0 flex flex-col items-center gap-1.5 px-4 py-3 rounded-2xl bg-card border border-border hover:border-[var(--color-accent-violet)]/40 transition-all min-w-[80px]"
+          >
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[var(--color-accent-violet)]/20 to-[var(--color-accent-cyan)]/20 flex items-center justify-center">
+              <BookOpen className="w-4 h-4 text-[var(--color-accent-violet-light)]" />
+            </div>
+            <span className="text-[10px] font-semibold text-center leading-tight line-clamp-2">{ch.name}</span>
+          </motion.button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -380,8 +423,16 @@ export function HomePage() {
     return `${Math.floor(diff / 86400)}d ago`;
   };
 
-  // ── Onboarding gate ──
-  if (activePaths.length === 0 && !isLoading) {
+  // ── Show onboarding only on very first visit (no localStorage data at all) ──
+  const hasAnyProgress = React.useMemo(() => {
+    try {
+      return Object.keys(localStorage).some(k =>
+        k.startsWith('progress-') || k.startsWith('history-') || k.startsWith('srs-')
+      );
+    } catch { return false; }
+  }, []);
+
+  if (activePaths.length === 0 && !isLoading && !hasAnyProgress) {
     return <OnboardingScreen onStart={() => setLocation('/learning-paths')} />;
   }
 
@@ -409,7 +460,7 @@ export function HomePage() {
           </div>
           {/* XP progress bar */}
           <div className="hidden sm:flex items-center gap-2 flex-1 max-w-[140px]">
-            <div className="flex-1 h-1.5 bg-white/8 rounded-full overflow-hidden">
+            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
               <motion.div className="h-full bg-gradient-to-r from-violet-500 to-cyan-500 rounded-full"
                 initial={{ width: 0 }} animate={{ width: `${xpInLevel}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} />
             </div>
@@ -423,7 +474,7 @@ export function HomePage() {
 
           {/* ══ HERO ══════════════════════════════════════════════════════════ */}
           <motion.div variants={stagger} initial="hidden" animate="show"
-            className="relative rounded-3xl overflow-hidden p-6 border border-white/8"
+            className="relative rounded-3xl overflow-hidden p-6 border border-border"
             style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.18) 0%, rgba(99,102,241,0.10) 50%, rgba(6,182,212,0.12) 100%)' }}>
             {!prefersReducedMotion && (
               <motion.div className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl opacity-30"
@@ -433,7 +484,7 @@ export function HomePage() {
             )}
             <div className="relative space-y-4">
               <motion.div variants={fadeUp}>
-                <h1 className="text-2xl font-bold">{getGreeting()}, Dev! 👋</h1>
+                <h1 className="text-2xl font-bold">{getGreeting()}, Dev!</h1>
                 <p className="text-sm text-muted-foreground mt-0.5">{getStreakMotivation(streak)}</p>
               </motion.div>
 
@@ -455,7 +506,7 @@ export function HomePage() {
                   <span className="font-medium text-foreground">Level {level}</span>
                   <span>{xpInLevel}/100 XP → Level {level + 1}</span>
                 </div>
-                <div className="h-2 bg-white/8 rounded-full overflow-hidden">
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <motion.div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-500"
                     initial={{ width: 0 }} animate={{ width: `${xpInLevel}%` }}
                     transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }} />
@@ -476,6 +527,9 @@ export function HomePage() {
               <StatPill icon={Trophy} value={totalCompleted} label="Solved" color="text-amber-400" />
             </motion.div>
           </div>
+
+          {/* ══ MY TOPICS ════════════════════════════════════════════════════ */}
+          <MyTopicsFeed onNavigate={setLocation} />
 
           {/* ══ QUICK ACTIONS ═════════════════════════════════════════════════ */}
           <div>
@@ -529,7 +583,7 @@ export function HomePage() {
                       leftAction={{ icon: <Check className="w-5 h-5" />, label: 'Continue', color: 'bg-green-500', onAction: () => setLocation(`/channel/${path.channels[0]}`) }}
                       rightAction={{ icon: <X className="w-5 h-5" />, label: 'Remove', color: 'bg-red-500', onAction: () => removeActivePath(path.id) }}>
                       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                        className="relative flex items-center gap-4 p-4 rounded-2xl bg-white/4 border border-white/8 overflow-hidden">
+                        className="relative flex items-center gap-4 p-4 rounded-2xl bg-card border border-border overflow-hidden">
                         <div className={`absolute inset-0 bg-gradient-to-r ${path.color} opacity-5`} />
                         <div className="relative flex-shrink-0">
                           <ProgressRing pct={pct} size={52} stroke={4} color="#7c3aed" />
@@ -543,7 +597,7 @@ export function HomePage() {
                           <div className="flex flex-wrap gap-1 mt-2">
                             {path.channels.slice(0, 3).map((ch: string) => (
                               <button key={ch} onClick={() => setLocation(`/channel/${ch}`)}
-                                className="px-2 py-0.5 bg-white/8 hover:bg-white/14 rounded-full text-[10px] transition-colors">{ch}</button>
+                                className="px-2 py-0.5 bg-muted hover:bg-muted/80 rounded-full text-[10px] transition-colors">{ch}</button>
                             ))}
                           </div>
                         </div>
@@ -558,7 +612,7 @@ export function HomePage() {
                 })}
                 {activePaths.length > 2 && (
                   <button onClick={() => setLocation('/learning-paths')}
-                    className="w-full py-2.5 rounded-xl border border-white/8 text-sm text-muted-foreground hover:text-foreground hover:border-white/16 transition-colors">
+                    className="w-full py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors">
                     +{activePaths.length - 2} more paths
                   </button>
                 )}
@@ -579,7 +633,7 @@ export function HomePage() {
                   <div className="text-xs text-muted-foreground">{resumePath.channelName} · {resumePath.questionTitle?.slice(0, 50)}</div>
                 </div>
               </div>
-              <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <motion.div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full"
                   initial={{ width: 0 }} animate={{ width: `${(resumePath.progress || 0) * 100}%` }} transition={{ duration: 0.8 }} />
               </div>
@@ -599,7 +653,7 @@ export function HomePage() {
                 {recentActivity.map((item, i) => (
                   <motion.div key={`${item.questionId}-${i}`}
                     initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.07 }}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-white/3 border border-white/6">
+                    className="flex items-center gap-3 p-3 rounded-xl bg-muted border border-border">
                     <div className="w-8 h-8 rounded-lg bg-green-500/20 border border-green-500/25 flex items-center justify-center flex-shrink-0">
                       <Check className="w-4 h-4 text-green-400" />
                     </div>
@@ -621,7 +675,7 @@ export function HomePage() {
           {activePaths.length < 3 && (
             <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
               onClick={() => setLocation('/learning-paths')}
-              className="w-full py-4 rounded-2xl border border-dashed border-white/16 hover:border-violet-500/40 hover:bg-violet-500/5 transition-all flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+              className="w-full py-4 rounded-2xl border border-dashed border-border hover:border-violet-500/40 hover:bg-violet-500/5 transition-all flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground">
               <Plus className="w-4 h-4" /> Add a learning path
             </motion.button>
           )}

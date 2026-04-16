@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
 import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
+import { MobileBottomNav } from '../components/layout/UnifiedNav';
+import { MobileHeader } from '../components/layout/MobileHeader';
 import { Card, Button } from '../components/genz';
 import {
   Test, TestQuestion, getTestForChannel, getSessionQuestions,
@@ -68,7 +70,7 @@ function CircularTimer({ seconds, total }: { seconds: number; total: number }) {
       className="relative w-16 h-16 flex items-center justify-center"
     >
       <svg width="64" height="64" className="-rotate-90">
-        <circle cx="32" cy="32" r={TIMER_RADIUS} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
+        <circle cx="32" cy="32" r={TIMER_RADIUS} fill="none" stroke="currentColor" strokeOpacity="0.1" strokeWidth="4" />
         <circle
           cx="32" cy="32" r={TIMER_RADIUS}
           fill="none"
@@ -105,7 +107,7 @@ function OptionButton({
           ? 'border-[var(--color-error)] bg-[var(--color-error)]/15'
           : selected
           ? 'border-[var(--color-accent-violet)] bg-[var(--color-accent-violet)]/15'
-          : 'border-[var(--color-border)] hover:border-[var(--color-accent-violet)]/50 bg-[var(--surface-2)]'
+          : 'border-[var(--color-border)] hover:border-[var(--color-accent-violet)]/50 bg-card'
       } ${disabled ? 'cursor-default' : 'cursor-pointer'}`}
     >
       <div className="flex items-center gap-3">
@@ -132,7 +134,7 @@ function ScoreRing({ score, passed }: { score: number; passed: boolean }) {
   return (
     <div className="relative w-36 h-36 mx-auto flex items-center justify-center">
       <svg width="144" height="144" className="-rotate-90">
-        <circle cx="72" cy="72" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+        <circle cx="72" cy="72" r={r} fill="none" stroke="currentColor" strokeOpacity="0.08" strokeWidth="8" />
         <motion.circle
           cx="72" cy="72" r={r}
           fill="none"
@@ -288,7 +290,8 @@ export default function TestSessionPage() {
         canonical={`https://open-interview.github.io/test/${channelId}`}
       />
       <DesktopSidebarWrapper>
-        <div className="min-h-screen bg-background text-foreground">
+        <div className="lg:hidden"><MobileHeader title="Test" showBack={true} /></div>
+        <div className="min-h-screen bg-background text-foreground pt-14 lg:pt-0">
 
           {/* ── Ready screen ── */}
           {sessionState === 'ready' && (
@@ -549,6 +552,7 @@ export default function TestSessionPage() {
             </div>
           )}
         </div>
+        <MobileBottomNav />
       </DesktopSidebarWrapper>
     </>
   );

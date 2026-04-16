@@ -57,20 +57,20 @@ const sizeClasses: Record<EmptyStateSize, {
 }> = {
   sm: {
     icon: 'w-12 h-12',
-    title: 'text-base',
-    description: 'text-xs',
+    title: 'text-lg font-semibold',
+    description: 'text-sm text-muted-foreground',
     padding: 'p-6'
   },
   md: {
-    icon: 'w-16 h-16',
-    title: 'text-lg',
-    description: 'text-sm',
+    icon: 'w-12 h-12',
+    title: 'text-lg font-semibold',
+    description: 'text-sm text-muted-foreground',
     padding: 'p-8'
   },
   lg: {
-    icon: 'w-20 h-20',
-    title: 'text-xl',
-    description: 'text-base',
+    icon: 'w-12 h-12',
+    title: 'text-lg font-semibold',
+    description: 'text-sm text-muted-foreground',
     padding: 'p-12'
   }
 };
@@ -106,13 +106,13 @@ export function EmptyState({
       ) : null}
 
       {/* Title */}
-      <h3 className={`font-semibold ${sizeConfig.title} mb-2`}>
+      <h3 className={`${sizeConfig.title} mb-2`}>
         {title}
       </h3>
 
       {/* Description */}
       {description && (
-        <p className={`text-muted-foreground ${sizeConfig.description} mb-4 max-w-md mx-auto`}>
+        <p className={`${sizeConfig.description} mb-4 max-w-md mx-auto`}>
           {description}
         </p>
       )}

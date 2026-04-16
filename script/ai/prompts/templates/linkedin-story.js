@@ -57,7 +57,7 @@ const HOOK_PATTERNS = [
 ];
 
 export function build(context) {
-  const { title, excerpt, channel, tags: rawTags } = context;
+  const { title, excerpt, channel, tags: rawTags, quickReference, socialHook, socialBody, realWorldExample } = context;
 
   // Parse tags if it's a string
   let tags = rawTags;
@@ -79,35 +79,51 @@ export function build(context) {
     ? `\nRelevant 2025 context you can weave in naturally:\n${trendLines}`
     : '';
 
+  // Rich context from the blog post
+  const richContext = [
+    quickReference ? `Key insights from the article:\n${quickReference}` : '',
+    socialHook ? `Suggested hook angle: ${socialHook}` : '',
+    socialBody ? `Key points to cover:\n${socialBody}` : '',
+    realWorldExample ? `Real-world example (use only if it has a source):\n${realWorldExample}` : ''
+  ].filter(Boolean).join('\n\n');
+
   // Select a random hook style to ensure variety
   const hookStyle = HOOK_PATTERNS[Math.floor(Math.random() * HOOK_PATTERNS.length)];
   const jsonFormat = String.raw`{"story": "your post text here with \n\n between paragraphs and \n between bullet points"}`;
 
-  return `You are a senior SRE/DevOps engineer with 10+ years of experience writing on LinkedIn. Write a post about the article below in your own voice — like you're sharing a genuine insight with peers, not filling in a template.
+  return `You are a technical educator writing a LinkedIn post about the article below. Write in an educational, third-person voice — sharing knowledge and insights from the field, NOT personal anecdotes.
 
 Article: ${title}
 Topic: ${channel || 'tech'}
 Summary: ${excerpt || 'Technical interview preparation content'}
 ${trendContext}
+${richContext ? `\nARTICLE CONTEXT (use this to make the post specific and insightful):\n${richContext}` : ''}
 
 Hook style to use: "${hookStyle}"
 Examples of each style (these are patterns, NOT templates to copy):
-- question: "Why do 90% of engineers get X wrong?"
-- statistic: "73% of production outages trace back to this one thing."
+- question: "Why do engineers often get X wrong?"
+- statistic: "Production outages frequently trace back to this one thing."
 - contrarian: "Everyone optimizes for X. The real bottleneck is Y."
-- story: "Our deploy took down prod last week. Cause? One missing label."
-- problem: "You've seen this error. Here's what it actually means."
-- insight: "After reviewing 100+ PRs, I keep seeing the same gap."
+- story: "A misconfigured label once took down a production deploy. Here's why."
+- problem: "This error is common. Here's what it actually means."
+- insight: "A pattern that shows up repeatedly in production systems."
 - trend: "The way teams handle X in 2025 is completely different."
-- mistake: "Spent 3 days chasing this bug. The fix was 4 characters."
+- mistake: "A common mistake that costs hours of debugging time."
 
-WRITE THE POST AS FLOWING TEXT — no headers, no labels, no "Section 1", no structure markers of any kind. Just write it naturally like a human would.
+WRITE THE POST AS FLOWING TEXT — no headers, no labels, no "Section 1", no structure markers of any kind. Write it naturally and educationally.
 
 The post should:
 - Open with the hook style above (1-2 punchy lines)
 - Briefly explain the concept in plain language (what it is, why it matters)
-- Share 4-5 specific insights as emoji bullet points on separate lines
+- Share 4-5 specific insights as emoji bullet points on separate lines — draw from the ARTICLE CONTEXT above when available
 - Close with one memorable line that sticks
+
+ATTRIBUTION RULES (CRITICAL):
+- NEVER use first-person ("I", "my", "me", "we did", "I spent", "I learned")
+- Do NOT claim personal experience — write as an educator sharing documented knowledge
+- If referencing a company incident, it must be based on publicly documented information
+- Attribute insights to "the documentation", "production patterns", "engineering teams", "the spec", etc.
+- Do NOT fabricate statistics — only use well-known facts or omit numbers entirely
 
 GOOD EXAMPLE:
 ---
@@ -124,23 +140,6 @@ What actually matters:
 💡 Start conservative, then tune from P95 metrics after a week of real traffic
 
 Resource management is not optional. It's the difference between a stable cluster and 3am pages.
----
-
-ANOTHER GOOD EXAMPLE:
----
-Why do senior engineers obsess over idempotency?
-
-Because networks lie. Requests time out, retries happen, and the same message can arrive twice. Idempotency means your system produces the same result whether the operation runs once or ten times — which is everything in distributed systems.
-
-Core ideas:
-
-🔍 Use unique request IDs so duplicates are detected and silently skipped
-⚡ Design endpoints so POST /order with the same ID returns the existing order, not an error
-🎯 Database upserts (INSERT ... ON CONFLICT UPDATE) are your best friend here
-🛡️ Never increment a counter directly — derive state from events instead
-💡 Write explicit retry tests — if you haven't tested it, it will break in production
-
-The systems that survive are the ones built assuming failure will happen.
 ---
 
 RULES:

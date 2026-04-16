@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
 import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
+import { MobileBottomNav } from '../components/layout/UnifiedNav';
+import { MobileHeader } from '../components/layout/MobileHeader';
 import { allChannelsConfig } from '../lib/channels-config';
 
 interface HistoryEntry {
@@ -166,12 +168,13 @@ export default function AnswerHistory() {
 
   return (
     <DesktopSidebarWrapper>
+      <div className="lg:hidden"><MobileHeader title="History" showBack={true} /></div>
       <SEOHead 
         title="Answer History - CodeReels"
         description="View your complete question answering history across all channels"
       />
       
-      <div className="min-h-screen bg-background pb-20 lg:pb-4">
+      <div className="min-h-screen bg-background pb-20 lg:pb-4 pt-14 lg:pt-0">
         <div className="max-w-6xl mx-auto px-4 py-6">
           
           {/* Header */}
@@ -310,6 +313,7 @@ export default function AnswerHistory() {
           )}
         </div>
       </div>
+      <MobileBottomNav />
     </DesktopSidebarWrapper>
   );
 }

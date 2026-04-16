@@ -604,20 +604,10 @@ export default function VoiceSessionGenZ() {
                   </AnimatePresence>
                 </div>
 
-                {/* Waveform */}
-                <AnimatePresence>
-                  {pageState === 'recording' && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="w-full overflow-hidden"
-                    >
-                      <WaveformVisualizer isActive />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {/* Waveform — always visible; animated when recording, flat when idle */}
+                <div className="w-full">
+                  <WaveformVisualizer isActive={pageState === 'recording'} />
+                </div>
 
                 <Microphone
                   isRecording={pageState === 'recording'}
@@ -704,19 +694,62 @@ export default function VoiceSessionGenZ() {
             className="max-w-lg w-full"
           >
             <Card className="p-8">
-              <div className="flex flex-col items-center gap-4">
+              {/* Score + verdict */}
+              <div className="flex flex-col items-center gap-3 mb-6">
                 <ScoreRing score={lastAnswer.score} size={112} />
                 <p className={`text-sm font-semibold ${lastAnswer.isCorrect ? 'text-primary' : 'text-[#ff0080]'}`}>
                   {lastAnswer.isCorrect ? '✓ Good answer!' : '✗ Needs improvement'}
                 </p>
               </div>
 
-              <div className="mt-6 bg-background/50 rounded-xl p-4">
+              {/* Feedback text */}
+              <div className="bg-background/50 rounded-xl p-4 mb-5">
                 <p className="text-sm text-muted-foreground">{lastAnswer.feedback}</p>
               </div>
 
-              <div className="mt-6">
-                <Button variant="primary" onClick={goToNextQuestion} className="w-full">
+              {/* Key points checklist */}
+              {(lastAnswer.pointsCovered.length > 0 || lastAnswer.pointsMissed.length > 0) && (
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  {lastAnswer.pointsCovered.length > 0 && (
+                    <div className="p-4 rounded-xl bg-[#00ff88]/10 border border-[#00ff88]/20">
+                      <p className="text-xs font-semibold text-primary mb-2 flex items-center gap-1.5">
+                        <CheckCircle className="w-3.5 h-3.5" /> Covered ({lastAnswer.pointsCovered.length})
+                      </p>
+                      <ul className="space-y-1.5">
+                        {lastAnswer.pointsCovered.map((p, i) => (
+                          <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <span className="text-primary flex-shrink-0">✓</span>
+                            <span>{p.phrase}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {lastAnswer.pointsMissed.length > 0 && (
+                    <div className="p-4 rounded-xl bg-[#ff0080]/10 border border-[#ff0080]/20">
+                      <p className="text-xs font-semibold text-[#ff0080] mb-2 flex items-center gap-1.5">
+                        <XCircle className="w-3.5 h-3.5" /> Missed ({lastAnswer.pointsMissed.length})
+                      </p>
+                      <ul className="space-y-1.5">
+                        {lastAnswer.pointsMissed.map((p, i) => (
+                          <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <span className="text-[#ff0080] flex-shrink-0">✗</span>
+                            <span>{p.phrase}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* CTAs */}
+              <div className="flex gap-3">
+                <Button variant="secondary" onClick={retryQuestion} className="flex-1">
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Try Again
+                </Button>
+                <Button variant="primary" onClick={goToNextQuestion} className="flex-1">
                   {isLastQuestion ? 'View Results' : 'Next Question'}
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>

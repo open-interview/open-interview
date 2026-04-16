@@ -25,6 +25,10 @@ const LinkedInState = Annotation.Root({
   excerpt: Annotation({ reducer: (_, b) => b, default: () => '' }),
   channel: Annotation({ reducer: (_, b) => b, default: () => '' }),
   tags: Annotation({ reducer: (_, b) => b, default: () => '' }),
+  quickReference: Annotation({ reducer: (_, b) => b, default: () => '' }),
+  socialHook: Annotation({ reducer: (_, b) => b, default: () => '' }),
+  socialBody: Annotation({ reducer: (_, b) => b, default: () => '' }),
+  realWorldExample: Annotation({ reducer: (_, b) => b, default: () => '' }),
   
   // URL validation
   urlValid: Annotation({ reducer: (_, b) => b, default: () => false }),
@@ -236,7 +240,11 @@ async function generateStoryNode(state) {
       title: state.title,
       excerpt: state.excerpt,
       channel: state.channel,
-      tags: state.tags
+      tags: state.tags,
+      quickReference: state.quickReference,
+      socialHook: state.socialHook,
+      socialBody: state.socialBody,
+      realWorldExample: state.realWorldExample
     });
     
     if (!result.story || result.story.length < 50) {
@@ -336,18 +344,18 @@ The technical details matter more than you think.`;
   
   // Template 5: Insight Hook
   (title, emoji, excerpt) => {
-    const context = excerpt ? excerpt.split('.').slice(0, 2).join('.') + '.' : 'After working with dozens of production systems, patterns emerge.';
-    return `After debugging hundreds of production issues, one pattern stands out.
+    const context = excerpt ? excerpt.split('.').slice(0, 2).join('.') + '.' : 'Production systems reveal patterns that documentation alone cannot teach.';
+    return `A pattern that shows up repeatedly in production systems.
 
 ${context}
 
-Key lessons learned:
+Key lessons from the field:
 
 🔍 Observability must be built in, not bolted on
 ⚡ Performance problems are often architecture problems
 🎯 The simplest solution is usually the right one
 🛡️ Failure modes should be explicit and tested
-💡 Documentation saves future you countless hours
+💡 Documentation saves future debugging countless hours
 
 ${emoji} The full breakdown includes specific examples.`;
   },
@@ -376,17 +384,17 @@ ${emoji} Stay ahead of the curve with the technical deep dive.`;
   (title, emoji, excerpt) => {
     const topic = title.toLowerCase().split(' ').slice(0, 3).join(' ');
     const context = excerpt ? excerpt.split('.')[0] + '.' : 'A common mistake that costs time and reliability.';
-    return `I spent two days debugging ${topic}. The fix was embarrassingly simple.
+    return `A common ${topic} mistake that costs hours of debugging time.
 
 ${context}
 
-What I learned:
+What the fix reveals:
 
-🔍 Read the error message carefully - it usually tells you exactly what's wrong
-⚡ Check your assumptions first before diving into complex debugging
+🔍 Read the error message carefully — it usually tells you exactly what's wrong
+⚡ Check assumptions first before diving into complex debugging
 🎯 Reproduce the issue in isolation before fixing in production
 🛡️ Add tests for the failure case so it never happens again
-💡 Document the gotcha for your future self and teammates
+💡 Document the gotcha for the team and future reference
 
 ${emoji} The article covers the technical details and prevention strategies.`;
   },
@@ -585,10 +593,15 @@ function buildPostNode(state) {
     return original || t;
   });
   
-  const cleanedTags = deduplicatedTags.join(' ') || '#tech #engineering #interview';
+  const cleanedTags = deduplicatedTags.join(' ') || '#SoftwareEngineering #TechCareers #InterviewPrep';
   
   if (deduplicatedTags.length < allTags.length) {
     console.log(`   Removed ${allTags.length - deduplicatedTags.length} duplicate/excess tags`);
+  }
+  
+  // Ensure article URL is always present — it is the primary attribution link
+  if (!state.url) {
+    console.log('   ⚠️ No article URL — source attribution will be missing');
   }
   
   // Ensure story has proper paragraph breaks
@@ -769,6 +782,10 @@ export async function generateLinkedInPost(postData) {
     excerpt: postData.excerpt || '',
     channel: postData.channel || '',
     tags: postData.tags || '#tech #engineering #interview',
+    quickReference: postData.quickReference || '',
+    socialHook: postData.socialHook || '',
+    socialBody: postData.socialBody || '',
+    realWorldExample: postData.realWorldExample || '',
     story: '',
     finalContent: '',
     cleanedTags: '',

@@ -77,15 +77,20 @@ function BadgeCard({
 }) {
   const { achievement: badge, isUnlocked } = bp;
   const tier = badge.tier as string;
+  const [hovered, setHovered] = useState(false);
 
   return (
     <motion.button
       initial={{ opacity: 0, scale: 0.85 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: Math.min(index * 0.04, 0.4), type: 'spring', stiffness: 200, damping: 20 }}
-      whileHover={isUnlocked ? { scale: 1.05 } : {}}
+      whileHover={isUnlocked ? { scale: 1.05 } : { scale: 1.02 }}
       whileTap={{ scale: 0.97 }}
       onClick={() => onClick(bp)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
       className={`relative flex flex-col items-center p-4 rounded-xl border text-left w-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-violet)] ${
         isUnlocked
           ? 'bg-[var(--surface-2)] border-[var(--color-border)] cursor-pointer'
@@ -93,6 +98,28 @@ function BadgeCard({
       }`}
       style={isUnlocked ? { boxShadow: TIER_GLOW[tier] } : undefined}
     >
+      {/* Hover tooltip */}
+      <AnimatePresence>
+        {hovered && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none w-48"
+            style={{ background: 'var(--surface-3)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '8px 10px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}
+          >
+            <p className="text-xs font-bold text-[var(--text-primary)] mb-0.5">{badge.name}</p>
+            <p className="text-[11px] text-[var(--text-secondary)] leading-snug">{badge.description}</p>
+            {!isUnlocked && bp.current > 0 && bp.target > 0 && (
+              <p className="text-[10px] text-[var(--color-accent-violet-light)] mt-1">{bp.current}/{bp.target} progress</p>
+            )}
+            {isUnlocked && (
+              <p className="text-[10px] text-[var(--color-success)] mt-1">✓ Unlocked · +{TIER_XP[tier] ?? 50} XP</p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Icon circle */}
       <div
         className={`w-14 h-14 mb-3 rounded-full flex items-center justify-center flex-shrink-0 relative ${
@@ -297,10 +324,9 @@ export default function BadgesPage() {
 
   if (isLoading) {
     return (
-      <AppLayout>
+      <AppLayout title="Badges">
         <div className="min-h-dvh flex items-center justify-center">
           <div className="text-center">
-            <div className="text-6xl mb-4">⏳</div>
             <h2 className="text-2xl font-bold">Loading achievements...</h2>
           </div>
         </div>
@@ -310,12 +336,12 @@ export default function BadgesPage() {
 
   if (!allBadges || allBadges.length === 0) {
     return (
-      <AppLayout>
+      <AppLayout title="Badges">
         <div className="min-h-dvh flex items-center justify-center">
           <div className="text-center">
-            <div className="text-6xl mb-4">🏆</div>
+            <Trophy className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
             <h2 className="text-2xl font-bold mb-2">No badges yet</h2>
-            <p className="text-[var(--text-secondary)]">Start completing challenges to earn badges!</p>
+            <p className="text-muted-foreground">Start completing challenges to earn badges!</p>
           </div>
         </div>
       </AppLayout>
@@ -325,28 +351,19 @@ export default function BadgesPage() {
   return (
     <>
       <SEOHead
-        title="Achievements — Your Badges 🏆"
+        title="Achievements — Your Badges"
         description="View your earned badges and achievements"
         canonical="https://open-interview.github.io/badges"
       />
 
-      <AppLayout>
-        <div className="min-h-dvh bg-background text-foreground w-full overflow-x-hidden pb-24 lg:pb-0">
+      <AppLayout title="Badges">
+        <div className="min-h-screen bg-background text-foreground w-full overflow-x-hidden pb-24 lg:pb-0">
           <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
 
             {/* ── Header ── */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center space-y-2"
-            >
-              <h1 className="text-3xl md:text-4xl font-black">
-                Your{' '}
-                <span className="bg-gradient-to-r from-[#ffd700] to-[#ff8c00] bg-clip-text text-transparent">
-                  Achievements
-                </span>
-              </h1>
-            </motion.div>
+            <div className="px-4 pt-6 pb-4 lg:px-8">
+              <h1 className="text-2xl font-bold text-foreground">Achievements</h1>
+            </div>
 
             {/* ── Stats Header ── */}
             <motion.div

@@ -174,7 +174,7 @@ export function MarvelIntro({ onComplete }: MarvelIntroProps) {
             {/* Main title with Netflix-style reveal */}
             <div className="relative overflow-hidden">
               <motion.h1
-                className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight"
+                className="text-5xl sm:text-7xl md:text-8xl font-bold tracking-tight"
                 initial={{ y: 100 }}
                 animate={{ y: 0 }}
                 transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}

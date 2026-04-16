@@ -34,13 +34,13 @@ function isSameDay(a: Date, b: Date) {
 }
 
 function getMilestoneLabel(streak: number): string | null {
-  if (streak === 3) return '🎉 3-day streak!';
-  if (streak === 7) return '🔥 One week!';
-  if (streak === 14) return '💪 Two weeks!';
-  if (streak === 30) return '🏆 30 days!';
-  if (streak === 60) return '⚡ 60 days!';
-  if (streak === 100) return '👑 100 days!';
-  if (streak === 365) return '🌟 One year!';
+  if (streak === 3) return '3-day streak!';
+  if (streak === 7) return 'One week!';
+  if (streak === 14) return 'Two weeks!';
+  if (streak === 30) return '30 days!';
+  if (streak === 60) return '60 days!';
+  if (streak === 100) return '100 days!';
+  if (streak === 365) return 'One year!';
   return null;
 }
 
@@ -163,7 +163,7 @@ export function StreakDisplay({
         const next = MILESTONES.find(m => m > streak);
         return next ? (
           <p className="text-[11px] text-[var(--text-tertiary)] text-center">
-            {next - streak} more day{next - streak !== 1 ? 's' : ''} to {next}-day milestone 🎯
+            {next - streak} more day{next - streak !== 1 ? 's' : ''} to {next}-day milestone
           </p>
         ) : null;
       })()}

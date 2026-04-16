@@ -256,18 +256,42 @@ function selectHashtags(topic, subtopic) {
 }
 
 /**
- * Compose final post with template
+ * Compose final post with high-engagement framing
+ * Uses debate hooks, controversy, and strong CTAs to maximise votes + comments
  */
 function composePost(pollContent, template, hashtags, useCase) {
-  let hookLine = '';
-
-  if (useCase) {
-    hookLine = `${useCase.company} learned this the hard way:\n`;
-  } else {
-    hookLine = `Quick thought:\n`;
+  // Attribution-safe hook: only reference company if we have a real source URL
+  let contextLine = '';
+  if (useCase?.sourceUrl) {
+    contextLine = `${useCase.company} documented this in a post-mortem — and the lesson still trips teams up today.\n\n`;
   }
 
-  const text = `${hookLine}${pollContent.introText}\n\n${hashtags.join(' ')}`;
+  // Debate-framing openers keyed to template
+  const debateOpeners = {
+    story:        '⚡ Real scenario. What would you do?\n\n',
+    question:     '🤔 Engineers disagree on this. Where do you stand?\n\n',
+    controversial:'🔥 Hot take: most teams get this wrong. Prove me wrong.\n\n',
+    stat:         '📊 This comes up in every production incident review.\n\n',
+    climax:       '🚨 You\'re on-call. 2am. This is the question.\n\n'
+  };
+
+  const opener = debateOpeners[template.id] || '💡 Quick knowledge check:\n\n';
+
+  // Strong CTA variants — rotate to avoid repetition
+  const ctas = [
+    '👇 Vote, then drop your reasoning in the comments — let\'s debate.',
+    '👇 Cast your vote. Disagree with the result? Say why below.',
+    '👇 Vote below. Bonus points if you\'ve hit this in production.',
+    '👇 What\'s your answer? Vote and share your war story.',
+    '👇 Vote now — poll closes in 2 weeks. Let\'s see where the community lands.'
+  ];
+  const cta = ctas[pollContent.question.length % ctas.length];
+
+  const body = pollContent.introText
+    ? `${pollContent.introText}\n\n`
+    : '';
+
+  const text = `${opener}${contextLine}${body}${cta}\n\n${hashtags.join(' ')}`;
 
   return { text };
 }

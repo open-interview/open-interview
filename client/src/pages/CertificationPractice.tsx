@@ -1,10 +1,13 @@
 /**
- * Certification Practice Page
- * Practice questions for a specific certification track
- * Includes embedded mini-tests that must be passed to proceed
+ * Certification Practice - Gen Z Edition
+ * Pure black, neon accents, immersive learning experience
+ * Includes embedded mini-tests with glassmorphism effects
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
+import { MobileBottomNav } from '../components/layout/UnifiedNav';
+import { MobileHeader } from '../components/layout/MobileHeader';
 import { useLocation, useRoute } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -169,22 +172,34 @@ export default function CertificationPractice() {
         const allQuestions: Question[] = [];
         const channelIds: string[] = [];
         
+        console.log(`Loading questions for ${certification.name}...`);
+        console.log(`Channel mappings:`, certification.channelMappings);
+        
         for (const mapping of certification.channelMappings) {
           try {
+            console.log(`Fetching channel: ${mapping.channelId}`);
             const data = await ChannelService.getData(mapping.channelId);
             let channelQuestions = data.questions;
             channelIds.push(mapping.channelId);
+            
+            console.log(`Found ${channelQuestions.length} questions in ${mapping.channelId}`);
             
             if (mapping.subChannels && mapping.subChannels.length > 0) {
               channelQuestions = channelQuestions.filter((q: Question) => 
                 mapping.subChannels!.includes(q.subChannel)
               );
+              console.log(`After subchannel filter: ${channelQuestions.length} questions`);
             }
             
             const count = Math.ceil(channelQuestions.length * (mapping.weight / 100));
+            console.log(`Taking ${count} questions (${mapping.weight}% weight)`);
             allQuestions.push(...channelQuestions.slice(0, count));
-          } catch {}
+          } catch (err) {
+            console.error(`Failed to load channel ${mapping.channelId}:`, err);
+          }
         }
+
+        console.log(`Total questions loaded: ${allQuestions.length}`);
 
         const allTests = await loadTests();
         setAvailableTests(allTests.filter(t => channelIds.includes(t.channelId)));
@@ -196,7 +211,12 @@ export default function CertificationPractice() {
         // Use progressive RAG-based selection instead of random shuffle
         const progressiveQuestions = generateProgressiveSequence(uniqueQuestions, uniqueQuestions.length);
         setQuestions(progressiveQuestions);
+        
+        if (progressiveQuestions.length === 0) {
+          console.warn(`No questions found for ${certification.name}`);
+        }
       } catch (err) {
+        console.error('Failed to load certification questions:', err);
         setError('Failed to load certification questions');
       } finally {
         setLoading(false);
@@ -428,11 +448,11 @@ export default function CertificationPractice() {
     if (!showTest) return null;
 
     return (
-      <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-md flex items-center justify-center p-4">
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+          className="bg-muted/50 border border-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
         >
           {/* Header */}
           <div className="p-4 border-b border-border bg-gradient-to-r from-amber-500/10 via-primary/10 to-amber-500/10">
@@ -449,7 +469,7 @@ export default function CertificationPractice() {
                 </div>
                 <div>
                   <h3 className="font-bold">
-                    {showResults ? (testResults.passed ? '🎉 Passed!' : '❌ Failed') : 'Checkpoint Test'}
+                    {showResults ? (testResults.passed ? 'Passed!' : 'Failed') : 'Checkpoint Test'}
                   </h3>
                   <p className="text-xs text-muted-foreground">
                     {showResults ? `${testResults.correct}/${testResults.total} correct` : `Q${currentTestIndex + 1}/${testQuestions.length} • Tap answer to submit`}
@@ -463,7 +483,7 @@ export default function CertificationPractice() {
                     <div key={i} className={`w-2.5 h-2.5 rounded-full ${
                       i < testAnswers.length
                         ? testAnswers[i]?.isCorrect ? 'bg-green-500' : 'bg-red-500'
-                        : i === currentTestIndex ? 'bg-primary' : 'bg-muted'
+                        : i === currentTestIndex ? 'bg-gradient-to-r from-primary to-cyan-500' : 'bg-muted'
                     }`} />
                   ))}
                 </div>
@@ -581,8 +601,8 @@ export default function CertificationPractice() {
                             showResult && isSelected && !isCorrect ? 'border-red-500 bg-red-500' :
                             'border-muted-foreground/30'
                           }`}>
-                            {showResult && isCorrect && <Check className="w-3 h-3 text-white" />}
-                            {showResult && isSelected && !isCorrect && <X className="w-3 h-3 text-white" />}
+                            {showResult && isCorrect && <Check className="w-3 h-3 text-foreground" />}
+                            {showResult && isSelected && !isCorrect && <X className="w-3 h-3 text-foreground" />}
                           </div>
                           <span className="text-sm">{option.text}</span>
                         </div>
@@ -610,12 +630,12 @@ export default function CertificationPractice() {
             {showResults ? (
               <div className="flex gap-3">
                 {testResults.passed ? (
-                  <button onClick={closeTestAndContinue} className="flex-1 py-3 bg-green-500 text-white rounded-xl font-medium flex items-center justify-center gap-2">
+                  <button onClick={closeTestAndContinue} className="flex-1 py-3 bg-green-500 text-foreground rounded-xl font-medium flex items-center justify-center gap-2">
                     <Unlock className="w-5 h-5" /> Continue
                   </button>
                 ) : (
                   <>
-                    <button onClick={retryTest} className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-medium flex items-center justify-center gap-2">
+                    <button onClick={retryTest} className="flex-1 py-3 bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground rounded-xl font-medium flex items-center justify-center gap-2">
                       <RefreshCw className="w-4 h-4" /> Retry
                     </button>
                     <button onClick={() => setShowSkipConfirm(true)} className="flex-1 py-3 bg-muted rounded-xl font-medium flex items-center justify-center gap-2 text-muted-foreground">
@@ -646,14 +666,14 @@ export default function CertificationPractice() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[60] bg-background/80 flex items-center justify-center p-4"
           onClick={() => setShowSkipConfirm(false)}
         >
           <motion.div
             initial={{ scale: 0.9 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0.9 }}
-            className="bg-card border border-border rounded-2xl w-full max-w-sm p-5"
+            className="bg-muted/50 border border-border rounded-2xl w-full max-w-sm p-5"
             onClick={e => e.stopPropagation()}
           >
             <div className="text-center">
@@ -673,7 +693,7 @@ export default function CertificationPractice() {
                 <button
                   onClick={skipTestWithPenalty}
                   disabled={balance < SKIP_TEST_PENALTY}
-                  className="flex-1 py-2.5 bg-red-500 text-white rounded-xl font-medium disabled:opacity-50"
+                  className="flex-1 py-2.5 bg-red-500 text-foreground rounded-xl font-medium disabled:opacity-50"
                 >
                   Skip
                 </button>
@@ -686,12 +706,13 @@ export default function CertificationPractice() {
   );
 
   return (
-    <>
+    <DesktopSidebarWrapper>
+      <div className="lg:hidden"><MobileHeader title="Certification" showBack={true} /></div>
       <SEOHead title={`${certification.name} Practice`} description={certification.description} />
       <TestModal />
       <SkipConfirmModal />
 
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background pt-14 lg:pt-0">
         {/* Compact Header - Single row with integrated progress */}
         <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
           <div className="max-w-7xl mx-auto px-3 py-2">
@@ -710,7 +731,7 @@ export default function CertificationPractice() {
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-[10px] text-muted-foreground tabular-nums">Q{currentIndex + 1}/{totalQuestions}</span>
                   <div className="relative flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-[200px]">
-                    <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${((currentIndex + 1) / totalQuestions) * 100}%` }} />
+                    <div className="h-full bg-gradient-to-r from-primary to-cyan-500 rounded-full transition-all" style={{ width: `${((currentIndex + 1) / totalQuestions) * 100}%` }} />
                     {Array.from({ length: Math.floor(totalQuestions / QUESTIONS_PER_TEST) }).map((_, i) => {
                       const idx = (i + 1) * QUESTIONS_PER_TEST;
                       const pos = (idx / totalQuestions) * 100;
@@ -734,7 +755,7 @@ export default function CertificationPractice() {
                         ? diff === 'beginner' ? 'bg-green-500/20 text-green-500' 
                           : diff === 'intermediate' ? 'bg-yellow-500/20 text-yellow-500'
                           : diff === 'advanced' ? 'bg-red-500/20 text-red-500'
-                          : 'bg-primary text-primary-foreground'
+                          : 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground'
                         : 'bg-muted/50 text-muted-foreground hover:bg-muted'
                     }`}>
                     {diff === 'all' ? 'All' : diff === 'beginner' ? 'Easy' : diff === 'intermediate' ? 'Med' : 'Hard'}
@@ -759,7 +780,7 @@ export default function CertificationPractice() {
                       ? diff === 'beginner' ? 'bg-green-500/20 text-green-500' 
                         : diff === 'intermediate' ? 'bg-yellow-500/20 text-yellow-500'
                         : diff === 'advanced' ? 'bg-red-500/20 text-red-500'
-                        : 'bg-primary text-primary-foreground'
+                        : 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground'
                       : 'bg-muted/50 text-muted-foreground'
                   }`}>
                   {diff === 'all' ? 'All' : diff === 'beginner' ? 'Easy' : diff === 'intermediate' ? 'Medium' : 'Hard'}
@@ -835,7 +856,7 @@ export default function CertificationPractice() {
                 <button onClick={goToPrev} disabled={currentIndex === 0} className="flex items-center gap-1 px-2.5 py-1.5 bg-muted rounded-md disabled:opacity-40 text-xs">
                   <ChevronLeft className="w-4 h-4" />Prev
                 </button>
-                <button onClick={markCompleted} disabled={isCompleted} className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium ${isCompleted ? 'bg-green-500/10 text-green-500' : 'bg-primary text-primary-foreground'}`}>
+                <button onClick={markCompleted} disabled={isCompleted} className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium ${isCompleted ? 'bg-green-500/10 text-green-500' : 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground'}`}>
                   <Check className="w-3.5 h-3.5" />{isCompleted ? 'Done' : 'Mark Done'}
                 </button>
                 <button onClick={goToNext} disabled={currentIndex === totalQuestions - 1} className="flex items-center gap-1 px-2.5 py-1.5 bg-muted rounded-md disabled:opacity-40 text-xs">
@@ -847,7 +868,8 @@ export default function CertificationPractice() {
           </>
         )}
       </div>
-    </>
+      <MobileBottomNav />
+    </DesktopSidebarWrapper>
   );
 }
 

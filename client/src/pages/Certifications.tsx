@@ -13,8 +13,9 @@ import {
   Search, Award, Clock, ChevronRight, ChevronDown, Check, Plus,
   Cloud, Shield, Database, Brain, Code, Users, Box, Terminal,
   Server, Cpu, Layers, Network, GitBranch, Loader2, Target,
-  BookOpen, BarChart2, X
+  BookOpen, BarChart2, X, Settings2
 } from 'lucide-react';
+import { useUserPreferences } from '../context/UserPreferencesContext';
 
 interface Certification {
   id: string;
@@ -103,7 +104,7 @@ function CertDetail({
         exit={{ y: 60, opacity: 0 }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
         onClick={e => e.stopPropagation()}
-        className="relative w-full sm:max-w-lg bg-[var(--surface-3)] border border-[var(--color-border)] rounded-t-2xl sm:rounded-2xl p-6 max-h-[85vh] overflow-y-auto custom-scrollbar"
+        className="relative w-full sm:max-w-lg bg-card border border-border rounded-t-2xl sm:rounded-2xl p-6 max-h-[85vh] overflow-y-auto custom-scrollbar"
       >
         <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-muted/50 text-muted-foreground transition-colors">
           <X className="w-4 h-4" />
@@ -198,7 +199,7 @@ function CertCard({
       animate={{ opacity: 1, scale: 1 }}
       whileHover={{ y: -2 }}
       onClick={onClick}
-      className="group relative p-4 bg-[var(--surface-2)] border border-[var(--color-border)] rounded-xl cursor-pointer hover:border-[var(--color-accent-violet)]/40 transition-all overflow-hidden"
+      className="group relative p-4 bg-card border border-border rounded-xl cursor-pointer hover:border-[var(--color-accent-violet)]/40 transition-all overflow-hidden"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-accent-violet)]/5 to-[var(--color-accent-cyan)]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
 
@@ -207,7 +208,7 @@ function CertCard({
         <div className="flex items-start gap-3">
           <div className="relative w-10 h-10 flex-shrink-0">
             <svg width="40" height="40" className="-rotate-90 absolute inset-0">
-              <circle cx="20" cy="20" r="16" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3" />
+              <circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" strokeOpacity="0.08" strokeWidth="3" />
               {isStarted && (
                 <circle
                   cx="20" cy="20" r="16"
@@ -344,6 +345,9 @@ export default function CertificationsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [startedCerts, setStartedCerts] = useState<Set<string>>(new Set());
   const [selectedCert, setSelectedCert] = useState<Certification | null>(null);
+  const [subscribedOnly, setSubscribedOnly] = useState(false);
+  const { preferences, toggleSubscription } = useUserPreferences();
+  const subscribedCertIds = new Set(preferences.subscribedChannels);
 
   useEffect(() => {
     try {
@@ -359,6 +363,8 @@ export default function CertificationsPage() {
       try { localStorage.setItem('startedCertifications', JSON.stringify(Array.from(next))); } catch {}
       return next;
     });
+    // Also sync with subscriptions
+    toggleSubscription(certId);
   };
 
   const categories = Array.from(new Set(certifications.map(c => c.category)));
@@ -367,7 +373,8 @@ export default function CertificationsPage() {
     const q = searchQuery.toLowerCase();
     const matchSearch = !q || cert.name.toLowerCase().includes(q) || cert.provider.toLowerCase().includes(q) || cert.description.toLowerCase().includes(q);
     const matchCat = !selectedCategory || cert.category === selectedCategory;
-    return matchSearch && matchCat;
+    const matchSub = !subscribedOnly || subscribedCertIds.has(cert.id) || startedCerts.has(cert.id);
+    return matchSearch && matchCat && matchSub;
   });
 
   // Group by provider, sorted by PROVIDER_META order
@@ -393,21 +400,17 @@ export default function CertificationsPage() {
   return (
     <>
       <SEOHead
-        title="Certifications — Get Certified, Get Hired 🎓"
+        title="Certifications — Get Certified, Get Hired"
         description="Practice for AWS, Azure, GCP, Kubernetes, and more certifications"
         canonical="https://open-interview.github.io/certifications"
       />
       <AppLayout>
-        <div className="min-h-screen bg-background text-foreground">
-          <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 pb-24 lg:pb-8">
-
-            {/* Header */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
-              <h1 className="text-2xl font-bold mb-1">
-                Get <span className="gradient-text">certified</span>
-              </h1>
-              <p className="text-sm text-muted-foreground">{certifications.length} certifications to master</p>
-            </motion.div>
+        <div className="min-h-screen bg-background">
+          <div className="px-4 pt-6 pb-4 lg:px-8">
+            <h1 className="text-2xl font-bold text-foreground">Certifications</h1>
+            <p className="text-sm text-muted-foreground mt-1">{certifications.length} certifications to master</p>
+          </div>
+          <div className="max-w-7xl mx-auto px-4 md:px-6 pb-24 lg:pb-8">
 
             {/* Stats */}
             {startedCerts.size > 0 && (
@@ -427,15 +430,27 @@ export default function CertificationsPage() {
 
             {/* Search */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="max-w-2xl mx-auto mb-4">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search certifications..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:border-primary transition-colors"
-                />
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search certifications..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:border-primary transition-colors"
+                  />
+                </div>
+                <button
+                  onClick={() => setSubscribedOnly(s => !s)}
+                  className={`px-3 py-2.5 rounded-lg text-xs font-semibold border transition-all whitespace-nowrap ${
+                    subscribedOnly
+                      ? 'bg-[var(--color-accent-violet)]/15 border-[var(--color-accent-violet)] text-[var(--color-accent-violet-light)]'
+                      : 'bg-muted/50 border-border text-muted-foreground hover:border-primary/50'
+                  }`}
+                >
+                  {subscribedOnly ? '★ My Certs' : 'All Certs'}
+                </button>
               </div>
             </motion.div>
 
@@ -465,7 +480,7 @@ export default function CertificationsPage() {
             {/* Provider sections */}
             {sortedProviders.length === 0 ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
-                <div className="text-5xl mb-3">🔍</div>
+                <Search className="w-12 h-12 mx-auto mb-3 text-muted-foreground/40" />
                 <h3 className="text-xl font-bold mb-1">No certifications found</h3>
                 <p className="text-sm text-muted-foreground">Try a different search or category</p>
               </motion.div>

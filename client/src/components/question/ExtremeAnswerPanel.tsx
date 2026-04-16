@@ -479,7 +479,7 @@ export function ExtremeAnswerPanel({ question }: ExtremeAnswerPanelProps) {
             return <p className="mb-3 leading-relaxed text-foreground text-sm sm:text-base">{children}</p>;
           },
           h1({ children }) {
-            return <h1 className="text-lg sm:text-xl font-black mb-3 mt-6 text-foreground border-b border-border pb-2">{children}</h1>;
+            return <h1 className="text-lg sm:text-xl font-bold mb-3 mt-6 text-foreground border-b border-border pb-2">{children}</h1>;
           },
           h2({ children }) {
             return <h2 className="text-base sm:text-lg font-bold mb-3 mt-5 text-foreground">{children}</h2>;

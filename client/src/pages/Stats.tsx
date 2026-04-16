@@ -69,6 +69,12 @@ export default function StatsPage() {
   const { unlocked: unlockedBadges } = useAchievements();
   const [hoveredCell, setHoveredCell] = useState<{ date: string; count: number; x: number; y: number } | null>(null);
 
+  // ── today's count ─────────────────────────────────────────────────────────
+  const todayCount = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return stats.find(s => s.date === today)?.count || 0;
+  }, [stats]);
+
   // ── derived stats (keep all existing logic) ───────────────────────────────
   const { totalCompleted, totalQuestions, streak, moduleProgress, certCount, voiceSessions } = useMemo(() => {
     const allQuestions = getAllQuestions();
@@ -222,7 +228,7 @@ export default function StatsPage() {
     return 'Recently';
   }, []);
 
-  const username = 'Learner';
+  const username = localStorage.getItem('user-display-name') || 'Learner';
   const initials = getInitials(username);
 
   const fadeUp = (delay = 0) => ({
@@ -234,13 +240,19 @@ export default function StatsPage() {
   return (
     <>
       <SEOHead
-        title="Your Stats - Track Your Progress 📊"
+        title="Your Stats - Track Your Progress"
         description="See your learning progress, streaks, and achievements"
         canonical="https://open-interview.github.io/stats"
       />
-      <AppLayout>
-        <div className="min-h-screen pb-24 lg:pb-8" style={{ background: 'var(--surface-0)', color: 'var(--text-primary)' }}>
+      <AppLayout title="Stats">
+        <div className="min-h-screen pb-24 lg:pb-8 bg-background text-foreground">
           <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
+
+            {/* ── Page Header ────────────────────────────────────────────── */}
+            <div className="px-4 pt-6 pb-4 lg:px-8">
+              <h1 className="text-2xl font-bold text-foreground">Stats</h1>
+              <p className="text-sm text-muted-foreground mt-1">Your learning progress at a glance</p>
+            </div>
 
             {/* ── Profile Header ─────────────────────────────────────────── */}
             <motion.div {...fadeUp(0)} className="glass-card rounded-[var(--radius-2xl)] p-6 flex flex-col sm:flex-row items-center gap-6">
@@ -292,17 +304,18 @@ export default function StatsPage() {
             {/* ── Key Metrics 2×2 ────────────────────────────────────────── */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { icon: Target, label: 'Questions Answered', value: totalCompleted, color: 'var(--color-accent-cyan)', bg: 'rgba(6,182,212,0.12)', border: 'rgba(6,182,212,0.25)', delay: 0.1 },
-                { icon: BarChart2, label: 'Topics Mastered', value: topicsMastered, color: 'var(--color-accent-violet-light)', bg: 'rgba(124,58,237,0.12)', border: 'rgba(124,58,237,0.25)', delay: 0.15 },
-                { icon: Trophy, label: 'Certifications', value: certCount, color: 'var(--color-xp)', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.25)', delay: 0.2 },
-                { icon: Mic, label: 'Voice Sessions', value: voiceSessions, color: 'var(--color-success)', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.25)', delay: 0.25 },
-              ].map(({ icon: Icon, label, value, color, bg, border, delay }) => (
+                { icon: Target, label: 'Questions Answered', value: totalCompleted, sub: `+${todayCount} today`, color: 'var(--color-accent-cyan)', bg: 'rgba(6,182,212,0.12)', border: 'rgba(6,182,212,0.25)', delay: 0.1 },
+                { icon: BarChart2, label: 'Topics Mastered', value: topicsMastered, sub: undefined, color: 'var(--color-accent-violet-light)', bg: 'rgba(124,58,237,0.12)', border: 'rgba(124,58,237,0.25)', delay: 0.15 },
+                { icon: Trophy, label: 'Certifications', value: certCount, sub: undefined, color: 'var(--color-xp)', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.25)', delay: 0.2 },
+                { icon: Mic, label: 'Voice Sessions', value: voiceSessions, sub: undefined, color: 'var(--color-success)', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.25)', delay: 0.25 },
+              ].map(({ icon: Icon, label, value, sub, color, bg, border, delay }) => (
                 <motion.div key={label} {...fadeUp(delay)}
                   className="rounded-[var(--radius-xl)] p-5 flex flex-col gap-2"
                   style={{ background: bg, border: `1px solid ${border}` }}>
                   <Icon className="w-6 h-6" style={{ color }} />
                   <div className="text-3xl font-black">{value}</div>
                   <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{label}</div>
+                  {sub && <div className="text-xs font-semibold" style={{ color }}>{sub}</div>}
                 </motion.div>
               ))}
             </div>
@@ -318,13 +331,13 @@ export default function StatsPage() {
               <div className="overflow-x-auto">
                 <div className="min-w-[600px]">
                   {/* Month labels */}
-                  <div className="flex mb-1 pl-8">
+                  <div className="relative h-5 mb-1 pl-8">
                     {monthLabels.map(({ label, col }) => (
-                      <div key={`${label}-${col}`} className="text-xs absolute" style={{ color: 'var(--text-tertiary)', marginLeft: `${col * 14}px` }}>
+                      <span key={`${label}-${col}`} className="text-xs absolute"
+                        style={{ color: 'var(--text-tertiary)', left: `${32 + col * 11}px` }}>
                         {label}
-                      </div>
+                      </span>
                     ))}
-                    <div className="h-4" />
                   </div>
 
                   <div className="flex gap-1">
@@ -461,7 +474,7 @@ export default function StatsPage() {
                       <stop offset="100%" stopColor="#06b6d4" />
                     </linearGradient>
                   </defs>
-                  <Line type="monotone" dataKey="count" name="Questions" stroke="url(#lineGrad)"
+                  <Line type="monotone" dataKey="count" name="Questions" stroke="#7c3aed"
                     strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#7c3aed' }} />
                 </LineChart>
               </ResponsiveContainer>
@@ -508,7 +521,7 @@ export default function StatsPage() {
                 </h2>
                 <span className="text-sm font-bold px-3 py-1 rounded-full"
                   style={{ background: 'rgba(249,115,22,0.15)', color: 'var(--color-streak)', border: '1px solid rgba(249,115,22,0.3)' }}>
-                  🔥 {streak} day streak
+                  {streak} day streak
                 </span>
               </div>
 

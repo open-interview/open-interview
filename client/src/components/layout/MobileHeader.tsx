@@ -34,12 +34,12 @@ function InlineThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/15 transition-colors"
+      className="w-9 h-9 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted transition-colors"
       aria-label="Toggle theme"
     >
       {isDark
         ? <Sun className="w-4 h-4 text-amber-400" />
-        : <Moon className="w-4 h-4 text-white/80" />
+        : <Moon className="w-4 h-4 text-muted-foreground" />
       }
     </button>
   );
@@ -70,7 +70,7 @@ export function MobileHeader({
     <motion.header
       className="sticky top-0 z-40 lg:hidden"
       animate={{
-        backgroundColor: frosted ? 'rgba(10,14,26,0.85)' : 'rgba(10,14,26,0)',
+        backgroundColor: frosted ? 'var(--nav-bg)' : 'transparent',
         backdropFilter: frosted ? 'blur(20px) saturate(180%)' : 'blur(0px)',
         borderBottomColor: frosted ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0)',
       }}
@@ -87,10 +87,10 @@ export function MobileHeader({
           {shouldShowBack ? (
             <button
               onClick={() => window.history.back()}
-              className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/15 transition-colors shrink-0"
+              className="w-9 h-9 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted transition-colors shrink-0"
               aria-label="Go back"
             >
-              <ArrowLeft className="w-5 h-5 text-white/80" strokeWidth={2} />
+              <ArrowLeft className="w-5 h-5 text-foreground/80" strokeWidth={2} />
             </button>
           ) : (
             <button
@@ -104,13 +104,13 @@ export function MobileHeader({
                 <Brain className="w-4 h-4 text-white" strokeWidth={2.5} />
               </div>
               {!title && (
-                <span className="font-bold text-sm text-white">Code Reels</span>
+                <span className="font-bold text-sm text-foreground">Code Reels</span>
               )}
             </button>
           )}
 
           {title && (
-            <h1 className="font-bold text-sm text-white truncate">{title}</h1>
+            <h1 className="font-bold text-sm text-foreground truncate">{title}</h1>
           )}
         </div>
 
@@ -127,10 +127,10 @@ export function MobileHeader({
           {showSearch && (
             <button
               onClick={onSearchClick}
-              className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/15 transition-colors"
+              className="w-9 h-9 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted transition-colors"
               aria-label="Search"
             >
-              <Search className="w-4 h-4 text-white/80" strokeWidth={2} />
+              <Search className="w-4 h-4 text-foreground/80" strokeWidth={2} />
             </button>
           )}
 

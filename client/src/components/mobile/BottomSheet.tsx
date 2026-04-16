@@ -66,7 +66,7 @@ export function BottomSheet({
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
                   {title && (
-                    <Drawer.Title className="text-lg md:text-2xl font-black text-foreground truncate">
+                    <Drawer.Title className="text-lg md:text-2xl font-bold text-foreground truncate">
                       {title}
                     </Drawer.Title>
                   )}

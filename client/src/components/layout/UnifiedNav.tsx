@@ -10,11 +10,12 @@ import {
   Home, GraduationCap, Mic, BarChart3, Code, Coins,
   ChevronRight, ChevronLeft, Target, Flame, Award,
   BookOpen, Bookmark, Trophy, Search, User, Info,
-  Brain, Layers, Settings
+  Brain, Layers, Settings, Sun, Moon
 } from 'lucide-react';
 import { useCredits } from '../../context/CreditsContext';
 import { useSidebar } from '../../context/SidebarContext';
 import { useUserPreferences } from '../../context/UserPreferencesContext';
+import { useTheme } from '../../context/ThemeContext';
 import { cn } from '../../lib/utils';
 import { useState } from 'react';
 
@@ -283,6 +284,7 @@ export function DesktopSidebar({ onSearchClick }: DesktopSidebarProps) {
   const { balance, formatCredits } = useCredits();
   const { isCollapsed, toggleSidebar } = useSidebar();
   const { preferences } = useUserPreferences();
+  const { theme, toggleTheme } = useTheme();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   const isActive = (path: string) =>
@@ -303,6 +305,7 @@ export function DesktopSidebar({ onSearchClick }: DesktopSidebarProps) {
           onClick={() => setLocation(item.path)}
           onMouseEnter={() => setHoveredItem(item.id)}
           onMouseLeave={() => setHoveredItem(null)}
+          style={active ? { boxShadow: '0 0 12px rgba(124,58,237,0.12)' } : undefined}
           className={cn(
             'w-full flex items-center gap-3 rounded-lg transition-all duration-150 group relative overflow-hidden',
             isCollapsed ? 'justify-center p-2' : 'px-3 py-2',
@@ -314,7 +317,7 @@ export function DesktopSidebar({ onSearchClick }: DesktopSidebarProps) {
           {/* Violet left border for active */}
           {active && !isCollapsed && (
             <motion.div
-              layoutId={`active-border-${item.id}`}
+              layoutId="sidebar-active-border"
               className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-primary"
             />
           )}
@@ -473,6 +476,23 @@ export function DesktopSidebar({ onSearchClick }: DesktopSidebarProps) {
 
       {/* Credits footer */}
       <div className={cn('p-2 border-t border-border shrink-0', isCollapsed && 'p-1.5')}>
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          className={cn(
+            'w-full flex items-center gap-2.5 px-2.5 py-2 mb-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors',
+            isCollapsed && 'justify-center px-1.5'
+          )}
+          aria-label="Toggle theme"
+        >
+          {theme === 'genz-dark'
+            ? <Sun className="w-4 h-4 text-amber-400 shrink-0" />
+            : <Moon className="w-4 h-4 shrink-0" />
+          }
+          {!isCollapsed && (
+            <span className="text-sm">{theme === 'genz-dark' ? 'Light mode' : 'Dark mode'}</span>
+          )}
+        </button>
         <button
           onClick={() => setLocation('/profile')}
           className={cn(

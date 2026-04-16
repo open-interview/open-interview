@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { EnhancedMermaid } from '@/components/EnhancedMermaid';
 import { DesktopSidebarWrapper } from '@/components/layout/DesktopSidebarWrapper';
+import { MobileBottomNav } from '@/components/layout/UnifiedNav';
+import { MobileHeader } from '@/components/layout/MobileHeader';
 
 // Documentation sections
 const sections = [
@@ -36,9 +38,10 @@ export default function Documentation() {
 
   return (
     <DesktopSidebarWrapper>
-    <div className="min-h-screen bg-[#0d1117] text-[#e6edf3]">
+    <div className="lg:hidden"><MobileHeader title="Docs" showBack={true} /></div>
+    <div className="min-h-screen bg-background text-foreground pt-14 lg:pt-0">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-[#30363d] bg-[#0d1117]/95 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button 
@@ -53,8 +56,8 @@ export default function Documentation() {
                   <BookOpen className="w-5 h-5 text-white" />
                 </div>
                 <div className="hidden sm:block">
-                  <div className="font-semibold text-white">Documentation</div>
-                  <div className="text-xs text-[#8b949e]">Reel-LearnHub</div>
+                  <div className="font-semibold text-foreground">Documentation</div>
+                  <div className="text-xs text-muted-foreground">Reel-LearnHub</div>
                 </div>
               </a>
             </Link>
@@ -86,7 +89,7 @@ export default function Documentation() {
         {/* Sidebar */}
         <aside className={`
           fixed lg:sticky top-16 left-0 z-40 h-[calc(100vh-4rem)] w-72 
-          bg-[#0d1117] lg:bg-transparent border-r border-[#30363d] lg:border-0
+          bg-background lg:bg-transparent border-r border-border lg:border-0
           transform transition-transform duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}>
@@ -163,6 +166,7 @@ export default function Documentation() {
         </main>
       </div>
     </div>
+    <MobileBottomNav />
     </DesktopSidebarWrapper>
   );
 }
