@@ -17,7 +17,8 @@ export const schema = {
   realWorldExample: {
     company: "Famous company name (Netflix, Uber, Spotify, etc.)",
     scenario: "The story of how they faced this challenge and what happened",
-    lesson: "The insight they gained that changed their approach"
+    lesson: "The insight they gained that changed their approach",
+    sourceUrl: "URL to the public post-mortem, engineering blog, or documentation that describes this incident (REQUIRED — do not fabricate)"
   },
   diagram: "Mermaid diagram code showing architecture/flow (without ```mermaid wrapper)",
   diagramType: "Type of diagram: flowchart|sequence|state|class|er|gantt|pie|mindmap|timeline|architecture",
@@ -85,6 +86,7 @@ export const guidelines = [
   // REAL-WORLD GROUNDING
   'Every concept needs a "when would I actually use this?" answer',
   'Include a REAL company war story (Netflix, Uber, Stripe, etc.) - what broke, how they fixed it',
+  'ATTRIBUTION RULE: Company war stories MUST be based on publicly documented incidents. Include a sourceUrl in realWorldExample pointing to the post-mortem, engineering blog, or documentation. Do NOT fabricate incidents.',
   'Add "battle scars" - common mistakes and how to avoid them',
   'Include specific numbers: latency, throughput, cost savings, team size',
   

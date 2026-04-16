@@ -35,7 +35,7 @@ const RETRY_DELAY = 2000; // 2 seconds
 const MAX_POLL_QUESTION_LENGTH = 140;
 const MAX_POLL_OPTIONS = 4;
 const MIN_POLL_DURATION_HOURS = 1;
-const MAX_POLL_DURATION_HOURS = 168; // 7 days
+const MAX_POLL_DURATION_HOURS = 336; // 14 days (LinkedIn max)
 
 // Default channels to rotate through (absolute basics for core topics)
 const DEFAULT_CHANNELS = [
@@ -70,7 +70,7 @@ const questionId = process.env.QUESTION_ID?.trim();
 const channel = process.env.CHANNEL?.trim();
 const difficulty = process.env.DIFFICULTY?.trim();
 const dryRun = process.env.DRY_RUN === 'true';
-const pollDuration = Math.min(Math.max(parseInt(process.env.POLL_DURATION || '24'), MIN_POLL_DURATION_HOURS), MAX_POLL_DURATION_HOURS);
+const pollDuration = Math.min(Math.max(parseInt(process.env.POLL_DURATION || '360'), MIN_POLL_DURATION_HOURS), MAX_POLL_DURATION_HOURS);
 
 /**
  * Validate required environment variables
@@ -258,6 +258,8 @@ async function generatePollContent(question) {
   const result = await ai.run('linkedinPollMcq', {
     question: question.question,
     answer: question.answer,
+    explanation: question.explanation,
+    tags: question.tags,
     channel: question.channel,
   });
 
@@ -340,7 +342,7 @@ function pollDurationEnum(hours) {
   if (hours <= 24) return 'ONE_DAY';
   if (hours <= 72) return 'THREE_DAYS';
   if (hours <= 168) return 'ONE_WEEK';
-  return 'TWO_WEEKS';
+  return 'TWO_WEEKS'; // 336h / 14 days — LinkedIn maximum
 }
 
 async function publishPollToLinkedIn(content) {

@@ -285,9 +285,13 @@ export function Mermaid({ chart, themeOverride }: MermaidProps) {
           setError(null);
         }
       } catch (err: any) {
-        console.error('Mermaid render error:', err);
+        // Mermaid v11 may inject an error element into the DOM on syntax errors — clean it up
+        document.getElementById(`d${id}`)?.remove();
+        document.getElementById(id)?.remove();
+
         if (!cancelled && currentRenderId === renderIdRef.current) {
           const errorMsg = err?.message || err?.str || 'Failed to render diagram';
+          console.warn('Mermaid render skipped:', typeof errorMsg === 'string' ? errorMsg : 'Render failed');
           setError(typeof errorMsg === 'string' ? errorMsg : 'Render failed');
         }
       } finally {

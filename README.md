@@ -16,12 +16,15 @@
   <a href="#getting-started">Get Started</a>
 </p>
 
+<!-- AUTO-GENERATED:badges -->
 <p align="center">
   <img src="https://img.shields.io/github/stars/open-interview/open-interview?style=for-the-badge&logo=github&color=yellow" alt="Stars" />
   <img src="https://img.shields.io/badge/questions-1000+-blue?style=for-the-badge" alt="Questions" />
-  <img src="https://img.shields.io/badge/certifications-25+-green?style=for-the-badge" alt="Certifications" />
+  <img src="https://img.shields.io/badge/certifications-41+-green?style=for-the-badge" alt="Certifications" />
+  <img src="https://img.shields.io/badge/topics-40+-orange?style=for-the-badge" alt="Topics" />
   <img src="https://img.shields.io/badge/AI_Powered-Vector_DB-purple?style=for-the-badge" alt="AI" />
 </p>
+<!-- /AUTO-GENERATED:badges -->
 
 ---
 
@@ -65,17 +68,21 @@ Read & record answers with progressive reveal. Answers split into ~30 word segme
 - Shareable badges on completion
 
 ### Certification Practice
-Focused prep for 25+ industry certifications:
+Focused prep for industry certifications:
 
+<!-- AUTO-GENERATED:certifications -->
 | Provider | Certifications |
 |----------|---------------|
-| **AWS** | SAA, SAP, DVA, SysOps, Security, Database, ML, Networking |
-| **Kubernetes** | CKA, CKAD, CKS |
-| **HashiCorp** | Terraform Associate |
-| **Google Cloud** | ACE, PCA |
-| **Microsoft** | AZ-900, AZ-104, AZ-305 |
-| **CompTIA** | Security+, Linux+ |
-| **Cisco** | CCNA |
+| **AWS** | AWS Solutions Architect Associate, AWS Solutions Architect Professional, AWS Developer Associate, AWS SysOps Administrator, AWS DevOps Engineer Professional, AWS Data Engineer Associate, AWS Machine Learning Specialty, AWS Security Specialty, AWS Database Specialty, AWS Networking Specialty, AWS AI Practitioner |
+| **Kubernetes** | CKA - Kubernetes Administrator, CKAD - Kubernetes Developer, CKS - Kubernetes Security, KCNA - Kubernetes Cloud Native |
+| **HashiCorp** | Terraform Associate, Vault Associate, Consul Associate |
+| **Google Cloud** | GCP Associate Cloud Engineer, GCP Professional Cloud Architect, GCP Professional Data Engineer, GCP Professional ML Engineer, GCP Professional DevOps Engineer, GCP Professional Security Engineer |
+| **Microsoft Azure** | Azure Fundamentals (AZ-900), Azure Administrator (AZ-104), Azure Developer (AZ-204), Azure Solutions Architect (AZ-305), Azure DevOps Engineer (AZ-400), Azure Data Engineer (DP-203), Azure AI Engineer (AI-102), Azure Security Engineer (AZ-500) |
+| **Linux / Docker** | Linux Foundation Sysadmin (LFCS), Red Hat Certified System Admin, Docker Certified Associate |
+| **Data & Analytics** | Databricks Data Engineer Associate, Snowflake SnowPro Core, dbt Analytics Engineer |
+| **Security** | CompTIA Security+, CISSP |
+| **AI / ML** | TensorFlow Developer Certificate |
+<!-- /AUTO-GENERATED:certifications -->
 
 ### SRS Review Sessions
 Spaced repetition reviews with 4-button rating (Again, Hard, Good, Easy). Questions resurface at optimal intervals.
@@ -208,14 +215,19 @@ QDRANT_API_KEY=...
 
 ## 📊 Topics
 
+<!-- AUTO-GENERATED:topics -->
 | Category | Topics |
 |----------|--------|
-| 🏗️ Engineering | System Design, Algorithms, Frontend, Backend, Database |
-| ☁️ Cloud | AWS, Kubernetes, Terraform, Docker, GCP, Azure |
-| 🔒 Security | Security, Networking, Linux |
-| 🤖 AI/ML | Machine Learning, Generative AI, Data Engineering |
-| 🧪 Testing | Unit, E2E, API, Performance |
-| 👥 Soft Skills | Behavioral, Engineering Management |
+| 🧮 CS Fundamentals | Data Structures, Complexity Analysis, Dynamic Programming, Bit Manipulation, Design Patterns, Concurrency, Math & Logic, Low-Level Programming |
+| 🏗️ Engineering | System Design, Algorithms, Frontend, Backend, Database, Python, Networking, Operating Systems, Linux, Unix |
+| ☁️ Cloud & DevOps | DevOps, SRE, Kubernetes, AWS, Terraform |
+| 📊 Data | Data Engineering |
+| 🤖 AI / ML | Machine Learning, Generative AI, Prompt Engineering, LLMOps, Computer Vision, NLP |
+| 🔒 Security | Security |
+| 📱 Mobile | iOS, Android, React Native |
+| 🧪 Testing | Testing, E2E Testing, API Testing, Performance Testing |
+| 👥 Soft Skills | Engineering Management, Behavioral |
+<!-- /AUTO-GENERATED:topics -->
 
 ---
 

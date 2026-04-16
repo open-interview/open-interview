@@ -40,7 +40,7 @@ export function DesktopSidebarWrapper({ children }: DesktopSidebarWrapperProps) 
       {/* Main content area - adjusts based on sidebar collapsed state */}
       <div className={cn(
         "min-h-screen transition-all duration-200",
-        isCollapsed ? "lg:pl-16" : "lg:pl-64"
+        isCollapsed ? "lg:pl-[72px]" : "lg:pl-[280px]"
       )}>
         {children}
       </div>

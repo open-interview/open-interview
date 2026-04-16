@@ -8,6 +8,7 @@ on:
   schedule:
     - cron: '0 * * * *'    # Hourly: Quick generation
     - cron: '0 2 * * *'    # Daily: Full pipeline
+    - cron: '0 8 * * *'    # Daily: Flashcard generation
   
   workflow_dispatch:
     inputs:
@@ -32,6 +33,7 @@ on:
           - blog-generator
           - voice-sessions
           - interview-intelligence
+          - coding-challenges
       count:
         description: 'Items to process'
         required: false
@@ -243,9 +245,52 @@ jobs:
           OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
         run: node script/generate-interview-intelligence.js
 
+  coding-challenges:
+    name: 💻 Coding Challenges
+    if: |
+      always() &&
+      ((github.event.schedule == '0 2 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.mode == 'full-pipeline' || inputs.stage == 'coding-challenges')))
+    needs: [processor]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bot
+      - name: Generate Coding Challenges
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
+          INPUT_COUNT: ${{ inputs.count || '2' }}
+          INPUT_DIFFICULTY: 'random'
+          INPUT_CATEGORY: 'random'
+        run: node script/coding-challenge-bot.js
+
+  flashcard-generation:
+    name: 🃏 Flashcard Generation
+    if: |
+      always() &&
+      ((github.event.schedule == '0 8 * * *') ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'full-pipeline'))
+    needs: [processor]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bot
+      - name: Run Flashcard Bot
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
+        run: node script/bots/flashcard-bot.js
+
   update-monitor:
     name: 📊 Update Monitor
-    needs: [blog-generator, voice-sessions, interview-intelligence]
+    needs: [blog-generator, voice-sessions, interview-intelligence, flashcard-generation, coding-challenges]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -327,7 +372,7 @@ jobs:
 
   summary:
     name: 📋 Summary
-    needs: [quick-generate, creator, analysis, verifier, processor, blog-generator, voice-sessions, interview-intelligence, update-monitor]
+    needs: [quick-generate, creator, analysis, verifier, processor, blog-generator, voice-sessions, interview-intelligence, flashcard-generation, update-monitor]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -345,6 +390,7 @@ jobs:
           echo "| 📰 Blog | ${{ needs.blog-generator.result == 'success' && '✅' || needs.blog-generator.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🎤 Voice | ${{ needs.voice-sessions.result == 'success' && '✅' || needs.voice-sessions.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🧠 Intelligence | ${{ needs.interview-intelligence.result == 'success' && '✅' || needs.interview-intelligence.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🃏 Flashcards | ${{ needs.flashcard-generation.result == 'success' && '✅' || needs.flashcard-generation.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📊 Monitor | ${{ needs.update-monitor.result == 'success' && '✅' || needs.update-monitor.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY

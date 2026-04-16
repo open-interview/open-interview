@@ -109,8 +109,7 @@ test.describe('Responsiveness', () => {
 });
 
 test.describe('Onboarding', () => {
-  test.skip('shows welcome and role selection for new users', async ({ page }) => {
-    // TODO: Onboarding feature not implemented yet
+  test('shows welcome and role selection for new users', async ({ page }) => {
     await setupFreshUser(page);
     await page.goto('/');
     await waitForPageReady(page);

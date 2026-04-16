@@ -1,3 +1,5 @@
+// NOTE: This is a compact/mobile variant of the answer panel (no SRS props).
+// The full-featured version with SRS rating is at components/question/AnswerPanel.tsx.
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EnhancedMermaid } from './EnhancedMermaid';
@@ -274,7 +276,7 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
   };
 
   return (
-    <div className="rounded-lg sm:rounded-xl overflow-hidden border border-border bg-[#1e1e1e]">
+    <div className="rounded-lg sm:rounded-xl overflow-hidden border border-border bg-[var(--surface-0)]">
       <div className="flex items-center justify-between px-3 sm:px-4 py-1.5 sm:py-2 bg-muted/50 border-b border-border">
         <div className="flex items-center gap-2">
           <Code2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
@@ -386,17 +388,17 @@ function TabbedMediaPanel({
   };
 
   return (
-    <div className="rounded-lg sm:rounded-xl border border-white/10 bg-black/40 backdrop-blur-sm overflow-hidden">
+    <div className="rounded-lg sm:rounded-xl border border-border bg-card backdrop-blur-sm overflow-hidden">
       {/* Tab Headers */}
-      <div className="flex border-b border-white/10 bg-black/20">
+      <div className="flex border-b border-border bg-muted/20">
         {availableTabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs sm:text-sm font-medium transition-all relative ${
               activeTab === tab 
-                ? `${tabConfig[tab].color} bg-white/5` 
-                : 'text-white/50 hover:text-white/70 hover:bg-white/5'
+                ? `${tabConfig[tab].color} bg-muted/30` 
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/20'
             }`}
           >
             <span className={activeTab === tab ? tabConfig[tab].color : ''}>{tabConfig[tab].icon}</span>

@@ -15,7 +15,7 @@ interface GenZProgressProps {
   className?: string;
 }
 
-export function GenZProgress({
+export function Progress({
   value,
   max,
   color = 'green',

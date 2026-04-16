@@ -23,6 +23,7 @@ import {
   addAchievementToHistory
 } from './storage';
 import { getLevelByXP, getNextLevel, XP_REWARDS, calculateXPWithStreak } from './levels';
+import { earnCredits } from '../credits';
 
 // ============================================
 // ACHIEVEMENT ENGINE
@@ -337,14 +338,8 @@ class AchievementEngineClass {
     }
   }
   
-  // Award credits (integrate with existing credit system)
   private awardCredits(amount: number): void {
-    // This will integrate with the existing credits system
-    // For now, just log it
-    console.log(`💰 Awarded ${amount} credits`);
-    
-    // TODO: Call existing credit system
-    // earnCredits(amount, 'Achievement reward');
+    earnCredits(amount, 'Achievement reward');
   }
   
   // Handle level up

@@ -58,16 +58,23 @@ RULES:
 - options: Exactly 4 options, EACH MUST BE 30 CHARACTERS OR FEWER. No labels, no markdown.
 - correctIndex: 0-based index of correct option. Randomize position.
 - introText: 3-4 lines with story hook. Structure:
-    Line 1: Emoji + hook about the use case or real-world scenario
+    Line 1: Emoji + hook about the use case or real-world scenario (MUST reference the source company if useCase is provided, otherwise use a general educational hook)
     Line 2: Emoji + why this concept matters day-to-day  
     Line 3: Emoji + CTA like "Vote below!" or "Your turn!"
     Line 4: 2-3 relevant hashtags
   Use varied emojis (🚀 ⚡ 🔥 🎯 💡 🛠️ 🤔 👇 📊 💭). Do NOT reveal the answer.
+  ATTRIBUTION RULE: If referencing a company incident, it MUST come from the useCase.sourceUrl provided. Do NOT fabricate incidents or attribute events to companies without a source.
 
-EXAMPLE INTRO WITH USE CASE HOOK:
-"Netflix once spent 3 days debugging a throttled service. The culprit? Nobody knew how cgroups actually work.
+EXAMPLE INTRO WITH USE CASE HOOK (only when a real sourceUrl is provided):
+"According to ${useCase?.company || 'documented post-mortems'}, a throttled service went undetected for days — the root cause traced back to cgroup misconfiguration.
 ⚡ Misunderstanding cgroups causes production incidents every week.
 👇 Vote and comment your worst cgroups moment!
+#Kubernetes #SRE #DevOps"
+
+EXAMPLE INTRO WITHOUT USE CASE (general educational hook):
+"Cgroup misconfiguration is one of the most common causes of silent CPU throttling in Kubernetes.
+⚡ Understanding cgroups is essential for anyone running containers in production.
+👇 Test your knowledge — vote now!
 #Kubernetes #SRE #DevOps"
 
 ${jsonOutputRule}

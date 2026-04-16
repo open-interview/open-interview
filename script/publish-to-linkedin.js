@@ -43,6 +43,10 @@ const postUrl = process.env.POST_URL?.trim();
 const postExcerpt = process.env.POST_EXCERPT?.trim();
 const postTags = process.env.POST_TAGS?.trim();
 const postChannel = process.env.POST_CHANNEL?.trim();
+const postQuickReference = process.env.POST_QUICK_REFERENCE?.trim();
+const postSocialHook = process.env.POST_SOCIAL_HOOK?.trim();
+const postSocialBody = process.env.POST_SOCIAL_BODY?.trim();
+const postRealWorldExample = process.env.POST_REAL_WORLD_EXAMPLE?.trim();
 const skipImage = process.env.SKIP_IMAGE === 'true';
 const dryRun = process.env.DRY_RUN === 'true';
 
@@ -450,7 +454,11 @@ async function main() {
       url: postUrl,
       excerpt: postExcerpt,
       channel: postChannel,
-      tags: postTags
+      tags: postTags,
+      quickReference: postQuickReference,
+      socialHook: postSocialHook,
+      socialBody: postSocialBody,
+      realWorldExample: postRealWorldExample
     });
   } catch (genError) {
     console.error('❌ Content generation failed:', genError.message);

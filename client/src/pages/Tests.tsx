@@ -1,267 +1,340 @@
 /**
- * Tests Page - Lists all available tests and user progress
- * Vibrant channel-based theming with pass expiration tracking
+ * Tests Page — revamped with filter/sort, pass/fail badges, difficulty, estimated time
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Trophy, Target, Clock, CheckCircle, Lock,
-  ChevronRight, Star, BarChart2, Mic, Coins,
-  Sparkles, AlertTriangle, RefreshCw, Zap
-} from 'lucide-react';
-import { SEOHead } from '../components/SEOHead';
 import { AppLayout } from '../components/layout/AppLayout';
-import { 
-  Test, loadTests, getAllTestProgress, TestProgress, getTestStats,
-  getChannelTheme, checkAndExpireTests, checkTestExpiration
+import { SEOHead } from '../components/SEOHead';
+import {
+  Test, loadTests, getAllTestProgress, getTestStats, checkAndExpireTests
 } from '../lib/tests';
-import { useCredits } from '../context/CreditsContext';
+import {
+  Target, Clock, CheckCircle, XCircle, Search, Star,
+  AlertTriangle, ChevronRight, SlidersHorizontal, Settings2
+} from 'lucide-react';
+import { useUserPreferences } from '../context/UserPreferencesContext';
 
-export default function Tests() {
-  const [_, setLocation] = useLocation();
+type FilterTab = 'all' | 'passed' | 'failed' | 'not-attempted';
+type SortKey = 'name' | 'last-attempt' | 'score';
+
+const DIFFICULTY_LABEL: Record<string, string> = {
+  beginner: 'Beginner',
+  intermediate: 'Intermediate',
+  advanced: 'Advanced',
+};
+
+const DIFFICULTY_COLOR: Record<string, string> = {
+  beginner: 'text-[var(--color-difficulty-beginner)]',
+  intermediate: 'text-[var(--color-difficulty-intermediate)]',
+  advanced: 'text-[var(--color-difficulty-advanced)]',
+};
+
+function getDominantDifficulty(test: Test): string {
+  const counts: Record<string, number> = {};
+  for (const q of test.questions) {
+    counts[q.difficulty] = (counts[q.difficulty] || 0) + 1;
+  }
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'beginner';
+}
+
+function estimatedMinutes(count: number) {
+  return Math.round((count * 1.5));
+}
+
+export default function TestsPage() {
+  const [, setLocation] = useLocation();
   const [tests, setTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expiredChannels, setExpiredChannels] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState<FilterTab>('all');
+  const [sort, setSort] = useState<SortKey>('name');
+  const [showSort, setShowSort] = useState(false);
+  const [subscribedOnly, setSubscribedOnly] = useState(true);
   const progress = getAllTestProgress();
   const stats = getTestStats();
-  const { balance, formatCredits, config } = useCredits();
+  const { preferences } = useUserPreferences();
+  const subscribedIds = new Set(preferences.subscribedChannels);
 
   useEffect(() => {
-    const initTests = async () => {
-      // Check for expired tests first
-      const expired = await checkAndExpireTests();
-      setExpiredChannels(expired);
-      
-      const t = await loadTests();
-      setTests(t);
+    (async () => {
+      await checkAndExpireTests();
+      setTests(await loadTests());
       setLoading(false);
-    };
-    initTests();
+    })();
   }, []);
 
-  // Calculate vibrant stats
   const passedCount = Object.values(progress).filter(p => p.passed && !p.expired).length;
-  const expiredCount = Object.values(progress).filter(p => p.expired).length;
+  const failedCount = Object.values(progress).filter(p => !p.passed && !p.expired).length;
+  const notStartedCount = tests.length - Object.keys(progress).filter(id => tests.some(t => t.channelId === id)).length;
+
+  const filtered = useMemo(() => {
+    let list = tests.filter(t =>
+      t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.channelName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Subscribed-only filter
+    if (subscribedOnly && subscribedIds.size > 0) {
+      list = list.filter(t => subscribedIds.has(t.channelId));
+    }
+
+    if (filter === 'passed') list = list.filter(t => progress[t.channelId]?.passed && !progress[t.channelId]?.expired);
+    else if (filter === 'failed') list = list.filter(t => {
+      const p = progress[t.channelId];
+      return p && !p.passed && !p.expired;
+    });
+    else if (filter === 'not-attempted') list = list.filter(t => !progress[t.channelId]);
+
+    list = [...list].sort((a, b) => {
+      if (sort === 'name') return a.title.localeCompare(b.title);
+      if (sort === 'score') return (progress[b.channelId]?.bestScore ?? -1) - (progress[a.channelId]?.bestScore ?? -1);
+      if (sort === 'last-attempt') {
+        const da = progress[a.channelId]?.lastAttemptAt ?? '';
+        const db = progress[b.channelId]?.lastAttemptAt ?? '';
+        return db.localeCompare(da);
+      }
+      return 0;
+    });
+
+    return list;
+  }, [tests, searchQuery, filter, sort, progress]);
+
+  const FILTERS: { id: FilterTab; label: string }[] = [
+    { id: 'all', label: 'All' },
+    { id: 'passed', label: 'Passed' },
+    { id: 'failed', label: 'Failed' },
+    { id: 'not-attempted', label: 'Not Attempted' },
+  ];
 
   return (
     <>
       <SEOHead
-        title="Knowledge Tests - Test Your Interview Prep | Code Reels"
-        description="Test your technical interview knowledge with quizzes for each topic. Track your progress and earn shareable badges."
+        title="Tests — Challenge Yourself"
+        description="Take knowledge tests and earn badges"
         canonical="https://open-interview.github.io/tests"
       />
+      <AppLayout>
+        <div className="min-h-screen bg-background pb-24 lg:pb-0">
+          <div className="px-4 pt-6 pb-4 lg:px-8">
+            <h1 className="text-2xl font-bold text-foreground">Channel Tests</h1>
+            <p className="text-sm text-muted-foreground mt-1">Prove what you know across every topic</p>
+          </div>
+          <div className="max-w-7xl mx-auto px-4 md:px-6 pb-10">
 
-      <AppLayout title="Tests" showBackOnMobile>
-        <div className="max-w-4xl mx-auto font-mono">
+            {/* Stats */}
+            <div className="grid grid-cols-3 md:grid-cols-4 gap-3 mb-8">
+              {[
+                { icon: CheckCircle, colorClass: 'from-green-500/20 to-green-600/10 border-green-500/30', iconClass: 'text-green-500', value: passedCount, label: 'Passed' },
+                { icon: XCircle, colorClass: 'from-red-500/20 to-red-600/10 border-red-500/30', iconClass: 'text-red-500', value: failedCount, label: 'Failed' },
+                { icon: Target, colorClass: 'from-blue-500/20 to-blue-600/10 border-blue-500/30', iconClass: 'text-blue-500', value: notStartedCount, label: 'Not Started' },
+                { icon: Star, colorClass: 'from-purple-500/20 to-purple-600/10 border-purple-500/30', iconClass: 'text-purple-500', value: `${stats.averageScore}%`, label: 'Avg Score' },
+              ].map(({ icon: Icon, colorClass, iconClass, value, label }, i) => (
+                <motion.div
+                  key={label}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.07 }}
+                  className={`p-4 rounded-xl border bg-gradient-to-br ${colorClass}`}
+                >
+                  <Icon className={`w-6 h-6 ${iconClass} mb-1`} />
+                  <div className="text-2xl font-bold">{value}</div>
+                  <div className="text-xs text-muted-foreground">{label}</div>
+                </motion.div>
+              ))}
+            </div>
 
-          {/* Vibrant Header */}
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6 text-center"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary/20 via-purple-500/20 to-pink-500/20 rounded-full border border-primary/30 mb-3">
-              <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-              <span className="text-sm font-medium">Channel-Based Knowledge Tests</span>
-            </div>
-          </motion.div>
-
-          {/* Stats Overview - More Vibrant */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6"
-          >
-            <div className="border border-green-500/30 p-3 bg-gradient-to-br from-green-500/10 to-emerald-500/5 rounded-lg text-center relative overflow-hidden">
-              <div className="absolute inset-0 bg-green-500/5 animate-pulse" />
-              <Trophy className="w-5 h-5 mx-auto mb-1 text-green-500 relative z-10" />
-              <div className="text-lg font-bold text-green-500 relative z-10">{passedCount}</div>
-              <div className="text-[9px] text-muted-foreground uppercase relative z-10">Passed</div>
-            </div>
-            <div className="border border-blue-500/30 p-3 bg-gradient-to-br from-blue-500/10 to-cyan-500/5 rounded-lg text-center">
-              <Target className="w-5 h-5 mx-auto mb-1 text-blue-500" />
-              <div className="text-lg font-bold text-blue-500">{stats.totalAttempts}</div>
-              <div className="text-[9px] text-muted-foreground uppercase">Attempts</div>
-            </div>
-            <div className="border border-purple-500/30 p-3 bg-gradient-to-br from-purple-500/10 to-violet-500/5 rounded-lg text-center">
-              <BarChart2 className="w-5 h-5 mx-auto mb-1 text-purple-500" />
-              <div className="text-lg font-bold text-purple-500">{stats.averageScore}%</div>
-              <div className="text-[9px] text-muted-foreground uppercase">Avg Score</div>
-            </div>
-            <button 
-              onClick={() => setLocation('/profile')}
-              className="border border-amber-500/30 p-3 bg-gradient-to-br from-amber-500/10 to-yellow-500/5 rounded-lg text-center hover:from-amber-500/20 hover:to-yellow-500/10 transition-all"
-            >
-              <Coins className="w-5 h-5 mx-auto mb-1 text-amber-500" />
-              <div className="text-lg font-bold text-amber-500">{formatCredits(balance)}</div>
-              <div className="text-[9px] text-muted-foreground uppercase">Credits</div>
-            </button>
-          </motion.div>
-
-          {/* Expired Tests Alert */}
-          <AnimatePresence>
-            {expiredCount > 0 && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-3"
-              >
-                <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-amber-500">
-                    {expiredCount} test{expiredCount > 1 ? 's' : ''} expired due to new questions!
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Retake to maintain your certification status
-                  </p>
-                </div>
-                <RefreshCw className="w-4 h-4 text-amber-500" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Voice Interview CTA - Enhanced */}
-          <motion.button
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            onClick={() => setLocation('/voice-interview')}
-            className="w-full mb-6 p-4 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 border border-emerald-500/30 rounded-lg flex items-center gap-4 hover:from-emerald-500/20 hover:via-teal-500/20 hover:to-cyan-500/20 transition-all group shadow-lg shadow-emerald-500/10"
-          >
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500/30 to-teal-500/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-              <Mic className="w-6 h-6 text-emerald-500" />
-            </div>
-            <div className="flex-1 text-left">
-              <h3 className="font-bold flex items-center gap-2">
-                Voice Interview Practice
-                <Zap className="w-4 h-4 text-amber-500" />
-              </h3>
-              <p className="text-xs text-muted-foreground">Answer questions out loud and get AI feedback</p>
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              <span className="text-xs font-bold text-green-400 flex items-center gap-1">
-                <Coins className="w-3 h-3" />+{config.VOICE_ATTEMPT}
-              </span>
-              <ChevronRight className="w-5 h-5 text-emerald-500 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </motion.button>
-
-          {/* Tests List - Vibrant Channel Cards */}
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-              <p className="text-muted-foreground">Loading tests...</p>
-            </div>
-          ) : tests.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-12 border border-dashed border-border rounded-lg"
-            >
-              <Lock className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />
-              <h2 className="text-lg font-bold mb-2">No Tests Available Yet</h2>
-              <p className="text-sm text-muted-foreground mb-4">
-                Tests are being generated by our bot. Check back soon!
-              </p>
+            {/* Search + Sort */}
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex gap-2 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search tests..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:border-primary transition-colors"
+                />
+              </div>
+              {/* Subscribed toggle */}
               <button
-                onClick={() => setLocation('/')}
-                className="text-primary hover:underline text-sm"
+                onClick={() => setSubscribedOnly(s => !s)}
+                className={`px-3 py-2.5 rounded-lg text-xs font-semibold border transition-all whitespace-nowrap ${
+                  subscribedOnly
+                    ? 'bg-[var(--color-accent-violet)]/15 border-[var(--color-accent-violet)] text-[var(--color-accent-violet-light)]'
+                    : 'bg-muted/50 border-border text-muted-foreground hover:border-primary/50'
+                }`}
               >
-                Continue Learning
+                {subscribedOnly ? '★ My Topics' : 'All Topics'}
               </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowSort(s => !s)}
+                  className="flex items-center gap-1.5 px-3 py-2.5 bg-muted/50 border border-border rounded-lg text-sm hover:border-primary/50 transition-colors"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                  <span className="hidden sm:inline">Sort</span>
+                </button>
+                <AnimatePresence>
+                  {showSort && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                      className="absolute right-0 top-full mt-1 w-44 bg-card border border-border rounded-lg shadow-lg z-10 overflow-hidden"
+                    >
+                      {([['name', 'Name'], ['last-attempt', 'Last Attempt'], ['score', 'Score']] as [SortKey, string][]).map(([key, label]) => (
+                        <button
+                          key={key}
+                          onClick={() => { setSort(key); setShowSort(false); }}
+                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-muted/50 ${sort === key ? 'text-primary font-semibold' : 'text-muted-foreground'}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </motion.div>
-          ) : (
-            <div className="space-y-3">
-              {tests.map((test, i) => {
-                const testProgress = progress[test.id];
-                const isPassed = testProgress?.passed && !testProgress?.expired;
-                const isExpired = testProgress?.expired;
-                const bestScore = testProgress?.bestScore || 0;
-                const attempts = testProgress?.attempts.length || 0;
-                const theme = getChannelTheme(test.channelId);
 
-                return (
-                  <motion.div
-                    key={test.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    onClick={() => setLocation(`/test/${test.channelId}`)}
-                    className={`border p-4 bg-card rounded-lg cursor-pointer transition-all group relative overflow-hidden ${
-                      isPassed 
-                        ? 'border-green-500/50 hover:border-green-500' 
-                        : isExpired
-                        ? 'border-amber-500/50 hover:border-amber-500'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    {/* Vibrant gradient background */}
-                    <div className={`absolute inset-0 bg-gradient-to-r ${theme.gradient} opacity-30 group-hover:opacity-50 transition-opacity`} />
-                    
-                    <div className="flex items-center gap-4 relative z-10">
-                      {/* Channel icon with theme */}
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${theme.secondary} ${
-                        isPassed ? 'ring-2 ring-green-500/50' : isExpired ? 'ring-2 ring-amber-500/50' : ''
-                      }`}>
-                        {isPassed ? (
-                          <CheckCircle className="w-6 h-6 text-green-500" />
-                        ) : isExpired ? (
-                          <RefreshCw className="w-6 h-6 text-amber-500" />
-                        ) : (
-                          <span className="text-2xl">{theme.icon}</span>
-                        )}
-                      </div>
+            {/* Filter Tabs */}
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="flex gap-2 mb-8 overflow-x-auto pb-1">
+              {FILTERS.map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setFilter(f.id)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
+                    filter === f.id
+                      ? 'bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] text-white'
+                      : 'bg-muted/50 border border-border hover:bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </motion.div>
 
-                      {/* Test info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <h3 className={`font-bold leading-tight ${theme.primary}`}>{test.title}</h3>
-                          {isPassed && (
-                            <span className="px-1.5 py-0.5 bg-green-500/20 text-green-500 text-[9px] uppercase rounded flex items-center gap-1">
-                              <CheckCircle className="w-3 h-3" /> Passed
+            {/* Grid */}
+            {loading ? (
+              <div className="text-center py-20 text-muted-foreground">
+                <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
+                Loading tests...
+              </div>
+            ) : filtered.length === 0 ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
+                <Search className="w-12 h-12 mx-auto mb-3 text-muted-foreground/40" />
+                <h3 className="text-xl font-bold mb-1">No tests found</h3>
+                <p className="text-sm text-muted-foreground">Try a different filter or search term</p>
+              </motion.div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <AnimatePresence mode="popLayout">
+                  {filtered.map((test, i) => {
+                    const p = progress[test.channelId];
+                    const isPassed = p?.passed && !p?.expired;
+                    const isFailed = p && !p.passed && !p.expired;
+                    const isExpired = p?.expired;
+                    const difficulty = getDominantDifficulty(test);
+                    const sessionCount = Math.min(15, test.questions.length);
+                    const mins = estimatedMinutes(sessionCount);
+                    const lastDate = p?.lastAttemptAt
+                      ? new Date(p.lastAttemptAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                      : null;
+
+                    return (
+                      <motion.button
+                        key={test.channelId}
+                        layout
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ delay: Math.min(i * 0.04, 0.3) }}
+                        whileHover={{ scale: 1.02, y: -3 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setLocation(`/test/${test.channelId}`)}
+                        className={`group relative p-5 bg-card border rounded-xl text-left overflow-hidden transition-all ${
+                          isPassed ? 'border-[var(--color-success)]/40 hover:border-[var(--color-success)]/70'
+                          : isFailed ? 'border-[var(--color-error)]/40 hover:border-[var(--color-error)]/70'
+                          : 'border-[var(--color-border)] hover:border-primary/50'
+                        }`}
+                      >
+                        {/* Hover bg */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                        <div className="relative space-y-3">
+                          {/* Top row */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-0.5">{test.channelName}</div>
+                              <h3 className="text-base font-bold leading-tight">{test.title}</h3>
+                            </div>
+                            {/* Score ring + status */}
+                            <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                              {p ? (
+                                <div className="relative w-12 h-12 flex items-center justify-center">
+                                  <svg width="48" height="48" className="-rotate-90">
+                                    <circle cx="24" cy="24" r="18" fill="none" stroke="currentColor" strokeOpacity="0.1" strokeWidth="3.5" />
+                                    <motion.circle
+                                      cx="24" cy="24" r="18"
+                                      fill="none"
+                                      stroke={isPassed ? 'var(--color-success)' : 'var(--color-error)'}
+                                      strokeWidth="3.5"
+                                      strokeLinecap="round"
+                                      strokeDasharray={2 * Math.PI * 18}
+                                      initial={{ strokeDashoffset: 2 * Math.PI * 18 }}
+                                      animate={{ strokeDashoffset: 2 * Math.PI * 18 * (1 - p.bestScore / 100) }}
+                                      transition={{ duration: 0.8, ease: 'easeOut' }}
+                                    />
+                                  </svg>
+                                  <span className="absolute text-[10px] font-bold" style={{ color: isPassed ? 'var(--color-success)' : 'var(--color-error)' }}>{p.bestScore}%</span>
+                                </div>
+                              ) : (
+                                <div className="w-12 h-12 rounded-full border-2 border-dashed border-border flex items-center justify-center">
+                                  <span className="text-[9px] text-muted-foreground text-center leading-tight">No<br/>score</span>
+                                </div>
+                              )}
+                              {isPassed && (
+                                <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[var(--color-success)]/15 text-[var(--color-success)] border border-[var(--color-success)]/30">
+                                  <CheckCircle className="w-2.5 h-2.5" /> Pass
+                                </span>
+                              )}
+                              {isFailed && (
+                                <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[var(--color-error)]/15 text-[var(--color-error)] border border-[var(--color-error)]/30">
+                                  <XCircle className="w-2.5 h-2.5" /> Fail
+                                </span>
+                              )}
+                              {isExpired && (
+                                <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                                  <AlertTriangle className="w-2.5 h-2.5" /> Exp
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Meta row */}
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{sessionCount}q · ~{mins}m</span>
+                            <span className={`font-semibold ${DIFFICULTY_COLOR[difficulty]}`}>{DIFFICULTY_LABEL[difficulty]}</span>
+                            {lastDate && <span>Last: {lastDate}</span>}
+                          </div>
+
+                          {/* CTA */}
+                          <div className="flex items-center justify-between pt-1">
+                            <span className="text-xs font-semibold text-primary">
+                              {isPassed ? 'Retake Test' : isExpired ? 'Retake (Expired)' : p ? 'Try Again' : 'Start Test'}
                             </span>
-                          )}
-                          {isExpired && (
-                            <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-500 text-[9px] uppercase rounded flex items-center gap-1 animate-pulse">
-                              <AlertTriangle className="w-3 h-3" /> Expired
-                            </span>
-                          )}
-                          {test.version > 1 && (
-                            <span className="px-1.5 py-0.5 bg-primary/20 text-primary text-[9px] uppercase rounded">
-                              v{test.version}
-                            </span>
-                          )}
+                            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
+                          </div>
                         </div>
-                        <p className="text-xs text-muted-foreground line-clamp-2">
-                          {test.description}
-                        </p>
-                        <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Sparkles className={`w-3 h-3 ${theme.primary}`} />
-                            {test.questions.length} questions
-                          </span>
-                          <span>•</span>
-                          <span>{test.passingScore}% to pass</span>
-                          {attempts > 0 && (
-                            <>
-                              <span>•</span>
-                              <span className={theme.primary}>Best: {bestScore}%</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Arrow with theme color */}
-                      <ChevronRight className={`w-5 h-5 ${theme.primary} opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all flex-shrink-0`} />
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
+                      </motion.button>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
         </div>
       </AppLayout>
     </>

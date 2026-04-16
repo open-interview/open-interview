@@ -25,6 +25,8 @@ import { useVoiceRecording } from '../hooks/use-voice-recording';
 import { RecordingPanel } from '../components/unified/RecordingPanel';
 import { QuestionHistoryIcon } from '../components/unified/QuestionHistory';
 import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
+import { MobileBottomNav } from '../components/layout/UnifiedNav';
+import { MobileHeader } from '../components/layout/MobileHeader';
 import type { Question } from '../types';
 
 interface KeyPhrase {
@@ -377,12 +379,12 @@ export default function TrainingMode() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#58a6ff]/20 flex items-center justify-center mx-auto mb-4">
-            <div className="w-8 h-8 border-3 border-[#58a6ff] border-t-transparent rounded-full animate-spin" />
+          <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-4">
+            <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
-          <p className="text-[#8b949e]">Loading training questions...</p>
+          <p className="text-muted-foreground">Loading training questions...</p>
         </div>
       </div>
     );
@@ -390,18 +392,18 @@ export default function TrainingMode() {
 
   if (questions.length === 0) {
     return (
-      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <div className="w-20 h-20 rounded-2xl bg-[#21262d] flex items-center justify-center mx-auto mb-6">
-            <BookOpen className="w-10 h-10 text-[#6e7681]" />
+          <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-6">
+            <BookOpen className="w-10 h-10 text-muted-foreground" />
           </div>
-          <h2 className="text-xl font-bold text-white mb-2">No Questions Available</h2>
-          <p className="text-[#8b949e] mb-6">
+          <h2 className="text-xl font-bold text-foreground mb-2">No Questions Available</h2>
+          <p className="text-muted-foreground mb-6">
             Subscribe to channels to access training questions
           </p>
           <button
             onClick={() => setLocation('/channels')}
-            className="px-6 py-3 bg-[#238636] text-white rounded-xl font-semibold hover:bg-[#2ea043] transition-colors"
+            className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity"
           >
             Browse Channels
           </button>
@@ -421,36 +423,37 @@ export default function TrainingMode() {
       />
 
       <DesktopSidebarWrapper>
-      <div className="min-h-screen bg-[#0d1117] text-[#e6edf3] pb-20">
+      <div className="lg:hidden"><MobileHeader title="Training" showBack={true} /></div>
+      <div className="min-h-screen bg-background text-foreground pb-20 pt-14 lg:pt-0">
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-[#0d1117]/95 backdrop-blur-md border-b border-[#30363d]">
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-md border-b border-border">
           <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
             <button
               onClick={exitTraining}
-              className="p-2 hover:bg-[#21262d] rounded-lg transition-colors"
+              className="p-2 hover:bg-muted rounded-lg transition-colors"
               title="Exit and save progress"
             >
-              <ArrowLeft className="w-5 h-5 text-[#8b949e]" />
+              <ArrowLeft className="w-5 h-5 text-muted-foreground" />
             </button>
 
             <div className="flex items-center gap-3">
               {isInterviewMode && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg">
-                  <Sparkles className="w-4 h-4 text-[#f85149]" />
-                  <span className="text-sm font-semibold text-[#f85149]">Interview Mode</span>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-destructive/10 border border-destructive/30 rounded-lg">
+                  <Sparkles className="w-4 h-4 text-destructive" />
+                  <span className="text-sm font-semibold text-destructive">Interview Mode</span>
                 </div>
               )}
               
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#58a6ff]/10 border border-[#58a6ff]/30 rounded-lg">
-                <Target className="w-4 h-4 text-[#58a6ff]" />
-                <span className="text-sm font-semibold text-[#58a6ff]">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/30 rounded-lg">
+                <Target className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold text-primary">
                   {currentIndex + 1} / {questions.length}
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#238636]/10 border border-[#238636]/30 rounded-lg">
-                <CheckCircle className="w-4 h-4 text-[#3fb950]" />
-                <span className="text-sm font-semibold text-[#3fb950]">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/30 rounded-lg">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                <span className="text-sm font-semibold text-green-500">
                   {completedQuestions.size}
                 </span>
               </div>
@@ -458,9 +461,9 @@ export default function TrainingMode() {
           </div>
 
           {/* Progress bar */}
-          <div className="h-1.5 bg-[#21262d]">
+          <div className="h-1.5 bg-muted">
             <motion.div 
-              className="h-full bg-gradient-to-r from-[#58a6ff] to-[#a371f7]"
+              className="h-full bg-gradient-to-r from-primary to-purple-500"
               initial={{ width: 0 }}
               animate={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
               transition={{ duration: 0.3 }}
@@ -479,24 +482,24 @@ export default function TrainingMode() {
               className="space-y-6"
             >
               {/* Question Card */}
-              <div className="rounded-2xl border border-[#30363d] bg-[#161b22] p-6">
+              <div className="rounded-2xl border border-border bg-card p-6">
                 <div className="flex items-start gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#58a6ff] to-[#a371f7] flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center flex-shrink-0">
                     <Sparkles className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h2 className="text-lg font-semibold text-white mb-2">{currentQuestion.question}</h2>
+                    <h2 className="text-lg font-semibold text-foreground mb-2">{currentQuestion.question}</h2>
                     <div className="flex items-center gap-2 text-sm">
                       <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
-                        currentQuestion.difficulty === 'beginner' ? 'bg-[#238636]/20 text-[#3fb950]' :
-                        currentQuestion.difficulty === 'intermediate' ? 'bg-[#d29922]/20 text-[#d29922]' :
-                        'bg-[#f85149]/20 text-[#f85149]'
+                        currentQuestion.difficulty === 'beginner' ? 'bg-green-500/20 text-green-500' :
+                        currentQuestion.difficulty === 'intermediate' ? 'bg-yellow-500/20 text-yellow-500' :
+                        'bg-destructive/20 text-destructive'
                       }`}>
                         {currentQuestion.difficulty}
                       </span>
-                      <span className="text-[#6e7681]">•</span>
-                      <span className="text-[#8b949e]">{currentQuestion.channel}</span>
-                      <span className="text-[#6e7681]">•</span>
+                      <span className="text-muted-foreground/50">•</span>
+                      <span className="text-muted-foreground">{currentQuestion.channel}</span>
+                      <span className="text-muted-foreground/50">•</span>
                       <QuestionHistoryIcon 
                         questionId={currentQuestion.id} 
                         questionType="question"
@@ -508,34 +511,34 @@ export default function TrainingMode() {
 
                 {/* Answer Display - Conditional based on mode */}
                 {!isInterviewMode || showAnswer ? (
-                  <div className="bg-[#0d1117] rounded-xl p-5 border border-[#30363d]">
+                  <div className="bg-muted/50 rounded-xl p-5 border border-border">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
-                        <Eye className="w-4 h-4 text-[#3fb950]" />
-                        <span className="text-sm font-semibold text-white">
+                        <Eye className="w-4 h-4 text-green-500" />
+                        <span className="text-sm font-semibold text-foreground">
                           {isInterviewMode ? "Ideal Answer" : "Answer to Read"}
                         </span>
                       </div>
-                      <span className="text-xs text-[#6e7681] px-2 py-1 bg-[#21262d] rounded-lg">
+                      <span className="text-xs text-muted-foreground px-2 py-1 bg-muted rounded-lg">
                         {totalWords} words
                       </span>
                     </div>
 
                     <div className="max-w-none overflow-auto max-h-96">
-                      <p className="text-[#e6edf3] leading-relaxed whitespace-pre-wrap break-words">
+                      <p className="text-foreground leading-relaxed whitespace-pre-wrap break-words">
                         {currentQuestion.answer}
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-[#0d1117] rounded-xl p-5 border border-[#30363d]">
+                  <div className="bg-muted/50 rounded-xl p-5 border border-border">
                     <div className="flex items-center justify-center py-8">
                       <div className="text-center">
-                        <div className="w-16 h-16 rounded-2xl bg-[#f85149]/10 flex items-center justify-center mx-auto mb-4">
-                          <Eye className="w-8 h-8 text-[#f85149]" />
+                        <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+                          <Eye className="w-8 h-8 text-destructive" />
                         </div>
-                        <h3 className="text-lg font-semibold text-white mb-2">Answer Hidden</h3>
-                        <p className="text-sm text-[#8b949e] max-w-md">
+                        <h3 className="text-lg font-semibold text-foreground mb-2">Answer Hidden</h3>
+                        <p className="text-sm text-muted-foreground max-w-md">
                           Record your answer first. The ideal answer will be revealed after you finish recording.
                         </p>
                       </div>
@@ -567,77 +570,77 @@ export default function TrainingMode() {
                     initial={{ opacity: 0, y: 20, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                    className="rounded-2xl border border-[#30363d] bg-[#161b22] overflow-hidden"
+                    className="rounded-2xl border border-border bg-card overflow-hidden"
                   >
                     {/* Score Header */}
                     <div className={`p-6 ${
-                      currentFeedback.score >= 85 ? 'bg-gradient-to-r from-[#238636]/20 to-[#3fb950]/10' :
-                      currentFeedback.score >= 60 ? 'bg-gradient-to-r from-[#58a6ff]/20 to-[#a371f7]/10' :
-                      'bg-gradient-to-r from-[#d29922]/20 to-[#f0883e]/10'
+                      currentFeedback.score >= 85 ? 'bg-gradient-to-r from-green-500/20 to-green-500/10' :
+                      currentFeedback.score >= 60 ? 'bg-gradient-to-r from-primary/20 to-purple-500/10' :
+                      'bg-gradient-to-r from-yellow-500/20 to-orange-500/10'
                     }`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
-                            currentFeedback.score >= 85 ? 'bg-[#238636]/30' :
-                            currentFeedback.score >= 60 ? 'bg-[#58a6ff]/30' :
-                            'bg-[#d29922]/30'
+                            currentFeedback.score >= 85 ? 'bg-green-500/30' :
+                            currentFeedback.score >= 60 ? 'bg-primary/30' :
+                            'bg-yellow-500/30'
                           }`}>
                             {currentFeedback.score >= 85 ? (
-                              <Trophy className="w-8 h-8 text-[#3fb950]" />
+                              <Trophy className="w-8 h-8 text-green-500" />
                             ) : currentFeedback.score >= 60 ? (
-                              <Award className="w-8 h-8 text-[#58a6ff]" />
+                              <Award className="w-8 h-8 text-primary" />
                             ) : (
-                              <TrendingUp className="w-8 h-8 text-[#d29922]" />
+                              <TrendingUp className="w-8 h-8 text-yellow-500" />
                             )}
                           </div>
                           <div>
-                            <h3 className="text-xl font-bold text-white mb-1">{currentFeedback.message}</h3>
-                            <p className="text-sm text-[#8b949e]">Recording completed</p>
+                            <h3 className="text-xl font-bold text-foreground mb-1">{currentFeedback.message}</h3>
+                            <p className="text-sm text-muted-foreground">Recording completed</p>
                           </div>
                         </div>
                         <div className="text-right">
                           <div className={`text-4xl font-bold ${
-                            currentFeedback.score >= 85 ? 'text-[#3fb950]' :
-                            currentFeedback.score >= 60 ? 'text-[#58a6ff]' :
-                            'text-[#d29922]'
+                            currentFeedback.score >= 85 ? 'text-green-500' :
+                            currentFeedback.score >= 60 ? 'text-primary' :
+                            'text-yellow-500'
                           }`}>
                             {currentFeedback.score}%
                           </div>
-                          <div className="text-xs text-[#6e7681]">Coverage Score</div>
+                          <div className="text-xs text-muted-foreground">Coverage Score</div>
                         </div>
                       </div>
                     </div>
 
                     {/* Stats Grid */}
-                    <div className="p-6 border-t border-[#30363d]">
+                    <div className="p-6 border-t border-border">
                       <div className="grid grid-cols-3 gap-4 mb-6">
-                        <div className="text-center p-4 bg-[#0d1117] rounded-xl border border-[#30363d]">
-                          <div className="flex items-center justify-center gap-1.5 mb-2 text-[#8b949e]">
+                        <div className="text-center p-4 bg-muted/50 rounded-xl border border-border">
+                          <div className="flex items-center justify-center gap-1.5 mb-2 text-muted-foreground">
                             <Volume2 className="w-4 h-4" />
                             <span className="text-xs">Words Spoken</span>
                           </div>
-                          <div className="text-2xl font-bold text-white">
+                          <div className="text-2xl font-bold text-foreground">
                             {currentFeedback.wordsSpoken}
-                            <span className="text-sm text-[#6e7681] font-normal"> / {currentFeedback.targetWords}</span>
+                            <span className="text-sm text-muted-foreground font-normal"> / {currentFeedback.targetWords}</span>
                           </div>
                         </div>
-                        <div className="text-center p-4 bg-[#0d1117] rounded-xl border border-[#30363d]">
-                          <div className="flex items-center justify-center gap-1.5 mb-2 text-[#8b949e]">
+                        <div className="text-center p-4 bg-muted/50 rounded-xl border border-border">
+                          <div className="flex items-center justify-center gap-1.5 mb-2 text-muted-foreground">
                             <Clock className="w-4 h-4" />
                             <span className="text-xs">Duration</span>
                           </div>
-                          <div className="text-2xl font-bold text-white">
+                          <div className="text-2xl font-bold text-foreground">
                             {Math.floor(currentFeedback.duration / 60)}:{(currentFeedback.duration % 60).toString().padStart(2, '0')}
                           </div>
                         </div>
-                        <div className="text-center p-4 bg-[#0d1117] rounded-xl border border-[#30363d]">
-                          <div className="flex items-center justify-center gap-1.5 mb-2 text-[#8b949e]">
+                        <div className="text-center p-4 bg-muted/50 rounded-xl border border-border">
+                          <div className="flex items-center justify-center gap-1.5 mb-2 text-muted-foreground">
                             <Target className="w-4 h-4" />
                             <span className="text-xs">Key Terms</span>
                           </div>
-                          <div className="text-2xl font-bold text-white">
+                          <div className="text-2xl font-bold text-foreground">
                             {currentFeedback.matchedCount}
-                            <span className="text-sm text-[#6e7681] font-normal"> / {currentFeedback.totalPhrases}</span>
+                            <span className="text-sm text-muted-foreground font-normal"> / {currentFeedback.totalPhrases}</span>
                           </div>
                         </div>
                       </div>
@@ -645,8 +648,8 @@ export default function TrainingMode() {
                       {/* Key Phrases Matching */}
                       {currentFeedback.keyPhrases.length > 0 && (
                         <div className="mb-6">
-                          <h4 className="text-sm font-medium text-white mb-3 flex items-center gap-2">
-                            <Sparkles className="w-4 h-4 text-[#a371f7]" />
+                          <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-purple-500" />
                             Key Terms from Answer
                           </h4>
                           <div className="flex flex-wrap gap-2">
@@ -655,8 +658,8 @@ export default function TrainingMode() {
                                 key={i}
                                 className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 ${
                                   phrase.matched 
-                                    ? 'bg-[#238636]/20 border border-[#238636]/40 text-[#3fb950]' 
-                                    : 'bg-[#f85149]/10 border border-[#f85149]/30 text-[#f85149]'
+                                    ? 'bg-green-500/20 border border-green-500/40 text-green-500' 
+                                    : 'bg-destructive/10 border border-destructive/30 text-destructive'
                                 }`}
                               >
                                 {phrase.matched ? (
@@ -672,7 +675,7 @@ export default function TrainingMode() {
                             ))}
                           </div>
                           {currentFeedback.matchedCount < currentFeedback.totalPhrases && (
-                            <p className="text-xs text-[#8b949e] mt-3">
+                            <p className="text-xs text-muted-foreground mt-3">
                               💡 Try to include the missing terms in your next attempt
                             </p>
                           )}
@@ -682,7 +685,7 @@ export default function TrainingMode() {
                       {/* Try Again Button */}
                       <button
                         onClick={tryAgain}
-                        className="w-full mt-4 px-4 py-3 border border-[#30363d] text-[#8b949e] hover:text-white hover:border-[#8b949e] rounded-xl transition-colors flex items-center justify-center gap-2"
+                        className="w-full mt-4 px-4 py-3 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/50 rounded-xl transition-colors flex items-center justify-center gap-2"
                       >
                         <ArrowLeft className="w-4 h-4" />
                         Try Again
@@ -697,13 +700,13 @@ export default function TrainingMode() {
                 <button
                   onClick={goToPrevious}
                   disabled={currentIndex === 0}
-                  className="px-6 py-3 bg-[#21262d] hover:bg-[#30363d] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold transition-colors text-[#8b949e] hover:text-white border border-[#30363d]"
+                  className="px-6 py-3 bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-semibold transition-colors text-muted-foreground hover:text-foreground border border-border"
                 >
                   Previous
                 </button>
                 <button
                   onClick={goToNext}
-                  className="flex-1 px-6 py-3 bg-[#238636] hover:bg-[#2ea043] text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
+                  className="flex-1 px-6 py-3 bg-primary hover:opacity-90 text-primary-foreground rounded-xl font-semibold flex items-center justify-center gap-2 transition-opacity"
                 >
                   {currentIndex === questions.length - 1 ? 'Finish' : 'Next Question'}
                   <ChevronRight className="w-5 h-5" />
@@ -713,6 +716,7 @@ export default function TrainingMode() {
           </AnimatePresence>
         </div>
       </div>
+      <MobileBottomNav />
       </DesktopSidebarWrapper>
     </>
   );

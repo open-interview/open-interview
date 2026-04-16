@@ -1,259 +1,297 @@
 /**
- * Sidebar Navigation
- * Clean, minimal design with smooth transitions
+ * Desktop Sidebar — Collapsible, 280px / 72px
+ * Spring animation, violet active state, tooltip on collapse
  */
 
-import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useCredits } from '../../context/CreditsContext';
+import { useSidebar } from '../../context/SidebarContext';
 import { useUserPreferences } from '../../context/UserPreferencesContext';
-import { useChannelStats } from '../../hooks/use-stats';
-import { useProgress } from '../../hooks/use-progress';
+import { cn } from '../../lib/utils';
+import { useState } from 'react';
 import {
-  Home, Search, BarChart2, Trophy, Target, Bot, Settings,
-  ChevronLeft, ChevronRight, Plus, Sparkles, BookOpen, Menu, X,
-  Cpu, Terminal, Layout, Database, Activity, GitBranch, Server,
-  Layers, Smartphone, Shield, Brain, Workflow, Box, Cloud, Code,
-  Network, MessageCircle, Users, Eye, FileText, CheckCircle, Monitor, Zap, Gauge, Bookmark, History
+  Home, BookOpen, Award, Mic, Code, Target, Flame,
+  BarChart2, Trophy, Bookmark, Brain, Coins, Layers,
+  GraduationCap, BarChart3, ChevronLeft, ChevronRight,
+  Search, User, Info, Settings, Zap
 } from 'lucide-react';
 
-const iconMap: Record<string, React.ReactNode> = {
-  'cpu': <Cpu className="w-5 h-5" />,
-  'terminal': <Terminal className="w-5 h-5" />,
-  'layout': <Layout className="w-5 h-5" />,
-  'database': <Database className="w-5 h-5" />,
-  'activity': <Activity className="w-5 h-5" />,
-  'infinity': <GitBranch className="w-5 h-5" />,
-  'server': <Server className="w-5 h-5" />,
-  'layers': <Layers className="w-5 h-5" />,
-  'smartphone': <Smartphone className="w-5 h-5" />,
-  'shield': <Shield className="w-5 h-5" />,
-  'brain': <Brain className="w-5 h-5" />,
-  'workflow': <Workflow className="w-5 h-5" />,
-  'box': <Box className="w-5 h-5" />,
-  'cloud': <Cloud className="w-5 h-5" />,
-  'code': <Code className="w-5 h-5" />,
-  'network': <Network className="w-5 h-5" />,
-  'message-circle': <MessageCircle className="w-5 h-5" />,
-  'users': <Users className="w-5 h-5" />,
-  'sparkles': <Sparkles className="w-5 h-5" />,
-  'eye': <Eye className="w-5 h-5" />,
-  'file-text': <FileText className="w-5 h-5" />,
-  'chart': <Activity className="w-5 h-5" />,
-  'check-circle': <CheckCircle className="w-5 h-5" />,
-  'monitor': <Monitor className="w-5 h-5" />,
-  'zap': <Zap className="w-5 h-5" />,
-  'gauge': <Gauge className="w-5 h-5" />
-};
-
-interface SidebarProps {
-  isOpen: boolean;
-  onToggle: () => void;
-  onSearch: () => void;
+interface NavItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  path: string;
+  badge?: string;
+  shortcut?: string;
 }
 
-export function Sidebar({ isOpen, onToggle, onSearch }: SidebarProps) {
+const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] = [
+  {
+    label: 'Learn',
+    icon: GraduationCap,
+    items: [
+      { id: 'channels',       label: 'Channels',       icon: BookOpen, path: '/channels',       shortcut: 'C' },
+      { id: 'certifications', label: 'Certifications', icon: Award,    path: '/certifications', shortcut: 'E' },
+      { id: 'my-path',        label: 'My Path',        icon: Brain,    path: '/my-path',        badge: 'NEW' },
+    ],
+  },
+  {
+    label: 'Practice',
+    icon: Mic,
+    items: [
+      { id: 'voice',      label: 'Voice Interview', icon: Mic,    path: '/voice-interview', badge: '+10', shortcut: 'V' },
+      { id: 'tests',      label: 'Quick Tests',     icon: Target, path: '/tests',           shortcut: 'T' },
+      { id: 'coding',     label: 'Coding',          icon: Code,   path: '/coding',          shortcut: 'X' },
+      { id: 'review',     label: 'SRS Review',      icon: Flame,  path: '/review',          shortcut: 'R' },
+      { id: 'flashcards', label: 'Flashcards',      icon: Layers, path: '/flashcards',      badge: 'NEW' },
+    ],
+  },
+  {
+    label: 'Progress',
+    icon: BarChart3,
+    items: [
+      { id: 'stats',     label: 'Statistics', icon: BarChart2, path: '/stats',     shortcut: 'S' },
+      { id: 'badges',    label: 'Badges',     icon: Trophy,    path: '/badges' },
+      { id: 'bookmarks', label: 'Bookmarks',  icon: Bookmark,  path: '/bookmarks' },
+      { id: 'profile',   label: 'Profile',    icon: User,      path: '/profile' },
+      { id: 'manage-subscriptions', label: 'My Subscriptions', icon: Settings, path: '/manage-subscriptions' },
+      { id: 'about',     label: 'About',      icon: Info,      path: '/about' },
+    ],
+  },
+];
+
+export function Sidebar() {
   const [location, setLocation] = useLocation();
-  const { getSubscribedChannels } = useUserPreferences();
-  const { stats } = useChannelStats();
-  const subscribedChannels = getSubscribedChannels();
+  const { balance, formatCredits, level } = useCredits();
+  const totalXP = balance;
+  const { isCollapsed, toggleSidebar } = useSidebar();
+  const { preferences } = useUserPreferences();
+  const [hovered, setHovered] = useState<string | null>(null);
 
-  const questionCounts: Record<string, number> = {};
-  stats.forEach(s => { questionCounts[s.id] = s.total; });
+  const isActive = (path: string) =>
+    location === path || location.startsWith(path.replace(/\/$/, '') + '/');
 
-  const navItems = [
-    { id: 'home', icon: <Home className="w-5 h-5" />, label: 'Home', path: '/' },
-    { id: 'search', icon: <Search className="w-5 h-5" />, label: 'Search', action: onSearch },
-    { id: 'channels', icon: <Plus className="w-5 h-5" />, label: 'Channels', path: '/channels' },
-    { id: 'bookmarks', icon: <Bookmark className="w-5 h-5" />, label: 'Saved', path: '/bookmarks' },
-    { id: 'history', icon: <History className="w-5 h-5" />, label: 'History', path: '/history' },
-    { id: 'coding', icon: <Code className="w-5 h-5" />, label: 'Coding', path: '/coding' },
-    { id: 'stats', icon: <BarChart2 className="w-5 h-5" />, label: 'Stats', path: '/stats' },
-    { id: 'badges', icon: <Trophy className="w-5 h-5" />, label: 'Badges', path: '/badges' },
-    { id: 'tests', icon: <Target className="w-5 h-5" />, label: 'Tests', path: '/tests' },
-    { id: 'bots', icon: <Bot className="w-5 h-5" />, label: 'Bot Activity', path: '/bot-activity' },
-    { id: 'docs', icon: <BookOpen className="w-5 h-5" />, label: 'Docs', path: '/docs' },
-    { id: 'new', icon: <Sparkles className="w-5 h-5" />, label: "What's New", path: '/whats-new' },
-    { id: 'about', icon: <FileText className="w-5 h-5" />, label: 'About', path: '/about' },
-  ];
+  const filteredSections = sections.map(s =>
+    s.label === 'Learn' && preferences.hideCertifications
+      ? { ...s, items: s.items.filter(i => i.id !== 'certifications') }
+      : s
+  );
 
-  const isActive = (path?: string) => path && location === path;
+  const NavItemEl = ({ item }: { item: NavItem }) => {
+    const Icon = item.icon;
+    const active = isActive(item.path);
+    const showTip = isCollapsed && hovered === item.id;
 
-  return (
-    <>
-      {/* Desktop overlay when sidebar is expanded */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/30 z-40 hidden lg:block"
-            onClick={onToggle}
-          />
-        )}
-      </AnimatePresence>
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setLocation(item.path)}
+          onMouseEnter={() => setHovered(item.id)}
+          onMouseLeave={() => setHovered(null)}
+          style={active ? { boxShadow: '0 0 12px rgba(124,58,237,0.12)' } : undefined}
+          className={cn(
+            'w-full flex items-center gap-3 rounded-lg transition-all duration-150 group relative overflow-hidden',
+            isCollapsed ? 'justify-center p-2' : 'px-3 py-2',
+            active
+              ? 'bg-primary/10 text-primary'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+          )}
+        >
+          {/* Violet left border */}
+          {active && !isCollapsed && (
+            <div className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-primary" />
+          )}
 
-      {/* Sidebar - Completely hidden on mobile, visible collapsed on desktop */}
-      <aside
-        className={`
-          fixed left-0 top-0 h-full bg-card border-r border-border z-50
-          flex-col transition-all duration-300 ease-in-out
-          hidden lg:flex
-          ${isOpen ? 'w-[280px]' : 'w-[72px]'}
-        `}
-      >
-        {/* Header */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-border">
-          <AnimatePresence mode="wait">
-            {isOpen && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex items-center gap-2"
-              >
-                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                  <Code className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <span className="font-bold text-lg">Code Reels</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <button
-            onClick={onToggle}
-            className="p-2 hover:bg-muted rounded-lg transition-colors"
-          >
-            {isOpen ? <ChevronLeft className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-2">
-          <div className="space-y-1">
-            {navItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => item.path ? setLocation(item.path) : item.action?.()}
-                className={`
-                  w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all
-                  ${isActive(item.path) 
-                    ? 'bg-primary/10 text-primary' 
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }
-                `}
-              >
-                {item.icon}
-                <AnimatePresence mode="wait">
-                  {isOpen && (
-                    <motion.span
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: 'auto' }}
-                      exit={{ opacity: 0, width: 0 }}
-                      className="text-sm font-medium whitespace-nowrap overflow-hidden"
-                    >
-                      {item.label}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </button>
-            ))}
+          <div className={cn(
+            'flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-colors',
+            active ? 'bg-primary/20' : 'bg-transparent group-hover:bg-muted/80'
+          )}>
+            <Icon className="w-4 h-4" />
           </div>
 
-          {/* Subscribed Channels */}
-          {subscribedChannels.length > 0 && (
-            <div className="mt-6 pt-4 border-t border-border">
-              <AnimatePresence mode="wait">
-                {isOpen && (
-                  <motion.h3
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-                  >
-                    Your Channels
-                  </motion.h3>
-                )}
-              </AnimatePresence>
-              <div className="space-y-1">
-                {subscribedChannels.slice(0, isOpen ? 10 : 5).map(channel => (
-                  <ChannelItem
-                    key={channel.id}
-                    channel={channel}
-                    isOpen={isOpen}
-                    isActive={location.includes(`/channel/${channel.id}`)}
-                    questionCount={questionCounts[channel.id] || 0}
-                    onClick={() => setLocation(`/channel/${channel.id}`)}
-                  />
-                ))}
-              </div>
-            </div>
+          {!isCollapsed && (
+            <>
+              <span className="text-sm font-medium flex-1 text-left">{item.label}</span>
+              {item.badge && (
+                <span className={cn(
+                  'text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0',
+                  item.badge === 'NEW'
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : 'bg-amber-500/20 text-amber-400'
+                )}>{item.badge}</span>
+              )}
+              {item.shortcut && (
+                <kbd className="opacity-0 group-hover:opacity-50 text-[10px] px-1 py-0.5 bg-muted rounded border border-border font-mono shrink-0 transition-opacity">
+                  {item.shortcut}
+                </kbd>
+              )}
+            </>
           )}
-        </nav>
-      </aside>
-    </>
-  );
-}
+        </button>
 
-function ChannelItem({ 
-  channel, 
-  isOpen, 
-  isActive, 
-  questionCount,
-  onClick 
-}: { 
-  channel: any; 
-  isOpen: boolean; 
-  isActive: boolean;
-  questionCount: number;
-  onClick: () => void;
-}) {
-  const { completed } = useProgress(channel.id);
-  // Cap at 100% - completed can exceed questionCount if questions were recategorized
-  const progress = questionCount > 0 ? Math.min(100, Math.round((completed.length / questionCount) * 100)) : 0;
+        {/* Tooltip */}
+        <AnimatePresence>
+          {showTip && (
+            <motion.div
+              initial={{ opacity: 0, x: -6 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -6 }}
+              transition={{ duration: 0.12 }}
+              className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 pointer-events-none"
+            >
+              <div className="bg-popover border border-border rounded-lg shadow-xl px-3 py-1.5 whitespace-nowrap flex items-center gap-2">
+                <span className="text-sm font-medium">{item.label}</span>
+                {item.badge && (
+                  <span className={cn(
+                    'text-[10px] px-1.5 py-0.5 rounded font-medium',
+                    item.badge === 'NEW'
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'bg-amber-500/20 text-amber-400'
+                  )}>{item.badge}</span>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
 
   return (
-    <button
-      onClick={onClick}
-      className={`
-        w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all group
-        ${isActive 
-          ? 'bg-primary/10 text-primary' 
-          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-        }
-      `}
+    <motion.aside
+      animate={{ width: isCollapsed ? 72 : 280 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      className="fixed left-0 top-0 bottom-0 bg-card/95 backdrop-blur-xl border-r border-border z-40 flex flex-col overflow-hidden hidden lg:flex"
     >
-      <div className="relative shrink-0">
-        {iconMap[channel.icon] || <Cpu className="w-5 h-5" />}
-        {/* Small progress dot indicator */}
-        {progress > 0 && progress < 100 && (
-          <div 
-            className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary"
-            title={`${progress}% complete`}
-          />
-        )}
-        {progress === 100 && (
-          <div 
-            className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500"
-            title="Completed"
-          />
+      {/* Logo + wordmark */}
+      <div className="h-14 flex items-center justify-between px-3 border-b border-border shrink-0">
+        <button
+          onClick={() => setLocation('/')}
+          className={cn('flex items-center gap-2.5 min-w-0', isCollapsed && 'justify-center w-full')}
+        >
+          <div
+            className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center shrink-0"
+            style={{ boxShadow: '0 0 16px rgba(124,58,237,0.3)' }}
+          >
+            <Mic className="w-4 h-4 text-white" />
+          </div>
+          {!isCollapsed && (
+            <div className="text-left overflow-hidden">
+              <div className="font-bold text-sm leading-tight whitespace-nowrap">Code Reels</div>
+              <div className="text-[10px] text-muted-foreground whitespace-nowrap">Interview Prep</div>
+            </div>
+          )}
+        </button>
+
+        {!isCollapsed && (
+          <button
+            onClick={toggleSidebar}
+            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            title="Collapse"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
         )}
       </div>
-      <AnimatePresence mode="wait">
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, width: 0 }}
-            animate={{ opacity: 1, width: 'auto' }}
-            exit={{ opacity: 0, width: 0 }}
-            className="flex-1 min-w-0 text-left"
+
+      {/* Expand toggle when collapsed */}
+      {isCollapsed && (
+        <div className="px-1.5 py-2 shrink-0">
+          <button
+            onClick={toggleSidebar}
+            className="w-full p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
+            title="Expand"
           >
-            <div className="text-sm font-medium truncate">{channel.name}</div>
-            <div className="text-xs text-muted-foreground">
-              {completed.length}/{questionCount} • {progress}%
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Nav */}
+      <nav className={cn('flex-1 overflow-y-auto overflow-x-hidden py-2 custom-scrollbar', isCollapsed ? 'px-1.5' : 'px-2')}>
+        {/* Home */}
+        <NavItemEl item={{ id: 'home', label: 'Home', icon: Home, path: '/', shortcut: 'H' }} />
+
+        {filteredSections.map(section => (
+          <div key={section.label} className="mt-1">
+            {isCollapsed
+              ? <div className="h-px bg-border/50 my-2 mx-1" />
+              : (
+                <div className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+                  <section.icon className="w-3 h-3" />
+                  <span>{section.label}</span>
+                </div>
+              )
+            }
+            {section.items.map(item => <NavItemEl key={item.id} item={item} />)}
+          </div>
+        ))}
+      </nav>
+
+      {/* Bottom: credits + XP + settings */}
+      <div className={cn('border-t border-border shrink-0 p-2', isCollapsed && 'p-1.5')}>
+        {/* XP / Level row */}
+        {!isCollapsed && (
+          <button
+            onClick={() => setLocation('/stats')}
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 mb-1.5 rounded-lg bg-primary/8 hover:bg-primary/12 border border-primary/15 transition-colors overflow-hidden"
+          >
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-violet-400 flex items-center justify-center shrink-0">
+              <Zap className="w-4 h-4 text-white" />
             </div>
-          </motion.div>
+            <div className="flex-1 text-left min-w-0">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-muted-foreground">Level {level}</span>
+                <span className="text-[10px] text-primary font-semibold">{totalXP.toLocaleString()} XP</span>
+              </div>
+              <div className="mt-1 h-1 rounded-full bg-primary/20 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  style={{ width: `${((totalXP % 1000) / 1000) * 100}%` }}
+                />
+              </div>
+            </div>
+          </button>
         )}
-      </AnimatePresence>
-    </button>
+        {isCollapsed && (
+          <button
+            onClick={() => setLocation('/stats')}
+            className="w-full flex items-center justify-center p-2 mb-1 rounded-lg bg-primary/8 hover:bg-primary/12 transition-colors"
+            title={`Level ${level} · ${totalXP} XP`}
+          >
+            <Zap className="w-4 h-4 text-primary" />
+          </button>
+        )}
+
+        <button
+          onClick={() => setLocation('/profile')}
+          className={cn(
+            'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 transition-colors overflow-hidden',
+            isCollapsed && 'justify-center px-1.5'
+          )}
+        >
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shrink-0">
+            <Coins className="w-4 h-4 text-white" />
+          </div>
+          {!isCollapsed && (
+            <div className="flex-1 text-left min-w-0">
+              <div className="text-[10px] text-muted-foreground">Credits</div>
+              <div className="text-sm font-bold text-amber-500 truncate">{formatCredits(balance)}</div>
+            </div>
+          )}
+        </button>
+
+        {!isCollapsed && (
+          <button
+            onClick={() => setLocation('/profile')}
+            className="w-full flex items-center gap-2 px-2.5 py-1.5 mt-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span>Settings</span>
+          </button>
+        )}
+      </div>
+    </motion.aside>
   );
 }

@@ -12,7 +12,7 @@ interface GenZTimerProps {
   showProgress?: boolean;
 }
 
-export function GenZTimer({ duration, onComplete, showProgress = true }: GenZTimerProps) {
+export function Timer({ duration, onComplete, showProgress = true }: GenZTimerProps) {
   const [timeLeft, setTimeLeft] = useState(duration);
   const [isRunning, setIsRunning] = useState(true);
 

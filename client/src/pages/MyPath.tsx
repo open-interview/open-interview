@@ -9,9 +9,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
 import { SEOHead } from '../components/SEOHead';
 import { allChannelsConfig } from '../lib/channels-config';
+import { useUserPreferences } from '../context/UserPreferencesContext';
 import {
-  Plus, Trash2, Edit, ChevronRight, Brain, Check, Target, Clock, Sparkles, Award,
-  Code, Server, Rocket, X, Search
+  Plus, Trash2, Edit, ChevronRight, Brain, Check, Target, Clock, Award,
+  Code, Rocket, Building2, X, Search
 } from 'lucide-react';
 
 interface CustomPath {
@@ -31,99 +32,42 @@ interface Certification {
   category: string;
 }
 
-// Curated paths (same as in LearningPathsGenZ)
-const curatedPaths = [
-  {
-    id: 'frontend',
-    name: 'Frontend Developer',
-    icon: Code,
-    color: 'from-blue-500 to-cyan-500',
-    description: 'Master React, JavaScript, and modern web development',
-    channels: ['frontend', 'react-native', 'javascript', 'algorithms'],
-    difficulty: 'Beginner Friendly',
-    duration: '3-6 months',
-    totalQuestions: 450,
-    jobs: ['Frontend Developer', 'React Developer', 'UI Engineer'],
-    skills: ['React', 'JavaScript', 'CSS', 'HTML', 'TypeScript'],
-    salary: '$80k - $120k'
-  },
-  {
-    id: 'backend',
-    name: 'Backend Engineer',
-    icon: Server,
-    color: 'from-green-500 to-emerald-500',
-    description: 'Build scalable APIs and microservices',
-    channels: ['backend', 'database', 'system-design', 'algorithms'],
-    difficulty: 'Intermediate',
-    duration: '4-8 months',
-    totalQuestions: 520,
-    jobs: ['Backend Engineer', 'API Developer', 'Systems Engineer'],
-    skills: ['Node.js', 'Python', 'SQL', 'REST APIs', 'Microservices'],
-    salary: '$90k - $140k'
-  },
-  {
-    id: 'fullstack',
-    name: 'Full Stack Developer',
-    icon: Rocket,
-    color: 'from-purple-500 to-pink-500',
-    description: 'End-to-end application development',
-    channels: ['frontend', 'backend', 'database', 'devops', 'system-design'],
-    difficulty: 'Advanced',
-    duration: '6-12 months',
-    totalQuestions: 680,
-    jobs: ['Full Stack Developer', 'Software Engineer', 'Tech Lead'],
-    skills: ['React', 'Node.js', 'SQL', 'AWS', 'System Design'],
-    salary: '$100k - $160k'
-  },
-  {
-    id: 'devops',
-    name: 'DevOps Engineer',
-    icon: Target,
-    color: 'from-orange-500 to-red-500',
-    description: 'Infrastructure, CI/CD, and cloud platforms',
-    channels: ['devops', 'kubernetes', 'aws', 'terraform', 'docker'],
-    difficulty: 'Advanced',
-    duration: '4-8 months',
-    totalQuestions: 420,
-    jobs: ['DevOps Engineer', 'SRE', 'Cloud Engineer'],
-    skills: ['Kubernetes', 'Docker', 'AWS', 'Terraform', 'CI/CD'],
-    salary: '$110k - $170k'
-  },
-  {
-    id: 'mobile',
-    name: 'Mobile Developer',
-    icon: Sparkles,
-    color: 'from-pink-500 to-rose-500',
-    description: 'iOS and Android app development',
-    channels: ['react-native', 'ios', 'android', 'frontend'],
-    difficulty: 'Intermediate',
-    duration: '4-6 months',
-    totalQuestions: 380,
-    jobs: ['Mobile Developer', 'iOS Developer', 'Android Developer'],
-    skills: ['React Native', 'Swift', 'Kotlin', 'Mobile UI'],
-    salary: '$85k - $130k'
-  },
-  {
-    id: 'data',
-    name: 'Data Engineer',
-    icon: Brain,
-    color: 'from-indigo-500 to-purple-500',
-    description: 'Data pipelines, warehousing, and analytics',
-    channels: ['data-engineering', 'database', 'python', 'aws'],
-    difficulty: 'Advanced',
-    duration: '6-10 months',
-    totalQuestions: 490,
-    jobs: ['Data Engineer', 'Analytics Engineer', 'ML Engineer'],
-    skills: ['Python', 'SQL', 'Spark', 'Airflow', 'Data Modeling'],
-    salary: '$95k - $150k'
-  }
-];
+const PATH_ICON_MAP: Record<string, React.ElementType> = {
+  'job-title': Code, 'company': Building2, 'skill': Brain, 'certification': Award,
+};
+const PATH_COLOR_MAP: Record<string, string> = {
+  'job-title': 'from-blue-500 to-cyan-500', 'company': 'from-green-500 to-emerald-500',
+  'skill': 'from-purple-500 to-pink-500', 'certification': 'from-orange-500 to-red-500',
+};
 
+function mapPathFromJson(path: any) {
+  const channels = typeof path.channels === 'string' ? JSON.parse(path.channels) : (path.channels || []);
+  const tags = typeof path.tags === 'string' ? JSON.parse(path.tags) : (path.tags || []);
+  const learningObjectives = typeof path.learningObjectives === 'string' ? JSON.parse(path.learningObjectives) : (path.learningObjectives || []);
+  const questionIds = typeof path.questionIds === 'string' ? JSON.parse(path.questionIds) : (path.questionIds || []);
+  return {
+    id: path.id,
+    name: path.title,
+    icon: PATH_ICON_MAP[path.pathType] || Rocket,
+    color: PATH_COLOR_MAP[path.pathType] || 'from-indigo-500 to-purple-500',
+    description: path.description,
+    channels,
+    difficulty: path.difficulty ? path.difficulty.charAt(0).toUpperCase() + path.difficulty.slice(1) : 'Intermediate',
+    duration: `${path.estimatedHours}h`,
+    totalQuestions: questionIds.length,
+    jobs: learningObjectives.slice(0, 3),
+    skills: tags.slice(0, 5),
+  };
+}
 export default function MyPathGenZ() {
   const [, setLocation] = useLocation();
+  const { preferences } = useUserPreferences();
   const [customPaths, setCustomPaths] = useState<CustomPath[]>([]);
   const [activePathId, setActivePathId] = useState<string | null>(null);
   const [certifications, setCertifications] = useState<Certification[]>([]);
+  const [curatedPaths, setCuratedPaths] = useState<any[]>([]);
+  const subscribedSet = new Set(preferences.subscribedChannels);
+  const visibleCuratedPaths = curatedPaths.filter(p => p.channels.some((c: string) => subscribedSet.has(c)));
   
   // Edit modal state
   const [showEditModal, setShowEditModal] = useState(false);
@@ -170,6 +114,23 @@ export default function MyPathGenZ() {
       }
     }
     loadCerts();
+  }, []);
+
+  // Load curated paths
+  useEffect(() => {
+    async function loadPaths() {
+      try {
+        const basePath = import.meta.env.BASE_URL || '/';
+        const response = await fetch(`${basePath}data/learning-paths.json`);
+        if (response.ok) {
+          const data = await response.json();
+          setCuratedPaths(data.map(mapPathFromJson));
+        }
+      } catch (e) {
+        console.error('Failed to load learning paths:', e);
+      }
+    }
+    loadPaths();
   }, []);
 
   // Save paths to localStorage
@@ -324,7 +285,7 @@ export default function MyPathGenZ() {
   return (
     <>
       <SEOHead
-        title="My Path - Custom Learning Journeys 🎯"
+        title="My Path - Custom Learning Journeys"
         description="View and manage your custom learning paths"
         canonical="https://open-interview.github.io/my-path"
       />
@@ -350,7 +311,7 @@ export default function MyPathGenZ() {
                 {/* Header */}
                 <div className="p-8 border-b border-border">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-3xl font-black">Edit Path</h2>
+                    <h2 className="text-3xl font-bold">Edit Path</h2>
                     <button
                       onClick={() => setShowEditModal(false)}
                       className="w-10 h-10 bg-muted/50 hover:bg-muted rounded-full flex items-center justify-center transition-all"
@@ -474,7 +435,7 @@ export default function MyPathGenZ() {
               animate={{ opacity: 1, y: 0 }}
               className="mb-12"
             >
-              <h1 className="text-6xl md:text-7xl font-black mb-4">
+              <h1 className="text-6xl md:text-7xl font-bold mb-4">
                 My
                 <br />
                 <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">
@@ -654,12 +615,12 @@ export default function MyPathGenZ() {
                 transition={{ delay: 0.3 }}
                 className="mb-8"
               >
-                <h2 className="text-4xl font-black mb-2">Curated Paths</h2>
+                <h2 className="text-4xl font-bold mb-2">Curated Paths</h2>
                 <p className="text-muted-foreground">Pre-built learning journeys for popular career paths</p>
               </motion.div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {curatedPaths.map((path, i) => {
+                {visibleCuratedPaths.map((path, i) => {
                   const Icon = path.icon;
                   const isActive = isPathActive(path.id);
 

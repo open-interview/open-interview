@@ -1,450 +1,550 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useLocation } from 'wouter';
-import { 
-  BookOpen, Code2, Database, Cloud, Shield, Cpu, 
-  Network, Terminal, Layers, GitBranch, CheckCircle, 
-  Lock, ArrowRight, Trophy, Target, Zap, Flame, Clock,
-  Search, Building2, Briefcase, Filter, X
-} from 'lucide-react';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { SEOHead } from '@/components/SEOHead';
+/**
+ * Gen Z Learning Paths - Choose Your Career Journey
+ * Create custom paths or select curated ones
+ */
 
-interface LearningPath {
+import { useState, useEffect } from 'react';
+import { useLocation } from 'wouter';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AppLayout } from '../components/layout/AppLayout';
+import { SEOHead } from '../components/SEOHead';
+import { allChannelsConfig } from '../lib/channels-config';
+import { useUserPreferences } from '../context/UserPreferencesContext';
+import {
+  Code, Rocket, Brain, Building2, Award,
+  Plus, ChevronRight, Star, Clock, Zap, Check, X, Search
+} from 'lucide-react';
+
+// Certification type
+interface Certification {
   id: string;
-  title: string;
-  description: string;
-  pathType: 'company' | 'job-title' | 'skill' | 'certification';
-  targetCompany?: string;
-  targetJobTitle?: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  estimatedHours: number;
-  questionIds: string[];
-  channels: string[];
-  tags: string[];
-  prerequisites: string[];
-  learningObjectives: string[];
-  milestones: any[];
-  popularity: number;
-  completionRate: number;
-  averageRating: number;
-  metadata: any;
-  status: string;
-  createdAt: string;
-  lastUpdated: string;
+  name: string;
+  provider: string;
+  icon: string;
+  category: string;
 }
 
-const getDifficultyConfig = (difficulty: string) => {
-  switch (difficulty) {
-    case 'beginner':
-      return { icon: <Zap className="w-4 h-4" />, color: 'text-green-500', bg: 'bg-green-500/10', label: 'Beginner' };
-    case 'intermediate':
-      return { icon: <Target className="w-4 h-4" />, color: 'text-yellow-500', bg: 'bg-yellow-500/10', label: 'Intermediate' };
-    case 'advanced':
-      return { icon: <Flame className="w-4 h-4" />, color: 'text-red-500', bg: 'bg-red-500/10', label: 'Advanced' };
-    default:
-      return { icon: <Target className="w-4 h-4" />, color: 'text-muted-foreground', bg: 'bg-muted', label: 'Unknown' };
-  }
+// Custom path type
+interface CustomPath {
+  name: string;
+  channels: string[];
+  certifications: string[];
+}
+
+const PATH_ICON_MAP: Record<string, React.ElementType> = {
+  'job-title': Code, 'company': Building2, 'skill': Brain, 'certification': Award,
+};
+const PATH_COLOR_MAP: Record<string, string> = {
+  'job-title': 'from-blue-500 to-cyan-500', 'company': 'from-green-500 to-emerald-500',
+  'skill': 'from-purple-500 to-pink-500', 'certification': 'from-orange-500 to-red-500',
 };
 
-const getPathTypeIcon = (pathType: string) => {
-  switch (pathType) {
-    case 'company':
-      return <Building2 className="w-6 h-6" />;
-    case 'job-title':
-      return <Briefcase className="w-6 h-6" />;
-    case 'skill':
-      return <Code2 className="w-6 h-6" />;
-    case 'certification':
-      return <Trophy className="w-6 h-6" />;
-    default:
-      return <BookOpen className="w-6 h-6" />;
-  }
-};
+function mapPathFromJson(path: any) {
+  const questionIds = typeof path.questionIds === 'string' ? JSON.parse(path.questionIds) : (path.questionIds || []);
+  const channels = typeof path.channels === 'string' ? JSON.parse(path.channels) : (path.channels || []);
+  const tags = typeof path.tags === 'string' ? JSON.parse(path.tags) : (path.tags || []);
+  const learningObjectives = typeof path.learningObjectives === 'string' ? JSON.parse(path.learningObjectives) : (path.learningObjectives || []);
+  return {
+    id: path.id,
+    name: path.title,
+    icon: PATH_ICON_MAP[path.pathType] || Rocket,
+    color: PATH_COLOR_MAP[path.pathType] || 'from-indigo-500 to-purple-500',
+    description: path.description,
+    channels,
+    difficulty: path.difficulty ? path.difficulty.charAt(0).toUpperCase() + path.difficulty.slice(1) : 'Intermediate',
+    duration: `${path.estimatedHours}h`,
+    totalQuestions: questionIds.length,
+    jobs: learningObjectives.slice(0, 4),
+    skills: tags.slice(0, 5),
+    salary: '',
+  };
+}
 
-const getPathTypeColor = (pathType: string) => {
-  switch (pathType) {
-    case 'company':
-      return 'from-blue-500 to-cyan-500';
-    case 'job-title':
-      return 'from-purple-500 to-pink-500';
-    case 'skill':
-      return 'from-green-500 to-emerald-500';
-    case 'certification':
-      return 'from-orange-500 to-red-500';
-    default:
-      return 'from-gray-500 to-gray-600';
-  }
-};
-
-export default function LearningPaths() {
+export default function LearningPathsGenZ() {
   const [, setLocation] = useLocation();
-  const [paths, setPaths] = useState<LearningPath[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [showCustom, setShowCustom] = useState(false);
+  const [certifications, setCertifications] = useState<Certification[]>([]);
+  const [curatedPaths, setCuratedPaths] = useState<any[]>([]);
+  const { preferences } = useUserPreferences();
+  const subscribedSet = new Set(preferences.subscribedChannels);
+  const visibleCuratedPaths = curatedPaths.filter(p => p.channels.some(c => subscribedSet.has(c)));
+  
+  // Custom path builder state
+  const [customPath, setCustomPath] = useState<CustomPath>({
+    name: '',
+    channels: [],
+    certifications: []
+  });
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
-  const [selectedPathType, setSelectedPathType] = useState<string>('all');
-  const [selectedCompany, setSelectedCompany] = useState<string>('all');
-  const [selectedJobTitle, setSelectedJobTitle] = useState<string>('all');
-  const [companies, setCompanies] = useState<string[]>([]);
-  const [jobTitles, setJobTitles] = useState<string[]>([]);
-  const [showFilters, setShowFilters] = useState(false);
 
+  // Load certifications
   useEffect(() => {
-    fetchLearningPaths();
-    fetchFilterOptions();
-  }, [selectedDifficulty, selectedPathType, selectedCompany, selectedJobTitle, searchQuery]);
+    async function loadCerts() {
+      try {
+        const basePath = import.meta.env.BASE_URL || '/';
+        const response = await fetch(`${basePath}data/certifications.json`);
+        if (response.ok) {
+          const data = await response.json();
+          setCertifications(data);
+        }
+      } catch (e) {
+        console.error('Failed to load certifications:', e);
+      }
+    }
+    loadCerts();
+  }, []);
 
-  const fetchLearningPaths = async () => {
+  // Load curated paths
+  useEffect(() => {
+    async function loadPaths() {
+      try {
+        const basePath = import.meta.env.BASE_URL || '/';
+        const response = await fetch(`${basePath}data/learning-paths.json`);
+        if (response.ok) {
+          const data = await response.json();
+          setCuratedPaths(data.map(mapPathFromJson));
+        }
+      } catch (e) {
+        console.error('Failed to load learning paths:', e);
+      }
+    }
+    loadPaths();
+  }, []);
+
+  const handleSelectPath = (pathId: string) => {
+    setSelectedPath(pathId);
+    const path = curatedPaths.find(p => p.id === pathId);
+    if (path) {
+      // Save curated path with its channels (use array for multiple paths support)
+      try {
+        const currentPaths = JSON.parse(localStorage.getItem('activeLearningPaths') || '[]');
+        if (!currentPaths.includes(pathId)) {
+          currentPaths.push(pathId);
+        }
+        localStorage.setItem('activeLearningPaths', JSON.stringify(currentPaths));
+        
+        // Don't save curated paths to customLearningPath - that's only for custom paths
+        // The GenZHomePage will find curated paths by their ID in the curatedPaths array
+      } catch (e) {
+        console.error('Failed to save path:', e);
+      }
+    }
+    setTimeout(() => {
+      setLocation('/');
+    }, 500);
+  };
+
+  const handleCreateCustomPath = () => {
+    if (!customPath.name || (customPath.channels.length === 0 && customPath.certifications.length === 0)) {
+      alert('Please add a name and select at least one channel or certification');
+      return;
+    }
+
     try {
-      setLoading(true);
-      const params = new URLSearchParams();
+      // Generate unique ID
+      const pathId = `custom-${Date.now()}`;
       
-      if (selectedDifficulty !== 'all') params.append('difficulty', selectedDifficulty);
-      if (selectedPathType !== 'all') params.append('pathType', selectedPathType);
-      if (selectedCompany !== 'all') params.append('company', selectedCompany);
-      if (selectedJobTitle !== 'all') params.append('jobTitle', selectedJobTitle);
-      if (searchQuery) params.append('search', searchQuery);
+      // Create path object
+      const newPath = {
+        id: pathId,
+        name: customPath.name,
+        channels: customPath.channels,
+        certifications: customPath.certifications,
+        createdAt: new Date().toISOString()
+      };
+
+      // Load existing custom paths
+      const existingPaths = JSON.parse(localStorage.getItem('customPaths') || '[]');
       
-      const response = await fetch(`/api/learning-paths?${params.toString()}`);
-      const data = await response.json();
-      setPaths(data);
-    } catch (error) {
-      console.error('Failed to fetch learning paths:', error);
-      setPaths([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+      // Add new path
+      const updatedPaths = [...existingPaths, newPath];
+      localStorage.setItem('customPaths', JSON.stringify(updatedPaths));
 
-  const fetchFilterOptions = async () => {
-    try {
-      const [companiesRes, jobTitlesRes] = await Promise.all([
-        fetch('/api/learning-paths/filters/companies'),
-        fetch('/api/learning-paths/filters/job-titles')
-      ]);
+      // Set as active path (use array for multiple paths support)
+      const currentPaths = JSON.parse(localStorage.getItem('activeLearningPaths') || '[]');
+      if (!currentPaths.includes(pathId)) {
+        currentPaths.push(pathId);
+      }
+      localStorage.setItem('activeLearningPaths', JSON.stringify(currentPaths));
       
-      setCompanies(await companiesRes.json());
-      setJobTitles(await jobTitlesRes.json());
-    } catch (error) {
-      console.error('Failed to fetch filter options:', error);
+      localStorage.setItem('customLearningPath', JSON.stringify({
+        name: newPath.name,
+        channels: newPath.channels,
+        certifications: newPath.certifications
+      }));
+
+      setShowCustom(false);
+      setLocation('/');
+    } catch (e) {
+      console.error('Failed to save custom path:', e);
     }
   };
 
-  const handleStartPath = async (path: LearningPath) => {
-    // Increment popularity
-    try {
-      await fetch(`/api/learning-paths/${path.id}/start`, { method: 'POST' });
-    } catch (error) {
-      console.error('Failed to update popularity:', error);
-    }
-    
-    // Navigate to first question or channel
-    if (path.questionIds.length > 0) {
-      setLocation(`/channel/${path.questionIds[0]}`);
-    } else if (path.channels.length > 0) {
-      setLocation(`/channel/${path.channels[0]}`);
-    }
+  const toggleChannel = (channelId: string) => {
+    setCustomPath(prev => ({
+      ...prev,
+      channels: prev.channels.includes(channelId)
+        ? prev.channels.filter(c => c !== channelId)
+        : [...prev.channels, channelId]
+    }));
   };
 
-  const clearFilters = () => {
-    setSelectedDifficulty('all');
-    setSelectedPathType('all');
-    setSelectedCompany('all');
-    setSelectedJobTitle('all');
-    setSearchQuery('');
+  const toggleCertification = (certId: string) => {
+    setCustomPath(prev => ({
+      ...prev,
+      certifications: prev.certifications.includes(certId)
+        ? prev.certifications.filter(c => c !== certId)
+        : [...prev.certifications, certId]
+    }));
   };
 
-  const hasActiveFilters = selectedDifficulty !== 'all' || 
-                          selectedPathType !== 'all' || 
-                          selectedCompany !== 'all' || 
-                          selectedJobTitle !== 'all' ||
-                          searchQuery !== '';
+  // Filter channels and certs by search
+  const filteredChannels = allChannelsConfig.filter(ch =>
+    ch.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const filteredCerts = certifications.filter(cert =>
+    cert.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <>
       <SEOHead
-        title="Learning Paths | Structured Interview Prep"
-        description="Follow curated learning paths to master frontend, backend, system design, DevOps, and more. Structured roadmaps for technical interview preparation."
+        title="Learning Paths - Choose Your Career Journey"
+        description="Curated learning paths for different tech careers"
         canonical="https://open-interview.github.io/learning-paths"
       />
-      <AppLayout title="Learning Paths" showBackOnMobile>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-6"
-          >
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-              <BookOpen className="w-8 h-8 text-primary" />
-            </div>
-            <h1 className="text-4xl font-black text-foreground mb-4">Learning Paths</h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-6">
-              Follow structured roadmaps tailored to companies, job titles, and skills. Each path includes curated questions.
-            </p>
-            
-            {/* Search Bar - directly below title */}
-            <div className="relative max-w-2xl mx-auto">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search learning paths..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-          </motion.div>
 
-          {/* Filters */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.15 }}
-            className="mb-6"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg text-foreground hover:bg-muted transition-colors"
-              >
-                <Filter className="w-4 h-4" />
-                <span className="font-medium">Filters</span>
-                {hasActiveFilters && (
-                  <span className="ml-1 px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
-                    Active
-                  </span>
-                )}
-              </button>
-              
-              {hasActiveFilters && (
-                <button
-                  onClick={clearFilters}
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                  Clear all
-                </button>
-              )}
-            </div>
-
-            {showFilters && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-card border border-border rounded-lg">
-                {/* Path Type */}
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Path Type</label>
-                  <select
-                    value={selectedPathType}
-                    onChange={(e) => setSelectedPathType(e.target.value)}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="all">All Types</option>
-                    <option value="company">Company-Specific</option>
-                    <option value="job-title">Job Title</option>
-                    <option value="skill">Skill-Based</option>
-                    <option value="certification">Certification</option>
-                  </select>
-                </div>
-
-                {/* Difficulty */}
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Difficulty</label>
-                  <select
-                    value={selectedDifficulty}
-                    onChange={(e) => setSelectedDifficulty(e.target.value)}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="all">All Levels</option>
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
-                  </select>
-                </div>
-
-                {/* Company */}
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Company</label>
-                  <select
-                    value={selectedCompany}
-                    onChange={(e) => setSelectedCompany(e.target.value)}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="all">All Companies</option>
-                    {companies.map(company => (
-                      <option key={company} value={company}>{company}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Job Title */}
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Job Title</label>
-                  <select
-                    value={selectedJobTitle}
-                    onChange={(e) => setSelectedJobTitle(e.target.value)}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="all">All Roles</option>
-                    {jobTitles.map(title => (
-                      <option key={title} value={title}>
-                        {title.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
-          </motion.div>
-
-          {/* Results Count */}
-          {!loading && (
-            <div className="mb-4 text-sm text-muted-foreground">
-              Found {paths.length} learning path{paths.length !== 1 ? 's' : ''}
-            </div>
-          )}
-
-          {/* Loading State */}
-          {loading && (
-            <div className="text-center py-12">
-              <div className="inline-block w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-              <p className="mt-4 text-muted-foreground">Loading learning paths...</p>
-            </div>
-          )}
-
-          {/* Learning Paths Grid */}
-          {!loading && paths.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {paths.map((path, index) => {
-                const diffConfig = getDifficultyConfig(path.difficulty);
-                const gradient = getPathTypeColor(path.pathType);
-                
-                return (
-                  <motion.div
-                    key={path.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="group relative"
-                  >
-                    <div className="relative h-full bg-card border border-border rounded-xl overflow-hidden transition-all hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10">
-                      {/* Gradient header */}
-                      <div className={`h-2 bg-gradient-to-r ${gradient}`} />
-                      
-                      <div className="p-6">
-                        {/* Icon & Type Badge */}
-                        <div className="flex items-start justify-between mb-4">
-                          <div className={`flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} text-white`}>
-                            {getPathTypeIcon(path.pathType)}
-                          </div>
-                          <div className="flex items-center gap-1 px-2 py-1 bg-muted rounded-full">
-                            <span className="text-xs text-muted-foreground font-medium capitalize">
-                              {path.pathType.replace('-', ' ')}
-                            </span>
-                          </div>
-                        </div>
-
-                        <h3 className="text-xl font-bold text-foreground mb-2 line-clamp-2">{path.title}</h3>
-                        <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{path.description}</p>
-
-                        {/* Meta info */}
-                        <div className="flex items-center gap-4 mb-4 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Terminal className="w-3 h-3" />
-                            <span>{path.questionIds.length} questions</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            <span>{path.estimatedHours}h</span>
-                          </div>
-                        </div>
-
-                        {/* Company or Job Title Badge */}
-                        {path.targetCompany && (
-                          <div className="mb-4">
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-500/10 text-blue-500 text-xs rounded-full">
-                              <Building2 className="w-3 h-3" />
-                              {path.targetCompany}
-                            </span>
-                          </div>
-                        )}
-                        {path.targetJobTitle && (
-                          <div className="mb-4">
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-500/10 text-purple-500 text-xs rounded-full">
-                              <Briefcase className="w-3 h-3" />
-                              {path.targetJobTitle.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Difficulty badge */}
-                        <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${diffConfig.bg} mb-4`}>
-                          <span className={diffConfig.color}>{diffConfig.icon}</span>
-                          <span className={`text-xs font-bold ${diffConfig.color}`}>{diffConfig.label}</span>
-                        </div>
-
-                        {/* Popularity indicator */}
-                        {path.popularity > 0 && (
-                          <div className="mb-4 text-xs text-muted-foreground">
-                            🔥 {path.popularity} learners started this path
-                          </div>
-                        )}
-
-                        {/* Action button */}
-                        <button
-                          onClick={() => handleStartPath(path)}
-                          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-semibold transition-all bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
-                        >
-                          Start Learning
-                          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Empty State */}
-          {!loading && paths.length === 0 && (
+      <AppLayout>
+        {/* Custom Path Builder Modal */}
+        <AnimatePresence>
+          {showCustom && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center py-12"
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-6"
+              onClick={() => setShowCustom(false)}
             >
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
-                <Search className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-xl font-bold text-foreground mb-2">No learning paths found</h3>
-              <p className="text-muted-foreground mb-4">
-                Try adjusting your filters or search query
-              </p>
-              {hasActiveFilters && (
-                <button
-                  onClick={clearFilters}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
-                >
-                  Clear Filters
-                </button>
-              )}
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-background border border-border rounded-[var(--radius-3xl)] max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+              >
+                {/* Header */}
+                <div className="p-6 border-b border-border">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-3xl font-semibold">Create Custom Path</h2>
+                    <button
+                      onClick={() => setShowCustom(false)}
+                      className="w-10 h-10 bg-muted/50 hover:bg-muted rounded-full flex items-center justify-center transition-all"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  
+                  {/* Path Name Input */}
+                  <input
+                    type="text"
+                    placeholder="My Custom Path"
+                    value={customPath.name}
+                    onChange={(e) => setCustomPath(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-6 py-4 bg-muted/50 border border-border rounded-[var(--radius-xl)] text-xl focus:outline-none focus:border-primary transition-all"
+                  />
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  {/* Search */}
+                  <div className="relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Search channels and certifications..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-12 pr-4 py-3 bg-muted/50 border border-border rounded-[var(--radius-lg)] focus:outline-none focus:border-primary transition-all"
+                    />
+                  </div>
+
+                  {/* Selected Summary */}
+                  {(customPath.channels.length > 0 || customPath.certifications.length > 0) && (
+                    <div className="p-4 bg-[var(--color-accent-violet)]/10 border border-[var(--color-accent-violet)]/30 rounded-[var(--radius-xl)]">
+                      <div className="text-sm text-muted-foreground mb-2">Selected:</div>
+                      <div className="flex items-center gap-4 text-sm font-semibold">
+                        <span>{customPath.channels.length} channels</span>
+                        <span>•</span>
+                        <span>{customPath.certifications.length} certifications</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Channels Section */}
+                  <div>
+                    <h3 className="text-xl font-semibold mb-4">Channels</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {filteredChannels.slice(0, 20).map((channel) => {
+                        const isSelected = customPath.channels.includes(channel.id);
+                        return (
+                          <button
+                            key={channel.id}
+                            onClick={() => toggleChannel(channel.id)}
+                            className={`p-4 rounded-[var(--radius-lg)] border transition-all text-left ${
+                              isSelected
+                                ? 'bg-gradient-to-r from-primary/20 to-cyan-500/20 border-primary'
+                                : 'bg-muted/50 border-border hover:border-border'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold">{channel.name}</span>
+                              {isSelected && <Check className="w-5 h-5 text-primary" />}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Certifications Section */}
+                  <div>
+                    <h3 className="text-xl font-semibold mb-4">Certifications</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {filteredCerts.slice(0, 20).map((cert) => {
+                        const isSelected = customPath.certifications.includes(cert.id);
+                        return (
+                          <button
+                            key={cert.id}
+                            onClick={() => toggleCertification(cert.id)}
+                            className={`p-4 rounded-[var(--radius-lg)] border transition-all text-left ${
+                              isSelected
+                                ? 'bg-gradient-to-r from-primary/20 to-cyan-500/20 border-primary'
+                                : 'bg-muted/50 border-border hover:border-border'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="text-xs text-muted-foreground mb-1">{cert.provider}</div>
+                                <div className="font-semibold text-sm">{cert.name}</div>
+                              </div>
+                              {isSelected && <Check className="w-5 h-5 text-primary" />}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="p-6 border-t border-border">
+                  <button
+                    onClick={handleCreateCustomPath}
+                    disabled={!customPath.name || (customPath.channels.length === 0 && customPath.certifications.length === 0)}
+                    className="w-full py-4 bg-gradient-to-r from-primary to-cyan-500 rounded-[var(--radius-xl)] font-bold text-xl text-white disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-all"
+                  >
+                    Create Path
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
           )}
+        </AnimatePresence>
 
-          {/* Info Notice */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="mt-12 text-center"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 rounded-full">
-              <Trophy className="w-4 h-4 text-primary" />
-              <span className="text-sm text-primary font-medium">
-                Learning paths are updated daily based on new questions and trends
-              </span>
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="max-w-7xl mx-auto px-6 py-12">
+            {/* Header */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center space-y-6 mb-12"
+            >
+              <h1 className="text-5xl md:text-7xl font-bold">
+                Choose your
+                <br />
+                <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">
+                  career path
+                </span>
+              </h1>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                Curated learning journeys designed to land you your dream job
+              </p>
+            </motion.div>
+
+            {/* Create Custom Path CTA */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="mb-12"
+            >
+              <button
+                onClick={() => setShowCustom(!showCustom)}
+                className="w-full p-8 bg-gradient-to-r from-primary/20 to-cyan-500/20 backdrop-blur-xl rounded-[var(--radius-3xl)] border-2 border-dashed border-primary/30 hover:border-primary/60 transition-all group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary to-cyan-500 rounded-full flex items-center justify-center">
+                      <Plus className="w-8 h-8 text-primary-foreground" strokeWidth={3} />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="text-2xl font-bold mb-1">Create Custom Path</h3>
+                      <p className="text-muted-foreground">Build your own learning journey</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-8 h-8 text-primary group-hover:translate-x-2 transition-transform" />
+                </div>
+              </button>
+            </motion.div>
+
+            {/* Curated Paths */}
+            <div className="space-y-6 mb-12">
+              <h2 className="text-4xl font-bold">Curated Paths</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {visibleCuratedPaths.map((path, i) => {
+                  const Icon = path.icon;
+                  const isSelected = selectedPath === path.id;
+
+                  return (
+                    <motion.button
+                      key={path.id}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.2 + i * 0.05 }}
+                      whileHover={{ scale: 1.02, y: -4 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleSelectPath(path.id)}
+                      className={`group relative p-8 backdrop-blur-xl rounded-[var(--radius-3xl)] border-2 transition-all text-left overflow-hidden ${
+                        isSelected
+                          ? 'bg-gradient-to-br from-primary/20 to-cyan-500/20 border-primary'
+                          : 'bg-muted/50 border-border hover:border-[var(--color-border-strong)]'
+                      }`}
+                    >
+                      {/* Background gradient on hover */}
+                      <div className={`absolute inset-0 bg-gradient-to-br ${path.color} opacity-0 group-hover:opacity-10 transition-opacity`} />
+
+                      <div className="relative space-y-6">
+                        {/* Header */}
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-16 h-16 bg-gradient-to-br ${path.color} rounded-[var(--radius-xl)] flex items-center justify-center`}>
+                              <Icon className="w-8 h-8 text-foreground" strokeWidth={2.5} />
+                            </div>
+                            <div>
+                              <h3 className="text-2xl font-bold mb-1">{path.name}</h3>
+                              <p className="text-sm text-muted-foreground">{path.description}</p>
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'var(--color-success)' }}>
+                              <Check className="w-5 h-5 text-white" strokeWidth={3} />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="p-3 bg-muted/50 rounded-[var(--radius-lg)]">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                              <Target className="w-3 h-3" />
+                              <span>Difficulty</span>
+                            </div>
+                            <div className="font-bold text-sm">{path.difficulty}</div>
+                          </div>
+                          <div className="p-3 bg-muted/50 rounded-[var(--radius-lg)]">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                              <Clock className="w-3 h-3" />
+                              <span>Duration</span>
+                            </div>
+                            <div className="font-bold text-sm">{path.duration}</div>
+                          </div>
+                          <div className="p-3 bg-muted/50 rounded-[var(--radius-lg)]">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                              <Zap className="w-3 h-3" />
+                              <span>Questions</span>
+                            </div>
+                            <div className="font-bold text-sm">{path.totalQuestions}</div>
+                          </div>
+                        </div>
+
+                        {/* Skills */}
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-2">Skills you'll learn</div>
+                          <div className="flex flex-wrap gap-2">
+                            {path.skills.map((skill) => (
+                              <span
+                                key={skill}
+                                className="px-3 py-1 bg-muted/50 rounded-full text-xs font-medium"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Jobs & Salary */}
+                        <div className="flex items-center justify-between pt-4 border-t border-border">
+                          <div>
+                            <div className="text-xs text-muted-foreground mb-1">Career outcomes</div>
+                            <div className="font-bold">{path.jobs[0]}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs text-muted-foreground mb-1">Avg. salary</div>
+                            <div className="font-bold text-primary">{path.salary}</div>
+                          </div>
+                        </div>
+
+                        {/* CTA */}
+                        <div className="flex items-center justify-between pt-2">
+                          <span className="text-sm font-semibold text-primary">
+                            {isSelected ? 'Selected!' : 'Select Path'}
+                          </span>
+                          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
+                        </div>
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </div>
             </div>
-          </motion.div>
+
+            {/* Why Choose a Path */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+              className="p-8 bg-[var(--color-accent-violet)]/10 backdrop-blur-xl rounded-[var(--radius-3xl)] border border-[var(--color-accent-violet)]/30"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--gradient-primary)' }}>
+                  <Star className="w-6 h-6 text-foreground" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-2">Why choose a learning path?</h3>
+                  <ul className="space-y-2 text-muted-foreground">
+                    <li className="flex items-start gap-2">
+                      <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                      <span>Structured curriculum designed by industry experts</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                      <span>Clear progression from beginner to job-ready</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                      <span>Focus on skills that actually get you hired</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                      <span>Track your progress and stay motivated</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         </div>
       </AppLayout>
     </>

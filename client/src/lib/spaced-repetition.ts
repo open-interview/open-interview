@@ -340,6 +340,12 @@ export function isInSRS(questionId: string): boolean {
   return getAllCards().has(questionId);
 }
 
+export function removeFromSRS(questionId: string): void {
+  const cards = getAllCards();
+  cards.delete(questionId);
+  saveAllCards(cards);
+}
+
 /**
  * Get mastery level label
  */
@@ -478,3 +484,77 @@ export default {
   getUserXP,
   addXP
 };
+
+// ============================================
+// FLASHCARD SRS — uses namespaced keys so
+// flashcard progress is separate from question SRS
+// ============================================
+const FC_SRS_KEY = 'code-reels-fc-srs';
+
+function getAllFcCards(): Map<string, ReviewCard> {
+  try {
+    const stored = localStorage.getItem(FC_SRS_KEY);
+    if (!stored) return new Map();
+    return new Map(Object.entries(JSON.parse(stored)));
+  } catch {
+    return new Map();
+  }
+}
+
+function saveFcCards(cards: Map<string, ReviewCard>): void {
+  localStorage.setItem(FC_SRS_KEY, JSON.stringify(Object.fromEntries(cards)));
+}
+
+export function getFcCard(flashcardId: string, channel: string, difficulty: string): ReviewCard {
+  const cards = getAllFcCards();
+  return cards.get(flashcardId) ?? {
+    questionId: flashcardId,
+    channel,
+    difficulty,
+    interval: 0,
+    easeFactor: DEFAULT_EASE_FACTOR,
+    repetitions: 0,
+    nextReview: new Date().toISOString().split('T')[0],
+    lastReview: '',
+    totalReviews: 0,
+    correctStreak: 0,
+    masteryLevel: 0,
+  };
+}
+
+export function recordFcReview(
+  flashcardId: string,
+  channel: string,
+  difficulty: string,
+  rating: ConfidenceRating
+): ReviewCard {
+  const cards = getAllFcCards();
+  const card = getFcCard(flashcardId, channel, difficulty);
+  const { interval, easeFactor, repetitions } = calculateNextInterval(card, rating);
+  const today = new Date().toISOString().split('T')[0];
+  const nextDate = new Date();
+  nextDate.setDate(nextDate.getDate() + interval);
+  const updated: ReviewCard = {
+    ...card,
+    interval,
+    easeFactor,
+    repetitions,
+    nextReview: nextDate.toISOString().split('T')[0],
+    lastReview: today,
+    totalReviews: card.totalReviews + 1,
+    correctStreak: rating === 'again' ? 0 : card.correctStreak + 1,
+    masteryLevel: 0,
+  };
+  updated.masteryLevel = calculateMasteryLevel(updated);
+  cards.set(flashcardId, updated);
+  saveFcCards(cards);
+  updateReviewStreak();
+  return updated;
+}
+
+export function getDueFcCards(): ReviewCard[] {
+  const today = new Date().toISOString().split('T')[0];
+  return Array.from(getAllFcCards().values())
+    .filter(c => c.nextReview <= today)
+    .sort((a, b) => a.nextReview.localeCompare(b.nextReview) || a.masteryLevel - b.masteryLevel);
+}

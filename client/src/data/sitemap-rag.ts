@@ -87,6 +87,14 @@ export const SITEMAP_RAG: SitemapRoute[] = [
     priority: 0.8,
   },
   {
+    path: '/flashcards',
+    title: 'Flashcards',
+    description: 'Study with interactive flashcards — flip cards to reveal answers, swipe to mark known or skip',
+    category: 'main',
+    keywords: ['flashcards', 'flash cards', 'memorize', 'flip', 'study', 'cards', 'swipe'],
+    priority: 0.8,
+  },
+  {
     path: '/training',
     title: 'Training Mode',
     description: 'Focused training sessions on specific topics',

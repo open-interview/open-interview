@@ -1,4 +1,9 @@
 /**
+ * @deprecated Use `@/components/ui/button` instead.
+ * This component duplicates ui/button.tsx and will be removed in a future cleanup.
+ */
+
+/**
  * GenZ Button Component - Neon gradient buttons
  * Supports reduced motion for accessibility
  */
@@ -17,7 +22,7 @@ interface GenZButtonProps {
   type?: 'button' | 'submit' | 'reset';
 }
 
-export function GenZButton({
+export function Button({
   children,
   onClick,
   variant = 'primary',

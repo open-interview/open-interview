@@ -71,6 +71,12 @@ const CONTENT_TYPES = {
     generator: '../ai/graphs/blog-graph.js',
     verifier: null,
     processor: null
+  },
+  flashcard: {
+    name: 'Flashcard',
+    generator: '../ai/graphs/flashcard-graph.js',
+    verifier: null,
+    processor: null
   }
 };
 
@@ -173,6 +179,17 @@ async function generateVoiceSessions() {
   return buildSessions();
 }
 
+async function generateFlashcard(options) {
+  const { generateFlashcardsParallel } = await import('../ai/graphs/flashcard-graph.js');
+  const db = getDb();
+  let sql = `SELECT id, question, answer, channel, difficulty FROM questions WHERE status='active'`;
+  const args = [];
+  if (options.channel) { sql += ' AND channel = ?'; args.push(options.channel); }
+  sql += ' LIMIT ?'; args.push(options.count || 10);
+  const result = await db.execute({ sql, args });
+  return generateFlashcardsParallel(result.rows, { concurrency: 10, batchSize: 10 });
+}
+
 async function generateBlogPost(options) {
   const { generateBlogPost } = await import('../ai/graphs/blog-graph.js');
   return generateBlogPost(options);
@@ -213,6 +230,9 @@ async function runUnifiedPipeline(contentType, options = {}) {
       break;
     case 'blog':
       result = await generateBlogPost(options);
+      break;
+    case 'flashcard':
+      result = await generateFlashcard(options);
       break;
   }
   

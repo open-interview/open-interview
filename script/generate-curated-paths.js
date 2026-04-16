@@ -482,8 +482,16 @@ async function generateCertificationPaths(questions) {
 async function main() {
   console.log('🚀 Generating curated learning paths...\n');
 
-  const questions = await getAllQuestions();
-  const channelStats = await getChannelStats();
+  let questions, channelStats;
+  try {
+    questions = await getAllQuestions();
+    channelStats = await getChannelStats();
+  } catch (error) {
+    console.warn('⚠️  Database unavailable, writing empty learning-paths.json:', error.message);
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+    fs.writeFileSync(path.join(OUTPUT_DIR, 'learning-paths.json'), JSON.stringify([], null, 2));
+    return;
+  }
 
   console.log(`📊 Found ${questions.length} active questions across ${channelStats.length} channels\n`);
 

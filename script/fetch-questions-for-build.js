@@ -509,6 +509,38 @@ async function main() {
     console.log(`   ✓ coding-challenges.json (empty - table may not exist yet)`);
   }
 
+  // Fetch flashcards from database
+  console.log('\n📥 Fetching flashcards...');
+  try {
+    const flashcardsResult = await client.execute(`
+      SELECT id, question_id, channel, difficulty, tags, front, back, hint, mnemonic, created_at
+      FROM flashcards
+      ORDER BY channel, created_at DESC
+    `);
+
+    const flashcards = flashcardsResult.rows.map(row => ({
+      id: row.id,
+      questionId: row.question_id,
+      channel: row.channel,
+      difficulty: row.difficulty,
+      tags: row.tags ? JSON.parse(row.tags) : [],
+      front: row.front,
+      back: row.back,
+      hint: row.hint,
+      mnemonic: row.mnemonic,
+      createdAt: row.created_at
+    }));
+
+    const flashcardsFile = path.join(OUTPUT_DIR, 'flashcards.json');
+    fs.writeFileSync(flashcardsFile, JSON.stringify(flashcards, null, 0));
+    console.log(`   ✓ flashcards.json (${flashcards.length} flashcards)`);
+  } catch (e) {
+    console.log(`   ⚠️ Could not fetch flashcards: ${e.message}`);
+    const flashcardsFile = path.join(OUTPUT_DIR, 'flashcards.json');
+    fs.writeFileSync(flashcardsFile, JSON.stringify([], null, 0));
+    console.log(`   ✓ flashcards.json (empty - table may not exist yet)`);
+  }
+
   // Generate changelog from bot activity
   console.log('\n📥 Generating changelog from bot activity...');
   try {

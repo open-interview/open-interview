@@ -176,6 +176,30 @@ async function main() {
   console.log(`   Channel: ${post.channel}`);
   console.log(`   Tags: ${tags}`);
   
+  // Parse rich context fields
+  let quickReference = '';
+  try {
+    const qr = JSON.parse(post.quick_reference || '[]');
+    quickReference = Array.isArray(qr) ? qr.join(' | ') : '';
+  } catch {}
+
+  let socialHook = '';
+  let socialBody = '';
+  try {
+    const ss = JSON.parse(post.social_snippet || '{}');
+    socialHook = ss.hook || '';
+    socialBody = Array.isArray(ss.body) ? ss.body.join('\n') : (ss.body || '');
+  } catch {}
+
+  let realWorldExample = '';
+  try {
+    const rwe = JSON.parse(post.real_world_example || '{}');
+    if (rwe?.company && rwe?.scenario) {
+      const sourceNote = rwe.sourceUrl ? ` (source: ${rwe.sourceUrl})` : '';
+      realWorldExample = `${rwe.company}: ${rwe.scenario}${sourceNote}`;
+    }
+  } catch {}
+
   // Set GitHub Actions outputs
   const outputFile = process.env.GITHUB_OUTPUT;
   if (outputFile) {
@@ -186,6 +210,10 @@ async function main() {
     fs.appendFileSync(outputFile, `excerpt=${excerpt}\n`);
     fs.appendFileSync(outputFile, `tags=${tags}\n`);
     fs.appendFileSync(outputFile, `channel=${post.channel}\n`);
+    if (quickReference) fs.appendFileSync(outputFile, `quick_reference=${quickReference}\n`);
+    if (socialHook)     fs.appendFileSync(outputFile, `social_hook=${socialHook}\n`);
+    if (socialBody)     fs.appendFileSync(outputFile, `social_body=${socialBody}\n`);
+    if (realWorldExample) fs.appendFileSync(outputFile, `real_world_example=${realWorldExample}\n`);
   }
 }
 

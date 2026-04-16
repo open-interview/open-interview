@@ -28,8 +28,8 @@ try {
     cwd: rootDir
   });
   
-  // Clean up source HTML files (optional - keep them for debugging)
-  // fs.rmSync(sourceDir, { recursive: true, force: true });
+  // Clean up source HTML files - not needed in deployment
+  fs.rmSync(sourceDir, { recursive: true, force: true });
   
   console.log('✅ Pagefind index built successfully!');
   console.log(`📁 Index location: ${path.join(outputDir, 'pagefind')}`);
