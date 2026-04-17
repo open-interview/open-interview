@@ -18,9 +18,13 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const client = createClient({
-  url: process.env.SQLITE_URL || 'file:local.db',
-});
+let client;
+try {
+  client = createClient({ url: process.env.SQLITE_URL || 'file:local.db' });
+} catch (e) {
+  console.warn(`⚠️  DB unavailable: ${e.message}`);
+  process.exit(0);
+}
 
 const OUTPUT_DIR = 'client/public/data/history';
 

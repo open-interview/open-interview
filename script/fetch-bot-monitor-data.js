@@ -9,9 +9,13 @@ import { createClient } from '@libsql/client';
 import fs from 'fs';
 import path from 'path';
 
-const db = createClient({
-  url: process.env.SQLITE_URL || 'file:local.db',
-});
+let db;
+try {
+  db = createClient({ url: process.env.SQLITE_URL || 'file:local.db' });
+} catch (e) {
+  console.warn(`⚠️  DB unavailable: ${e.message}`);
+  process.exit(0);
+}
 
 async function fetchBotStats() {
   try {

@@ -12,9 +12,13 @@ const OUTPUT_DIR = 'client/public/data';
 // Use read-only credentials
 const url = process.env.SQLITE_URL || 'file:local.db';
 
-// URL defaults to file:local.db if not set
-
-const client = createClient({ url });
+let client;
+try {
+  client = createClient({ url });
+} catch (e) {
+  console.warn(`⚠️  DB unavailable (${e.message}). Skipping data fetch — build will use empty data files.`);
+  process.exit(0);
+}
 
 /**
  * Quality Gate: Validate question format
@@ -782,6 +786,10 @@ async function main() {
 }
 
 main().catch(e => {
+  if (e.code === 'SQLITE_NOTADB' || e.code === 'URL_INVALID' || e.message?.includes('not a database') || e.message?.includes('SQLITE')) {
+    console.warn(`⚠️  DB error: ${e.message}. Build will continue with empty data.`);
+    process.exit(0);
+  }
   console.error('Fatal:', e);
   process.exit(1);
 });
