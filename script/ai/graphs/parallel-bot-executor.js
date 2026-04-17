@@ -173,6 +173,15 @@ export class WorkerPool extends EventEmitter {
     } catch (error) {
       task.error = error.message;
       
+      // Don't retry AI refusals — mark as skipped
+      if (error.isRefusal) {
+        task.status = TaskStatus.FAILED;
+        task.duration = Date.now() - startTime;
+        this.stats.failed++;
+        console.log(`   ⏭️ ${task.id} skipped (AI refusal)`);
+        return task;
+      }
+      
       // Retry if attempts remaining
       if (task.attempts < this.config.retryAttempts) {
         task.status = TaskStatus.RETRYING;

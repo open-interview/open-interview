@@ -112,6 +112,18 @@ export function parseResponse(output) {
     console.log('   Lines found:', lines.length);
     return null;
   }
+
+  // Detect AI refusals — throw so callers can skip rather than retry
+  const refusalPatterns = [
+    /^i('m| am) sorry[,.]? but i (can'?t|cannot|am unable)/i,
+    /^i (can'?t|cannot|am unable) (assist|help|provide|generate)/i,
+    /^i('m| am) not able to (assist|help|provide|generate)/i,
+  ];
+  if (refusalPatterns.some(p => p.test(text.trim()))) {
+    const err = new Error(`AI_REFUSAL: ${text.substring(0, 100)}`);
+    err.isRefusal = true;
+    throw err;
+  }
   
   // Try to parse as JSON
   try {

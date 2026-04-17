@@ -27,6 +27,12 @@ export async function withRetry(fn, options = {}) {
     } catch (error) {
       lastError = error;
       
+      // Don't retry AI refusals — skip immediately
+      if (error.isRefusal) {
+        console.log(`⚠️ AI refusal detected, skipping: ${error.message}`);
+        throw error;
+      }
+      
       if (attempt < maxAttempts) {
         console.log(`[Attempt ${attempt}/${maxAttempts}] Failed: ${error.message}`);
         console.log(`Waiting ${currentDelay / 1000}s before retry...`);
