@@ -11,7 +11,7 @@
  * Run daily via GitHub Actions or cron
  */
 
-import { client } from '../server/db.js';
+import { dbClient as client } from './utils.js';
 import ragService from './ai/services/rag-enhanced-generation.js';
 import jobTitleService from './ai/services/job-title-relevance.js';
 import vectorDB from './ai/services/vector-db.js';
