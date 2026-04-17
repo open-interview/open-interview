@@ -19,7 +19,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const client = createClient({
-  url: process.env.SQLITE_URL ?? 'file:local.db',
+  url: process.env.SQLITE_URL || 'file:local.db',
 });
 
 const OUTPUT_DIR = 'client/public/data/history';

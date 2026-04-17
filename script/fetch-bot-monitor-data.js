@@ -10,7 +10,7 @@ import fs from 'fs';
 import path from 'path';
 
 const db = createClient({
-  url: process.env.SQLITE_URL ?? 'file:local.db',
+  url: process.env.SQLITE_URL || 'file:local.db',
 });
 
 async function fetchBotStats() {

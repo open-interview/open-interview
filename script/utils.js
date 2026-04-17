@@ -8,7 +8,7 @@ import fs from 'fs';
 // DATABASE CONNECTION
 // ============================================
 
-const url = process.env.SQLITE_URL ?? 'file:local.db';
+const url = process.env.SQLITE_URL || 'file:local.db';
 
 // Create database client lazily
 let _dbClient = null;

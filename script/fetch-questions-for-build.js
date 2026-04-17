@@ -10,7 +10,7 @@ import path from 'path';
 const OUTPUT_DIR = 'client/public/data';
 
 // Use read-only credentials
-const url = process.env.SQLITE_URL ?? 'file:local.db';
+const url = process.env.SQLITE_URL || 'file:local.db';
 
 // URL defaults to file:local.db if not set
 
