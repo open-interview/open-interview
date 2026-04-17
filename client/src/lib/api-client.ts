@@ -79,8 +79,8 @@ async function fetchJson<T>(url: string): Promise<T> {
 const BUILD_VERSION = '20260113';
 
 // Sanitize answer field if it contains MCQ JSON format
-function sanitizeAnswer(answer: string | undefined): string | undefined {
-  if (!answer || typeof answer !== 'string') return answer;
+function sanitizeAnswer(answer: string | undefined): string {
+  if (!answer || typeof answer !== 'string') return '';
   
   const trimmed = answer.trim();
   if (trimmed.startsWith('[{')) {

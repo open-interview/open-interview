@@ -123,10 +123,10 @@ export default function TestsPage() {
 
             {/* Stats */}
             <div className="grid grid-cols-3 md:grid-cols-4 gap-3 mb-8">
-              <StatCard icon={CheckCircle} colorClass="from-green-500/20 to-green-600/10 border-green-500/30" iconClass="text-green-500" value={passedCount} label="Passed" />
-              <StatCard icon={XCircle} colorClass="from-red-500/20 to-red-600/10 border-red-500/30" iconClass="text-red-500" value={failedCount} label="Failed" />
-              <StatCard icon={Target} colorClass="from-blue-500/20 to-blue-600/10 border-blue-500/30" iconClass="text-blue-500" value={notStartedCount} label="Not Started" />
-              <StatCard icon={Star} colorClass="from-purple-500/20 to-purple-600/10 border-purple-500/30" iconClass="text-purple-500" value={`${stats.averageScore}%`} label="Avg Score" />
+              <StatCard icon={CheckCircle} bgColor="from-green-500/20 to-green-600/10" borderColor="border-green-500/30" color="text-green-500" value={passedCount} label="Passed" />
+              <StatCard icon={XCircle} bgColor="from-red-500/20 to-red-600/10" borderColor="border-red-500/30" color="text-red-500" value={failedCount} label="Failed" />
+              <StatCard icon={Target} bgColor="from-blue-500/20 to-blue-600/10" borderColor="border-blue-500/30" color="text-blue-500" value={notStartedCount} label="Not Started" />
+              <StatCard icon={Star} bgColor="from-purple-500/20 to-purple-600/10" borderColor="border-purple-500/30" color="text-purple-500" value={`${stats.averageScore}%`} label="Avg Score" />
             </div>
 
             {/* Search + Sort */}

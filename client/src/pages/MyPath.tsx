@@ -534,7 +534,7 @@ export default function MyPath() {
                           <div>
                             <div className="text-xs text-muted-foreground mb-2">Channels</div>
                             <div className="flex flex-wrap gap-2">
-                              {path.channels.slice(0, 3).map((channel) => (
+                              {path.channels.slice(0, 3).map((channel: string) => (
                                 <span
                                   key={channel}
                                   className="px-2 py-1 bg-muted/50 rounded-full text-xs font-medium"
@@ -681,7 +681,7 @@ export default function MyPath() {
                         <div>
                           <div className="text-xs text-muted-foreground mb-2">Channels ({path.channels.length})</div>
                           <div className="flex flex-wrap gap-2">
-                            {path.channels.slice(0, 3).map((channel) => (
+                            {path.channels.slice(0, 3).map((channel: string) => (
                               <span
                                 key={channel}
                                 className="px-2 py-1 bg-muted/50 rounded-full text-xs font-medium"

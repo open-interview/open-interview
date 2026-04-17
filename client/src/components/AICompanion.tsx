@@ -15,10 +15,14 @@ import {
 
 // Type stub for webllm (component disabled, avoiding build error)
 const webllm = {
-  MLCEngine: class {},
-  CreateMLCEngine: async () => null,
+  MLCEngine: class {
+    chat = { completions: { create: async (_params: any) => null as any } };
+  },
+  CreateMLCEngine: async (_model: string, _opts?: { initProgressCallback?: (p: { text: string }) => void }) => null as any,
   ChatCompletionMessageParam: {} as any,
 };
+type WebLLMEngine = InstanceType<(typeof webllm)['MLCEngine']>;
+type WebLLMMessage = { role: string; content: string };
 
 import { useUnifiedToast } from '../hooks/use-unified-toast';
 import { SITEMAP_RAG, searchRoutes, findRoutesByKeywords, getRouteByPath } from '../data/sitemap-rag';
@@ -77,7 +81,7 @@ export function AICompanion({ pageContent, onNavigate, onAction, availableAction
   const [agentMode, setAgentMode] = useState(true); // Enable agent capabilities
   const [currentModel, setCurrentModel] = useState<string>(''); // Track which model is being used
   const [currentTTSModel, setCurrentTTSModel] = useState<string>('Browser TTS'); // Track TTS model
-  const [webLLMEngine, setWebLLMEngine] = useState<webllm.MLCEngine | null>(null);
+  const [webLLMEngine, setWebLLMEngine] = useState<WebLLMEngine | null>(null);
   const [isLoadingModel, setIsLoadingModel] = useState(false);
   const [modelLoadProgress, setModelLoadProgress] = useState<string>('');
   
@@ -1099,7 +1103,7 @@ Assistant (in ${languageName}):`;
         // Simplified system prompt
         const systemPrompt = `You are a helpful AI assistant. Answer questions clearly and concisely in 2-3 sentences. Be direct and helpful.`;
         
-        const messages: webllm.ChatCompletionMessageParam[] = [
+        const messages: WebLLMMessage[] = [
           {
             role: 'system',
             content: systemPrompt,

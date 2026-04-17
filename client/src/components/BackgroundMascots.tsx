@@ -196,51 +196,11 @@ export function BackgroundMascots() {
   // Get mascot based on current URL - must be before any conditional returns
   const MascotComponent = useMemo(() => getMascotForPath(location), [location]);
   
-  // Mascots are disabled in the current premium-dark theme
+  // Mascots are disabled in the current theme
   // They were designed for playful themes that are no longer active
+  void theme;
+  void MascotComponent;
   return null;
-
-  const isDark = theme === 'premium-dark';
-
-  return (
-    <>
-      {/* Desktop only - large mascot */}
-      <div 
-        className="fixed inset-0 pointer-events-none hidden lg:block"
-        style={{ 
-          zIndex: 0,
-          overflow: 'hidden',
-        }}
-        aria-hidden="true"
-      >
-        {/* Single large mascot - positioned bottom right */}
-        <div 
-          className="absolute"
-          style={{ 
-            right: '-120px',
-            bottom: '-100px',
-            width: '700px', 
-            height: '850px',
-            opacity: isDark ? 0.06 : 0.10,
-          }}
-        >
-          <MascotComponent />
-        </div>
-
-        {/* Subtle gradient accent */}
-        <div 
-          className="absolute -left-40 top-1/4 rounded-full"
-          style={{
-            width: '500px',
-            height: '500px',
-            background: isDark 
-              ? 'radial-gradient(circle, rgba(88, 204, 2, 0.04) 0%, transparent 60%)'
-              : 'radial-gradient(circle, rgba(88, 204, 2, 0.06) 0%, transparent 60%)',
-          }}
-        />
-      </div>
-    </>
-  );
 }
 
 export default BackgroundMascots;

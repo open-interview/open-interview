@@ -22,6 +22,12 @@ const REQUIRED_FIELDS = ['id', 'question', 'answer', 'explanation', 'tags', 'dif
 
 console.log('🔍 Validating questions...\n');
 
+if (!fs.existsSync(questionsDir)) {
+  console.log('ℹ️  No static JSON question files found at client/src/lib/questions.');
+  console.log('   Questions are served from the database. Run validate:data instead.');
+  process.exit(0);
+}
+
 let hasErrors = false;
 const allIds = new Set();
 const files = fs.readdirSync(questionsDir).filter(f => f.endsWith('.json') && !f.includes('.backup'));

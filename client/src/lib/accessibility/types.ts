@@ -197,7 +197,7 @@ export interface ReportOptions {
  */
 export interface UseFocusTrapOptions {
   enabled: boolean;
-  initialFocus?: React.RefObject<HTMLElement>;
+  initialFocus?: React.RefObject<HTMLElement | null>;
   returnFocus?: boolean;
 }
 

@@ -89,7 +89,7 @@ export function OnboardingFlow({ onComplete }: Props) {
       if (shouldBe !== isCurrent) toggleSubscription(id);
     }
     // Add cert subscriptions
-    for (const id of selectedCerts) toggleSubscription(id);
+    for (const id of Array.from(selectedCerts)) toggleSubscription(id);
     onComplete();
   };
 

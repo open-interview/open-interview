@@ -149,12 +149,13 @@ export function UnifiedAnswerPanel({
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
-                        code({ node, inline, className, children, ...props }) {
+                        code({ node, className, children, ...props }) {
                           const match = /language-(\w+)/.exec(className || '');
                           const codeString = String(children).replace(/\n$/, '');
                           const codeId = `code-${Math.random().toString(36).substr(2, 9)}`;
+                          const isBlock = !!(match || String(children).includes('\n'));
 
-                          if (!inline && match) {
+                          if (isBlock && match) {
                             return (
                               <div className="relative group my-4">
                                 <button
@@ -172,7 +173,6 @@ export function UnifiedAnswerPanel({
                                   language={match[1]}
                                   PreTag="div"
                                   className="rounded-xl !bg-[var(--surface-0)] !my-0"
-                                  {...props}
                                 >
                                   {codeString}
                                 </SyntaxHighlighter>
@@ -259,7 +259,7 @@ export function UnifiedAnswerPanel({
                 <div className="p-4 border-b border-border/50">
                   <h3 className="text-lg font-semibold text-foreground">Short Explanation</h3>
                 </div>
-                <YouTubePlayer url={question.videos.shortVideo} />
+                <YouTubePlayer shortVideo={question.videos.shortVideo} />
               </div>
             )}
             {question.videos?.longVideo && (
@@ -267,7 +267,7 @@ export function UnifiedAnswerPanel({
                 <div className="p-4 border-b border-border/50">
                   <h3 className="text-lg font-semibold text-foreground">Detailed Explanation</h3>
                 </div>
-                <YouTubePlayer url={question.videos.longVideo} />
+                <YouTubePlayer longVideo={question.videos.longVideo} />
               </div>
             )}
           </div>
