@@ -1087,7 +1087,7 @@ document.getElementById('searchInput')?.addEventListener('input', (e) => {
   }
   
   results.innerHTML = matches.map(a => {
-    const highlight = (text) => text.replace(new RegExp('(' + query + ')', 'gi'), '<span class="search-highlight">$1</span>');
+    const highlight = (text) => text.replace(new RegExp('( + query + )', 'gi'), '<span class="search-highlight">$1</span>');
     return \`<a href="/posts/\${a.id}/\${a.slug}/" class="search-result">
       <div class="search-result-title">\${highlight(a.title)}</div>
       <div class="search-result-meta">
