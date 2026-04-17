@@ -70,21 +70,41 @@ async function loadQuestions() {
 }
 
 
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection:', err.message);
+  process.exitCode = 1;
+});
+
 async function main() {
+  const args = process.argv.slice(2);
+  const dryRun = args.includes('--dry-run');
+  const limitArg = args.find(a => a.startsWith('--limit='));
+  const limit = limitArg ? parseInt(limitArg.split('=')[1], 10) : null;
+
   console.log('\n' + '═'.repeat(60));
   console.log('🧠 INTERVIEW INTELLIGENCE GENERATOR');
   console.log('═'.repeat(60));
   console.log('Generating pre-computed intelligence data for static site...\n');
+  if (dryRun) console.log('[dry-run] No files will be written\n');
   
   // Ensure output directory exists
-  await fs.mkdir(OUTPUT_DIR, { recursive: true });
+  if (!dryRun) await fs.mkdir(OUTPUT_DIR, { recursive: true });
   
   // Load all questions
-  const questions = await loadQuestions();
+  let questions = await loadQuestions();
+  if (limit) {
+    questions = questions.slice(0, limit);
+    console.log(`   Limited to ${questions.length} questions`);
+  }
   
   if (questions.length === 0) {
     console.log('⚠️  No questions found. Creating sample intelligence data...');
     
+    if (dryRun) {
+      console.log('[dry-run] Would write sample intelligence files — skipping');
+      return;
+    }
+
     // Create sample data for development
     const sampleData = {
       generated: new Date().toISOString(),
@@ -123,6 +143,11 @@ async function main() {
     );
     
     console.log('✅ Sample intelligence data created');
+    return;
+  }
+
+  if (dryRun) {
+    console.log(`[dry-run] Would generate intelligence for ${questions.length} questions — skipping`);
     return;
   }
   

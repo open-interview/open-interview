@@ -19,25 +19,33 @@ const dbClient = createClient({
   authToken: process.env.SQLITE_AUTH_TOKEN,
 });
 
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection:', err.message);
+  process.exitCode = 1;
+});
+
 async function main() {
   const args = process.argv.slice(2);
   const force = args.includes('--force');
+  const dryRun = args.includes('--dry-run');
   const channelIdx = args.indexOf('--channel');
   const channel = channelIdx !== -1 ? args[channelIdx + 1] : null;
+  const limitArg = args.find(a => a.startsWith('--limit='));
+  const limit = limitArg ? parseInt(limitArg.split('=')[1], 10) : null;
   
   console.log('═'.repeat(60));
   console.log('🔄 VECTOR DATABASE SYNC');
   console.log('═'.repeat(60));
-  console.log(`Mode: ${force ? 'Force rebuild' : 'Incremental sync'}`);
+  console.log(`Mode: ${force ? 'Force rebuild' : 'Incremental sync'}${dryRun ? ' [dry-run]' : ''}`);
   if (channel) console.log(`Channel: ${channel}`);
+  if (limit) console.log(`Limit: ${limit}`);
   console.log('');
   
   // Import vector DB
   const vectorDB = (await import('./ai/services/vector-db.js')).default;
-  const qdrant = (await import('./ai/providers/qdrant.js')).default;
   
   // Force rebuild if requested
-  if (force) {
+  if (force && !dryRun) {
     console.log('🗑️ Deleting existing collection...');
     try {
       const qdrant = (await import('./ai/providers/qdrant.js')).default;
@@ -50,7 +58,15 @@ async function main() {
   
   // Initialize
   console.log('\n📦 Initializing vector DB...');
-  await vectorDB.init();
+  try {
+    await vectorDB.init();
+  } catch (error) {
+    if (error.code === 'SQLITE_BUSY') {
+      console.warn('⚠️  Vector DB locked (SQLITE_BUSY) — skipping sync');
+      return;
+    }
+    throw error;
+  }
   
   // Get questions from database
   console.log('\n📥 Fetching questions from database...');
@@ -61,24 +77,41 @@ async function main() {
     sql += ' AND channel = ?';
     args_sql.push(channel);
   }
+  if (limit) {
+    sql += ` LIMIT ${limit}`;
+  }
   
-  const result = await dbClient.execute({ sql, args: args_sql });
-  const questions = result.rows.map(row => ({
-    id: row.id,
-    question: row.question,
-    answer: row.answer,
-    explanation: row.explanation,
-    channel: row.channel,
-    subChannel: row.sub_channel,
-    difficulty: row.difficulty,
-    tags: row.tags ? JSON.parse(row.tags) : [],
-    tldr: row.tldr,
-    relevanceScore: row.relevance_score,
-    status: row.status,
-    createdAt: row.created_at
-  }));
+  let questions;
+  try {
+    const result = await dbClient.execute({ sql, args: args_sql });
+    questions = result.rows.map(row => ({
+      id: row.id,
+      question: row.question,
+      answer: row.answer,
+      explanation: row.explanation,
+      channel: row.channel,
+      subChannel: row.sub_channel,
+      difficulty: row.difficulty,
+      tags: row.tags ? JSON.parse(row.tags) : [],
+      tldr: row.tldr,
+      relevanceScore: row.relevance_score,
+      status: row.status,
+      createdAt: row.created_at
+    }));
+  } catch (error) {
+    if (error.code === 'SQLITE_BUSY') {
+      console.warn('⚠️  DB locked (SQLITE_BUSY) — skipping sync');
+      return;
+    }
+    throw error;
+  }
   
   console.log(`   Found ${questions.length} questions`);
+
+  if (dryRun) {
+    console.log(`\n[dry-run] Would index ${questions.length} questions — skipping`);
+    return;
+  }
   
   // Index questions
   console.log('\n📊 Indexing questions...');

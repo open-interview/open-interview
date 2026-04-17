@@ -14,8 +14,15 @@ const dbClient = createClient({
   authToken: process.env.SQLITE_AUTH_TOKEN,
 });
 
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection:', err.message);
+  process.exitCode = 1;
+});
+
 async function clearOldNewFlags() {
+  const dryRun = process.argv.includes('--dry-run');
   console.log('🧹 Clearing is_new flag for questions older than 7 days...\n');
+  if (dryRun) console.log('[dry-run] No changes will be made\n');
 
   try {
     // Check if is_new column exists
@@ -33,17 +40,23 @@ async function clearOldNewFlags() {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const cutoffDate = sevenDaysAgo.toISOString();
 
-    // Clear is_new for old questions
-    const result = await dbClient.execute({
-      sql: `
-        UPDATE questions 
-        SET is_new = 0 
-        WHERE is_new = 1 AND created_at < ?
-      `,
+    // Count questions that would be cleared
+    const countResult = await dbClient.execute({
+      sql: `SELECT COUNT(*) as count FROM questions WHERE is_new = 1 AND created_at < ?`,
       args: [cutoffDate]
     });
+    const toClear = countResult.rows[0].count;
 
-    console.log(`✅ Cleared NEW flag from ${result.rowsAffected} questions`);
+    if (dryRun) {
+      console.log(`[dry-run] Would clear NEW flag from ${toClear} questions`);
+    } else {
+      // Clear is_new for old questions
+      const result = await dbClient.execute({
+        sql: `UPDATE questions SET is_new = 0 WHERE is_new = 1 AND created_at < ?`,
+        args: [cutoffDate]
+      });
+      console.log(`✅ Cleared NEW flag from ${result.rowsAffected} questions`);
+    }
 
     // Count remaining new questions
     const newCount = await dbClient.execute(`
@@ -70,6 +83,10 @@ async function clearOldNewFlags() {
 
     console.log('\n✅ Maintenance complete!');
   } catch (error) {
+    if (error.code === 'SQLITE_BUSY') {
+      console.warn('⚠️  DB is locked (SQLITE_BUSY) — skipping maintenance');
+      return;
+    }
     console.error('❌ Maintenance failed:', error);
     process.exit(1);
   }

@@ -121,7 +121,13 @@ async function fetchLedger() {
   }
 }
 
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection:', err.message);
+  process.exitCode = 1;
+});
+
 async function main() {
+  const dryRun = process.argv.includes('--dry-run');
   console.log('Fetching bot monitor data...');
   
   const [stats, runs, queue, ledger] = await Promise.all([
@@ -139,6 +145,16 @@ async function main() {
     generatedAt: new Date().toISOString()
   };
   
+  console.log(`  Stats: ${stats.length} bots`);
+  console.log(`  Runs: ${runs.length} recent runs`);
+  console.log(`  Queue: ${queue.length} items`);
+  console.log(`  Ledger: ${ledger.length} entries`);
+
+  if (dryRun) {
+    console.log('[dry-run] Would write bot-monitor.json — skipping write');
+    return;
+  }
+
   // Ensure output directory exists
   const outputDir = path.join(process.cwd(), 'client/public/data');
   if (!fs.existsSync(outputDir)) {
@@ -148,12 +164,7 @@ async function main() {
   // Write data file
   const outputPath = path.join(outputDir, 'bot-monitor.json');
   fs.writeFileSync(outputPath, JSON.stringify(data, null, 2));
-  
   console.log(`✓ Generated ${outputPath}`);
-  console.log(`  Stats: ${stats.length} bots`);
-  console.log(`  Runs: ${runs.length} recent runs`);
-  console.log(`  Queue: ${queue.length} items`);
-  console.log(`  Ledger: ${ledger.length} entries`);
 }
 
 main().catch(console.error);
