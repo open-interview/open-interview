@@ -1648,9 +1648,14 @@ ${generateFooter(articles)}`;
 
 // Main function
 async function main() {
-  const htmlOnly = process.argv.includes('--html-only');
-  
+  const args = process.argv.slice(2);
+  const htmlOnly = args.includes('--html-only');
+  const dryRun = args.includes('--dry-run');
+  const limitArg = args.find(a => a.startsWith('--limit='))?.split('=')[1];
+  const limit = limitArg ? parseInt(limitArg, 10) : 1;
+
   console.log('=== 🚀 Blog Generator (LangGraph) ===\n');
+  if (dryRun) console.log('🔍 DRY RUN MODE - no DB writes\n');
   
   await initBlogPostsTable();
   
@@ -1662,19 +1667,21 @@ async function main() {
     if (stats.byChannel.length > 5) console.log(`     ... and ${stats.byChannel.length - 5} more`);
   }
   
-  if (!htmlOnly) {
+  if (!htmlOnly && !dryRun) {
     console.log('\n🔍 Finding questions with interesting real-world cases...');
     
-    // Get multiple candidates to try
-    const candidates = await getNextQuestionForBlog(MAX_SKIP_ATTEMPTS);
+    // Get multiple candidates to try (respect --limit)
+    const candidates = await getNextQuestionForBlog(Math.max(MAX_SKIP_ATTEMPTS, limit));
     
     if (candidates.length === 0) {
       console.log('✅ All questions have been converted!');
     } else {
-      let blogGenerated = false;
+      let blogGenerated = 0;
       let skippedCount = 0;
       
       for (const question of candidates) {
+        if (blogGenerated >= limit) break;
+
         console.log(`\n📝 Trying: ${question.id} (${question.channel})`);
         console.log(`   Q: ${question.question.substring(0, 60)}...`);
         
@@ -1684,64 +1691,75 @@ async function main() {
           // Check if skipped due to no interesting real-world case
           if (blogContent.skipped) {
             skippedCount++;
-          console.log(`   ⏭️ Skipped (${skippedCount}/${MAX_SKIP_ATTEMPTS}): ${blogContent.skipReason}`);
-          continue;
-        }
-        
-        console.log(`   Title: ${blogContent.title}`);
-        
-        // Validate sources - remove 404s
-        const validatedSources = await validateSources(blogContent.sources || []);
-        blogContent.sources = validatedSources;
-        
-        // Check minimum sources requirement
-        if (validatedSources.length < MIN_SOURCES) {
-          console.log(`   ⚠️ Only ${validatedSources.length} valid sources (need ${MIN_SOURCES})`);
-          console.log(`   🔄 Skipping - insufficient sources`);
-          skippedCount++;
-          continue;
-        }
-        
-        console.log(`   ✅ ${validatedSources.length} valid sources`);
-        
-        // Images are now generated as SVGs in the blog-graph pipeline
-        // Read SVG content from generated files to cache in database
-        const svgContent = {};
-        if (blogContent.images && blogContent.images.length > 0) {
-          console.log(`🖼️ ${blogContent.images.length} cartoon illustrations generated`);
-          for (const img of blogContent.images) {
-            if (img && img.url && img.url.startsWith('/images/') && img.url.endsWith('.svg')) {
-              const filename = img.url.replace('/images/', '');
-              const svgPath = path.join(OUTPUT_DIR, 'images', filename);
-              try {
-                if (fs.existsSync(svgPath)) {
-                  svgContent[filename] = fs.readFileSync(svgPath, 'utf-8');
+            console.log(`   ⏭️ Skipped (${skippedCount}/${MAX_SKIP_ATTEMPTS}): ${blogContent.skipReason}`);
+            continue;
+          }
+          
+          console.log(`   Title: ${blogContent.title}`);
+          
+          // Validate sources - remove 404s
+          const validatedSources = await validateSources(blogContent.sources || []);
+          blogContent.sources = validatedSources;
+          
+          // Check minimum sources requirement
+          if (validatedSources.length < MIN_SOURCES) {
+            console.log(`   ⚠️ Only ${validatedSources.length} valid sources (need ${MIN_SOURCES})`);
+            console.log(`   🔄 Skipping - insufficient sources`);
+            skippedCount++;
+            continue;
+          }
+          
+          console.log(`   ✅ ${validatedSources.length} valid sources`);
+          
+          // Images are now generated as SVGs in the blog-graph pipeline
+          const svgContent = {};
+          if (blogContent.images && blogContent.images.length > 0) {
+            console.log(`🖼️ ${blogContent.images.length} cartoon illustrations generated`);
+            for (const img of blogContent.images) {
+              if (img && img.url && img.url.startsWith('/images/') && img.url.endsWith('.svg')) {
+                const filename = img.url.replace('/images/', '');
+                const svgPath = path.join(OUTPUT_DIR, 'images', filename);
+                try {
+                  if (fs.existsSync(svgPath)) {
+                    svgContent[filename] = fs.readFileSync(svgPath, 'utf-8');
+                  }
+                } catch (err) {
+                  console.log(`   ⚠️ Could not read SVG ${filename}: ${err.message}`);
                 }
-              } catch (err) {
-                console.log(`   ⚠️ Could not read SVG ${filename}: ${err.message}`);
               }
             }
           }
+          
+          console.log('💾 Saving to database...');
+          await saveBlogPost(question.id, blogContent, question, svgContent);
+          console.log('✅ Blog post saved!\n');
+          blogGenerated++;
+          
+        } catch (error) {
+          if (error.isRefusal) {
+            console.log(`   ⚠️ AI refused to generate blog for ${question.id}: ${error.message}`);
+          } else {
+            console.log(`   ❌ Error: ${error.message}`);
+          }
+          skippedCount++;
+          continue;
         }
-        
-        console.log('💾 Saving to database...');
-        await saveBlogPost(question.id, blogContent, question, svgContent);
-        console.log('✅ Blog post saved!\n');
-        blogGenerated = true;
-        break;
-        
-      } catch (error) {
-        console.log(`   ❌ Error: ${error.message}`);
-        skippedCount++;
-        continue;
+      }
+      
+      if (blogGenerated === 0) {
+        console.log(`\n⚠️ Could not generate blog after trying ${skippedCount} questions`);
+        console.log('   All candidates either lacked interesting real-world cases or had insufficient sources');
       }
     }
-    
-    if (!blogGenerated) {
-      console.log(`\n⚠️ Could not generate blog after trying ${skippedCount} questions`);
-      console.log('   All candidates either lacked interesting real-world cases or had insufficient sources');
+  } else if (dryRun) {
+    console.log('\n🔍 DRY RUN: fetching candidates without generating...');
+    const candidates = await getNextQuestionForBlog(limit);
+    if (candidates.length === 0) {
+      console.log('✅ No unconverted questions found.');
+    } else {
+      console.log(`Found ${candidates.length} candidate(s):`);
+      candidates.forEach(q => console.log(`  - ${q.id} [${q.channel}]: ${q.question.substring(0, 60)}...`));
     }
-  }
   } else {
     console.log('\n⏭️ Skipping content generation (--html-only mode)');
   }

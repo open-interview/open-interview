@@ -24,6 +24,7 @@ import { runWithRetries, parseJson, generateUnifiedId, isDuplicateUnified, getCh
 import ragService from '../ai/services/rag-enhanced-generation.js';
 import { checkDuplicateBeforeCreate } from '../ai/services/duplicate-prevention.js';
 import { validateBeforeInsert, sanitizeQuestion } from './shared/validation.js';
+import { runQualityGate } from '../ai/graphs/quality-gate-graph.js';
 
 const BOT_NAME = 'creator';
 const db = getDb();
@@ -193,33 +194,55 @@ Respond with ONLY a JSON object:
 
 /**
  * Node 2: Generate Content
- * Creates the actual content based on type
+ * Creates the actual content based on type, with quality gate retry for questions
  */
 async function generateNode(state) {
   console.log('\n🔨 [Generate] Creating content...');
   
   const { input, contentType, channel, difficulty } = state;
   
+  if (contentType !== 'question') {
+    let content = null;
+    switch (contentType) {
+      case 'challenge':
+        content = await generateChallenge(input, channel, difficulty);
+        break;
+      case 'test':
+        content = await generateTest(input, channel);
+        break;
+      default:
+        content = await generateQuestion(input, channel, difficulty);
+    }
+    if (!content) return { ...state, error: 'Failed to generate content' };
+    console.log(`   Generated: ${content.id || 'new'}`);
+    return { ...state, content };
+  }
+
+  // For questions: generate with quality gate retry (up to 3 attempts)
   let content = null;
-  
-  switch (contentType) {
-    case 'question':
-      content = await generateQuestion(input, channel, difficulty);
-      break;
-    case 'challenge':
-      content = await generateChallenge(input, channel, difficulty);
-      break;
-    case 'test':
-      content = await generateTest(input, channel);
-      break;
-    default:
-      content = await generateQuestion(input, channel, difficulty);
+  let qualityResult = null;
+  let qualityHint = undefined;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) console.log(`\n🔄 [Generate] Retry attempt ${attempt + 1}/3 (hint: ${qualityHint})`);
+    content = await generateQuestion(input, channel, difficulty, qualityHint);
+    if (!content) return { ...state, error: 'Failed to generate content' };
+
+    // Skip quality gate in dry-run (avoids DB reads)
+    if (state.dryRun) break;
+
+    qualityResult = await runQualityGate(content, { channel, difficulty });
+    if (qualityResult.success) break;
+
+    qualityHint = qualityResult.issues?.join('; ') || qualityResult.warnings?.join('; ') || 'low quality';
+    console.log(`   ⚠️ Quality gate failed (attempt ${attempt + 1}): ${qualityHint}`);
+
+    if (attempt === 2) {
+      console.log('   ❌ Quality gate failed after 3 attempts');
+      return { ...state, error: `Quality gate failed after 3 attempts: ${qualityHint}` };
+    }
   }
-  
-  if (!content) {
-    return { ...state, error: 'Failed to generate content' };
-  }
-  
+
   console.log(`   Generated: ${content.id || 'new'}`);
   return { ...state, content };
 }
@@ -269,8 +292,16 @@ async function enrichNode(state) {
 async function validateNode(state) {
   console.log('\n✅ [Validate] Checking quality...');
   
-  const { content, contentType } = state;
+  const { content, contentType, dryRun } = state;
   if (!content || state.error) return state;
+
+  // In dry-run, skip DB-dependent checks
+  if (dryRun) {
+    const validation = validateContent(content, contentType);
+    if (!validation.valid) return { ...state, error: validation.error };
+    console.log('   Validation: passed (dry-run, skipped duplicate/format checks)');
+    return { ...state, validated: true };
+  }
   
   // Check for duplicates using RAG-based duplicate prevention
   console.log('   🔍 Running RAG-based duplicate detection...');
@@ -350,11 +381,17 @@ async function validateNode(state) {
 async function saveNode(state) {
   console.log('\n💾 [Save] Persisting to database...');
   
-  const { content, contentType, validated, skipSave, error } = state;
+  const { content, contentType, validated, skipSave, error, dryRun } = state;
   
   if (error || skipSave || !validated) {
     console.log(`   Skipped: ${error || 'validation failed'}`);
     return state;
+  }
+
+  if (dryRun) {
+    console.log('   DRY RUN: skipping DB write');
+    console.log(`   Would save: ${JSON.stringify({ id: content.id, question: content.question?.substring(0, 60), channel: content.channel }, null, 2)}`);
+    return { ...state, savedId: content.id, success: true };
   }
   
   try {
@@ -408,16 +445,18 @@ async function saveNode(state) {
 // CONTENT GENERATORS
 // ============================================
 
-async function generateQuestion(input, channel, difficulty) {
+async function generateQuestion(input, channel, difficulty, qualityHint) {
   // Try RAG-enhanced generation first
   try {
     console.log('   Using RAG-enhanced generation...');
-    const ragResult = await ragService.generateQuestionWithRAG(input, channel, { difficulty });
+    const ragResult = await ragService.generateQuestionWithRAG(input, channel, { difficulty, qualityHint });
     
     if (ragResult.success) {
       console.log(`   RAG context used: ${ragResult.question.contextUsed} related questions`);
+      let id;
+      try { id = await generateUnifiedId(); } catch { id = `q-dry-${Date.now()}`; }
       return {
-        id: await generateUnifiedId(),
+        id,
         question: ragResult.question.question,
         answer: ragResult.question.tldr?.substring(0, 200) || '',
         explanation: ragResult.question.answer || '',
@@ -438,8 +477,12 @@ async function generateQuestion(input, channel, difficulty) {
   }
 
   // Fallback to standard generation
-  const prompt = `Create a high-quality technical interview question.
+  const hintLine = qualityHint
+    ? `\nPrevious attempt failed quality: ${qualityHint}. Generate a different, more specific question.\n`
+    : '';
 
+  const prompt = `Create a high-quality technical interview question.
+${hintLine}
 Topic/Input: "${input}"
 Channel: ${channel}
 Difficulty: ${difficulty}
@@ -463,9 +506,12 @@ Requirements:
   const result = parseJson(response);
   
   if (!result || !result.question) return null;
+
+  let id;
+  try { id = await generateUnifiedId(); } catch { id = `q-dry-${Date.now()}`; }
   
   return {
-    id: await generateUnifiedId(),
+    id,
     question: result.question,
     answer: result.answer?.substring(0, 200) || '',
     explanation: result.explanation || '',
@@ -686,7 +732,8 @@ async function runPipeline(input, options = {}) {
     input,
     inputType: options.type || null,
     channel: options.channel || null,
-    difficulty: options.difficulty || 'intermediate'
+    difficulty: options.difficulty || 'intermediate',
+    dryRun: options.dryRun || false
   };
   
   // Execute nodes in sequence
@@ -709,26 +756,31 @@ async function runPipeline(input, options = {}) {
 
 async function main() {
   console.log('=== 🤖 Creator Bot (LangGraph) ===\n');
-  
+
+  // Parse CLI args
+  const args = process.argv.slice(2);
+  const dryRun = args.includes('--dry-run');
+  const channelArg = args.find(a => a.startsWith('--channel='))?.split('=')[1] || null;
+
+  if (dryRun) console.log('🔍 DRY RUN MODE - no DB writes\n');
+
   await initBotTables();
-  
-  const run = await startRun(BOT_NAME);
+
+  const run = dryRun ? { id: 'dry-run' } : await startRun(BOT_NAME);
   const stats = { processed: 0, created: 0, updated: 0, deleted: 0 };
-  
+
   try {
-    // Get input from environment or generate random topic
     const input = process.env.INPUT_TOPIC || process.env.INPUT_QUESTION;
     const inputType = process.env.INPUT_TYPE || null;
-    const channel = process.env.CHANNEL_ID || null;
+    const channel = channelArg || process.env.CHANNEL_ID || null;
     const count = parseInt(process.env.COUNT || '1');
-    
+
     if (!input) {
-      // Select channels with fewest questions to generate topics for
       const allChannels = await getAllChannelsFromDb();
       const channelCounts = await getChannelQuestionCounts();
 
-      // Sort channels ascending by question count, pick the least-populated ones
-      const sortedChannels = [...allChannels]
+      const eligibleChannels = channel ? [channel] : allChannels;
+      const sortedChannels = [...eligibleChannels]
         .sort((a, b) => (channelCounts[a] || 0) - (channelCounts[b] || 0));
 
       const targetChannels = sortedChannels.slice(0, Math.min(count, 5));
@@ -739,44 +791,42 @@ async function main() {
         const targetChannel = targetChannels[i];
         const topic = targetChannel.replace(/-/g, ' ');
         console.log(`\n--- Processing: "${topic}" (channel: ${targetChannel}) ---`);
-        
-        const result = await runPipeline(topic, { type: inputType, channel: channel || targetChannel });
+
+        const result = await runPipeline(topic, { type: inputType, channel: channel || targetChannel, dryRun });
         stats.processed++;
-        
+
         if (result.success) {
           stats.created++;
           console.log(`✅ Created: ${result.savedId}`);
         }
-        
-        await updateRunStats(run.id, stats);
-        
-        // Rate limiting
+
+        if (!dryRun) await updateRunStats(run.id, stats);
+
         if (i < targetChannels.length - 1) {
           await new Promise(r => setTimeout(r, 2000));
         }
       }
     } else {
-      // Process single input
       console.log(`Processing: "${input.substring(0, 50)}..."`);
-      
-      const result = await runPipeline(input, { type: inputType, channel });
+
+      const result = await runPipeline(input, { type: inputType, channel, dryRun });
       stats.processed++;
-      
+
       if (result.success) {
         stats.created++;
         console.log(`\n✅ Created: ${result.savedId}`);
       }
     }
-    
-    await completeRun(run.id, stats, { message: 'Creator Bot completed successfully' });
-    
+
+    if (!dryRun) await completeRun(run.id, stats, { message: 'Creator Bot completed successfully' });
+
     console.log('\n=== Summary ===');
     console.log(`Processed: ${stats.processed}`);
     console.log(`Created: ${stats.created}`);
-    
+
   } catch (error) {
     console.error('Fatal error:', error);
-    await failRun(run.id, error);
+    if (!dryRun) await failRun(run.id, error);
     process.exit(1);
   }
 }

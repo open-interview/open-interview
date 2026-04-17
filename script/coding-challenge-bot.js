@@ -155,9 +155,9 @@ async function getChallengeCount() {
   return result.rows[0]?.count || 0;
 }
 
-async function generateChallengeWrapper(difficulty, category) {
+async function generateChallengeWrapper(difficulty, category, dryRun = false) {
   const companies = getRandomCompanies();
-  const categoryTitles = await getExistingTitlesForCategory(category);
+  const categoryTitles = dryRun ? [] : await getExistingTitlesForCategory(category);
   
   console.log(`\n🎯 Generating ${difficulty} challenge for ${category}...`);
   console.log(`🏢 Target companies: ${companies.join(', ')}`);
@@ -180,16 +180,25 @@ async function generateChallengeWrapper(difficulty, category) {
 
 async function main() {
   console.log('=== 🤖 Coding Challenge Generator Bot ===\n');
-  
+
+  // Parse CLI args
+  const args = process.argv.slice(2);
+  const dryRun = args.includes('--dry-run');
+  const countArg = args.find(a => a.startsWith('--count='))?.split('=')[1];
+  const diffArg = args.find(a => a.startsWith('--difficulty='))?.split('=')[1];
+  const catArg = args.find(a => a.startsWith('--category='))?.split('=')[1];
+
+  if (dryRun) console.log('🔍 DRY RUN MODE - no DB writes\n');
+
   // Initialize database table
-  await initCodingChallengesTable();
+  if (!dryRun) await initCodingChallengesTable();
   
-  const initialCount = await getChallengeCount();
-  console.log(`📊 Current challenges in database: ${initialCount}`);
+  const initialCount = dryRun ? 0 : await getChallengeCount();
+  if (!dryRun) console.log(`📊 Current challenges in database: ${initialCount}`);
   
-  const inputDifficulty = process.env.INPUT_DIFFICULTY || 'random';
-  const inputCategory = process.env.INPUT_CATEGORY || 'random';
-  const inputCount = parseInt(process.env.INPUT_COUNT || '1', 10);
+  const inputDifficulty = diffArg || process.env.INPUT_DIFFICULTY || 'random';
+  const inputCategory = catArg || process.env.INPUT_CATEGORY || 'random';
+  const inputCount = parseInt(countArg || process.env.INPUT_COUNT || '1', 10);
   
   console.log(`\nConfiguration:`);
   console.log(`  Difficulty: ${inputDifficulty}`);
@@ -209,10 +218,32 @@ async function main() {
     const category = inputCategory === 'random'
       ? CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)]
       : inputCategory;
-    
-    const challenge = await generateChallengeWrapper(difficulty, category);
+
+    // Per-challenge timeout of 90s + refusal handling
+    let challenge = null;
+    try {
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Challenge generation timed out (90s)')), 90_000)
+      );
+      challenge = await Promise.race([generateChallengeWrapper(difficulty, category, dryRun), timeoutPromise]);
+    } catch (err) {
+      if (err.isRefusal) {
+        console.log(`⚠️ AI refused to generate challenge (${category}/${difficulty}): ${err.message}`);
+      } else {
+        console.log(`❌ Challenge generation error: ${err.message}`);
+      }
+      failed.push({ difficulty, category, reason: err.message });
+      continue;
+    }
     
     if (challenge) {
+      if (dryRun) {
+        console.log('🔍 DRY RUN - would save:');
+        console.log(JSON.stringify(challenge, null, 2));
+        generated.push(challenge);
+        continue;
+      }
+
       // Check for duplicates
       if (await isDuplicateChallenge(challenge.title)) {
         console.log(`⚠️ Duplicate title detected: ${challenge.title}`);
@@ -232,9 +263,6 @@ async function main() {
         console.log(`   Category: ${challenge.category}`);
         console.log(`   Companies: ${challenge.companies?.join(', ') || 'N/A'}`);
         console.log(`   Test cases: ${challenge.testCases.length}`);
-        
-        // Note: Skip logBotActivity for coding challenges since they're not in questions table
-        // The work_queue has a foreign key constraint on question_id
       } catch (dbError) {
         console.log(`❌ Database error: ${dbError.message}`);
         failed.push({ difficulty, category, reason: `DB error: ${dbError.message}` });
@@ -244,18 +272,18 @@ async function main() {
     }
   }
   
-  const finalCount = await getChallengeCount();
+  const finalCount = dryRun ? 0 : await getChallengeCount();
   
   // Summary
   console.log('\n=== SUMMARY ===');
   console.log(`Generated: ${generated.length}/${inputCount}`);
   console.log(`Failed: ${failed.length}`);
-  console.log(`Total challenges in database: ${finalCount}`);
+  if (!dryRun) console.log(`Total challenges in database: ${finalCount}`);
   
   if (generated.length > 0) {
     console.log('\n✅ Added Challenges:');
     generated.forEach((c, i) => {
-      console.log(`  ${i + 1}. [${c.id}] ${c.title} (${c.difficulty}, ${c.category})`);
+      console.log(`  ${i + 1}. [${c.id || 'dry-run'}] ${c.title} (${c.difficulty}, ${c.category})`);
     });
   }
   
@@ -263,13 +291,15 @@ async function main() {
     console.log('\n❌ Failed:');
     failed.forEach(f => console.log(`  - ${f.category} (${f.difficulty}): ${f.reason}`));
   }
-  
-  writeGitHubOutput({
-    generated_count: generated.length,
-    failed_count: failed.length,
-    total_challenges: finalCount,
-    added_ids: generated.map(c => c.id).join(',')
-  });
+
+  if (!dryRun) {
+    writeGitHubOutput({
+      generated_count: generated.length,
+      failed_count: failed.length,
+      total_challenges: finalCount,
+      added_ids: generated.map(c => c.id).join(',')
+    });
+  }
 }
 
 main().catch(e => {
