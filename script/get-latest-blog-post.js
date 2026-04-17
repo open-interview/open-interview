@@ -19,6 +19,40 @@ const client = createClient({ url });
 
 async function ensureLinkedInColumn() {
   try {
+    // Ensure blog_posts table exists (created by generate-blog.js, but handle missing gracefully)
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS blog_posts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        question_id TEXT UNIQUE NOT NULL,
+        title TEXT NOT NULL,
+        slug TEXT NOT NULL,
+        introduction TEXT,
+        sections TEXT,
+        conclusion TEXT,
+        meta_description TEXT,
+        channel TEXT,
+        difficulty TEXT,
+        tags TEXT,
+        diagram TEXT,
+        created_at TEXT,
+        published_at TEXT,
+        linkedin_shared_at TEXT,
+        quick_reference TEXT,
+        glossary TEXT,
+        real_world_example TEXT,
+        fun_fact TEXT,
+        sources TEXT,
+        social_snippet TEXT,
+        diagram_type TEXT,
+        diagram_label TEXT,
+        images TEXT,
+        svg_content TEXT
+      )
+    `);
+  } catch (e) {
+    // Table creation failed, ignore
+  }
+  try {
     await client.execute(`ALTER TABLE blog_posts ADD COLUMN linkedin_shared_at TEXT`);
     console.log('Added linkedin_shared_at column');
   } catch (e) {

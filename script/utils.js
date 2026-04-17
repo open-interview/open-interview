@@ -12,18 +12,21 @@ const url = process.env.SQLITE_URL || 'file:local.db';
 
 // Create database client lazily
 let _dbClient = null;
+function getDbClient() {
+  if (!_dbClient) {
+    _dbClient = createClient({ url });
+    // Enable WAL mode for better concurrent access (reduces SQLITE_BUSY errors)
+    _dbClient.execute('PRAGMA journal_mode=WAL').catch(() => {});
+    _dbClient.execute('PRAGMA busy_timeout=5000').catch(() => {});
+  }
+  return _dbClient;
+}
 export const dbClient = {
   get execute() {
-    if (!_dbClient) {
-      _dbClient = createClient({ url });
-    }
-    return _dbClient.execute.bind(_dbClient);
+    return getDbClient().execute.bind(getDbClient());
   },
   get batch() {
-    if (!_dbClient) {
-      _dbClient = createClient({ url });
-    }
-    return _dbClient.batch.bind(_dbClient);
+    return getDbClient().batch.bind(getDbClient());
   }
 };
 

@@ -11,6 +11,9 @@ export function getDb() {
   if (!dbClient) {
     const url = process.env.SQLITE_URL || 'file:local.db';
     dbClient = createClient({ url });
+    // Enable WAL mode for better concurrent access (reduces SQLITE_BUSY errors)
+    dbClient.execute('PRAGMA journal_mode=WAL').catch(() => {});
+    dbClient.execute('PRAGMA busy_timeout=5000').catch(() => {});
   }
   return dbClient;
 }

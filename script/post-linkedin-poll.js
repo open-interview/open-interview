@@ -100,7 +100,8 @@ function validateEnvironment() {
   if (errors.length > 0) {
     console.error('❌ Environment validation failed:');
     errors.forEach(e => console.error(`   - ${e}`));
-    process.exit(1);
+    // In dry-run mode without credentials, exit 0 (local testing)
+    process.exit(dryRun ? 0 : 1);
   }
   
   console.log('✅ Environment validation passed');

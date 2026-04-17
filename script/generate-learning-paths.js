@@ -491,6 +491,11 @@ generateAllLearningPaths()
     process.exit(0);
   })
   .catch(err => {
+    // Gracefully skip if Qdrant is not configured (local/CI without vector DB)
+    if (err.message && err.message.includes('QDRANT_URL')) {
+      console.warn('⚠️  Skipping learning path generation: QDRANT_URL not configured');
+      process.exit(0);
+    }
     console.error('❌ Error:', err);
     process.exit(1);
   });
