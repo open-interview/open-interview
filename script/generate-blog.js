@@ -28,15 +28,12 @@ const MAX_SKIP_ATTEMPTS = 5; // Max questions to try before giving up
 const GA_MEASUREMENT_ID = process.env.GA_MEASUREMENT_ID || 'G-47MSM57H95'; // Same as main app
 
 // Database connection
-const url = process.env.SQLITE_URL ?? process.env.TURSO_DATABASE_URL ?? 'file:local.db';
-const authToken = process.env.TURSO_AUTH_TOKEN_RO || process.env.TURSO_AUTH_TOKEN;
-const writeUrl = process.env.SQLITE_URL ?? process.env.TURSO_DATABASE_URL ?? 'file:local.db';
-const writeToken = process.env.TURSO_AUTH_TOKEN;
+const url = process.env.SQLITE_URL ?? 'file:local.db';
 
 // URL defaults to file:local.db if not set
 
-const client = createClient({ url, authToken });
-const writeClient = writeUrl ? createClient({ url: writeUrl, authToken: writeToken }) : client;
+const client = createClient({ url });
+const writeClient = client;
 
 /**
  * Validate a URL by checking if it returns a valid response (not 404)

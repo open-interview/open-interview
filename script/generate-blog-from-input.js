@@ -13,12 +13,11 @@ import { runWithRetries, parseJson, writeGitHubOutput } from './utils.js';
 import blogInputTemplate from './ai/prompts/templates/blog-input.js';
 
 // Database connection
-const url = process.env.SQLITE_URL ?? process.env.TURSO_DATABASE_URL ?? 'file:local.db';
-const authToken = process.env.TURSO_AUTH_TOKEN;
+const url = process.env.SQLITE_URL ?? 'file:local.db';
 
 // URL defaults to file:local.db if not set
 
-const client = createClient({ url, authToken });
+const client = createClient({ url });
 
 // Valid channels for validation
 const VALID_CHANNELS = blogInputTemplate.CHANNELS;

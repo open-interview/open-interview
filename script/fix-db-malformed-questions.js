@@ -12,10 +12,9 @@
 import 'dotenv/config';
 import { createClient } from '@libsql/client';
 
-const url = process.env.SQLITE_URL ?? process.env.TURSO_DATABASE_URL ?? 'file:local.db';
-const authToken = process.env.TURSO_AUTH_TOKEN;
+const url = process.env.SQLITE_URL ?? 'file:local.db';
 
-const client = createClient({ url, authToken });
+const client = createClient({ url });
 
 console.log('🔧 Fixing malformed questions in database...\n');
 

@@ -1294,8 +1294,8 @@ graph LR
 `;
 
   const envVars = [
-    { name: 'TURSO_DATABASE_URL', desc: 'Turso database connection URL', required: true },
-    { name: 'TURSO_AUTH_TOKEN', desc: 'Turso authentication token', required: true },
+    { name: 'SQLITE_URL', desc: 'SQLite database file URL (e.g. file:local.db)', required: false },
+    ,
     { name: 'QDRANT_URL', desc: 'Qdrant vector database URL', required: true },
     { name: 'QDRANT_API_KEY', desc: 'Qdrant API key', required: true },
     { name: 'OPENAI_API_KEY', desc: 'OpenAI API key for AI features', required: true },

@@ -10,12 +10,11 @@ import path from 'path';
 const OUTPUT_DIR = 'client/public/data';
 
 // Use read-only credentials
-const url = process.env.SQLITE_URL ?? process.env.TURSO_DATABASE_URL ?? 'file:local.db';
-const authToken = process.env.TURSO_AUTH_TOKEN_RO || process.env.TURSO_AUTH_TOKEN;
+const url = process.env.SQLITE_URL ?? 'file:local.db';
 
 // URL defaults to file:local.db if not set
 
-const client = createClient({ url, authToken });
+const client = createClient({ url });
 
 /**
  * Quality Gate: Validate question format

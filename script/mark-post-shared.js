@@ -7,8 +7,7 @@
 import 'dotenv/config';
 import { createClient } from '@libsql/client';
 
-const url = process.env.SQLITE_URL ?? process.env.TURSO_DATABASE_URL ?? 'file:local.db';
-const authToken = process.env.TURSO_AUTH_TOKEN;
+const url = process.env.SQLITE_URL ?? 'file:local.db';
 const postId = process.env.POST_ID;
 
 if (!postId) {
@@ -16,7 +15,7 @@ if (!postId) {
   process.exit(1);
 }
 
-const client = createClient({ url, authToken });
+const client = createClient({ url });
 
 async function markAsShared() {
   console.log(`📝 Marking post ${postId} as shared on LinkedIn...`);

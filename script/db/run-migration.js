@@ -13,12 +13,11 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const url = process.env.SQLITE_URL ?? process.env.TURSO_DATABASE_URL ?? 'file:local.db';
-const authToken = process.env.TURSO_AUTH_TOKEN;
+const url = process.env.SQLITE_URL ?? 'file:local.db';
 
 // URL defaults to file:local.db if not set
 
-const db = createClient({ url, authToken });
+const db = createClient({ url });
 
 async function runMigration(migrationFile) {
   console.log('\n' + '═'.repeat(60));
