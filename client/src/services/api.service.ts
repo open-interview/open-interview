@@ -441,41 +441,40 @@ export const CacheUtils = {
 // ============================================
 export interface DbFlashcard {
   id: string;
-  question_id: string | null;
+  questionId: string | null;
   channel: string | null;
   difficulty: string | null;
-  tags: string | null;
+  tags: string[] | null;
   front: string;
   back: string;
   hint: string | null;
   mnemonic: string | null;
-  created_at: string;
-  updated_at: string | null;
+  createdAt: string;
 }
 
-const API_BASE = '/api';
+let _flashcardsCache: DbFlashcard[] | null = null;
+
+async function loadAllFlashcards(): Promise<DbFlashcard[]> {
+  if (_flashcardsCache) return _flashcardsCache;
+  try {
+    const res = await fetch(`${DATA_BASE}/flashcards.json`);
+    if (!res.ok) return [];
+    _flashcardsCache = await res.json();
+    return _flashcardsCache!;
+  } catch {
+    return [];
+  }
+}
 
 export const FlashcardService = {
   async getByChannel(channel: string, limit = 100, offset = 0): Promise<DbFlashcard[]> {
-    try {
-      const params = new URLSearchParams({ channel, limit: String(limit), offset: String(offset) });
-      const res = await fetch(`${API_BASE}/flashcards?${params}`);
-      if (!res.ok) return [];
-      return res.json();
-    } catch {
-      return [];
-    }
+    const all = await loadAllFlashcards();
+    return all.filter(f => f.channel === channel).slice(offset, offset + limit);
   },
 
   async getAll(limit = 200, offset = 0): Promise<DbFlashcard[]> {
-    try {
-      const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-      const res = await fetch(`${API_BASE}/flashcards?${params}`);
-      if (!res.ok) return [];
-      return res.json();
-    } catch {
-      return [];
-    }
+    const all = await loadAllFlashcards();
+    return all.slice(offset, offset + limit);
   },
 };
 

@@ -18,13 +18,32 @@ async function fetchPendingQuestions({ channel, limit }) {
   const existing = await db.execute('SELECT question_id FROM flashcards');
   const done = new Set(existing.rows.map(r => r.question_id));
 
+  // Get question counts per channel to prioritize least-populated ones
+  const countResult = await db.execute(
+    `SELECT channel, COUNT(*) as cnt FROM flashcards GROUP BY channel`
+  );
+  const flashcardCountByChannel = Object.fromEntries(
+    countResult.rows.map(r => [r.channel, Number(r.cnt)])
+  );
+
   let sql  = `SELECT id, question, answer, channel, difficulty, tags FROM questions WHERE status = 'active'`;
   const args = [];
   if (channel) { sql += ' AND channel = ?'; args.push(channel); }
-  if (limit)   { sql += ' LIMIT ?';         args.push(limit);   }
+  // Order by channels with fewest flashcards first
+  sql += ` ORDER BY channel`;
+  if (limit)   { sql += ' LIMIT ?'; args.push(limit * 5); } // fetch more, then sort
 
   const result = await db.execute({ sql, args });
-  return result.rows.filter(r => !done.has(r.id));
+  const pending = result.rows.filter(r => !done.has(r.id));
+
+  // Sort by channel flashcard count ascending (least-populated channels first)
+  pending.sort((a, b) => {
+    const ca = flashcardCountByChannel[a.channel] ?? 0;
+    const cb = flashcardCountByChannel[b.channel] ?? 0;
+    return ca - cb;
+  });
+
+  return limit ? pending.slice(0, limit) : pending;
 }
 
 async function main() {
@@ -41,6 +60,10 @@ async function main() {
 
   const questions = await fetchPendingQuestions({ channel, limit });
   console.log(`Found ${questions.length} questions without flashcards`);
+  if (questions.length > 0) {
+    const topChannels = [...new Set(questions.slice(0, 10).map(q => q.channel))];
+    console.log(`Prioritized channels (least flashcards first): ${topChannels.join(', ')}`);
+  }
 
   if (dryRun) {
     console.log('--dry-run: exiting without generating.');
