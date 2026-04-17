@@ -26,6 +26,10 @@ on:
         default: false
         type: boolean
 
+permissions:
+  issues: write
+  contents: read
+
 jobs:
   check-duplicates:
     name: 🔍 Check for Duplicates
@@ -40,7 +44,6 @@ jobs:
       - name: Initialize Vector DB
         env:
           SQLITE_URL: ${{ secrets.SQLITE_URL }}
-          
           QDRANT_URL: ${{ secrets.QDRANT_URL }}
           QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
         run: |
@@ -51,7 +54,6 @@ jobs:
         id: duplicate-check
         env:
           SQLITE_URL: ${{ secrets.SQLITE_URL }}
-          
           QDRANT_URL: ${{ secrets.QDRANT_URL }}
           QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
         run: |
@@ -71,6 +73,19 @@ jobs:
           
           echo "Running: node script/check-duplicates.js $ARGS"
           node script/check-duplicates.js $ARGS
+          
+          # Check if duplicates were found by reading the generated report
+          REPORT_FILE=$(ls duplicate-report-*.json 2>/dev/null | head -1)
+          if [ -n "$REPORT_FILE" ]; then
+            DUPLICATE_COUNT=$(node -e "const r=JSON.parse(require('fs').readFileSync('$REPORT_FILE'));process.stdout.write(String(r.duplicateCount||0));")
+            if [ "$DUPLICATE_COUNT" != "0" ]; then
+              echo "duplicates_found=true" >> $GITHUB_OUTPUT
+            else
+              echo "duplicates_found=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "duplicates_found=false" >> $GITHUB_OUTPUT
+          fi
       
       - name: Upload Duplicate Report
         if: always()
@@ -96,7 +111,7 @@ jobs:
           fi
       
       - name: Create Issue if Duplicates Found
-        if: failure()
+        if: steps.duplicate-check.outputs.duplicates_found == 'true'
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -150,7 +165,7 @@ jobs:
   reconcile-after-cleanup:
     name: 🔄 Reconcile Content
     needs: check-duplicates
-    if: inputs.auto_fix == true
+    if: inputs.auto_fix == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     
@@ -160,9 +175,9 @@ jobs:
       - uses: ./.github/actions/setup-bot
       
       - name: Run Reconciliation
+        continue-on-error: true # script/bots/reconciliation-bot.js does not exist yet
         env:
           SQLITE_URL: ${{ secrets.SQLITE_URL }}
-          
           QDRANT_URL: ${{ secrets.QDRANT_URL }}
           QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
         run: |
