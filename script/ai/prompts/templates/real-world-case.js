@@ -4,6 +4,7 @@
  */
 
 import { jsonOutputRule, buildSystemContext } from './base.js';
+import { buildStandardSection } from './content-standards.js';
 
 export const schema = {
   company: "Famous tech company name (Netflix, Uber, Stripe, Airbnb, etc.) or null if no good case",
@@ -105,6 +106,8 @@ IMPORTANT:
 - If you can't find a compelling case, return null for company and explain why
 - The interestScore should honestly reflect how engaging this case would be
 - A score below 6 means we should skip this topic for blog generation
+
+${buildStandardSection('realWorldCase')}
 
 Output this exact JSON structure:
 ${JSON.stringify(schema, null, 2)}

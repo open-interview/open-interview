@@ -5,6 +5,7 @@
 
 import { jsonOutputRule, qualityRules, buildSystemContext } from './base.js';
 import config from '../../config.js';
+import { buildStandardSection } from './content-standards.js';
 
 export const schema = {
   diagram: "flowchart TD\\n  A[Step 1] --> B[Step 2]",
@@ -144,7 +145,7 @@ COMPACT LABEL EXAMPLES:
 ✅ Good: "🔐 Auth", "📦 Orders", "💾 Cache", "🌐 Gateway"
 ❌ Bad: "Authentication Service", "Order Management System"
 
-${guidelines.map(g => `- ${g}`).join('\n')}
+${buildStandardSection('diagram')}
 
 EXAMPLES OF BAD OUTPUT (DO NOT CREATE):
 ${badExamples.map(e => `- ${e}`).join('\n')}

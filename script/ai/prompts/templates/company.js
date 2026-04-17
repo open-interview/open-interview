@@ -4,6 +4,7 @@
 
 import { jsonOutputRule, qualityRules, buildSystemContext } from './base.js';
 import config from '../../config.js';
+import { buildStandardSection } from './content-standards.js';
 
 export const schema = {
   companies: ["Company1", "Company2", "Company3", "Company4", "Company5"],
@@ -68,8 +69,7 @@ Difficulty: ${difficulty || 'intermediate'}
 Research which companies are known to ask this type of question.
 Consider: ${knownCompanies.slice(0, 20).join(', ')}, and others.
 
-Guidelines:
-${guidelines.map(g => `- ${g}`).join('\n')}
+${buildStandardSection('company')}
 
 Output this exact JSON structure:
 ${JSON.stringify(schema, null, 2)}

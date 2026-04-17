@@ -3,6 +3,7 @@
  */
 
 import { jsonOutputRule, buildSystemContext } from './base.js';
+import { buildStandardSection } from './content-standards.js';
 import config from '../../config.js';
 
 export const schema = {
@@ -87,8 +88,7 @@ Current SubChannel: ${currentSubChannel || 'none'}
 Available channels and subchannels:
 ${channelList}
 
-Guidelines:
-${guidelines.map(g => `- ${g}`).join('\n')}
+${buildStandardSection('classify')}
 
 Output this exact JSON structure:
 ${JSON.stringify(schema, null, 2)}

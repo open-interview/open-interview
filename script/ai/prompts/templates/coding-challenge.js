@@ -3,6 +3,7 @@
  */
 
 import { jsonOutputRule, buildSystemContext } from './base.js';
+import { buildStandardSection } from './content-standards.js';
 import config from '../../config.js';
 
 export const schema = {
@@ -72,8 +73,7 @@ export function build(context) {
 Generate a ${difficulty} coding challenge for category: ${category}
 Companies: ${(companies || []).join(', ')}${avoidTitlesSection}
 
-CRITICAL RULES:
-${guidelines.map(g => `- ${g}`).join('\n')}
+${buildStandardSection('codingChallenge')}
 
 Requirements:
 - Difficulty: ${difficulty} (${difficulty === 'easy' ? 'basic, 10 min' : 'medium, 15-20 min'})

@@ -3,6 +3,7 @@
  */
 
 import { jsonOutputRule, qualityRules, buildSystemContext } from './base.js';
+import { buildStandardSection } from './content-standards.js';
 import config from '../../config.js';
 
 export const schema = {
@@ -37,8 +38,7 @@ Make it simple, fun, and use everyday analogies a child would understand.
 Question: "${question}"
 Technical Answer: "${answer || 'N/A'}"
 
-Guidelines:
-${guidelines.map(g => `- ${g}`).join('\n')}
+${buildStandardSection('eli5')}
 
 ${qualityRules.beginner}
 

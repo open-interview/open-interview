@@ -4,6 +4,7 @@
 
 import { jsonOutputRule, buildSystemContext, markdownFormattingRules } from './base.js';
 import config from '../../config.js';
+import { buildAnswerStandardSection } from './answer-standard.js';
 
 export const schema = {
   question: "Specific, practical interview question ending with ?",
@@ -96,71 +97,6 @@ export const realScenarios = {
   ],
 };
 
-export const systemDesignFormat = `## Functional Requirements
-
-- Requirement 1
-- Requirement 2
-
-## Non-Functional Requirements (NFRs)
-
-- Availability: Target
-- Latency: Target
-- Scalability: Target
-- Consistency: Type
-
-## Back-of-Envelope Calculations
-
-### Users & Traffic
-
-- DAU: Number
-- Peak QPS: Number
-
-### Storage
-
-- Per user: Size
-- Total: Size
-
-## High-Level Design
-
-Description of the architecture.
-
-## Deep Dive: Key Components
-
-### Component 1
-
-Details about the component.
-
-## Trade-offs & Considerations
-
-- Trade-off 1
-- Trade-off 2
-
-## Failure Scenarios & Mitigations
-
-- Scenario 1: Mitigation
-- Scenario 2: Mitigation`;
-
-export const standardFormat = `## Why This Is Asked
-
-Interview context explanation.
-
-## Key Concepts
-
-- Concept 1
-- Concept 2
-- Concept 3
-
-## Code Example
-
-\`\`\`javascript
-// Implementation code here
-\`\`\`
-
-## Follow-up Questions
-
-- Follow-up question 1
-- Follow-up question 2`;
-
 // Use centralized guidelines from config, plus generate-specific rules
 const { answer: answerThresholds } = config.qualityThresholds;
 
@@ -189,7 +125,6 @@ export function build(context) {
   targetCompanies = Array.isArray(targetCompanies) ? targetCompanies : [];
 
   const isSystemDesign = channel === 'system-design';
-  const explanationFormat = isSystemDesign ? systemDesignFormat : standardFormat;
 
   // Build RAG context section if available
   let ragSection = '';
@@ -226,7 +161,8 @@ CONTEXT:
 ${scenarioHint ? `- Example scenario for inspiration: ${scenarioHint}` : ''}
 ${ragSection}
 REQUIREMENTS:
-${guidelines.map(g => `- ${g}`).join('\n')}
+- ${config.guidelines.generate.join('\n- ')}
+- ${config.guidelines.diagram.slice(0, 2).join('\n- ')}
 
 For ${difficulty} level:
 - beginner: Fundamental concepts, basic implementation
@@ -235,11 +171,7 @@ For ${difficulty} level:
 
 ${markdownFormattingRules}
 
-FIELD-SPECIFIC RULES:
-- "answer": Plain text ONLY. NO markdown, NO bold (**), NO code blocks. Just plain sentences.
-- "explanation": Well-formatted markdown following the format below. Each section separated by blank lines.
-
-${isSystemDesign ? 'SYSTEM DESIGN EXPLANATION FORMAT (MANDATORY):\n' + systemDesignFormat : 'EXPLANATION FORMAT:\n' + standardFormat}
+${buildAnswerStandardSection(isSystemDesign)}
 
 Output this exact JSON structure:
 ${JSON.stringify(schema, null, 2)}

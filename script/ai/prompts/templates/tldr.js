@@ -3,6 +3,7 @@
  */
 
 import { jsonOutputRule, qualityRules, buildSystemContext } from './base.js';
+import { buildStandardSection } from './content-standards.js';
 import config from '../../config.js';
 
 export const schema = {
@@ -41,8 +42,7 @@ The TLDR should be a single, concise sentence that captures the key point.
 Question: "${question}"
 Answer: "${(answer || '').substring(0, 500)}"
 
-Guidelines:
-${guidelines.map(g => `- ${g}`).join('\n')}
+${buildStandardSection('tldr')}
 
 ${qualityRules.concise}
 

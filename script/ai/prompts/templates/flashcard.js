@@ -3,6 +3,7 @@
  */
 
 import { jsonOutputRule } from './base.js';
+import { buildStandardSection } from './content-standards.js';
 
 export const schema = {
   front: "Concise term or concept (max 100 chars)",
@@ -24,6 +25,8 @@ Rules:
 - back: clear, self-contained explanation, max 300 chars
 - hint: one-line clue that nudges recall without giving it away
 - mnemonic: a memory trick, acronym, or analogy to make it stick
+
+${buildStandardSection('flashcard')}
 
 Output this exact JSON structure:
 ${JSON.stringify(schema)}

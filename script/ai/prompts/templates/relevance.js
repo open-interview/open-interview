@@ -3,6 +3,7 @@
  */
 
 import { jsonOutputRule, buildSystemContext } from './base.js';
+import { buildStandardSection } from './content-standards.js';
 import config from '../../config.js';
 
 export const schema = {
@@ -139,8 +140,7 @@ ${criteriaText}
 
 Also provide specific improvement suggestions if the score is below 80.
 
-Guidelines:
-${guidelines.map(g => `- ${g}`).join('\n')}
+${buildStandardSection('relevance')}
 
 Output this exact JSON structure:
 ${JSON.stringify(schema, null, 2)}
