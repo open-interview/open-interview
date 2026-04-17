@@ -3,15 +3,14 @@
  * Enables offline support and faster repeat visits
  */
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const STATIC_CACHE = `code-reels-static-${CACHE_VERSION}`;
 const DATA_CACHE = `code-reels-data-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `code-reels-runtime-${CACHE_VERSION}`;
 
-// Static assets to cache on install
+// Static assets to cache on install (excluding index.html to prevent stale chunk references)
 const STATIC_ASSETS = [
   '/',
-  '/index.html',
 ];
 
 // Install event - cache static assets
@@ -114,30 +113,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle navigation requests - network-first with offline fallback
+  // Handle navigation requests - always network-first, never cache index.html
+  // Caching index.html causes stale chunk hash mismatches after deploys
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // Cache successful navigation responses
-          if (response.ok) {
-            const responseClone = response.clone();
-            caches.open(STATIC_CACHE).then((cache) => {
-              cache.put(request, responseClone);
-            });
-          }
-          return response;
-        })
-        .catch(() => {
-          // Offline - try to serve from cache
-          return caches.match(request).then((cachedResponse) => {
-            if (cachedResponse) {
-              return cachedResponse;
-            }
-            // Fallback to index.html for SPA routing
-            return caches.match('/index.html');
-          });
-        })
+      fetch(request).catch(() => {
+        // Offline fallback - serve cached non-index page or nothing
+        return caches.match(request);
+      })
     );
     return;
   }
