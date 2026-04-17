@@ -14,7 +14,7 @@ const url = process.env.SQLITE_URL || 'file:local.db';
 let _dbClient = null;
 function getDbClient() {
   if (!_dbClient) {
-    _dbClient = createClient({ url });
+    _dbClient = createClient({ url, authToken: process.env.SQLITE_AUTH_TOKEN });
     // Enable WAL mode for better concurrent access (reduces SQLITE_BUSY errors)
     _dbClient.execute('PRAGMA journal_mode=WAL').catch(() => {});
     _dbClient.execute('PRAGMA busy_timeout=5000').catch(() => {});

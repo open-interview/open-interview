@@ -11,7 +11,7 @@ import path from 'path';
 
 let db;
 try {
-  db = createClient({ url: process.env.SQLITE_URL || 'file:local.db' });
+  db = createClient({ url: process.env.SQLITE_URL || 'file:local.db', authToken: process.env.SQLITE_AUTH_TOKEN });
 } catch (e) {
   console.warn(`⚠️  DB unavailable: ${e.message}`);
   process.exit(0);

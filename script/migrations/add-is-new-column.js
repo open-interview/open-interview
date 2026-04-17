@@ -12,6 +12,7 @@ dotenv.config();
 
 const dbClient = createClient({
   url: process.env.SQLITE_URL || 'file:local.db',
+  authToken: process.env.SQLITE_AUTH_TOKEN,
 });
 
 async function migrate() {

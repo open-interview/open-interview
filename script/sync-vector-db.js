@@ -16,6 +16,7 @@ import { createClient } from '@libsql/client';
 
 const dbClient = createClient({
   url: process.env.SQLITE_URL || 'file:local.db',
+  authToken: process.env.SQLITE_AUTH_TOKEN,
 });
 
 async function main() {

@@ -32,7 +32,7 @@ const url = process.env.SQLITE_URL || 'file:local.db';
 
 // URL defaults to file:local.db if not set
 
-const client = createClient({ url });
+const client = createClient({ url, authToken: process.env.SQLITE_AUTH_TOKEN });
 const writeClient = client;
 
 /**
