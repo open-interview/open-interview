@@ -278,20 +278,28 @@ export function Mermaid({ chart, themeOverride }: MermaidProps) {
         await new Promise(resolve => setTimeout(resolve, 50));
         if (cancelled) return;
         
-        const { svg } = await mermaid.render(id, cleanChart);
+        // Suppress mermaid v11's internal console.error("Syntax error in text")
+        const origError = console.error;
+        console.error = () => {};
+        let svg: string;
+        try {
+          ({ svg } = await mermaid.render(id, cleanChart));
+        } finally {
+          console.error = origError;
+        }
+        document.getElementById(`d${id}`)?.remove();
+        document.getElementById(id)?.remove();
         
         if (!cancelled && currentRenderId === renderIdRef.current) {
           setSvgContent(svg);
           setError(null);
         }
       } catch (err: any) {
-        // Mermaid v11 may inject an error element into the DOM on syntax errors — clean it up
         document.getElementById(`d${id}`)?.remove();
         document.getElementById(id)?.remove();
 
         if (!cancelled && currentRenderId === renderIdRef.current) {
-          const errorMsg = err?.message || err?.str || 'Failed to render diagram';
-          console.warn('Mermaid render skipped:', typeof errorMsg === 'string' ? errorMsg : 'Render failed');
+          const errorMsg = err?.message || err?.str || 'Render failed';
           setError(typeof errorMsg === 'string' ? errorMsg : 'Render failed');
         }
       } finally {
@@ -318,11 +326,7 @@ export function Mermaid({ chart, themeOverride }: MermaidProps) {
     { id: 'base', name: 'Base', color: '#f9a825' },
   ];
 
-  // Silently hide failed diagrams - don't show error to user
-  if (error) {
-    console.warn('Mermaid diagram skipped due to error:', error);
-    return null;
-  }
+  if (error) return null;
 
   if (isLoading) {
     return (

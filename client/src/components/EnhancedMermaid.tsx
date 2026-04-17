@@ -45,7 +45,6 @@ function initMermaid(mermaidTheme: MermaidTheme, force = false) {
     });
     currentMermaidTheme = mermaidTheme;
   } catch (e) {
-    console.error('Mermaid init error:', e);
   }
 }
 
@@ -242,15 +241,21 @@ export function EnhancedMermaid({ chart, compact = false, onRenderResult }: Enha
       try {
         await new Promise(resolve => setTimeout(resolve, 50));
         if (cancelled) return;
-        const { svg } = await mermaid.render(id, cleanChart);
+        const origError = console.error;
+        console.error = () => {};
+        let svg: string;
+        try {
+          ({ svg } = await mermaid.render(id, cleanChart));
+        } finally {
+          console.error = origError;
+        }
         if (!cancelled && currentRenderId === renderIdRef.current) {
           setSvgContent(svg);
           setError(null);
         }
       } catch (err: any) {
-        console.error('Mermaid render error:', err);
         if (!cancelled && currentRenderId === renderIdRef.current) {
-          const errorMsg = err?.message || err?.str || 'Failed to render diagram';
+          const errorMsg = err?.message || err?.str || 'Render failed';
           setError(typeof errorMsg === 'string' ? errorMsg : 'Render failed');
         }
       } finally {
@@ -311,7 +316,6 @@ export function EnhancedMermaid({ chart, compact = false, onRenderResult }: Enha
   
   // Validate chart content before rendering
   if (!isValidChart) {
-    console.warn('EnhancedMermaid: Invalid or non-Mermaid content detected, skipping render');
     onRenderResult?.(false);
     return null;
   }
@@ -324,7 +328,6 @@ export function EnhancedMermaid({ chart, compact = false, onRenderResult }: Enha
 
   // Silently hide failed diagrams - don't show error to user
   if (error) {
-    console.warn('EnhancedMermaid diagram skipped due to error:', error);
     onRenderResult?.(false);
     return null;
   }
@@ -347,7 +350,6 @@ export function EnhancedMermaid({ chart, compact = false, onRenderResult }: Enha
   
   // Check if SVG content is actually valid (not empty or too small)
   if (svgContent.length < 100 || !svgContent.includes('<svg')) {
-    console.warn('EnhancedMermaid: SVG content appears invalid or empty');
     onRenderResult?.(false);
     return null;
   }
