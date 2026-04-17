@@ -20,6 +20,20 @@ import { runWithRetries, parseJson } from '../utils.js';
 const BOT_NAME = 'session-builder';
 const db = getDb();
 
+// Parse CLI args
+const args = process.argv.slice(2);
+const getArg = (name) => { const a = args.find(a => a.startsWith(`--${name}=`)); return a ? a.split('=')[1] : null; };
+const options = {
+  dryRun: args.includes('--dry-run'),
+  channel: getArg('channel'),
+  limit: getArg('limit') ? parseInt(getArg('limit')) : null,
+};
+
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection:', err.message);
+  process.exitCode = 1;
+});
+
 // ============================================
 // LANGGRAPH NODE DEFINITIONS
 // ============================================
@@ -29,16 +43,20 @@ const db = getDb();
  */
 async function loadQuestionsNode(state) {
   console.log('\n📥 [Load] Fetching voice-suitable questions...');
-  
-  const result = await db.execute({
-    sql: `SELECT id, question, answer, explanation, channel, sub_channel, difficulty, tags, voice_keywords
+  if (options.channel) console.log(`   Channel filter: ${options.channel}`);
+  if (options.limit) console.log(`   Limit: ${options.limit}`);
+
+  let sql = `SELECT id, question, answer, explanation, channel, sub_channel, difficulty, tags, voice_keywords
           FROM questions 
           WHERE voice_suitable = 1 
           AND status = 'active'
-          AND voice_keywords IS NOT NULL
-          ORDER BY channel, sub_channel`,
-    args: []
-  });
+          AND voice_keywords IS NOT NULL`;
+  const sqlArgs = [];
+  if (options.channel) { sql += ' AND channel = ?'; sqlArgs.push(options.channel); }
+  sql += ' ORDER BY channel, sub_channel';
+  if (options.limit) { sql += ' LIMIT ?'; sqlArgs.push(options.limit); }
+
+  const result = await db.execute({ sql, args: sqlArgs });
   
   const questions = result.rows.map(row => ({
     id: row.id,
@@ -135,19 +153,32 @@ async function generateSessionsNode(state) {
 }
 
 /**
- * Node 4: Save to Database
+ * Node 4: Save to Database (or dry-run print)
  */
 async function saveNode(state) {
-  console.log('\n💾 [Save] Persisting to database...');
-  
   const { relationships, sessions } = state;
+
+  if (options.dryRun) {
+    console.log('\n🔍 [Dry Run] Would save the following sessions:');
+    for (const session of sessions) {
+      console.log(`\n  Session: ${session.topic}`);
+      console.log(`    Channel: ${session.channel} | Difficulty: ${session.difficulty}`);
+      console.log(`    Questions (${session.totalQuestions}): ${session.questionIds.join(', ')}`);
+      console.log(`    Description: ${session.description}`);
+    }
+    console.log(`\n  Total relationships: ${relationships.length}`);
+    console.log(`  Total sessions: ${sessions.length}`);
+    return { ...state, savedRelationships: 0, savedSessions: 0 };
+  }
+
+  console.log('\n💾 [Save] Persisting to database...');
   let savedRelationships = 0;
   let savedSessions = 0;
-  
+
   // Clear existing relationships and sessions (rebuild fresh)
   await db.execute('DELETE FROM question_relationships');
   await db.execute('DELETE FROM voice_sessions');
-  
+
   // Save relationships
   for (const rel of relationships) {
     try {
@@ -162,10 +193,31 @@ async function saveNode(state) {
       console.error(`   Failed to save relationship: ${e.message}`);
     }
   }
-  
-  // Save sessions
+
+  // Save sessions with deduplication
   for (const session of sessions) {
     try {
+      // Dedup: check if session with same sorted question_ids already exists
+      const sortedIds = JSON.stringify([...session.questionIds].sort());
+      const existing = await db.execute({
+        sql: `SELECT id FROM voice_sessions WHERE json(question_ids) = json(?)`,
+        args: [sortedIds]
+      });
+      // Fallback: manual check if json() not supported
+      if (existing.rows.length === 0) {
+        const allSessions = await db.execute({ sql: `SELECT id, question_ids FROM voice_sessions`, args: [] });
+        const isDup = allSessions.rows.some(r => {
+          try { return JSON.stringify(JSON.parse(r.question_ids).sort()) === sortedIds; } catch { return false; }
+        });
+        if (isDup) {
+          console.log(`   ⚠️ Duplicate session skipped: ${session.topic}`);
+          continue;
+        }
+      } else if (existing.rows.length > 0) {
+        console.log(`   ⚠️ Duplicate session skipped: ${session.topic}`);
+        continue;
+      }
+
       await db.execute({
         sql: `INSERT INTO voice_sessions 
               (id, topic, description, channel, difficulty, question_ids, total_questions, estimated_minutes, last_updated)
@@ -183,8 +235,7 @@ async function saveNode(state) {
         ]
       });
       savedSessions++;
-      
-      // Log to ledger
+
       await logAction({
         botName: BOT_NAME,
         action: 'create',
@@ -197,10 +248,10 @@ async function saveNode(state) {
       console.error(`   Failed to save session: ${e.message}`);
     }
   }
-  
+
   console.log(`   Saved ${savedRelationships} relationships`);
   console.log(`   Saved ${savedSessions} sessions`);
-  
+
   return { ...state, savedRelationships, savedSessions };
 }
 
@@ -211,7 +262,6 @@ async function saveNode(state) {
 async function findRelationships(batch, allQuestions) {
   const relationships = [];
   
-  // Create a summary of all questions for context
   const questionSummaries = batch.map(q => ({
     id: q.id,
     question: q.question.substring(0, 100),
@@ -245,7 +295,6 @@ Rules:
     
     if (Array.isArray(result)) {
       for (const rel of result) {
-        // Validate IDs exist
         const sourceExists = batch.some(q => q.id === rel.source);
         const targetExists = batch.some(q => q.id === rel.target) || 
                             allQuestions.some(q => q.id === rel.target);
@@ -261,7 +310,29 @@ Rules:
       }
     }
   } catch (e) {
-    console.error(`   Error finding relationships: ${e.message}`);
+    if (e.isRefusal) {
+      console.log(`   ⚠️ AI refused — falling back to keyword-overlap heuristic`);
+    } else {
+      console.error(`   Error finding relationships: ${e.message}, falling back to keyword-overlap heuristic`);
+    }
+    // Keyword-overlap fallback
+    for (let i = 0; i < batch.length; i++) {
+      for (let j = i + 1; j < batch.length; j++) {
+        const a = batch[i], b = batch[j];
+        const aKw = new Set(a.voiceKeywords.map(k => k.toLowerCase()));
+        const bKw = new Set(b.voiceKeywords.map(k => k.toLowerCase()));
+        const overlap = [...aKw].filter(k => bKw.has(k)).length;
+        const union = new Set([...aKw, ...bKw]).size;
+        if (union > 0 && overlap / union >= 0.3) {
+          relationships.push({
+            sourceId: a.id,
+            targetId: b.id,
+            type: 'related',
+            strength: Math.round(60 + (overlap / union) * 40)
+          });
+        }
+      }
+    }
   }
   
   return relationships;
@@ -421,6 +492,8 @@ Return ONLY valid JSON (no markdown):
 
 async function main() {
   console.log('=== 🏗️ Session Builder Bot (LangGraph) ===\n');
+  console.log('Options:', options);
+  if (options.dryRun) console.log('🔍 DRY RUN — no DB writes\n');
   
   await initBotTables();
   

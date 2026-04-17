@@ -27,6 +27,11 @@ import { startRun, completeRun, failRun, updateRunStats } from './shared/runs.js
 const BOT_NAME = 'unified-content';
 const db = getDb();
 
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection:', err.message);
+  process.exitCode = 1;
+});
+
 // ============================================
 // CONTENT TYPE CONFIGURATIONS
 // ============================================
@@ -144,34 +149,41 @@ CRITICAL REQUIREMENTS:
 - Make incorrect options equally detailed and plausible
 - NEVER use "All of the above", "None of the above", or "Both A and B" style options`;
 
-  const response = await runWithRetries(prompt);
-  const result = parseJson(response);
-  
-  if (!result || !result.question) {
-    return { success: false, error: 'Failed to generate test question' };
-  }
-  
-  // Validate option length balance
-  if (result.options && result.options.length >= 4) {
-    const lengths = result.options.map(o => o.text?.length || 0);
-    const avgLength = lengths.reduce((a, b) => a + b, 0) / lengths.length;
-    const correctOpt = result.options.find(o => o.isCorrect);
-    const correctLength = correctOpt?.text?.length || 0;
+  try {
+    const response = await runWithRetries(prompt);
+    const result = parseJson(response);
     
-    // Warn if correct answer is significantly longer
-    if (correctLength > avgLength * 1.3) {
-      console.log(`   ⚠️ Warning: Correct answer is ${Math.round((correctLength / avgLength - 1) * 100)}% longer than average`);
+    if (!result || !result.question) {
+      return { success: false, error: 'Failed to generate test question' };
     }
+    
+    // Validate option length balance
+    if (result.options && result.options.length >= 4) {
+      const lengths = result.options.map(o => o.text?.length || 0);
+      const avgLength = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+      const correctOpt = result.options.find(o => o.isCorrect);
+      const correctLength = correctOpt?.text?.length || 0;
+      
+      if (correctLength > avgLength * 1.3) {
+        console.log(`   ⚠️ Warning: Correct answer is ${Math.round((correctLength / avgLength - 1) * 100)}% longer than average`);
+      }
+    }
+    
+    return {
+      success: true,
+      question: {
+        id: `test-${options.channel}-${Date.now()}`,
+        channelId: options.channel,
+        ...result
+      }
+    };
+  } catch (err) {
+    if (err.isRefusal) {
+      console.log(`⚠️ AI refused — skipping`);
+      return { success: false, error: 'AI refusal' };
+    }
+    throw err;
   }
-  
-  return {
-    success: true,
-    question: {
-      id: `test-${options.channel}-${Date.now()}`,
-      channelId: options.channel,
-      ...result
-    }
-  };
 }
 
 async function generateVoiceSessions() {
@@ -337,67 +349,119 @@ async function main() {
   const run = await startRun(BOT_NAME);
   const stats = { processed: 0, created: 0, updated: 0, deleted: 0 };
   
+  // Parse arguments
+  const args = process.argv.slice(2);
+  const getArg = (name) => {
+    const arg = args.find(a => a.startsWith(`--${name}=`));
+    return arg ? arg.split('=')[1] : null;
+  };
+  const dryRun = args.includes('--dry-run');
+  
+  const contentType = getArg('type') || 'question';
+  const rawCount = parseInt(getArg('count') || '1');
+  const count = Math.min(rawCount, 20); // cap at 20
+  if (rawCount > 20) console.log(`⚠️ count capped at 20 (requested ${rawCount})`);
+  const channel = getArg('channel');
+  const category = getArg('category');
+  const certification = getArg('cert');
+  const difficulty = getArg('difficulty');
+  const topic = getArg('topic');
+
+  if (dryRun) console.log('🔍 DRY RUN — no DB writes\n');
+
+  const options = { channel, category, certification, difficulty, topic, count, dryRun };
+
+  // Summary tracking
+  const summaryRows = [];
+
   try {
-    // Parse arguments
-    const args = process.argv.slice(2);
-    const getArg = (name) => {
-      const arg = args.find(a => a.startsWith(`--${name}=`));
-      return arg ? arg.split('=')[1] : null;
-    };
-    
-    const contentType = getArg('type') || 'question';
-    const count = parseInt(getArg('count') || '1');
-    const channel = getArg('channel');
-    const category = getArg('category');
-    const certification = getArg('cert');
-    const difficulty = getArg('difficulty');
-    const topic = getArg('topic');
-    
-    const options = {
-      channel,
-      category,
-      certification,
-      difficulty,
-      topic,
-      count
-    };
-    
     let results;
-    
+
     if (contentType === 'all') {
-      // Generate all content types
-      results = await runBatchGeneration({
-        types: ['question', 'challenge', 'certification', 'test'],
-        count,
-        ...options
-      });
-    } else {
-      // Generate specific content type
-      for (let i = 0; i < count; i++) {
-        const result = await runUnifiedPipeline(contentType, options);
-        stats.processed++;
-        if (result.success) stats.created++;
-        
-        if (i < count - 1) {
-          await new Promise(r => setTimeout(r, 2000));
+      const types = ['question', 'challenge', 'certification', 'test'];
+      results = { success: 0, failed: 0, byType: {} };
+
+      console.log(`\n${'═'.repeat(60)}`);
+      console.log('🔄 BATCH CONTENT GENERATION');
+      console.log(`${'═'.repeat(60)}`);
+      console.log(`Types: ${types.join(', ')}`);
+      console.log(`Count per type: ${count}`);
+
+      for (const type of types) {
+        results.byType[type] = { success: 0, failed: 0 };
+        try {
+          for (let i = 0; i < count; i++) {
+            const typeOptions = { ...options };
+            if (type === 'question') {
+              const channels = CONTENT_TYPES.question.channels;
+              typeOptions.channel = typeOptions.channel || channels[Math.floor(Math.random() * channels.length)];
+            } else if (type === 'challenge') {
+              const categories = CONTENT_TYPES.challenge.categories;
+              typeOptions.category = typeOptions.category || categories[Math.floor(Math.random() * categories.length)];
+            } else if (type === 'certification') {
+              const certs = CONTENT_TYPES.certification.certifications;
+              typeOptions.certification = typeOptions.certification || certs[Math.floor(Math.random() * certs.length)];
+            }
+
+            if (dryRun) {
+              console.log(`[dry-run] Would generate ${type} with options:`, typeOptions);
+              results.byType[type].success++;
+              results.success++;
+            } else {
+              const result = await runUnifiedPipeline(type, typeOptions);
+              if (result.success) { results.success++; results.byType[type].success++; }
+              else { results.failed++; results.byType[type].failed++; }
+              if (i < count - 1) await new Promise(r => setTimeout(r, 2000));
+            }
+          }
+          summaryRows.push({ type, count: results.byType[type].success, status: '✅ ok' });
+        } catch (error) {
+          console.error(`Error generating ${type}: ${error.message}`);
+          results.failed += count;
+          results.byType[type].failed += count;
+          summaryRows.push({ type, count: results.byType[type].success, status: `❌ ${error.message.substring(0, 40)}` });
         }
       }
-      results = { success: stats.created, failed: stats.processed - stats.created };
+    } else {
+      let typeSuccess = 0, typeFailed = 0;
+      try {
+        for (let i = 0; i < count; i++) {
+          if (dryRun) {
+            console.log(`[dry-run] Would generate ${contentType} with options:`, options);
+            typeSuccess++;
+            stats.processed++;
+            stats.created++;
+          } else {
+            const result = await runUnifiedPipeline(contentType, options);
+            stats.processed++;
+            if (result.success) { stats.created++; typeSuccess++; }
+            else { typeFailed++; }
+            if (i < count - 1) await new Promise(r => setTimeout(r, 2000));
+          }
+        }
+        summaryRows.push({ type: contentType, count: typeSuccess, status: '✅ ok' });
+      } catch (error) {
+        console.error(`Error generating ${contentType}: ${error.message}`);
+        typeFailed += count - typeSuccess;
+        summaryRows.push({ type: contentType, count: typeSuccess, status: `❌ ${error.message.substring(0, 40)}` });
+      }
+      results = { success: typeSuccess, failed: typeFailed };
     }
-    
+
     await updateRunStats(run.id, stats);
     await completeRun(run.id, stats, { results });
-    
+
     console.log('\n=== Summary ===');
     console.log(`Processed: ${stats.processed}`);
     console.log(`Created: ${stats.created}`);
-    if (results.byType) {
-      console.log('By Type:');
-      for (const [type, typeStats] of Object.entries(results.byType)) {
-        console.log(`  ${type}: ${typeStats.success} success, ${typeStats.failed} failed`);
-      }
+
+    // Summary table
+    console.log('\n| Type | Count | Status |');
+    console.log('|------|-------|--------|');
+    for (const row of summaryRows) {
+      console.log(`| ${row.type} | ${row.count} | ${row.status} |`);
     }
-    
+
   } catch (error) {
     console.error('Fatal error:', error);
     await failRun(run.id, error);
