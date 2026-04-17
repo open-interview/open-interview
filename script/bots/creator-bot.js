@@ -20,7 +20,7 @@ import { getDb, initBotTables } from './shared/db.js';
 import { logAction } from './shared/ledger.js';
 import { addToQueue } from './shared/queue.js';
 import { startRun, completeRun, failRun, updateRunStats } from './shared/runs.js';
-import { runWithRetries, parseJson, generateUnifiedId, isDuplicateUnified } from '../utils.js';
+import { runWithRetries, parseJson, generateUnifiedId, isDuplicateUnified, getChannelQuestionCounts, getAllChannelsFromDb } from '../utils.js';
 import ragService from '../ai/services/rag-enhanced-generation.js';
 import { checkDuplicateBeforeCreate } from '../ai/services/duplicate-prevention.js';
 import { validateBeforeInsert, sanitizeQuestion } from './shared/validation.js';
@@ -723,23 +723,24 @@ async function main() {
     const count = parseInt(process.env.COUNT || '1');
     
     if (!input) {
-      // Generate random topics if no input
-      const topics = [
-        'microservices communication patterns',
-        'database indexing strategies',
-        'kubernetes pod scheduling',
-        'react state management',
-        'API rate limiting',
-        'distributed caching',
-        'CI/CD pipeline design',
-        'load balancing algorithms'
-      ];
-      
-      for (let i = 0; i < Math.min(count, 5); i++) {
-        const topic = topics[Math.floor(Math.random() * topics.length)];
-        console.log(`\n--- Processing: "${topic}" ---`);
+      // Select channels with fewest questions to generate topics for
+      const allChannels = await getAllChannelsFromDb();
+      const channelCounts = await getChannelQuestionCounts();
+
+      // Sort channels ascending by question count, pick the least-populated ones
+      const sortedChannels = [...allChannels]
+        .sort((a, b) => (channelCounts[a] || 0) - (channelCounts[b] || 0));
+
+      const targetChannels = sortedChannels.slice(0, Math.min(count, 5));
+      console.log('\n📊 Targeting least-populated channels:');
+      targetChannels.forEach(ch => console.log(`   ${ch}: ${channelCounts[ch] || 0} questions`));
+
+      for (let i = 0; i < targetChannels.length; i++) {
+        const targetChannel = targetChannels[i];
+        const topic = targetChannel.replace(/-/g, ' ');
+        console.log(`\n--- Processing: "${topic}" (channel: ${targetChannel}) ---`);
         
-        const result = await runPipeline(topic, { type: inputType, channel });
+        const result = await runPipeline(topic, { type: inputType, channel: channel || targetChannel });
         stats.processed++;
         
         if (result.success) {
@@ -750,7 +751,7 @@ async function main() {
         await updateRunStats(run.id, stats);
         
         // Rate limiting
-        if (i < count - 1) {
+        if (i < targetChannels.length - 1) {
           await new Promise(r => setTimeout(r, 2000));
         }
       }
