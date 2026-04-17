@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
+import { PageHeader } from '@/components/ui/page';
 import { SEOHead } from '../components/SEOHead';
 import {
   Bell, Check, Trash2, CheckCheck, Info, AlertCircle, 
@@ -127,8 +128,11 @@ export default function Notifications() {
         description="View your notifications and alerts"
       />
       
-      <AppLayout title="Notifications" showBackOnMobile>
-        <div className="max-w-4xl mx-auto pb-8">
+      <AppLayout>
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          <PageHeader title="Notifications" subtitle="Your alerts and updates" />
+          <div className="max-w-4xl mx-auto">
           {/* Header Actions */}
           {notifications.length > 0 && (
             <motion.div
@@ -233,6 +237,8 @@ export default function Notifications() {
                 ))
               )}
             </AnimatePresence>
+          </div>
+          </div>
           </div>
         </div>
       </AppLayout>

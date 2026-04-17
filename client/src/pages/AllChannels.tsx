@@ -11,6 +11,7 @@ import { useUserPreferences } from '../context/UserPreferencesContext';
 import { useChannelStats } from '../hooks/use-stats';
 import { useProgress } from '../hooks/use-progress';
 import { SEOHead } from '../components/SEOHead';
+import { PageHeader, SearchBar, FilterPills } from '@/components/ui/page';
 import {
   Search, Check, Plus, Sparkles, TrendingUp, ChevronRight, X,
   Box, Terminal, Layout, Server, Database, Infinity, Activity, Cloud, Layers,
@@ -181,12 +182,12 @@ function ChannelCard({ channel, index, questionCount, navigate, isSubscribed, to
   );
 }
 
-export default function AllChannelsGenZ() {
+export default function AllChannels() {
   const [, navigate] = useLocation();
   const { isSubscribed, toggleSubscription, preferences } = useUserPreferences();
   const { stats } = useChannelStats();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>('');
   const [sortKey, setSortKey] = useState<SortKey>('az');
   const [progressFilter, setProgressFilter] = useState<'all' | 'not-started' | 'in-progress' | 'completed'>('all');
   const [subscribedOnly, setSubscribedOnly] = useState(true);
@@ -232,47 +233,33 @@ export default function AllChannelsGenZ() {
         canonical="https://open-interview.github.io/channels"
       />
       <AppLayout>
-        <div className="min-h-screen bg-background pb-24">
-          <div className="px-4 pt-6 pb-4 lg:px-8 flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Channels</h1>
-              <p className="text-sm text-muted-foreground mt-1">{channels.length} {subscribedOnly && hasSubscriptions ? 'subscribed' : ''} channels</p>
-            </div>
-            {hasSubscriptions && (
-              <button
-                onClick={() => setSubscribedOnly(s => !s)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                  subscribedOnly
-                    ? 'bg-[var(--color-accent-violet)]/15 border-[var(--color-accent-violet)] text-[var(--color-accent-violet-light)]'
-                    : 'bg-muted/50 border-border text-muted-foreground'
-                }`}
-              >
-                {subscribedOnly ? '★ My Topics' : 'All Topics'}
-              </button>
-            )}
-          </div>
-          <div className="max-w-7xl mx-auto px-4 md:px-6 pb-8 md:pb-12">
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+
+            {/* Page Header */}
+            <PageHeader title="Channels" subtitle={
+              <div className="flex items-center justify-center gap-3">
+                <p className="text-muted-foreground">{channels.length} {subscribedOnly && hasSubscriptions ? 'subscribed' : ''} channels</p>
+                {hasSubscriptions && (
+                  <button
+                    onClick={() => setSubscribedOnly(s => !s)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                      subscribedOnly
+                        ? 'bg-[var(--color-accent-violet)]/15 border-[var(--color-accent-violet)] text-[var(--color-accent-violet-light)]'
+                        : 'bg-muted/50 border-border text-muted-foreground'
+                    }`}
+                  >
+                    {subscribedOnly ? '★ My Topics' : 'All Topics'}
+                  </button>
+                )}
+              </div>
+            } />
 
             {/* Filter Bar */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-6 space-y-3">
               {/* Search + Sort + Progress filter */}
               <div className="flex gap-3 flex-wrap">
-                <div className="relative flex-1 min-w-48">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-tertiary)' }} />
-                  <input
-                    type="text"
-                    placeholder="Search channels…"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-8 py-2.5 rounded-xl text-sm focus:outline-none transition-all"
-                    style={{ background: 'var(--surface-3)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}
-                  />
-                  {searchQuery && (
-                    <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2">
-                      <X className="w-3.5 h-3.5" style={{ color: 'var(--text-tertiary)' }} />
-                    </button>
-                  )}
-                </div>
+                <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search channels…" />
                 <select
                   value={progressFilter}
                   onChange={(e) => setProgressFilter(e.target.value as typeof progressFilter)}
@@ -296,21 +283,7 @@ export default function AllChannelsGenZ() {
                 </select>
               </div>
 
-              {/* Category tabs */}
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                {CATEGORY_TABS.map(({ id, label }) => (
-                  <button
-                    key={id}
-                    onClick={() => setSelectedCategory(id)}
-                    className="px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all"
-                    style={selectedCategory === id
-                      ? { background: 'var(--gradient-primary)', color: '#fff' }
-                      : { background: 'var(--surface-3)', color: 'var(--text-secondary)', border: '1px solid var(--color-border)' }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+              <FilterPills options={[{id:'',label:'All'}, ...categories.map(c=>({id:c.id,label:c.name}))]} active={selectedCategory||''} onChange={id => setSelectedCategory(id||null)} />
             </motion.div>
 
             {/* Grid — grouped by category when no filter active */}

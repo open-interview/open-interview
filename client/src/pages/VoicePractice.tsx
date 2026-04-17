@@ -1,6 +1,6 @@
 /**
- * Voice Practice GenZ - Gen Z themed voice practice interface
- * Pure black background, neon accents, glassmorphism
+ * Voice Practice
+ 
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -10,11 +10,12 @@ import {
   ArrowLeft, Eye, EyeOff, Volume2, Trophy, RotateCcw, 
   ChevronRight, Sparkles, BookOpen
 } from 'lucide-react';
+import { PageHeader, PageLoader } from '@/components/ui/page';
 import { SEOHead } from '../components/SEOHead';
 import { AppLayout } from '../components/layout/AppLayout';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { ChannelService } from '../services/api.service';
-import { Card, Button, Microphone, Progress } from '../components/genz';
+import { Card, Button, Microphone, Progress } from '../components/practice-ui';
 import type { Question } from '../types';
 
 const isSpeechSupported = typeof window !== 'undefined' && 
@@ -54,7 +55,7 @@ function calculateFeedback(transcript: string, targetAnswer: string, duration: n
   return { wordsSpoken, targetWords, duration, message };
 }
 
-export default function VoicePracticeGenZ() {
+export default function VoicePractice() {
   const [, setLocation] = useLocation();
   const { getSubscribedChannels } = useUserPreferences();
   
@@ -254,47 +255,59 @@ export default function VoicePracticeGenZ() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#00ff88]/20 flex items-center justify-center mx-auto mb-4">
-            <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+      <AppLayout>
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <PageHeader title="Voice Practice" subtitle="Speak your answers out loud and get instant feedback" />
+            <PageLoader message="Loading questions..." />
           </div>
-          <p className="text-muted-foreground">Loading questions...</p>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
   if (questions.length === 0) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <div className="w-20 h-20 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-6">
-            <BookOpen className="w-10 h-10 text-muted-foreground" />
+      <AppLayout>
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <PageHeader title="Voice Practice" subtitle="Speak your answers out loud and get instant feedback" />
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center max-w-md">
+                <div className="w-20 h-20 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-6">
+                  <BookOpen className="w-10 h-10 text-muted-foreground" />
+                </div>
+                <h2 className="text-xl font-bold mb-2">No Questions Available</h2>
+                <p className="text-muted-foreground mb-6">Subscribe to channels to access practice questions</p>
+                <Button onClick={() => setLocation('/channels')}>Browse Channels</Button>
+              </div>
+            </div>
           </div>
-          <h2 className="text-xl font-bold text-foreground mb-2">No Questions Available</h2>
-          <p className="text-muted-foreground mb-6">Subscribe to channels to access practice questions</p>
-          <Button onClick={() => setLocation('/channels')}>
-            Browse Channels
-          </Button>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
   if (!isSpeechSupported) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="max-w-md text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-3">Browser Not Supported</h1>
-          <p className="text-muted-foreground mb-6">
-            Voice practice requires the Web Speech API. Please use Chrome, Edge, or Safari.
-          </p>
-          <Button onClick={() => setLocation('/')}>
-            Go Home
-          </Button>
+      <AppLayout>
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <PageHeader title="Voice Practice" subtitle="Speak your answers out loud and get instant feedback" />
+            <div className="flex items-center justify-center py-20">
+              <div className="max-w-md text-center">
+                <h1 className="text-2xl font-bold text-foreground mb-3">Browser Not Supported</h1>
+                <p className="text-muted-foreground mb-6">
+                  Voice practice requires the Web Speech API. Please use Chrome, Edge, or Safari.
+                </p>
+                <Button onClick={() => setLocation('/')}>
+                  Go Home
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
@@ -344,7 +357,9 @@ export default function VoicePracticeGenZ() {
           </header>
 
           {/* Main Content */}
-          <main className="max-w-4xl mx-auto px-4 py-6">
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            {/* Page Header */}
+            <PageHeader title="Voice Practice" subtitle="Speak your answers out loud and get instant feedback" />
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentQuestion.id}

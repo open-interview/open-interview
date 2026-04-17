@@ -30,7 +30,7 @@ function useIsNestedRoute() {
 /** Compact inline theme toggle for the header */
 function InlineThemeToggle() {
   const { theme, toggleTheme } = useTheme();
-  const isDark = theme === 'genz-dark';
+  const isDark = theme === 'dark';
   return (
     <button
       onClick={toggleTheme}

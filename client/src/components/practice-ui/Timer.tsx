@@ -1,18 +1,18 @@
 /**
- * GenZ Timer - Countdown timer with neon glow
+ * Timer - Countdown timer with neon glow
  */
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Clock } from 'lucide-react';
 
-interface GenZTimerProps {
+interface TimerProps {
   duration: number; // in seconds
   onComplete?: () => void;
   showProgress?: boolean;
 }
 
-export function Timer({ duration, onComplete, showProgress = true }: GenZTimerProps) {
+export function Timer({ duration, onComplete, showProgress = true }: TimerProps) {
   const [timeLeft, setTimeLeft] = useState(duration);
   const [isRunning, setIsRunning] = useState(true);
 

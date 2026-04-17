@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { AppLayout } from '../components/layout/AppLayout';
 import { useLocation, useParams } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -14,7 +15,7 @@ import { SEOHead } from '../components/SEOHead';
 import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
 import { MobileBottomNav } from '../components/layout/UnifiedNav';
 import { MobileHeader } from '../components/layout/MobileHeader';
-import { Card, Button } from '../components/genz';
+import { Card, Button } from '../components/practice-ui';
 import {
   Test, TestQuestion, getTestForChannel, getSessionQuestions,
   calculateScore, saveTestAttempt, TestAttempt, getTestProgress,
@@ -272,13 +273,24 @@ export default function TestSessionPage() {
   // ── Loading ──
   if (sessionState === 'loading' || !test) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-          <p className="text-muted-foreground text-sm">{!test ? 'No test available for this channel yet' : 'Loading...'}</p>
-          <Button onClick={() => setLocation('/')} className="mt-4">Go home</Button>
+      <AppLayout>
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <div className="text-center mb-10">
+              <h1 className="text-5xl md:text-6xl font-black mb-3">
+                <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">Test Session</span>
+              </h1>
+            </div>
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center">
+                <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+                <p className="text-muted-foreground text-sm">{!test ? 'No test available for this channel yet' : 'Loading...'}</p>
+                <Button onClick={() => setLocation('/')} className="mt-4">Go home</Button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 

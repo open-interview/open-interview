@@ -4,7 +4,7 @@
  */
 
 /**
- * GenZ Button Component - Neon gradient buttons
+ * Button Component - Neon gradient buttons
  * Supports reduced motion for accessibility
  */
 
@@ -12,7 +12,7 @@ import { motion } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import { useReducedMotion } from '../../hooks/use-reduced-motion';
 
-interface GenZButtonProps {
+interface ButtonProps {
   children: React.ReactNode;
   onClick?: () => void;
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
@@ -30,7 +30,7 @@ export function Button({
   disabled = false,
   className,
   type = 'button',
-}: GenZButtonProps) {
+}: ButtonProps) {
   const prefersReducedMotion = useReducedMotion();
   
   const variants = {

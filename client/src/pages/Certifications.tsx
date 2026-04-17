@@ -12,10 +12,11 @@ import { SEOHead } from '../components/SEOHead';
 import {
   Search, Award, Clock, ChevronRight, ChevronDown, Check, Plus,
   Cloud, Shield, Database, Brain, Code, Users, Box, Terminal,
-  Server, Cpu, Layers, Network, GitBranch, Loader2, Target,
+  Server, Cpu, Layers, Network, GitBranch, Target,
   BookOpen, BarChart2, X, Settings2
 } from 'lucide-react';
 import { useUserPreferences } from '../context/UserPreferencesContext';
+import { PageHeader, SearchBar, FilterPills, PageLoader } from '@/components/ui/page';
 
 interface Certification {
   id: string;
@@ -390,8 +391,11 @@ export default function CertificationsPage() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <Loader2 className="w-10 h-10 text-primary animate-spin" />
+        <div className="min-h-screen bg-background">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <PageHeader title="Certifications" subtitle="Get certified, get hired" />
+            <PageLoader message="Loading certifications..." />
+          </div>
         </div>
       </AppLayout>
     );
@@ -405,12 +409,11 @@ export default function CertificationsPage() {
         canonical="https://open-interview.github.io/certifications"
       />
       <AppLayout>
-        <div className="min-h-screen bg-background">
-          <div className="px-4 pt-6 pb-4 lg:px-8">
-            <h1 className="text-2xl font-bold text-foreground">Certifications</h1>
-            <p className="text-sm text-muted-foreground mt-1">{certifications.length} certifications to master</p>
-          </div>
-          <div className="max-w-7xl mx-auto px-4 md:px-6 pb-24 lg:pb-8">
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+
+            {/* Page Header */}
+            <PageHeader title="Certifications" subtitle="Get certified, get hired" />
 
             {/* Stats */}
             {startedCerts.size > 0 && (
@@ -431,16 +434,12 @@ export default function CertificationsPage() {
             {/* Search */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="max-w-2xl mx-auto mb-4">
               <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    placeholder="Search certifications..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:border-primary transition-colors"
-                  />
-                </div>
+                <SearchBar
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="Search certifications..."
+                  className="flex-1"
+                />
                 <button
                   onClick={() => setSubscribedOnly(s => !s)}
                   className={`px-3 py-2.5 rounded-lg text-xs font-semibold border transition-all whitespace-nowrap ${
@@ -456,25 +455,11 @@ export default function CertificationsPage() {
 
             {/* Category filters */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="flex flex-wrap gap-2 justify-center mb-8">
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${
-                  !selectedCategory ? 'bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] text-white' : 'bg-muted/50 border border-border hover:bg-muted text-muted-foreground'
-                }`}
-              >
-                All
-              </button>
-              {categories.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-4 py-1.5 rounded-full text-sm font-semibold capitalize transition-all ${
-                    selectedCategory === cat ? 'bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] text-white' : 'bg-muted/50 border border-border hover:bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+              <FilterPills
+                options={[{ id: '', label: 'All' }, ...categories.map(cat => ({ id: cat, label: cat }))]}
+                active={selectedCategory ?? ''}
+                onChange={id => setSelectedCategory(id || null)}
+              />
             </motion.div>
 
             {/* Provider sections */}

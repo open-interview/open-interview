@@ -1,11 +1,11 @@
 /**
- * GenZ Microphone Button - Recording button with animations
+ * Microphone Button - Recording button with animations
  */
 
 import { motion } from 'framer-motion';
 import { Mic, Square } from 'lucide-react';
 
-interface GenZMicrophoneProps {
+interface MicrophoneProps {
   isRecording: boolean;
   onStart: () => void;
   onStop: () => void;
@@ -17,7 +17,7 @@ export function Microphone({
   onStart,
   onStop,
   disabled = false,
-}: GenZMicrophoneProps) {
+}: MicrophoneProps) {
   return (
     <div className="relative flex items-center justify-center">
       {/* Pulse rings when recording */}

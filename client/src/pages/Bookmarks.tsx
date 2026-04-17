@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
 import { SEOHead } from '../components/SEOHead';
 import { EmptyState, Button } from '../components/unified';
+import { PageHeader, SearchBar } from '@/components/ui/page';
 import { getAllQuestions } from '../lib/questions-loader';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { ProgressStorage } from '../services/storage.service';
@@ -123,36 +124,17 @@ export default function Bookmarks() {
         description="View and manage your bookmarked interview questions"
       />
       <AppLayout>
-        <div className="min-h-screen bg-background pb-24 lg:pb-8">
-          <div className="px-4 pt-6 pb-4 lg:px-8">
-            <h1 className="text-2xl font-bold text-foreground">Bookmarks</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {bookmarkedQuestions.length} saved question{bookmarkedQuestions.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-          <div className="max-w-3xl mx-auto px-4">
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          <PageHeader title="Bookmarks" subtitle={`${bookmarkedQuestions.length} saved question${bookmarkedQuestions.length !== 1 ? 's' : ''}`} />
+          <div className="max-w-3xl mx-auto">
 
           {/* Filter Bar */}
           {bookmarkedQuestions.length > 0 && (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
               className="flex flex-wrap gap-2 mb-5">
               {/* Search */}
-              <div className="relative flex-1 min-w-[180px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--text-tertiary)' }} />
-                <input
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Search bookmarks…"
-                  className="w-full pl-8 pr-3 py-2 text-sm rounded-lg outline-none focus:ring-2"
-                  style={{
-                    background: 'var(--surface-2)',
-                    border: '1px solid var(--color-border)',
-                    color: 'var(--text-primary)',
-                    // @ts-ignore
-                    '--tw-ring-color': 'rgba(99,102,241,0.4)',
-                  }}
-                />
-              </div>
+              <SearchBar value={search} onChange={setSearch} placeholder="Search bookmarks…" />
 
               {/* Topic filter */}
               <select value={filterChannel} onChange={e => setFilterChannel(e.target.value)}
@@ -302,6 +284,7 @@ export default function Bookmarks() {
             </div>
           )}
         </div>
+          </div>
         </div>
       </AppLayout>
     </>

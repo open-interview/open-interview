@@ -1,5 +1,5 @@
 /**
- * GenZ Progress Bar - Neon progress indicator
+ * Progress Bar - Neon progress indicator
  * Supports reduced motion for accessibility
  */
 
@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import { useReducedMotion } from '../../hooks/use-reduced-motion';
 
-interface GenZProgressProps {
+interface ProgressProps {
   value: number;
   max: number;
   color?: 'green' | 'blue' | 'pink' | 'gold';
@@ -21,7 +21,7 @@ export function Progress({
   color = 'green',
   showLabel = false,
   className,
-}: GenZProgressProps) {
+}: ProgressProps) {
   const prefersReducedMotion = useReducedMotion();
   const percentage = Math.min((value / max) * 100, 100);
 

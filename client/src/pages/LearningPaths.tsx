@@ -1,5 +1,5 @@
 /**
- * Gen Z Learning Paths - Choose Your Career Journey
+ * Learning Paths - Choose Your Career Journey
  * Create custom paths or select curated ones
  */
 
@@ -60,7 +60,7 @@ function mapPathFromJson(path: any) {
   };
 }
 
-export default function LearningPathsGenZ() {
+export default function LearningPaths() {
   const [, setLocation] = useLocation();
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [showCustom, setShowCustom] = useState(false);
@@ -125,7 +125,7 @@ export default function LearningPathsGenZ() {
         localStorage.setItem('activeLearningPaths', JSON.stringify(currentPaths));
         
         // Don't save curated paths to customLearningPath - that's only for custom paths
-        // The GenZHomePage will find curated paths by their ID in the curatedPaths array
+        // The home page will find curated paths by their ID in the curatedPaths array
       } catch (e) {
         console.error('Failed to save path:', e);
       }

@@ -34,7 +34,6 @@ const mainNavItems: NavItem[] = [
   { id: 'home',     label: 'Home',     icon: Home,          path: '/' },
   { id: 'learn',    label: 'Learn',    icon: GraduationCap, path: '/channels' },
   { id: 'practice', label: 'Practice', icon: Mic,           path: '/voice-interview', highlight: true },
-  { id: 'progress', label: 'Progress', icon: BarChart3,     path: '/stats' },
   { id: 'profile',  label: 'Profile',  icon: User,          path: '/profile' },
 ];
 
@@ -54,18 +53,17 @@ const practiceSubNav: NavItem[] = [
 ];
 
 const progressSubNav: NavItem[] = [
-  { id: 'stats',     label: 'Statistics', icon: BarChart3, path: '/stats',     description: 'Your progress',   shortcut: 'S' },
-  { id: 'badges',    label: 'Badges',     icon: Trophy,    path: '/badges',    description: 'Achievements' },
-  { id: 'bookmarks', label: 'Bookmarks',  icon: Bookmark,  path: '/bookmarks', description: 'Saved questions' },
-  { id: 'about',     label: 'About',      icon: Info,      path: '/about',     description: 'About Open-Interview' },
+  { id: 'profile',   label: 'Profile & Stats', icon: User,      path: '/profile',   description: 'Your profile & stats' },
+  { id: 'badges',    label: 'Badges',          icon: Trophy,    path: '/badges',    description: 'Achievements' },
+  { id: 'bookmarks', label: 'Bookmarks',       icon: Bookmark,  path: '/bookmarks', description: 'Saved questions' },
+  { id: 'about',     label: 'About',           icon: Info,      path: '/about',     description: 'About Open-Interview' },
 ];
 
 function getActiveSection(location: string): string {
   if (location === '/') return 'home';
   if (location === '/channels' || location.startsWith('/channel/') || location === '/certifications' || location.startsWith('/certification/') || location === '/my-path' || location === '/learning-paths' || location.startsWith('/learning-path/')) return 'learn';
   if (location.startsWith('/voice') || location.startsWith('/test') || location.startsWith('/coding') || location === '/review' || location === '/training' || location === '/flashcards') return 'practice';
-  if (location === '/stats' || location === '/badges' || location === '/bookmarks' || location === '/about') return 'progress';
-  if (location === '/profile') return 'profile';
+  if (location === '/profile' || location === '/badges' || location === '/bookmarks' || location === '/about') return 'progress';
   return 'home';
 }
 
@@ -482,12 +480,12 @@ export function DesktopSidebar({ onSearchClick }: DesktopSidebarProps) {
           )}
           aria-label="Toggle theme"
         >
-          {theme === 'genz-dark'
+          {theme === 'dark'
             ? <Sun className="w-4 h-4 text-amber-400 shrink-0" />
             : <Moon className="w-4 h-4 shrink-0" />
           }
           {!isCollapsed && (
-            <span className="text-sm">{theme === 'genz-dark' ? 'Light mode' : 'Dark mode'}</span>
+            <span className="text-sm">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
           )}
         </button>
         <button

@@ -1,5 +1,5 @@
 /**
- * Gen Z SRS Review - Spaced Repetition Made Addictive
+ * SRS Review - Spaced Repetition
  * Swipe cards, earn XP, level up your memory
  */
 
@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
+import { PageHeader, PageLoader } from '@/components/ui/page';
 import { SEOHead } from '../components/SEOHead';
 import { useCredits } from '../context/CreditsContext';
 import { EnhancedMermaid } from '../components/EnhancedMermaid';
@@ -246,7 +247,7 @@ function preprocessMarkdown(text: string): string {
   return processed.trim();
 }
 
-export default function ReviewSessionGenZ() {
+export default function ReviewSession() {
   const [, setLocation] = useLocation();
   const { onSRSReview } = useCredits();
   const [cards, setCards] = useState<any[]>([]);
@@ -302,7 +303,7 @@ export default function ReviewSessionGenZ() {
       setCurrentIndex(prev => prev + 1);
     } else {
       // Session complete
-      setLocation('/stats');
+      setLocation('/profile');
     }
   };
 
@@ -329,8 +330,11 @@ export default function ReviewSessionGenZ() {
   if (loadingCards) {
     return (
       <AppLayout>
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-muted-foreground animate-pulse">Loading review cards…</div>
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <PageHeader title="SRS Review" subtitle="Spaced repetition to lock in what you've learned" />
+            <PageLoader message="Loading review cards..." />
+          </div>
         </div>
       </AppLayout>
     );
@@ -339,17 +343,17 @@ export default function ReviewSessionGenZ() {
   if (cards.length === 0) {
     return (
       <AppLayout>
-        <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
-          <div className="text-center space-y-4 px-6">
-            <Brain className="w-16 h-16 text-muted-foreground/30 mx-auto" />
-            <h2 className="text-2xl font-bold">No cards due</h2>
-            <p className="text-muted-foreground text-sm max-w-xs mx-auto">
-              Add questions to your SRS deck by tapping "Add to SRS" while reviewing questions.
-            </p>
-            <button onClick={() => setLocation('/channels')}
-              className="px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-bold text-sm">
-              Browse Questions
-            </button>
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <PageHeader title="SRS Review" subtitle="Spaced repetition to lock in what you've learned" />
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center space-y-4 px-6">
+                <Brain className="w-16 h-16 text-muted-foreground/30 mx-auto" />
+                <h2 className="text-2xl font-bold">No cards due</h2>
+                <p className="text-muted-foreground text-sm max-w-xs mx-auto">Add questions to your SRS deck by tapping "Add to SRS" while reviewing questions.</p>
+                <button onClick={() => setLocation('/channels')} className="px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-bold text-sm">Browse Questions</button>
+              </div>
+            </div>
           </div>
         </div>
       </AppLayout>
@@ -387,8 +391,11 @@ export default function ReviewSessionGenZ() {
       <AppLayout>
         {/* iPhone 13 FIX: Ensure content fits within viewport with safe areas */}
         <div className="min-h-screen bg-background text-foreground overflow-x-hidden w-full pb-24 lg:pb-0">
-          <div className="max-w-4xl mx-auto px-6 py-8 w-full overflow-x-hidden">
-            {/* Header */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 w-full overflow-x-hidden">
+            {/* Page Header */}
+            <PageHeader title="SRS Review" subtitle="Spaced repetition to lock in what you've learned" />
+
+            {/* Session Controls */}
             <div className="flex items-center justify-between mb-8">
               <button
                 onClick={() => setLocation('/')}

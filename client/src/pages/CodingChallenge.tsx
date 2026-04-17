@@ -1,6 +1,6 @@
 /**
- * Coding Challenge GenZ - Gen Z themed coding interface
- * Pure black background, neon accents, glassmorphism
+ * Coding Challenge
+ 
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -21,6 +21,7 @@ import {
   getCodingStats, getSolvedChallengeIds, ComplexityAnalysis,
 } from '../lib/coding-challenges';
 import { useCredits } from '../context/CreditsContext';
+import { PageHeader, SearchBar, FilterPills, PageLoader } from '@/components/ui/page';
 
 type ViewState = 'list' | 'challenge';
 
@@ -50,7 +51,7 @@ function saveCodeProgress(challengeId: string, language: Language, code: string)
   } catch {}
 }
 
-export default function CodingChallengeGenZ() {
+export default function CodingChallenge() {
   const { id } = useParams<{ id?: string }>();
   const [_, setLocation] = useLocation();
 
@@ -242,31 +243,18 @@ export default function CodingChallengeGenZ() {
         <div className="min-h-screen bg-background text-foreground pt-safe">
           {/* List View */}
           {viewState === 'list' && (
-            <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12 pb-safe">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-safe">
               {/* Header */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-8 md:mb-12"
-              >
+              <div className="text-center mb-8 md:mb-12">
                 <button
                   onClick={goBack}
-                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 md:mb-6 transition-colors"
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 md:mb-6 transition-colors mx-auto"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   <span className="text-sm font-semibold">HOME</span>
                 </button>
-                
-                <div className="flex items-center gap-3 md:gap-4 mb-3 md:mb-4">
-                  <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center flex-shrink-0">
-                    <Code className="w-6 h-6 md:w-8 md:h-8 text-primary-foreground" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h1 className="text-2xl md:text-4xl font-bold mb-1 md:mb-2">CODING CHALLENGES</h1>
-                    <p className="text-sm md:text-base text-muted-foreground">Master algorithms & data structures</p>
-                  </div>
-                </div>
-              </motion.div>
+                <PageHeader title="Coding Challenges" subtitle="Master algorithms & data structures" />
+              </div>
 
               {/* Stats Grid */}
               <motion.div

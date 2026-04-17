@@ -146,16 +146,21 @@ export default function Flashcards() {
 
   if (cards.length === 0) {
     return (
-      <AppLayout hideNav>
-        <div className="h-screen h-dvh bg-background flex flex-col items-center justify-center gap-4 px-6 text-center">
-          <Layers className="w-10 h-10 text-muted-foreground/40" />
-          <h2 className="text-xl font-bold">No flashcards yet</h2>
-          <p className="text-sm text-muted-foreground max-w-xs">
-            Flashcards are generated from your subscribed channels. Check back soon!
-          </p>
-          <button onClick={() => setLocation('/')} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            Back to Home
-          </button>
+      <AppLayout>
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <div className="text-center mb-10">
+              <h1 className="text-5xl md:text-6xl font-black mb-3">
+                <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">Flashcards</span>
+              </h1>
+            </div>
+            <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+              <Layers className="w-10 h-10 text-muted-foreground/40" />
+              <h2 className="text-xl font-bold">No flashcards yet</h2>
+              <p className="text-sm text-muted-foreground max-w-xs">Flashcards are generated from your subscribed channels. Check back soon!</p>
+              <button onClick={() => setLocation('/')} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Back to Home</button>
+            </div>
+          </div>
         </div>
       </AppLayout>
     );

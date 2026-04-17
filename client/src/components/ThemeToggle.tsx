@@ -1,6 +1,5 @@
 /**
- * Theme Toggle Button - Gen Z Edition
- * PROBLEM 6 FIXED: Clearly separated from AI Companion with distinct position and label
+ * Theme Toggle Button
  * Supports reduced motion for accessibility
  */
 
@@ -13,7 +12,7 @@ import { cn } from '../lib/utils';
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
   const prefersReducedMotion = useReducedMotion();
-  const isDark = theme === 'genz-dark';
+  const isDark = theme === 'dark';
 
   return (
     <motion.button

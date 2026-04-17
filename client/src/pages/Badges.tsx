@@ -9,6 +9,7 @@ import { SEOHead } from '../components/SEOHead';
 import { useAchievements } from '../hooks/use-achievements';
 import { AchievementProgress } from '../lib/achievements/types';
 import { Trophy, Lock, Sparkles, Share2, X, Star } from 'lucide-react';
+import { PageHeader, FilterPills, PageLoader } from '@/components/ui/page';
 
 // ── Tier config ──────────────────────────────────────────────
 const TIER_GRADIENT: Record<string, string> = {
@@ -325,11 +326,7 @@ export default function BadgesPage() {
   if (isLoading) {
     return (
       <AppLayout title="Badges">
-        <div className="min-h-dvh flex items-center justify-center">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold">Loading achievements...</h2>
-          </div>
-        </div>
+        <PageLoader message="Loading achievements..." />
       </AppLayout>
     );
   }
@@ -337,11 +334,20 @@ export default function BadgesPage() {
   if (!allBadges || allBadges.length === 0) {
     return (
       <AppLayout title="Badges">
-        <div className="min-h-dvh flex items-center justify-center">
-          <div className="text-center">
-            <Trophy className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="text-2xl font-bold mb-2">No badges yet</h2>
-            <p className="text-muted-foreground">Start completing challenges to earn badges!</p>
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <div className="text-center mb-10">
+              <h1 className="text-5xl md:text-6xl font-black mb-3">
+                <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">Badges</span>
+              </h1>
+            </div>
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center">
+                <Trophy className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <h2 className="text-2xl font-bold mb-2">No badges yet</h2>
+                <p className="text-muted-foreground">Start completing challenges to earn badges!</p>
+              </div>
+            </div>
           </div>
         </div>
       </AppLayout>
@@ -358,12 +364,10 @@ export default function BadgesPage() {
 
       <AppLayout title="Badges">
         <div className="min-h-screen bg-background text-foreground w-full overflow-x-hidden pb-24 lg:pb-0">
-          <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
 
             {/* ── Header ── */}
-            <div className="px-4 pt-6 pb-4 lg:px-8">
-              <h1 className="text-2xl font-bold text-foreground">Achievements</h1>
-            </div>
+            <PageHeader title="Badges" subtitle="Your achievements" />
 
             {/* ── Stats Header ── */}
             <motion.div
@@ -425,42 +429,7 @@ export default function BadgesPage() {
             </motion.div>
 
             {/* ── Category Tabs ── */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="flex flex-wrap gap-2"
-            >
-            {CATEGORY_TABS.map(tab => {
-                const count = tab === 'all' ? allBadges.length
-                  : tab === 'unlocked' ? allBadges.filter(b => b.isUnlocked).length
-                  : tab === 'locked' ? allBadges.filter(b => !b.isUnlocked).length
-                  : allBadges.filter(b => b.achievement.category === tab).length;
-                const isSpecial = tab === 'unlocked' || tab === 'locked';
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 rounded-full text-sm font-semibold capitalize transition-all flex items-center gap-1.5 ${
-                      activeTab === tab
-                        ? tab === 'unlocked'
-                          ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-[0_0_12px_rgba(16,185,129,0.4)]'
-                          : tab === 'locked'
-                          ? 'bg-gradient-to-r from-slate-500 to-slate-600 text-white'
-                          : 'bg-gradient-to-r from-[#ffd700] to-[#ff8c00] text-black shadow-[0_0_12px_rgba(255,215,0,0.4)]'
-                        : 'bg-[var(--surface-2)] border border-[var(--color-border)] hover:border-[var(--color-border-strong)] text-[var(--text-secondary)]'
-                    }`}
-                  >
-                    {tab}
-                    {count > 0 && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                        activeTab === tab ? 'bg-black/20 text-white' : 'bg-[var(--surface-3)] text-[var(--text-tertiary)]'
-                      }`}>{count}</span>
-                    )}
-                  </button>
-                );
-              })}
-            </motion.div>
+            <FilterPills options={CATEGORY_TABS.map(t=>({id:t,label:t.charAt(0).toUpperCase()+t.slice(1)}))} active={activeTab} onChange={id => setActiveTab(id as CategoryTab)} />
 
             {/* ── Badge Grid ── */}
             <div className="grid grid-cols-3 gap-3 md:gap-4">

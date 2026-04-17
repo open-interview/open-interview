@@ -1,5 +1,5 @@
 /**
- * Voice Session GenZ - Gen Z themed voice interview sessions
+ * Voice Session
  * Pure black background, neon accents, glassmorphism
  */
 
@@ -17,7 +17,7 @@ import { useAchievementContext } from '../context/AchievementContext';
 import { useUserPreferences } from '../hooks/use-user-preferences';
 import { CreditsDisplay } from '../components/CreditsDisplay';
 import { AppLayout } from '../components/layout/AppLayout';
-import { Card, Button, Microphone, Progress } from '../components/genz';
+import { Card, Button, Microphone, Progress } from '../components/practice-ui';
 import {
   type VoiceSession,
   type SessionState,
@@ -164,7 +164,7 @@ function ScoreRing({ score, size = 96 }: { score: number; size?: number }) {
   );
 }
 
-export default function VoiceSessionGenZ() {
+export default function VoiceSession() {
   const [, setLocation] = useLocation();
   const { preferences } = useUserPreferences();
   

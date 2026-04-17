@@ -14,7 +14,7 @@ export function MobileNav() {
     { id: 'home', icon: Home, label: 'Home', path: '/' },
     { id: 'explore', icon: Compass, label: 'Explore', path: '/channels' },
     { id: 'bookmarks', icon: Bookmark, label: 'Saved', path: '/bookmarks' },
-    { id: 'achievements', icon: Trophy, label: 'Progress', path: '/stats' },
+    { id: 'achievements', icon: Trophy, label: 'Progress', path: '/profile' },
     { id: 'profile', icon: User, label: 'Me', path: '/profile' },
   ];
 

@@ -1,7 +1,7 @@
 /**
  * Rich Text Renderer v2.0
  * Advanced custom renderer for technical content
- * Handles complex formatting patterns with beautiful Gen Z styling
+ * Handles complex formatting patterns
  */
 
 import React from 'react';

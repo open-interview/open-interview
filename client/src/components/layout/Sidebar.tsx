@@ -51,7 +51,7 @@ const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] =
     label: 'Progress',
     icon: BarChart3,
     items: [
-      { id: 'stats',     label: 'Statistics', icon: BarChart2, path: '/stats',     shortcut: 'S' },
+      { id: 'stats',     label: 'Statistics', icon: BarChart2, path: '/profile',     shortcut: 'S' },
       { id: 'badges',    label: 'Badges',     icon: Trophy,    path: '/badges' },
       { id: 'bookmarks', label: 'Bookmarks',  icon: Bookmark,  path: '/bookmarks' },
       { id: 'profile',   label: 'Profile',    icon: User,      path: '/profile' },
@@ -234,7 +234,7 @@ export function Sidebar() {
         {/* XP / Level row */}
         {!isCollapsed && (
           <button
-            onClick={() => setLocation('/stats')}
+            onClick={() => setLocation('/profile')}
             className="w-full flex items-center gap-2.5 px-2.5 py-2 mb-1.5 rounded-lg bg-primary/8 hover:bg-primary/12 border border-primary/15 transition-colors overflow-hidden"
           >
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-violet-400 flex items-center justify-center shrink-0">
@@ -256,7 +256,7 @@ export function Sidebar() {
         )}
         {isCollapsed && (
           <button
-            onClick={() => setLocation('/stats')}
+            onClick={() => setLocation('/profile')}
             className="w-full flex items-center justify-center p-2 mb-1 rounded-lg bg-primary/8 hover:bg-primary/12 transition-colors"
             title={`Level ${level} · ${totalXP} XP`}
           >

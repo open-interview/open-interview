@@ -1,5 +1,5 @@
 /**
- * Gen Z Components - Reusable components with Gen Z aesthetic
+ * UI Components - Reusable components
  */
 
 export { Card } from './Card';

@@ -14,14 +14,13 @@ const AnswerHistory = React.lazy(() => import("@/pages/AnswerHistory"));
 const About = React.lazy(() => import("@/pages/About"));
 const WhatsNew = React.lazy(() => import("@/pages/WhatsNew"));
 const QuestionViewer = React.lazy(() => import("@/pages/QuestionViewer"));
-const Stats = React.lazy(() => import("@/pages/Stats"));
-const Channels = React.lazy(() => import("@/pages/AllChannels"));
+const Profile = React.lazy(() => import("@/pages/Profile"));
 const BotActivity = React.lazy(() => import("@/pages/BotActivity"));
 const Badges = React.lazy(() => import("@/pages/Badges"));
 const TestSession = React.lazy(() => import("@/pages/TestSession"));
 const Tests = React.lazy(() => import("@/pages/Tests"));
 const CodingChallenge = React.lazy(() => import("@/pages/CodingChallenge"));
-const Profile = React.lazy(() => import("@/pages/Profile"));
+const Channels = React.lazy(() => import("@/pages/AllChannels"));
 const Notifications = React.lazy(() => import("@/pages/Notifications"));
 const Bookmarks = React.lazy(() => import("@/pages/Bookmarks"));
 const ReviewSession = React.lazy(() => import("@/pages/ReviewSession"));
@@ -115,6 +114,8 @@ function useSearchParamRedirect() {
   return isRedirecting;
 }
 
+const StatsRedirect = () => { const [,nav] = useLocation(); useEffect(() => { nav('/profile'); }, []); return null; };
+
 function Router() {
   return (
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
@@ -123,7 +124,7 @@ function Router() {
         <Route path="/history" component={AnswerHistory} />
         <Route path="/about" component={About} />
         <Route path="/whats-new" component={WhatsNew} />
-        <Route path="/stats" component={Stats} />
+        <Route path="/stats" component={StatsRedirect} />
         <Route path="/badges" component={Badges} />
         <Route path="/tests" component={Tests} />
         <Route path="/test/:channelId" component={TestSession} />
@@ -291,7 +292,7 @@ function GlobalAICompanion() {
         title: 'Badges & Achievements',
         content: 'View your earned badges',
       };
-    } else if (location.startsWith('/stats')) {
+    } else if (location.startsWith('/profile')) {
       return {
         type: 'stats',
         title: 'Statistics',
@@ -359,7 +360,7 @@ function GlobalAICompanion() {
         setLocation('/badges');
         break;
       case 'viewStats':
-        setLocation('/stats');
+        setLocation('/profile');
         break;
       default:
         console.warn('Unknown global action:', action);

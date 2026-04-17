@@ -1,7 +1,7 @@
 import { Toaster as Sonner } from 'sonner'
 
 const isDark = typeof window !== 'undefined'
-  ? localStorage.getItem('theme') !== 'genz-light'
+  ? localStorage.getItem('theme') !== 'light'
   : true
 
 export function Toaster() {

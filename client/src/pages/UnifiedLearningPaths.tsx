@@ -10,6 +10,7 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { SEOHead } from '../components/SEOHead';
 import { allChannelsConfig } from '../lib/channels-config';
 import { FloatingButton } from '../components/mobile';
+import { PageHeader, SearchBar, FilterPills } from '@/components/ui/page';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import {
   Plus, Trash2, Edit, ChevronRight, Brain, Check, Target, Clock, Sparkles, Award,
@@ -65,7 +66,7 @@ const roleGradients: Record<string, string> = {
   'certification': 'linear-gradient(135deg, #f97316, #ef4444)',
 };
 
-export default function UnifiedLearningPathsGenZ() {
+export default function UnifiedLearningPaths() {
   const [, setLocation] = useLocation();
   const { preferences } = useUserPreferences();
   const [view, setView] = useState<'all' | 'custom' | 'curated'>('all');
@@ -305,42 +306,21 @@ export default function UnifiedLearningPathsGenZ() {
     <>
       <SEOHead title="Learning Paths - Open-Interview" description="Choose your career path and start learning" />
       <AppLayout>
-        <div className="min-h-screen pb-24" style={{ background: 'var(--surface-0)', color: 'var(--text-primary)' }}>
-          <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12 w-full overflow-x-hidden">
+        <div className="min-h-screen bg-background text-foreground pb-24">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 w-full overflow-x-hidden">
 
             {/* Header */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 md:mb-12">
-              <h1 className="text-4xl md:text-6xl font-bold mb-3 tracking-tight">
-                Learning
-                <br />
-                <span className="gradient-text">Paths</span>
-              </h1>
-              <p className="text-base md:text-lg" style={{ color: 'var(--text-secondary)' }}>
-                {activePaths.length > 0 && `${activePaths.length} active · `}
-                {customPaths.length} custom · {curatedPaths.length} curated
-              </p>
-            </motion.div>
+            <PageHeader
+              title="Learning Paths"
+              subtitle={`${activePaths.length > 0 ? `${activePaths.length} active · ` : ''}${customPaths.length} custom · ${curatedPaths.length} curated`}
+            />
 
             {/* View Tabs */}
-            <div className="flex gap-2 mb-6 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
-              {([
-                { id: 'all', label: 'All Paths', icon: Sparkles },
-                { id: 'custom', label: 'My Custom', icon: Brain },
-                { id: 'curated', label: 'Curated', icon: Star },
-              ] as const).map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setView(id)}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold transition-all whitespace-nowrap text-sm"
-                  style={view === id
-                    ? { background: 'var(--gradient-primary)', color: 'var(--btn-primary-text)' }
-                    : { background: 'var(--surface-3)', color: 'var(--text-secondary)' }}
-                >
-                  <Icon className="w-4 h-4" />
-                  {label}
-                </button>
-              ))}
-            </div>
+            <FilterPills
+              options={[{id:'all',label:'All Paths'},{id:'custom',label:'My Custom'},{id:'curated',label:'Curated'}]}
+              active={view}
+              onChange={id => setView(id as any)}
+            />
 
             {/* Create New Path Button */}
             <motion.button
@@ -533,22 +513,12 @@ export default function UnifiedLearningPathsGenZ() {
 
                 {/* Filters row */}
                 <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-tertiary)' }} />
-                    <input
-                      type="text"
-                      placeholder="Search paths…"
-                      value={curatedSearchQuery}
-                      onChange={(e) => setCuratedSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-8 py-2.5 rounded-xl text-sm focus:outline-none transition-all"
-                      style={{ background: 'var(--surface-3)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}
-                    />
-                    {curatedSearchQuery && (
-                      <button onClick={() => setCuratedSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2">
-                        <X className="w-3.5 h-3.5" style={{ color: 'var(--text-tertiary)' }} />
-                      </button>
-                    )}
-                  </div>
+                  <SearchBar
+                    value={curatedSearchQuery}
+                    onChange={setCuratedSearchQuery}
+                    placeholder="Search paths…"
+                    className="flex-1"
+                  />
                   <select
                     value={filterDifficulty}
                     onChange={(e) => setFilterDifficulty(e.target.value)}

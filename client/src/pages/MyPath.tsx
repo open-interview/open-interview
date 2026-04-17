@@ -59,7 +59,7 @@ function mapPathFromJson(path: any) {
     skills: tags.slice(0, 5),
   };
 }
-export default function MyPathGenZ() {
+export default function MyPath() {
   const [, setLocation] = useLocation();
   const { preferences } = useUserPreferences();
   const [customPaths, setCustomPaths] = useState<CustomPath[]>([]);

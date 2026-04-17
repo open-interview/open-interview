@@ -4,19 +4,19 @@
  */
 
 /**
- * GenZ Card Component - Glassmorphism card with neon accents
+ * Card Component - Glassmorphism card with neon accents
  */
 
 import { cn } from '../../lib/utils';
 
-interface GenZCardProps {
+interface CardProps {
   children: React.ReactNode;
   className?: string;
   neonBorder?: boolean;
   gradient?: string;
 }
 
-export function Card({ children, className, neonBorder, gradient }: GenZCardProps) {
+export function Card({ children, className, neonBorder, gradient }: CardProps) {
   return (
     <div
       className={cn(

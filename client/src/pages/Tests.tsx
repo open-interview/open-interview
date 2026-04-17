@@ -15,6 +15,7 @@ import {
   AlertTriangle, ChevronRight, SlidersHorizontal, Settings2
 } from 'lucide-react';
 import { useUserPreferences } from '../context/UserPreferencesContext';
+import { PageHeader, SearchBar, FilterPills, StatCard, PageLoader } from '@/components/ui/page';
 
 type FilterTab = 'all' | 'passed' | 'failed' | 'not-attempted';
 type SortKey = 'name' | 'last-attempt' | 'score';
@@ -116,47 +117,21 @@ export default function TestsPage() {
         canonical="https://open-interview.github.io/tests"
       />
       <AppLayout>
-        <div className="min-h-screen bg-background pb-24 lg:pb-0">
-          <div className="px-4 pt-6 pb-4 lg:px-8">
-            <h1 className="text-2xl font-bold text-foreground">Channel Tests</h1>
-            <p className="text-sm text-muted-foreground mt-1">Prove what you know across every topic</p>
-          </div>
-          <div className="max-w-7xl mx-auto px-4 md:px-6 pb-10">
+        <div className="min-h-screen bg-background text-foreground pb-24 lg:pb-0">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <PageHeader title="Channel Tests" subtitle="Prove what you know across every topic" />
 
             {/* Stats */}
             <div className="grid grid-cols-3 md:grid-cols-4 gap-3 mb-8">
-              {[
-                { icon: CheckCircle, colorClass: 'from-green-500/20 to-green-600/10 border-green-500/30', iconClass: 'text-green-500', value: passedCount, label: 'Passed' },
-                { icon: XCircle, colorClass: 'from-red-500/20 to-red-600/10 border-red-500/30', iconClass: 'text-red-500', value: failedCount, label: 'Failed' },
-                { icon: Target, colorClass: 'from-blue-500/20 to-blue-600/10 border-blue-500/30', iconClass: 'text-blue-500', value: notStartedCount, label: 'Not Started' },
-                { icon: Star, colorClass: 'from-purple-500/20 to-purple-600/10 border-purple-500/30', iconClass: 'text-purple-500', value: `${stats.averageScore}%`, label: 'Avg Score' },
-              ].map(({ icon: Icon, colorClass, iconClass, value, label }, i) => (
-                <motion.div
-                  key={label}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.07 }}
-                  className={`p-4 rounded-xl border bg-gradient-to-br ${colorClass}`}
-                >
-                  <Icon className={`w-6 h-6 ${iconClass} mb-1`} />
-                  <div className="text-2xl font-bold">{value}</div>
-                  <div className="text-xs text-muted-foreground">{label}</div>
-                </motion.div>
-              ))}
+              <StatCard icon={CheckCircle} colorClass="from-green-500/20 to-green-600/10 border-green-500/30" iconClass="text-green-500" value={passedCount} label="Passed" />
+              <StatCard icon={XCircle} colorClass="from-red-500/20 to-red-600/10 border-red-500/30" iconClass="text-red-500" value={failedCount} label="Failed" />
+              <StatCard icon={Target} colorClass="from-blue-500/20 to-blue-600/10 border-blue-500/30" iconClass="text-blue-500" value={notStartedCount} label="Not Started" />
+              <StatCard icon={Star} colorClass="from-purple-500/20 to-purple-600/10 border-purple-500/30" iconClass="text-purple-500" value={`${stats.averageScore}%`} label="Avg Score" />
             </div>
 
             {/* Search + Sort */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex gap-2 mb-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search tests..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:border-primary transition-colors"
-                />
-              </div>
+              <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search tests..." />
               {/* Subscribed toggle */}
               <button
                 onClick={() => setSubscribedOnly(s => !s)}
@@ -201,27 +176,12 @@ export default function TestsPage() {
 
             {/* Filter Tabs */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="flex gap-2 mb-8 overflow-x-auto pb-1">
-              {FILTERS.map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => setFilter(f.id)}
-                  className={`px-4 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
-                    filter === f.id
-                      ? 'bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] text-white'
-                      : 'bg-muted/50 border border-border hover:bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
+              <FilterPills options={FILTERS} active={filter} onChange={id => setFilter(id as FilterTab)} />
             </motion.div>
 
             {/* Grid */}
             {loading ? (
-              <div className="text-center py-20 text-muted-foreground">
-                <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
-                Loading tests...
-              </div>
+              <PageLoader message="Loading tests..." />
             ) : filtered.length === 0 ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
                 <Search className="w-12 h-12 mx-auto mb-3 text-muted-foreground/40" />

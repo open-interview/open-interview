@@ -81,6 +81,13 @@ export default defineConfig({
       ],
     },
     
+    // Lighthouse performance audits — runs against built/served app
+    {
+      name: 'lighthouse',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: '**/lighthouse.spec.ts',
+    },
+
     // iPhone 13 UI Audit - Separate project for mobile testing
     {
       name: 'iphone13-audit',
@@ -95,14 +102,25 @@ export default defineConfig({
     },
   ],
   
-  webServer: {
-    command: 'pnpm run dev',
-    url: 'http://localhost:5001',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
-    stdout: 'pipe',
-    stderr: 'pipe',
-  },
+  webServer: [
+    {
+      command: 'pnpm run dev',
+      url: 'http://localhost:5001',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120000,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+    {
+      // Static server for Lighthouse — serves the production build
+      command: 'pnpm exec serve dist/public -l 5002 --no-clipboard',
+      url: 'http://localhost:5002',
+      reuseExistingServer: !process.env.CI,
+      timeout: 30000,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  ],
   
   // Global setup/teardown
   globalSetup: './e2e/global-setup.ts',

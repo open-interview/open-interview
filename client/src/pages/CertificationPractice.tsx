@@ -1,10 +1,11 @@
 /**
- * Certification Practice - Gen Z Edition
+ * Certification Practice
  * Pure black, neon accents, immersive learning experience
  * Includes embedded mini-tests with glassmorphism effects
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { AppLayout } from '../components/layout/AppLayout';
 import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
 import { MobileBottomNav } from '../components/layout/UnifiedNav';
 import { MobileHeader } from '../components/layout/MobileHeader';
@@ -428,13 +429,24 @@ export default function CertificationPractice() {
 
   if (!certification) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Award className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
-          <h2 className="text-xl font-semibold mb-2">Certification not found</h2>
-          <p className="text-muted-foreground text-sm">Redirecting to home...</p>
+      <AppLayout>
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <div className="text-center mb-10">
+              <h1 className="text-5xl md:text-6xl font-black mb-3">
+                <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">Certification Practice</span>
+              </h1>
+            </div>
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center">
+                <Award className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+                <h2 className="text-xl font-semibold mb-2">Certification not found</h2>
+                <p className="text-muted-foreground text-sm">Redirecting to home...</p>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 

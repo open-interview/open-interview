@@ -379,36 +379,58 @@ export default function TrainingMode() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-4">
-            <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+      <AppLayout>
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <div className="text-center mb-10">
+              <h1 className="text-5xl md:text-6xl font-black mb-3">
+                <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">Training Mode</span>
+              </h1>
+            </div>
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center">
+                <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-4">
+                  <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+                <p className="text-muted-foreground">Loading training questions...</p>
+              </div>
+            </div>
           </div>
-          <p className="text-muted-foreground">Loading training questions...</p>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
   if (questions.length === 0) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-6">
-            <BookOpen className="w-10 h-10 text-muted-foreground" />
+      <AppLayout>
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+            <div className="text-center mb-10">
+              <h1 className="text-5xl md:text-6xl font-black mb-3">
+                <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">Training Mode</span>
+              </h1>
+            </div>
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center max-w-md">
+                <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-6">
+                  <BookOpen className="w-10 h-10 text-muted-foreground" />
+                </div>
+                <h2 className="text-xl font-bold text-foreground mb-2">No Questions Available</h2>
+                <p className="text-muted-foreground mb-6">
+                  Subscribe to channels to access training questions
+                </p>
+                <button
+                  onClick={() => setLocation('/channels')}
+                  className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity"
+                >
+                  Browse Channels
+                </button>
+              </div>
+            </div>
           </div>
-          <h2 className="text-xl font-bold text-foreground mb-2">No Questions Available</h2>
-          <p className="text-muted-foreground mb-6">
-            Subscribe to channels to access training questions
-          </p>
-          <button
-            onClick={() => setLocation('/channels')}
-            className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity"
-          >
-            Browse Channels
-          </button>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 

@@ -1,5 +1,5 @@
 /**
- * Certification Exam Practice - Gen Z Edition
+ * Certification Exam Practice
  * Pure black, neon accents, immersive exam experience
  * Features: Timer, domain tracking, exam simulation mode
  */

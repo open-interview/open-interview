@@ -136,7 +136,7 @@ export default function NotFound() {
             {[
               { label: 'Home', path: '/' },
               { label: 'Channels', path: '/channels' },
-              { label: 'Stats', path: '/stats' },
+              { label: 'Stats', path: '/profile' },
               { label: 'Badges', path: '/badges' },
               { label: 'Coding', path: '/coding' },
               { label: 'About', path: '/about' },

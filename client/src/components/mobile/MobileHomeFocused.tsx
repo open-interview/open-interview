@@ -170,7 +170,7 @@ export function MobileHomeFocused() {
             {/* Quick Stats Row - Enhanced */}
             {hasChannels && (
               <button 
-                onClick={() => setLocation('/stats')}
+                onClick={() => setLocation('/profile')}
                 className="w-full p-3 flex items-center justify-around hover:bg-muted/30 transition-colors border-t border-border/50"
               >
                 <div className="flex items-center gap-2">
@@ -1086,7 +1086,7 @@ function QuickLinksCompact({ onNavigate }: { onNavigate: (path: string) => void 
         <Target className="w-4 h-4 text-green-500" />
       </button>
       <button
-        onClick={() => onNavigate('/stats')}
+        onClick={() => onNavigate('/profile')}
         className="p-3 rounded-lg hover:bg-muted/50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
         aria-label="Stats"
       >

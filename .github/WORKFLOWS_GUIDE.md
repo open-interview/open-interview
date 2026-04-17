@@ -32,21 +32,13 @@ gh workflow run deploy.yml -f environment=staging -f reason="Testing deployment"
 
 ---
 
-### 🔄 scheduled-deploy.yml ⚠️ DEPRECATED
-**⚠️ This workflow has been consolidated into deploy.yml**
-
-Use `deploy.yml` instead. This file will be removed on 2026-05-15.
-
-**Legacy Purpose:** Automatically redeploy website to keep it fresh with latest content
-
----
-
 ### 🤖 content-generation.yml
-**Purpose:** Generate and process content (questions, blog, voice sessions, intelligence)
+**Purpose:** Generate and process content (questions, blog, voice sessions, intelligence) + daily maintenance
 
 **Schedules:**
 - **Hourly (0 * * * *):** Quick question generation (prioritizes empty channels)
-- **Daily 2 AM (0 2 * * *):** Full pipeline (creator → analysis → verifier → processor → generators)
+- **Daily 2 AM (0 2 * * *):** Full pipeline (creator → analysis → verifier → processor → generators) + maintenance tasks
+- **Daily 8 AM (0 8 * * *):** Flashcard generation (independent)
 
 **Manual Trigger:**
 ```bash
@@ -66,9 +58,11 @@ gh workflow run content-generation.yml -f mode=specific-stage -f stage=creator
 - analysis: Analyze quality issues
 - verifier: Deep validation
 - processor: Fix detected issues
+- flashcard-generation: Generate flashcards (runs independently at 8 AM)
 - blog-generator: Generate blog content
 - voice-sessions: Create voice interview sessions
 - interview-intelligence: Generate mock interview data
+- maintenance: Run DB migrations + clear old NEW flags (runs at 2 AM)
 - update-monitor: Update bot dashboard
 
 ---
@@ -77,8 +71,8 @@ gh workflow run content-generation.yml -f mode=specific-stage -f stage=creator
 **Purpose:** Process GitHub issues (local and external repos)
 
 **Schedules:**
-- **Every 15 min (*/15 * * * *):** Sync external repo issues
-- **Every 30 min (*/30 * * * *):** Process local issues + cleanup stale
+- **Hourly (0 * * * *):** Sync external repo issues
+- **Every 2 hours (0 */2 * * *):** Process local issues + cleanup stale
 
 **Triggers:**
 - Issues with `bot:processor` label
@@ -110,14 +104,13 @@ gh workflow run issue-processing.yml -f source=both
 
 **Schedules:**
 - **Daily 5 AM (0 5 * * *):** LinkedIn posts + GitHub analytics
-- **Daily 10 AM (0 10 * * *):** LinkedIn polls
 
 **Manual Trigger:**
 ```bash
 # Post to LinkedIn
 gh workflow run social-media.yml -f task=linkedin-post
 
-# Post LinkedIn poll
+# Post LinkedIn poll (requires explicit dispatch)
 gh workflow run social-media.yml -f task=linkedin-poll -f channel=kubernetes
 
 # Collect analytics
@@ -129,17 +122,8 @@ gh workflow run social-media.yml -f task=all
 
 **Jobs:**
 - linkedin-post: Share blog posts on LinkedIn
-- linkedin-poll: Post question polls on LinkedIn
+- linkedin-poll: Post question polls on LinkedIn (**manual dispatch only** — requires `task=linkedin-poll`)
 - analytics: Collect GitHub analytics
-
----
-
-### 🚀 deploy-app.yml ⚠️ DEPRECATED
-**⚠️ This workflow has been consolidated into deploy.yml**
-
-Use `deploy.yml` instead. This file will be removed on 2026-05-15.
-
-**Legacy Purpose:** Deploy main application to GitHub Pages (on push)
 
 ---
 
@@ -173,11 +157,33 @@ gh workflow run duplicate-check.yml -f content_type=question -f auto_fix=true
 
 ---
 
-### 🧹 daily-maintenance.yml
-**Purpose:** Daily cleanup tasks
+### 🔦 lighthouse.yml
+**Purpose:** Run Lighthouse performance audits
 
 **Schedules:**
-- **Daily 2 AM (0 2 * * *):** Clear old NEW flags
+- **Weekly Monday 6 AM (0 6 * * 1):** Automated audit
+
+**Triggers:**
+- Pull requests to main
+- Schedule
+- Manual dispatch
+
+**Manual Trigger:**
+```bash
+# Audit local build
+gh workflow run lighthouse.yml
+
+# Audit specific URL
+gh workflow run lighthouse.yml -f url=https://open-interview.github.io
+```
+
+**Thresholds:**
+- Performance: ≥ 70
+- Accessibility: ≥ 90
+- Best Practices: ≥ 80
+- SEO: ≥ 80
+
+**Pages audited:** home, channels
 
 ---
 
@@ -206,6 +212,28 @@ Manually add a question to the database
 
 ```bash
 gh workflow run manual-intake.yml -f question="What is a Kubernetes pod?"
+```
+
+---
+
+### 🛤️ generate-learning-paths.yml
+Regenerate learning paths when channel config changes
+
+**Triggers:**
+- Push to `channels-config.ts`
+- Manual dispatch
+
+```bash
+gh workflow run generate-learning-paths.yml
+```
+
+---
+
+### 📖 update-readme.yml
+Update README with latest stats and generated content
+
+```bash
+gh workflow run update-readme.yml
 ```
 
 ---
@@ -246,7 +274,7 @@ gh workflow run issue-processing.yml -f force_reprocess=true
 # Post latest blog to LinkedIn
 gh workflow run social-media.yml -f task=linkedin-post
 
-# Post a poll
+# Post a poll (manual only)
 gh workflow run social-media.yml -f task=linkedin-poll -f difficulty=intermediate
 ```
 
@@ -308,7 +336,7 @@ gh run cancel <run-id>
 4. Verify action exists
 
 ### Stale issues
-- Cleanup runs every 30 minutes
+- Cleanup runs every 2 hours
 - Manual cleanup: `gh workflow run issue-processing.yml -f source=local`
 
 ### Duplicate runs
