@@ -33,6 +33,12 @@ const args = process.argv.slice(2);
 const targetChannel = args.find(a => a.startsWith('--channel='))?.split('=')[1];
 const limit = parseInt(args.find(a => a.startsWith('--limit='))?.split('=')[1] || '0', 10);
 const focus = args.find(a => a.startsWith('--focus='))?.split('=')[1]; // 'channels', 'quality', 'enrichment'
+const dryRun = args.includes('--dry-run');
+
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection:', err.message);
+  process.exitCode = 1;
+});
 
 // ============================================
 // CHANNEL ANALYSIS PATTERNS
@@ -388,6 +394,7 @@ async function main() {
   console.log(`Focus: ${focus || 'all'}`);
   if (targetChannel) console.log(`Channel: ${targetChannel}`);
   if (limit) console.log(`Limit: ${limit}`);
+  if (dryRun) console.log('Mode: DRY RUN (no writes to work_queue)');
   
   await initBotTables();
   
@@ -436,24 +443,34 @@ async function main() {
         
         if (issues.length > 0) {
           issuesFound += issues.length;
-          const created = await createWorkItems(normalized, issues);
-          workItemsCreated += created;
-          
-          console.log(`   ✅ Created ${created} work items`);
+          let created = 0;
+          if (!dryRun) {
+            created = await createWorkItems(normalized, issues);
+            workItemsCreated += created;
+            console.log(`   ✅ Created ${created} work items`);
+          } else {
+            console.log(`   💡 Would create ${issues.length} work items (dry-run)`);
+          }
           
           // Log analysis
-          await logAction({
-            botName: BOT_NAME,
-            itemId: question.id,
-            action: 'analyze',
-            itemType: 'question',
-            reason: JSON.stringify({
-              status: 'completed',
-              issuesFound: issues.length,
-              workItemsCreated: created,
-              issues: issues.map(i => i.type)
-            })
-          });
+          if (!dryRun) {
+            try {
+              await logAction({
+                botName: BOT_NAME,
+                itemId: question.id,
+                action: 'analyze',
+                itemType: 'question',
+                reason: JSON.stringify({
+                  status: 'completed',
+                  issuesFound: issues.length,
+                  workItemsCreated: created,
+                  issues: issues.map(i => i.type)
+                })
+              });
+            } catch (logErr) {
+              console.log(`   ⚠️  Failed to log action: ${logErr.message}`);
+            }
+          }
         } else {
           console.log(`   ✓ No issues found`);
         }
@@ -462,14 +479,22 @@ async function main() {
         await new Promise(r => setTimeout(r, 100));
         
       } catch (e) {
+        if (e.isRefusal) {
+          console.log(`   ⚠️ AI refused for item ${question.id} — skipping`);
+          continue;
+        }
         console.log(`   ❌ Analysis failed: ${e.message}`);
-        await logAction({
-          botName: BOT_NAME,
-          itemId: question.id,
-          action: 'analyze',
-          itemType: 'question',
-          reason: JSON.stringify({ status: 'failed', error: e.message })
-        });
+        try {
+          await logAction({
+            botName: BOT_NAME,
+            itemId: question.id,
+            action: 'analyze',
+            itemType: 'question',
+            reason: JSON.stringify({ status: 'failed', error: e.message })
+          });
+        } catch (logErr) {
+          console.log(`   ⚠️  Failed to log error: ${logErr.message}`);
+        }
       }
     }
     

@@ -17,14 +17,22 @@ function parseArgs() {
   const severity = args.find(a => a.startsWith('--severity='))?.split('=')[1] || 'high';
   const id = args.find(a => a.startsWith('--id='))?.split('=')[1] || null;
   const all = args.includes('--all');
-  return { mode, severity, id, all };
+  const limit = parseInt(args.find(a => a.startsWith('--limit='))?.split('=')[1] || '0', 10);
+  const channel = args.find(a => a.startsWith('--channel='))?.split('=')[1] || null;
+  return { mode, severity, id, all, limit, channel };
 }
 
-async function scanAllQuestions(db) {
-  const result = await db.execute({
-    sql: `SELECT id, question, answer, explanation FROM questions WHERE status != 'deleted'`,
-    args: []
-  });
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection:', err.message);
+  process.exitCode = 1;
+});
+
+async function scanAllQuestions(db, { limit = 0, channel = null } = {}) {
+  let sql = `SELECT id, question, answer, explanation FROM questions WHERE status != 'deleted'`;
+  const args = [];
+  if (channel) { sql += ` AND channel = ?`; args.push(channel); }
+  if (limit > 0) { sql += ` LIMIT ?`; args.push(limit); }
+  const result = await db.execute({ sql, args });
   const questions = result.rows;
 
   const bySeverity = { critical: [], high: [], medium: [], low: [] };
@@ -133,7 +141,7 @@ async function main() {
   const runId = run.id;
 
   try {
-    const scanResult = await scanAllQuestions(db);
+    const scanResult = await scanAllQuestions(db, { limit: opts.limit, channel: opts.channel });
     printReport(scanResult);
 
     let queued = 0;
