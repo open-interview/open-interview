@@ -70,8 +70,11 @@ CREATE TABLE IF NOT EXISTS work_queue (
     reason TEXT,
     created_by TEXT,
     assigned_to TEXT,
+    bot_type TEXT,
+    question_id TEXT,
     created_at TEXT,
     processed_at TEXT,
+    completed_at TEXT,
     result TEXT
 );
 
@@ -238,6 +241,39 @@ CREATE TABLE IF NOT EXISTS learning_paths (
     created_at TEXT,
     last_updated TEXT,
     last_generated TEXT
+);
+
+-- ============================================================================
+-- TABLE: githubAnalytics
+-- Purpose: GitHub repository analytics (stars, forks, traffic, referrers)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS github_analytics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    metric_type TEXT NOT NULL,
+    metric_name TEXT,
+    repo TEXT,
+    value INTEGER DEFAULT 0,
+    count INTEGER DEFAULT 0,
+    uniques INTEGER DEFAULT 0,
+    date TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
+-- TABLE: tests
+-- Purpose: Timed test sets for certification and channel practice
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS tests (
+    id TEXT PRIMARY KEY,
+    channel_id TEXT,
+    channel_name TEXT,
+    title TEXT NOT NULL,
+    description TEXT,
+    questions TEXT,
+    passing_score INTEGER DEFAULT 70,
+    version INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    last_updated TEXT
 );
 
 -- ============================================================================
