@@ -13,7 +13,7 @@ import { useProgress } from '../hooks/use-progress';
 import { SEOHead } from '../components/SEOHead';
 import { PageHeader, SearchBar, FilterPills } from '@/components/ui/page';
 import {
-  Search, Check, Plus, Sparkles, TrendingUp, ChevronRight, X,
+  Search, Plus, Sparkles, TrendingUp, ChevronRight, X,
   Box, Terminal, Layout, Server, Database, Infinity, Activity, Cloud, Layers,
   Brain, Eye, FileText, Code, Shield, Network, Monitor, Smartphone, CheckCircle,
   Zap, Gauge, Users, MessageCircle, Calculator, Cpu, GitBranch, Binary, Puzzle,
@@ -135,12 +135,7 @@ function ChannelCard({ channel, index, questionCount, navigate, isSubscribed, to
             <Sparkles className="w-3 h-3" style={{ color: accent }} />
             {questionCount} questions
           </span>
-          {subscribed && progress > 0 && (
-            <span className="flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" style={{ color: 'var(--color-accent-cyan)' }} />
-              {progress}%
-            </span>
-          )}
+
         </div>
 
         {/* Progress bar */}
@@ -158,22 +153,31 @@ function ChannelCard({ channel, index, questionCount, navigate, isSubscribed, to
 
         {/* Actions */}
         <div className="flex gap-2">
-          <button
-            onClick={() => toggleSubscription(channel.id)}
-            className="flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
-            style={subscribed
-              ? { background: 'var(--surface-3)', color: 'var(--text-secondary)', border: '1px solid var(--color-border)' }
-              : { background: `linear-gradient(135deg, ${accent}, var(--color-accent-cyan))`, color: '#fff' }}
-          >
-            {subscribed ? <><Check className="w-3.5 h-3.5" />Subscribed</> : <><Plus className="w-3.5 h-3.5" />Subscribe</>}
-          </button>
-          {subscribed && (
+          {subscribed ? (
+            <>
+              <button
+                onClick={() => navigate(`/channel/${channel.id}`)}
+                className="flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                style={{ background: `linear-gradient(135deg, ${accent}, var(--color-accent-cyan))`, color: '#fff' }}
+              >
+                Continue <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => toggleSubscription(channel.id)}
+                className="px-3 py-2 rounded-xl transition-all hover:bg-white/10"
+                style={{ background: 'var(--surface-3)', border: '1px solid var(--color-border)', color: 'var(--text-secondary)' }}
+                title="Unsubscribe"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </>
+          ) : (
             <button
-              onClick={() => navigate(`/channel/${channel.id}`)}
-              className="px-3 py-2 rounded-xl transition-all hover:bg-white/10"
-              style={{ background: 'var(--surface-3)', border: '1px solid var(--color-border)' }}
+              onClick={() => toggleSubscription(channel.id)}
+              className="flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+              style={{ background: `linear-gradient(135deg, ${accent}, var(--color-accent-cyan))`, color: '#fff' }}
             >
-              <ChevronRight className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />Subscribe
             </button>
           )}
         </div>
@@ -237,23 +241,20 @@ export default function AllChannels() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
 
             {/* Page Header */}
-            <PageHeader title="Channels" subtitle={
-              <div className="flex items-center justify-center gap-3">
-                <p className="text-muted-foreground">{channels.length} {subscribedOnly && hasSubscriptions ? 'subscribed' : ''} channels</p>
-                {hasSubscriptions && (
-                  <button
-                    onClick={() => setSubscribedOnly(s => !s)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                      subscribedOnly
-                        ? 'bg-[var(--color-accent-violet)]/15 border-[var(--color-accent-violet)] text-[var(--color-accent-violet-light)]'
-                        : 'bg-muted/50 border-border text-muted-foreground'
-                    }`}
-                  >
-                    {subscribedOnly ? '★ My Topics' : 'All Topics'}
-                  </button>
-                )}
-              </div>
-            } />
+            <PageHeader title="Channels" subtitle={`${channels.length} ${subscribedOnly && hasSubscriptions ? 'subscribed' : ''} channels`}>
+              {hasSubscriptions && (
+                <button
+                  onClick={() => setSubscribedOnly(s => !s)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                    subscribedOnly
+                      ? 'bg-[var(--color-accent-violet)]/15 border-[var(--color-accent-violet)] text-[var(--color-accent-violet-light)]'
+                      : 'bg-muted/50 border-border text-muted-foreground'
+                  }`}
+                >
+                  {subscribedOnly ? '★ My Topics' : 'All Topics'}
+                </button>
+              )}
+            </PageHeader>
 
             {/* Filter Bar */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-6 space-y-3">

@@ -24,6 +24,7 @@ import { ChannelService } from '../services/api.service';
 import { useVoiceRecording } from '../hooks/use-voice-recording';
 import { RecordingPanel } from '../components/unified/RecordingPanel';
 import { QuestionHistoryIcon } from '../components/unified/QuestionHistory';
+import { AppLayout } from '../components/layout/AppLayout';
 import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
 import { MobileBottomNav } from '../components/layout/UnifiedNav';
 import { MobileHeader } from '../components/layout/MobileHeader';

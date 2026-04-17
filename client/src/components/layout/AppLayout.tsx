@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sidebar } from './Sidebar';
-import { MobileBottomNav, UnifiedMobileHeader } from './UnifiedNav';
+import { MobileBottomNav } from './UnifiedNav';
 import { MobileHeader } from './MobileHeader';
 import { UnifiedSearch } from '../UnifiedSearch';
 import { useSidebar } from '../../context/SidebarContext';

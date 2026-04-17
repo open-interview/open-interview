@@ -88,25 +88,15 @@ function HeatmapTooltip({ date, count }: { date: string; count: number }) {
 
 // ── Profile Tab ───────────────────────────────────────────────────────────────
 
-function ProfileTab() {
+function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted: number }) {
   const [, setLocation] = useLocation();
   const { preferences, toggleShuffleQuestions, togglePrioritizeUnvisited } = useUserPreferences();
   const { balance } = useCredits();
   const { unlocked: unlockedBadges } = useAchievements();
-  const { stats } = useGlobalStats();
-  const [totalCompleted, setTotalCompleted] = useState(0);
+
   const [editingName, setEditingName] = useState(false);
   const [displayName, setDisplayName] = useState(() => localStorage.getItem('user-display-name') || 'Learner');
   const [nameInput, setNameInput] = useState(displayName);
-
-  const streak = useMemo(() => {
-    let s = 0;
-    for (let i = 0; i < 365; i++) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      if (stats.find(x => x.date === d.toISOString().split('T')[0])) s++; else break;
-    }
-    return s;
-  }, [stats]);
 
   const memberSince = useMemo(() => {
     try {
@@ -114,16 +104,6 @@ function ProfileTab() {
       if (p.createdAt) return new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     } catch { /* ignore */ }
     return 'Recently';
-  }, []);
-
-  useEffect(() => {
-    const allQ = getAllQuestions();
-    const ids = new Set<string>();
-    allQ.forEach(q => {
-      const s = localStorage.getItem(`progress-${q.channel}`);
-      if (s && new Set(JSON.parse(s)).has(q.id)) ids.add(q.id);
-    });
-    setTotalCompleted(ids.size);
   }, []);
 
   const learningSummary = useMemo(() => {
@@ -207,8 +187,8 @@ function ProfileTab() {
             ))}
           </div>
           <div className="w-full">
-            <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
-              <span>Level {level}</span><span>{xpInLevel}/100 XP</span>
+            <div className="flex justify-end text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+              <span>{xpInLevel}/100 XP</span>
             </div>
             <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-4)' }}>
               <motion.div initial={{ width: 0 }} animate={{ width: `${xpInLevel}%` }} transition={{ duration: 1 }}
@@ -299,7 +279,7 @@ function ProfileTab() {
 
 // ── Stats Tab ─────────────────────────────────────────────────────────────────
 
-function StatsTab() {
+function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: number }) {
   const [, setLocation] = useLocation();
   const { stats } = useGlobalStats();
   const { balance } = useCredits();
@@ -311,28 +291,17 @@ function StatsTab() {
     return stats.find(s => s.date === today)?.count || 0;
   }, [stats]);
 
-  const { totalCompleted, streak, moduleProgress, certCount, voiceSessions } = useMemo(() => {
-    const allQ = getAllQuestions();
-    const allIds = new Set<string>();
+  const { moduleProgress, certCount, voiceSessions } = useMemo(() => {
     const modProgress = channels.map(ch => {
       const questions = getQuestions(ch.id);
       const stored = localStorage.getItem(`progress-${ch.id}`);
       const completedIds = stored ? new Set(JSON.parse(stored)) : new Set();
-      Array.from(completedIds).forEach(id => allIds.add(id as string));
       const valid = Math.min(completedIds.size, questions.length);
       const pct = questions.length > 0 ? Math.min(100, Math.round((valid / questions.length) * 100)) : 0;
       return { id: ch.id, name: ch.name, completed: valid, total: questions.length, pct };
     }).filter(m => m.total > 0).sort((a, b) => b.pct - a.pct);
 
-    let currentStreak = 0;
-    for (let i = 0; i < 365; i++) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      if (stats.find(x => x.date === d.toISOString().split('T')[0])) currentStreak++; else break;
-    }
     return {
-      totalCompleted: allIds.size,
-      totalQuestions: allQ.length,
-      streak: currentStreak,
       moduleProgress: modProgress,
       certCount: modProgress.filter(m => m.pct === 100).length,
       voiceSessions: parseInt(localStorage.getItem('voice-sessions-count') || '0', 10),
@@ -586,6 +555,28 @@ function StatsTab() {
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
+  const { stats } = useGlobalStats();
+
+  const streak = useMemo(() => {
+    let s = 0;
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      if (stats.find(x => x.date === d.toISOString().split('T')[0])) s++; else break;
+    }
+    return s;
+  }, [stats]);
+
+  const [totalCompleted, setTotalCompleted] = useState(0);
+  useEffect(() => {
+    const allQ = getAllQuestions();
+    const ids = new Set<string>();
+    allQ.forEach(q => {
+      const s = localStorage.getItem(`progress-${q.channel}`);
+      if (s && new Set(JSON.parse(s)).has(q.id)) ids.add(q.id);
+    });
+    setTotalCompleted(ids.size);
+  }, []);
+
   return (
     <>
       <SEOHead title="Profile & Stats" description="Your profile, settings and learning statistics" canonical="https://open-interview.github.io/profile" />
@@ -593,9 +584,9 @@ export default function ProfilePage() {
         <div className="min-h-screen bg-background text-foreground">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <PageHeader title="Profile & Stats" subtitle="Your settings, achievements and learning progress" />
-            <ProfileTab />
+            <ProfileTab streak={streak} totalCompleted={totalCompleted} />
             <div className="mt-12">
-              <StatsTab />
+              <StatsTab streak={streak} totalCompleted={totalCompleted} />
             </div>
           </div>
         </div>

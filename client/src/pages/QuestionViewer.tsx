@@ -375,9 +375,9 @@ export default function QuestionViewer() {
                     {currentQuestion.subChannel.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                   </span>
                 )}
-                {currentQuestion.company && (
+                {currentQuestion.companies?.[0] && (
                   <span className="text-xs font-medium px-2.5 py-1 rounded-full border border-border text-muted-foreground">
-                    {currentQuestion.company}
+                    {currentQuestion.companies[0]}
                   </span>
                 )}
                 {isCompleted && (
@@ -450,11 +450,6 @@ export default function QuestionViewer() {
                   <AnswerPanel
                     question={currentQuestion}
                     isCompleted={isCompleted}
-                    srsCard={srsCard}
-                    showRatingButtons={showRatingButtons}
-                    hasRated={hasRated}
-                    onAddToSRS={handleAddToSRS}
-                    onSRSRating={handleSRSRating}
                   />
                 </div>
               </div>

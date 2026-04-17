@@ -9,7 +9,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
 import { SEOHead } from '../components/SEOHead';
 import { allChannelsConfig } from '../lib/channels-config';
-import { FloatingButton } from '../components/mobile';
 import { PageHeader, SearchBar, FilterPills } from '@/components/ui/page';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import {
@@ -408,14 +407,6 @@ export default function UnifiedLearningPaths() {
                           </div>
                         </div>
 
-                        {/* Progress bar */}
-                        <div className="mb-1 flex items-center justify-between text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                          <span>Progress</span><span>{pathProgress}%</span>
-                        </div>
-                        <div className="h-1.5 rounded-full overflow-hidden mb-3" style={{ background: 'var(--surface-4)' }}>
-                          <div className="h-full rounded-full transition-all" style={{ background: path.gradient || 'var(--gradient-primary)', width: `${pathProgress}%` }} />
-                        </div>
-
                         {/* Chapter breadcrumb */}
                         {path.channels?.length > 0 && (
                           <p className="text-xs mb-3 truncate" style={{ color: 'var(--text-tertiary)' }}>
@@ -631,13 +622,7 @@ export default function UnifiedLearningPaths() {
                                 Start Path
                               </button>
                             )}
-                            <button
-                              onClick={(e) => { e.stopPropagation(); openPathModal(path, 'view'); }}
-                              className="px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:bg-white/10"
-                              style={{ background: 'var(--surface-3)', color: 'var(--text-secondary)', border: '1px solid var(--color-border)' }}
-                            >
-                              Details
-                            </button>
+
                           </div>
                         </div>
                       </motion.div>
@@ -881,13 +866,7 @@ export default function UnifiedLearningPaths() {
           )}
         </AnimatePresence>
 
-        <FloatingButton
-          icon={<Plus className="w-6 h-6" />}
-          label="Create"
-          onClick={() => openPathModal(null, 'create')}
-          position="bottom-right"
-          hideOnScroll={true}
-        />
+
       </AppLayout>
     </>
   );

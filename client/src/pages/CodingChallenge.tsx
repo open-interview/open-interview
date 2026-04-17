@@ -185,6 +185,7 @@ export default function CodingChallenge() {
           completedAt: new Date().toISOString(),
           passed: true,
           testResults: results,
+          timeSpent: 0,
         });
         setShowSuccessModal(true);
       }
@@ -536,31 +537,6 @@ export default function CodingChallenge() {
                       </motion.div>
                     )}
 
-                    {/* Optimal Complexity */}
-                    {showSolution && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                      >
-                        <h3 className="text-sm font-bold text-primary mb-3 uppercase tracking-wider flex items-center gap-2">
-                          <Sparkles className="w-4 h-4" />
-                          Optimal Solution
-                        </h3>
-                        <div className="bg-[#00ff88]/10 border border-primary/30 rounded-xl p-4 space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Time:</span>
-                            <span className="font-mono font-bold text-primary">{currentChallenge.complexity.time}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Space:</span>
-                            <span className="font-mono font-bold text-primary">{currentChallenge.complexity.space}</span>
-                          </div>
-                          <div className="text-xs text-muted-foreground pt-2 border-t border-primary/20">
-                            {currentChallenge.complexity.explanation}
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
                   </div>
                 </div>
 

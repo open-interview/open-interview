@@ -12,7 +12,7 @@ import { GiscusComments } from '../GiscusComments';
 import { SimilarQuestions } from '../SimilarQuestions';
 import { formatTag } from '../../lib/utils';
 import { BlogService } from '../../services/api.service';
-import type { ReviewCard, ConfidenceRating } from '../../lib/spaced-repetition';
+
 
 function preprocessMarkdown(text: string): string {
   if (!text) return '';
@@ -52,14 +52,9 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
   );
 }
 
-export function AnswerPanel({ question, isCompleted, srsCard, showRatingButtons, hasRated, onAddToSRS, onSRSRating }: {
+export function AnswerPanel({ question, isCompleted }: {
   question: Question;
   isCompleted: boolean;
-  srsCard?: ReviewCard | null;
-  showRatingButtons?: boolean;
-  hasRated?: boolean;
-  onAddToSRS?: () => void;
-  onSRSRating?: (rating: ConfidenceRating) => void;
 }) {
   const [blogPost, setBlogPost] = useState<{ title: string; slug: string; url: string } | null>(null);
   const [diagramOk, setDiagramOk] = useState<boolean | null>(null);

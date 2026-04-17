@@ -223,11 +223,11 @@ export function ModernHomePageV2() {
               <div className="flex items-center gap-3">
                 <h2 className="text-2xl font-bold text-white">Your Channels</h2>
                 <div className="px-3 py-1 bg-[#1f6feb]/10 text-[#58a6ff] rounded-full text-sm font-semibold">
-                  {channels.length}
+                  {subscribedChannels.length}
                 </div>
               </div>
               <button
-                onClick={onManageChannels}
+                onClick={() => setLocation('/channels')}
                 className="px-4 py-2 bg-[#21262d] hover:bg-[#30363d] text-white rounded-lg transition-all flex items-center gap-2 border border-[#30363d]"
               >
                 <Plus className="w-4 h-4" />
@@ -236,12 +236,12 @@ export function ModernHomePageV2() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {channels.map((channel, i) => (
+              {subscribedChannels.map((channel, i) => (
                 <ChannelCard
                   key={channel.id}
                   channel={channel}
                   questionCount={questionCounts[channel.id] || 0}
-                  onClick={() => onChannelClick(channel.id)}
+                  onClick={() => setLocation(`/channel/${channel.id}`)}
                   index={i}
                 />
               ))}

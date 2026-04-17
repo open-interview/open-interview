@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { DesktopSidebar } from './UnifiedNav';
+import { Sidebar } from './Sidebar';
 import { UnifiedSearch } from '../UnifiedSearch';
 import { useSidebar } from '../../context/SidebarContext';
 import { cn } from '../../lib/utils';
@@ -34,7 +34,7 @@ export function DesktopSidebarWrapper({ children }: DesktopSidebarWrapperProps) 
     <>
       {/* Desktop Sidebar - hidden on mobile */}
       <div className="hidden lg:block">
-        <DesktopSidebar onSearchClick={() => setSearchOpen(true)} />
+        <Sidebar />
       </div>
 
       {/* Main content area - adjusts based on sidebar collapsed state */}

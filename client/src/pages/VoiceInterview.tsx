@@ -685,13 +685,6 @@ export default function VoiceInterview() {
                 Sessions
               </button>
               <CreditsDisplay compact onClick={() => setLocation('/profile')} />
-              <span className={`px-2 py-0.5 text-[10px] font-medium rounded-lg ${
-                currentQuestion?.difficulty === 'beginner' ? 'bg-[#238636]/20 text-[#3fb950]' :
-                currentQuestion?.difficulty === 'intermediate' ? 'bg-[#d29922]/20 text-[#d29922]' :
-                'bg-[#f85149]/20 text-[#f85149]'
-              }`}>
-                {currentQuestion?.difficulty}
-              </span>
               {currentQuestion?.id && (
                 <QuestionHistoryIcon 
                   questionId={currentQuestion.id} 
@@ -744,8 +737,6 @@ export default function VoiceInterview() {
               {/* Question Controls */}
               <div className="flex items-center justify-between pt-4 border-t border-border/50">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground font-mono">Q{currentIndex + 1}/{questions.length}</span>
-                  
                   {/* Actions Dropdown */}
                   <div className="relative">
                     <button
@@ -1014,14 +1005,6 @@ export default function VoiceInterview() {
                     <Square className="w-5 h-5" />
                     Stop
                   </motion.button>
-                  <button
-                    onClick={skipQuestion}
-                    disabled={currentIndex >= questions.length - 1}
-                    className="flex items-center gap-2 px-4 py-4 border border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground rounded-2xl transition-colors disabled:opacity-30"
-                  >
-                    <SkipForward className="w-4 h-4" />
-                    Skip
-                  </button>
                 </div>
               )}
 

@@ -480,30 +480,7 @@ export function HomePage() {
                 <p className="text-sm text-muted-foreground mt-0.5">{getStreakMotivation(streak)}</p>
               </motion.div>
 
-              {/* Streak + XP badges row */}
-              <motion.div variants={fadeUp} className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/20 border border-orange-500/30">
-                  <Flame className="w-4 h-4 text-orange-400" />
-                  <span className="font-bold text-sm text-orange-300">{streak} day streak</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-500/20 border border-violet-500/30">
-                  <Zap className="w-4 h-4 text-violet-400" />
-                  <span className="font-bold text-sm text-violet-300">{balance} XP</span>
-                </div>
-              </motion.div>
 
-              {/* XP level bar */}
-              <motion.div variants={fadeUp} className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">Level {level}</span>
-                  <span>{xpInLevel}/100 XP → Level {level + 1}</span>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <motion.div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-500"
-                    initial={{ width: 0 }} animate={{ width: `${xpInLevel}%` }}
-                    transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }} />
-                </div>
-              </motion.div>
             </div>
           </motion.div>
 
@@ -513,9 +490,7 @@ export function HomePage() {
             <motion.div variants={stagger} initial="hidden" animate="show"
               className="flex gap-3 overflow-x-auto pb-1 custom-scrollbar -mx-4 px-4">
               <StatPill icon={Zap} value={questionsToday} label="Answered Today" color="text-yellow-400" />
-              <StatPill icon={Flame} value={streak} label="Day Streak" color="text-orange-400" />
               <StatPill icon={BookOpen} value={topicsMastered} label="Topics Mastered" color="text-cyan-400" />
-              <StatPill icon={Sparkles} value={balance} label="Total XP" color="text-violet-400" />
               <StatPill icon={Trophy} value={totalCompleted} label="Solved" color="text-amber-400" />
             </motion.div>
           </div>

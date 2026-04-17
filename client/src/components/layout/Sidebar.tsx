@@ -12,7 +12,7 @@ import { cn } from '../../lib/utils';
 import { useState } from 'react';
 import {
   Home, BookOpen, Award, Mic, Code, Target, Flame,
-  BarChart2, Trophy, Bookmark, Brain, Coins, Layers,
+  Trophy, Bookmark, Brain, Coins, Layers,
   GraduationCap, BarChart3, ChevronLeft, ChevronRight,
   Search, User, Info, Settings, Zap
 } from 'lucide-react';
@@ -51,7 +51,6 @@ const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] =
     label: 'Progress',
     icon: BarChart3,
     items: [
-      { id: 'stats',     label: 'Statistics', icon: BarChart2, path: '/profile',     shortcut: 'S' },
       { id: 'badges',    label: 'Badges',     icon: Trophy,    path: '/badges' },
       { id: 'bookmarks', label: 'Bookmarks',  icon: Bookmark,  path: '/bookmarks' },
       { id: 'profile',   label: 'Profile',    icon: User,      path: '/profile' },

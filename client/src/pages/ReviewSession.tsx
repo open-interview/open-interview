@@ -742,21 +742,7 @@ export default function ReviewSession() {
               </motion.div>
             </AnimatePresence>
 
-            {/* Stats Footer */}
-            <div className="mt-8 grid grid-cols-3 gap-4 w-full">
-              <div className="p-4 bg-muted/50 rounded-lg text-center">
-                <div className="text-2xl font-bold">{cards.length}</div>
-                <div className="text-xs text-muted-foreground">Total Cards</div>
-              </div>
-              <div className="p-4 bg-muted/50 rounded-lg text-center">
-                <div className="text-2xl font-bold">{reviewedCount}</div>
-                <div className="text-xs text-muted-foreground">Reviewed</div>
-              </div>
-              <div className="p-4 bg-muted/50 rounded-lg text-center">
-                <div className="text-2xl font-bold">{cards.length - reviewedCount}</div>
-                <div className="text-xs text-muted-foreground">Remaining</div>
-              </div>
-            </div>
+
           </div>
         </div>
       </AppLayout>

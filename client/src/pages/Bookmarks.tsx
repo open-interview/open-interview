@@ -192,10 +192,6 @@ export default function Bookmarks() {
             <div className="text-center py-16">
               <Filter className="w-8 h-8 mx-auto mb-3 opacity-30" />
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No questions match your filters</p>
-              <button onClick={() => { setSearch(''); setFilterChannel('all'); setFilterDifficulty('all'); }}
-                className="mt-3 text-sm underline" style={{ color: 'var(--color-accent-violet-light)' }}>
-                Clear filters
-              </button>
             </div>
           ) : (
             <div className="space-y-3">

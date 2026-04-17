@@ -12,7 +12,7 @@ import { allChannelsConfig } from '../lib/channels-config';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import {
   Code, Rocket, Brain, Building2, Award,
-  Plus, ChevronRight, Star, Clock, Zap, Check, X, Search
+  Plus, ChevronRight, Star, Clock, Zap, Check, X, Search, Target
 } from 'lucide-react';
 
 // Certification type
@@ -68,7 +68,7 @@ export default function LearningPaths() {
   const [curatedPaths, setCuratedPaths] = useState<any[]>([]);
   const { preferences } = useUserPreferences();
   const subscribedSet = new Set(preferences.subscribedChannels);
-  const visibleCuratedPaths = curatedPaths.filter(p => p.channels.some(c => subscribedSet.has(c)));
+  const visibleCuratedPaths = curatedPaths.filter(p => p.channels.some((c: string) => subscribedSet.has(c)));
   
   // Custom path builder state
   const [customPath, setCustomPath] = useState<CustomPath>({
@@ -473,7 +473,7 @@ export default function LearningPaths() {
                         <div>
                           <div className="text-xs text-muted-foreground mb-2">Skills you'll learn</div>
                           <div className="flex flex-wrap gap-2">
-                            {path.skills.map((skill) => (
+                            {path.skills.map((skill: string) => (
                               <span
                                 key={skill}
                                 className="px-3 py-1 bg-muted/50 rounded-full text-xs font-medium"
@@ -484,25 +484,12 @@ export default function LearningPaths() {
                           </div>
                         </div>
 
-                        {/* Jobs & Salary */}
-                        <div className="flex items-center justify-between pt-4 border-t border-border">
-                          <div>
-                            <div className="text-xs text-muted-foreground mb-1">Career outcomes</div>
-                            <div className="font-bold">{path.jobs[0]}</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xs text-muted-foreground mb-1">Avg. salary</div>
-                            <div className="font-bold text-primary">{path.salary}</div>
-                          </div>
+                        {/* Jobs */}
+                        <div className="pt-4 border-t border-border">
+                          <div className="text-xs text-muted-foreground mb-1">Career outcomes</div>
+                          <div className="font-bold">{path.jobs[0]}</div>
                         </div>
 
-                        {/* CTA */}
-                        <div className="flex items-center justify-between pt-2">
-                          <span className="text-sm font-semibold text-primary">
-                            {isSelected ? 'Selected!' : 'Select Path'}
-                          </span>
-                          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
-                        </div>
                       </div>
                     </motion.button>
                   );
