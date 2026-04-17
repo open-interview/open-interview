@@ -360,5 +360,9 @@ class QdrantProvider {
 // Singleton instance
 const qdrant = new QdrantProvider();
 
-export default qdrant;
+// Auto-select local SQLite provider when QDRANT_URL is not configured
+import { localQdrant } from './qdrant-local.js';
+const activeQdrant = process.env.QDRANT_URL ? qdrant : localQdrant;
+
+export default activeQdrant;
 export { COLLECTIONS, VECTOR_DIMENSIONS };

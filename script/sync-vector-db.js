@@ -115,11 +115,6 @@ async function main() {
 }
 
 main().catch(error => {
-  // Gracefully skip if Qdrant is not configured (local/CI without vector DB)
-  if (error.message && error.message.includes('QDRANT_URL')) {
-    console.warn('⚠️  Skipping vector DB sync: QDRANT_URL not configured');
-    process.exit(0);
-  }
   console.error('Sync failed:', error);
   process.exit(1);
 });
