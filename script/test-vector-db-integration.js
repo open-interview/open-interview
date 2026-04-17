@@ -390,7 +390,7 @@ async function main() {
   log('🧪 VECTOR DB INTEGRATION TEST SUITE', 'blue');
   console.log('═'.repeat(60));
   console.log(`\nEnvironment:`);
-  console.log(`  QDRANT_URL: ${process.env.QDRANT_URL ? '✅ Set' : '❌ Missing'}`);
+  console.log(`  QDRANT_URL: (unused — local SQLite vector store)`);
   console.log(`  EMBEDDING_MODEL: ${process.env.EMBEDDING_MODEL || 'tfidf (default)'}`);
   console.log(`  Database: ${process.env.SQLITE_URL || 'file:local.db' ? '✅ Connected' : '❌ Missing'}`);
   

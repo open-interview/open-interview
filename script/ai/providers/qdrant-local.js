@@ -1,6 +1,6 @@
 /**
  * Local SQLite-backed Vector Store — drop-in replacement for Qdrant
- * Used automatically when QDRANT_URL is not set.
+ * Always used — QDRANT_URL is no longer required.
  *
  * Implements the same interface as qdrant.js:
  *   init, ensureCollection, upsert, search, findDuplicates,

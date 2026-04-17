@@ -254,8 +254,8 @@ Commands:
   help              Show this help message
 
 Environment Variables:
-  QDRANT_URL        Qdrant Cloud URL
-  QDRANT_API_KEY    Qdrant API key
+  QDRANT_URL        (unused — local SQLite vector store is used)
+  QDRANT_API_KEY    (unused — local SQLite vector store is used)
   OLLAMA_URL        Ollama server URL (default: http://localhost:11434)
   EMBEDDING_MODEL   Embedding model (default: nomic-embed-text)
   DECISION_MODEL    Decision model (default: llama3.2)
