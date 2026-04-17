@@ -40,13 +40,14 @@ export default function Flashcards() {
           ? subscribedIds
           : ['system-design', 'algorithms', 'frontend', 'backend'];
 
-        const results = await Promise.all(
-          channelIds.map(id => FlashcardService.getByChannel(id, 200).catch(() => [] as DbFlashcard[]))
-        );
-        const all = results.flat();
+        // Load all flashcards once, then filter client-side
+        const all = await FlashcardService.getAll(2000);
+        const filtered = channelIds.length > 0
+          ? all.filter(c => channelIds.includes(c.channel ?? ''))
+          : all;
         // Deduplicate by id
         const seen = new Set<string>();
-        const deduped = all.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
+        const deduped = filtered.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
         setCards(deduped);
         setChannels(Array.from(new Set(deduped.map(c => c.channel ?? '').filter(Boolean))).sort());
       } catch {
@@ -56,7 +57,8 @@ export default function Flashcards() {
       }
     }
     load();
-  }, [getSubscribedChannels]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Derive visible deck
   const deck = useCallback((): DbFlashcard[] => {
