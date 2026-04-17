@@ -388,7 +388,7 @@ export default function QuestionViewer() {
               </div>
 
               {/* Question */}
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight tracking-tight text-foreground mb-8">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight tracking-tight text-foreground mb-8">
                 {currentQuestion.question}
               </h1>
 

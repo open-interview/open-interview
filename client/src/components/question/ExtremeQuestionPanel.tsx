@@ -311,10 +311,10 @@ export function ExtremeQuestionPanel({
             transition={{ duration: 0.4, delay: 0.1 }}
             className={`font-bold text-foreground leading-[1.2] mb-4 ${
               question.question.length > 200 
-                ? 'text-xl sm:text-2xl lg:text-3xl' 
+                ? 'text-base sm:text-lg lg:text-xl' 
                 : question.question.length > 100
-                ? 'text-2xl sm:text-3xl lg:text-4xl'
-                : 'text-3xl sm:text-4xl lg:text-5xl'
+                ? 'text-lg sm:text-xl lg:text-2xl'
+                : 'text-xl sm:text-2xl lg:text-3xl'
             }`}
           >
             {renderWithInlineCode(question.question)}
