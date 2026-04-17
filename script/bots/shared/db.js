@@ -9,9 +9,8 @@ let dbClient = null;
 
 export function getDb() {
   if (!dbClient) {
-    dbClient = createClient({
-      url: process.env.SQLITE_URL ?? 'file:local.db',
-    });
+    const url = process.env.SQLITE_URL || 'file:local.db';
+    dbClient = createClient({ url });
   }
   return dbClient;
 }

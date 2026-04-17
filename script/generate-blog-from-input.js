@@ -13,7 +13,7 @@ import { runWithRetries, parseJson, writeGitHubOutput } from './utils.js';
 import blogInputTemplate from './ai/prompts/templates/blog-input.js';
 
 // Database connection
-const url = process.env.SQLITE_URL ?? 'file:local.db';
+const url = process.env.SQLITE_URL || 'file:local.db';
 
 // URL defaults to file:local.db if not set
 

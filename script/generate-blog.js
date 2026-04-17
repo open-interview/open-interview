@@ -28,7 +28,7 @@ const MAX_SKIP_ATTEMPTS = 5; // Max questions to try before giving up
 const GA_MEASUREMENT_ID = process.env.GA_MEASUREMENT_ID || 'G-47MSM57H95'; // Same as main app
 
 // Database connection
-const url = process.env.SQLITE_URL ?? 'file:local.db';
+const url = process.env.SQLITE_URL || 'file:local.db';
 
 // URL defaults to file:local.db if not set
 

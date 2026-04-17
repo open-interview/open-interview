@@ -20,7 +20,7 @@ import { createClient } from '@libsql/client';
 import { addWorkItem, initWorkQueue } from './utils.js';
 
 const client = createClient({
-  url: process.env.SQLITE_URL ?? 'file:local.db',
+  url: process.env.SQLITE_URL || 'file:local.db',
 });
 
 // Configuration

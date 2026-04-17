@@ -15,7 +15,7 @@ import 'dotenv/config';
 import { createClient } from '@libsql/client';
 
 const dbClient = createClient({
-  url: process.env.SQLITE_URL ?? 'file:local.db',
+  url: process.env.SQLITE_URL || 'file:local.db',
 });
 
 async function main() {

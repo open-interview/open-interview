@@ -20,7 +20,7 @@ import mlDecisions from './ai/services/ml-decisions.js';
 
 // Database connection
 const client = createClient({
-  url: process.env.SQLITE_URL ?? 'file:local.db',
+  url: process.env.SQLITE_URL || 'file:local.db',
 });
 
 async function fetchQuestions(limit = null) {

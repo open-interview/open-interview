@@ -10,7 +10,7 @@ import fs from 'fs';
 
 const BLOG_BASE_URL = 'https://openstackdaily.github.io';
 
-const url = process.env.SQLITE_URL ?? 'file:local.db';
+const url = process.env.SQLITE_URL || 'file:local.db';
 const specificUrl = process.env.SPECIFIC_URL;
 
 // URL defaults to file:local.db if not set

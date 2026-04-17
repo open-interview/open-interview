@@ -21,7 +21,7 @@ const PAGES_REPO_OWNER = process.env.PAGES_REPO_OWNER || 'open-interview';
 const PAGES_REPO_NAME = process.env.PAGES_REPO_NAME || 'open-interview.github.io';
 
 const db = createClient({
-  url: process.env.SQLITE_URL ?? 'file:local.db',
+  url: process.env.SQLITE_URL || 'file:local.db',
 });
 
 async function initializeTable() {

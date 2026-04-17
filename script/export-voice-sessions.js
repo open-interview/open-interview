@@ -21,7 +21,7 @@ async function main() {
   console.log('=== Export Voice Sessions ===\n');
   
   const db = createClient({
-    url: process.env.SQLITE_URL ?? 'file:local.db',
+    url: process.env.SQLITE_URL || 'file:local.db',
   });
   
   try {

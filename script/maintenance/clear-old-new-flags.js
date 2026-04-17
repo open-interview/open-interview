@@ -10,7 +10,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const dbClient = createClient({
-  url: process.env.SQLITE_URL ?? 'file:local.db',
+  url: process.env.SQLITE_URL || 'file:local.db',
 });
 
 async function clearOldNewFlags() {

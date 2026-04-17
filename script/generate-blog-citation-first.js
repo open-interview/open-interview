@@ -177,7 +177,7 @@ const TOPICS_WITH_SOURCES = [
 ];
 
 // Database connection
-const url = process.env.SQLITE_URL ?? 'file:local.db';
+const url = process.env.SQLITE_URL || 'file:local.db';
 
 // URL defaults to file:local.db if not set
 

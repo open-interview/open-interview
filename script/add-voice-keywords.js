@@ -14,7 +14,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const db = createClient({
-  url: process.env.SQLITE_URL ?? 'file:local.db',
+  url: process.env.SQLITE_URL || 'file:local.db',
 });
 
 // Channels suitable for voice interviews

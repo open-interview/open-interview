@@ -12,7 +12,7 @@
 import 'dotenv/config';
 import { createClient } from '@libsql/client';
 
-const url = process.env.SQLITE_URL ?? 'file:local.db';
+const url = process.env.SQLITE_URL || 'file:local.db';
 
 const client = createClient({ url });
 
