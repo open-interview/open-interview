@@ -39,12 +39,8 @@ async function main() {
   if (force) {
     console.log('🗑️ Deleting existing collection...');
     try {
-      const { QdrantClient } = await import('@qdrant/js-client-rest');
-      const client = new QdrantClient({
-        url: process.env.QDRANT_URL,
-        apiKey: process.env.QDRANT_API_KEY
-      });
-      await client.deleteCollection('questions');
+      const qdrant = (await import('./ai/providers/qdrant.js')).default;
+      await qdrant.deleteByFilter('questions', {});
       console.log('   Deleted');
     } catch (error) {
       console.log('   Collection did not exist');
