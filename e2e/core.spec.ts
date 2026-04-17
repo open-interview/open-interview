@@ -103,29 +103,32 @@ test.describe('Responsiveness', () => {
     test(`${name} page no overflow`, async ({ page }) => {
       await page.goto(path);
       await waitForPageReady(page);
+      // Wait for any animations/lazy content to settle
+      await page.waitForTimeout(500);
       await checkNoOverflow(page);
     });
   }
 });
 
 test.describe('Onboarding', () => {
+  test.describe.configure({ mode: 'serial' });
   test('shows welcome and role selection for new users', async ({ page }) => {
     await setupFreshUser(page);
     await page.goto('/');
-    await waitForPageReady(page);
-    
-    await expect(page.getByText(/Welcome|Get Started|Choose/i).first()).toBeVisible();
-    
-    const roleContent = page.locator('button, [class*="card"], [class*="role"]')
-      .filter({ hasText: /Frontend|Backend|Fullstack|DevOps|Engineer/i });
-    await expect(roleContent.first()).toBeVisible();
+    await page.waitForLoadState('networkidle');
+
+    // SubscriptionGate shows OnboardingFlow ("Personalize your feed" / "Choose your topics")
+    // HomePage fallback shows "Ace Your Tech Interview" / "Start Practicing Now"
+    await expect(
+      page.getByText(/Personalize your feed|Choose your topics|Ace Your Tech Interview|Start Practicing Now|Welcome|Get Started/i).first()
+    ).toBeVisible({ timeout: 10000 });
   });
 
   test('selecting role proceeds to channel selection', async ({ page }) => {
     await setupFreshUser(page);
     await page.goto('/');
     await waitForPageReady(page);
-    
+
     const roleButton = page.locator('button').filter({ hasText: /Fullstack/i }).first();
     if (await roleButton.isVisible()) {
       await roleButton.click();

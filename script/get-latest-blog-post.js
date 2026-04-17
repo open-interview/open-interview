@@ -200,20 +200,28 @@ async function main() {
     }
   } catch {}
 
-  // Set GitHub Actions outputs
+  // Set GitHub Actions outputs — use heredoc for values that may contain newlines
   const outputFile = process.env.GITHUB_OUTPUT;
   if (outputFile) {
-    fs.appendFileSync(outputFile, `has_post=true\n`);
-    fs.appendFileSync(outputFile, `post_id=${post.question_id}\n`);
-    fs.appendFileSync(outputFile, `title=${post.title}\n`);
-    fs.appendFileSync(outputFile, `url=${postUrl}\n`);
-    fs.appendFileSync(outputFile, `excerpt=${excerpt}\n`);
-    fs.appendFileSync(outputFile, `tags=${tags}\n`);
-    fs.appendFileSync(outputFile, `channel=${post.channel}\n`);
-    if (quickReference) fs.appendFileSync(outputFile, `quick_reference=${quickReference}\n`);
-    if (socialHook)     fs.appendFileSync(outputFile, `social_hook=${socialHook}\n`);
-    if (socialBody)     fs.appendFileSync(outputFile, `social_body=${socialBody}\n`);
-    if (realWorldExample) fs.appendFileSync(outputFile, `real_world_example=${realWorldExample}\n`);
+    const writeOutput = (key, value) => {
+      const str = String(value ?? '');
+      if (str.includes('\n') || str.includes('\r')) {
+        fs.appendFileSync(outputFile, `${key}<<__EOF__\n${str}\n__EOF__\n`);
+      } else {
+        fs.appendFileSync(outputFile, `${key}=${str}\n`);
+      }
+    };
+    writeOutput('has_post', 'true');
+    writeOutput('post_id', post.question_id);
+    writeOutput('title', post.title);
+    writeOutput('url', postUrl);
+    writeOutput('excerpt', excerpt);
+    writeOutput('tags', tags);
+    writeOutput('channel', post.channel);
+    if (quickReference)   writeOutput('quick_reference', quickReference);
+    if (socialHook)       writeOutput('social_hook', socialHook);
+    if (socialBody)       writeOutput('social_body', socialBody);
+    if (realWorldExample) writeOutput('real_world_example', realWorldExample);
   }
 }
 

@@ -423,7 +423,12 @@ async function publishToLinkedInArticle(content) {
 function writeGitHubOutput(key, value) {
   if (process.env.GITHUB_OUTPUT) {
     try {
-      fs.appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`);
+      const str = String(value ?? '');
+      if (str.includes('\n') || str.includes('\r')) {
+        fs.appendFileSync(process.env.GITHUB_OUTPUT, `${key}<<__EOF__\n${str}\n__EOF__\n`);
+      } else {
+        fs.appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${str}\n`);
+      }
     } catch (err) {
       console.warn(`   ⚠️ Failed to write GitHub output: ${err.message}`);
     }

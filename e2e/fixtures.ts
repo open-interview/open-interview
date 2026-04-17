@@ -43,6 +43,9 @@ export async function setupFreshUser(page: Page) {
   await page.addInitScript(() => {
     localStorage.removeItem('user-preferences');
     localStorage.removeItem('user-credits');
+    localStorage.removeItem('activeLearningPaths');
+    localStorage.removeItem('activeLearningPath');
+    localStorage.removeItem('customLearningPaths');
     localStorage.setItem('marvel-intro-seen', 'true');
   });
 }

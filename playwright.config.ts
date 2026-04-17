@@ -86,6 +86,7 @@ export default defineConfig({
       name: 'lighthouse',
       use: { ...devices['Desktop Chrome'] },
       testMatch: '**/lighthouse.spec.ts',
+      timeout: 120_000, // Lighthouse takes ~30-60s per page
     },
 
     // iPhone 13 UI Audit - Separate project for mobile testing

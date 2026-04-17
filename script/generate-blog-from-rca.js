@@ -255,10 +255,11 @@ async function processResult(company, result) {
   
   // Output for GitHub Actions
   if (process.env.GITHUB_OUTPUT) {
-    fs.appendFileSync(process.env.GITHUB_OUTPUT, `blog_id=${questionId}\n`);
-    fs.appendFileSync(process.env.GITHUB_OUTPUT, `title=${blogContent.title}\n`);
-    fs.appendFileSync(process.env.GITHUB_OUTPUT, `company=${company}\n`);
-    fs.appendFileSync(process.env.GITHUB_OUTPUT, `slug=${slug}\n`);
+    const _wo = (k, v) => { const s = String(v??''); fs.appendFileSync(process.env.GITHUB_OUTPUT, s.includes('\n')||s.includes('\r') ? `${k}<<__EOF__\n${s}\n__EOF__\n` : `${k}=${s}\n`); };
+    _wo('blog_id', questionId);
+    _wo('title', blogContent.title);
+    _wo('company', company);
+    _wo('slug', slug);
   }
 }
 

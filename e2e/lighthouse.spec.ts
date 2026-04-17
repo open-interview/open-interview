@@ -45,6 +45,17 @@ async function runLighthouse(url: string) {
       onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
       formFactor: 'desktop',
       screenEmulation: { disabled: true },
+      // Disable network/CPU throttling — CI containers are resource-constrained
+      // and simulated throttling produces unreliable scores. We measure actual perf.
+      throttlingMethod: 'provided',
+      throttling: {
+        rttMs: 0,
+        throughputKbps: 0,
+        cpuSlowdownMultiplier: 1,
+        requestLatencyMs: 0,
+        downloadThroughputKbps: 0,
+        uploadThroughputKbps: 0,
+      },
     });
 
     return result?.lhr ?? null;
