@@ -59,96 +59,83 @@ jobs:
       - uses: ./.github/actions/setup-bot
       - name: Generate questions
         env:
-          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          SQLITE_URL: ${{ secrets.SQLITE_URL }}
+          SQLITE_AUTH_TOKEN: ${{ secrets.SQLITE_AUTH_TOKEN }}
           INPUT_LIMIT: ${{ inputs.channel && inputs.count || '25' }}
           INPUT_CHANNEL: ${{ inputs.channel }}
           BALANCE_CHANNELS: 'true'
           AGGRESSIVE_MODE: 'true'
           ENSURE_MINIMUM: 'true'
-        run: node script/generate-question.js
+        run: pnpm run generate:question
       - name: Sync to Vector DB
         if: success()
         env:
-          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-        run: node script/sync-vector-db.js --mode=incremental || true
+          SQLITE_URL: ${{ secrets.SQLITE_URL }}
+          SQLITE_AUTH_TOKEN: ${{ secrets.SQLITE_AUTH_TOKEN }}
+        run: pnpm run vector:sync -- --mode=incremental || true
 
   # ── Daily 2AM full pipeline ──────────────────────────────────────────────────
   ingest:
-    name: 📥 Ingest (creator → analysis → verifier → processor)
+    name: 📥 Ingest (${{ matrix.bot }})
     if: |
       (github.event.schedule == '0 2 * * *') ||
       (github.event_name == 'workflow_dispatch' && (inputs.mode == 'full-pipeline' || inputs.stage == 'creator' || inputs.stage == 'analysis' || inputs.stage == 'verifier' || inputs.stage == 'processor'))
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 45
+    strategy:
+      matrix:
+        bot: [creator, analysis, verifier, processor]
+      fail-fast: false
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-bot
-      - name: Creator Bot
+      - name: Run ${{ matrix.bot }} bot
         env:
-          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          SQLITE_URL: ${{ secrets.SQLITE_URL }}
+          SQLITE_AUTH_TOKEN: ${{ secrets.SQLITE_AUTH_TOKEN }}
           COUNT: ${{ inputs.count || '5' }}
           BALANCE_CHANNELS: 'true'
-        run: node script/bots/creator-bot.js
-      - name: Analysis Bot
-        env:
-          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-        run: node script/bots/analysis-bot.js --limit=${{ inputs.count || '100' }}
-      - name: Verifier Bot
-        env:
-          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
           MODE: scan
           LIMIT: ${{ inputs.count || '10' }}
-        run: node script/bots/verifier-bot.js
-      - name: Processor Bot
-        env:
-          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
           MAX_ITEMS: ${{ inputs.count || '10' }}
-        run: node script/bots/processor-bot.js
+        run: |
+          case "${{ matrix.bot }}" in
+            creator)   pnpm run bot:creator ;;
+            analysis)  pnpm run bot:analysis -- --limit=${{ inputs.count || '100' }} ;;
+            verifier)  pnpm run bot:verifier ;;
+            processor) pnpm run bot:processor ;;
+          esac
 
   enrich:
-    name: ✨ Enrich (blog + voice + intelligence + coding)
+    name: ✨ Enrich (${{ matrix.stage }})
     needs: ingest
     if: |
       always() &&
       ((github.event.schedule == '0 2 * * *') ||
       (github.event_name == 'workflow_dispatch' && (inputs.mode == 'full-pipeline' || inputs.stage == 'blog-generator' || inputs.stage == 'voice-sessions' || inputs.stage == 'interview-intelligence' || inputs.stage == 'coding-challenges')))
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        stage: [blog-generator, voice-sessions, interview-intelligence, coding-challenges]
+      fail-fast: false
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-bot
-      - name: Blog Generator
+      - name: Run ${{ matrix.stage }}
         env:
-          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-        run: node script/generate-blog.js
-        continue-on-error: true
-      - name: Voice Sessions
-        env:
-          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-        run: node script/generate-voice-sessions.js --use-vector-db --limit=50
-        continue-on-error: true
-      - name: Interview Intelligence
-        env:
-          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-        run: node script/generate-interview-intelligence.js
-        continue-on-error: true
-      - name: Coding Challenges
-        env:
-          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          SQLITE_URL: ${{ secrets.SQLITE_URL }}
+          SQLITE_AUTH_TOKEN: ${{ secrets.SQLITE_AUTH_TOKEN }}
           INPUT_COUNT: ${{ inputs.count || '2' }}
           INPUT_DIFFICULTY: 'random'
           INPUT_CATEGORY: 'random'
-        run: node script/coding-challenge-bot.js
+        run: |
+          case "${{ matrix.stage }}" in
+            blog-generator)          pnpm run blog:generate ;;
+            voice-sessions)          pnpm run generate:voice-sessions -- --use-vector-db --limit=50 ;;
+            interview-intelligence)  pnpm run rag:intelligence ;;
+            coding-challenges)       pnpm run bot:coding-challenge ;;
+          esac
         continue-on-error: true
 
   finalize:
@@ -163,9 +150,9 @@ jobs:
       - uses: ./.github/actions/setup-node-pnpm
       - name: Generate monitor data
         env:
-          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-        run: node script/fetch-bot-monitor-data.js
+          SQLITE_URL: ${{ secrets.SQLITE_URL }}
+          SQLITE_AUTH_TOKEN: ${{ secrets.SQLITE_AUTH_TOKEN }}
+        run: pnpm run fetch:bot-monitor
       - name: Commit and push with retry
         run: |
           git config --local user.email "action@github.com"
@@ -206,20 +193,20 @@ jobs:
       - uses: ./.github/actions/setup-bot
       - name: Flashcard Bot
         env:
-          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-        run: node script/bots/flashcard-bot.js --limit=${{ inputs.count || '200' }}
+          SQLITE_URL: ${{ secrets.SQLITE_URL }}
+          SQLITE_AUTH_TOKEN: ${{ secrets.SQLITE_AUTH_TOKEN }}
+        run: pnpm run bot:flashcard -- --limit=${{ inputs.count || '200' }}
         continue-on-error: true
       - name: Run migrations
         env:
-          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-        run: node script/migrations/add-is-new-column.js || echo "Migration skipped"
+          SQLITE_URL: ${{ secrets.SQLITE_URL }}
+          SQLITE_AUTH_TOKEN: ${{ secrets.SQLITE_AUTH_TOKEN }}
+        run: pnpm run db:migrate:is-new || echo "Migration skipped"
       - name: Clear old new-flags
         env:
-          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-        run: node script/maintenance/clear-old-new-flags.js
+          SQLITE_URL: ${{ secrets.SQLITE_URL }}
+          SQLITE_AUTH_TOKEN: ${{ secrets.SQLITE_AUTH_TOKEN }}
+        run: pnpm run db:maintenance:clear-new-flags
 
   # ── Manual intake ────────────────────────────────────────────────────────────
   manual-intake:
@@ -237,15 +224,15 @@ jobs:
       - name: Process and add question
         env:
           INPUT_QUESTION: ${{ inputs.question }}
-          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          SQLITE_URL: ${{ secrets.SQLITE_URL }}
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           CI: 'true'
-        run: node script/add-random-question.js
+        run: pnpm run generate:question:random
       - name: Regenerate RSS feed
         env:
-          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-        run: node script/generate-rss.js
+          SQLITE_URL: ${{ secrets.SQLITE_URL }}
+          SQLITE_AUTH_TOKEN: ${{ secrets.SQLITE_AUTH_TOKEN }}
+        run: pnpm run generate:rss
       - name: Trigger deploy
         uses: actions/github-script@v7
         with:
@@ -265,9 +252,9 @@ jobs:
         id: generate
         env:
           INPUT_TOPIC: ${{ inputs.topic }}
-          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          SQLITE_URL: ${{ secrets.SQLITE_URL }}
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: node script/generate-blog-from-input.js
+        run: pnpm run blog:generate:from-input
       - name: Trigger blog deploy
         if: success() && inputs.publish
         uses: actions/github-script@v7

@@ -14,7 +14,7 @@
 import { createClient } from '@libsql/client';
 import crypto from 'crypto';
 
-// RAG always uses local SQLite — never the remote Turso DB
+// RAG always uses local SQLite
 const DB_URL = 'file:local.db';
 
 class LocalQdrantProvider {

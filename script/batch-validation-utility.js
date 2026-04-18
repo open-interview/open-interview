@@ -165,7 +165,7 @@ async function saveValidationResults(results) {
   
   const batchId = `batch-${Date.now()}`;
   
-  // Insert results one by one (Turso doesn't support transactions the same way)
+  // Insert results one by one
   for (const result of results) {
     await db.execute({
       sql: `

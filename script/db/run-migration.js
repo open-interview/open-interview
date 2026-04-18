@@ -2,7 +2,7 @@
 /**
  * Database Migration Runner
  * 
- * Runs SQL migrations against the Turso database.
+ * Runs SQL migrations against the SQLite database.
  * Usage: node script/db/run-migration.js [migration-file]
  */
 

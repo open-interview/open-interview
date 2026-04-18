@@ -18,7 +18,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
 }
 
-export class TursoStorage implements IStorage {
+export class SqliteStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const result = await client.execute({
       sql: "SELECT id, username, password FROM users WHERE id = ?",
@@ -57,4 +57,4 @@ export class TursoStorage implements IStorage {
   }
 }
 
-export const storage = new TursoStorage();
+export const storage = new SqliteStorage();

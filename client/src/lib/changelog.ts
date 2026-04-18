@@ -34,10 +34,10 @@ export const defaultChangelog: ChangelogData = {
       date: new Date().toISOString().split('T')[0],
       type: 'feature',
       title: 'Platform Active',
-      description: 'Questions served from Turso database with real-time bot updates.',
+      description: 'Questions served from SQLite database with real-time bot updates.',
       details: {
         features: [
-          'Questions served from Turso database',
+          'Questions served from SQLite database',
           'Real-time updates from AI bots',
           'Improved API performance'
         ]

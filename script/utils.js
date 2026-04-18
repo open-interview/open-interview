@@ -41,7 +41,7 @@ export const TIMEOUT_MS = 300000; // 5 minutes
 
 /**
  * Retry wrapper for database operations with exponential backoff
- * Handles transient errors from Turso (HTTP 400, 500, 502, 503, timeouts)
+ * Handles transient errors from SQLite client (HTTP 400, 500, 502, 503, timeouts)
  */
 async function retryDatabaseOperation(operation, operationName = 'database operation', maxRetries = 3) {
   let lastError = null;

@@ -1,6 +1,6 @@
 /**
  * API client for fetching questions from static JSON files (GitHub Pages)
- * Data is pre-generated at build time from Turso database
+ * Data is pre-generated at build time from SQLite database
  */
 
 // Base path for static data files

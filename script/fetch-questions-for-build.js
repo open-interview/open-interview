@@ -1,5 +1,5 @@
 /**
- * Fetch questions from Turso database and generate static JSON files for GitHub Pages build.
+ * Fetch questions from SQLite database and generate static JSON files for GitHub Pages build.
  * This script runs during the build process to embed all questions into the static site.
  */
 import 'dotenv/config';
@@ -88,7 +88,7 @@ function isWithinLastWeek(dateStr) {
 }
 
 async function main() {
-  console.log('=== Fetching Questions from Turso for Static Build ===\n');
+  console.log('=== Fetching Questions from SQLite database for Static Build ===\n');
 
   // Ensure output directory exists
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -365,7 +365,7 @@ async function fetchChangelog(client, OUTPUT_DIR, questions) {
       else { entry.questionsImproved += Number(row.count) || 0; entry.activities.push({ type: row.bot_type, action: 'improved', count: Number(row.count) || 0 }); }
     }
     const changelogEntries = Object.values(entriesByDate).filter(e => e.questionsAdded > 0 || e.questionsImproved > 0).map(e => ({ date: e.date, type: e.questionsAdded > 0 ? 'added' : 'improved', title: e.questionsAdded > 0 ? `${e.questionsAdded} new question${e.questionsAdded > 1 ? 's' : ''} added` : `${e.questionsImproved} question${e.questionsImproved > 1 ? 's' : ''} improved`, description: `Bot activity on ${e.date}`, details: { questionsAdded: e.questionsAdded, questionsImproved: e.questionsImproved, channels: Array.from(e.channels), activities: e.activities } })).slice(0, 30);
-    const changelog = { entries: changelogEntries.length > 0 ? changelogEntries : [{ date: new Date().toISOString().split('T')[0], type: 'feature', title: 'Platform Active', description: 'Questions served from Turso database.', details: {} }], stats: { totalQuestionsAdded: Number(totals.rows[0]?.added) || questions.length, totalQuestionsImproved: Number(totals.rows[0]?.improved) || 0, lastUpdated: new Date().toISOString() } };
+    const changelog = { entries: changelogEntries.length > 0 ? changelogEntries : [{ date: new Date().toISOString().split('T')[0], type: 'feature', title: 'Platform Active', description: 'Questions served from SQLite database.', details: {} }], stats: { totalQuestionsAdded: Number(totals.rows[0]?.added) || questions.length, totalQuestionsImproved: Number(totals.rows[0]?.improved) || 0, lastUpdated: new Date().toISOString() } };
     fs.writeFileSync(path.join(OUTPUT_DIR, 'changelog.json'), JSON.stringify(changelog, null, 0));
     console.log(`   ✓ changelog.json (${changelogEntries.length} entries)`);
   } catch (e) {

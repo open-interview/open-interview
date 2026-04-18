@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * GitHub Analytics Bot
- * Fetches traffic data from GitHub API and stores it in Turso
+ * Fetches traffic data from GitHub API and stores it in SQLite
  * Runs daily via GitHub Actions to collect:
  * - Page views (unique and total)
  * - Clone counts

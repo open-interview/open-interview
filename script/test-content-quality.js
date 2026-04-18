@@ -5,7 +5,7 @@
  * Exits with code 1 if more than 1% of questions are invalid.
  * 
  * Usage: node script/test-content-quality.js
- * Env: SQLITE_URL (Turso URL) or uses local.db
+ * Env: SQLITE_URL or uses local.db
  */
 
 import 'dotenv/config';

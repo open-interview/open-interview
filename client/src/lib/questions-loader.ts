@@ -1,6 +1,6 @@
 /**
  * Questions loader - fetches questions from static JSON files
- * Data is pre-generated at build time from Turso database
+ * Data is pre-generated at build time from SQLite database
  */
 
 import { api, QuestionService, ChannelService, StatsService } from '../services/api.service';
