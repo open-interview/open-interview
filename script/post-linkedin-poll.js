@@ -137,7 +137,7 @@ async function fetchQuestion() {
     await dbClient.execute("ALTER TABLE questions ADD COLUMN status TEXT DEFAULT 'active'");
   }
 
-  let sql = 'SELECT * FROM questions WHERE status = "active"';
+  let sql = "SELECT * FROM questions WHERE status = 'active'";
   const args = [];
 
   if (questionId) {
