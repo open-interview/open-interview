@@ -119,6 +119,13 @@ const StatsRedirect = React.lazy(() => import('@/pages/StatsRedirect'));
 const ChallengeHome = React.lazy(() => import('@/pages/ChallengeHome'));
 const ChallengeWorkspace = React.lazy(() => import('@/pages/ChallengeWorkspace'));
 
+// Blog pages
+const BlogHomePage = React.lazy(() => import('@/pages/blog/BlogHomePage'));
+const BlogListPage = React.lazy(() => import('@/pages/blog/BlogListPage'));
+const PostDetailPage = React.lazy(() => import('@/pages/blog/PostDetailPage'));
+const BlogSearchPage = React.lazy(() => import('@/pages/blog/BlogSearchPage'));
+const AboutBlogPage = React.lazy(() => import('@/pages/blog/AboutBlogPage'));
+
 function Router() {
   return (
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><InterviewLoader message="Loading..." showTip={false} /></div>}>
@@ -160,6 +167,13 @@ function Router() {
         <Route path="/extreme/channel/:id/:questionId" component={ExtremeQuestionViewer} />
         <Route path="/channel/:id" component={QuestionViewer} />
         <Route path="/channel/:id/:index" component={QuestionViewer} />
+        {/* Blog routes */}
+        <Route path="/blog" component={BlogHomePage} />
+        <Route path="/blog/search" component={BlogSearchPage} />
+        <Route path="/blog/category/:slug">{(params) => <BlogListPage categorySlug={params.slug} />}</Route>
+        <Route path="/blog/tag/:tag">{(params) => <BlogListPage tag={params.tag} />}</Route>
+        <Route path="/blog/:slug">{(params) => <PostDetailPage slug={params.slug} />}</Route>
+        <Route path="/about-blog" component={AboutBlogPage} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>

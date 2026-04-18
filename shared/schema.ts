@@ -301,3 +301,26 @@ export type InsertFlashcard = z.infer<typeof insertFlashcardSchema>;
 export type Flashcard = typeof flashcards.$inferSelect;
 export type InsertTest = z.infer<typeof insertTestSchema>;
 export type Test = typeof tests.$inferSelect;
+
+// ── Blog Schema ────────────────────────────────────────────────────────────
+
+export const blogAuthors = sqliteTable("blog_authors", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  bio: text("bio"),
+  avatarUrl: text("avatar_url"),
+  twitterHandle: text("twitter_handle"),
+});
+
+export const blogCategories = sqliteTable("blog_categories", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description"),
+});
+
+export const insertBlogAuthorSchema = createInsertSchema(blogAuthors);
+export const insertBlogCategorySchema = createInsertSchema(blogCategories);
+
+export type BlogAuthor = typeof blogAuthors.$inferSelect;
+export type BlogCategory = typeof blogCategories.$inferSelect;

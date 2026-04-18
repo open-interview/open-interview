@@ -1172,5 +1172,67 @@ export async function registerRoutes(
     }
   });
 
+  // ── Blog API Routes ────────────────────────────────────────────────────────
+  const { blogStorage } = await import("./blog-storage");
+
+  app.get("/api/blog/posts", (req, res) => {
+    try {
+      const { category, tag, limit, offset, page } = req.query as Record<string, string>;
+      const pageSize = limit ? parseInt(limit) : 12;
+      const pageNum = page ? parseInt(page) : 1;
+      const off = offset ? parseInt(offset) : (pageNum - 1) * pageSize;
+      const all = blogStorage.getAllPosts({ category, tag });
+      const data = all.slice(off, off + pageSize);
+      res.json({ data, meta: { total: all.length, page: pageNum, pageSize, totalPages: Math.ceil(all.length / pageSize) } });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch posts" });
+    }
+  });
+
+  app.get("/api/blog/posts/featured", (_req, res) => {
+    try {
+      res.json({ data: blogStorage.getFeaturedPosts(3) });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch featured posts" });
+    }
+  });
+
+  app.get("/api/blog/posts/:slug", (req, res) => {
+    try {
+      const post = blogStorage.getPostBySlug(req.params.slug);
+      if (!post) return res.status(404).json({ error: "Post not found" });
+      const related = blogStorage.getRelatedPosts(post.id, 3);
+      res.json({ data: post, related });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch post" });
+    }
+  });
+
+  app.get("/api/blog/categories", (_req, res) => {
+    try {
+      res.json({ data: blogStorage.getAllCategories() });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch categories" });
+    }
+  });
+
+  app.get("/api/blog/tags", (_req, res) => {
+    try {
+      res.json({ data: blogStorage.getAllTags() });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch tags" });
+    }
+  });
+
+  app.get("/api/blog/search", (req, res) => {
+    try {
+      const { q } = req.query as { q?: string };
+      if (!q || q.trim().length < 2) return res.json({ data: [] });
+      res.json({ data: blogStorage.searchPosts(q.trim()) });
+    } catch (error) {
+      res.status(500).json({ error: "Search failed" });
+    }
+  });
+
   return httpServer;
 }
