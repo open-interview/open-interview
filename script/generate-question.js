@@ -548,7 +548,7 @@ async function main() {
   console.log('=== END SUMMARY ===\n');
 
   if (addedQuestions.length > 0) {
-    const channelsAffected = addedQuestions.flatMap(q => q.mappedChannels.map(m => m.channel));
+    const channelsAffected = addedQuestions.flatMap(q => (q.mappedChannels || [{ channel: q.channel }]).map(m => m.channel));
     logQuestionsAdded(addedQuestions.length, channelsAffected, addedQuestions.map(q => q.id));
   }
 
