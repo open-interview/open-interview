@@ -179,11 +179,16 @@ export default function VoiceSession() {
   const [error, setError] = useState<string | null>(null);
   
   const recognitionRef = useRef<any>(null);
-  
+  const pageStateRef = useRef<PageState>('loading');
+
   const { onVoiceInterview } = useCredits();
   const { trackEvent } = useAchievementContext();
 
   const currentQuestion = sessionState ? getCurrentQuestion(sessionState) : null;
+
+  useEffect(() => {
+    pageStateRef.current = pageState;
+  }, [pageState]);
 
   // Load sessions and questions
   useEffect(() => {
@@ -253,14 +258,14 @@ export default function VoiceSession() {
     };
     
     recognition.onend = () => {
-      if (pageState === 'recording') {
+      if (pageStateRef.current === 'recording') {
         try { recognition.start(); } catch (e) { }
       }
     };
     
     recognitionRef.current = recognition;
     return () => { try { recognition.stop(); } catch (e) { } };
-  }, [pageState]);
+  }, []);
 
   const startNewSession = useCallback((session: VoiceSession) => {
     const sessionQuestions = buildSessionQuestions(session, allQuestions);
@@ -373,7 +378,7 @@ export default function VoiceSession() {
 
   if (!isSpeechSupported) {
     return (
-      <AppLayout fullWidth hideNav>
+      <AppLayout fullWidth hideNav >
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
           <div className="max-w-md text-center">
             <div className="w-20 h-20 rounded-2xl bg-[#ffd700]/20 flex items-center justify-center mx-auto mb-6">
@@ -390,7 +395,7 @@ export default function VoiceSession() {
 
   if (pageState === 'loading') {
     return (
-      <AppLayout fullWidth hideNav>
+      <AppLayout fullWidth hideNav >
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center">
             <div className="w-16 h-16 rounded-2xl bg-[#00d4ff]/20 flex items-center justify-center mx-auto mb-4">
@@ -413,12 +418,12 @@ export default function VoiceSession() {
     return (
       <>
         <SEOHead title="Voice Sessions | Code Reels" description="Practice interview topics with focused question sessions" />
-        <AppLayout fullWidth hideNav>
+        <AppLayout fullWidth hideNav >
           <div className="min-h-screen bg-background text-foreground">
           <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
             <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <button onClick={() => setLocation('/')} className="p-2 hover:bg-muted rounded-lg transition-colors">
+                <button onClick={() => setLocation('/')} className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-muted rounded-lg transition-colors duration-150 ease-out cursor-pointer">
                   <Home className="w-5 h-5 text-muted-foreground" />
                 </button>
                 <div className="flex items-center gap-3">
@@ -435,7 +440,7 @@ export default function VoiceSession() {
             </div>
           </header>
 
-          <main className="max-w-4xl mx-auto px-4 py-6">
+          <main className="max-w-4xl mx-auto px-4 py-6 pb-24">
             {availableSessions.length === 0 ? (
               <div className="text-center py-16">
                 <div className="w-20 h-20 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-6">
@@ -462,7 +467,7 @@ export default function VoiceSession() {
                           onClick={() => startNewSession(session)}
                           whileHover={{ scale: 1.01 }}
                           whileTap={{ scale: 0.99 }}
-                          className="p-5 bg-muted/50 border border-border rounded-2xl text-left hover:border-[#00d4ff]/50 transition-all group"
+                          className="p-5 bg-muted/50 border border-border rounded-2xl text-left hover:border-[#00d4ff]/50 transition-colors duration-150 ease-out cursor-pointer group"
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
@@ -505,7 +510,7 @@ export default function VoiceSession() {
     return (
       <>
         <SEOHead title={`${sessionState.session.topic} | Voice Session`} description="Voice interview session practice" />
-        <AppLayout fullWidth hideNav>
+        <AppLayout fullWidth hideNav >
           <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -526,10 +531,10 @@ export default function VoiceSession() {
               </div>
 
               <div className="flex gap-3">
-                <Button variant="secondary" onClick={exitSession} className="flex-1">
+                <Button variant="secondary" onClick={exitSession} className="flex-1 cursor-pointer min-h-[44px]">
                   Back
                 </Button>
-                <Button variant="primary" onClick={beginQuestions} className="flex-1">
+                <Button variant="primary" onClick={beginQuestions} className="flex-1 cursor-pointer min-h-[44px]">
                   <Play className="w-5 h-5 mr-2" />
                   Start Session
                 </Button>
@@ -548,13 +553,13 @@ export default function VoiceSession() {
     return (
       <>
         <SEOHead title={`Q${sessionState.currentQuestionIndex + 1} | ${sessionState.session.topic}`} description="Answer the interview question" />
-        <AppLayout fullWidth hideNav>
+        <AppLayout fullWidth hideNav >
           <div className="min-h-screen bg-background text-foreground">
           <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
             <div className="max-w-4xl mx-auto px-4">
               <div className="h-16 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <button onClick={exitSession} className="p-2 hover:bg-muted rounded-lg transition-colors">
+                  <button onClick={exitSession} className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-muted rounded-lg transition-colors duration-150 ease-out cursor-pointer">
                     <Home className="w-5 h-5 text-muted-foreground" />
                   </button>
                   <div>
@@ -569,8 +574,7 @@ export default function VoiceSession() {
             </div>
           </header>
 
-          <main className="max-w-4xl mx-auto px-4 py-6">
-            {/* Question card */}
+          <main className="max-w-4xl mx-auto px-4 py-6 pb-24">
             <Card className="p-6 mb-6" neonBorder>
               <h2 className="text-lg font-medium text-foreground leading-relaxed">{currentQuestion.question}</h2>
               {error && (
@@ -659,11 +663,11 @@ export default function VoiceSession() {
 
                 {pageState === 'editing' && (
                   <div className="flex gap-3">
-                    <Button variant="secondary" onClick={retryQuestion}>
+                    <Button variant="secondary" onClick={retryQuestion} className="cursor-pointer min-h-[44px]">
                       <RotateCcw className="w-4 h-4 mr-2" />
                       Re-record
                     </Button>
-                    <Button variant="primary" onClick={submitCurrentAnswer} disabled={!transcript.trim()}>
+                    <Button variant="primary" onClick={submitCurrentAnswer} disabled={!transcript.trim()} className="cursor-pointer min-h-[44px]">
                       <CheckCircle className="w-5 h-5 mr-2" />
                       Submit
                     </Button>
@@ -685,7 +689,7 @@ export default function VoiceSession() {
     return (
       <>
         <SEOHead title="Feedback | Voice Session" description="Review your answer feedback" />
-        <AppLayout fullWidth hideNav>
+        <AppLayout fullWidth hideNav >
           <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.93, y: 20 }}
@@ -745,11 +749,11 @@ export default function VoiceSession() {
 
               {/* CTAs */}
               <div className="flex gap-3">
-                <Button variant="secondary" onClick={retryQuestion} className="flex-1">
+                <Button variant="secondary" onClick={retryQuestion} className="flex-1 cursor-pointer min-h-[44px]">
                   <RotateCcw className="w-4 h-4 mr-2" />
                   Try Again
                 </Button>
-                <Button variant="primary" onClick={goToNextQuestion} className="flex-1">
+                <Button variant="primary" onClick={goToNextQuestion} className="flex-1 cursor-pointer min-h-[44px]">
                   {isLastQuestion ? 'View Results' : 'Next Question'}
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
@@ -786,7 +790,7 @@ export default function VoiceSession() {
     return (
       <>
         <SEOHead title="Session Complete | Voice Session" description="View your session results" />
-        <AppLayout fullWidth hideNav>
+        <AppLayout fullWidth hideNav >
           <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.93, y: 24 }}
@@ -857,15 +861,15 @@ export default function VoiceSession() {
 
               {/* CTAs */}
               <div className="flex gap-3">
-                <Button variant="secondary" onClick={handleShare} className="flex-1">
+                <Button variant="secondary" onClick={handleShare} className="flex-1 cursor-pointer min-h-[44px]">
                   <Share2 className="w-4 h-4 mr-2" />
                   Share
                 </Button>
-                <Button variant="secondary" onClick={exitSession} className="flex-1">
+                <Button variant="secondary" onClick={exitSession} className="flex-1 cursor-pointer min-h-[44px]">
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Again
                 </Button>
-                <Button variant="primary" onClick={() => setLocation('/')} className="flex-1">
+                <Button variant="primary" onClick={() => setLocation('/')} className="flex-1 cursor-pointer min-h-[44px]">
                   <Home className="w-4 h-4 mr-2" />
                   Home
                 </Button>

@@ -17,7 +17,9 @@ import {
 } from 'lucide-react';
 import { PullToRefresh, SwipeableCard, SkeletonList } from '../mobile';
 import { useUserPreferences } from '../../context/UserPreferencesContext';
+import { getRoleDefaultChannels, isPersonalized } from '../../lib/personalization';
 import { allChannelsConfig } from '../../lib/channels-config';
+import { getInProgressSessions } from '../../lib/resume-service';
 
 
 
@@ -71,13 +73,13 @@ function ProgressRing({ pct, size = 56, stroke = 4, color = '#7c3aed' }: { pct: 
 }
 
 // ─── Stat Pill ────────────────────────────────────────────────────────────────
-function StatPill({ icon: Icon, value, label, color }: { icon: React.ElementType; value: string | number; label: string; color: string }) {
+function StatPill({ icon: Icon, value, label, color, onClick }: { icon: React.ElementType; value: string | number; label: string; color: string; onClick?: () => void }) {
   return (
-    <motion.div variants={fadeUp} className="flex-shrink-0 flex flex-col items-center gap-1.5 px-4 py-3 rounded-2xl bg-muted border border-border min-w-[80px]">
+    <motion.button variants={fadeUp} onClick={onClick} className="flex-shrink-0 flex flex-col items-center gap-1.5 px-4 py-3 rounded-2xl bg-muted border border-border min-w-[80px] min-h-[44px] hover:border-border/60 hover:bg-muted/80 transition-colors duration-150 ease-out cursor-pointer active:scale-95">
       <Icon className={`w-4 h-4 ${color}`} />
       <span className="text-lg font-bold leading-none">{value}</span>
       <span className="text-[10px] text-muted-foreground leading-none text-center">{label}</span>
-    </motion.div>
+    </motion.button>
   );
 }
 
@@ -94,7 +96,7 @@ function ActionCard({
       whileHover={{ y: -3, boxShadow: `0 8px 32px rgba(0,0,0,0.4)` }}
       whileTap={{ scale: 0.96 }}
       onClick={onClick}
-      className={`group relative flex flex-col gap-3 p-4 rounded-2xl border text-left overflow-hidden transition-colors
+      className={`group relative flex flex-col gap-3 p-4 rounded-2xl border text-left overflow-hidden transition-colors duration-150 ease-out cursor-pointer
         ${primary
           ? 'bg-gradient-to-br from-violet-600/30 to-cyan-500/20 border-violet-500/40 col-span-2 sm:col-span-1'
           : 'bg-muted border-border hover:border-border'
@@ -174,18 +176,30 @@ function OnboardingScreen({ onStart }: { onStart: () => void }) {
 
 // ─── Daily Challenge Card ─────────────────────────────────────────────────────
 const DAILY_CHALLENGES = [
-  { question: 'Design a URL shortener service like bit.ly. Focus on scalability and analytics.', topic: 'System Design', difficulty: 'Medium' },
-  { question: 'Explain the difference between process and thread. When would you use each?', topic: 'OS Concepts', difficulty: 'Easy' },
-  { question: 'Implement a LRU cache with O(1) get and put operations.', topic: 'Algorithms', difficulty: 'Hard' },
-  { question: 'How does React reconciliation work? What is the virtual DOM?', topic: 'Frontend', difficulty: 'Medium' },
-  { question: 'Design a distributed rate limiter for a high-traffic API.', topic: 'System Design', difficulty: 'Hard' },
-  { question: 'What are SOLID principles? Give an example of each.', topic: 'Engineering', difficulty: 'Medium' },
-  { question: 'Explain CAP theorem and how it applies to distributed databases.', topic: 'Database', difficulty: 'Hard' },
+  { question: 'Design a URL shortener service like bit.ly. Focus on scalability and analytics.', topic: 'System Design', channelId: 'system-design', difficulty: 'Medium' },
+  { question: 'Explain the difference between process and thread. When would you use each?', topic: 'OS Concepts', channelId: 'operating-systems', difficulty: 'Easy' },
+  { question: 'Implement a LRU cache with O(1) get and put operations.', topic: 'Algorithms', channelId: 'algorithms', difficulty: 'Hard' },
+  { question: 'How does React reconciliation work? What is the virtual DOM?', topic: 'Frontend', channelId: 'frontend', difficulty: 'Medium' },
+  { question: 'Design a distributed rate limiter for a high-traffic API.', topic: 'System Design', channelId: 'system-design', difficulty: 'Hard' },
+  { question: 'What are SOLID principles? Give an example of each.', topic: 'Engineering', channelId: 'backend', difficulty: 'Medium' },
+  { question: 'Explain CAP theorem and how it applies to distributed databases.', topic: 'Database', channelId: 'database', difficulty: 'Hard' },
 ];
 
 function DailyChallengeCard({ onNavigate }: { onNavigate: (path: string) => void }) {
-  const todayIndex = new Date().getDate() % DAILY_CHALLENGES.length;
-  const challenge = DAILY_CHALLENGES[todayIndex];
+  const { preferences } = useUserPreferences();
+  const dateIndex = new Date().getDate();
+
+  const { subscribedChannels, role } = preferences;
+  const relevantChannels = subscribedChannels.length > 0
+    ? subscribedChannels
+    : getRoleDefaultChannels(role ?? '');
+  const filtered = DAILY_CHALLENGES.filter(
+    c => relevantChannels.includes(c.channelId) || relevantChannels.includes(c.topic)
+  );
+  const pool = filtered.length > 0 ? filtered : DAILY_CHALLENGES;
+
+  const todayIndex = dateIndex % pool.length;
+  const challenge = pool[todayIndex];
   const doneKey = `daily-challenge-${new Date().toISOString().split('T')[0]}`;
   const [done, setDone] = React.useState(() => localStorage.getItem(doneKey) === 'true');
 
@@ -223,13 +237,13 @@ function DailyChallengeCard({ onNavigate }: { onNavigate: (path: string) => void
         {!done ? (
           <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
             onClick={() => { localStorage.setItem(doneKey, 'true'); setDone(true); onNavigate('/training'); }}
-            className="w-full py-2.5 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2"
+            className="w-full py-2.5 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 min-h-[44px] cursor-pointer"
             style={{ background: 'linear-gradient(135deg, #ff0080, #ff8c00)' }}>
             Start Challenge <ChevronRight className="w-4 h-4" />
           </motion.button>
         ) : (
           <button onClick={() => onNavigate('/training')}
-            className="w-full py-2.5 rounded-xl font-semibold text-sm text-green-400 border border-green-500/25 hover:bg-green-500/10 transition-colors">
+            className="w-full py-2.5 rounded-xl font-semibold text-sm text-green-400 border border-green-500/25 hover:bg-green-500/10 transition-colors duration-150 ease-out min-h-[44px] cursor-pointer">
             Practice More →
           </button>
         )}
@@ -242,13 +256,26 @@ function DailyChallengeCard({ onNavigate }: { onNavigate: (path: string) => void
 // ─── My Topics Feed ───────────────────────────────────────────────────────────
 function MyTopicsFeed({ onNavigate }: { onNavigate: (path: string) => void }) {
   const { preferences } = useUserPreferences();
-  const subscribedIds = preferences.subscribedChannels;
+  const { subscribedChannels: subscribedIds, onboardingComplete } = preferences;
 
-  const subscribedChannels = allChannelsConfig.filter(
-    c => !c.isCertification && subscribedIds.includes(c.id)
-  );
+  const subscribedChannels = isPersonalized(onboardingComplete, subscribedIds)
+    ? allChannelsConfig.filter(c => !c.isCertification && subscribedIds.includes(c.id))
+    : [];
 
-  if (subscribedChannels.length === 0) return null;
+  if (!onboardingComplete) return null;
+
+  if (subscribedChannels.length === 0) {
+    return (
+      <motion.button
+        variants={fadeUp}
+        onClick={() => onNavigate('/channels')}
+        className="w-full py-4 rounded-2xl border border-dashed border-violet-500/30 hover:border-violet-500/60 hover:bg-violet-500/5 transition-all duration-150 ease-out flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground min-h-[44px] cursor-pointer"
+      >
+        <Plus className="w-4 h-4 text-violet-400" />
+        Add topics to personalize your feed
+      </motion.button>
+    );
+  }
 
   return (
     <div>
@@ -256,7 +283,7 @@ function MyTopicsFeed({ onNavigate }: { onNavigate: (path: string) => void }) {
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">My Topics</h2>
         <button
           onClick={() => onNavigate('/manage-subscriptions')}
-          className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 transition-colors"
+          className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 transition-colors duration-150 ease-out cursor-pointer min-h-[44px] px-2"
         >
           <Settings2 className="w-3 h-3" /> Manage
         </button>
@@ -267,7 +294,7 @@ function MyTopicsFeed({ onNavigate }: { onNavigate: (path: string) => void }) {
             key={ch.id}
             whileTap={{ scale: 0.96 }}
             onClick={() => onNavigate(`/channel/${ch.id}`)}
-            className="flex-shrink-0 flex flex-col items-center gap-1.5 px-4 py-3 rounded-2xl bg-card border border-border hover:border-[var(--color-accent-violet)]/40 transition-all min-w-[80px]"
+            className="flex-shrink-0 flex flex-col items-center gap-1.5 px-4 py-3 rounded-2xl bg-card border border-border hover:border-[var(--color-accent-violet)]/40 transition-all duration-150 ease-out min-w-[80px] min-h-[44px] cursor-pointer"
           >
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[var(--color-accent-violet)]/20 to-[var(--color-accent-cyan)]/20 flex items-center justify-center">
               <BookOpen className="w-4 h-4 text-[var(--color-accent-violet-light)]" />
@@ -354,6 +381,21 @@ export function HomePage() {
 
   // ── XP / level ──
   const xpInLevel = balance % 100;
+
+  // ── Resume state (continue widget) ──
+  const resumeState = React.useMemo(() => {
+    const sessions = getInProgressSessions();
+    const session = sessions.find(s => s.channelId && (s.type === 'channel' || s.type === 'test'));
+    if (!session || !session.channelId) return null;
+    const questionId: string = session.sessionData?.questions?.[session.sessionData?.currentIndex]?.id
+      ?? session.sessionData?.currentIndex?.toString()
+      ?? '0';
+    return {
+      channelId: session.channelId,
+      questionId,
+      channelName: session.title,
+    };
+  }, []);
 
   // ── Resume path ──
   const resumePath = React.useMemo(() => {
@@ -462,7 +504,7 @@ export function HomePage() {
       </div>
 
       <PullToRefresh onRefresh={handleRefresh}>
-        <div className="w-full max-w-2xl mx-auto px-4 py-6 space-y-8 pb-safe">
+        <div className="w-full max-w-2xl mx-auto px-4 py-6 space-y-8 pb-24">
 
           {/* ══ HERO ══════════════════════════════════════════════════════════ */}
           <motion.div variants={stagger} initial="hidden" animate="show"
@@ -479,19 +521,41 @@ export function HomePage() {
                 <h1 className="text-2xl font-bold">{getGreeting()}, Dev!</h1>
                 <p className="text-sm text-muted-foreground mt-0.5">{getStreakMotivation(streak)}</p>
               </motion.div>
-
-
+              <motion.button variants={fadeUp} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                onClick={() => setLocation('/training')}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 text-white text-sm font-semibold shadow-lg shadow-violet-500/25">
+                <Zap className="w-4 h-4" /> Start Practicing <ChevronRight className="w-4 h-4" />
+              </motion.button>
             </div>
           </motion.div>
+
+          {/* ══ CONTINUE WIDGET ══════════════════════════════════════════ */}
+          {resumeState && (
+            <motion.button
+              variants={fadeUp}
+              onClick={() => setLocation(`/channel/${resumeState.channelId}?q=${resumeState.questionId}`)}
+              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-violet-600/20 to-cyan-500/10 border border-violet-500/30 text-left min-h-[44px] cursor-pointer"
+              data-testid="button-continue-learning"
+            >
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center shrink-0">
+                <RotateCcw className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] uppercase tracking-widest text-violet-400 font-bold">Continue</div>
+                <div className="font-semibold text-sm truncate">{resumeState.channelName}</div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            </motion.button>
+          )}
 
           {/* ══ STATS ROW ═════════════════════════════════════════════════════ */}
           <div>
             <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Your Stats</h2>
             <motion.div variants={stagger} initial="hidden" animate="show"
               className="flex gap-3 overflow-x-auto pb-1 custom-scrollbar -mx-4 px-4">
-              <StatPill icon={Zap} value={questionsToday} label="Answered Today" color="text-yellow-400" />
-              <StatPill icon={BookOpen} value={topicsMastered} label="Topics Mastered" color="text-cyan-400" />
-              <StatPill icon={Trophy} value={totalCompleted} label="Solved" color="text-amber-400" />
+              <StatPill icon={Zap} value={questionsToday} label="Answered Today" color="text-yellow-400" onClick={() => setLocation('/training')} />
+              <StatPill icon={BookOpen} value={topicsMastered} label="Topics Mastered" color="text-cyan-400" onClick={() => setLocation('/channels')} />
+              <StatPill icon={Trophy} value={totalCompleted} label="Solved" color="text-amber-400" onClick={() => setLocation('/progress')} />
             </motion.div>
           </div>
 
@@ -515,10 +579,10 @@ export function HomePage() {
                 title="Daily Test" subtitle="20-question quiz"
                 color="from-orange-500 to-red-500"
                 onClick={() => setLocation('/tests')} />
-              <ActionCard icon={<Trophy className="w-5 h-5 text-white" />}
-                title="My Path" subtitle="Track your journey"
-                color="from-amber-500 to-orange-500"
-                onClick={() => setLocation('/learning-paths')} />
+              <ActionCard icon={<Code className="w-5 h-5 text-white" />}
+                title="Code Challenges" subtitle="Rex AI hints · 30 problems"
+                color="from-teal-500 to-cyan-500"
+                onClick={() => setLocation('/code')} />
             </motion.div>
           </div>
 
@@ -536,7 +600,7 @@ export function HomePage() {
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Continue Learning</h2>
                 <button onClick={() => setLocation('/learning-paths')}
-                  className="text-xs text-violet-400 hover:text-violet-300 transition-colors">Browse All →</button>
+                  className="text-xs text-violet-400 hover:text-violet-300 transition-colors duration-150 ease-out cursor-pointer">Browse All →</button>
               </div>
               <div className="space-y-3">
                 {activePaths.slice(0, 2).map((path, i) => {
@@ -564,7 +628,7 @@ export function HomePage() {
                           <div className="flex flex-wrap gap-1 mt-2">
                             {path.channels.slice(0, 3).map((ch: string) => (
                               <button key={ch} onClick={() => setLocation(`/channel/${ch}`)}
-                                className="px-2 py-0.5 bg-muted hover:bg-muted/80 rounded-full text-[10px] transition-colors">{ch}</button>
+                                className="px-2 py-0.5 bg-muted hover:bg-muted/80 rounded-full text-[10px] transition-colors duration-150 ease-out cursor-pointer">{ch}</button>
                             ))}
                           </div>
                         </div>
@@ -579,7 +643,7 @@ export function HomePage() {
                 })}
                 {activePaths.length > 2 && (
                   <button onClick={() => setLocation('/learning-paths')}
-                    className="w-full py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors">
+                    className="w-full py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors duration-150 ease-out min-h-[44px] cursor-pointer">
                     +{activePaths.length - 2} more paths
                   </button>
                 )}
@@ -618,9 +682,10 @@ export function HomePage() {
               <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Recent Activity</h2>
               <div className="space-y-2">
                 {recentActivity.map((item, i) => (
-                  <motion.div key={`${item.questionId}-${i}`}
+                  <motion.button key={`${item.questionId}-${i}`}
                     initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.07 }}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-muted border border-border">
+                    onClick={() => setLocation(`/channel/${item.channelId}`)}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-muted border border-border hover:border-border/60 hover:bg-muted/80 transition-colors duration-150 ease-out text-left active:scale-[0.98] min-h-[44px] cursor-pointer">
                     <div className="w-8 h-8 rounded-lg bg-green-500/20 border border-green-500/25 flex items-center justify-center flex-shrink-0">
                       <Check className="w-4 h-4 text-green-400" />
                     </div>
@@ -632,7 +697,7 @@ export function HomePage() {
                       <Clock className="w-3 h-3" />
                       {relativeTime(item.timestamp)}
                     </div>
-                  </motion.div>
+                  </motion.button>
                 ))}
               </div>
             </div>
@@ -642,7 +707,7 @@ export function HomePage() {
           {activePaths.length < 3 && (
             <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
               onClick={() => setLocation('/learning-paths')}
-              className="w-full py-4 rounded-2xl border border-dashed border-border hover:border-violet-500/40 hover:bg-violet-500/5 transition-all flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+              className="w-full py-4 rounded-2xl border border-dashed border-border hover:border-violet-500/40 hover:bg-violet-500/5 transition-all duration-150 ease-out flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground min-h-[44px] cursor-pointer">
               <Plus className="w-4 h-4" /> Add a learning path
             </motion.button>
           )}

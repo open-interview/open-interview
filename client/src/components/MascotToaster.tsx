@@ -107,7 +107,10 @@ function MascotBubble({
       style={{ left: Math.max(16, Math.min(mascotPosition - 80, window.innerWidth - 280)) }}
     >
       {/* Speech bubble */}
-      <div className={cn(
+      <div
+        role={message.variant === 'destructive' ? 'alert' : 'status'}
+        aria-live={message.variant === 'destructive' ? 'assertive' : 'polite'}
+        className={cn(
         "relative rounded-2xl p-3 shadow-xl border backdrop-blur-sm",
         message.variant === 'destructive' 
           ? "bg-red-950/90 border-red-500/30" 
@@ -245,16 +248,18 @@ export function MascotToaster() {
   }
   
   return (
-    <AnimatePresence>
-      {messages.slice(-3).map((message, index) => (
-        <MascotBubble
-          key={message.id}
-          message={message}
-          onDismiss={() => dismissMessage(message.id)}
-          mascotPosition={mascotPosition}
-        />
-      ))}
-    </AnimatePresence>
+    <div aria-live="polite" aria-atomic="false">
+      <AnimatePresence>
+        {messages.slice(-3).map((message, index) => (
+          <MascotBubble
+            key={message.id}
+            message={message}
+            onDismiss={() => dismissMessage(message.id)}
+            mascotPosition={mascotPosition}
+          />
+        ))}
+      </AnimatePresence>
+    </div>
   );
 }
 

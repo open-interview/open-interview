@@ -548,7 +548,7 @@ export function ExtremeQuestionViewer({ channelId, questionId }: ExtremeQuestion
           <p className="text-muted-foreground mb-4">The channel "{channelId}" doesn't exist.</p>
           <button
             onClick={() => setLocation('/')}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg min-h-[44px] cursor-pointer transition-colors duration-150 ease-out hover:bg-primary/90"
           >
             Go Home
           </button>
@@ -619,7 +619,7 @@ export function ExtremeQuestionViewer({ channelId, questionId }: ExtremeQuestion
                 setSelectedDifficulty('all');
                 setSelectedCompany('all');
               }}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg min-h-[44px] cursor-pointer transition-colors duration-150 ease-out hover:bg-primary/90"
             >
               Reset Filters
             </button>
@@ -684,7 +684,7 @@ export function ExtremeQuestionViewer({ channelId, questionId }: ExtremeQuestion
             <div className="flex border-b border-border bg-card backdrop-blur relative z-10">
               <button
                 onClick={() => setMobileView('question')}
-                className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                className={`flex-1 py-3 text-sm font-medium transition-colors duration-150 ease-out min-h-[44px] cursor-pointer ${
                   mobileView === 'question'
                     ? 'text-primary border-b-2 border-primary'
                     : 'text-muted-foreground'
@@ -694,7 +694,7 @@ export function ExtremeQuestionViewer({ channelId, questionId }: ExtremeQuestion
               </button>
               <button
                 onClick={() => setMobileView('answer')}
-                className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                className={`flex-1 py-3 text-sm font-medium transition-colors duration-150 ease-out min-h-[44px] cursor-pointer ${
                   mobileView === 'answer'
                     ? 'text-primary border-b-2 border-primary'
                     : 'text-muted-foreground'
@@ -705,7 +705,7 @@ export function ExtremeQuestionViewer({ channelId, questionId }: ExtremeQuestion
             </div>
             {/* Mobile Content - Swipeable */}
             <div 
-              className="flex-1 overflow-y-auto overflow-x-hidden bg-background relative z-0 pb-20"
+              className="flex-1 overflow-y-auto overflow-x-hidden bg-background relative z-0 pb-24"
               onTouchStart={swipeHandlers.onTouchStart}
               onTouchMove={swipeHandlers.onTouchMove}
               onTouchEnd={swipeHandlers.onTouchEnd}
@@ -801,7 +801,7 @@ function Header({
         <div className="flex items-center gap-2">
           <motion.button 
             onClick={onBack} 
-            className="p-1.5 hover:bg-muted rounded-lg transition-all"
+            className="p-1.5 hover:bg-muted rounded-lg transition-all duration-150 ease-out min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -839,7 +839,7 @@ function Header({
           {filters && (
             <motion.button 
               onClick={() => setShowFilters(!showFilters)}
-              className={`relative p-1.5 rounded-lg transition-all ${
+              className={`relative p-1.5 rounded-lg transition-all duration-150 ease-out min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer ${
                 showFilters || hasActiveFilter 
                   ? 'bg-primary/10 text-primary border border-primary/30' 
                   : 'hover:bg-muted text-muted-foreground'
@@ -859,7 +859,7 @@ function Header({
           {/* Search */}
           <motion.button 
             onClick={onSearch} 
-            className="p-1.5 hover:bg-muted rounded-lg transition-all text-muted-foreground hover:text-foreground"
+            className="p-1.5 hover:bg-muted rounded-lg transition-all duration-150 ease-out text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -870,7 +870,7 @@ function Header({
           {onFullscreen && (
             <motion.button 
               onClick={onFullscreen} 
-              className="hidden lg:block p-1.5 hover:bg-muted rounded-lg transition-all text-muted-foreground hover:text-foreground"
+              className="hidden lg:flex p-1.5 hover:bg-muted rounded-lg transition-all duration-150 ease-out text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] items-center justify-center cursor-pointer"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -935,7 +935,7 @@ function Header({
                       onFilterChange('diff', 'all');
                       onFilterChange('company', 'all');
                     }}
-                    className="ml-auto px-2.5 py-1 text-[10px] font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted/80 rounded-lg transition-all"
+                    className="ml-auto px-2.5 py-1 text-[10px] font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted/80 rounded-lg transition-all duration-150 ease-out cursor-pointer min-h-[44px] flex items-center"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
@@ -972,7 +972,7 @@ function FilterDropdown({ label, options, selected, onSelect }: FilterDropdownPr
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
         <button 
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap outline-none focus:outline-none ${
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ease-out whitespace-nowrap outline-none focus:outline-none min-h-[44px] cursor-pointer ${
             isActive 
               ? 'bg-primary/10 text-primary border border-primary/30' 
               : 'bg-card hover:bg-muted border border-border text-foreground'
@@ -991,7 +991,7 @@ function FilterDropdown({ label, options, selected, onSelect }: FilterDropdownPr
             <DropdownMenu.Item
               key={opt.id}
               onClick={() => onSelect(opt.id)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer outline-none text-xs transition-all ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer outline-none text-xs transition-all duration-150 ease-out ${
                 selected === opt.id 
                   ? 'bg-primary/10 text-primary border border-primary/30' 
                   : 'text-foreground hover:bg-muted'
@@ -1048,7 +1048,7 @@ function AIAssistantPanel({ question, onClose }: { question: any; onClose: () =>
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+          className="p-1.5 hover:bg-muted rounded-lg transition-colors duration-150 ease-out min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
         >
           <X className="w-4 h-4 text-muted-foreground" />
         </button>
@@ -1099,7 +1099,7 @@ function AIAssistantPanel({ question, onClose }: { question: any; onClose: () =>
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
+            className="px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-colors duration-150 ease-out cursor-pointer min-h-[44px]"
           >
             <Sparkles className="w-4 h-4" />
           </button>
@@ -1132,9 +1132,9 @@ function NavigationFooter({
           <motion.button
             onClick={onPrev}
             disabled={!canGoPrev}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-xs transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-xs transition-all duration-150 ease-out min-h-[44px] ${
               canGoPrev
-                ? 'bg-card hover:bg-muted text-foreground border border-border'
+                ? 'bg-card hover:bg-muted text-foreground border border-border cursor-pointer'
                 : 'bg-muted/50 text-muted-foreground border border-border cursor-not-allowed opacity-50'
             }`}
             whileHover={canGoPrev ? { scale: 1.05 } : {}}
@@ -1149,7 +1149,7 @@ function NavigationFooter({
             {/* Bookmark */}
             <motion.button
               onClick={onToggleMark}
-              className={`p-2 rounded-lg transition-all ${
+              className={`p-2 rounded-lg transition-all duration-150 ease-out min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer ${
                 isMarked
                   ? 'bg-primary/10 text-primary border border-primary/30'
                   : 'bg-card text-muted-foreground hover:text-primary border border-border'
@@ -1163,7 +1163,7 @@ function NavigationFooter({
             {/* Share */}
             <motion.button 
               onClick={onShare} 
-              className="p-2 rounded-lg bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-all border border-border"
+              className="p-2 rounded-lg bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-150 ease-out border border-border min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -1175,9 +1175,9 @@ function NavigationFooter({
           <motion.button
             onClick={onNext}
             disabled={!canGoNext}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-xs transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-xs transition-all duration-150 ease-out min-h-[44px] ${
               canGoNext
-                ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                ? 'bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer'
                 : 'bg-muted/50 text-muted-foreground border border-border cursor-not-allowed opacity-50'
             }`}
             whileHover={canGoNext ? { scale: 1.05 } : {}}
@@ -1202,9 +1202,9 @@ function NavigationFooter({
             <motion.button
               onClick={onPrev}
               disabled={!canGoPrev}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-xs transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-xs transition-all duration-150 ease-out ${
                 canGoPrev
-                  ? 'bg-muted hover:bg-muted/80 text-foreground'
+                  ? 'bg-muted hover:bg-muted/80 text-foreground cursor-pointer'
                   : 'bg-muted/50 text-muted-foreground cursor-not-allowed opacity-50'
               }`}
               whileHover={canGoPrev ? { scale: 1.05 } : {}}
@@ -1238,7 +1238,7 @@ function NavigationFooter({
             {/* Bookmark */}
             <motion.button
               onClick={onToggleMark}
-              className={`p-1.5 rounded-lg transition-all ${
+              className={`p-1.5 rounded-lg transition-all duration-150 ease-out cursor-pointer ${
                 isMarked 
                   ? 'bg-primary/10 text-primary border border-primary/30' 
                   : 'hover:bg-muted text-muted-foreground hover:text-primary'
@@ -1252,7 +1252,7 @@ function NavigationFooter({
             {/* Share */}
             <motion.button 
               onClick={onShare} 
-              className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
+              className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-150 ease-out cursor-pointer"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -1266,9 +1266,9 @@ function NavigationFooter({
             <motion.button
               onClick={onNext}
               disabled={!canGoNext}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-xs transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-xs transition-all duration-150 ease-out ${
                 canGoNext
-                  ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                  ? 'bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer'
                   : 'bg-muted/50 text-muted-foreground cursor-not-allowed opacity-50'
               }`}
               whileHover={canGoNext ? { scale: 1.05 } : {}}

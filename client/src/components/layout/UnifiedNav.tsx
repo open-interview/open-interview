@@ -46,7 +46,7 @@ const learnSubNav: NavItem[] = [
 const practiceSubNav: NavItem[] = [
   { id: 'voice',      label: 'Voice Interview', icon: Mic,    path: '/voice-interview', description: 'AI mock interviews',  badge: '+10', shortcut: 'V' },
   { id: 'tests',      label: 'Quick Tests',     icon: Target, path: '/tests',           description: 'Timed challenges',    shortcut: 'T' },
-  { id: 'coding',     label: 'Coding',          icon: Code,   path: '/coding',          description: 'Code challenges',     shortcut: 'X' },
+  { id: 'coding',     label: 'Coding',          icon: Code,   path: '/code',            description: 'Code challenges',     shortcut: 'X' },
   { id: 'review',     label: 'SRS Review',      icon: Flame,  path: '/review',          description: 'Spaced repetition',   shortcut: 'R' },
   { id: 'flashcards', label: 'Flashcards',      icon: Layers, path: '/flashcards',      description: 'Flip & memorize',     badge: 'NEW' },
 ];
@@ -141,7 +141,7 @@ export function MobileBottomNav() {
               </div>
               <button
                 onClick={() => setShowMenu(null)}
-                className="w-9 h-9 rounded-full bg-muted flex items-center justify-center"
+                className="w-11 h-11 rounded-full bg-muted flex items-center justify-center"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -215,6 +215,7 @@ export function MobileBottomNav() {
                     isHighlighted ? 'text-primary' : 'text-muted-foreground'
                   )}
                   aria-label={item.label}
+                  aria-current={isActive ? 'page' : undefined}
                 >
                   {/* Active indicator: violet line at top */}
                   {isHighlighted && !item.highlight && (
@@ -287,7 +288,7 @@ export function UnifiedMobileHeader({ title, showBack, onSearchClick }: UnifiedM
           {showBack ? (
             <button
               onClick={() => window.history.back()}
-              className="w-9 h-9 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted transition-colors"
+              className="w-11 h-11 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted transition-colors"
             >
               <ChevronLeft className="w-5 h-5" strokeWidth={2} />
             </button>
@@ -306,14 +307,14 @@ export function UnifiedMobileHeader({ title, showBack, onSearchClick }: UnifiedM
         <div className="flex items-center gap-2">
           <button
             onClick={() => setLocation('/profile')}
-            className="flex items-center gap-1 px-2 py-1.5 bg-amber-500/15 border border-amber-500/30 rounded-lg"
+            className="flex items-center gap-1 px-2 py-1.5 min-h-[44px] bg-amber-500/15 border border-amber-500/30 rounded-lg"
           >
             <Coins className="w-3.5 h-3.5 text-amber-400" strokeWidth={2.5} />
             <span className="text-xs font-bold text-amber-400">{formatCredits(balance)}</span>
           </button>
           <button
             onClick={onSearchClick}
-            className="w-9 h-9 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted transition-colors"
+            className="w-11 h-11 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted transition-colors"
           >
             <Search className="w-4 h-4" strokeWidth={2} />
           </button>

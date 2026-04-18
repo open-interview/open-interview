@@ -9,6 +9,7 @@ import { useUnifiedToast } from '@/hooks/use-unified-toast';
 import { allChannelsConfig } from '../lib/channels-config';
 import { formatTag } from '../lib/utils';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
+import { isPersonalized } from '../lib/personalization';
 
 type FilterType = 'all' | 'tags' | 'company' | 'video' | 'diagram' | 'coding';
 
@@ -33,13 +34,16 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [hiddenCount, setHiddenCount] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
   const mobileContainerRef = useRef<HTMLDivElement>(null);
   const desktopContainerRef = useRef<HTMLDivElement>(null);
   const [, setLocation] = useLocation();
-  const { isSubscribed, subscribeChannel } = useUserPreferences();
+  const { isSubscribed, subscribeChannel, preferences } = useUserPreferences();
   const { toast } = useUnifiedToast();
+  const { onboardingComplete, subscribedChannels } = preferences;
+  const [myTopicsOnly, setMyTopicsOnly] = useState(() => isPersonalized(onboardingComplete, subscribedChannels));
   
   const debouncedQuery = useDebounce(query, 150);
   
@@ -74,6 +78,8 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
       setFilteredResults([]);
       setSelectedIndex(0);
       setActiveFilter('all');
+      setHiddenCount(0);
+      setMyTopicsOnly(isPersonalized(onboardingComplete, subscribedChannels));
     }
   }, [isOpen]);
   
@@ -111,10 +117,15 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
       default:
         filtered = results;
     }
-    
-    setFilteredResults(filtered.slice(0, 15));
+
+    const afterTopicFilter = myTopicsOnly
+      ? filtered.filter(r => isCodingResult(r) || (isQuestionResult(r) && subscribedChannels.includes(r.question.channel)))
+      : filtered;
+
+    setFilteredResults(afterTopicFilter.slice(0, 15));
+    setHiddenCount(myTopicsOnly ? filtered.length - afterTopicFilter.length : 0);
     setSelectedIndex(0);
-  }, [results, activeFilter]);
+  }, [results, activeFilter, myTopicsOnly, subscribedChannels]);
   
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
@@ -321,6 +332,8 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
                   className="flex-1 bg-transparent text-foreground text-base outline-none placeholder:text-muted-foreground"
                   autoComplete="off"
                   spellCheck={false}
+                  aria-label="Search questions"
+                  inputMode="search"
                   data-testid="search-input-mobile"
                 />
                 {query && (
@@ -365,7 +378,27 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
               )}
               {!isSearching && query.length >= 2 && filteredResults.length === 0 && renderNoResults()}
               {!isSearching && filteredResults.length > 0 && (
-                <div className="py-2">{filteredResults.map((r, i) => renderResultItem(r, i))}</div>
+                <>
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/20">
+                    <span className="text-xs text-muted-foreground" aria-live="polite">{filteredResults.length} results</span>
+                    <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={myTopicsOnly}
+                        onChange={e => setMyTopicsOnly(e.target.checked)}
+                        className="accent-primary"
+                      />
+                      My Topics Only
+                    </label>
+                  </div>
+                  <div role="list" className="py-2">{filteredResults.map((r, i) => renderResultItem(r, i))}</div>
+                  {hiddenCount > 0 && (
+                    <div className="px-4 py-3 text-center border-t border-border">
+                      <span className="text-xs text-muted-foreground">{hiddenCount} more result{hiddenCount !== 1 ? 's' : ''} in other topics</span>
+                      <button onClick={() => setMyTopicsOnly(false)} className="ml-2 text-xs text-primary underline">Show all</button>
+                    </div>
+                  )}
+                </>
               )}
               {!isSearching && query.length < 2 && renderEmptyState()}
             </div>
@@ -414,6 +447,8 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
                   className="flex-1 bg-transparent text-foreground text-lg outline-none placeholder:text-muted-foreground/50"
                   autoComplete="off"
                   spellCheck={false}
+                  aria-label="Search questions"
+                  inputMode="search"
                   data-testid="search-input-desktop"
                 />
                 {query && (
@@ -455,7 +490,27 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
                 )}
                 {!isSearching && query.length >= 2 && filteredResults.length === 0 && renderNoResults()}
                 {!isSearching && filteredResults.length > 0 && (
-                  <div className="py-2">{filteredResults.map((r, i) => renderResultItem(r, i))}</div>
+                  <>
+                    <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/20">
+                      <span className="text-xs text-muted-foreground" aria-live="polite">{filteredResults.length} results</span>
+                      <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={myTopicsOnly}
+                          onChange={e => setMyTopicsOnly(e.target.checked)}
+                          className="accent-primary"
+                        />
+                        My Topics Only
+                      </label>
+                    </div>
+                    <div role="list" className="py-2">{filteredResults.map((r, i) => renderResultItem(r, i))}</div>
+                    {hiddenCount > 0 && (
+                      <div className="px-4 py-3 text-center border-t border-border">
+                        <span className="text-xs text-muted-foreground">{hiddenCount} more result{hiddenCount !== 1 ? 's' : ''} in other topics</span>
+                        <button onClick={() => setMyTopicsOnly(false)} className="ml-2 text-xs text-primary underline">Show all</button>
+                      </div>
+                    )}
+                  </>
                 )}
                 {!isSearching && query.length < 2 && renderEmptyState()}
               </div>

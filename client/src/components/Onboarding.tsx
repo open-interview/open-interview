@@ -123,14 +123,16 @@ export function Onboarding() {
               <h1 className="text-2xl sm:text-4xl font-bold mb-2">
                 <span className="text-primary">&gt;</span> Welcome to Learn_Reels
               </h1>
-              <p className="text-white/60 text-sm">
+              <p className="text-white/60 text-sm mb-1">
                 Select your role to get personalized channel recommendations
               </p>
+              <p className="text-white/40 text-xs">1000+ questions across 40+ topics</p>
             </div>
 
             {/* Quick start option for mobile */}
             <div className="mb-6 sm:hidden">
-              <button
+              <motion.button
+                whileTap={{ scale: 0.97 }}
                 onClick={() => {
                   // Quick start with popular channels
                   const prefs = {
@@ -142,7 +144,7 @@ export function Onboarding() {
                   localStorage.setItem('user-preferences', JSON.stringify(prefs));
                   window.location.href = '/';
                 }}
-                className="w-full p-4 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/30 rounded-xl flex items-center gap-3"
+                className="w-full p-4 min-h-[56px] cursor-pointer bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/30 rounded-xl flex items-center gap-3 transition duration-150 ease-out"
               >
                 <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
                   <Rocket className="w-5 h-5 text-black" />
@@ -152,17 +154,19 @@ export function Onboarding() {
                   <div className="text-xs text-white/60">Jump in with popular topics</div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-primary" />
-              </button>
+              </motion.button>
               <div className="text-center text-xs text-white/40 mt-2">or choose your role below</div>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-8">
               {rolesConfig.map(role => (
-                <button
+                <motion.button
                   key={role.id}
                   onClick={() => handleRoleSelect(role.id)}
+                  whileHover={{ y: -2, boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}
+                  whileTap={{ scale: 0.97 }}
                   className={`
-                    p-4 border rounded-lg text-left transition-all
+                    p-5 min-h-[88px] border rounded-lg text-left cursor-pointer transition duration-150 ease-out
                     ${selectedRole === role.id 
                       ? 'border-primary bg-primary/10 ring-1 ring-primary' 
                       : 'border-white/20 hover:border-white/40 hover:bg-white/5'
@@ -173,13 +177,13 @@ export function Onboarding() {
                     {iconMap[role.icon] || <Cpu className="w-6 h-6" />}
                   </div>
                   <div className="font-bold text-sm mb-1">{role.name}</div>
-                  <div className="text-[10px] text-white/50 line-clamp-2">{role.description}</div>
+                  <div className="text-xs text-white/50 line-clamp-2">{role.description}</div>
                   {selectedRole === role.id && (
                     <div className="mt-2 flex items-center gap-1 text-primary text-xs">
                       <Check className="w-3 h-3" /> Selected
                     </div>
                   )}
-                </button>
+                </motion.button>
               ))}
             </div>
 
@@ -189,7 +193,7 @@ export function Onboarding() {
                   skipOnboarding();
                   window.location.href = '/';
                 }}
-                className="px-6 py-2 text-sm text-white/50 hover:text-white transition-colors"
+                className="px-6 py-2 min-h-[44px] cursor-pointer text-sm text-white/50 hover:text-white transition duration-150 ease-out"
               >
                 Skip for now
               </button>
@@ -197,7 +201,7 @@ export function Onboarding() {
                 onClick={handleContinue}
                 disabled={!selectedRole}
                 className={`
-                  px-6 py-2 text-sm font-bold rounded flex items-center gap-2 transition-all
+                  px-8 py-3 min-h-[48px] text-base font-bold rounded flex items-center gap-2 cursor-pointer transition duration-150 ease-out
                   ${selectedRole 
                     ? 'bg-primary text-black hover:bg-primary/90' 
                     : 'bg-white/10 text-white/30 cursor-not-allowed'
@@ -238,12 +242,13 @@ export function Onboarding() {
               {recommendedChannels.map(channel => {
                 const isExcluded = excludedChannels.has(channel.id);
                 return (
-                  <button
+                  <motion.button
                     key={channel.id}
                     type="button"
                     onClick={() => toggleChannel(channel.id)}
+                    whileTap={{ scale: 0.96 }}
                     className={`
-                      p-4 border rounded-lg text-left transition-all relative group
+                      p-4 min-h-[80px] border rounded-lg text-left transition-all duration-150 ease-out relative group cursor-pointer
                       ${isExcluded 
                         ? 'border-white/10 bg-white/5 opacity-50' 
                         : 'border-primary/50 bg-primary/10 ring-1 ring-primary/30'
@@ -252,7 +257,7 @@ export function Onboarding() {
                   >
                     {/* Toggle indicator */}
                     <div className={`
-                      absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center transition-all
+                      absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-all duration-150 ease-out
                       ${isExcluded 
                         ? 'bg-white/10 text-white/30' 
                         : 'bg-primary text-black'
@@ -264,56 +269,58 @@ export function Onboarding() {
                     <div className={`mb-2 ${isExcluded ? 'text-white/30' : channel.color}`}>
                       {iconMap[channel.icon] || <Cpu className="w-5 h-5" />}
                     </div>
-                    <div className={`font-bold text-sm ${isExcluded ? 'text-white/40' : ''}`}>
+                    <div className={`text-sm font-bold ${isExcluded ? 'text-white/40' : ''}`}>
                       {channel.name}
                     </div>
-                    <div className="text-[10px] text-white/50 line-clamp-2 mt-1">
+                    <div className="text-xs text-white/50 line-clamp-2 mt-1">
                       {channel.description}
                     </div>
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
 
-            {/* Selection summary */}
-            <div className="text-center mb-6 text-sm">
-              <span className="text-white/60">Selected: </span>
-              <span className="text-primary font-bold">{activeChannels.length}</span>
-              <span className="text-white/60"> of {recommendedChannels.length} channels</span>
-              {excludedChannels.size > 0 && (
+            {/* Selection summary — sticky bottom bar */}
+            <div className="sticky bottom-0 bg-black/80 backdrop-blur px-4 py-3 border-t border-white/10 flex items-center justify-between gap-4">
+              <div className="text-sm">
+                <span className="text-white/60">Selected: </span>
+                <span className="text-primary font-bold">{activeChannels.length}</span>
+                <span className="text-white/60"> of {recommendedChannels.length} channels</span>
+                {excludedChannels.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setExcludedChannels(new Set())}
+                    className="ml-3 text-xs text-white/40 hover:text-white underline transition-colors duration-150 ease-out"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setExcludedChannels(new Set())}
-                  className="ml-3 text-xs text-white/40 hover:text-white underline"
+                  onClick={() => setStep('role')}
+                  className="px-4 py-2 min-h-[44px] text-sm text-white/50 hover:text-white transition-colors duration-150 ease-out cursor-pointer"
                 >
-                  Reset selection
+                  Back
                 </button>
-              )}
-            </div>
-
-            <div className="flex justify-center gap-4">
-              <button
-                type="button"
-                onClick={() => setStep('role')}
-                className="px-6 py-2 text-sm text-white/50 hover:text-white transition-colors"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                data-testid="start-learning-btn"
-                onClick={handleContinue}
-                disabled={activeChannels.length === 0}
-                className={`
-                  px-6 py-2 text-sm font-bold rounded flex items-center gap-2 transition-all
-                  ${activeChannels.length > 0
-                    ? 'bg-primary text-black hover:bg-primary/90'
-                    : 'bg-white/10 text-white/30 cursor-not-allowed'
-                  }
-                `}
-              >
-                Start Learning <ChevronRight className="w-4 h-4" />
-              </button>
+                <motion.button
+                  type="button"
+                  data-testid="start-learning-btn"
+                  onClick={handleContinue}
+                  disabled={activeChannels.length === 0}
+                  whileTap={activeChannels.length > 0 ? { scale: 0.97 } : undefined}
+                  className={`
+                    px-8 py-3.5 min-h-[52px] text-base font-bold rounded flex items-center gap-2 transition-all duration-150 ease-out cursor-pointer
+                    ${activeChannels.length > 0
+                      ? 'bg-primary text-black hover:bg-primary/90'
+                      : 'bg-white/10 text-white/30 cursor-not-allowed'
+                    }
+                  `}
+                >
+                  Start Learning <ChevronRight className="w-4 h-4" />
+                </motion.button>
+              </div>
             </div>
           </motion.div>
         )}

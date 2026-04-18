@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { StagingBanner } from "./components/StagingBanner";
 import NotFound from "@/pages/not-found";
+import { InterviewLoader } from "@/components/ui/InterviewLoader";
 
 // Lazy loaded pages with React.lazy for code splitting
 const Home = React.lazy(() => import("@/pages/HomeRedesigned"));
@@ -114,11 +115,13 @@ function useSearchParamRedirect() {
   return isRedirecting;
 }
 
-const StatsRedirect = () => { const [,nav] = useLocation(); useEffect(() => { nav('/profile'); }, []); return null; };
+const StatsRedirect = React.lazy(() => import('@/pages/StatsRedirect'));
+const ChallengeHome = React.lazy(() => import('@/pages/ChallengeHome'));
+const ChallengeWorkspace = React.lazy(() => import('@/pages/ChallengeWorkspace'));
 
 function Router() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><InterviewLoader message="Loading..." showTip={false} /></div>}>
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/history" component={AnswerHistory} />
@@ -130,6 +133,9 @@ function Router() {
         <Route path="/test/:channelId" component={TestSession} />
         <Route path="/coding" component={CodingChallenge} />
         <Route path="/coding/:id" component={CodingChallenge} />
+        <Route path="/code" component={ChallengeHome} />
+        <Route path="/code/challenges">{() => { window.location.replace('/code'); return null; }}</Route>
+        <Route path="/code/challenges/:id" component={ChallengeWorkspace} />
         <Route path="/bot-activity" component={BotActivity} />
         <Route path="/channels" component={Channels} />
         <Route path="/learning-paths" component={LearningPaths} />

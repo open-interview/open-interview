@@ -775,7 +775,7 @@ async function markAsVerified(id, score) {
 // ============================================
 
 async function runPipeline(options = {}) {
-  const { mode = 'scan', limit = 100, channel = null } = options;
+  const { mode = 'scan', limit = 100, channel = null, concurrency = 5 } = options;
   
   let state = { mode, limit, channel };
   
@@ -786,31 +786,46 @@ async function runPipeline(options = {}) {
     console.log('No items to analyze');
     return { processed: 0, flagged: 0, stats: state.stats };
   }
-  
-  // Process each item through the pipeline
-  while (state.currentIndex < state.items.length) {
-    try {
-      state = await deepAnalyzeNode(state);
-      state = await multiScoreNode(state);
-      state = await duplicateCheckNode(state);
-      state = await reportAndQueueNode(state);
-    } catch (error) {
-      console.error(`   ❌ Error processing item: ${error.message}`);
-      state.currentIndex++;
-    }
-    
-    // Rate limiting
-    if (state.currentIndex < state.items.length) {
-      await new Promise(r => setTimeout(r, 800));
+
+  const results = [];
+  const stats = initStats();
+
+  // Process in parallel batches
+  for (let i = 0; i < state.items.length; i += concurrency) {
+    const batch = state.items.slice(i, i + concurrency);
+
+    const batchResults = await Promise.allSettled(batch.map(async (item) => {
+      let s = { ...state, items: [item], currentIndex: 0, results: [], stats: initStats() };
+      s = await deepAnalyzeNode(s);
+      s = await multiScoreNode(s);
+      s = await duplicateCheckNode(s);
+      s = await reportAndQueueNode(s);
+      return s;
+    }));
+
+    for (const r of batchResults) {
+      if (r.status === 'fulfilled') {
+        results.push(...(r.value.results || []));
+        const s = r.value.stats;
+        stats.totalAnalyzed += s.totalAnalyzed;
+        stats.passed += s.passed;
+        stats.flagged += s.flagged;
+        for (const [k, v] of Object.entries(s.byIssueType)) stats.byIssueType[k] = (stats.byIssueType[k] || 0) + v;
+        for (const [k, v] of Object.entries(s.bySeverity)) stats.bySeverity[k] = (stats.bySeverity[k] || 0) + v;
+        for (const [k, v] of Object.entries(s.byChannel)) stats.byChannel[k] = (stats.byChannel[k] || 0) + v;
+      } else {
+        console.error(`   ❌ Item failed: ${r.reason?.message}`);
+        stats.totalAnalyzed++;
+      }
     }
   }
   
   return {
-    processed: state.results.length,
-    flagged: state.stats.flagged,
-    passed: state.stats.passed,
-    stats: state.stats,
-    results: state.results
+    processed: results.length,
+    flagged: stats.flagged,
+    passed: stats.passed,
+    stats,
+    results
   };
 }
 
@@ -881,13 +896,14 @@ async function main() {
     const mode = process.env.MODE || 'scan';
     const limit = parseInt(process.env.LIMIT || '100');
     const channel = process.env.CHANNEL || null;
+    const concurrency = parseInt(process.env.CONCURRENCY || '5');
     
     console.log(`Mode: ${mode}`);
     console.log(`Limit: ${limit}`);
     if (channel) console.log(`Channel: ${channel}`);
     console.log('');
     
-    const result = await runPipeline({ mode, limit, channel });
+    const result = await runPipeline({ mode, limit, channel, concurrency });
     
     runStats.processed = result.processed;
     runStats.created = result.flagged;

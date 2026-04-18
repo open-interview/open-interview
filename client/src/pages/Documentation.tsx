@@ -11,9 +11,8 @@ import {
   ExternalLink, Search, Menu, X, Home, Sparkles, Box
 } from 'lucide-react';
 import { EnhancedMermaid } from '@/components/EnhancedMermaid';
-import { DesktopSidebarWrapper } from '@/components/layout/DesktopSidebarWrapper';
-import { MobileBottomNav } from '@/components/layout/UnifiedNav';
-import { MobileHeader } from '@/components/layout/MobileHeader';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { SEOHead } from '@/components/SEOHead';
 
 // Documentation sections
 const sections = [
@@ -37,21 +36,21 @@ export default function Documentation() {
   }, [activeSection]);
 
   return (
-    <DesktopSidebarWrapper>
-    <div className="lg:hidden"><MobileHeader title="Docs" showBack={true} /></div>
-    <div className="min-h-screen bg-background text-foreground pt-14 lg:pt-0">
+    <AppLayout fullWidth>
+      <SEOHead title="Documentation | Code Reels" description="Technical documentation, architecture overview, AI pipeline, API reference, and deployment guides for Code Reels." />
+    <div className="min-h-screen bg-background text-foreground pt-14 lg:pt-0 overflow-x-hidden">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="lg:hidden p-2 hover:bg-[#21262d] rounded-lg transition-colors"
+              className="lg:hidden p-2 hover:bg-[#21262d] rounded-lg transition-colors duration-150 ease-out cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
             >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
             <Link href="/">
-              <a className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+              <a className="flex items-center gap-3 hover:opacity-80 transition-opacity duration-150 ease-out cursor-pointer">
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#58a6ff] to-[#a371f7] flex items-center justify-center">
                   <BookOpen className="w-5 h-5 text-white" />
                 </div>
@@ -76,7 +75,7 @@ export default function Documentation() {
               <kbd className="text-[10px] text-[#6e7681] bg-[#161b22] px-1.5 py-0.5 rounded border border-[#30363d]">⌘K</kbd>
             </div>
             <Link href="/">
-              <a className="flex items-center gap-2 px-3 py-1.5 text-sm text-[#8b949e] hover:text-white hover:bg-[#21262d] rounded-lg transition-colors">
+              <a className="flex items-center gap-2 px-3 py-1.5 text-sm text-[#8b949e] hover:text-white hover:bg-[#21262d] rounded-lg transition-colors duration-150 ease-out cursor-pointer min-h-[44px]">
                 <Home className="w-4 h-4" />
                 <span className="hidden sm:inline">Back to App</span>
               </a>
@@ -105,16 +104,16 @@ export default function Documentation() {
                   key={section.id}
                   onClick={() => setActiveSection(section.id)}
                   className={`
-                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all
+                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 ease-out cursor-pointer min-h-[44px]
                     ${isActive 
-                      ? 'bg-[#21262d] text-white' 
-                      : 'text-[#8b949e] hover:text-white hover:bg-[#161b22]'
+                      ? 'bg-[#7c3aed]/20 text-white border border-[#7c3aed]/40' 
+                      : 'text-[#8b949e] hover:text-white hover:bg-[#161b22] border border-transparent'
                     }
                   `}
                 >
                   <div 
-                    className={`p-1.5 rounded-md transition-colors ${isActive ? 'bg-[#30363d]' : ''}`}
-                    style={{ color: isActive ? section.color : undefined }}
+                    className={`p-1.5 rounded-md transition-colors duration-150 ease-out ${isActive ? 'bg-[#7c3aed]/30' : ''}`}
+                    style={{ color: isActive ? '#7c3aed' : undefined }}
                   >
                     <Icon className="w-4 h-4" />
                   </div>
@@ -130,13 +129,13 @@ export default function Documentation() {
                 Quick Links
               </div>
               <a href="https://github.com" target="_blank" rel="noopener" 
-                className="flex items-center gap-3 px-3 py-2 text-sm text-[#8b949e] hover:text-white rounded-lg hover:bg-[#161b22] transition-colors">
+                className="flex items-center gap-3 px-3 py-2 text-sm text-[#8b949e] hover:text-white rounded-lg hover:bg-[#161b22] transition-colors duration-150 ease-out cursor-pointer min-h-[44px]">
                 <GitBranch className="w-4 h-4" />
                 <span>GitHub Repository</span>
                 <ExternalLink className="w-3 h-3 ml-auto" />
               </a>
               <a href="/whats-new"
-                className="flex items-center gap-3 px-3 py-2 text-sm text-[#8b949e] hover:text-white rounded-lg hover:bg-[#161b22] transition-colors">
+                className="flex items-center gap-3 px-3 py-2 text-sm text-[#8b949e] hover:text-white rounded-lg hover:bg-[#161b22] transition-colors duration-150 ease-out cursor-pointer min-h-[44px]">
                 <Sparkles className="w-4 h-4" />
                 <span>What's New</span>
               </a>
@@ -153,7 +152,7 @@ export default function Documentation() {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 min-w-0 px-4 lg:px-8 py-8 lg:py-12">
+        <main className="flex-1 min-w-0 px-4 lg:px-8 py-8 lg:py-12 pb-24">
           <div className="max-w-4xl">
             {activeSection === 'overview' && <OverviewSection />}
             {activeSection === 'ai-pipeline' && <AIPipelineSection />}
@@ -166,8 +165,7 @@ export default function Documentation() {
         </main>
       </div>
     </div>
-    <MobileBottomNav />
-    </DesktopSidebarWrapper>
+    </AppLayout>
   );
 }
 
@@ -186,7 +184,7 @@ function SectionHeader({ icon: Icon, title, description, color = '#58a6ff' }: {
           <h1 className="text-2xl lg:text-3xl font-bold text-white">{title}</h1>
         </div>
       </div>
-      <p className="text-lg text-[#8b949e] leading-relaxed">{description}</p>
+      <p className="text-lg text-[#8b949e] leading-relaxed max-w-prose">{description}</p>
     </div>
   );
 }
@@ -213,7 +211,7 @@ function CodeBlock({ code, language = 'typescript', title, copyable = true }: {
           {copyable && (
             <button 
               onClick={handleCopy}
-              className="p-1.5 hover:bg-[#30363d] rounded transition-colors"
+              className="p-1.5 hover:bg-[#30363d] rounded transition-colors duration-150 ease-out cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
               title="Copy code"
             >
               {copied ? <Check className="w-4 h-4 text-[#3fb950]" /> : <Copy className="w-4 h-4 text-[#6e7681]" />}
@@ -237,7 +235,7 @@ function DiagramCard({ title, description, diagram }: { title: string; descripti
     <div className="rounded-xl border border-[#30363d] bg-[#161b22]/50 overflow-hidden my-8">
       <button 
         onClick={() => setExpanded(!expanded)}
-        className="w-full p-4 flex items-center justify-between hover:bg-[#21262d]/50 transition-colors"
+        className="w-full p-4 flex items-center justify-between hover:bg-[#21262d]/50 transition-colors duration-150 ease-out cursor-pointer min-h-[44px]"
       >
         <div className="text-left">
           <h3 className="font-semibold text-white flex items-center gap-2">
@@ -267,11 +265,11 @@ function FeatureCard({ icon: Icon, title, description, color = '#58a6ff' }: {
   icon: any; title: string; description: string; color?: string 
 }) {
   return (
-    <div className="p-4 rounded-xl border border-[#30363d] bg-[#161b22]/30 hover:bg-[#161b22] hover:border-[#58a6ff]/30 transition-all group">
+    <div className="p-4 rounded-xl border border-[#30363d] bg-[#161b22]/30 hover:bg-[#161b22] hover:border-[#58a6ff]/30 transition-all duration-150 ease-out group">
       <div className="p-2 rounded-lg w-fit mb-3" style={{ backgroundColor: `${color}15` }}>
         <Icon className="w-5 h-5" style={{ color }} />
       </div>
-      <h4 className="font-semibold text-white mb-1 group-hover:text-[#58a6ff] transition-colors">{title}</h4>
+      <h4 className="font-semibold text-white mb-1 group-hover:text-[#58a6ff] transition-colors duration-150 ease-out">{title}</h4>
       <p className="text-sm text-[#8b949e] leading-relaxed">{description}</p>
     </div>
   );
@@ -291,7 +289,7 @@ function InfoBox({ type = 'info', title, children }: { type?: 'info' | 'warning'
       <div className={`font-semibold ${s.color} mb-2 flex items-center gap-2`}>
         <span>{s.icon}</span> {title}
       </div>
-      <div className="text-sm text-[#8b949e] leading-relaxed">{children}</div>
+      <div className="text-sm text-[#8b949e] leading-relaxed max-w-prose">{children}</div>
     </div>
   );
 }

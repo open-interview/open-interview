@@ -8,6 +8,7 @@ export interface ChannelConfig {
   category: 'engineering' | 'data' | 'cloud' | 'security' | 'management' | 'mobile' | 'ai' | 'testing' | 'fundamentals' | 'certification';
   roles: string[]; // Which roles this channel is recommended for
   isCertification?: boolean; // Whether this is a certification prep channel
+  addedAt?: string; // ISO date string — used to show "New" badge
 }
 
 export const allChannelsConfig: ChannelConfig[] = [

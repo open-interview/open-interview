@@ -6,8 +6,9 @@
  * Run this after bulk imports or to rebuild the vector index.
  * 
  * Usage:
- *   node script/sync-vector-db.js           # Full sync
- *   node script/sync-vector-db.js --force   # Delete and recreate collection
+ *   node script/sync-vector-db.js                    # Full sync
+ *   node script/sync-vector-db.js --force            # Delete and recreate collection
+ *   node script/sync-vector-db.js --mode=incremental # Only sync recently updated questions (last 2h)
  *   node script/sync-vector-db.js --channel system-design  # Sync specific channel
  */
 
@@ -28,6 +29,9 @@ async function main() {
   const args = process.argv.slice(2);
   const force = args.includes('--force');
   const dryRun = args.includes('--dry-run');
+  const modeArg = args.find(a => a.startsWith('--mode='));
+  const mode = modeArg ? modeArg.split('=')[1] : 'full';
+  const incremental = mode === 'incremental';
   const channelIdx = args.indexOf('--channel');
   const channel = channelIdx !== -1 ? args[channelIdx + 1] : null;
   const limitArg = args.find(a => a.startsWith('--limit='));
@@ -36,7 +40,7 @@ async function main() {
   console.log('═'.repeat(60));
   console.log('🔄 VECTOR DATABASE SYNC');
   console.log('═'.repeat(60));
-  console.log(`Mode: ${force ? 'Force rebuild' : 'Incremental sync'}${dryRun ? ' [dry-run]' : ''}`);
+  console.log(`Mode: ${force ? 'Force rebuild' : incremental ? 'Incremental (last 2h)' : 'Full sync'}${dryRun ? ' [dry-run]' : ''}`);
   if (channel) console.log(`Channel: ${channel}`);
   if (limit) console.log(`Limit: ${limit}`);
   console.log('');
@@ -72,6 +76,13 @@ async function main() {
   console.log('\n📥 Fetching questions from database...');
   let sql = 'SELECT * FROM questions WHERE status = ?';
   const args_sql = ['active'];
+  
+  if (incremental) {
+    // Only sync questions updated in the last 2 hours
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    sql += ' AND last_updated >= ?';
+    args_sql.push(twoHoursAgo);
+  }
   
   if (channel) {
     sql += ' AND channel = ?';

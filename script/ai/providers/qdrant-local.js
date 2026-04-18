@@ -21,6 +21,7 @@ class LocalQdrantProvider {
   constructor() {
     this.db = null;
     this.initialized = false;
+    this._ensuredCollections = new Set();
   }
 
   _getDb() {
@@ -44,6 +45,7 @@ class LocalQdrantProvider {
   }
 
   async ensureCollection(collectionName) {
+    if (this._ensuredCollections.has(collectionName)) return true;
     await this.init();
     const t = this._tableName(collectionName);
     const db = this._getDb();
@@ -57,6 +59,7 @@ class LocalQdrantProvider {
       )
     `);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_${t}_oid ON ${t}(original_id)`);
+    this._ensuredCollections.add(collectionName);
     console.log(`✅ Local collection ready: ${collectionName}`);
     return true;
   }

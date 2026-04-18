@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { getDueCards, recordReview, removeFromSRS, type ReviewCard } from '../lib/spaced-repetition';
 import { getQuestionByIdAsync } from '../lib/questions-loader';
+import { useUserPreferences } from '../hooks/use-user-preferences';
+import { isPersonalized } from '../lib/personalization';
 
 // Fallback data if no SRS cards available
 const FALLBACK_CARDS = [
@@ -250,7 +252,20 @@ function preprocessMarkdown(text: string): string {
 export default function ReviewSession() {
   const [, setLocation] = useLocation();
   const { onSRSReview } = useCredits();
-  const [cards, setCards] = useState<any[]>([]);
+  const { preferences } = useUserPreferences();
+  const { onboardingComplete, subscribedChannels } = preferences;
+
+  const [focusMyTopics, setFocusMyTopics] = useState<boolean>(() => {
+    const saved = localStorage.getItem('review_focus_my_topics');
+    if (saved !== null) return saved === 'true';
+    return isPersonalized(onboardingComplete, subscribedChannels);
+  });
+
+  useEffect(() => {
+    localStorage.setItem('review_focus_my_topics', String(focusMyTopics));
+  }, [focusMyTopics]);
+
+  const [allCards, setAllCards] = useState<any[]>([]);
   const [loadingCards, setLoadingCards] = useState(true);
 
   useEffect(() => {
@@ -272,10 +287,14 @@ export default function ReviewSession() {
         } : null;
       })
     ).then(results => {
-      setCards(results.filter(Boolean));
+      setAllCards(results.filter(Boolean));
       setLoadingCards(false);
     });
   }, []);
+
+  const cards = focusMyTopics && subscribedChannels.length > 0
+    ? allCards.filter(c => subscribedChannels.includes(c.channel))
+    : allCards;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [reviewedCount, setReviewedCount] = useState(0);
@@ -321,15 +340,15 @@ export default function ReviewSession() {
   const handleDelete = () => {
     if (!currentCard?.id) return;
     removeFromSRS(currentCard.id);
-    const updated = cards.filter(c => c?.id !== currentCard.id);
-    setCards(updated);
+    const updated = allCards.filter(c => c?.id !== currentCard.id);
+    setAllCards(updated);
     setShowAnswer(false);
     setCurrentIndex(i => Math.min(i, updated.length - 1));
   };
 
   if (loadingCards) {
     return (
-      <AppLayout>
+      <AppLayout fullWidth>
         <div className="min-h-screen bg-background text-foreground">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <PageHeader title="SRS Review" subtitle="Spaced repetition to lock in what you've learned" />
@@ -342,7 +361,7 @@ export default function ReviewSession() {
 
   if (cards.length === 0) {
     return (
-      <AppLayout>
+      <AppLayout fullWidth>
         <div className="min-h-screen bg-background text-foreground">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <PageHeader title="SRS Review" subtitle="Spaced repetition to lock in what you've learned" />
@@ -362,7 +381,7 @@ export default function ReviewSession() {
 
   if (!currentCard) {
     return (
-      <AppLayout>
+      <AppLayout fullWidth>
         <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
           <div className="text-center">
             <CheckCircle className="w-16 h-16 text-primary mx-auto mb-4" />
@@ -370,7 +389,7 @@ export default function ReviewSession() {
             <p className="text-muted-foreground mb-6">You've reviewed all cards for today</p>
             <button
               onClick={() => setLocation('/')}
-              className="px-8 py-4 bg-gradient-to-r from-primary to-cyan-500 rounded-[16px] font-bold text-black"
+              className="min-h-[44px] cursor-pointer px-8 py-4 bg-gradient-to-r from-primary to-cyan-500 rounded-[16px] font-bold text-black"
             >
               Back to Home
             </button>
@@ -388,18 +407,31 @@ export default function ReviewSession() {
         canonical="https://open-interview.github.io/review"
       />
 
-      <AppLayout>
+      <AppLayout fullWidth>
         {/* iPhone 13 FIX: Ensure content fits within viewport with safe areas */}
         <div className="min-h-screen bg-background text-foreground overflow-x-hidden w-full pb-24 lg:pb-0">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 w-full overflow-x-hidden">
             {/* Page Header */}
             <PageHeader title="SRS Review" subtitle="Spaced repetition to lock in what you've learned" />
 
+            {/* Focus toggle */}
+            {isPersonalized(onboardingComplete, subscribedChannels) && (
+              <div className="flex items-center gap-3 mb-6">
+                <button
+                  onClick={() => setFocusMyTopics(v => !v)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full cursor-pointer transition duration-150 ease-out ${focusMyTopics ? 'bg-primary' : 'bg-muted'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${focusMyTopics ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+                <span className="text-sm font-medium">Focus on my topics</span>
+              </div>
+            )}
+
             {/* Session Controls */}
             <div className="flex items-center justify-between mb-8">
               <button
                 onClick={() => setLocation('/')}
-                className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                className="flex items-center gap-2 min-h-[44px] cursor-pointer text-muted-foreground hover:text-foreground transition duration-150 ease-out"
               >
                 <ChevronLeft className="w-5 h-5" />
                 <span>Back</span>
@@ -461,7 +493,7 @@ export default function ReviewSession() {
                     <button
                       onClick={handleDelete}
                       title="Remove from SRS"
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      className="min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition duration-150 ease-out"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -700,7 +732,7 @@ export default function ReviewSession() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={handleRevealAnswer}
-                      className="w-full py-6 bg-gradient-to-r from-primary to-cyan-500 rounded-[20px] font-bold text-xl text-black flex items-center justify-center gap-3"
+                      className="w-full min-h-[44px] py-6 cursor-pointer bg-gradient-to-r from-primary to-cyan-500 rounded-[20px] font-bold text-xl text-black flex items-center justify-center gap-3"
                     >
                       <Eye className="w-6 h-6" />
                       Tap to reveal answer
@@ -718,7 +750,7 @@ export default function ReviewSession() {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => handleConfidence(level.id)}
-                            className={`px-3 py-2 border rounded-lg text-sm font-bold transition-all flex items-center gap-1.5 ${level.cls}`}
+                            className={`min-h-[44px] px-3 py-2 border rounded-lg text-sm font-bold cursor-pointer transition duration-150 ease-out flex items-center gap-1.5 ${level.cls}`}
                           >
                             {level.icon}
                             <span className="capitalize">{level.label}</span>
@@ -734,7 +766,7 @@ export default function ReviewSession() {
                 <div className="mt-4 text-center">
                   <button
                     onClick={handleSkip}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="min-h-[44px] px-4 cursor-pointer text-sm text-muted-foreground hover:text-foreground transition duration-150 ease-out"
                   >
                     Skip this card
                   </button>

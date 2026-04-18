@@ -68,7 +68,7 @@ export function Card({
     : '';
   
   const clickableClass = clickable 
-    ? 'cursor-pointer active:scale-[0.98]' 
+    ? 'cursor-pointer active:scale-[0.98] transition-transform duration-150 ease-out' 
     : '';
 
   const gradientClass = gradient

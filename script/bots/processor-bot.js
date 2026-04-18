@@ -80,10 +80,8 @@ const ISSUE_ACTIONS = {
 /**
  * Node 1: Get Work Item
  */
-async function getWorkNode(state) {
-  console.log('\n📥 [Get Work] Fetching next work item...');
-  
-  const workItem = await getNextWorkItem(BOT_NAME);
+async function getWorkNode(state, preloadedWorkItem = null) {
+  const workItem = preloadedWorkItem || await getNextWorkItem(BOT_NAME);
   
   if (!workItem) {
     console.log('   No pending work items');
@@ -444,31 +442,20 @@ async function updateStatusNode(state) {
 // ============================================
 
 async function rewriteContent(item, context) {
-  const prompt = `Completely rewrite this interview question to be high-quality and interview-ready.
+  const prompt = `Rewrite this interview Q&A to be clear and direct.
 
-CURRENT CONTENT:
 Question: "${item.question}"
 Answer: "${item.answer}"
 Explanation: "${item.explanation?.substring(0, 600)}"
-Channel: ${item.channel}
-Difficulty: ${item.difficulty}
-
-ISSUES TO FIX: ${context.issues.join(', ')}
-AI FEEDBACK: ${context.aiFeedback}
-IMPROVEMENTS NEEDED: ${context.improvements.join('; ')}
-
-Requirements:
-- Question should be clear, specific, and end with ?
-- Answer should be 2-3 concise sentences
-- Explanation should be 300-500 words with examples
-- Match the ${item.difficulty} difficulty level
-- Be relevant to ${item.channel} interviews
+Channel: ${item.channel} | Difficulty: ${item.difficulty}
+Issues: ${context.issues.join(', ')}
+${context.aiFeedback ? `Feedback: ${context.aiFeedback}` : ''}
 
 Return ONLY JSON:
 {
-  "question": "rewritten question?",
-  "answer": "concise 2-3 sentence answer",
-  "explanation": "detailed explanation with examples"
+  "question": "specific question ending with ?",
+  "answer": "2-3 sentence direct answer, plain text, no markdown",
+  "explanation": "markdown explanation with ## sections, examples, no filler"
 }`;
 
   const response = await runWithRetries(prompt);
@@ -485,22 +472,17 @@ Return ONLY JSON:
 }
 
 async function completeContent(item, context) {
-  const prompt = `The following content appears truncated. Complete it properly.
+  const prompt = `Complete this truncated interview content.
 
 Question: "${item.question}"
-Current Answer: "${item.answer}"
-Current Explanation: "${item.explanation}"
+Answer: "${item.answer}"
+Explanation: "${item.explanation}"
 Channel: ${item.channel}
-
-The content seems cut off. Please:
-1. Complete the answer if it ends abruptly
-2. Complete the explanation with proper conclusion
-3. Ensure all concepts are fully explained
 
 Return ONLY JSON:
 {
-  "answer": "complete answer (keep existing good parts, complete what's missing)",
-  "explanation": "complete explanation (keep existing good parts, add missing conclusion/details)"
+  "answer": "complete answer, plain text",
+  "explanation": "complete explanation with ## sections"
 }`;
 
   const response = await runWithRetries(prompt);
@@ -516,21 +498,12 @@ Return ONLY JSON:
 }
 
 async function expandAnswer(item, context) {
-  const prompt = `Expand this interview answer to be more comprehensive.
+  const prompt = `Expand this answer to 2-3 sentences. Direct, plain text, no markdown.
 
 Question: "${item.question}"
 Current Answer: "${item.answer}"
-Channel: ${item.channel}
 
-The answer is too brief. Expand it to 2-3 sentences that:
-- Directly answer the question
-- Include key technical terms
-- Are suitable for verbal delivery
-
-Return ONLY JSON:
-{
-  "answer": "expanded 2-3 sentence answer"
-}`;
+Return ONLY JSON: { "answer": "expanded answer" }`;
 
   const response = await runWithRetries(prompt);
   const result = parseJson(response);
@@ -544,23 +517,13 @@ Return ONLY JSON:
 }
 
 async function expandExplanation(item, context) {
-  const prompt = `Expand this explanation to be more detailed and educational.
+  const prompt = `Expand this explanation with more technical depth and a concrete example.
 
 Question: "${item.question}"
 Answer: "${item.answer}"
 Current Explanation: "${item.explanation}"
-Channel: ${item.channel}
 
-Expand to 300-500 words including:
-- Detailed technical explanation
-- Real-world examples or use cases
-- Common pitfalls or best practices
-- Code snippet if applicable
-
-Return ONLY JSON:
-{
-  "explanation": "expanded detailed explanation"
-}`;
+Return ONLY JSON: { "explanation": "expanded explanation with ## sections" }`;
 
   const response = await runWithRetries(prompt);
   const result = parseJson(response);
@@ -574,25 +537,17 @@ Return ONLY JSON:
 }
 
 async function improveContent(item, context) {
-  const prompt = `Improve this interview content based on feedback.
+  const prompt = `Improve this interview content. Be direct and technical.
 
 Question: "${item.question}"
 Answer: "${item.answer}"
 Explanation: "${item.explanation?.substring(0, 800)}"
-Channel: ${item.channel}
-
-FEEDBACK: ${context.aiFeedback}
-IMPROVEMENTS: ${context.improvements.join('; ')}
-
-Enhance the content while keeping the core topic. Focus on:
-- Technical accuracy
-- Clarity and readability
-- Practical relevance
+${context.aiFeedback ? `Feedback: ${context.aiFeedback}` : ''}
 
 Return ONLY JSON:
 {
-  "answer": "improved answer",
-  "explanation": "improved explanation"
+  "answer": "improved answer, plain text",
+  "explanation": "improved explanation with ## sections"
 }`;
 
   const response = await runWithRetries(prompt);
@@ -608,23 +563,16 @@ Return ONLY JSON:
 }
 
 async function improveClarity(item, context) {
-  const prompt = `Rewrite this content to be clearer and easier to understand.
+  const prompt = `Rewrite for clarity. Simple, direct language. No padding.
 
 Question: "${item.question}"
 Answer: "${item.answer}"
 Explanation: "${item.explanation?.substring(0, 600)}"
 
-Issues: The content lacks clarity.
-
-Rewrite to be:
-- Simple and direct language
-- Well-structured with clear flow
-- Easy to understand for the target difficulty level
-
 Return ONLY JSON:
 {
-  "answer": "clearer answer",
-  "explanation": "clearer explanation with better structure"
+  "answer": "clearer answer, plain text",
+  "explanation": "clearer explanation with ## sections"
 }`;
 
   const response = await runWithRetries(prompt);
@@ -640,24 +588,17 @@ Return ONLY JSON:
 }
 
 async function fixAccuracy(item, context) {
-  const prompt = `Review and fix any technical inaccuracies in this content.
+  const prompt = `Fix technical inaccuracies. Ensure facts and best practices are correct.
 
 Question: "${item.question}"
 Answer: "${item.answer}"
 Explanation: "${item.explanation}"
-Channel: ${item.channel}
-
-FEEDBACK: ${context.aiFeedback}
-
-Ensure:
-- All technical facts are correct
-- Best practices are current
-- No outdated information
+${context.aiFeedback ? `Feedback: ${context.aiFeedback}` : ''}
 
 Return ONLY JSON:
 {
-  "answer": "technically accurate answer",
-  "explanation": "technically accurate explanation"
+  "answer": "accurate answer",
+  "explanation": "accurate explanation"
 }`;
 
   const response = await runWithRetries(prompt);
@@ -673,20 +614,12 @@ Return ONLY JSON:
 }
 
 async function alignAnswer(item, context) {
-  const prompt = `The answer doesn't directly address the question. Fix this.
+  const prompt = `Rewrite the answer to directly address the question. 2-3 sentences, plain text.
 
 Question: "${item.question}"
 Current Answer: "${item.answer}"
 
-Rewrite the answer to:
-- Directly address what's being asked
-- Use terms from the question
-- Be concise (2-3 sentences)
-
-Return ONLY JSON:
-{
-  "answer": "answer that directly addresses the question"
-}`;
+Return ONLY JSON: { "answer": "answer that directly addresses the question" }`;
 
   const response = await runWithRetries(prompt);
   const result = parseJson(response);
@@ -700,21 +633,12 @@ Return ONLY JSON:
 }
 
 async function clarifyQuestion(item, context) {
-  const prompt = `Make this interview question more specific and clear.
+  const prompt = `Make this question specific and clear. Keep it concise.
 
 Current Question: "${item.question}"
-Channel: ${item.channel}
-Difficulty: ${item.difficulty}
+Channel: ${item.channel} | Difficulty: ${item.difficulty}
 
-The question is vague. Rewrite to be:
-- Specific about what's being asked
-- Clear context if needed
-- Appropriate for ${item.difficulty} level
-
-Return ONLY JSON:
-{
-  "question": "clearer, more specific question?"
-}`;
+Return ONLY JSON: { "question": "specific question?" }`;
 
   const response = await runWithRetries(prompt);
   const result = parseJson(response);
@@ -738,18 +662,13 @@ function fixFormatting(item) {
 }
 
 async function addCodeExample(item, context) {
-  const prompt = `Add a relevant code example to this explanation.
+  const prompt = `Add a minimal, practical code example to this explanation.
 
 Question: "${item.question}"
 Current Explanation: "${item.explanation}"
 Channel: ${item.channel}
 
-Add a practical code example that illustrates the concept. Use appropriate language for ${item.channel}.
-
-Return ONLY JSON:
-{
-  "explanation": "explanation with code example added (use markdown code blocks)"
-}`;
+Return ONLY JSON: { "explanation": "explanation with code block added" }`;
 
   const response = await runWithRetries(prompt);
   const result = parseJson(response);
@@ -763,14 +682,11 @@ Return ONLY JSON:
 }
 
 async function addChannelTerms(item, context) {
-  const prompt = `Enhance this content with more ${item.channel}-specific terminology.
+  const prompt = `Add ${item.channel}-specific technical terms to this content.
 
 Question: "${item.question}"
 Answer: "${item.answer}"
 Explanation: "${item.explanation?.substring(0, 500)}"
-Channel: ${item.channel}
-
-Add relevant technical terms specific to ${item.channel} while keeping content accurate.
 
 Return ONLY JSON:
 {
@@ -790,57 +706,12 @@ Return ONLY JSON:
   return item;
 }
 
-async function addVoiceKeywords(item, context) {
-  const prompt = `Extract voice interview keywords for this question.
-
-Question: "${item.question}"
-Answer: "${item.answer}"
-Explanation: "${item.explanation?.substring(0, 1000)}"
-Channel: ${item.channel}
-
-Extract 8-12 critical keywords/phrases that:
-- Are at least 2 words each (e.g., "load balancer" not just "load")
-- Represent key concepts a good answer must mention
-- Include technical terms and their alternatives
-- Are suitable for voice matching
-
-Return ONLY JSON:
-{
-  "suitable": true,
-  "keywords": ["two word phrase", "another phrase", "technical term"]
-}`;
-
-  const response = await runWithRetries(prompt);
-  const result = parseJson(response);
-  
-  if (result) {
-    item.voiceSuitable = result.suitable === true;
-    if (result.suitable && Array.isArray(result.keywords)) {
-      item.voiceKeywords = result.keywords
-        .map(k => String(k).toLowerCase().trim())
-        .filter(k => k.length > 2)
-        .slice(0, 12);
-    }
-    item.lastUpdated = new Date().toISOString();
-  }
-  
-  return item;
-}
-
 async function condenseAnswer(item, context) {
-  const prompt = `Condense this answer for voice interview practice.
+  const prompt = `Condense to 1-2 sentences. Keep key technical terms. Plain text.
 
 Current Answer: "${item.answer}"
 
-Rewrite to be:
-- 1-2 sentences maximum
-- Contains key technical terms
-- Easy to say aloud
-
-Return ONLY JSON:
-{
-  "answer": "condensed 1-2 sentence answer"
-}`;
+Return ONLY JSON: { "answer": "condensed answer" }`;
 
   const response = await runWithRetries(prompt);
   const result = parseJson(response);
@@ -854,18 +725,12 @@ Return ONLY JSON:
 }
 
 async function addTags(item, context) {
-  const prompt = `Generate relevant tags for this interview question.
+  const prompt = `Generate 5-8 relevant tags for this question.
 
 Question: "${item.question}"
 Channel: ${item.channel}
-Sub-channel: ${item.subChannel}
 
-Generate 5-8 relevant tags for discoverability.
-
-Return ONLY JSON:
-{
-  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"]
-}`;
+Return ONLY JSON: { "tags": ["tag1", "tag2", "tag3"] }`;
 
   const response = await runWithRetries(prompt);
   const result = parseJson(response);
@@ -878,49 +743,17 @@ Return ONLY JSON:
   return item;
 }
 
-async function addDiagram(item, context) {
-  const prompt = `Create a Mermaid diagram for this concept.
-
-Question: "${item.question}"
-Channel: ${item.channel}
-
-Create a simple, clear diagram. Return ONLY the Mermaid code:
-
-graph TD
-    A[Start] --> B[Process]
-    B --> C[End]`;
-
-  const response = await runWithRetries(prompt);
-  
-  if (response) {
-    let diagram = response.trim();
-    if (diagram.includes('```')) {
-      const match = diagram.match(/```(?:mermaid)?\s*([\s\S]*?)\s*```/);
-      if (match) diagram = match[1].trim();
-    }
-    
-    if (diagram.startsWith('graph') || diagram.startsWith('flowchart') || diagram.startsWith('sequenceDiagram')) {
-      item.diagram = diagram;
-      item.lastUpdated = new Date().toISOString();
-    }
-  }
-  
-  return item;
-}
-
 async function differentiateContent(item, context) {
-  const prompt = `This question may be similar to others. Make it more unique.
+  const prompt = `Give this question a unique angle while covering the same topic.
 
 Question: "${item.question}"
 Answer: "${item.answer}"
 Channel: ${item.channel}
 
-Rewrite to have a unique angle or focus while covering the same topic.
-
 Return ONLY JSON:
 {
   "question": "differentiated question?",
-  "answer": "unique perspective answer"
+  "answer": "answer from unique angle"
 }`;
 
   const response = await runWithRetries(prompt);
@@ -936,20 +769,16 @@ Return ONLY JSON:
 }
 
 async function diversifyContent(item, context) {
-  const prompt = `The answer and explanation are too similar. Diversify them.
+  const prompt = `Answer and explanation are too similar. Make them distinct.
 
 Question: "${item.question}"
 Answer: "${item.answer}"
 Explanation: "${item.explanation?.substring(0, 500)}"
 
-Rewrite so:
-- Answer is a concise direct response
-- Explanation adds NEW information, examples, and depth
-
 Return ONLY JSON:
 {
   "answer": "concise direct answer",
-  "explanation": "explanation with additional details not in answer"
+  "explanation": "explanation with additional depth not in answer"
 }`;
 
   const response = await runWithRetries(prompt);
@@ -965,16 +794,10 @@ Return ONLY JSON:
 }
 
 async function polishContent(item, context) {
-  const prompt = `Polish this interview content for final quality.
+  const prompt = `Fix grammar, improve flow. Keep content unchanged.
 
-Question: "${item.question}"
 Answer: "${item.answer}"
 Explanation: "${item.explanation?.substring(0, 600)}"
-
-Minor improvements:
-- Fix any grammar/spelling
-- Improve flow and readability
-- Ensure professional tone
 
 Return ONLY JSON:
 {
@@ -988,6 +811,55 @@ Return ONLY JSON:
   if (result) {
     if (result.answer) item.answer = result.answer;
     if (result.explanation) item.explanation = result.explanation;
+    item.lastUpdated = new Date().toISOString();
+  }
+  
+  return item;
+}
+
+async function addDiagram(item, context) {
+  const prompt = `Create a simple Mermaid diagram for this concept. Return ONLY the Mermaid code.
+
+Question: "${item.question}"`;
+
+  const response = await runWithRetries(prompt);
+  if (response) {
+    let diagram = response.trim();
+    if (diagram.includes('```')) {
+      const match = diagram.match(/```(?:mermaid)?\s*([\s\S]*?)\s*```/);
+      if (match) diagram = match[1].trim();
+    }
+    if (diagram.startsWith('graph') || diagram.startsWith('flowchart') || diagram.startsWith('sequenceDiagram')) {
+      item.diagram = diagram;
+      item.lastUpdated = new Date().toISOString();
+    }
+  }
+  return item;
+}
+
+async function addVoiceKeywords(item, context) {
+  const prompt = `Extract 8-12 voice interview keywords for this question. Multi-word phrases preferred.
+
+Question: "${item.question}"
+Answer: "${item.answer}"
+
+Return ONLY JSON:
+{
+  "suitable": true,
+  "keywords": ["phrase one", "phrase two"]
+}`;
+
+  const response = await runWithRetries(prompt);
+  const result = parseJson(response);
+  
+  if (result) {
+    item.voiceSuitable = result.suitable === true;
+    if (result.suitable && Array.isArray(result.keywords)) {
+      item.voiceKeywords = result.keywords
+        .map(k => String(k).toLowerCase().trim())
+        .filter(k => k.length > 2)
+        .slice(0, 12);
+    }
     item.lastUpdated = new Date().toISOString();
   }
   
@@ -1170,7 +1042,7 @@ async function deleteItem(type, id) {
 // ============================================
 
 async function runPipeline(options = {}) {
-  const { maxItems = 50 } = options;
+  const { maxItems = 50, concurrency = 5 } = options;
   
   const results = {
     processed: 0,
@@ -1180,47 +1052,53 @@ async function runPipeline(options = {}) {
     failed: 0,
     actionCounts: {}
   };
-  
+
+  // Fetch all pending work items upfront
+  const workItems = [];
   for (let i = 0; i < maxItems; i++) {
-    let state = {};
-    
-    state = await getWorkNode(state);
-    if (state.done) break;
-    if (!state.workItem) continue;
-    
-    try {
+    const workItem = await getNextWorkItem(BOT_NAME);
+    if (!workItem) break;
+    workItems.push(workItem);
+  }
+
+  if (workItems.length === 0) return results;
+
+  console.log(`\n🚀 Processing ${workItems.length} items with concurrency=${concurrency}...\n`);
+
+  // Process in parallel batches
+  for (let i = 0; i < workItems.length; i += concurrency) {
+    const batch = workItems.slice(i, i + concurrency);
+
+    const batchResults = await Promise.allSettled(batch.map(async (workItem) => {
+      let state = {};
+      state = await getWorkNode(state, workItem);
+      if (!state.workItem) return { skipped: true };
+
       state = await parseIssuesNode(state);
       state = await planActionsNode(state);
       state = await executeNode(state);
       state = await validateNode(state);
       state = await logNode(state);
       state = await updateStatusNode(state);
-      
+      return state;
+    }));
+
+    for (const r of batchResults) {
       results.processed++;
-      
-      if (state.deleted) {
-        results.deleted++;
-      } else if (state.success) {
-        results.updated++;
+      if (r.status === 'rejected') {
+        console.error(`❌ Item failed:`, r.reason?.message);
+        results.failed++;
       } else {
-        results.skipped++;
+        const state = r.value;
+        if (state.skipped) { results.skipped++; continue; }
+        if (state.deleted) results.deleted++;
+        else if (state.success) results.updated++;
+        else results.skipped++;
+        for (const action of state.actionsPerformed || []) {
+          results.actionCounts[action] = (results.actionCounts[action] || 0) + 1;
+        }
       }
-      
-      // Track action counts
-      for (const action of state.actionsPerformed || []) {
-        results.actionCounts[action] = (results.actionCounts[action] || 0) + 1;
-      }
-      
-    } catch (error) {
-      console.error(`\n❌ Error processing ${state.workItem?.itemId}:`, error.message);
-      if (state.workItem) {
-        await failWorkItem(state.workItem.id, error.message);
-      }
-      results.failed++;
     }
-    
-    // Rate limiting
-    await new Promise(r => setTimeout(r, 1200));
   }
   
   return results;
@@ -1356,10 +1234,11 @@ async function main() {
   
   try {
     const maxItems = parseInt(process.env.MAX_ITEMS || '50');
+    const concurrency = parseInt(process.env.CONCURRENCY || '5');
     
-    console.log(`\n🚀 Processing up to ${maxItems} items...\n`);
+    console.log(`\n🚀 Processing up to ${maxItems} items (concurrency=${concurrency})...\n`);
     
-    const result = await runPipeline({ maxItems });
+    const result = await runPipeline({ maxItems, concurrency });
     
     stats.processed = result.processed;
     stats.updated = result.updated;

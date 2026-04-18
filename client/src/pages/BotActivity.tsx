@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { SEOHead } from "../components/SEOHead";
 import { AppLayout } from "../components/layout/AppLayout";
 import { MetricCard } from "../components/unified";
+import { EmptyState } from "../components/unified/EmptyState";
 import { cn } from "../lib/utils";
 
 // Types
@@ -200,7 +201,7 @@ function Tab({ active, onClick, children, icon: Icon }: {
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all",
+        "flex items-center gap-2 px-4 min-h-[44px] text-sm font-medium rounded-lg transition-all duration-150 cursor-pointer whitespace-nowrap",
         active 
           ? "bg-primary text-primary-foreground" 
           : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -221,10 +222,12 @@ export default function BotActivity() {
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const [selectedBot, setSelectedBot] = useState<string>('all');
 
   const fetchData = useCallback(async () => {
     try {
+      setFetchError(false);
       const res = await fetch('/data/bot-monitor.json');
       if (res.ok) {
         const data = await res.json();
@@ -232,15 +235,12 @@ export default function BotActivity() {
         setRecentRuns(data.runs || []);
         setWorkQueue(data.queue || []);
         setLedger(data.ledger || []);
+      } else {
+        setFetchError(true);
       }
     } catch (error) {
       console.error('Failed to fetch bot data:', error);
-      // Use mock data for development
-      setBotStats([
-        { botName: 'creator', totalRuns: 45, successfulRuns: 42, totalCreated: 156, totalUpdated: 0, totalDeleted: 0, lastRun: new Date().toISOString() },
-        { botName: 'verifier', totalRuns: 38, successfulRuns: 38, totalCreated: 0, totalUpdated: 0, totalDeleted: 0, lastRun: new Date().toISOString() },
-        { botName: 'processor', totalRuns: 22, successfulRuns: 20, totalCreated: 0, totalUpdated: 45, totalDeleted: 12, lastRun: new Date().toISOString() }
-      ]);
+      setFetchError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -269,8 +269,8 @@ export default function BotActivity() {
         description="Monitor the 3-bot AI pipeline: Creator, Verifier, and Processor bots working together to maintain high-quality interview content."
         canonical="https://open-interview.github.io/bot-activity"
       />
-      <AppLayout title="Bot Monitor" showBackOnMobile>
-        <div className="max-w-6xl mx-auto">
+      <AppLayout title="Bot Monitor" showBackOnMobile fullWidth>
+        <div className="max-w-6xl mx-auto pb-24">
           {/* Header - Desktop only since AppLayout handles mobile */}
           <header className="hidden lg:flex items-center justify-between mb-6">
             <h1 className="text-xl font-bold flex items-center gap-2">
@@ -280,7 +280,7 @@ export default function BotActivity() {
             <button 
               onClick={handleRefresh}
               disabled={refreshing}
-              className="p-2 hover:bg-muted rounded-lg disabled:opacity-50 transition-colors"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-muted rounded-lg disabled:opacity-50 transition-colors duration-150 cursor-pointer"
             >
               <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
             </button>
@@ -291,7 +291,7 @@ export default function BotActivity() {
             <button 
               onClick={handleRefresh}
               disabled={refreshing}
-              className="p-2 hover:bg-muted rounded-lg disabled:opacity-50 transition-colors"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-muted rounded-lg disabled:opacity-50 transition-colors duration-150 cursor-pointer"
             >
               <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
             </button>
@@ -401,7 +401,7 @@ export default function BotActivity() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+          <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide">
             <Tab active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={Activity}>
               Recent Runs
             </Tab>
@@ -434,18 +434,34 @@ export default function BotActivity() {
                     <RefreshCw className="w-6 h-6 animate-spin mx-auto text-primary mb-2" />
                     <p className="text-sm text-muted-foreground">Loading...</p>
                   </div>
+                ) : fetchError ? (
+                  <EmptyState
+                    variant="error"
+                    icon={<Bot className="w-6 h-6" />}
+                    title="Failed to load activity"
+                    description="Could not fetch bot run data."
+                    action={
+                      <button
+                        onClick={handleRefresh}
+                        className="px-4 min-h-[44px] text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity duration-150 cursor-pointer"
+                      >
+                        Try again
+                      </button>
+                    }
+                  />
                 ) : recentRuns.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <Bot className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">No recent runs</p>
-                  </div>
+                  <EmptyState
+                    icon={<Bot className="w-6 h-6" />}
+                    title="No activity yet"
+                    description="Bot activity will appear here once bots run."
+                  />
                 ) : (
                   <div className="divide-y divide-border">
                     {recentRuns.slice(0, 10).map((run, i) => {
                       const config = getBotConfig(run.botName);
                       const Icon = config.icon;
                       return (
-                        <div key={run.id || i} className="p-4 hover:bg-muted/30 transition-colors">
+                        <div key={run.id || i} className="p-4 hover:bg-muted/30 transition-colors duration-150">
                           <div className="flex items-center gap-3">
                             <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", config.color)}>
                               <Icon className="w-4 h-4" />
@@ -491,13 +507,13 @@ export default function BotActivity() {
                     <ListTodo className="w-4 h-4 text-primary" />
                     Work Queue
                   </h3>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     {['all', 'pending', 'processing', 'completed'].map(status => (
                       <button
                         key={status}
                         onClick={() => setSelectedBot(status)}
                         className={cn(
-                          "text-xs px-2 py-1 rounded-full transition-colors",
+                          "text-xs px-3 min-h-[44px] rounded-full transition-colors duration-150 cursor-pointer",
                           selectedBot === status 
                             ? "bg-primary text-primary-foreground" 
                             : "bg-muted text-muted-foreground hover:text-foreground"
@@ -519,7 +535,7 @@ export default function BotActivity() {
                       .filter(w => selectedBot === 'all' || w.status === selectedBot)
                       .slice(0, 20)
                       .map((item, i) => (
-                        <div key={item.id || i} className="p-4 hover:bg-muted/30 transition-colors">
+                        <div key={item.id || i} className="p-4 hover:bg-muted/30 transition-colors duration-150">
                           <div className="flex items-center gap-3">
                             <div className={cn(
                               "w-8 h-8 rounded-lg flex items-center justify-center",
@@ -589,7 +605,7 @@ export default function BotActivity() {
                       const config = getBotConfig(entry.botName);
                       const Icon = config.icon;
                       return (
-                        <div key={entry.id || i} className="p-4 hover:bg-muted/30 transition-colors">
+                        <div key={entry.id || i} className="p-4 hover:bg-muted/30 transition-colors duration-150">
                           <div className="flex items-center gap-3">
                             <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", config.color)}>
                               <Icon className="w-4 h-4" />

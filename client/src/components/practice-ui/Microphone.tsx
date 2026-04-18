@@ -55,6 +55,8 @@ export function Microphone({
       <motion.button
         onClick={isRecording ? onStop : onStart}
         disabled={disabled}
+        aria-label={isRecording ? 'Stop recording' : 'Start recording'}
+        style={{ touchAction: 'manipulation' }}
         whileHover={{ scale: disabled ? 1 : 1.1 }}
         whileTap={{ scale: disabled ? 1 : 0.9 }}
         animate={{
@@ -87,6 +89,7 @@ export function Microphone({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
+          aria-live="assertive"
           className="absolute -bottom-8 text-sm font-semibold text-red-500 flex items-center gap-2"
         >
           <motion.div

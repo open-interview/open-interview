@@ -1,222 +1,56 @@
-# Interview Buddy AI - Project Structure Complete
+# Open Interview
 
-## 🚀 Project Created Successfully!
+> Free technical interview prep with 1000+ questions across 30+ topics.
 
-The Interview Buddy AI project structure has been created according to the technical specification. Here's what's been set up:
+<!-- AUTO-GENERATED:badges -->
+<p align="center">
+  <img src="https://img.shields.io/github/stars/open-interview/open-interview?style=for-the-badge&logo=github&color=yellow" alt="Stars" />
+  <img src="https://img.shields.io/badge/questions-1000+-blue?style=for-the-badge" alt="Questions" />
+  <img src="https://img.shields.io/badge/certifications-53+-green?style=for-the-badge" alt="Certifications" />
+  <img src="https://img.shields.io/badge/topics-40+-orange?style=for-the-badge" alt="Topics" />
+  <img src="https://img.shields.io/badge/AI_Powered-Vector_DB-purple?style=for-the-badge" alt="AI" />
+</p>
+<!-- /AUTO-GENERATED:badges -->
 
-## 📁 Project Structure
+## Certifications
 
-```
-interview-buddy-ai/
-├── src/
-│   ├── features/                    # Feature-based organization
-│   │   ├── onboarding/             # User onboarding flow
-│   │   │   └── OnboardingFlow.tsx
-│   │   ├── chat/                    # Chat interface
-│   │   │   └── ChatInterface.tsx
-│   │   ├── dashboard/               # Main dashboard
-│   │   │   └── Dashboard.tsx
-│   │   ├── mock-interview/          # Mock interview feature
-│   │   ├── gamification/            # Gamification system
-│   │   ├── voice/                   # Voice features
-│   │   ├── profile/                 # User profile management
-│   │   └── premium/                 # Premium features
-│   ├── components/                  # Shared components
-│   │   ├── ui/                      # UI components
-│   │   │   └── button.tsx
-│   │   ├── layout/                  # Layout components
-│   │   │   └── AppLayout.tsx
-│   │   └── common/                  # Common components
-│   ├── lib/                         # Core libraries
-│   │   ├── ai/                      # AI integration
-│   │   │   └── webllm.ts
-│   │   ├── voice/                   # Voice features
-│   │   ├── questions/               # Question management
-│   │   ├── gamification/            # Gamification logic
-│   │   └── utils/                   # Utilities
-│   │       ├── db.ts                # Database layer
-│   │       └── index.ts             # Utility functions
-│   ├── hooks/                       # Custom React hooks
-│   │   └── useWebLLM.ts
-│   ├── store/                       # Zustand stores
-│   │   └── userStore.ts
-│   ├── types/                       # TypeScript definitions
-│   │   └── database.ts
-│   ├── styles/                      # Global styles
-│   │   └── globals.css
-│   ├── App.tsx                      # Root component
-│   └── main.tsx                     # Entry point
-├── public/                          # Static assets
-├── index.html                       # HTML template
-├── package.json                     # Dependencies
-├── tsconfig.json                    # TypeScript config
-├── vite.config.ts                   # Vite config
-├── tailwind.config.js               # Tailwind config
-└── TECHNICAL_SPECIFICATION.md      # Original spec
-```
+<!-- AUTO-GENERATED:certifications -->
+| Provider | Certifications |
+|----------|---------------|
+| **AWS** | AWS Solutions Architect Associate, AWS Solutions Architect Professional, AWS Developer Associate, AWS SysOps Administrator, AWS DevOps Engineer Professional, AWS Data Engineer Associate, AWS Machine Learning Specialty, AWS Security Specialty, AWS Database Specialty, AWS Networking Specialty, AWS AI Practitioner |
+| **Kubernetes** | CKA - Kubernetes Administrator, CKAD - Kubernetes Developer, CKS - Kubernetes Security, KCNA - Kubernetes Cloud Native |
+| **HashiCorp** | Terraform Associate, Vault Associate, Consul Associate |
+| **Google Cloud** | GCP Associate Cloud Engineer, GCP Professional Cloud Architect, GCP Professional Data Engineer, GCP Professional ML Engineer, GCP Professional DevOps Engineer, GCP Professional Security Engineer |
+| **Microsoft Azure** | Azure Fundamentals (AZ-900), Azure Administrator (AZ-104), Azure Developer (AZ-204), Azure Solutions Architect (AZ-305), Azure DevOps Engineer (AZ-400), Azure Data Engineer (DP-203), Azure AI Engineer (AI-102), Azure Security Engineer (AZ-500) |
+| **Linux / Docker** | Linux Foundation Sysadmin (LFCS), Red Hat Certified System Admin, Docker Certified Associate |
+| **Data & Analytics** | Databricks Data Engineer Associate, Snowflake SnowPro Core, dbt Analytics Engineer |
+| **Security** | CompTIA Security+, CISSP |
+| **AI / ML** | TensorFlow Developer Certificate |
+<!-- /AUTO-GENERATED:certifications -->
 
-## 🛠️ Configuration Files Created
+## Topics
 
-### ✅ Package Dependencies
+<!-- AUTO-GENERATED:topics -->
+| Category | Topics |
+|----------|--------|
+| 🧮 CS Fundamentals | Data Structures, Complexity Analysis, Dynamic Programming, Bit Manipulation, Design Patterns, Concurrency, Math & Logic, Low-Level Programming |
+| 🏗️ Engineering | System Design, Algorithms, Frontend, Backend, Database, Python, Networking, Operating Systems, Linux, Unix |
+| ☁️ Cloud & DevOps | DevOps, SRE, Kubernetes, AWS, Terraform |
+| 📊 Data | Data Engineering |
+| 🤖 AI / ML | Machine Learning, Generative AI, Prompt Engineering, LLMOps, Computer Vision, NLP |
+| 🔒 Security | Security |
+| 📱 Mobile | iOS, Android, React Native |
+| 🧪 Testing | Testing, E2E Testing, API Testing, Performance Testing |
+| 👥 Soft Skills | Engineering Management, Behavioral |
+<!-- /AUTO-GENERATED:topics -->
 
-- React 18.x with TypeScript
-- Vite for fast development and building
-- Tailwind CSS for styling
-- Zustand for state management
-- React Query for data fetching
-- Placeholder AI dependencies (to be installed when available)
-
-### ✅ Build Configuration
-
-- **Vite**: Optimized build with manual chunk splitting
-- **TypeScript**: Strict type checking with path aliases
-- **Tailwind**: Custom theme with interview-focused colors
-- **PostCSS**: Autoprefixer configured
-
-### ✅ Development Setup
-
-- ESLint configuration for code quality
-- Prettier for code formatting
-- Vitest for unit testing
-- Playwright for E2E testing
-
-## 🎯 Core Features Implemented (Placeholder)
-
-### 1. **Onboarding Flow** ✅
-
-- Welcome screen with steps
-- Goal setting (role, experience level)
-- Model download preparation
-- Progressive step indicators
-
-### 2. **Chat Interface** ✅
-
-- Real-time message display
-- AI thinking indicators
-- Voice input placeholder
-- Hint and skip buttons
-- Professional styling
-
-### 3. **Dashboard** ✅
-
-- Quick stats overview
-- Practice cards
-- Progress tracking
-- Call-to-action buttons
-
-### 4. **Data Layer** ✅
-
-- In-memory database (placeholder)
-- TypeScript interfaces for all data models
-- Zustand store for user management
-
-### 5. **AI Integration** ✅
-
-- WebLLM wrapper class
-- Answer evaluation placeholder
-- Hook for AI features
-
-## 🚦 Next Steps
-
-### Phase 1: Install Dependencies
+## Getting Started
 
 ```bash
-npm install
+pnpm install
+pnpm dev
 ```
 
-### Phase 2: Add AI Dependencies (When Available)
+## License
 
-```bash
-npm install @mlc-ai/web-llm kokoro-js dexie dexie-react-hooks
-# And other AI-specific dependencies from the spec
-```
-
-### Phase 3: Implement Core Features
-
-1. **WebLLM Integration**: Replace placeholder with actual AI model
-2. **Database**: Replace in-memory store with IndexedDB (Dexie)
-3. **Question Database**: Set up SQLite with interview questions
-4. **Voice Features**: Implement speech-to-text and text-to-speech
-5. **Gamification**: Add XP system, achievements, streaks
-
-### Phase 4: Advanced Features
-
-1. **Spaced Repetition**: SM-2 algorithm for review scheduling
-2. **RAG Question Selection**: Intelligent question recommendation
-3. **Answer Evaluation**: Advanced AI-powered assessment
-4. **Mock Interviews**: Structured interview sessions
-5. **PWA Features**: Offline support, service workers
-
-## 🎨 Design System
-
-### Colors
-
-- **Primary**: Purple theme (`#8b5cf6`)
-- **Background**: Dark gradient from purple-950 to black
-- **Accent**: Glass morphism effects
-
-### Components
-
-- Glass morphism cards for modern look
-- Gradient text for headings
-- Smooth animations and transitions
-- Mobile-responsive design
-
-## 📱 PWA Ready
-
-The project is configured for Progressive Web App:
-
-- Service worker setup in Vite config
-- Manifest configuration
-- Offline-first architecture planned
-
-## 🔧 Technical Highlights
-
-### Performance Optimizations
-
-- Manual chunk splitting for faster loads
-- Lazy loading for AI models
-- Optimized bundle sizes
-- Tree-shaking enabled
-
-### Type Safety
-
-- Full TypeScript coverage
-- Strict mode enabled
-- Proper interfaces for all data models
-
-### Developer Experience
-
-- Hot module replacement
-- Path aliases (`@/` for src)
-- Auto-reload on file changes
-- Development tools integrated
-
-## 🎯 Ready to Code!
-
-The project structure is complete and ready for development. You can now:
-
-1. **Start Development**: Run `npm run dev`
-2. **Add Features**: Implement specific functionality in the organized feature folders
-3. **Run Tests**: Set up testing with the configured frameworks
-4. **Build**: Create production builds with `npm run build`
-
-## 📋 Implementation Checklist
-
-- [x] Project structure created
-- [x] Configuration files set up
-- [x] Basic components implemented
-- [x] TypeScript types defined
-- [x] Styling system configured
-- [ ] Install npm dependencies
-- [ ] Implement WebLLM integration
-- [ ] Add real database layer
-- [ ] Implement voice features
-- [ ] Add gamification system
-- [ ] Create question database
-- [ ] Implement spaced repetition
-- [ ] Add PWA features
-
-## 🚀 Start Building!
-
-You're ready to start implementing the Interview Buddy AI according to the technical specification. The foundation is solid and the structure supports all the advanced features outlined in the spec.
+MIT

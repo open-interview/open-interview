@@ -4,6 +4,7 @@ import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
 import { SEOHead } from '../components/SEOHead';
 import { useUserPreferences } from '../context/UserPreferencesContext';
+import { getRoleDefaultChannels } from '../lib/personalization';
 import { ChevronLeft, RotateCcw, Brain, Layers } from 'lucide-react';
 import { ProgressBar } from '../components/unified/ProgressBar';
 import { EmptyState } from '../components/unified/EmptyState';
@@ -18,11 +19,11 @@ type Mode = 'all' | 'due';
 
 export default function Flashcards() {
   const [, setLocation] = useLocation();
-  const { getSubscribedChannels } = useUserPreferences();
+  const { getSubscribedChannels, preferences } = useUserPreferences();
 
   const [cards, setCards] = useState<DbFlashcard[]>([]);
   const [channels, setChannels] = useState<string[]>([]);
-  const [activeChannel, setActiveChannel] = useState<string>('all');
+  const [selectedChannels, setSelectedChannels] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState<Mode>('all');
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -38,7 +39,7 @@ export default function Flashcards() {
         const subscribedIds = getSubscribedChannels().map(c => c.id);
         const channelIds = subscribedIds.length > 0
           ? subscribedIds
-          : ['system-design', 'algorithms', 'frontend', 'backend'];
+          : getRoleDefaultChannels(preferences.role ?? '');
 
         // Load all flashcards once, then filter client-side
         const all = await FlashcardService.getAll(2000);
@@ -64,11 +65,11 @@ export default function Flashcards() {
   const deck = useCallback((): DbFlashcard[] => {
     const dueIds = mode === 'due' ? new Set(getDueFcCards().map(c => c.questionId)) : null;
     return cards.filter(c => {
-      if (activeChannel !== 'all' && c.channel !== activeChannel) return false;
+      if (selectedChannels.size > 0 && !selectedChannels.has(c.channel ?? '')) return false;
       if (dueIds && !dueIds.has(c.id)) return false;
       return true;
     });
-  }, [cards, activeChannel, mode]);
+  }, [cards, selectedChannels, mode]);
 
   const filtered = deck();
   const current = filtered[index] ?? null;
@@ -132,7 +133,7 @@ export default function Flashcards() {
 
   if (loading) {
     return (
-      <AppLayout hideNav>
+      <AppLayout hideNav fullWidth>
         <div className="h-screen h-dvh bg-background flex items-center justify-center">
           <div className="flex flex-col gap-4 w-full max-w-sm px-6">
             <div className="h-1.5 bg-muted rounded-full animate-pulse" />
@@ -148,7 +149,7 @@ export default function Flashcards() {
 
   if (cards.length === 0) {
     return (
-      <AppLayout>
+      <AppLayout fullWidth>
         <div className="min-h-screen bg-background text-foreground">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <div className="text-center mb-10">
@@ -160,7 +161,7 @@ export default function Flashcards() {
               <Layers className="w-10 h-10 text-muted-foreground/40" />
               <h2 className="text-xl font-bold">No flashcards yet</h2>
               <p className="text-sm text-muted-foreground max-w-xs">Flashcards are generated from your subscribed channels. Check back soon!</p>
-              <button onClick={() => setLocation('/')} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Back to Home</button>
+              <button onClick={() => setLocation('/')} className="cursor-pointer min-h-[44px] px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-95 transition-all">Back to Home</button>
             </div>
           </div>
         </div>
@@ -171,19 +172,19 @@ export default function Flashcards() {
   return (
     <>
       <SEOHead title="Flashcards 🃏" description="SRS-powered flashcard practice" canonical="https://open-interview.github.io/flashcards" />
-      <AppLayout hideNav>
+      <AppLayout fullWidth>
         <div className="h-screen h-dvh flex flex-col overflow-hidden text-foreground"
           style={{ background: flashBg, transition: 'background 0.2s' }}>
 
           {/* Header */}
           <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0">
-            <button onClick={() => setLocation('/')} className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+            <button onClick={() => setLocation('/')} className="cursor-pointer flex items-center gap-1 min-h-[44px] px-2 text-muted-foreground hover:text-foreground transition-colors duration-150">
               <ChevronLeft className="w-5 h-5" /><span className="text-sm">Back</span>
             </button>
             <div className="flex items-center gap-2">
               {/* Mode toggle */}
               <button onClick={() => { setMode(m => m === 'all' ? 'due' : 'all'); setIndex(0); setFlipped(false); }}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all ${mode === 'due' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                className={`cursor-pointer flex items-center gap-1.5 px-3 min-h-[44px] rounded-full text-xs font-bold transition-all duration-150 ${mode === 'due' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}>
                 <Brain className="w-3.5 h-3.5" />
                 {mode === 'due' ? `Due (${dueCount})` : 'All'}
               </button>
@@ -196,17 +197,38 @@ export default function Flashcards() {
             <ProgressBar current={index + 1} max={filtered.length} size="sm" variant="success" />
           </div>
 
-          {/* Channel filter */}
+          {/* Channel filter — multi-select toggles */}
           <div className="flex gap-2 overflow-x-auto px-4 py-2 flex-shrink-0" style={{ scrollbarWidth: 'none' }}>
-            {['all', ...channels].map(ch => (
-              <button key={ch} onClick={() => { setActiveChannel(ch); setIndex(0); setFlipped(false); }}
-                className="shrink-0 px-3 py-1 rounded-full text-xs font-bold uppercase transition-all"
-                style={activeChannel === ch
-                  ? { background: 'var(--gradient-primary, linear-gradient(135deg,#7c3aed,#06b6d4))', color: '#fff' }
-                  : { background: 'var(--surface-3)', color: 'var(--text-tertiary)', border: '1px solid var(--color-border-subtle)' }}>
-                {ch}
-              </button>
-            ))}
+            {/* "All" clears selection */}
+            <button
+              onClick={() => { setSelectedChannels(new Set()); setIndex(0); setFlipped(false); }}
+              className="cursor-pointer shrink-0 px-3 min-h-[44px] rounded-full text-xs font-bold uppercase transition-all duration-150"
+              style={selectedChannels.size === 0
+                ? { background: 'var(--gradient-primary, linear-gradient(135deg,#7c3aed,#06b6d4))', color: '#fff' }
+                : { background: 'var(--surface-3)', color: 'var(--text-tertiary)', border: '1px solid var(--color-border-subtle)' }}>
+              All
+            </button>
+            {channels.map(ch => {
+              const active = selectedChannels.has(ch);
+              return (
+                <button key={ch}
+                  onClick={() => {
+                    setSelectedChannels(prev => {
+                      const next = new Set(prev);
+                      next.has(ch) ? next.delete(ch) : next.add(ch);
+                      return next;
+                    });
+                    setIndex(0);
+                    setFlipped(false);
+                  }}
+                  className="cursor-pointer shrink-0 px-3 min-h-[44px] rounded-full text-xs font-bold uppercase transition-all duration-150"
+                  style={active
+                    ? { background: 'var(--gradient-primary, linear-gradient(135deg,#7c3aed,#06b6d4))', color: '#fff' }
+                    : { background: 'var(--surface-3)', color: 'var(--text-tertiary)', border: '1px solid var(--color-border-subtle)' }}>
+                  {ch}
+                </button>
+              );
+            })}
           </div>
 
           {/* Card area */}
@@ -269,15 +291,15 @@ export default function Flashcards() {
                   </div>
                 </motion.div>
               ) : (
-                <EmptyState icon={<Layers className="w-6 h-6" />} title={mode === 'due' ? 'No cards due!' : 'No cards in this channel'}
-                  description={mode === 'due' ? 'All caught up. Switch to All mode to keep practicing.' : 'Try a different channel.'}
+                <EmptyState icon={<Layers className="w-6 h-6" />} title={mode === 'due' ? 'No cards due!' : 'No cards in selection'}
+                  description={mode === 'due' ? 'All caught up. Switch to All mode to keep practicing.' : 'Try toggling different channels.'}
                   variant="default" size="sm" />
               )}
             </AnimatePresence>
           </div>
 
           {/* SRS rating buttons */}
-          <div className="flex items-center gap-2 px-4 pb-6 pt-3 flex-shrink-0">
+          <div className="flex items-center gap-2 px-4 pb-safe pb-24 pt-3 flex-shrink-0">
             {([
               { r: 'again' as ConfidenceRating, label: 'Again', key: '1', bg: 'color-mix(in srgb, var(--color-error, #f43f5e) 15%, transparent)', color: 'var(--color-error, #f43f5e)', border: 'color-mix(in srgb, var(--color-error, #f43f5e) 30%, transparent)' },
               { r: 'hard'  as ConfidenceRating, label: 'Hard',  key: '2', bg: 'color-mix(in srgb, #f97316 15%, transparent)', color: '#f97316', border: 'color-mix(in srgb, #f97316 30%, transparent)' },
@@ -285,7 +307,7 @@ export default function Flashcards() {
               { r: 'easy'  as ConfidenceRating, label: 'Easy',  key: '4', bg: 'color-mix(in srgb, #3b82f6 15%, transparent)', color: '#3b82f6', border: 'color-mix(in srgb, #3b82f6 30%, transparent)' },
             ]).map(({ r, label, key, bg, color, border }) => (
               <motion.button key={r} whileTap={{ scale: 0.93 }} onClick={() => rate(r)} disabled={!current}
-                className="flex-1 flex flex-col items-center justify-center py-3 rounded-xl font-semibold text-xs disabled:opacity-30"
+                className="cursor-pointer flex-1 flex flex-col items-center justify-center min-h-[52px] py-3 rounded-xl font-semibold text-xs disabled:opacity-30 transition-opacity duration-150"
                 style={{ background: bg, color, border: `1px solid ${border}` }}>
                 <span className="font-bold">{label}</span>
                 <span className="opacity-50 text-[10px]">{key}</span>

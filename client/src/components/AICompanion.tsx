@@ -7,8 +7,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Sparkles, X, Settings, Send, Loader2, Minimize2, Maximize2,
-  Volume2, VolumeX, RotateCcw, Copy, Check, Trash2, MessageSquare, Mic, MicOff
+  Sparkles, X, Settings, Loader2, Minimize2, Maximize2,
+  VolumeX, RotateCcw, MessageSquare, Mic, MicOff
 } from 'lucide-react';
 // Disabled: AI Companion not in use
 // import * as webllm from '@mlc-ai/web-llm';
@@ -26,6 +26,9 @@ type WebLLMMessage = { role: string; content: string };
 
 import { useUnifiedToast } from '../hooks/use-unified-toast';
 import { SITEMAP_RAG, searchRoutes, findRoutesByKeywords, getRouteByPath } from '../data/sitemap-rag';
+import { useUserPreferences } from '../context/UserPreferencesContext';
+import { AICompanionMessages } from './AICompanionMessages';
+import { AICompanionInput } from './AICompanionInput';
 
 interface AICompanionProps {
   pageContent?: {
@@ -112,6 +115,8 @@ export function AICompanion({ pageContent, onNavigate, onAction, availableAction
   const audioRef = useRef<HTMLAudioElement>(null);
   
   const { toast } = useUnifiedToast();
+  const { preferences } = useUserPreferences();
+  const { role, subscribedChannels, onboardingComplete } = preferences;
 
   // Initialize WebLLM engine
   useEffect(() => {
@@ -593,6 +598,18 @@ export function AICompanion({ pageContent, onNavigate, onAction, availableAction
         const action = JSON.parse(actionStr);
         
         if (action.type === 'navigate' && onNavigate) {
+          // Validate channel navigation against subscribed channels when onboarding is complete
+          if (onboardingComplete && subscribedChannels.length > 0 && action.path?.startsWith('/channel/')) {
+            const channelId = action.path.replace('/channel/', '');
+            if (!subscribedChannels.includes(channelId)) {
+              toast({
+                title: "💡 Explore More",
+                description: "Discover more topics in your learning path!",
+              });
+              if (onNavigate) onNavigate('/channels');
+              return response.replace(actionPattern, '').trim();
+            }
+          }
           console.log('AI navigating to:', action.path);
           onNavigate(action.path);
           toast({
@@ -888,6 +905,7 @@ IMPORTANT:
     }
     
     let prompt = `You are an expert AI learning companion, tutor, and intelligent agent. You help users learn through conversation, explanation, debate, AND by actively guiding them through the application.
+${onboardingComplete && subscribedChannels.length > 0 ? `You are helping a ${role} engineer. Only suggest channels, topics, or certifications from this list: ${subscribedChannels.join(', ')}. Do not recommend topics outside this list.` : ''}
 
 Language: Respond in ${languageName}
 
@@ -1590,13 +1608,6 @@ Assistant (in ${languageName}):`;
   };
 
   // Quick actions
-  const quickActions = [
-    { label: 'Explain this', prompt: 'Can you explain this topic in simple terms?' },
-    { label: 'Give example', prompt: 'Can you give me a practical example?' },
-    { label: 'What next?', prompt: 'What should I learn next? Guide me!' },
-    { label: 'Quiz me', prompt: 'Can you quiz me on this topic?' },
-  ];
-
   return (
     <>
       {/* AI Agent Highlight Styles */}
@@ -1967,209 +1978,33 @@ Assistant (in ${languageName}):`;
                 </AnimatePresence>
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {messages.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Sparkles className="w-12 h-12 mx-auto mb-3 text-purple-500" />
-                      <h3 className="font-bold mb-2">Hi! I'm your AI companion</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        I can explain, debate, and chat about anything on this page!
-                      </p>
-                          {recognitionRef.current && (
-                        <div className="mb-4 p-3 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg">
-                          <div className="flex items-center justify-center gap-2 mb-2">
-                            <Mic className="w-4 h-4 text-purple-500" />
-                            <p className="text-sm font-semibold">Push-to-Talk Voice Mode Available!</p>
-                          </div>
-                          <p className="text-xs text-muted-foreground mb-2">
-                            Click the microphone icon in the header for voice conversation
-                          </p>
-                          <div className="text-xs text-muted-foreground space-y-1">
-                            <p>🎙️ Hold SPACEBAR to speak</p>
-                            <p>🚀 Release to send automatically</p>
-                            <p>🔊 AI responds with voice</p>
-                            <p>⚡ Simple and reliable!</p>
-                          </div>
-                        </div>
-                      )}
-                      {agentMode && (onNavigate || availableActions.length > 0) && (
-                        <div className="mb-4 p-3 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg">
-                          <div className="flex items-center justify-center gap-2 mb-2">
-                            <Sparkles className="w-4 h-4 text-blue-500" />
-                            <p className="text-sm font-semibold">Intelligent Agent Mode Active!</p>
-                          </div>
-                          <p className="text-xs text-muted-foreground mb-2">
-                            I can navigate, suggest next steps, and interact with the page
-                          </p>
-                          <div className="text-xs text-muted-foreground space-y-1">
-                            <p>🧭 Navigate to different pages</p>
-                            <p>💡 Suggest what to learn next</p>
-                            <p>🎯 Guide your learning journey</p>
-                            <p>✨ Click buttons and trigger actions</p>
-                          </div>
-                        </div>
-                      )}
-                      <div className="grid grid-cols-2 gap-2">
-                        {quickActions.map((action) => (
-                          <button
-                            key={action.label}
-                            onClick={() => {
-                              setInputMessage(action.prompt);
-                              inputRef.current?.focus();
-                            }}
-                            className="px-3 py-2 bg-muted hover:bg-muted/80 rounded-lg text-xs font-medium transition-colors"
-                          >
-                            {action.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {messages.map((message) => (
-                        <div
-                          key={message.id}
-                          className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                        >
-                          {message.role === 'assistant' && (
-                            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
-                              <Sparkles className="w-4 h-4 text-white" />
-                            </div>
-                          )}
-                          <div
-                            className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                              message.role === 'user'
-                                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                                : 'bg-muted'
-                            }`}
-                          >
-                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                            {message.role === 'assistant' && (
-                              <div className="flex items-center gap-2 mt-2">
-                                <button
-                                  onClick={() => speakMessageWithTTS(message.content)}
-                                  className="p-1 hover:bg-background/50 rounded transition-colors"
-                                  title="Speak"
-                                >
-                                  <Volume2 className="w-3 h-3" />
-                                </button>
-                                <button
-                                  onClick={() => copyMessage(message.content, message.id)}
-                                  className="p-1 hover:bg-background/50 rounded transition-colors"
-                                  title="Copy"
-                                >
-                                  {copied === message.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                      {isGenerating && (
-                        <div className="flex gap-3">
-                          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                            <Loader2 className="w-4 h-4 text-white animate-spin" />
-                          </div>
-                          <div className="bg-muted rounded-2xl px-4 py-2">
-                            <p className="text-sm text-muted-foreground">Thinking...</p>
-                          </div>
-                        </div>
-                      )}
-                      <div ref={messagesEndRef} />
-                    </>
-                  )}
-                </div>
+                <AICompanionMessages
+                  messages={messages}
+                  isGenerating={isGenerating}
+                  copied={copied}
+                  onNavigate={onNavigate}
+                  availableActions={availableActions}
+                  agentMode={agentMode}
+                  recognitionAvailable={!!recognitionRef.current}
+                  onSpeak={speakMessageWithTTS}
+                  onCopy={copyMessage}
+                  onQuickAction={(prompt) => { setInputMessage(prompt); inputRef.current?.focus(); }}
+                  messagesEndRef={messagesEndRef}
+                />
 
                 {/* Input */}
-                <div className="p-4 border-t border-border">
-                  {voiceMode && (
-                    <div className={`mb-2 p-2 border rounded-lg flex items-center justify-center gap-2 ${
-                      isPushingToTalk
-                        ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-500/30'
-                        : (isGenerating || isSpeaking)
-                        ? 'bg-gradient-to-r from-orange-500/20 to-red-500/20 border-orange-500/30'
-                        : 'bg-muted/30 border-border'
-                    }`}>
-                      <Mic className={`w-4 h-4 ${
-                        isPushingToTalk 
-                          ? 'text-purple-500 animate-pulse' 
-                          : (isGenerating || isSpeaking)
-                          ? 'text-orange-500'
-                          : 'text-muted-foreground'
-                      }`} />
-                      <span className={`text-sm font-medium ${
-                        isPushingToTalk 
-                          ? 'text-purple-500' 
-                          : (isGenerating || isSpeaking)
-                          ? 'text-orange-500'
-                          : 'text-muted-foreground'
-                      }`}>
-                        {isPushingToTalk 
-                          ? 'Listening... (Release SPACEBAR to send)' 
-                          : (isGenerating || isSpeaking)
-                          ? 'AI speaking... (Press SPACEBAR to interrupt)'
-                          : 'Hold SPACEBAR to speak'}
-                      </span>
-                    </div>
-                  )}
-                  {messages.length > 0 && (
-                    <button
-                      onClick={clearConversation}
-                      className="w-full mb-2 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      Clear conversation
-                    </button>
-                  )}
-                  <div className="flex gap-2">
-                    <input
-                      ref={inputRef}
-                      type="text"
-                      value={inputMessage}
-                      onChange={(e) => !voiceMode && setInputMessage(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && !voiceMode && sendMessage()}
-                      placeholder={voiceMode ? "Hold SPACEBAR to speak..." : "Ask me anything..."}
-                      disabled={isGenerating || voiceMode}
-                      className="flex-1 px-4 py-2 bg-background border border-border rounded-full text-sm focus:outline-none focus:border-primary disabled:opacity-50"
-                    />
-                    {!voiceMode && (
-                      <button
-                        onClick={sendMessage}
-                        disabled={!inputMessage.trim() || isGenerating}
-                        className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isGenerating ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <Send className="w-5 h-5" />
-                        )}
-                      </button>
-                    )}
-                    {voiceMode && (
-                      <div className={`p-2 rounded-full ${
-                        isPushingToTalk
-                          ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                          : 'bg-muted text-muted-foreground'
-                      }`}>
-                        {isGenerating ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : isPushingToTalk ? (
-                          <Mic className="w-5 h-5 animate-pulse" />
-                        ) : (
-                          <Mic className="w-5 h-5" />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {voiceMode && (
-                    <div className="text-xs text-center mt-2 p-2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg">
-                      <p className="font-semibold text-purple-500 mb-1">🎙️ Push-to-Talk Mode</p>
-                      <p className="text-muted-foreground">
-                        Hold SPACEBAR to speak, release to send. Press SPACEBAR anytime to interrupt AI!
-                      </p>
-                    </div>
-                  )}
-                </div>
+                <AICompanionInput
+                  inputMessage={inputMessage}
+                  isGenerating={isGenerating}
+                  voiceMode={voiceMode}
+                  isPushingToTalk={isPushingToTalk}
+                  isSpeaking={isSpeaking}
+                  hasMessages={messages.length > 0}
+                  inputRef={inputRef}
+                  onChange={setInputMessage}
+                  onSend={sendMessage}
+                  onClear={clearConversation}
+                />
               </>
             )}
           </motion.div>

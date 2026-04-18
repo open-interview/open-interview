@@ -534,7 +534,7 @@ function QuickQuizCard({
             )}
             <button 
               onClick={handleRefresh}
-              className="p-1 sm:p-1.5 hover:bg-muted rounded transition-colors"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-muted rounded transition-colors"
             >
               <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
             </button>
@@ -555,7 +555,7 @@ function QuickQuizCard({
               <div className="flex items-center gap-1.5 mb-2 flex-wrap">
                 <button
                   onClick={() => currentTest && onViewChannel(currentTest.channelId)}
-                  className="px-2 py-0.5 bg-primary/10 rounded flex items-center gap-1.5 hover:bg-primary/20 transition-colors"
+                  className="px-2 py-0.5 min-h-[44px] bg-primary/10 rounded flex items-center gap-1.5 hover:bg-primary/20 transition-colors"
                 >
                   <span className="text-primary">{channelConfig && iconMap[channelConfig.icon]}</span>
                   <span className="text-[11px] sm:text-xs font-medium">{channelConfig?.name || currentTest?.channelName}</span>
@@ -889,7 +889,7 @@ function ChannelCard({
           e.stopPropagation();
           setConfirmingUnsubscribe(true);
         }}
-        className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 border border-border opacity-60 group-hover:opacity-100 hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-all"
+        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-background/80 border border-border opacity-60 group-hover:opacity-100 hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-all flex items-center justify-center"
         title="Unsubscribe"
       >
         <X className="w-3.5 h-3.5" />
@@ -964,7 +964,7 @@ function ChannelRow({
     <div className="flex items-center gap-2 px-3 py-2.5 sm:px-4 sm:py-3 hover:bg-muted/50 transition-colors">
       <button
         onClick={onClick}
-        className="flex-1 flex items-center gap-3 text-left"
+        className="flex-1 flex items-center gap-3 text-left min-h-[44px]"
       >
         <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
           {iconMap[channel.icon] || <Code className="w-4 h-4 sm:w-5 sm:h-5" />}
@@ -997,7 +997,7 @@ function ChannelRow({
           e.stopPropagation();
           setConfirmingUnsubscribe(true);
         }}
-        className="p-1.5 rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors flex-shrink-0"
+        className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors flex-shrink-0"
         title="Unsubscribe"
       >
         <X className="w-4 h-4" />
@@ -1140,7 +1140,7 @@ function VoiceInterviewCard({ onStart }: { onStart: () => void }) {
           <span className="text-[10px] text-muted-foreground">Focused practice?</span>
           <button
             onClick={() => setLocation('/voice-session')}
-            className="text-[10px] text-primary hover:underline flex items-center gap-1"
+            className="text-[10px] text-primary hover:underline flex items-center gap-1 min-h-[44px] px-2"
           >
             <Target className="w-2.5 h-2.5" />
             Micro Sessions

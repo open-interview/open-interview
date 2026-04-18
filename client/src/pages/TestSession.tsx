@@ -3,7 +3,7 @@
  * All existing test logic and scoring preserved.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { useLocation, useParams } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,9 +12,6 @@ import {
   Home, Check, X, Zap, Share2, RotateCcw, ChevronRight
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
-import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
-import { MobileBottomNav } from '../components/layout/UnifiedNav';
-import { MobileHeader } from '../components/layout/MobileHeader';
 import { Card, Button } from '../components/practice-ui';
 import {
   Test, TestQuestion, getTestForChannel, getSessionQuestions,
@@ -90,18 +87,19 @@ function CircularTimer({ seconds, total }: { seconds: number; total: number }) {
 
 // ── Option button ─────────────────────────────────────────────────────────────
 function OptionButton({
-  label, text, selected, showCorrect, showWrong, disabled, onClick
+  label, text, selected, showCorrect, showWrong, disabled, onClick, testId
 }: {
   label: string; text: string; selected: boolean;
   showCorrect: boolean; showWrong: boolean; disabled: boolean;
-  onClick: () => void;
+  onClick: () => void; testId?: string;
 }) {
   return (
     <motion.button
       whileTap={disabled ? {} : { scale: 0.98 }}
       onClick={onClick}
       disabled={disabled}
-      className={`w-full p-4 text-left rounded-xl border-2 transition-all ${
+      data-testid={testId}
+      className={`w-full p-4 text-left rounded-xl border-2 transition duration-150 ease-out ${
         showCorrect
           ? 'border-[var(--color-success)] bg-[var(--color-success)]/15'
           : showWrong
@@ -178,6 +176,11 @@ export default function TestSessionPage() {
   const [showFeedback, setShowFeedback] = useState<'correct' | 'incorrect' | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [totalTime, setTotalTime] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+
+  const questionHeadingRef = useRef<HTMLHeadingElement>(null);
+  const feedbackRef = useRef<HTMLDivElement>(null);
+  const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     if (!channelId) return;
@@ -224,9 +227,15 @@ export default function TestSessionPage() {
       setAnswers(prev => ({ ...prev, [currentQuestion.id]: [optionId] }));
       const isCorrect = currentQuestion.options.find(o => o.id === optionId)?.isCorrect ?? false;
       setShowFeedback(isCorrect ? 'correct' : 'incorrect');
+      // Move focus to feedback element
+      setTimeout(() => feedbackRef.current?.focus(), 50);
       setTimeout(() => {
         setShowFeedback(null);
-        if (currentIndex < questions.length - 1) setCurrentIndex(i => i + 1);
+        if (currentIndex < questions.length - 1) {
+          setCurrentIndex(i => i + 1);
+          // Focus next question heading after state update
+          setTimeout(() => questionHeadingRef.current?.focus(), 50);
+        }
       }, 700);
     } else {
       setAnswers(prev => ({
@@ -245,14 +254,19 @@ export default function TestSessionPage() {
     const correctIds = currentQuestion.options.filter(o => o.isCorrect).map(o => o.id);
     const isCorrect = correctIds.every(id => userAnswers.includes(id)) && userAnswers.every(id => correctIds.includes(id));
     setShowFeedback(isCorrect ? 'correct' : 'incorrect');
+    setTimeout(() => feedbackRef.current?.focus(), 50);
     setTimeout(() => {
       setShowFeedback(null);
-      if (currentIndex < questions.length - 1) setCurrentIndex(i => i + 1);
+      if (currentIndex < questions.length - 1) {
+        setCurrentIndex(i => i + 1);
+        setTimeout(() => questionHeadingRef.current?.focus(), 50);
+      }
     }, 800);
   };
 
   const submitTest = useCallback(() => {
     if (!test) return;
+    setSubmitting(true);
     const calcResult = calculateScore({ ...test, questions }, answers);
     setResult(calcResult);
     const attempt: TestAttempt = {
@@ -264,8 +278,10 @@ export default function TestSessionPage() {
       passed: calcResult.passed,
     };
     saveTestAttempt(test.id, test.channelId, attempt, test.version);
+    setSubmitting(false);
     setSessionState('review');
     calcResult.passed ? mascotEvents.celebrate() : mascotEvents.disappointed();
+    setTimeout(() => resultsHeadingRef.current?.focus(), 100);
   }, [test, questions, answers, startTime]);
 
   const OPTION_LABELS = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -273,7 +289,7 @@ export default function TestSessionPage() {
   // ── Loading ──
   if (sessionState === 'loading' || !test) {
     return (
-      <AppLayout>
+      <AppLayout fullWidth>
         <div className="min-h-screen bg-background text-foreground">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <div className="text-center mb-10">
@@ -301,8 +317,7 @@ export default function TestSessionPage() {
         description={test.description}
         canonical={`https://open-interview.github.io/test/${channelId}`}
       />
-      <DesktopSidebarWrapper>
-        <div className="lg:hidden"><MobileHeader title="Test" showBack={true} /></div>
+      <AppLayout fullWidth>
         <div className="min-h-screen bg-background text-foreground pt-14 lg:pt-0">
 
           {/* ── Ready screen ── */}
@@ -349,7 +364,7 @@ export default function TestSessionPage() {
             <div className="min-h-screen flex flex-col">
               {/* Header */}
               <header className="border-b border-border px-4 py-2 flex items-center justify-between gap-3">
-                <button onClick={() => setLocation('/')} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                <button onClick={() => setLocation('/')} className="min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer text-muted-foreground hover:text-foreground transition duration-150 ease-out">
                   <Home className="w-4 h-4" />
                 </button>
 
@@ -365,11 +380,11 @@ export default function TestSessionPage() {
                   </div>
                 </div>
 
-                <CircularTimer seconds={timeLeft} total={totalTime} />
+                <div data-testid="test-timer"><CircularTimer seconds={timeLeft} total={totalTime} /></div>
               </header>
 
               {/* Question */}
-              <div className="flex-1 overflow-y-auto p-4">
+              <div className="flex-1 overflow-y-auto p-4 pb-24 lg:pb-4">
                 <div className="max-w-2xl mx-auto">
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -395,9 +410,9 @@ export default function TestSessionPage() {
                         </span>
                       </div>
 
-                      <h2 className="text-lg font-bold mb-5 leading-snug">{currentQuestion.question}</h2>
+                      <h2 ref={questionHeadingRef} tabIndex={-1} id={`question-${currentQuestion.id}`} className="text-lg font-bold mb-5 leading-snug">{currentQuestion.question}</h2>
 
-                      <div className="space-y-2.5">
+                      <div className="space-y-2.5" role="group" aria-describedby={`question-${currentQuestion.id}`}>
                         {currentQuestion.options.map((opt, idx) => {
                           const isSelected = (answers[currentQuestion.id] || []).includes(opt.id);
                           const showCorrect = !!showFeedback && opt.isCorrect;
@@ -412,6 +427,7 @@ export default function TestSessionPage() {
                               showWrong={showWrong}
                               disabled={!!showFeedback}
                               onClick={() => handleOptionSelect(opt.id)}
+                              testId={`answer-option-${idx}`}
                             />
                           );
                         })}
@@ -425,6 +441,8 @@ export default function TestSessionPage() {
                       <AnimatePresence>
                         {showFeedback && currentQuestion.explanation && (
                           <motion.div
+                            ref={feedbackRef}
+                            tabIndex={-1}
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0 }}
@@ -446,7 +464,7 @@ export default function TestSessionPage() {
 
               {/* Footer nav */}
               <footer className="border-t border-border p-3">
-                <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
+                <div className="max-w-2xl mx-auto flex items-center justify-between gap-2 min-h-[44px]">
                   <Button size="sm" variant="secondary" onClick={() => setCurrentIndex(i => i - 1)} disabled={currentIndex === 0}>
                     <ArrowLeft className="w-3.5 h-3.5 mr-1" />Prev
                   </Button>
@@ -455,14 +473,16 @@ export default function TestSessionPage() {
 
                   {currentIndex === questions.length - 1 ? (
                     currentQuestion.type === 'multiple' ? (
-                      <Button size="sm" onClick={confirmMultiple} disabled={!(answers[currentQuestion.id]?.length) || !!showFeedback}>
-                        Submit
+                      <Button size="sm" data-testid="test-submit-button" onClick={confirmMultiple} disabled={!(answers[currentQuestion.id]?.length) || !!showFeedback || submitting}>
+                        {submitting ? <><span className="w-3.5 h-3.5 mr-1 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />Submitting</> : 'Submit'}
                       </Button>
                     ) : (
-                      <Button size="sm" onClick={submitTest}>Submit</Button>
+                      <Button size="sm" data-testid="test-submit-button" onClick={submitTest} disabled={submitting}>
+                        {submitting ? <><span className="w-3.5 h-3.5 mr-1 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />Submitting</> : 'Submit'}
+                      </Button>
                     )
                   ) : currentQuestion.type === 'multiple' ? (
-                    <Button size="sm" onClick={confirmMultiple} disabled={!(answers[currentQuestion.id]?.length) || !!showFeedback}>
+                    <Button size="sm" data-testid="test-submit-button" onClick={confirmMultiple} disabled={!(answers[currentQuestion.id]?.length) || !!showFeedback}>
                       Confirm
                     </Button>
                   ) : (
@@ -477,7 +497,7 @@ export default function TestSessionPage() {
 
           {/* ── Results ── */}
           {sessionState === 'review' && result && (
-            <div className="min-h-screen flex items-center justify-center p-4">
+            <div data-testid="test-results-screen" className="min-h-screen flex items-center justify-center p-4">
               {result.passed && <Confetti />}
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-md w-full space-y-4">
                 <Card className="p-6">
@@ -490,7 +510,10 @@ export default function TestSessionPage() {
                       transition={{ delay: 0.6 }}
                       className="mt-3"
                     >
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold border ${
+                      <span
+                        ref={resultsHeadingRef}
+                        tabIndex={-1}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold border ${
                         result.passed
                           ? 'bg-[var(--color-success)]/15 text-[var(--color-success)] border-[var(--color-success)]/30'
                           : 'bg-[var(--color-error)]/15 text-[var(--color-error)] border-[var(--color-error)]/30'
@@ -564,8 +587,7 @@ export default function TestSessionPage() {
             </div>
           )}
         </div>
-        <MobileBottomNav />
-      </DesktopSidebarWrapper>
+      </AppLayout>
     </>
   );
 }

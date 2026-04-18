@@ -25,7 +25,7 @@ function initMermaid(mermaidTheme: MermaidTheme, force = false) {
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
       fontSize: isMobile ? 12 : 14,
       flowchart: {
-        useMaxWidth: false, // Allow natural width for better text rendering
+        useMaxWidth: true,
         htmlLabels: true,
         curve: 'basis',
         nodeSpacing: isMobile ? 40 : 50,
@@ -40,7 +40,7 @@ function initMermaid(mermaidTheme: MermaidTheme, force = false) {
         noteMargin: isMobile ? 5 : 10,
         messageMargin: isMobile ? 25 : 35,
         mirrorActors: false,
-        useMaxWidth: false,
+        useMaxWidth: true,
       },
     });
     currentMermaidTheme = mermaidTheme;
@@ -334,9 +334,9 @@ export function EnhancedMermaid({ chart, compact = false, onRenderResult }: Enha
 
   if (isLoading) {
     return (
-      <div className="w-full flex justify-center items-center py-12">
-        <div className="flex flex-col items-center gap-2">
-          <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      <div className="w-full flex justify-center items-center py-4">
+        <div className="flex flex-col items-center gap-1.5">
+          <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
           <div className="text-xs text-white/30">Rendering diagram...</div>
         </div>
       </div>
@@ -429,7 +429,7 @@ export function EnhancedMermaid({ chart, compact = false, onRenderResult }: Enha
   return (
     <div ref={containerRef} className="relative group">
       <div 
-        className={`w-full overflow-x-auto overflow-y-hidden rounded-lg border border-white/10 bg-black/20 ${compact ? 'p-2' : 'p-3 sm:p-4'} ${!compact ? 'cursor-pointer hover:border-primary/50 transition-colors' : ''}`}
+        className={`w-full rounded-lg border border-white/10 bg-black/20 ${compact ? 'p-1.5' : 'p-2'} ${!compact ? 'cursor-pointer hover:border-primary/50 transition-colors' : ''}`}
         onClick={() => !compact && !isMobile && setIsExpanded(true)}
         onTouchStart={handleInlineTouchStart}
         onTouchMove={handleInlineTouchMove}
@@ -438,10 +438,10 @@ export function EnhancedMermaid({ chart, compact = false, onRenderResult }: Enha
         style={{ touchAction: isPinching ? 'none' : 'pan-x pan-y' }}
       >
         <div 
-          className="mermaid-container transition-transform duration-150 inline-block min-w-full" 
+          className="mermaid-container transition-transform duration-150 w-full" 
           style={{ 
             transform: `scale(${inlineZoom})`, 
-            transformOrigin: 'top left',
+            transformOrigin: 'top center',
           }}
           dangerouslySetInnerHTML={{ __html: svgContent }} 
         />

@@ -330,7 +330,7 @@ export function Mermaid({ chart, themeOverride }: MermaidProps) {
 
   if (isLoading) {
     return (
-      <div className="w-full flex justify-center items-center py-8">
+      <div className="w-full flex justify-center items-center py-4">
         <div className="text-xs text-white/30 animate-pulse">Loading diagram...</div>
       </div>
     );
@@ -448,7 +448,7 @@ export function Mermaid({ chart, themeOverride }: MermaidProps) {
     <div className="relative group">
       <div 
         ref={ref}
-        className={`w-full flex justify-center my-1 sm:my-4 overflow-x-auto mermaid-container mermaid-mobile-fit ${!isMobile ? 'cursor-pointer' : ''}`}
+        className={`w-full my-1 mermaid-container ${!isMobile ? 'cursor-pointer' : ''}`}
         onClick={() => !isMobile && setIsExpanded(true)}
         dangerouslySetInnerHTML={{ __html: svgContent }}
       />

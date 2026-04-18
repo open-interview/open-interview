@@ -18,7 +18,7 @@ export default function HomeRedesigned() {
       />
       
       {/* iPhone 13 FIX: Use fullWidth to prevent double padding */}
-      <AppLayout fullWidth title="Code Reels">
+      <AppLayout  title="Code Reels" fullWidth>
         <HomePage />
       </AppLayout>
     </>

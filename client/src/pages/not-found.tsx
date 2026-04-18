@@ -8,7 +8,6 @@ export default function NotFound() {
   const [countdown, setCountdown] = useState(5);
 
   useEffect(() => {
-    // Auto-redirect countdown
     const timer = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
@@ -24,7 +23,7 @@ export default function NotFound() {
   }, [setLocation]);
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background p-4">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background px-4 py-6 pb-24">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -40,7 +39,7 @@ export default function NotFound() {
           >
             <AlertCircle className="w-16 h-16 text-primary" />
           </motion.div>
-          
+
           <motion.h1
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -49,7 +48,7 @@ export default function NotFound() {
           >
             404
           </motion.h1>
-          
+
           <motion.h2
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -58,7 +57,7 @@ export default function NotFound() {
           >
             Page Not Found
           </motion.h2>
-          
+
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -101,23 +100,23 @@ export default function NotFound() {
         >
           <button
             onClick={() => setLocation('/')}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-all"
+            className="flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-all duration-150 ease-out cursor-pointer"
           >
             <Home className="w-5 h-5" />
             Go Home Now
           </button>
-          
+
           <button
             onClick={() => window.history.back()}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-card border border-border text-foreground rounded-lg font-semibold hover:bg-muted transition-all"
+            className="flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] bg-card border border-border text-foreground rounded-lg font-semibold hover:bg-muted transition-all duration-150 ease-out cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
             Go Back
           </button>
-          
+
           <button
             onClick={() => setLocation('/channels')}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-card border border-border text-foreground rounded-lg font-semibold hover:bg-muted transition-all"
+            className="flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] bg-card border border-border text-foreground rounded-lg font-semibold hover:bg-muted transition-all duration-150 ease-out cursor-pointer"
           >
             <Search className="w-5 h-5" />
             Browse Channels
@@ -144,7 +143,7 @@ export default function NotFound() {
               <button
                 key={link.path}
                 onClick={() => setLocation(link.path)}
-                className="px-3 py-1.5 text-xs bg-muted hover:bg-muted/80 text-foreground rounded-full transition-all"
+                className="px-4 py-2.5 min-h-[44px] text-sm bg-muted hover:bg-muted/80 text-foreground rounded-full transition-all duration-150 ease-out cursor-pointer"
               >
                 {link.label}
               </button>

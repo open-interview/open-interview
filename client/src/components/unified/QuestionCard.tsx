@@ -205,7 +205,7 @@ export function QuestionCard({
     <div 
       className={`
         w-full h-full flex flex-col ${sizeConfig.padding} overflow-y-auto relative
-        ${onTapQuestion ? 'cursor-pointer lg:cursor-default' : ''}
+        ${onTapQuestion ? 'cursor-pointer active:scale-[0.98] transition-transform duration-150 ease-out lg:cursor-default lg:active:scale-100' : ''}
         ${className}
       `}
       onClick={onTapQuestion}
@@ -472,7 +472,7 @@ export function MinimalQuestionCard({
       onClick={onClick}
       className={`
         flex items-center gap-3 p-2 rounded-lg
-        ${onClick ? 'cursor-pointer hover:bg-muted/50' : ''}
+        ${onClick ? 'cursor-pointer hover:bg-muted/50 active:scale-[0.98] transition-transform duration-150 ease-out' : ''}
         ${className}
       `}
     >
