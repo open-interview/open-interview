@@ -129,6 +129,14 @@ function parseQuestionRow(row) {
 async function fetchQuestion() {
   console.log('🔍 Fetching question from database...');
 
+  // Ensure status column exists (older DBs may not have it)
+  const cols = await db.execute("PRAGMA table_info(questions)");
+  const hasStatus = cols.rows.some(r => r.name === 'status');
+  if (!hasStatus) {
+    console.log('⚠️ Adding missing status column to questions table...');
+    await db.execute("ALTER TABLE questions ADD COLUMN status TEXT DEFAULT 'active'");
+  }
+
   let sql = 'SELECT * FROM questions WHERE status = "active"';
   const args = [];
 
