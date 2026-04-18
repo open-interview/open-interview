@@ -43,6 +43,7 @@ const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] =
       { id: 'voice',      label: 'Voice Interview', icon: Mic,    path: '/voice-interview', badge: '+10', shortcut: 'V' },
       { id: 'tests',      label: 'Quick Tests',     icon: Target, path: '/tests',           shortcut: 'T' },
       { id: 'coding',     label: 'Coding',          icon: Code,   path: '/coding',          shortcut: 'X' },
+      { id: 'code-challenges', label: 'Code Challenges', icon: Code, path: '/code', badge: 'NEW' },
       { id: 'review',     label: 'SRS Review',      icon: Flame,  path: '/review',          shortcut: 'R' },
       { id: 'flashcards', label: 'Flashcards',      icon: Layers, path: '/flashcards',      badge: 'NEW' },
     ],

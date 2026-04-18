@@ -114,7 +114,10 @@ function useSearchParamRedirect() {
   return isRedirecting;
 }
 
-const StatsRedirect = () => { const [,nav] = useLocation(); useEffect(() => { nav('/profile'); }, []); return null; };
+const StatsRedirect = React.lazy(() => import('@/pages/StatsRedirect'));
+const ChallengeHome = React.lazy(() => import('@/pages/ChallengeHome'));
+const ChallengeList = React.lazy(() => import('@/pages/ChallengeList'));
+const ChallengeWorkspace = React.lazy(() => import('@/pages/ChallengeWorkspace'));
 
 function Router() {
   return (
@@ -130,6 +133,9 @@ function Router() {
         <Route path="/test/:channelId" component={TestSession} />
         <Route path="/coding" component={CodingChallenge} />
         <Route path="/coding/:id" component={CodingChallenge} />
+        <Route path="/code" component={ChallengeHome} />
+        <Route path="/code/challenges" component={ChallengeList} />
+        <Route path="/code/challenges/:id" component={ChallengeWorkspace} />
         <Route path="/bot-activity" component={BotActivity} />
         <Route path="/channels" component={Channels} />
         <Route path="/learning-paths" component={LearningPaths} />
