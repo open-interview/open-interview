@@ -383,53 +383,40 @@ async function validateNode(state) {
 /**
  * Router: Decide which improvement node to run next
  */
-function routeToImprovement(state) {
-  const issue = state.currentIssue;
-  
-  if (!issue) {
-    return 'validate';
-  }
-  
-  console.log(`\n🔀 [ROUTER] Routing for issue: ${issue}`);
-  
-  // Map issues to nodes
-  const routeMap = {
-    'weak_answer': 'improve_answer',
-    'answer_issues': 'improve_answer',
-    'short_answer': 'improve_answer',
-    'shallow_explanation': 'improve_explanation',
-    'missing_topics': 'improve_explanation',
-    'question_issues': 'improve_explanation',
-    'unclear_question': 'improve_explanation',
-    'missing_eli5': 'add_eli5',
-    'missing_tldr': 'add_tldr',
-    'missing_diagram': 'add_diagram'
-  };
-  
-  return routeMap[issue] || 'validate';
+/**
+ * Router: From analyze — fan out independent content additions in parallel,
+ * route sequential fixes (answer/explanation) one at a time.
+ */
+function routeFromAnalyze(state) {
+  const issues = state.issues;
+  if (!issues || issues.length === 0) return END;
+
+  // Independent content additions — fan out all at once
+  const parallel = ['missing_eli5', 'missing_tldr', 'missing_diagram'];
+  const parallelTargets = parallel
+    .filter(i => issues.includes(i))
+    .map(i => ({ 'missing_eli5': 'add_eli5', 'missing_tldr': 'add_tldr', 'missing_diagram': 'add_diagram' }[i]));
+
+  // Sequential fixes that need to run one at a time
+  const sequential = issues.find(i => ['weak_answer', 'answer_issues', 'short_answer', 'shallow_explanation', 'missing_topics', 'question_issues', 'unclear_question'].includes(i));
+  const seqTarget = sequential ? ({ 'weak_answer': 'improve_answer', 'answer_issues': 'improve_answer', 'short_answer': 'improve_answer', 'shallow_explanation': 'improve_explanation', 'missing_topics': 'improve_explanation', 'question_issues': 'improve_explanation', 'unclear_question': 'improve_explanation' }[sequential]) : null;
+
+  const targets = [...(seqTarget ? [seqTarget] : []), ...parallelTargets];
+  if (targets.length === 0) return END;
+  return targets.length === 1 ? targets[0] : targets;
 }
 
 /**
- * Router: After validation, decide to continue or end
+ * Router: After an improvement node — continue with remaining sequential issues or end
  */
-function routeAfterValidation(state) {
-  if (state.status === 'completed' || state.status === 'max_retries' || state.status === 'error') {
-    return END;
-  }
-  
-  // Continue processing remaining issues
-  if (state.issues.length > 0) {
-    return 'route';
-  }
-  
-  return END;
-}
-
-/**
- * Dummy route node for conditional edge source
- */
-function routeNode(state) {
-  return { currentIssue: state.issues[0] || null };
+function routeAfterImprovement(state) {
+  if (state.status === 'completed' || state.status === 'max_retries' || state.status === 'error') return END;
+  const remaining = (state.issues || []).filter(i =>
+    ['weak_answer', 'answer_issues', 'short_answer', 'shallow_explanation', 'missing_topics', 'question_issues', 'unclear_question'].includes(i)
+  );
+  if (remaining.length === 0) return END;
+  if (state.retryCount >= state.maxRetries) return END;
+  return remaining[0].includes('answer') ? 'improve_answer' : 'improve_explanation';
 }
 
 /**
@@ -438,42 +425,41 @@ function routeNode(state) {
 export function createImprovementGraph() {
   const graph = new StateGraph(QuestionState);
   
-  // Add nodes
   graph.addNode('analyze', analyzeNode);
-  graph.addNode('route', routeNode);
   graph.addNode('improve_answer', improveAnswerNode);
   graph.addNode('improve_explanation', improveExplanationNode);
   graph.addNode('add_eli5', addEli5Node);
   graph.addNode('add_tldr', addTldrNode);
   graph.addNode('add_diagram', addDiagramNode);
-  graph.addNode('validate', validateNode);
   
-  // Add edges
   graph.addEdge(START, 'analyze');
-  graph.addEdge('analyze', 'route');
   
-  // Conditional routing based on current issue
-  graph.addConditionalEdges('route', routeToImprovement, {
+  // Fan out from analyze: parallel independent additions + first sequential fix
+  graph.addConditionalEdges('analyze', routeFromAnalyze, {
     'improve_answer': 'improve_answer',
     'improve_explanation': 'improve_explanation',
     'add_eli5': 'add_eli5',
     'add_tldr': 'add_tldr',
     'add_diagram': 'add_diagram',
-    'validate': 'validate'
-  });
-  
-  // All improvement nodes go to validate
-  graph.addEdge('improve_answer', 'validate');
-  graph.addEdge('improve_explanation', 'validate');
-  graph.addEdge('add_eli5', 'validate');
-  graph.addEdge('add_tldr', 'validate');
-  graph.addEdge('add_diagram', 'validate');
-  
-  // After validation, either continue or end
-  graph.addConditionalEdges('validate', routeAfterValidation, {
-    'route': 'route',
     [END]: END
   });
+  
+  // Sequential improvement nodes loop back if more issues remain
+  graph.addConditionalEdges('improve_answer', routeAfterImprovement, {
+    'improve_answer': 'improve_answer',
+    'improve_explanation': 'improve_explanation',
+    [END]: END
+  });
+  graph.addConditionalEdges('improve_explanation', routeAfterImprovement, {
+    'improve_answer': 'improve_answer',
+    'improve_explanation': 'improve_explanation',
+    [END]: END
+  });
+  
+  // Independent nodes always end after completing
+  graph.addEdge('add_eli5', END);
+  graph.addEdge('add_tldr', END);
+  graph.addEdge('add_diagram', END);
   
   return graph.compile();
 }
@@ -484,9 +470,10 @@ export function createImprovementGraph() {
  * @param {Object} options - Options for the pipeline
  * @param {Function} options.onImprovement - Callback called after each improvement step with updated question data
  */
+let _compiledImprovementGraph = null;
 export async function improveQuestion(question, options = {}) {
   const { onImprovement } = options;
-  const graph = createImprovementGraph();
+  const graph = _compiledImprovementGraph ??= createImprovementGraph();
   
   // Store the original score for before/after comparison
   const originalScore = question.relevanceScore || 0;

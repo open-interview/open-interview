@@ -551,11 +551,20 @@ export function createQualityGateGraph() {
   graph.addNode('decide', decideNode);
   
   graph.addEdge(START, 'validate_structure');
-  graph.addEdge('validate_structure', 'check_duplicates');
+  // Short-circuit: if structure invalid, skip expensive vector DB call
+  graph.addConditionalEdges('validate_structure', (s) => s.structureValid ? 'check_duplicates' : 'score_quality', {
+    'check_duplicates': 'check_duplicates',
+    'score_quality': 'score_quality'
+  });
+  // Fan out: all 4 validators are independent, run in parallel
   graph.addEdge('check_duplicates', 'validate_content');
-  graph.addEdge('validate_content', 'validate_difficulty');
-  graph.addEdge('validate_difficulty', 'validate_relevance');
-  graph.addEdge('validate_relevance', 'validate_media');
+  graph.addEdge('check_duplicates', 'validate_difficulty');
+  graph.addEdge('check_duplicates', 'validate_relevance');
+  graph.addEdge('check_duplicates', 'validate_media');
+  // All converge to score_quality
+  graph.addEdge('validate_content', 'score_quality');
+  graph.addEdge('validate_difficulty', 'score_quality');
+  graph.addEdge('validate_relevance', 'score_quality');
   graph.addEdge('validate_media', 'score_quality');
   graph.addEdge('score_quality', 'decide');
   graph.addEdge('decide', END);
@@ -566,8 +575,9 @@ export function createQualityGateGraph() {
 /**
  * Run the quality gate pipeline
  */
+let _compiledQualityGateGraph = null;
 export async function runQualityGate(question, options = {}) {
-  const graph = createQualityGateGraph();
+  const graph = _compiledQualityGateGraph ??= createQualityGateGraph();
   
   const {
     channel = '',

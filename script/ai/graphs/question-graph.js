@@ -292,7 +292,7 @@ function validateQualityNode(state) {
   
   if (issues.length > 0) {
     console.log(`   ⚠️ Quality issues: ${issues.join(', ')}`);
-    return { qualityIssues: issues, status: 'error', error: issues[0] };
+    return { qualityIssues: issues, status: 'error', error: issues[0], retryCount: state.retryCount + 1, question: null };
   }
   
   console.log(`   ✅ Quality check passed`);
@@ -306,19 +306,17 @@ async function validateVideosNode(state) {
   console.log('\n🎬 [VALIDATE_VIDEOS] Checking video URLs...');
   
   const videos = state.question.videos || {};
-  const validated = { shortVideo: null, longVideo: null };
   
-  if (videos.shortVideo) {
-    validated.shortVideo = await validateYouTubeUrl(videos.shortVideo);
-    console.log(`   Short video: ${validated.shortVideo ? '✅' : '❌'}`);
-  }
+  // Validate both videos in parallel
+  const [shortVideo, longVideo] = await Promise.all([
+    videos.shortVideo ? validateYouTubeUrl(videos.shortVideo) : Promise.resolve(null),
+    videos.longVideo ? validateYouTubeUrl(videos.longVideo) : Promise.resolve(null),
+  ]);
   
-  if (videos.longVideo) {
-    validated.longVideo = await validateYouTubeUrl(videos.longVideo);
-    console.log(`   Long video: ${validated.longVideo ? '✅' : '❌'}`);
-  }
+  console.log(`   Short video: ${shortVideo ? '✅' : '❌'}`);
+  console.log(`   Long video: ${longVideo ? '✅' : '❌'}`);
   
-  return { validatedVideos: validated };
+  return { validatedVideos: { shortVideo, longVideo } };
 }
 
 /**
@@ -421,9 +419,15 @@ function routeAfterGeneration(state) {
  */
 function routeAfterQuality(state) {
   if (state.status === 'error') {
+    // Quality failed — retry generation if retries remain, otherwise finalize
+    if (state.retryCount < state.maxRetries) {
+      console.log(`\n🔀 [ROUTER] Quality failed, retrying generation (${state.retryCount + 1}/${state.maxRetries})...`);
+      return 'generate_question';
+    }
     return 'finalize';
   }
-  return 'validate_videos';
+  // Fan out to both validation nodes in parallel
+  return ['validate_videos', 'validate_diagram'];
 }
 
 /**
@@ -447,11 +451,14 @@ export function createQuestionGraph() {
   });
   
   graph.addConditionalEdges('validate_quality', routeAfterQuality, {
+    'generate_question': 'generate_question',
     'validate_videos': 'validate_videos',
+    'validate_diagram': 'validate_diagram',
     'finalize': 'finalize'
   });
   
-  graph.addEdge('validate_videos', 'validate_diagram');
+  // validate_videos and validate_diagram are independent — run in parallel
+  graph.addEdge('validate_videos', 'finalize');
   graph.addEdge('validate_diagram', 'finalize');
   graph.addEdge('finalize', END);
   
@@ -461,9 +468,11 @@ export function createQuestionGraph() {
 /**
  * Run the question generation pipeline
  */
+let _compiledQuestionGraph = null;
+
 export async function generateQuestion(options) {
   const { channel, subChannel, difficulty, tags, targetCompanies, scenarioHint, ragContext } = options;
-  const graph = createQuestionGraph();
+  const graph = _compiledQuestionGraph ??= createQuestionGraph();
   
   console.log('\n' + '═'.repeat(60));
   console.log('🚀 LANGGRAPH QUESTION GENERATION PIPELINE');

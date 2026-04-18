@@ -468,7 +468,10 @@ export function createInterviewIntelligenceGraph() {
   
   graph.addEdge(START, 'build_cognitive_map');
   graph.addEdge('build_cognitive_map', 'calculate_company_weights');
-  graph.addEdge('calculate_company_weights', 'generate_knowledge_dna');
+  // generate_knowledge_dna only reads `questions` — independent of company weights
+  graph.addEdge('build_cognitive_map', 'generate_knowledge_dna');
+  // generate_mock_interviews needs both companyWeights and knowledgeDNA
+  graph.addEdge('calculate_company_weights', 'generate_mock_interviews');
   graph.addEdge('generate_knowledge_dna', 'generate_mock_interviews');
   graph.addEdge('generate_mock_interviews', 'save_intelligence');
   graph.addEdge('save_intelligence', END);
@@ -480,8 +483,9 @@ export function createInterviewIntelligenceGraph() {
 // MAIN RUNNER
 // ============================================
 
+let _compiledIntelligenceGraph = null;
 export async function generateInterviewIntelligence(questions, options = {}) {
-  const graph = createInterviewIntelligenceGraph();
+  const graph = _compiledIntelligenceGraph ??= createInterviewIntelligenceGraph();
   
   console.log('\n' + '═'.repeat(60));
   console.log('🧠 INTERVIEW INTELLIGENCE PIPELINE');

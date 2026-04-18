@@ -541,9 +541,10 @@ export function createBlogGraph() {
     'final_validate': 'final_validate'
   });
   
-  // Blog generation flow
+  // Blog generation flow — citations (sync) and quality_gates (async) are independent, run in parallel
   graph.addEdge('generate_blog', 'validate_citations');
-  graph.addEdge('validate_citations', 'quality_gates');
+  graph.addEdge('generate_blog', 'quality_gates');
+  graph.addEdge('validate_citations', 'validate_images');
   graph.addEdge('quality_gates', 'validate_images');
   graph.addEdge('validate_images', 'final_validate');
   
@@ -558,8 +559,9 @@ export function createBlogGraph() {
  * @param {Object} question - The question to convert to blog
  * @returns {Object} Result with blog content or skip reason
  */
+let _compiledBlogGraph = null;
 export async function generateBlogPost(question) {
-  const graph = createBlogGraph();
+  const graph = _compiledBlogGraph ??= createBlogGraph();
   
   console.log('\n' + '═'.repeat(60));
   console.log('🚀 LANGGRAPH BLOG GENERATION PIPELINE');
