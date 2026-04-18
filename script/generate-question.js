@@ -194,6 +194,7 @@ async function processChannelsWithConcurrency(channels, subChannelCounts, inputD
         results.push(res.question);
       } else {
         errors.push({ channel: res.channel, reason: res.error });
+        console.log(`   ❌ ${res.channel}: ${res.error}`);
       }
     });
 
