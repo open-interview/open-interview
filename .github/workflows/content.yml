@@ -19,7 +19,7 @@ on:
         description: 'Specific stage (for specific-stage mode)'
         required: false
         type: choice
-        options: [creator, analysis, verifier, processor, blog-generator, voice-sessions, interview-intelligence, coding-challenges]
+        options: [creator, analysis, verifier, processor, blog-generator, voice-sessions, interview-intelligence, coding-challenges, flashcards, similar-questions, learning-paths, certification-questions, readme, rss-sitemap]
       count:
         description: 'Items to process'
         required: false
@@ -47,19 +47,24 @@ on:
 
 jobs:
   # ── Hourly ──────────────────────────────────────────────────────────────────
+  # ── Hourly ──────────────────────────────────────────────────────────────────
   quick-generate:
-    name: 🚀 Quick Generate
+    name: 🚀 Quick Generate (${{ matrix.task }})
     if: |
       (github.event.schedule == '0 * * * *') ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'quick')
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      matrix:
+        task: [questions, flashcards, voice-sessions, similar-questions]
+      fail-fast: false
     steps:
       - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: ./.github/actions/setup-bot
-      - name: Generate questions
+      - name: Run ${{ matrix.task }}
         env:
           SQLITE_URL: file:local.db
           INPUT_LIMIT: ${{ inputs.channel && inputs.count || '25' }}
@@ -67,9 +72,16 @@ jobs:
           BALANCE_CHANNELS: 'true'
           AGGRESSIVE_MODE: 'true'
           ENSURE_MINIMUM: 'true'
-        run: pnpm run generate:question
+        run: |
+          case "${{ matrix.task }}" in
+            questions)        pnpm run generate:question ;;
+            flashcards)       pnpm run bot:flashcard -- --limit=100 ;;
+            voice-sessions)   pnpm run generate:voice-sessions -- --use-vector-db --limit=20 ;;
+            similar-questions) pnpm run vector:similar ;;
+          esac
+        continue-on-error: true
       - name: Sync to Vector DB
-        if: success()
+        if: matrix.task == 'questions' && success()
         env:
           SQLITE_URL: file:local.db
         run: pnpm run vector:sync -- --mode=incremental || true
@@ -113,12 +125,12 @@ jobs:
     if: |
       always() &&
       ((github.event.schedule == '0 2 * * *') ||
-      (github.event_name == 'workflow_dispatch' && (inputs.mode == 'full-pipeline' || inputs.stage == 'blog-generator' || inputs.stage == 'voice-sessions' || inputs.stage == 'interview-intelligence' || inputs.stage == 'coding-challenges')))
+      (github.event_name == 'workflow_dispatch' && (inputs.mode == 'full-pipeline' || inputs.stage == 'blog-generator' || inputs.stage == 'voice-sessions' || inputs.stage == 'interview-intelligence' || inputs.stage == 'coding-challenges' || inputs.stage == 'flashcards' || inputs.stage == 'similar-questions' || inputs.stage == 'learning-paths' || inputs.stage == 'certification-questions' || inputs.stage == 'readme' || inputs.stage == 'rss-sitemap')))
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       matrix:
-        stage: [blog-generator, voice-sessions, interview-intelligence, coding-challenges]
+        stage: [blog-generator, voice-sessions, interview-intelligence, coding-challenges, flashcards, similar-questions, learning-paths, certification-questions, readme, rss-sitemap]
       fail-fast: false
     steps:
       - uses: actions/checkout@v5
@@ -133,10 +145,16 @@ jobs:
           INPUT_CATEGORY: 'random'
         run: |
           case "${{ matrix.stage }}" in
-            blog-generator)          pnpm run blog:generate ;;
-            voice-sessions)          pnpm run generate:voice-sessions -- --use-vector-db --limit=50 ;;
-            interview-intelligence)  pnpm run rag:intelligence ;;
-            coding-challenges)       pnpm run bot:coding-challenge ;;
+            blog-generator)           pnpm run blog:generate ;;
+            voice-sessions)           pnpm run generate:voice-sessions -- --use-vector-db --limit=50 ;;
+            interview-intelligence)   pnpm run rag:intelligence ;;
+            coding-challenges)        pnpm run bot:coding-challenge ;;
+            flashcards)               pnpm run bot:flashcard -- --limit=${{ inputs.count || '200' }} ;;
+            similar-questions)        pnpm run vector:similar ;;
+            learning-paths)           pnpm run generate:learning-paths ;;
+            certification-questions)  pnpm run generate:certification ;;
+            readme)                   pnpm run generate:readme ;;
+            rss-sitemap)              pnpm run generate:rss && pnpm run generate:sitemap ;;
           esac
         continue-on-error: true
 
@@ -183,24 +201,19 @@ jobs:
           echo "| ✨ Enrich | ${{ needs.enrich.result == 'success' && '✅' || needs.enrich.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
 
-  # ── Daily 8AM flashcards ─────────────────────────────────────────────────────
+  # ── Daily 8AM maintenance ────────────────────────────────────────────────────
   flashcards-and-maintenance:
-    name: 🃏 Flashcards + Maintenance
+    name: 🔧 Maintenance
     if: |
       (github.event.schedule == '0 8 * * *') ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'full-pipeline')
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: ./.github/actions/setup-bot
-      - name: Flashcard Bot
-        env:
-          SQLITE_URL: file:local.db
-        run: pnpm run bot:flashcard -- --limit=${{ inputs.count || '200' }}
-        continue-on-error: true
       - name: Run migrations
         env:
           SQLITE_URL: file:local.db
