@@ -19,7 +19,23 @@ const client = createClient({ url });
 
 async function markAsShared() {
   console.log(`📝 Marking post ${postId} as shared on LinkedIn...`);
-  
+
+  // Ensure table exists (may not if running standalone against a fresh DB)
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS blog_posts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      question_id TEXT UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      linkedin_shared_at TEXT
+    )
+  `);
+  try {
+    await client.execute(`ALTER TABLE blog_posts ADD COLUMN linkedin_shared_at TEXT`);
+  } catch {
+    // Column already exists
+  }
+
   const now = new Date().toISOString();
   
   await client.execute({

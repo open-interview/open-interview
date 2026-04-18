@@ -865,6 +865,60 @@ export function extractTextFromJsonEvents(output) {
   return fullText || output;
 }
 
+/**
+ * Repair fragmented JSON where the AI generates multiple top-level objects
+ * instead of properly nested arrays. Merges orphaned objects back into the
+ * main structure based on their keys.
+ */
+function repairFragmentedJson(jsonText) {
+  // Find all top-level objects
+  let depth = 0, inStr = false, esc = false;
+  const objects = [];
+  let objStart = -1;
+
+  for (let i = 0; i < jsonText.length; i++) {
+    const c = jsonText[i];
+    if (esc) { esc = false; continue; }
+    if (inStr) { if (c === '\\') esc = true; else if (c === '"') inStr = false; continue; }
+    if (c === '"') inStr = true;
+    else if (c === '{') { depth++; if (depth === 1) objStart = i; }
+    else if (c === '}') { depth--; if (depth === 0 && objStart !== -1) { objects.push(jsonText.substring(objStart, i + 1)); objStart = -1; } }
+  }
+
+  if (objects.length <= 1) return jsonText;
+
+  let main;
+  try { main = JSON.parse(objects[0]); } catch { return jsonText; }
+
+  for (let i = 1; i < objects.length; i++) {
+    let obj;
+    try { obj = JSON.parse(objects[i]); } catch { continue; }
+    const keys = Object.keys(obj);
+
+    if (keys.includes('heading') && keys.includes('content')) {
+      if (!main.sections) main.sections = [];
+      main.sections.push(obj);
+    } else if (keys.includes('term') && keys.includes('definition')) {
+      if (!main.glossary) main.glossary = [];
+      main.glossary.push(obj);
+    } else if (keys.includes('company') && keys.includes('scenario')) {
+      if (!main.realWorldExample) main.realWorldExample = obj;
+    } else if (keys.includes('title') && keys.includes('url') && keys.includes('type')) {
+      if (!main.sources) main.sources = [];
+      main.sources.push(obj);
+    } else if (keys.includes('url') && keys.includes('alt')) {
+      if (!main.diagramImages) main.diagramImages = [];
+      main.diagramImages.push(obj);
+    } else if (keys.includes('hook') && keys.includes('body')) {
+      main.socialSnippet = obj;
+    } else {
+      Object.assign(main, obj);
+    }
+  }
+
+  return JSON.stringify(main);
+}
+
 export function parseJson(response) {
   if (!response) return null;
   
@@ -885,7 +939,10 @@ export function parseJson(response) {
   const firstBrace = text.indexOf('{');
   const lastBrace = text.lastIndexOf('}');
   if (firstBrace !== -1 && lastBrace > firstBrace) {
-    try { return JSON.parse(text.substring(firstBrace, lastBrace + 1)); } catch {}
+    const candidate = text.substring(firstBrace, lastBrace + 1);
+    try { return JSON.parse(candidate); } catch {}
+    // Try repairing fragmented JSON (AI sometimes generates multiple top-level objects)
+    try { return JSON.parse(repairFragmentedJson(candidate)); } catch {}
   }
   
   return null;
