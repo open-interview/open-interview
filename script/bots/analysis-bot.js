@@ -22,7 +22,7 @@
 import 'dotenv/config';
 import { getDb, initBotTables } from './shared/db.js';
 import { logAction } from './shared/ledger.js';
-import { addToQueue } from './shared/queue.js';
+import { addToQueue, addBatchToQueue } from './shared/queue.js';
 import { startRun, completeRun, failRun, updateRunStats } from './shared/runs.js';
 
 const BOT_NAME = 'analysis';
@@ -356,33 +356,30 @@ async function analyzeQuestion(question) {
 }
 
 /**
- * Create work items for detected issues
+ * Create work items for detected issues (batched)
  */
 async function createWorkItems(question, issues) {
-  let created = 0;
-  
-  for (const issue of issues) {
-    try {
-      await addToQueue({
-        itemType: 'question',
-        itemId: question.id,
-        action: issue.type,
-        priority: issue.priority,
-        reason: JSON.stringify({
-          severity: issue.severity,
-          detectedBy: BOT_NAME,
-          ...issue.metadata
-        }),
-        createdBy: BOT_NAME,
-        assignedTo: 'processor'
-      });
-      created++;
-    } catch (e) {
-      console.log(`   ⚠️  Failed to create work item: ${e.message}`);
-    }
+  const items = issues.map(issue => ({
+    itemType: 'question',
+    itemId: question.id,
+    action: issue.type,
+    priority: issue.priority,
+    reason: JSON.stringify({
+      severity: issue.severity,
+      detectedBy: BOT_NAME,
+      ...issue.metadata
+    }),
+    createdBy: BOT_NAME,
+    assignedTo: 'processor'
+  }));
+
+  try {
+    const results = await addBatchToQueue(items);
+    return results.filter(r => r.isNew).length;
+  } catch (e) {
+    console.log(`   ⚠️  Failed to create work items: ${e.message}`);
+    return 0;
   }
-  
-  return created;
 }
 
 // ============================================
@@ -429,6 +426,15 @@ async function main() {
     
     const questions = result.rows;
     console.log(`\nFound ${questions.length} questions to analyze\n`);
+
+    // Pre-fetch existing pending/completed queue items to avoid re-adding duplicates
+    const existingQueueResult = await db.execute(
+      `SELECT item_type, item_id, action FROM work_queue WHERE status IN ('pending', 'processing', 'completed')`
+    );
+    const existingQueueKeys = new Set(
+      existingQueueResult.rows.map(r => `${r.item_type}|${r.item_id}|${r.action}`)
+    );
+    console.log(`Pre-fetched ${existingQueueKeys.size} existing queue entries for dedup\n`);
     
     let analyzed = 0;
     let issuesFound = 0;
@@ -438,7 +444,11 @@ async function main() {
       try {
         // Normalize question data
         const normalized = normalizeQuestion(question);
-        const issues = await analyzeQuestion(normalized);
+        const allIssues = await analyzeQuestion(normalized);
+        // Filter out issues already in the queue
+        const issues = allIssues.filter(
+          issue => !existingQueueKeys.has(`question|${normalized.id}|${issue.type}`)
+        );
         analyzed++;
         
         if (issues.length > 0) {

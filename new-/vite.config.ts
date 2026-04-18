@@ -18,14 +18,6 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ["react", "react-dom"],
-          ui: [
-            "@radix-ui/react-dialog",
-            "@radix-ui/react-progress",
-            "@radix-ui/react-avatar",
-            "@radix-ui/react-tooltip",
-          ],
-          animation: ["framer-motion"],
-          utils: ["clsx", "tailwind-merge", "class-variance-authority"],
         },
       },
     },

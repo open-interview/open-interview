@@ -1,345 +1,172 @@
-# GitHub Workflows Quick Reference
+# GitHub Actions Workflows Guide
 
-## Automated Workflows
+> **Last updated:** 2026-04-18 — Reorganised from 12 → 5 workflows
 
-### 🚀 deploy.yml
-**Purpose:** Consolidated deployment workflow (push and scheduled triggers)
+## Overview
 
-**Triggers:**
-- **Push to main:** Deploys to staging + production
-- **Daily 2 AM UTC:** Deploys to production (after content generation)
-- **Manual dispatch:** With optional environment override
-
-**Environments:**
-- Staging: stage-open-interview.github.io
-- Production: open-interview.github.io
-
-**Manual Trigger:**
-```bash
-# Auto-select environment based on trigger
-gh workflow run deploy.yml
-
-# Override environment (staging/production/all)
-gh workflow run deploy.yml -f environment=staging -f reason="Testing deployment"
-```
-
-**What it does:**
-- Builds application with latest content
-- Race condition prevention via concurrency control
-- Deploys to appropriate environments
-- Ensures users always see fresh content
-- Single deployment history source
+| Workflow | File | Replaces | Trigger |
+|----------|------|----------|---------|
+| 🚀 CI/CD Pipeline | `ci-cd.yml` | `deploy.yml` + `lighthouse.yml` + `manual-e2e.yml` | push/main, PR, schedule daily 2AM, manual |
+| 🤖 Content Pipeline | `content.yml` | `content-generation.yml` + `manual-intake.yml` + `manual-blog.yml` | schedule hourly/daily/8AM, manual |
+| 🔄 Community & Quality | `community.yml` | `issue-processing.yml` + `duplicate-check.yml` + `setup-labels.yml` | issues, schedule, push to workflow, manual |
+| 📣 Social & Analytics | `social.yml` | `social-media.yml` | schedule daily 5AM/weekly Tue, manual |
+| 🔧 Repo Maintenance | `maintenance.yml` | `update-readme.yml` + `generate-learning-paths.yml` | push to channels-config or script, manual |
 
 ---
 
-### 🤖 content-generation.yml
-**Purpose:** Generate and process content (questions, blog, voice sessions, intelligence) + daily maintenance
+## Workflow Details
 
-**Schedules:**
-- **Hourly (0 * * * *):** Quick question generation (prioritizes empty channels)
-- **Daily 2 AM (0 2 * * *):** Full pipeline (creator → analysis → verifier → processor → generators) + maintenance tasks
-- **Daily 8 AM (0 8 * * *):** Flashcard generation (independent)
+### 🚀 `ci-cd.yml` — CI/CD Pipeline
 
-**Manual Trigger:**
-```bash
-# Quick generation
-gh workflow run content-generation.yml -f mode=quick-generate -f count=10
-
-# Full pipeline
-gh workflow run content-generation.yml -f mode=full-pipeline
-
-# Specific stage
-gh workflow run content-generation.yml -f mode=specific-stage -f stage=creator
+**Job DAG:**
+```
+build
+  └── quality  (E2E smoke + Lighthouse, skipped on schedule)
+        └── staging  (push + manual:staging)
+              └── production  (push + schedule + manual:production)
 ```
 
-**Jobs:**
-- quick-generate: Fast question generation
-- creator: Create new questions
-- analysis: Analyze quality issues
-- verifier: Deep validation
-- processor: Fix detected issues
-- flashcard-generation: Generate flashcards (runs independently at 8 AM)
-- blog-generator: Generate blog content
-- voice-sessions: Create voice interview sessions
-- interview-intelligence: Generate mock interview data
-- maintenance: Run DB migrations + clear old NEW flags (runs at 2 AM)
-- update-monitor: Update bot dashboard
+**Key improvements over old workflows:**
+- Lighthouse reuses the build artifact — no second full build per PR
+- Manual E2E is now `quality` job with `e2e_pattern`/`e2e_browser` dispatch inputs
+- Single workflow for all deployment concerns
+
+**Manual dispatch inputs:**
+- `environment`: `all` / `staging` / `production`
+- `reason`: free text
+- `run_e2e`: boolean (default true)
+- `e2e_pattern`: test file or grep pattern
+- `e2e_browser`: `chromium` / `firefox` / `webkit` / `all`
 
 ---
 
-### 🔄 issue-processing.yml
-**Purpose:** Process GitHub issues (local and external repos)
+### 🤖 `content.yml` — Content Pipeline
 
-**Schedules:**
-- **Hourly (0 * * * *):** Sync external repo issues
-- **Every 2 hours (0 */2 * * *):** Process local issues + cleanup stale
+**Job DAG:**
+```
+[hourly]  quick-generate
 
-**Triggers:**
-- Issues with `bot:processor` label
-- Schedule
-- Manual dispatch
+[daily 2AM]  ingest (creator→analysis→verifier→processor sequential steps)
+               └── enrich (blog+voice+intelligence+coding parallel steps)
+                     └── finalize (monitor commit + summary)
 
-**Manual Trigger:**
-```bash
-# Process local issues
-gh workflow run issue-processing.yml -f source=local
+[daily 8AM]  flashcards-and-maintenance
 
-# Process external issues
-gh workflow run issue-processing.yml -f source=external -f source_repo=owner/repo
-
-# Process both
-gh workflow run issue-processing.yml -f source=both
+[manual mode=intake]  manual-intake
+[manual mode=blog]    manual-blog
 ```
 
-**Jobs:**
-- check-trigger: Determine what to process
-- process-local: Handle local repo issues
-- process-external: Sync and process external issues
-- cleanup-stale: Remove stale in-progress labels
+**Key improvements:**
+- `ingest` consolidates 4 jobs → 4 sequential steps (saves ~9 min of runner spin-up)
+- `enrich` consolidates 4 jobs → parallel steps (saves ~9 min of runner spin-up)
+- Manual intake and blog are now dispatch modes, not separate workflow files
+
+**Manual dispatch inputs:**
+- `mode`: `quick` / `full-pipeline` / `intake` / `blog` / `specific-stage`
+- `stage`: specific stage to run
+- `count`, `channel`, `aggressive`, `topic`, `publish`, `question`
 
 ---
 
-### 📊 social-media.yml
-**Purpose:** Social media posting and analytics
+### 🔄 `community.yml` — Community & Quality
 
-**Schedules:**
-- **Daily 5 AM (0 5 * * *):** LinkedIn posts + GitHub analytics
+**Job DAG:**
+```
+setup-labels  (push to this file OR task=labels)
 
-**Manual Trigger:**
-```bash
-# Post to LinkedIn
-gh workflow run social-media.yml -f task=linkedin-post
+check-trigger → process-issues (local + external as parallel steps) → cleanup-stale → summary
 
-# Post LinkedIn poll (requires explicit dispatch)
-gh workflow run social-media.yml -f task=linkedin-poll -f channel=kubernetes
-
-# Collect analytics
-gh workflow run social-media.yml -f task=analytics
-
-# All tasks
-gh workflow run social-media.yml -f task=all
+duplicate-scan → reconcile  (weekly + task=duplicates)
 ```
 
-**Jobs:**
-- linkedin-post: Share blog posts on LinkedIn
-- linkedin-poll: Post question polls on LinkedIn (**manual dispatch only** — requires `task=linkedin-poll`)
-- analytics: Collect GitHub analytics
+**Key improvements:**
+- `process-issues` handles both local and external in one job
+- `setup-labels` is triggered on push to this file (self-bootstrapping)
+- Duplicate scan and reconcile are in one job
+
+**Manual dispatch inputs:**
+- `task`: `issues` / `duplicates` / `labels` / `all`
+- `source`, `source_repo`, `max_issues`, `force_reprocess`
+- `content_type`, `channel`, `auto_fix`
 
 ---
 
-### 📰 deploy-blog.yml
-**Purpose:** Deploy blog site
+### 📣 `social.yml` — Social & Analytics
 
-**Schedules:**
-- **Daily 4 AM (0 4 * * *):** Build and deploy blog
+**Job DAG:**
+```
+linkedin-post  (daily 5AM + manual)
+poll           (weekly Tue + manual) — standard OR use-case as conditional steps
+analytics      (daily 5AM + manual)
+summary
+```
 
-**Triggers:**
-- Schedule
-- After content-pipeline completes
-- Manual dispatch
+**Key improvements:**
+- 3 poll jobs (`linkedin-poll`, `linkedin-poll-usecase`, `opencode-poll-generator`) merged into 1 `poll` job with conditional steps
+- `use_poll_usecase` input selects which poll variant to run
 
 ---
 
-### 🔍 duplicate-check.yml
-**Purpose:** Detect and optionally fix duplicate content
+### 🔧 `maintenance.yml` — Repo Maintenance
 
-**Schedules:**
-- **Weekly Sunday (0 0 * * 0):** Scan for duplicates
-
-**Manual Trigger:**
-```bash
-# Check for duplicates
-gh workflow run duplicate-check.yml -f content_type=question
-
-# Auto-fix duplicates
-gh workflow run duplicate-check.yml -f content_type=question -f auto_fix=true
+**Job DAG:**
 ```
+update-readme  ─┐
+                ├─ (parallel) ─ summary
+generate-paths ─┘
+```
+
+**Key improvements:**
+- Both jobs run in parallel, preventing the double-commit race condition when `channels-config.ts` changes
 
 ---
 
-### 🔦 lighthouse.yml
-**Purpose:** Run Lighthouse performance audits
+## Testing Infrastructure
 
-**Schedules:**
-- **Weekly Monday 6 AM (0 6 * * 1):** Automated audit
+### Test Tiers
 
-**Triggers:**
-- Pull requests to main
-- Schedule
-- Manual dispatch
+| Tier | Script | What it runs | When |
+|------|--------|-------------|------|
+| T1: Smoke | `tests/run-smoke.sh` | `e2e/core.spec.ts` only | Every push (~60s) |
+| T2: Regression | `tests/run-regression.sh` | All chromium-desktop specs | Daily CI + manual |
+| T3: Audit | `tests/run-audit.sh` | Accessibility, contrast, Lighthouse | Weekly CI + manual |
+| T4: Unit | `tests/run-unit.sh` | Vitest unit tests for bots/scripts | Every push (~30s) |
+| Integration | `tests/run-bot-integration.sh` | Bot integration tests | Manual |
 
-**Manual Trigger:**
+### Playwright Projects
+
+| Project | Runs | Specs |
+|---------|------|-------|
+| `chromium-desktop` | T1 + T2 | All functional specs |
+| `lighthouse` | T3 | `lighthouse.spec.ts` |
+| `iphone13-audit` | T3 | `iphone13-ui-audit.spec.ts` |
+| `audit` | T3 | Accessibility, contrast, keyboard, reduced-motion specs |
+
+### Content Quality Gate
+
 ```bash
-# Audit local build
-gh workflow run lighthouse.yml
-
-# Audit specific URL
-gh workflow run lighthouse.yml -f url=https://open-interview.github.io
+node script/test-content-quality.js
 ```
 
-**Thresholds:**
-- Performance: ≥ 70
-- Accessibility: ≥ 90
-- Best Practices: ≥ 80
-- SEO: ≥ 80
-
-**Pages audited:** home, channels
+Checks all questions against format rules. Exits with code 1 if >1% are invalid.
 
 ---
 
-## Manual Workflows
+## Migration Summary
 
-### 📝 manual-blog.yml
-Generate a blog post from a specific topic
+| Before (12 files) | After (5 files) |
+|-------------------|-----------------|
+| `deploy.yml` | → `ci-cd.yml` |
+| `lighthouse.yml` | → `ci-cd.yml` (`quality` job) |
+| `manual-e2e.yml` | → `ci-cd.yml` (`quality` job, dispatch) |
+| `content-generation.yml` | → `content.yml` |
+| `manual-intake.yml` | → `content.yml` (`manual-intake` job) |
+| `manual-blog.yml` | → `content.yml` (`manual-blog` job) |
+| `issue-processing.yml` | → `community.yml` |
+| `duplicate-check.yml` | → `community.yml` (`duplicate-scan` job) |
+| `setup-labels.yml` | → `community.yml` (`setup-labels` job) |
+| `social-media.yml` | → `social.yml` |
+| `update-readme.yml` | → `maintenance.yml` |
+| `generate-learning-paths.yml` | → `maintenance.yml` |
 
-```bash
-gh workflow run manual-blog.yml -f topic="Kubernetes networking" -f publish=true
-```
-
----
-
-### 🧪 manual-e2e.yml
-Run E2E tests with custom options
-
-```bash
-gh workflow run manual-e2e.yml -f pattern="search" -f browser=chromium
-```
-
----
-
-### 🎲 manual-intake.yml
-Manually add a question to the database
-
-```bash
-gh workflow run manual-intake.yml -f question="What is a Kubernetes pod?"
-```
-
----
-
-### 🛤️ generate-learning-paths.yml
-Regenerate learning paths when channel config changes
-
-**Triggers:**
-- Push to `channels-config.ts`
-- Manual dispatch
-
-```bash
-gh workflow run generate-learning-paths.yml
-```
-
----
-
-### 📖 update-readme.yml
-Update README with latest stats and generated content
-
-```bash
-gh workflow run update-readme.yml
-```
-
----
-
-## Setup Workflows
-
-### 🏷️ setup-labels.yml
-Create required labels for issue processing (run once)
-
-```bash
-gh workflow run setup-labels.yml
-```
-
----
-
-## Common Tasks
-
-### Generate Questions
-```bash
-# Quick generation (10 questions)
-gh workflow run content-generation.yml -f mode=quick-generate -f count=10
-
-# Target specific channel
-gh workflow run content-generation.yml -f mode=quick-generate -f channel=kubernetes
-```
-
-### Process Issues
-```bash
-# Process all pending issues
-gh workflow run issue-processing.yml -f source=both
-
-# Force reprocess completed issues
-gh workflow run issue-processing.yml -f force_reprocess=true
-```
-
-### Social Media
-```bash
-# Post latest blog to LinkedIn
-gh workflow run social-media.yml -f task=linkedin-post
-
-# Post a poll (manual only)
-gh workflow run social-media.yml -f task=linkedin-poll -f difficulty=intermediate
-```
-
-### Deploy
-```bash
-# Deploy app (push-triggered + scheduled)
-gh workflow run deploy.yml
-
-# Override environment for manual deployment
-gh workflow run deploy.yml -f environment=production -f reason="Emergency deploy"
-
-# Deploy blog
-gh workflow run deploy-blog.yml
-```
-
-### Check Duplicates
-```bash
-# Scan for duplicates
-gh workflow run duplicate-check.yml -f content_type=question
-
-# Auto-fix duplicates
-gh workflow run duplicate-check.yml -f auto_fix=true
-```
-
----
-
-## Monitoring
-
-View workflow runs:
-```bash
-gh run list
-gh run view <run-id>
-gh run watch <run-id>
-```
-
-View logs:
-```bash
-gh run view <run-id> --log
-```
-
-Cancel a run:
-```bash
-gh run cancel <run-id>
-```
-
----
-
-## Troubleshooting
-
-### Workflow not triggering
-1. Check schedule syntax
-2. Verify branch is correct
-3. Check if workflow is disabled
-
-### Job failing
-1. Check logs: `gh run view <run-id> --log`
-2. Verify secrets are set
-3. Check script exists
-4. Verify action exists
-
-### Stale issues
-- Cleanup runs every 2 hours
-- Manual cleanup: `gh workflow run issue-processing.yml -f source=local`
-
-### Duplicate runs
-- Check if multiple schedules overlap
-- Verify concurrency settings
-- Check if manual trigger was used during scheduled run
+> **Note:** `deploy-blog.yml` is unchanged (not part of this reorganisation).

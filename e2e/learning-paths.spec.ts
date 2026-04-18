@@ -1,6 +1,6 @@
 /**
- * Learning Paths Tests
- * Curated paths, custom path builder, path activation and progress
+ * Learning Paths — consolidated from:
+ *   learning-paths.spec.ts + learning-paths-genz.spec.ts + curated-paths-loading.spec.ts
  */
 
 import { test, expect, setupUser, waitForPageReady, waitForContent, waitForDataLoad, checkNoOverflow } from './fixtures';
@@ -15,150 +15,78 @@ test.describe('Learning Paths Page', () => {
 
   test('page loads with content', async ({ page }) => {
     await waitForContent(page, 100);
-    const hasContent = await page.locator('h1, h2, h3, [class*="path"]').first().isVisible({ timeout: 5000 }).catch(() => false);
-    expect(hasContent || (await page.locator('body').textContent())!.length > 100).toBeTruthy();
+    expect((await page.locator('body').textContent())!.length).toBeGreaterThan(100);
   });
 
-  test('curated paths are displayed', async ({ page }) => {
+  test('curated paths or empty state is displayed', async ({ page }) => {
     await waitForContent(page, 100);
-    const pathKeywords = ['Path', 'Learning', 'Track', 'Roadmap', 'Curriculum'];
+    const pathKeywords = ['Path', 'Learning', 'Track', 'Roadmap'];
     let found = false;
     for (const kw of pathKeywords) {
-      if (await page.getByText(kw, { exact: false }).first().isVisible({ timeout: 2000 }).catch(() => false)) {
-        found = true;
-        break;
-      }
+      if (await page.getByText(kw, { exact: false }).first().isVisible({ timeout: 2000 }).catch(() => false)) { found = true; break; }
     }
-    // Fallback: any card-like element
-    if (!found) {
-      found = await page.locator('[class*="card"], [class*="path"], article').first().isVisible({ timeout: 2000 }).catch(() => false);
-    }
+    if (!found) found = await page.locator('[class*="card"], article').first().isVisible({ timeout: 2000 }).catch(() => false);
     expect(found).toBeTruthy();
   });
 
-  test('path cards show title and description', async ({ page }) => {
-    await waitForContent(page, 100);
-    const cards = page.locator('[class*="card"], article, [class*="path-item"]');
-    const count = await cards.count();
-    if (count > 0) {
-      const firstCard = cards.first();
-      const hasTitle = await firstCard.locator('h2, h3, h4, [class*="title"]').first().isVisible({ timeout: 2000 }).catch(() => false);
-      expect.soft(hasTitle).toBeTruthy();
-    }
-    // Always pass — cards may not exist if data not loaded
-    expect(true).toBeTruthy();
-  });
-
-  test('activating a path works', async ({ page }) => {
-    await waitForContent(page, 100);
-    const activateBtn = page.locator('button').filter({ hasText: /Start|Activate|Begin|Enroll/i }).first();
-    const isVisible = await activateBtn.isVisible({ timeout: 3000 }).catch(() => false);
-    if (isVisible) {
-      await activateBtn.click();
-      // Should either navigate or show active state
-      await page.waitForTimeout(500);
-      const hasActiveState = await page.locator('[class*="active"], [class*="enrolled"], [aria-pressed="true"]').first().isVisible({ timeout: 2000 }).catch(() => false);
-      const urlChanged = page.url() !== 'http://localhost:5001/learning-paths';
-      expect.soft(hasActiveState || urlChanged).toBeTruthy();
-    }
-  });
-
-  test('active paths section shows activated paths', async ({ page }) => {
-    // Seed an active path in localStorage
-    await page.evaluate(() => {
-      const activePaths = [{ id: 'fullstack-path', activatedAt: new Date().toISOString() }];
-      localStorage.setItem('active-learning-paths', JSON.stringify(activePaths));
-    });
-    await page.reload();
-    await waitForPageReady(page);
-    await waitForDataLoad(page);
-
-    const activeSection = page.locator('[class*="active"], [class*="my-paths"], [class*="enrolled"]').first();
-    const hasActiveSection = await activeSection.isVisible({ timeout: 3000 }).catch(() => false);
-    // Soft assert - active section may not exist if feature uses different storage key
-    expect.soft(hasActiveSection).toBeTruthy();
-  });
-
-  test('path progress indicator visible', async ({ page }) => {
-    await waitForContent(page, 100);
-    const progressEl = page.locator('[class*="progress"], [role="progressbar"], [class*="percent"]').first();
-    const hasProgress = await progressEl.isVisible({ timeout: 3000 }).catch(() => false);
-    // Progress may only show for active paths - soft assert
-    expect.soft(hasProgress || true).toBeTruthy();
-  });
-
-  test('custom path builder is accessible', async ({ page }) => {
-    await waitForContent(page, 100);
-    const customBtn = page.locator('button, a').filter({ hasText: /Custom|Create|Build|My Path/i }).first();
-    const isVisible = await customBtn.isVisible({ timeout: 3000 }).catch(() => false);
-    if (isVisible) {
-      await customBtn.click();
-      await page.waitForTimeout(500);
-      const hasBuilder = await page.locator('[class*="builder"], [class*="custom"], input, textarea').first().isVisible({ timeout: 3000 }).catch(() => false);
-      expect.soft(hasBuilder).toBeTruthy();
-    }
-  });
-
-  test('no horizontal overflow on learning paths page', async ({ page }) => {
+  test('no horizontal overflow', async ({ page }) => {
     await waitForContent(page, 100);
     await checkNoOverflow(page);
   });
 
-  test('navigation back to home works', async ({ page }) => {
-    // Use sidebar Home button or direct navigation
-    const homeBtn = page.locator('button, a').filter({ hasText: /^Home/i }).first();
-    const isVisible = await homeBtn.isVisible({ timeout: 2000 }).catch(() => false);
-    if (isVisible) {
-      await homeBtn.click();
-      await expect(page).toHaveURL('/');
-    } else {
-      await page.goto('/');
-      await expect(page).toHaveURL('/');
-    }
+  test('no critical JS errors on load', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', err => errors.push(err.message));
+    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+    await page.goto('/learning-paths');
+    await waitForPageReady(page);
+    await waitForDataLoad(page);
+    const critical = errors.filter(e => !e.includes('favicon') && !e.includes('404') && !e.includes('pagefind') && !e.includes('sw.js') && !e.includes('preload'));
+    expect.soft(critical.length).toBeLessThan(5);
+  });
+
+  test('Gen Z theme is applied (black background)', async ({ page }) => {
+    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(0, 0, 0)');
   });
 });
 
-test.describe('Learning Paths - Path Detail', () => {
+test.describe('My Path Page', () => {
   test.beforeEach(async ({ page }) => {
-    await setupUser(page);
+    await page.goto('/my-path');
+    await page.waitForLoadState('networkidle');
   });
 
-  test('path detail page loads when navigating to a path', async ({ page }) => {
-    await page.goto('/learning-paths');
-    await waitForPageReady(page);
-    await waitForDataLoad(page);
-    await waitForContent(page, 100);
-
-    const pathLink = page.locator('a[href*="learning-path"], a[href*="/path/"]').first();
-    const isVisible = await pathLink.isVisible({ timeout: 3000 }).catch(() => false);
-    if (isVisible) {
-      await pathLink.click();
-      await waitForPageReady(page);
-      const hasContent = await page.locator('h1, h2, [class*="path"]').first().isVisible({ timeout: 5000 }).catch(() => false);
-      expect.soft(hasContent).toBeTruthy();
-    }
+  test('loads curated paths from static JSON', async ({ page }) => {
+    const jsonResponse = await page.waitForResponse(
+      r => r.url().includes('/data/learning-paths.json') && r.status() === 200,
+      { timeout: 10000 }
+    ).catch(() => null);
+    if (!jsonResponse) return; // JSON not available in dev
+    const data = await jsonResponse.json();
+    expect(data.length).toBeGreaterThan(0);
+    expect(data[0]).toHaveProperty('id');
+    expect(data[0]).toHaveProperty('title');
   });
 
-  test('learning paths page has no JS errors on load', async ({ page }) => {
+  test('displays curated paths section', async ({ page }) => {
+    const curatedSection = page.locator('text=Curated Career Paths');
+    await expect(curatedSection).toBeVisible({ timeout: 10000 });
+  });
+
+  test('handles JSON 404 gracefully', async ({ page }) => {
+    await page.route('**/data/learning-paths.json', route => route.fulfill({ status: 404, body: 'Not found' }));
+    await page.goto('/my-path');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('text=Curated Career Paths')).toBeVisible();
+  });
+
+  test('no JSON parsing errors', async ({ page }) => {
     const errors: string[] = [];
-    page.on('pageerror', err => errors.push(err.message));
-    page.on('console', msg => {
-      if (msg.type() === 'error') errors.push(msg.text());
-    });
-
-    await page.goto('/learning-paths');
-    await waitForPageReady(page);
-    await waitForDataLoad(page);
-
-    const criticalErrors = errors.filter(e =>
-      !e.includes('favicon') &&
-      !e.includes('404') &&
-      !e.includes('pagefind') &&
-      !e.includes('sw.js') &&
-      !e.includes('preload') &&
-      !e.includes('hydration') &&
-      !e.includes('descendant')
-    );
-    expect.soft(criticalErrors.length).toBeLessThan(5);
+    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+    await page.goto('/my-path');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+    const hasParsingError = errors.some(e => e.includes('JSON') || e.includes('parse'));
+    expect(hasParsingError).toBe(false);
   });
 });

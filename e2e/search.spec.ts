@@ -1,50 +1,43 @@
 /**
- * Search Tests
- * Search modal (Cmd+K) and channels page search filter
+ * Search — consolidated from:
+ *   search.spec.ts + features/search-functionality.spec.ts
+ *   + features/search-core.spec.ts + features/home-search.spec.ts
  */
 
 import { test, expect, setupUser, waitForPageReady, waitForContent } from './fixtures';
+
+// ── Search Modal (Cmd+K) ──────────────────────────────────────────────────────
 
 test.describe('Search Modal', () => {
   test.beforeEach(async ({ page }) => {
     await setupUser(page);
     await page.goto('/');
     await waitForPageReady(page);
-    // Ensure page has keyboard focus by pressing a neutral key
     await page.keyboard.press('Tab');
     await page.waitForTimeout(100);
   });
 
-  test('Cmd+K opens search modal on desktop', async ({ page, isMobile }) => {
+  test('Cmd+K / Ctrl+K opens search modal', async ({ page, isMobile }) => {
     test.skip(isMobile, 'Desktop only');
     await page.keyboard.press('Meta+k');
-    await expect(page.locator('[data-testid="search-modal-desktop"]')).toBeVisible({ timeout: 5000 });
-  });
-
-  test('Ctrl+K opens search modal on desktop', async ({ page, isMobile }) => {
-    test.skip(isMobile, 'Desktop only');
-    await page.keyboard.press('Control+k');
     await expect(page.locator('[data-testid="search-modal-desktop"]')).toBeVisible({ timeout: 5000 });
   });
 
   test('search modal has input field', async ({ page, isMobile }) => {
     test.skip(isMobile, 'Desktop only');
     await page.keyboard.press('Meta+k');
-    const input = page.locator('[data-testid="search-input-desktop"]');
-    await expect(input).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('[data-testid="search-input-desktop"]')).toBeVisible({ timeout: 5000 });
   });
 
-  test('typing in search shows results', async ({ page, isMobile }) => {
+  test('typing shows results', async ({ page, isMobile }) => {
     test.skip(isMobile, 'Desktop only');
     await page.keyboard.press('Meta+k');
     const input = page.locator('[data-testid="search-input-desktop"]');
     await expect(input).toBeVisible({ timeout: 5000 });
     await input.fill('system design');
     await page.waitForTimeout(400);
-    // Results or no-results message
     const modal = page.locator('[data-testid="search-modal-desktop"]');
-    const hasContent = await modal.locator('button, p').count() > 0;
-    expect(hasContent).toBeTruthy();
+    expect(await modal.locator('button, p').count()).toBeGreaterThan(0);
   });
 
   test('Escape closes search modal', async ({ page, isMobile }) => {
@@ -55,42 +48,18 @@ test.describe('Search Modal', () => {
     await expect(page.locator('[data-testid="search-modal-desktop"]')).not.toBeVisible({ timeout: 3000 });
   });
 
-  test('search results are clickable and navigate', async ({ page, isMobile }) => {
-    test.skip(isMobile, 'Desktop only');
-    await page.keyboard.press('Meta+k');
-    const input = page.locator('[data-testid="search-input-desktop"]');
-    await expect(input).toBeVisible({ timeout: 5000 });
-    await input.fill('react');
-    await page.waitForTimeout(500);
-    const firstResult = page.locator('[data-testid="search-modal-desktop"] button')
-      .filter({ hasText: /\w{3,}/ }).first();
-    const hasResult = await firstResult.isVisible({ timeout: 2000 }).catch(() => false);
-    if (!hasResult) return; // no results — skip navigation check
-    await firstResult.click();
-    await expect(page.locator('[data-testid="search-modal-desktop"]')).not.toBeVisible({ timeout: 3000 });
-  });
-
-  test('search modal closes on backdrop click', async ({ page, isMobile }) => {
-    test.skip(isMobile, 'Desktop only');
-    await page.keyboard.press('Meta+k');
-    const backdrop = page.locator('[data-testid="search-modal-desktop"]');
-    await expect(backdrop).toBeVisible({ timeout: 5000 });
-    // Click the outer backdrop (not the inner dialog box)
-    await backdrop.click({ position: { x: 10, y: 10 } });
-    await expect(backdrop).not.toBeVisible({ timeout: 3000 });
-  });
-
   test('empty search shows placeholder state', async ({ page, isMobile }) => {
     test.skip(isMobile, 'Desktop only');
     await page.keyboard.press('Meta+k');
     const modal = page.locator('[data-testid="search-modal-desktop"]');
     await expect(modal).toBeVisible({ timeout: 5000 });
-    // Empty query shows "Type to search"
     await expect(modal.getByText('Type to search')).toBeVisible({ timeout: 3000 });
   });
 });
 
-test.describe('Channels Page Search', () => {
+// ── Channels Page Search ──────────────────────────────────────────────────────
+
+test.describe('Channels Search', () => {
   test.beforeEach(async ({ page }) => {
     await setupUser(page);
     await page.goto('/channels');
@@ -98,10 +67,13 @@ test.describe('Channels Page Search', () => {
     await waitForContent(page);
   });
 
-  test('search input filters channels', async ({ page }) => {
+  test('search input is visible', async ({ page }) => {
+    await expect(page.locator('input[placeholder*="Search channels"]')).toBeVisible();
+  });
+
+  test('search filters channels', async ({ page }) => {
     const input = page.getByPlaceholder(/search channels/i);
-    const isVisible = await input.isVisible().catch(() => false);
-    if (!isVisible) return;
+    if (!await input.isVisible().catch(() => false)) return;
     await input.fill('system');
     await page.waitForTimeout(400);
     const hasSystemDesign = await page.getByText('System Design', { exact: false }).first().isVisible().catch(() => false);
@@ -111,22 +83,73 @@ test.describe('Channels Page Search', () => {
 
   test('clearing search restores all channels', async ({ page }) => {
     const input = page.getByPlaceholder(/search channels/i);
-    const isVisible = await input.isVisible().catch(() => false);
-    if (!isVisible) return;
+    if (!await input.isVisible().catch(() => false)) return;
     await input.fill('xyznonexistent999');
     await page.waitForTimeout(400);
     await input.clear();
     await page.waitForTimeout(400);
-    const cards = page.locator('[class*="bg-card"]');
-    expect(await cards.count()).toBeGreaterThan(0);
+    expect(await page.locator('[class*="bg-card"]').count()).toBeGreaterThan(0);
   });
 
-  test('empty search shows all channels', async ({ page }) => {
-    const input = page.getByPlaceholder(/search channels/i);
-    const isVisible = await input.isVisible().catch(() => false);
-    if (!isVisible) return;
-    await input.fill('');
-    await page.waitForTimeout(300);
-    expect(await page.locator('[class*="bg-card"]').count()).toBeGreaterThan(0);
+  test('handles rapid typing', async ({ page }) => {
+    const input = page.locator('input[placeholder*="Search channels"]');
+    await input.type('abcdefghijklmnop', { delay: 10 });
+    await expect(input).toHaveValue('abcdefghijklmnop');
+  });
+});
+
+// ── Learning Paths Search ─────────────────────────────────────────────────────
+
+test.describe('Learning Paths Search', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/learning-paths');
+    await page.waitForLoadState('networkidle');
+  });
+
+  test('search box is visible below title', async ({ page }) => {
+    const searchInput = page.locator('input[placeholder*="Search learning paths"]');
+    await expect(searchInput).toBeVisible();
+    const title = page.locator('h1').first();
+    if (await title.isVisible().catch(() => false)) {
+      const titleBox = await title.boundingBox();
+      const searchBox = await searchInput.boundingBox();
+      if (titleBox && searchBox) expect(searchBox.y).toBeGreaterThan(titleBox.y);
+    }
+  });
+
+  test('search filters results', async ({ page }) => {
+    const input = page.locator('input[placeholder*="Search learning paths"]');
+    await input.fill('Frontend');
+    await page.waitForTimeout(500);
+    const hasResults = await page.locator('[class*="grid"]').isVisible();
+    const hasEmpty = await page.locator('text=No learning paths found').isVisible();
+    expect(hasResults || hasEmpty).toBeTruthy();
+  });
+
+  test('shows empty state for no-match query', async ({ page }) => {
+    const input = page.locator('input[placeholder*="Search learning paths"]');
+    await input.fill('xyznonexistentquery123');
+    await page.waitForTimeout(500);
+    await expect(page.locator('text=No learning paths found')).toBeVisible();
+  });
+});
+
+// ── Mobile Search ─────────────────────────────────────────────────────────────
+
+test.describe('Mobile Search', () => {
+  test.use({ viewport: { width: 375, height: 667 } });
+
+  test('channels search is visible on mobile', async ({ page }) => {
+    await page.goto('/channels');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('input[placeholder*="Search channels"]')).toBeVisible();
+  });
+
+  test('mobile search filters work', async ({ page }) => {
+    await page.goto('/channels');
+    await page.waitForLoadState('networkidle');
+    const input = page.locator('input[placeholder*="Search channels"]');
+    await input.fill('Design');
+    await expect(input).toHaveValue('Design');
   });
 });

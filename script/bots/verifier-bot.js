@@ -19,7 +19,7 @@
 import 'dotenv/config';
 import { getDb, initBotTables } from './shared/db.js';
 import { logAction } from './shared/ledger.js';
-import { addToQueue, getNextWorkItem, completeWorkItem } from './shared/queue.js';
+import { addToQueue, getNextWorkItem, completeWorkItem, getBatchWorkItems } from './shared/queue.js';
 import { startRun, completeRun, failRun, updateRunStats } from './shared/runs.js';
 import { runWithRetries, parseJson, calculateSimilarity } from '../utils.js';
 
@@ -137,8 +137,9 @@ async function fetchNode(state) {
   let items = [];
   
   if (mode === 'queue') {
-    const workItem = await getNextWorkItem(BOT_NAME);
-    if (workItem) {
+    // Fetch a batch of 5 work items instead of one at a time
+    const workItems = await getBatchWorkItems(5, BOT_NAME);
+    for (const workItem of workItems) {
       const question = await getQuestionById(workItem.itemId);
       if (question) {
         items.push({ ...question, workId: workItem.id, workAction: workItem.action });

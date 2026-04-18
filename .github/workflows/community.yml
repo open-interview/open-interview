@@ -1,0 +1,281 @@
+name: 🔄 Community & Quality
+
+# Replaces: issue-processing.yml + duplicate-check.yml + setup-labels.yml
+
+on:
+  issues:
+    types: [opened, labeled]
+  schedule:
+    - cron: '0 * * * *'      # Hourly: external sync
+    - cron: '0 */2 * * *'    # Every 2h: local + stale cleanup
+    - cron: '0 0 * * 0'      # Weekly Sunday: duplicate scan
+  push:
+    paths:
+      - '.github/workflows/community.yml'
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task to run'
+        required: true
+        default: 'issues'
+        type: choice
+        options: [issues, duplicates, labels, all]
+      source:
+        description: 'Issue source'
+        required: false
+        default: 'both'
+        type: choice
+        options: [local, external, both]
+      source_repo:
+        description: 'External source repository (owner/repo)'
+        required: false
+        default: 'open-interview/open-interview.github.io'
+      max_issues:
+        description: 'Maximum issues to process'
+        required: false
+        default: '10'
+      force_reprocess:
+        description: 'Force reprocess completed issues'
+        required: false
+        default: 'false'
+        type: boolean
+      content_type:
+        description: 'Content type for duplicate check'
+        required: false
+        default: 'question'
+        type: choice
+        options: [question, challenge, test, certification]
+      channel:
+        description: 'Channel filter for duplicate check'
+        required: false
+        default: ''
+      auto_fix:
+        description: 'Auto-fix duplicates'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  issues: write
+  contents: read
+
+env:
+  SOURCE_REPO: ${{ inputs.source_repo || 'open-interview/open-interview.github.io' }}
+
+jobs:
+  setup-labels:
+    name: 🏷️ Setup Labels
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && (inputs.task == 'labels' || inputs.task == 'all'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or update labels
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const labels = [
+              { name: 'bot:processor', color: '0052cc', description: 'Issue created by QuestionFeedback component for processing' },
+              { name: 'bot:in-progress', color: 'fbca04', description: 'Issue is currently being processed by the bot' },
+              { name: 'bot:completed', color: '0e8a16', description: 'Issue has been successfully processed by the bot' },
+              { name: 'bot:failed', color: 'd93f0b', description: 'Issue processing failed' },
+              { name: 'feedback:improve', color: '1d76db', description: 'Request to improve existing question content' },
+              { name: 'feedback:rewrite', color: 'f9d0c4', description: 'Request to completely rewrite question content' },
+              { name: 'feedback:disable', color: 'b60205', description: 'Request to disable/remove question' }
+            ];
+            for (const label of labels) {
+              try {
+                await github.rest.issues.getLabel({ owner: context.repo.owner, repo: context.repo.repo, name: label.name });
+                await github.rest.issues.updateLabel({ owner: context.repo.owner, repo: context.repo.repo, ...label });
+                console.log(`✅ Updated: ${label.name}`);
+              } catch (e) {
+                if (e.status === 404) { await github.rest.issues.createLabel({ owner: context.repo.owner, repo: context.repo.repo, ...label }); console.log(`🆕 Created: ${label.name}`); }
+              }
+            }
+
+  check-trigger:
+    name: 🔍 Check Trigger
+    if: |
+      github.event_name == 'issues' ||
+      github.event.schedule == '0 * * * *' ||
+      github.event.schedule == '0 */2 * * *' ||
+      (github.event_name == 'workflow_dispatch' && (inputs.task == 'issues' || inputs.task == 'all'))
+    runs-on: ubuntu-latest
+    outputs:
+      should_process_local: ${{ steps.check.outputs.should_process_local }}
+      should_process_external: ${{ steps.check.outputs.should_process_external }}
+      issue_number: ${{ steps.check.outputs.issue_number }}
+    steps:
+      - name: Determine what to process
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { eventName, payload } = context;
+            if (eventName === 'issues') {
+              const issue = payload.issue;
+              const labels = issue.labels.map(l => l.name);
+              if (labels.includes('bot:in-progress') || (labels.includes('bot:completed') && '${{ inputs.force_reprocess }}' !== 'true')) {
+                core.setOutput('should_process_local', 'false'); core.setOutput('should_process_external', 'false'); return;
+              }
+              if (labels.includes('bot:processor')) {
+                core.setOutput('should_process_local', 'true'); core.setOutput('should_process_external', 'false'); core.setOutput('issue_number', issue.number.toString()); return;
+              }
+              core.setOutput('should_process_local', 'false'); core.setOutput('should_process_external', 'false'); return;
+            }
+            const source = '${{ inputs.source }}' || 'both';
+            const isExternalSchedule = context.payload.schedule === '0 * * * *';
+            const isLocalSchedule = context.payload.schedule === '0 */2 * * *';
+            core.setOutput('should_process_external', (source === 'both' || isExternalSchedule || source === 'external') ? 'true' : 'false');
+            core.setOutput('should_process_local', (source === 'both' || isLocalSchedule || source === 'local') ? 'true' : 'false');
+            core.setOutput('issue_number', '');
+
+  process-issues:
+    name: ⚙️ Process Issues (local + external)
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_process_local == 'true' || needs.check-trigger.outputs.should_process_external == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-bot
+
+      - name: Add in-progress label
+        if: needs.check-trigger.outputs.issue_number != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const n = parseInt('${{ needs.check-trigger.outputs.issue_number }}');
+            if (n) await github.rest.issues.addLabels({ owner: context.repo.owner, repo: context.repo.repo, issue_number: n, labels: ['bot:in-progress'] });
+
+      - name: Process local issues
+        if: needs.check-trigger.outputs.should_process_local == 'true'
+        env:
+          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+          MAX_ISSUES: ${{ inputs.max_issues || '10' }}
+          SINGLE_ISSUE: ${{ needs.check-trigger.outputs.issue_number }}
+        run: node script/bots/processor-bot.js
+
+      - name: Fetch and process external issues
+        if: needs.check-trigger.outputs.should_process_external == 'true'
+        uses: actions/github-script@v7
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        with:
+          github-token: ${{ secrets.GH_TOKEN }}
+          script: |
+            const sourceRepo = process.env.SOURCE_REPO;
+            const [sourceOwner, sourceRepoName] = sourceRepo.split('/');
+            const maxIssues = parseInt('${{ inputs.max_issues || '10' }}');
+            const { data: issues } = await github.rest.issues.listForRepo({ owner: sourceOwner, repo: sourceRepoName, labels: 'bot:processor', state: 'open', per_page: maxIssues, sort: 'created', direction: 'desc' });
+            const toProcess = issues.filter(i => { const l = i.labels.map(x => x.name); return !l.includes('bot:in-progress') && !l.includes('bot:completed'); });
+            for (const issue of toProcess) {
+              await github.rest.issues.addLabels({ owner: sourceOwner, repo: sourceRepoName, issue_number: issue.number, labels: ['bot:in-progress'] });
+              try {
+                await github.rest.issues.removeLabel({ owner: sourceOwner, repo: sourceRepoName, issue_number: issue.number, name: 'bot:in-progress' }).catch(() => {});
+                await github.rest.issues.addLabels({ owner: sourceOwner, repo: sourceRepoName, issue_number: issue.number, labels: ['bot:completed'] });
+                await github.rest.issues.createComment({ owner: sourceOwner, repo: sourceRepoName, issue_number: issue.number, body: '✅ **Processing Complete**\n\nProcessed by main repository.' });
+                await github.rest.issues.update({ owner: sourceOwner, repo: sourceRepoName, issue_number: issue.number, state: 'closed' });
+              } catch (e) { console.log(`Error updating issue #${issue.number}: ${e.message}`); }
+            }
+
+      - name: Sync to Vector DB
+        if: success()
+        env:
+          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: node script/sync-vector-db.js --mode=incremental || true
+
+  cleanup-stale:
+    name: 🧹 Cleanup Stale
+    needs: process-issues
+    if: always() && github.event.schedule == '0 */2 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove stale in-progress labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+            const { data: issues } = await github.rest.issues.listForRepo({ owner: context.repo.owner, repo: context.repo.repo, labels: 'bot:in-progress', state: 'open', per_page: 50 });
+            for (const issue of issues) {
+              if (new Date(issue.updated_at) < oneHourAgo) {
+                await github.rest.issues.removeLabel({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number, name: 'bot:in-progress' });
+                await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number, body: '⚠️ **Processing Reset** - Stuck for over 1 hour, label removed for reprocessing.' });
+              }
+            }
+
+  duplicate-scan:
+    name: 🔍 Duplicate Scan + Reconcile
+    if: |
+      github.event.schedule == '0 0 * * 0' ||
+      (github.event_name == 'workflow_dispatch' && (inputs.task == 'duplicates' || inputs.task == 'all'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-bot
+      - name: Run Duplicate Detection
+        id: duplicate-check
+        env:
+          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+        run: |
+          ARGS="--report"
+          [ -n "${{ inputs.content_type }}" ] && ARGS="$ARGS --type=${{ inputs.content_type }}"
+          [ -n "${{ inputs.channel }}" ] && ARGS="$ARGS --channel=${{ inputs.channel }}"
+          [ "${{ inputs.auto_fix }}" == "true" ] && ARGS="$ARGS --fix"
+          node script/check-duplicates.js $ARGS
+          REPORT_FILE=$(ls duplicate-report-*.json 2>/dev/null | head -1)
+          if [ -n "$REPORT_FILE" ]; then
+            COUNT=$(node -e "const r=JSON.parse(require('fs').readFileSync('$REPORT_FILE'));process.stdout.write(String(r.duplicateCount||0));")
+            echo "duplicates_found=$( [ "$COUNT" != "0" ] && echo true || echo false )" >> $GITHUB_OUTPUT
+          else
+            echo "duplicates_found=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Upload duplicate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: duplicate-report-${{ github.run_number }}
+          path: duplicate-report-*.json
+          retention-days: 30
+      - name: Create issue if duplicates found
+        if: steps.duplicate-check.outputs.duplicates_found == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const files = fs.readdirSync('.').filter(f => f.startsWith('duplicate-report-'));
+            if (files.length > 0) {
+              const report = JSON.parse(fs.readFileSync(files[0], 'utf8'));
+              if (report.duplicateCount > 0) {
+                await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title: `🚨 Duplicates Detected: ${report.duplicateCount} pairs found`, body: `## Duplicate Detection Report\n\n**Content Type:** ${report.contentType}\n**Total Scanned:** ${report.totalScanned}\n**Duplicate Pairs:** ${report.duplicateCount}\n\n_Generated by [Community Workflow](${context.payload.repository.html_url}/actions/runs/${context.runId})_`, labels: ['duplicate', 'content-quality', 'automated'] });
+              }
+            }
+      - name: Reconcile after auto-fix
+        if: inputs.auto_fix == 'true'
+        env:
+          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+        run: pnpm run bot:reconcile -- --threshold=0.75
+
+  summary:
+    name: 📋 Summary
+    needs: [check-trigger, process-issues, cleanup-stale, duplicate-scan]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## 🔄 Community & Quality Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Task | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| ⚙️ Process Issues | ${{ needs.process-issues.result == 'success' && '✅' || needs.process-issues.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧹 Cleanup | ${{ needs.cleanup-stale.result == 'success' && '✅' || needs.cleanup-stale.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔍 Duplicates | ${{ needs.duplicate-scan.result == 'success' && '✅' || needs.duplicate-scan.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY

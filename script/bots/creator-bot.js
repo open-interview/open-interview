@@ -26,6 +26,25 @@ import { checkDuplicateBeforeCreate } from '../ai/services/duplicate-prevention.
 import { validateBeforeInsert, sanitizeQuestion } from './shared/validation.js';
 import { runQualityGate } from '../ai/graphs/quality-gate-graph.js';
 
+// Static imports for Answer Formatting Standards modules (cached at module level)
+let _patternDetector = null;
+let _formatValidator = null;
+let _autoFormatter = null;
+let _formattingModulesLoaded = false;
+
+async function loadFormattingModules() {
+  if (_formattingModulesLoaded) return;
+  const [pd, fv, af] = await Promise.all([
+    import('../../client/src/lib/answer-formatting/pattern-detector.js'),
+    import('../../client/src/lib/answer-formatting/format-validator.js'),
+    import('../../client/src/lib/answer-formatting/auto-formatter.js'),
+  ]);
+  _patternDetector = pd.patternDetector;
+  _formatValidator = fv.formatValidator;
+  _autoFormatter = af.autoFormatter;
+  _formattingModulesLoaded = true;
+}
+
 const BOT_NAME = 'creator';
 const db = getDb();
 
@@ -37,10 +56,11 @@ const db = getDb();
  * Applies Answer Formatting Standards validation and auto-formatting to generated content
  */
 async function applyAnswerFormattingStandards(content) {
-  // Import Answer Formatting Standards modules dynamically
-  const { patternDetector } = await import('../../client/src/lib/answer-formatting/pattern-detector.js');
-  const { formatValidator } = await import('../../client/src/lib/answer-formatting/format-validator.js');
-  const { autoFormatter } = await import('../../client/src/lib/answer-formatting/auto-formatter.js');
+  // Load formatting modules once (cached at module level)
+  await loadFormattingModules();
+  const patternDetector = _patternDetector;
+  const formatValidator = _formatValidator;
+  const autoFormatter = _autoFormatter;
   
   const question = content.question || '';
   const answer = content.explanation || '';

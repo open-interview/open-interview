@@ -17,7 +17,7 @@
 import 'dotenv/config';
 import { getDb, initBotTables } from './shared/db.js';
 import { logAction } from './shared/ledger.js';
-import { getNextWorkItem, completeWorkItem, failWorkItem, getQueueStats } from './shared/queue.js';
+import { getNextWorkItem, completeWorkItem, failWorkItem, getQueueStats, getBatchWorkItems } from './shared/queue.js';
 import { startRun, completeRun, failRun, updateRunStats } from './shared/runs.js';
 import { runWithRetries, parseJson, validateYouTubeVideos, normalizeCompanies } from '../utils.js';
 import { validateBeforeInsert, sanitizeQuestion } from './shared/validation.js';
@@ -1053,13 +1053,8 @@ async function runPipeline(options = {}) {
     actionCounts: {}
   };
 
-  // Fetch all pending work items upfront
-  const workItems = [];
-  for (let i = 0; i < maxItems; i++) {
-    const workItem = await getNextWorkItem(BOT_NAME);
-    if (!workItem) break;
-    workItems.push(workItem);
-  }
+  // Fetch all pending work items upfront using batch fetch (10x fewer DB calls)
+  const workItems = await getBatchWorkItems(maxItems, BOT_NAME);
 
   if (workItems.length === 0) return results;
 

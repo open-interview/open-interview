@@ -1,19 +1,19 @@
-name: 🚀 Deploy
+name: 🚀 CI/CD Pipeline
 
-# Consolidated deployment workflow
-# Replaces: deploy-app.yml (push) + scheduled-deploy.yml (daily schedule)
-# Features: Race condition prevention, concurrency control, single source of truth
+# Replaces: deploy.yml + lighthouse.yml + manual-e2e.yml
 
 on:
   push:
     branches: [main]
     paths-ignore:
       - '**.md'
-      - '.github/workflows/content-generation.yml'
-      - '.github/workflows/deploy-blog.yml'
-      - '.github/workflows/social-media.yml'
+      - '.github/workflows/content.yml'
+      - '.github/workflows/social.yml'
+      - '.github/workflows/community.yml'
+      - '.github/workflows/maintenance.yml'
+  pull_request:
+    branches: [main]
   schedule:
-    # Run daily at 2 AM UTC (after content generation completes)
     - cron: '0 2 * * *'
   workflow_dispatch:
     inputs:
@@ -22,23 +22,34 @@ on:
         required: false
         default: 'all'
         type: choice
-        options:
-          - all
-          - staging
-          - production
+        options: [all, staging, production]
       reason:
         description: 'Reason for manual deployment'
         required: false
         default: 'Manual trigger'
+      run_e2e:
+        description: 'Run E2E tests'
+        required: false
+        default: true
+        type: boolean
+      e2e_pattern:
+        description: 'E2E test pattern (file or grep)'
+        required: false
+        default: 'e2e/core.spec.ts'
+      e2e_browser:
+        description: 'Browser for E2E tests'
+        required: false
+        default: 'chromium'
+        type: choice
+        options: [chromium, firefox, webkit, all]
 
-# Concurrency: Prevent simultaneous deployments (race condition protection)
 concurrency:
   group: deployment-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
   build:
-    name: 🔨 Build & Test
+    name: 🔨 Build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -56,26 +67,26 @@ jobs:
           if [[ "${{ github.event_name }}" == "push" ]]; then
             echo "staging=true" >> $GITHUB_OUTPUT
             echo "production=true" >> $GITHUB_OUTPUT
-            echo "trigger=push" >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "schedule" ]]; then
             echo "staging=false" >> $GITHUB_OUTPUT
             echo "production=true" >> $GITHUB_OUTPUT
-            echo "trigger=scheduled" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "staging=false" >> $GITHUB_OUTPUT
+            echo "production=false" >> $GITHUB_OUTPUT
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             if [[ "${{ github.event.inputs.environment }}" == "staging" ]]; then
-              echo "staging=true" >> $GITHUB_OUTPUT
-              echo "production=false" >> $GITHUB_OUTPUT
+              echo "staging=true" >> $GITHUB_OUTPUT; echo "production=false" >> $GITHUB_OUTPUT
             elif [[ "${{ github.event.inputs.environment }}" == "production" ]]; then
-              echo "staging=false" >> $GITHUB_OUTPUT
-              echo "production=true" >> $GITHUB_OUTPUT
+              echo "staging=false" >> $GITHUB_OUTPUT; echo "production=true" >> $GITHUB_OUTPUT
             else
-              echo "staging=true" >> $GITHUB_OUTPUT
-              echo "production=true" >> $GITHUB_OUTPUT
+              echo "staging=true" >> $GITHUB_OUTPUT; echo "production=true" >> $GITHUB_OUTPUT
             fi
-            echo "trigger=manual" >> $GITHUB_OUTPUT
           fi
 
       - name: Fetch data from database
+        env:
+          SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          SQLITE_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
         run: |
           node script/fetch-questions-for-build.js
           node script/fetch-question-history.js
@@ -84,9 +95,6 @@ jobs:
           node script/generate-sitemap.js
           node script/fetch-bot-monitor-data.js
 
-      - name: Install Playwright
-        run: pnpm exec playwright install --with-deps chromium
-
       - name: Build application
         run: |
           pnpm run build
@@ -94,28 +102,70 @@ jobs:
         env:
           VITE_BASE_URL: '/'
 
-      - name: Run E2E tests
-        run: |
-          # Run only core smoke tests in CI
-          pnpm exec playwright test e2e/core.spec.ts --project=chromium-desktop
-        continue-on-error: true
-        env:
-          CI: 'true'
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: test-results
-          path: test-results/
-          retention-days: 3
-
-      - name: Upload build
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: build
           path: dist/public
           retention-days: 1
+
+  quality:
+    name: 🔍 Quality (E2E + Lighthouse)
+    needs: build
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-node-pnpm
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: dist/public
+
+      - name: Install Playwright
+        run: |
+          BROWSER="${{ github.event.inputs.e2e_browser || 'chromium' }}"
+          if [ "$BROWSER" = "all" ]; then
+            pnpm exec playwright install --with-deps
+          else
+            pnpm exec playwright install --with-deps $BROWSER
+          fi
+
+      - name: Run E2E smoke tests
+        if: github.event.inputs.run_e2e != 'false'
+        run: |
+          PATTERN="${{ github.event.inputs.e2e_pattern || 'e2e/core.spec.ts' }}"
+          BROWSER="${{ github.event.inputs.e2e_browser || 'chromium' }}"
+          PROJECT="chromium-desktop"
+          if [ "$BROWSER" != "chromium" ] && [ "$BROWSER" != "all" ]; then PROJECT="$BROWSER"; fi
+          if [[ "$PATTERN" == *".spec.ts"* ]] || [[ "$PATTERN" == *"e2e/"* ]]; then
+            pnpm exec playwright test "$PATTERN" --project=$PROJECT
+          else
+            pnpm exec playwright test --grep "$PATTERN" --project=$PROJECT
+          fi
+        continue-on-error: true
+        env:
+          CI: 'true'
+
+      - name: Run Lighthouse audit
+        run: pnpm exec playwright test --project=lighthouse --reporter=list
+        continue-on-error: true
+        env:
+          CI: 'true'
+
+      - name: Upload quality reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quality-reports-${{ github.run_number }}
+          path: |
+            test-results/
+            playwright-report/
+            lighthouse-reports/
+          retention-days: 7
 
   staging:
     name: 🧪 Deploy Staging
@@ -179,17 +229,9 @@ jobs:
       - name: Post-deployment summary
         run: |
           echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| **Environments** | Staging → Production |" >> $GITHUB_STEP_SUMMARY
           echo "| **Trigger** | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Branch** | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Commit** | [\`${{ github.sha }}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) |" >> $GITHUB_STEP_SUMMARY
           echo "| **Production URL** | https://open-interview.github.io |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Deployment Details" >> $GITHUB_STEP_SUMMARY
-          echo "- Build: ✅ Complete" >> $GITHUB_STEP_SUMMARY
-          echo "- Staging: ${{ needs.staging.result == 'success' && '✅ Deployed' || needs.staging.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Production: 🚀 Active" >> $GITHUB_STEP_SUMMARY
-          echo "- Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "| **Timestamp** | $(date -u +'%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY

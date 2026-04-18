@@ -1,16 +1,11 @@
-name: 📊 Social Media & Analytics
+name: 📣 Social & Analytics
 
-# Unified social media workflow
-# Combines: social-analytics.yml + linkedin-poll.yml
-# Handles: LinkedIn posts, polls, and analytics collection
+# Replaces: social-media.yml (minor restructure — merges 3 poll jobs into 1)
 
 on:
   schedule:
-    # Daily at 5 AM: Social analytics
-    - cron: '0 5 * * *'
-    # Weekly Tuesday 15:00 UTC (10 AM ET): LinkedIn poll
-    - cron: '0 15 * * 2'
-  
+    - cron: '0 5 * * *'      # Daily 5AM: post + analytics
+    - cron: '0 15 * * 2'     # Weekly Tuesday 15:00 UTC: poll
   workflow_dispatch:
     inputs:
       task:
@@ -18,38 +13,26 @@ on:
         required: true
         default: 'all'
         type: choice
-        options:
-          - all
-          - linkedin-post
-          - linkedin-poll
-          - analytics
-          - opencode-poll
-      # LinkedIn post inputs
+        options: [all, linkedin-post, poll, analytics, opencode-poll]
       post_url:
         description: 'Specific blog post URL (for linkedin-post)'
         required: false
-        type: string
-      # LinkedIn poll inputs
       question_id:
-        description: 'Question ID for poll (for linkedin-poll)'
+        description: 'Question ID for poll'
         required: false
         default: ''
       channel:
-        description: 'Filter by channel (for linkedin-poll)'
+        description: 'Filter by channel'
         required: false
         default: ''
       difficulty:
-        description: 'Filter by difficulty (for linkedin-poll)'
+        description: 'Filter by difficulty'
         required: false
         default: ''
         type: choice
-        options:
-          - ''
-          - beginner
-          - intermediate
-          - advanced
+        options: ['', beginner, intermediate, advanced]
       poll_duration:
-        description: 'Poll duration in hours (for linkedin-poll)'
+        description: 'Poll duration in hours'
         required: false
         default: '360'
       dry_run:
@@ -57,23 +40,27 @@ on:
         required: false
         default: false
         type: boolean
-      # New: Topic/Subtopic/Concept for use-case polls
       topic:
-        description: 'Topic for use-case poll (e.g., sre, kubernetes, devops)'
+        description: 'Topic for use-case poll'
         required: false
         default: ''
       subtopic:
-        description: 'Subtopic (e.g., on-call, networking, ci-cd)'
+        description: 'Subtopic for use-case poll'
         required: false
         default: ''
       concept:
-        description: 'Concept to poll about (e.g., incident response, cgroups)'
+        description: 'Concept for use-case poll'
         required: false
         default: ''
       use_poll_usecase:
         description: 'Use use-case workflow (searches web first)'
         required: false
         default: false
+        type: boolean
+      publish:
+        description: 'Deploy blog after poll generation'
+        required: false
+        default: true
         type: boolean
 
 jobs:
@@ -87,18 +74,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-bot
-
       - name: Get latest blog post
         id: get_post
-        run: node script/get-latest-blog-post.js
         env:
           SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           SPECIFIC_URL: ${{ inputs.post_url }}
-
+        run: node script/get-latest-blog-post.js
       - name: Publish to LinkedIn
         if: steps.get_post.outputs.has_post == 'true'
         id: publish
-        run: node script/publish-to-linkedin.js
         env:
           LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
           LINKEDIN_PERSON_URN: ${{ secrets.LINKEDIN_PERSON_URN }}
@@ -112,29 +96,31 @@ jobs:
           POST_SOCIAL_BODY: ${{ steps.get_post.outputs.social_body }}
           POST_REAL_WORLD_EXAMPLE: ${{ steps.get_post.outputs.real_world_example }}
           SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-
+        run: node script/publish-to-linkedin.js
       - name: Mark post as shared
         if: steps.get_post.outputs.has_post == 'true' && steps.publish.outputs.posted == 'true'
-        run: node script/mark-post-shared.js
         env:
           SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           POST_ID: ${{ steps.get_post.outputs.post_id }}
+        run: node script/mark-post-shared.js
 
-  linkedin-poll:
+  poll:
     name: 📊 LinkedIn Poll
     if: |
       (github.event.schedule == '0 15 * * 2') ||
-      (github.event_name == 'workflow_dispatch' && (inputs.task == 'all' || inputs.task == 'linkedin-poll'))
+      (github.event_name == 'workflow_dispatch' && (inputs.task == 'all' || inputs.task == 'poll'))
     runs-on: ubuntu-latest
     timeout-minutes: 35
     outputs:
-      blog_generated: ${{ steps.poll.outputs.blog_generated }}
+      blog_generated: ${{ steps.poll_standard.outputs.blog_generated }}
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-bot
 
-      - name: Post Poll to LinkedIn
-        id: poll
+      # Standard poll (default)
+      - name: Post Standard Poll
+        id: poll_standard
+        if: inputs.use_poll_usecase != 'true'
         env:
           SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
@@ -146,33 +132,10 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
         run: node script/post-linkedin-poll.js
 
-      - name: Trigger blog deploy (new blog was generated)
-        if: steps.poll.outputs.blog_generated == 'true'
-        continue-on-error: true
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GH_TOKEN }}
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'deploy-blog.yml',
-              ref: 'main'
-            });
-            console.log('✅ Blog deploy triggered for newly generated post');
-
-  linkedin-poll-usecase:
-    name: 📊 LinkedIn Poll (Use Case)
-    if: |
-      (github.event_name == 'workflow_dispatch' && inputs.use_poll_usecase == true)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup-bot
-
-      - name: Post Poll with Use Case
+      # Use-case poll (searches web first)
+      - name: Post Use-Case Poll
         id: poll_usecase
+        if: inputs.use_poll_usecase == 'true'
         env:
           LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
           LINKEDIN_PERSON_URN: ${{ secrets.LINKEDIN_PERSON_URN }}
@@ -185,17 +148,14 @@ jobs:
           CHANNEL: ${{ inputs.channel || inputs.topic }}
         run: node script/post-linkedin-poll-usecase.js
 
-  opencode-poll-generator:
-    name: 🤖 OpenCode Poll Generator
-    if: |
-      (github.event_name == 'workflow_dispatch' && inputs.task == 'opencode-poll')
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/actions/setup-bot
-      - name: Run poll-generator agent
-        run: opencode run "Generate a LinkedIn poll for this week" --agent poll-generator
+      - name: Trigger blog deploy (if new blog was generated)
+        if: steps.poll_standard.outputs.blog_generated == 'true' && inputs.publish != 'false'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GH_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({ owner: context.repo.owner, repo: context.repo.repo, workflow_id: 'deploy-blog.yml', ref: 'main' });
 
   analytics:
     name: 📈 GitHub Analytics
@@ -207,9 +167,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-node-pnpm
-
       - name: Collect GitHub Analytics
-        run: node script/github-analytics-bot.js
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           SQLITE_URL: ${{ secrets.TURSO_DATABASE_URL }}
@@ -217,22 +175,20 @@ jobs:
           REPO_NAME: code-reels
           PAGES_REPO_OWNER: open-interview
           PAGES_REPO_NAME: open-interview.github.io
+        run: node script/github-analytics-bot.js
 
   summary:
     name: 📋 Summary
-    needs: [linkedin-post, linkedin-poll, linkedin-poll-usecase, analytics, opencode-poll-generator]
+    needs: [linkedin-post, poll, analytics]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Generate Summary
         run: |
-          echo "## 📊 Social Media & Analytics Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Task | Status | Notes |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|--------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 📢 LinkedIn Post | ${{ needs.linkedin-post.result == 'success' && '✅' || needs.linkedin-post.result == 'skipped' && '⏭️' || '❌' }} | Blog post shared |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📊 LinkedIn Poll | ${{ needs.linkedin-poll.result == 'success' && '✅' || needs.linkedin-poll.result == 'skipped' && '⏭️' || '❌' }} | ${{ needs.linkedin-poll.outputs.blog_generated == 'true' && '📝 New blog generated + deploy triggered' || 'Blog already existed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📊 Poll (Use Case) | ${{ needs.linkedin-poll-usecase.result == 'success' && '✅' || needs.linkedin-poll-usecase.result == 'skipped' && '⏭️' || '❌' }} | ${{ inputs.topic }}/${{ inputs.subtopic }}/${{ inputs.concept }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📈 Analytics | ${{ needs.analytics.result == 'success' && '✅' || needs.analytics.result == 'skipped' && '⏭️' || '❌' }} | GitHub stats collected |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📣 Social & Analytics Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Task | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 📢 LinkedIn Post | ${{ needs.linkedin-post.result == 'success' && '✅' || needs.linkedin-post.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📊 Poll | ${{ needs.poll.result == 'success' && '✅' || needs.poll.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📈 Analytics | ${{ needs.analytics.result == 'success' && '✅' || needs.analytics.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY

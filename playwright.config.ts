@@ -35,7 +35,7 @@ export default defineConfig({
   },
   
   use: {
-    baseURL: 'http://localhost:5001',
+    baseURL: 'http://localhost:5000',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -67,17 +67,6 @@ export default defineConfig({
       // Temporarily ignore slow/problematic tests
       testIgnore: [
         '**/mobile-only.spec.ts',
-        '**/about.spec.ts',
-        '**/answer-panel-theme.spec.ts',
-        '**/audit-engine.spec.ts',
-        '**/aria-audit.spec.ts',
-        '**/screen-reader-audit.spec.ts',
-        '**/keyboard-navigation-audit.spec.ts',
-        '**/color-contrast-audit.spec.ts',
-        '**/touch-target-audit.spec.ts',
-        '**/reduced-motion.spec.ts',
-        '**/custom-checks.spec.ts',
-        '**/iphone13-ui-audit.spec.ts', // Run separately
       ],
     },
     
@@ -101,12 +90,31 @@ export default defineConfig({
       },
       testMatch: '**/iphone13-ui-audit.spec.ts',
     },
+
+    // Audit project — accessibility, contrast, keyboard, Lighthouse
+    // Previously silently ignored in chromium-desktop; now explicitly targeted
+    {
+      name: 'audit',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: [
+        '**/aria-audit.spec.ts',
+        '**/screen-reader-audit.spec.ts',
+        '**/keyboard-navigation-audit.spec.ts',
+        '**/color-contrast-audit.spec.ts',
+        '**/touch-target-audit.spec.ts',
+        '**/reduced-motion.spec.ts',
+        '**/custom-checks.spec.ts',
+        '**/about.spec.ts',
+        '**/answer-panel-theme.spec.ts',
+        '**/audit-engine.spec.ts',
+      ],
+    },
   ],
   
   webServer: [
     {
-      command: 'pnpm run dev',
-      url: 'http://localhost:5001',
+      command: 'pnpm run dev:server',
+      url: 'http://localhost:5000',
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
       stdout: 'pipe',

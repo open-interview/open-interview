@@ -32,6 +32,19 @@ const CERTIFICATION_CHANNELS = Object.keys(certificationDomains);
 // Top 100 tech companies - imported from AI framework template
 
 // Helper function to process a single channel - extracted from main loop
+// Module-level constant — avoids recreating this object on every processChannel call
+const REAL_SCENARIOS_MAP = {
+  'system-design': [
+    { scenario: 'Design Twitter/X feed', scale: '500M users, 10K tweets/sec', focus: 'fan-out, caching, real-time' },
+    { scenario: 'Design Uber ride matching', scale: '1M concurrent rides', focus: 'geospatial, real-time, matching' },
+    { scenario: 'Design Netflix video streaming', scale: '200M subscribers', focus: 'CDN, encoding, recommendations' },
+  ],
+  'algorithms': [
+    { problem: 'LRU Cache', pattern: 'HashMap + Doubly Linked List', complexity: 'O(1) get/put' },
+    { problem: 'Merge K sorted lists', pattern: 'Min Heap', complexity: 'O(N log K)' },
+  ],
+};
+
 async function processChannel(channel, index, total, subChannelCounts, inputDifficulty, allChannels) {
   const subChannelConfig = Object.keys(subChannelCounts).length > 0
     ? await getPrioritizedSubChannel(channel, subChannelCounts)
@@ -46,17 +59,6 @@ async function processChannel(channel, index, total, subChannelCounts, inputDiff
   const targetCompanies = getRandomTopCompanies(3);
   
   function getScenarioHint(chan) {
-    const REAL_SCENARIOS_MAP = {
-      'system-design': [
-        { scenario: 'Design Twitter/X feed', scale: '500M users, 10K tweets/sec', focus: 'fan-out, caching, real-time' },
-        { scenario: 'Design Uber ride matching', scale: '1M concurrent rides', focus: 'geospatial, real-time, matching' },
-        { scenario: 'Design Netflix video streaming', scale: '200M subscribers', focus: 'CDN, encoding, recommendations' },
-      ],
-      'algorithms': [
-        { problem: 'LRU Cache', pattern: 'HashMap + Doubly Linked List', complexity: 'O(1) get/put' },
-        { problem: 'Merge K sorted lists', pattern: 'Min Heap', complexity: 'O(N log K)' },
-      ],
-    };
     const scenarios = REAL_SCENARIOS_MAP[chan];
     if (!scenarios || scenarios.length === 0) return '';
     const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];

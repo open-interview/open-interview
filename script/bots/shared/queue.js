@@ -160,4 +160,81 @@ export async function getPendingItems(limit = 50) {
   }));
 }
 
-export default { addToQueue, getNextWorkItem, completeWorkItem, failWorkItem, getQueueStats, getPendingItems };
+/**
+ * Get next N pending work items, mark them as processing
+ */
+export async function getBatchWorkItems(n = 10, assignedTo = null) {
+  const db = getDb();
+
+  let sql = `SELECT * FROM work_queue WHERE status = 'pending'`;
+  const args = [];
+
+  if (assignedTo) {
+    sql += ` AND (assigned_to = ? OR assigned_to IS NULL)`;
+    args.push(assignedTo);
+  }
+
+  sql += ` ORDER BY priority ASC, created_at ASC LIMIT ?`;
+  args.push(n);
+
+  const result = await db.execute({ sql, args });
+  if (result.rows.length === 0) return [];
+
+  const ids = result.rows.map(r => r.id);
+  await db.execute({
+    sql: `UPDATE work_queue SET status = 'processing' WHERE id IN (${ids.map(() => '?').join(',')})`,
+    args: ids
+  });
+
+  return result.rows.map(row => ({
+    id: row.id,
+    itemType: row.item_type,
+    itemId: row.item_id,
+    action: row.action,
+    priority: row.priority,
+    reason: row.reason,
+    createdBy: row.created_by,
+    createdAt: row.created_at
+  }));
+}
+
+/**
+ * Add multiple items to the queue, skipping duplicates
+ */
+export async function addBatchToQueue(items) {
+  const db = getDb();
+
+  // Pre-fetch all existing pending items matching any (item_type, item_id, action)
+  const conditions = items.map(() => '(item_type = ? AND item_id = ? AND action = ?)').join(' OR ');
+  const args = items.flatMap(i => [i.itemType, i.itemId, i.action]);
+
+  const existing = await db.execute({
+    sql: `SELECT item_type, item_id, action, id FROM work_queue WHERE status = 'pending' AND (${conditions})`,
+    args
+  });
+
+  const existingSet = new Map(
+    existing.rows.map(r => [`${r.item_type}|${r.item_id}|${r.action}`, r.id])
+  );
+
+  const now = new Date().toISOString();
+  const results = [];
+
+  for (const item of items) {
+    const key = `${item.itemType}|${item.itemId}|${item.action}`;
+    if (existingSet.has(key)) {
+      results.push({ id: existingSet.get(key), isNew: false });
+    } else {
+      const r = await db.execute({
+        sql: `INSERT OR IGNORE INTO work_queue (item_type, item_id, action, priority, reason, created_by, assigned_to, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [item.itemType, item.itemId, item.action, item.priority ?? 5, item.reason ?? null, item.createdBy ?? null, item.assignedTo ?? null, now]
+      });
+      results.push({ id: r.lastInsertRowid, isNew: r.rowsAffected > 0 });
+    }
+  }
+
+  return results;
+}
+
+export default { addToQueue, getNextWorkItem, completeWorkItem, failWorkItem, getQueueStats, getPendingItems, getBatchWorkItems, addBatchToQueue };

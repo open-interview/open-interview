@@ -34,6 +34,7 @@ function App() {
       setIsInitialized(true);
     } catch (error) {
       console.error("Failed to initialize app:", error);
+      setIsInitialized(true);
     }
   };
 

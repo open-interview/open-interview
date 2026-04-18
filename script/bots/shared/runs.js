@@ -5,6 +5,9 @@
 
 import { getDb } from './db.js';
 
+const _pendingStats = new Map();
+const _pendingCounts = new Map();
+
 /**
  * Start a new bot run
  */
@@ -33,8 +36,20 @@ export async function startRun(botName) {
  * Update run stats
  */
 export async function updateRunStats(runId, stats) {
+  _pendingStats.set(runId, stats);
+  _pendingCounts.set(runId, (_pendingCounts.get(runId) || 0) + 1);
+  if (_pendingCounts.get(runId) >= 10) {
+    await flushRunStats(runId);
+  }
+}
+
+/**
+ * Flush pending stats to DB
+ */
+export async function flushRunStats(runId) {
+  const stats = _pendingStats.get(runId);
+  if (!stats) return;
   const db = getDb();
-  
   await db.execute({
     sql: `UPDATE bot_runs SET 
           items_processed = ?,
@@ -50,12 +65,15 @@ export async function updateRunStats(runId, stats) {
       runId
     ]
   });
+  _pendingStats.delete(runId);
+  _pendingCounts.delete(runId);
 }
 
 /**
  * Complete a bot run
  */
 export async function completeRun(runId, stats, summary = null) {
+  await flushRunStats(runId);
   const db = getDb();
   
   await db.execute({
@@ -155,4 +173,4 @@ export async function getBotStats() {
   }));
 }
 
-export default { startRun, updateRunStats, completeRun, failRun, getRecentRuns, getBotStats };
+export default { startRun, updateRunStats, flushRunStats, completeRun, failRun, getRecentRuns, getBotStats };
