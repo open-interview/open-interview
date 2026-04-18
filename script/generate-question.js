@@ -56,7 +56,7 @@ async function processChannel(channel, index, total, subChannelCounts, inputDiff
     ? difficulties[Math.floor(Math.random() * difficulties.length)]
     : inputDifficulty;
 
-  const targetCompanies = getRandomTopCompanies(3);
+  const targetCompanies = TOP_TECH_COMPANIES.sort(() => Math.random() - 0.5).slice(0, 3);
   
   function getScenarioHint(chan) {
     const scenarios = REAL_SCENARIOS_MAP[chan];
