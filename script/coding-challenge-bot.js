@@ -16,7 +16,7 @@
  */
 
 import { writeGitHubOutput, dbClient } from './utils.js';
-import { generateCodingChallenge } from './ai/graphs/coding-challenge-graph.js';
+import { generateChallengesParallel } from './ai/graphs/coding-challenge-graph.js';
 import { categories as CATEGORIES, difficulties as DIFFICULTIES, topCompanies as TOP_COMPANIES } from './ai/prompts/templates/coding-challenge.js';
 
 // Get 2-4 random companies
@@ -155,29 +155,6 @@ async function getChallengeCount() {
   return result.rows[0]?.count || 0;
 }
 
-async function generateChallengeWrapper(difficulty, category, dryRun = false) {
-  const companies = getRandomCompanies();
-  const categoryTitles = dryRun ? [] : await getExistingTitlesForCategory(category);
-  
-  console.log(`\n🎯 Generating ${difficulty} challenge for ${category}...`);
-  console.log(`🏢 Target companies: ${companies.join(', ')}`);
-  
-  // Use LangGraph pipeline for generation
-  const result = await generateCodingChallenge({
-    difficulty,
-    category,
-    companies,
-    existingTitles: categoryTitles
-  });
-  
-  if (!result.success) {
-    console.log(`❌ Generation failed: ${result.error}`);
-    return null;
-  }
-  
-  return result.challenge;
-}
-
 async function main() {
   console.log('=== 🤖 Coding Challenge Generator Bot ===\n');
 
@@ -209,31 +186,23 @@ async function main() {
   const failed = [];
 
   // Build task list
-  const tasks = Array.from({ length: inputCount }, (_, i) => {
+  const challenges = await Promise.all(Array.from({ length: inputCount }, async () => {
     const difficulty = inputDifficulty === 'random'
       ? DIFFICULTIES[Math.floor(Math.random() * DIFFICULTIES.length)]
       : inputDifficulty;
     const category = inputCategory === 'random'
       ? CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)]
       : inputCategory;
-    return { id: `challenge-${i + 1}`, fn: generateChallengeWrapper, args: [difficulty, category, dryRun] };
-  });
+    const companies = getRandomCompanies();
+    const existingTitles = dryRun ? [] : await getExistingTitlesForCategory(category);
+    return { difficulty, category, companies, existingTitles };
+  }));
 
-  const { WorkerPool } = await import('./ai/graphs/parallel-bot-executor.js');
-  const { safeConcurrency } = await import('./ai/providers/opencode.js');
-  const pool = new WorkerPool({
-    maxConcurrency: safeConcurrency(3),
-    batchSize: 3,
-    taskTimeout: 120_000,
-    retryAttempts: 2,
-    rateLimitDelay: 500,
-  });
-  pool.addTasks(tasks);
-  const poolResults = await pool.execute();
+  const poolResults = await generateChallengesParallel(challenges);
 
   for (const task of poolResults.completed) {
-    const challenge = task.result;
-    if (!challenge) { failed.push({ reason: 'No result' }); continue; }
+    const challenge = task.result?.challenge;
+    if (!challenge) { failed.push({ reason: task.result?.error || 'No result' }); continue; }
     if (dryRun) { generated.push(challenge); continue; }
     if (await isDuplicateChallenge(challenge.title)) {
       failed.push({ reason: 'Duplicate title' }); continue;

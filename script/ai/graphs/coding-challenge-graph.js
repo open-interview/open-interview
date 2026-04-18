@@ -391,4 +391,19 @@ export async function generateCodingChallenge(options) {
   }
 }
 
-export default { createCodingChallengeGraph, generateCodingChallenge };
+export async function generateChallengesParallel(challenges, options = {}) {
+  const { safeConcurrency } = await import('../providers/opencode.js');
+  const { WorkerPool } = await import('./parallel-bot-executor.js');
+  const concurrency = safeConcurrency(options.concurrency ?? 3);
+  const pool = new WorkerPool({
+    maxConcurrency: concurrency,
+    batchSize: options.batchSize ?? 3,
+    taskTimeout: options.timeout ?? 120_000,
+    retryAttempts: 2,
+    rateLimitDelay: 500,
+  });
+  pool.addTasks(challenges.map((c, i) => ({ id: `challenge-${i}`, fn: generateCodingChallenge, args: [c] })));
+  return pool.execute();
+}
+
+export default { createCodingChallengeGraph, generateCodingChallenge, generateChallengesParallel };

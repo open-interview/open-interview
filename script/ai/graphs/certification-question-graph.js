@@ -268,4 +268,19 @@ export async function generateCertificationQuestions(options) {
   }
 }
 
-export default { createCertificationQuestionGraph, generateCertificationQuestions };
+export async function generateCertificationsParallel(certs, options = {}) {
+  const { safeConcurrency } = await import('../providers/opencode.js');
+  const { WorkerPool } = await import('./parallel-bot-executor.js');
+  const concurrency = safeConcurrency(options.concurrency ?? 4);
+  const pool = new WorkerPool({
+    maxConcurrency: concurrency,
+    batchSize: options.batchSize ?? 4,
+    taskTimeout: options.timeout ?? 180_000,
+    retryAttempts: 2,
+    rateLimitDelay: 300,
+  });
+  pool.addTasks(certs.map((c, i) => ({ id: `cert-${c.certificationId}-${i}`, fn: generateCertificationQuestions, args: [c] })));
+  return pool.execute();
+}
+
+export default { createCertificationQuestionGraph, generateCertificationQuestions, generateCertificationsParallel };

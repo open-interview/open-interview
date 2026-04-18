@@ -11,7 +11,7 @@
  * - Domains within certifications are also prioritized by question count
  */
 
-import { generateCertificationQuestions } from './ai/graphs/certification-question-graph.js';
+import { generateCertificationsParallel } from './ai/graphs/certification-question-graph.js';
 import { certificationDomains } from './ai/prompts/templates/certification-question.js';
 import { dbClient, saveQuestion } from './utils.js';
 
@@ -192,25 +192,14 @@ async function main() {
   let totalGenerated = 0;
   let totalSaved = 0;
 
-  const { WorkerPool } = await import('./ai/graphs/parallel-bot-executor.js');
-  const { safeConcurrency } = await import('./ai/providers/opencode.js');
-
-  const tasks = await Promise.all(targetCerts.map(async certId => {
+  const certs = (await Promise.all(targetCerts.map(async certId => {
     const domains = certificationDomains[certId];
     if (!domains?.length) return null;
     const domain = await getPrioritizedDomain(certId);
-    return { id: `cert-${certId}`, fn: generateCertificationQuestions, args: [{ certificationId: certId, domain, difficulty: 'intermediate', count: QUESTIONS_PER_CERT }] };
-  }));
+    return { certificationId: certId, domain, difficulty: 'intermediate', count: QUESTIONS_PER_CERT };
+  }))).filter(Boolean);
 
-  const pool = new WorkerPool({
-    maxConcurrency: safeConcurrency(4),
-    batchSize: 4,
-    taskTimeout: 180_000,
-    retryAttempts: 2,
-    rateLimitDelay: 300,
-  });
-  pool.addTasks(tasks.filter(Boolean));
-  const poolResults = await pool.execute();
+  const poolResults = await generateCertificationsParallel(certs);
 
   for (const task of poolResults.completed) {
     const result = task.result;
