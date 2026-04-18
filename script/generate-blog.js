@@ -309,14 +309,16 @@ async function getAllBlogPosts() {
 async function saveBlogPost(questionId, blogContent, question, svgContent = {}) {
   const now = new Date().toISOString();
   const diagram = blogContent.diagram || question.diagram;
+  const id = crypto.randomUUID();
   await writeClient.execute({
     sql: `INSERT INTO blog_posts 
-          (question_id, title, slug, introduction, sections, conclusion, 
+          (id, question_id, title, slug, introduction, sections, conclusion, 
            meta_description, channel, difficulty, tags, diagram, quick_reference,
            glossary, real_world_example, fun_fact, sources, social_snippet, 
            diagram_type, diagram_label, images, svg_content, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
+      id,
       questionId,
       blogContent.title,
       generateSlug(blogContent.title),
