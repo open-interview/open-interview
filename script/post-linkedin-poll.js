@@ -357,7 +357,8 @@ async function parseLinkedInError(response) {
 function pollDurationEnum(hours) {
   if (hours <= 24) return 'ONE_DAY';
   if (hours <= 72) return 'THREE_DAYS';
-  return 'ONE_WEEK'; // LinkedIn maximum supported value
+  if (hours <= 168) return 'SEVEN_DAYS';
+  return 'FOURTEEN_DAYS';
 }
 
 async function publishPollToLinkedIn(content) {
