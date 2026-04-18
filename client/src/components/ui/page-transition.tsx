@@ -12,8 +12,8 @@ export function PageTransition({ children, locationKey }: PageTransitionProps) {
     ? { initial: {}, animate: {}, exit: {} }
     : {
         initial: { opacity: 0, y: 8 },
-        animate: { opacity: 1, y: 0 },
-        exit: { opacity: 0, y: -8 },
+        animate: { opacity: 1, y: 0, transition: { duration: 0.2, ease: "easeOut" as const } },
+        exit: { opacity: 0, y: -8, transition: { duration: 0.15, ease: "easeIn" as const } },
       };
 
   return (
@@ -24,7 +24,6 @@ export function PageTransition({ children, locationKey }: PageTransitionProps) {
         initial="initial"
         animate="animate"
         exit="exit"
-        transition={{ duration: 0.2, ease: "easeOut" }}
       >
         {children}
       </motion.div>

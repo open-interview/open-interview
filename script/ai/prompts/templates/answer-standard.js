@@ -29,12 +29,12 @@ export const answerSchema = {
 export const ANSWER_RULES = [
   `Length: ${thresholds.minLength}–${thresholds.maxLength} characters (hard limits)`,
   'Plain text ONLY — no markdown, no **bold**, no `code`, no bullet lists',
-  'Must directly answer the question asked',
-  'Must demonstrate technical depth: name specific technologies, patterns, or trade-offs',
-  'Must be self-contained — no "as mentioned above" or "see explanation"',
-  'No filler openers: avoid "Great question", "Basically", "Simply put"',
+  'Start with the direct answer — no preamble, no context-setting',
+  'Name specific technologies, patterns, or trade-offs',
+  'Self-contained — no "as mentioned above" or "see explanation"',
+  'No filler: no "Great question", "Basically", "Simply put", "In summary"',
   'No trailing ellipsis or cut-off sentences',
-  'Write in third-person declarative style, not "you should…"',
+  'Declarative style — state facts, not advice ("X does Y", not "you should use X")',
 ];
 
 // ─── Explanation formats ──────────────────────────────────────────────────────
@@ -43,80 +43,42 @@ export const EXPLANATION_FORMATS = {
   /**
    * Standard format for most technical questions.
    */
-  standard: `## Why This Is Asked
+  standard: `## How It Works
 
-Brief context on why interviewers ask this question.
+Concise technical explanation of the mechanism/concept.
 
-## Key Concepts
+## Key Points
 
-- **Concept 1**: explanation
-- **Concept 2**: explanation
-- **Concept 3**: explanation
+- **Point 1**: one-line explanation
+- **Point 2**: one-line explanation
+- **Point 3**: one-line explanation
 
-## Code Example
+## Example
 
 \`\`\`javascript
-// Concrete implementation
-function example() {
-  return 'value';
-}
-\`\`\`
-
-## Follow-up Questions
-
-- Follow-up question 1?
-- Follow-up question 2?`,
+// Minimal working example
+\`\`\``,
 
   /**
-   * System design format — required for any question involving "design", "architect", or "scale".
+   * System design format — for questions involving "design", "architect", or "scale".
    */
-  systemDesign: `## Functional Requirements
+  systemDesign: `## Core Design
 
-- Requirement 1
-- Requirement 2
+High-level architecture in 2-3 sentences.
 
-## Non-Functional Requirements (NFRs)
+## Components
 
-- Availability: e.g. 99.99%
-- Latency: e.g. p99 < 100ms
-- Scalability: e.g. 10M DAU
-- Consistency: e.g. eventual
+- **Component 1**: role and why
+- **Component 2**: role and why
 
-## Back-of-Envelope Calculations
+## Trade-offs
 
-### Users & Traffic
+- **Pro**: reason
+- **Con**: reason
 
-- DAU: number
-- Peak QPS: number
+## Scale Considerations
 
-### Storage
-
-- Per user: size
-- Total: size
-
-## High-Level Design
-
-Architecture overview.
-
-## Deep Dive: Key Components
-
-### Component 1
-
-Details.
-
-### Component 2
-
-Details.
-
-## Trade-offs & Considerations
-
-- Trade-off 1: explanation
-- Trade-off 2: explanation
-
-## Failure Scenarios & Mitigations
-
-- Scenario 1: mitigation
-- Scenario 2: mitigation`,
+Key numbers and bottlenecks.`,
 };
 
 // ─── Explanation rules ────────────────────────────────────────────────────────
@@ -124,12 +86,12 @@ Details.
 export const EXPLANATION_RULES = [
   'Use ## for top-level sections, ### for sub-sections',
   'Add a blank line after every heading',
-  'Add a blank line between sections',
   'Code fences (```) must be on their own line with a language tag',
-  'Bold markers (**) must be on the same line as the text — never split across lines',
+  'Bold markers (**) must be on the same line as the text',
   'Each bullet must be on its own line starting with "- "',
-  'Minimum 3 sections; system-design questions must use the NFR format',
-  'Do not repeat the plain-text answer verbatim — add depth',
+  'Minimum 2 sections — no filler sections like "Why This Is Asked" or "Follow-up Questions"',
+  'Do not repeat the plain-text answer — add depth and examples only',
+  'Be concise: every sentence must add information, no padding',
 ];
 
 // ─── Audit criteria (used by answer-auditor-bot) ──────────────────────────────

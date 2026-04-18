@@ -24,6 +24,7 @@ import {
   BookOpen, Code2, GraduationCap, Flame, Calendar, BarChart2,
   Award, Mic, TrendingUp, Clock
 } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -37,11 +38,24 @@ function formatDate(iso: string) {
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
-    <button onClick={onToggle} role="switch" aria-checked={on}
-      className="w-12 h-6 rounded-full transition-all flex-shrink-0 relative"
-      style={{ background: on ? 'var(--gradient-primary)' : 'var(--surface-4)' }}>
-      <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${on ? 'translate-x-6' : 'translate-x-0.5'}`} />
-    </button>
+    <div className="flex rounded-full overflow-hidden border" style={{ borderColor: 'var(--color-border)', background: 'var(--surface-3)' }}>
+      {(['On', 'Off'] as const).map((label) => {
+        const active = label === 'On' ? on : !on;
+        return (
+          <button
+            key={label}
+            onClick={() => { if (label === 'On' ? !on : on) onToggle(); }}
+            className="px-4 py-2 min-h-[44px] text-xs font-semibold transition-all duration-200 cursor-pointer"
+            style={{
+              background: active ? 'var(--gradient-primary)' : 'transparent',
+              color: active ? '#fff' : 'var(--text-tertiary)',
+            }}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -49,7 +63,7 @@ function SettingRow({ icon, label, description, children }: {
   icon: React.ReactNode; label: string; description?: string; children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between py-3 px-4 rounded-[var(--radius-md)] transition-colors hover:bg-[var(--surface-3)]">
+    <div className="flex items-center justify-between py-3 px-4 min-h-[44px] rounded-[var(--radius-md)] transition-colors duration-200 hover:bg-[var(--surface-3)]">
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--surface-3)' }}>
           {icon}
@@ -202,20 +216,62 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
       <motion.div {...fadeUp(0.1)} className="glass-card rounded-[var(--radius-2xl)] p-6">
         <div className="flex items-center justify-between mb-4">
           <SectionHeader title="Achievements" icon={<Trophy className="w-4 h-4" style={{ color: 'var(--color-xp)' }} />} />
-          <button onClick={() => setLocation('/badges')} className="text-xs flex items-center gap-1 hover:opacity-80" style={{ color: 'var(--color-accent-violet-light)' }}>
+          <button onClick={() => setLocation('/badges')} className="text-xs flex items-center gap-1 min-h-[44px] px-2 cursor-pointer hover:opacity-80 transition-opacity duration-200" style={{ color: 'var(--color-accent-violet-light)' }}>
             View All <ChevronRight className="w-3 h-3" />
           </button>
         </div>
         {unlockedBadges.length > 0 ? (
-          <div className="grid grid-cols-6 gap-3">
-            {unlockedBadges.slice(0, 6).map((badge, i) => (
-              <motion.div key={badge.achievement.id} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 + i * 0.05 }}
-                title={badge.achievement.name}
-                className="aspect-square rounded-xl flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
-                style={{ background: badge.achievement.gradient || 'var(--surface-3)', border: '1px solid var(--color-border)' }}>
-                <Trophy className="w-5 h-5 text-white" />
-              </motion.div>
-            ))}
+          <div className="grid grid-cols-3 gap-4">
+            {unlockedBadges.slice(0, 6).map((badge, i) => {
+              const { achievement } = badge;
+              // Tier ring colors
+              const tierRing: Record<string, string> = {
+                bronze: '#cd7f32', silver: '#c0c0c0', gold: '#ffd700', platinum: '#e5e4e2', diamond: '#b9f2ff'
+              };
+              const ringColor = tierRing[achievement.tier] || achievement.color || '#7c3aed';
+              // Resolve lucide icon
+              const iconName = (achievement.icon || 'star').split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+              const IconComp = (LucideIcons as any)[iconName] || Trophy;
+              return (
+                <motion.div
+                  key={achievement.id}
+                  initial={{ opacity: 0, scale: 0.7 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.1 + i * 0.06, type: 'spring', stiffness: 200 }}
+                  className="flex flex-col items-center gap-2 cursor-pointer group transition-opacity duration-200"
+                  title={achievement.description}
+                  onClick={() => setLocation('/badges')}
+                >
+                  {/* Medal circle — Apple Watch style */}
+                  <div className="relative" style={{ width: 72, height: 72 }}>
+                    {/* Outer glow ring */}
+                    <div className="absolute inset-0 rounded-full opacity-30 blur-sm group-hover:opacity-60 transition-opacity"
+                      style={{ background: ringColor }} />
+                    {/* Tier ring */}
+                    <svg width={72} height={72} className="absolute inset-0 -rotate-90">
+                      <circle cx={36} cy={36} r={32} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={4} />
+                      <circle cx={36} cy={36} r={32} fill="none" stroke={ringColor} strokeWidth={4}
+                        strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 32}`} strokeDashoffset={0} />
+                    </svg>
+                    {/* Inner medal face */}
+                    <div className={`absolute rounded-full flex items-center justify-center bg-gradient-to-br ${achievement.gradient || 'from-violet-500 to-purple-700'} shadow-lg`}
+                      style={{ inset: 6 }}>
+                      <IconComp className="text-white drop-shadow" style={{ width: 28, height: 28 }} />
+                    </div>
+                    {/* Tier badge dot */}
+                    <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center text-[8px] font-black shadow"
+                      style={{ background: ringColor, borderColor: 'var(--surface-1)', color: achievement.tier === 'silver' || achievement.tier === 'platinum' ? '#333' : '#fff' }}>
+                      {achievement.tier[0].toUpperCase()}
+                    </div>
+                  </div>
+                  {/* Name */}
+                  <span className="text-[10px] font-semibold text-center leading-tight line-clamp-2 w-full"
+                    style={{ color: 'var(--text-primary)' }}>
+                    {achievement.name}
+                  </span>
+                </motion.div>
+              );
+            })}
           </div>
         ) : (
           <p className="text-sm text-center py-4" style={{ color: 'var(--text-tertiary)' }}>Complete challenges to earn badges</p>
@@ -267,7 +323,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
       {/* Data Export */}
       <motion.div {...fadeUp(0.28)} className="glass-card rounded-[var(--radius-2xl)] p-6">
         <SectionHeader title="Data" icon={<Download className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />} />
-        <button onClick={exportData} className="w-full flex items-center justify-between px-4 py-3 rounded-[var(--radius-lg)] transition-colors hover:opacity-80"
+        <button onClick={exportData} className="w-full flex items-center justify-between px-4 py-3 min-h-[44px] rounded-[var(--radius-lg)] cursor-pointer transition-opacity duration-200 hover:opacity-80"
           style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', color: 'var(--color-accent-cyan)' }}>
           <span className="text-sm font-medium">Export my data</span>
           <Download className="w-4 h-4" />
@@ -370,184 +426,193 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
   const fadeUp = (delay = 0) => ({ initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.4 } });
 
   return (
-    <div className="space-y-8">
-      {/* Key Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { icon: Target, label: 'Questions Answered', value: totalCompleted, sub: `+${todayCount} today`, color: 'var(--color-accent-cyan)', bg: 'rgba(6,182,212,0.12)', border: 'rgba(6,182,212,0.25)', delay: 0 },
-          { icon: BarChart2, label: 'Topics Mastered', value: topicsMastered, sub: undefined, color: 'var(--color-accent-violet-light)', bg: 'rgba(124,58,237,0.12)', border: 'rgba(124,58,237,0.25)', delay: 0.05 },
-          { icon: Trophy, label: 'Certifications', value: certCount, sub: undefined, color: 'var(--color-xp)', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.25)', delay: 0.1 },
-          { icon: Mic, label: 'Voice Sessions', value: voiceSessions, sub: undefined, color: 'var(--color-success)', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.25)', delay: 0.15 },
-        ].map(({ icon: Icon, label, value, sub, color, bg, border, delay }) => (
-          <motion.div key={label} {...fadeUp(delay)} className="rounded-[var(--radius-xl)] p-5 flex flex-col gap-2" style={{ background: bg, border: `1px solid ${border}` }}>
-            <Icon className="w-6 h-6" style={{ color }} />
-            <div className="text-3xl font-black">{value}</div>
-            <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{label}</div>
-            {sub && <div className="text-xs font-semibold" style={{ color }}>{sub}</div>}
-          </motion.div>
-        ))}
-      </div>
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
 
-      {/* Heatmap */}
-      <motion.div {...fadeUp(0.2)} className="glass-card rounded-[var(--radius-2xl)] p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <SectionHeader title="Activity Heatmap" icon={<Calendar className="w-5 h-5" style={{ color: 'var(--color-accent-violet-light)' }} />} />
-          <span className="ml-auto text-xs" style={{ color: 'var(--text-tertiary)' }}>Last 52 weeks</span>
+      {/* 4 stat chips */}
+      {[
+        { icon: Target,    label: 'Questions',  value: totalCompleted, sub: `+${todayCount}`, color: '#06b6d4', bg: 'rgba(6,182,212,0.08)'  },
+        { icon: BarChart2, label: 'Mastered',   value: topicsMastered, sub: undefined,        color: '#7c3aed', bg: 'rgba(124,58,237,0.08)' },
+        { icon: Trophy,    label: 'Certs',      value: certCount,      sub: undefined,        color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
+        { icon: Mic,       label: 'Voice',      value: voiceSessions,  sub: undefined,        color: '#10b981', bg: 'rgba(16,185,129,0.08)' },
+      ].map(({ icon: Icon, label, value, sub, color, bg }, i) => (
+        <motion.div key={label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+          className="rounded-2xl p-3 flex flex-col gap-0.5" style={{ background: bg, border: `1px solid ${color}20` }}>
+          <Icon style={{ color, width: 13, height: 13 }} />
+          <div className="text-lg font-black leading-none mt-1">{value}</div>
+          <div className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>{label}</div>
+          {sub && <div className="text-[9px] font-semibold" style={{ color }}>{sub}</div>}
+        </motion.div>
+      ))}
+
+      {/* Heatmap — full width */}
+      <motion.div {...fadeUp(0.2)} className="glass-card rounded-2xl p-3 col-span-2 sm:col-span-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Activity</span>
+          <span className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>52 weeks</span>
         </div>
         <div className="overflow-x-auto">
-          <div className="min-w-[600px]">
-            <div className="relative h-5 mb-1 pl-8">
+          <div className="min-w-[520px]">
+            <div className="relative h-3.5 mb-0.5 pl-6">
               {monthLabels.map(({ label, col }) => (
-                <span key={`${label}-${col}`} className="text-xs absolute" style={{ color: 'var(--text-tertiary)', left: `${32 + col * 11}px` }}>{label}</span>
+                <span key={`${label}-${col}`} className="text-[9px] absolute" style={{ color: 'var(--text-tertiary)', left: `${24 + col * 9}px` }}>{label}</span>
               ))}
             </div>
-            <div className="flex gap-1">
-              <div className="flex flex-col gap-1 mr-1 pt-0.5">
+            <div className="flex gap-0.5">
+              <div className="flex flex-col gap-0.5 mr-0.5">
                 {DAY_LABELS.map((d, i) => (
-                  <div key={d} className="text-xs w-6 text-right leading-[10px]" style={{ color: i % 2 === 0 ? 'var(--text-tertiary)' : 'transparent', height: '10px' }}>{d.slice(0, 1)}</div>
+                  <div key={d} className="text-[8px] w-4 text-right" style={{ color: i % 2 === 0 ? 'var(--text-tertiary)' : 'transparent', height: '8px', lineHeight: '8px' }}>{d[0]}</div>
                 ))}
               </div>
-              <div className="relative flex gap-1">
+              <div className="flex gap-0.5">
                 {Array.from({ length: 53 }, (_, col) => (
-                  <div key={col} className="flex flex-col gap-1">
+                  <div key={col} className="flex flex-col gap-0.5">
                     {Array.from({ length: 7 }, (_, row) => {
                       const cell = heatmapCells.find(c => c.col === col && c.row === row);
-                      if (!cell) return <div key={row} className="w-[10px] h-[10px]" />;
-                      return (
-                        <div key={row} className={`w-[10px] h-[10px] rounded-sm cursor-pointer transition-transform hover:scale-125 ${HEATMAP_LEVELS[activityLevel(cell.count)]}`}
-                          onMouseEnter={e => { const r = (e.target as HTMLElement).getBoundingClientRect(); setHoveredCell({ date: cell.date, count: cell.count, x: r.left, y: r.top }); }}
-                          onMouseLeave={() => setHoveredCell(null)} />
-                      );
+                      if (!cell) return <div key={row} style={{ width: 8, height: 8 }} />;
+                      return <div key={row} className={`rounded-[1px] cursor-pointer hover:scale-125 transition-transform ${HEATMAP_LEVELS[activityLevel(cell.count)]}`}
+                        style={{ width: 8, height: 8 }}
+                        onMouseEnter={e => { const r = (e.target as HTMLElement).getBoundingClientRect(); setHoveredCell({ date: cell.date, count: cell.count, x: r.left, y: r.top }); }}
+                        onMouseLeave={() => setHoveredCell(null)} />;
                     })}
                   </div>
                 ))}
               </div>
             </div>
-            <div className="flex items-center gap-2 mt-3 justify-end text-xs" style={{ color: 'var(--text-tertiary)' }}>
-              <span>Less</span>
-              {HEATMAP_LEVELS.map((cls, i) => <div key={i} className={`w-3 h-3 rounded-sm ${cls}`} />)}
-              <span>More</span>
-            </div>
           </div>
         </div>
         {hoveredCell && (
-          <div className="fixed z-50 pointer-events-none" style={{ left: hoveredCell.x + 14, top: hoveredCell.y - 32 }}>
+          <div className="fixed z-50 pointer-events-none" style={{ left: hoveredCell.x + 12, top: hoveredCell.y - 28 }}>
             <HeatmapTooltip date={hoveredCell.date} count={hoveredCell.count} />
           </div>
         )}
       </motion.div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <motion.div {...fadeUp(0.25)} className="glass-card rounded-[var(--radius-2xl)] p-6">
-          <SectionHeader title="Weekly Activity" icon={<BarChart2 className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />} />
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={weeklyData} barSize={20}>
-              <XAxis dataKey="day" tick={{ fill: 'var(--text-tertiary)', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis hide />
-              <Tooltip contentStyle={{ background: 'var(--surface-4)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 12 }} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-              <Bar dataKey="count" name="Activities" radius={[4,4,0,0]} fill="url(#barGrad)" />
-              <defs><linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#7c3aed" /><stop offset="100%" stopColor="#06b6d4" /></linearGradient></defs>
-            </BarChart>
-          </ResponsiveContainer>
-        </motion.div>
-        <motion.div {...fadeUp(0.3)} className="glass-card rounded-[var(--radius-2xl)] p-6">
-          <SectionHeader title="Topic Distribution" icon={<Target className="w-4 h-4" style={{ color: 'var(--color-accent-violet-light)' }} />} />
-          {topicData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={160}>
-              <PieChart>
-                <Pie data={topicData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" paddingAngle={2}>
-                  {topicData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Pie>
-                <Tooltip contentStyle={{ background: 'var(--surface-4)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 12 }} />
-                <Legend iconSize={8} wrapperStyle={{ fontSize: 11, color: 'var(--text-secondary)' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-40 flex items-center justify-center text-sm" style={{ color: 'var(--text-tertiary)' }}>Complete some questions to see distribution</div>
-          )}
-        </motion.div>
-      </div>
+      {/* Weekly bar widget */}
+      <motion.div {...fadeUp(0.25)} className="glass-card rounded-2xl p-3 col-span-1 sm:col-span-2">
+        <div className="text-[10px] font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>This Week</div>
+        <ResponsiveContainer width="100%" height={90}>
+          <BarChart data={weeklyData} barSize={12} margin={{ top: 0, right: 0, left: -28, bottom: 0 }}>
+            <XAxis dataKey="day" tick={{ fill: 'var(--text-tertiary)', fontSize: 9 }} axisLine={false} tickLine={false} />
+            <YAxis hide />
+            <Tooltip contentStyle={{ background: 'var(--surface-4)', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 10 }} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+            <Bar dataKey="count" radius={[3,3,0,0]} fill="url(#bG)" />
+            <defs><linearGradient id="bG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#7c3aed"/><stop offset="100%" stopColor="#06b6d4"/></linearGradient></defs>
+          </BarChart>
+        </ResponsiveContainer>
+      </motion.div>
 
-      {/* 30-day line */}
-      <motion.div {...fadeUp(0.35)} className="glass-card rounded-[var(--radius-2xl)] p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <SectionHeader title="Performance Over Time" icon={<TrendingUp className="w-4 h-4" style={{ color: 'var(--color-accent-violet-light)' }} />} />
-          <span className="ml-auto text-xs font-normal" style={{ color: 'var(--text-tertiary)' }}>Last 30 days</span>
+      {/* Topic distribution widget */}
+      <motion.div {...fadeUp(0.28)} className="glass-card rounded-2xl p-3 col-span-1 sm:col-span-2">
+        <div className="text-[10px] font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>Topics</div>
+        {topicData.length > 0 ? (() => {
+          const total = topicData.reduce((s, d) => s + d.value, 0);
+          return (
+            <div className="space-y-1.5">
+              {topicData.slice(0, 5).map((d, i) => {
+                const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
+                return (
+                  <div key={i}>
+                    <div className="flex justify-between text-[9px] mb-0.5">
+                      <span className="truncate max-w-[65%]" style={{ color: 'var(--text-secondary)' }}>{d.name}</span>
+                      <span style={{ color: d.color }}>{pct}%</span>
+                    </div>
+                    <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--surface-3)' }}>
+                      <motion.div className="h-full rounded-full" style={{ background: d.color }}
+                        initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.5, delay: i * 0.04 }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })() : <div className="text-[10px] text-center py-4" style={{ color: 'var(--text-tertiary)' }}>No data yet</div>}
+      </motion.div>
+
+      {/* 30-day line — spans full width */}
+      <motion.div {...fadeUp(0.32)} className="glass-card rounded-2xl p-3 col-span-2 sm:col-span-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] font-semibold" style={{ color: 'var(--text-tertiary)' }}>30-day trend</span>
         </div>
-        <ResponsiveContainer width="100%" height={160}>
-          <LineChart data={dailyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+        <ResponsiveContainer width="100%" height={80}>
+          <LineChart data={dailyData} margin={{ top: 2, right: 2, left: -28, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-            <XAxis dataKey="date" tick={{ fill: 'var(--text-tertiary)', fontSize: 10 }} axisLine={false} tickLine={false} interval={6} />
-            <YAxis tick={{ fill: 'var(--text-tertiary)', fontSize: 10 }} axisLine={false} tickLine={false} />
-            <Tooltip contentStyle={{ background: 'var(--surface-4)', border: '1px solid var(--color-border)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 12 }} cursor={{ stroke: 'var(--color-accent-violet-light)', strokeWidth: 1 }} />
-            <Line type="monotone" dataKey="count" name="Questions" stroke="#7c3aed" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#7c3aed' }} />
+            <XAxis dataKey="date" tick={{ fill: 'var(--text-tertiary)', fontSize: 9 }} axisLine={false} tickLine={false} interval={9} />
+            <YAxis tick={{ fill: 'var(--text-tertiary)', fontSize: 9 }} axisLine={false} tickLine={false} />
+            <Tooltip contentStyle={{ background: 'var(--surface-4)', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 10 }} cursor={{ stroke: '#7c3aed', strokeWidth: 1 }} />
+            <Line type="monotone" dataKey="count" stroke="#7c3aed" strokeWidth={1.5} dot={false} activeDot={{ r: 2, fill: '#7c3aed' }} />
           </LineChart>
         </ResponsiveContainer>
       </motion.div>
 
-      {/* Recent Sessions */}
-      <motion.div {...fadeUp(0.4)} className="glass-card rounded-[var(--radius-2xl)] p-6">
-        <SectionHeader title="Recent Sessions" icon={<Clock className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />} />
+      {/* Recent sessions widget */}
+      <motion.div {...fadeUp(0.36)} className="glass-card rounded-2xl p-3 col-span-1 sm:col-span-2">
+        <div className="text-[10px] font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>Recent Sessions</div>
         {recentSessions.length > 0 ? (
-          <div className="space-y-2">
-            {recentSessions.map(s => {
-              const cfg = { swipe: { label: 'Swipe', color: 'var(--color-accent-violet-light)', bg: 'rgba(124,58,237,0.12)' }, voice: { label: 'Voice', color: 'var(--color-success)', bg: 'rgba(16,185,129,0.12)' }, test: { label: 'Test', color: 'var(--color-xp)', bg: 'rgba(245,158,11,0.12)' } }[s.mode];
+          <div className="space-y-1">
+            {recentSessions.slice(0, 4).map(s => {
+              const cfg = { swipe: { label: 'Swipe', color: '#7c3aed' }, voice: { label: 'Voice', color: '#10b981' }, test: { label: 'Test', color: '#f59e0b' } }[s.mode];
               return (
-                <div key={s.date} className="flex items-center justify-between px-4 py-3 rounded-[var(--radius-lg)]" style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)' }}>
-                  <span className="text-sm font-medium">{formatDate(s.date)}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: cfg?.bg, color: cfg?.color }}>{cfg?.label}</span>
-                  <span className="text-sm font-bold">{s.count} <span className="text-xs font-normal" style={{ color: 'var(--text-tertiary)' }}>questions</span></span>
+                <div key={s.date} className="flex items-center justify-between text-[10px]">
+                  <span style={{ color: 'var(--text-tertiary)' }}>{formatDate(s.date)}</span>
+                  <span className="font-semibold" style={{ color: cfg?.color }}>{cfg?.label}</span>
+                  <span className="font-bold">{s.count}q</span>
                 </div>
               );
             })}
           </div>
-        ) : (
-          <p className="text-sm text-center py-4" style={{ color: 'var(--text-tertiary)' }}>No sessions yet — start learning!</p>
-        )}
+        ) : <div className="text-[10px] text-center py-2" style={{ color: 'var(--text-tertiary)' }}>No sessions yet</div>}
       </motion.div>
 
-      {/* Streak Calendar */}
-      <motion.div {...fadeUp(0.42)} className="glass-card rounded-[var(--radius-2xl)] p-6">
-        <div className="flex items-center justify-between mb-4">
-          <SectionHeader title={calendarMonth} icon={<Flame className="w-4 h-4" style={{ color: 'var(--color-streak)' }} />} />
-          <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background: 'rgba(249,115,22,0.15)', color: 'var(--color-streak)', border: '1px solid rgba(249,115,22,0.3)' }}>{streak} day streak</span>
+      {/* Calendar widget */}
+      <motion.div {...fadeUp(0.38)} className="glass-card rounded-2xl p-3 col-span-1 sm:col-span-2">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] font-semibold" style={{ color: 'var(--text-tertiary)' }}>{calendarMonth}</span>
+          <span className="text-[10px] font-bold" style={{ color: 'var(--color-streak)' }}>{streak}d 🔥</span>
         </div>
-        <div className="grid grid-cols-7 gap-1 text-center">
-          {DAY_LABELS.map(d => <div key={d} className="text-xs pb-1" style={{ color: 'var(--text-tertiary)' }}>{d.slice(0, 1)}</div>)}
+        <div className="grid grid-cols-7 gap-0.5 mb-0.5">
+          {['S','M','T','W','T','F','S'].map((d, i) => (
+            <div key={i} className="text-center text-[8px]" style={{ color: 'var(--text-tertiary)' }}>{d}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-0.5">
           {Array.from({ length: new Date(new Date().getFullYear(), new Date().getMonth(), 1).getDay() }, (_, i) => <div key={`e-${i}`} />)}
           {calendarDays.map(({ day, active, isToday }) => (
-            <div key={day} className={`aspect-square rounded-lg flex items-center justify-center text-xs font-medium ${isToday ? 'ring-2 ring-violet-500' : ''}`}
-              style={{ background: active ? 'var(--gradient-primary)' : 'var(--surface-3)', color: active ? '#fff' : 'var(--text-secondary)' }}>
+            <div key={day} className={`flex items-center justify-center rounded text-[9px] font-medium ${isToday ? 'ring-1 ring-violet-500' : ''}`}
+              style={{
+                aspectRatio: '1',
+                background: active ? (isToday ? '#7c3aed' : 'rgba(124,58,237,0.5)') : isToday ? 'rgba(124,58,237,0.12)' : 'var(--surface-2)',
+                color: active ? '#fff' : isToday ? '#a78bfa' : 'var(--text-tertiary)',
+              }}>
               {day}
             </div>
           ))}
         </div>
       </motion.div>
 
-      {/* Channel Progress */}
-      <motion.div {...fadeUp(0.45)}>
-        <SectionHeader title="Channel Progress" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {moduleProgress.slice(0, 10).map((mod, i) => (
-            <motion.button key={mod.id} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 + i * 0.04 }}
-              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+      {/* Channel progress — full width */}
+      <motion.div {...fadeUp(0.42)} className="glass-card rounded-2xl p-3 col-span-2 sm:col-span-4">
+        <div className="text-[10px] font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>Channel Progress</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {moduleProgress.slice(0, 8).map((mod, i) => (
+            <motion.button key={mod.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.44 + i * 0.03 }}
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
               onClick={() => setLocation(`/channel/${mod.id}`)}
-              className="p-5 rounded-[var(--radius-xl)] text-left" style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)' }}>
-              <div className="flex items-center justify-between mb-3">
-                <span className="font-semibold text-sm">{mod.name}</span>
-                {mod.pct === 100 && <Trophy className="w-4 h-4" style={{ color: 'var(--color-xp)' }} />}
-                <span className="text-xs font-bold ml-auto" style={{ color: 'var(--text-secondary)' }}>{mod.pct}%</span>
+              className="p-3 min-h-[56px] rounded-2xl text-left cursor-pointer" style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)' }}>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-medium truncate max-w-[75%]">{mod.name}</span>
+                <span className="text-[9px] font-bold flex-shrink-0" style={{ color: mod.pct === 100 ? '#f59e0b' : 'var(--text-tertiary)' }}>
+                  {mod.pct === 100 ? '✓' : `${mod.pct}%`}
+                </span>
               </div>
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-4)' }}>
-                <motion.div initial={{ width: 0 }} animate={{ width: `${mod.pct}%` }} transition={{ duration: 0.8, delay: 0.55 + i * 0.05 }}
-                  className="h-full rounded-full" style={{ background: 'var(--gradient-primary)' }} />
+              <div className="h-0.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-4)' }}>
+                <motion.div initial={{ width: 0 }} animate={{ width: `${mod.pct}%` }} transition={{ duration: 0.6, delay: 0.5 + i * 0.04 }}
+                  className="h-full rounded-full" style={{ background: mod.pct === 100 ? '#f59e0b' : '#7c3aed' }} />
               </div>
-              <div className="text-xs mt-1.5" style={{ color: 'var(--text-tertiary)' }}>{mod.completed}/{mod.total}</div>
             </motion.button>
           ))}
         </div>
       </motion.div>
+
     </div>
   );
 }
@@ -580,9 +645,9 @@ export default function ProfilePage() {
   return (
     <>
       <SEOHead title="Profile & Stats" description="Your profile, settings and learning statistics" canonical="https://open-interview.github.io/profile" />
-      <AppLayout>
+      <AppLayout fullWidth>
         <div className="min-h-screen bg-background text-foreground">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-24">
             <PageHeader title="Profile & Stats" subtitle="Your settings, achievements and learning progress" />
             <ProfileTab streak={streak} totalCompleted={totalCompleted} />
             <div className="mt-12">

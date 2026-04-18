@@ -87,8 +87,8 @@ export function GettingStartedCard({
   };
 
   return (
-    <section className="mx-4 my-3">
-      <div className="bg-gradient-to-br from-primary/10 via-card to-card rounded-xl border border-primary/20 overflow-hidden">
+    <section className="mx-4 my-3 pb-4">
+      <div className="bg-gradient-to-br from-primary/10 via-card to-card rounded-xl border border-primary/20 overflow-hidden transition-shadow duration-150 ease-out hover:shadow-md">
         {/* Header */}
         <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -101,7 +101,7 @@ export function GettingStartedCard({
             </span>
             <button 
               onClick={handleDismiss}
-              className="text-muted-foreground hover:text-foreground p-1"
+              className="text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer transition-colors duration-150 ease-out"
               aria-label="Dismiss getting started"
             >
               <X className="w-4 h-4" />
@@ -109,7 +109,7 @@ export function GettingStartedCard({
           </div>
         </div>
 
-        {/* Progress bar - static, no animation */}
+        {/* Progress bar */}
         <div className="h-1 bg-muted">
           <div 
             className="h-full bg-primary transition-all duration-300"
@@ -124,11 +124,12 @@ export function GettingStartedCard({
               key={step.id}
               onClick={() => setLocation(step.path)}
               className={`
-                w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left
+                w-full flex items-center gap-3 p-3 rounded-lg text-left min-h-[44px] cursor-pointer
+                transition-colors duration-150 ease-out
                 ${step.completed 
                   ? 'bg-primary/5 opacity-60' 
                   : step.id === nextStep.id 
-                    ? 'bg-primary/10 ring-1 ring-primary/30' 
+                    ? 'bg-primary/10 ring-1 ring-primary/30 hover:bg-primary/15' 
                     : 'bg-muted/30 hover:bg-muted/50'
                 }
               `}

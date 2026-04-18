@@ -2,7 +2,7 @@
  * Badges Page — spectacular gamification UI
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
 import { SEOHead } from '../components/SEOHead';
@@ -92,10 +92,10 @@ function BadgeCard({
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}
       onBlur={() => setHovered(false)}
-      className={`relative flex flex-col items-center p-4 rounded-xl border text-left w-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-violet)] ${
+      className={`relative flex flex-col items-center p-4 rounded-xl border text-left w-full transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-violet)] cursor-pointer min-h-[44px] ${
         isUnlocked
-          ? 'bg-[var(--surface-2)] border-[var(--color-border)] cursor-pointer'
-          : 'bg-[var(--surface-1)] border-[var(--color-border-subtle)] opacity-60 cursor-pointer'
+          ? 'bg-[var(--surface-2)] border-[var(--color-border)]'
+          : 'bg-[var(--surface-1)] border-[var(--color-border-subtle)] opacity-60'
       }`}
       style={isUnlocked ? { boxShadow: TIER_GLOW[tier] } : undefined}
     >
@@ -121,6 +121,7 @@ function BadgeCard({
           </motion.div>
         )}
       </AnimatePresence>
+
       {/* Icon circle */}
       <div
         className={`w-14 h-14 mb-3 rounded-full flex items-center justify-center flex-shrink-0 relative ${
@@ -215,10 +216,11 @@ function BadgeModal({
           >
             <ConfettiBurst active={confetti} />
 
-            {/* Close */}
+            {/* Close — 44px touch target */}
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[var(--surface-3)] flex items-center justify-center hover:bg-[var(--surface-4)] transition-colors"
+              className="absolute top-4 right-4 w-11 h-11 rounded-full bg-[var(--surface-3)] flex items-center justify-center hover:bg-[var(--surface-4)] transition-colors duration-150 cursor-pointer"
+              aria-label="Close"
             >
               <X className="w-4 h-4" />
             </button>
@@ -286,7 +288,7 @@ function BadgeModal({
                       navigator.clipboard.writeText(text);
                     }
                   }}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-indigo)] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                  className="flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-indigo)] text-white text-sm font-semibold hover:opacity-90 transition-opacity duration-150 cursor-pointer min-h-[44px]"
                 >
                   <Share2 className="w-4 h-4" />
                   Share Badge
@@ -325,7 +327,7 @@ export default function BadgesPage() {
 
   if (isLoading) {
     return (
-      <AppLayout title="Badges">
+      <AppLayout title="Badges" fullWidth>
         <PageLoader message="Loading achievements..." />
       </AppLayout>
     );
@@ -333,15 +335,15 @@ export default function BadgesPage() {
 
   if (!allBadges || allBadges.length === 0) {
     return (
-      <AppLayout title="Badges">
-        <div className="min-h-screen bg-background text-foreground">
+      <AppLayout title="Badges" fullWidth>
+        <div className="min-h-screen bg-background text-foreground overflow-x-hidden pb-24 lg:pb-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <PageHeader title="Badges" />
             <div className="flex items-center justify-center py-20">
               <div className="text-center">
                 <Trophy className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
                 <h2 className="text-2xl font-bold mb-2">No badges yet</h2>
-                <p className="text-muted-foreground">Start completing challenges to earn badges!</p>
+                <p className="text-muted-foreground mb-6">Start completing challenges to earn badges!</p>
               </div>
             </div>
           </div>
@@ -358,8 +360,8 @@ export default function BadgesPage() {
         canonical="https://open-interview.github.io/badges"
       />
 
-      <AppLayout title="Badges">
-        <div className="min-h-screen bg-background text-foreground w-full overflow-x-hidden pb-24 lg:pb-0">
+      <AppLayout title="Badges" fullWidth>
+        <div className="min-h-screen bg-background text-foreground w-full overflow-x-hidden pb-24 lg:pb-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
 
             {/* ── Header ── */}
@@ -372,25 +374,22 @@ export default function BadgesPage() {
               transition={{ delay: 0.1 }}
               className="grid grid-cols-3 gap-3"
             >
-              {/* Badges earned */}
               <div className="glass-card rounded-xl p-4 text-center space-y-1">
-                <p className="text-2xl font-black text-[var(--color-xp)]">{stats.unlocked}<span className="text-[var(--text-tertiary)] font-normal text-base">/{stats.total}</span></p>
+                <p className="text-2xl font-black text-[var(--color-xp)]">
+                  {stats.unlocked}<span className="text-[var(--text-tertiary)] font-normal text-base">/{stats.total}</span>
+                </p>
                 <p className="text-xs text-[var(--text-tertiary)]">Badges Earned</p>
               </div>
 
-              {/* XP from badges */}
               <div className="glass-card rounded-xl p-4 text-center space-y-1">
                 <p className="text-2xl font-black text-[var(--color-accent-violet-light)]">+{xpFromBadges.toLocaleString()}</p>
                 <p className="text-xs text-[var(--text-tertiary)]">XP from Badges</p>
               </div>
 
-              {/* Rarest badge */}
               <div className="glass-card rounded-xl p-4 text-center space-y-1">
                 {rarestBadge ? (
                   <>
-                    <p
-                      className={`text-sm font-black capitalize bg-gradient-to-r ${TIER_GRADIENT[rarestBadge.achievement.tier]} bg-clip-text text-transparent`}
-                    >
+                    <p className={`text-sm font-black capitalize bg-gradient-to-r ${TIER_GRADIENT[rarestBadge.achievement.tier]} bg-clip-text text-transparent`}>
                       {rarestBadge.achievement.tier}
                     </p>
                     <p className="text-[10px] text-[var(--text-tertiary)] line-clamp-1">{rarestBadge.achievement.name}</p>
@@ -425,10 +424,14 @@ export default function BadgesPage() {
             </motion.div>
 
             {/* ── Category Tabs ── */}
-            <FilterPills options={CATEGORY_TABS.map(t=>({id:t,label:t.charAt(0).toUpperCase()+t.slice(1)}))} active={activeTab} onChange={id => setActiveTab(id as CategoryTab)} />
+            <FilterPills
+              options={CATEGORY_TABS.map(t => ({ id: t, label: t.charAt(0).toUpperCase() + t.slice(1) }))}
+              active={activeTab}
+              onChange={id => setActiveTab(id as CategoryTab)}
+            />
 
-            {/* ── Badge Grid ── */}
-            <div className="grid grid-cols-3 gap-3 md:gap-4">
+            {/* ── Badge Grid — 2 cols on mobile, 3 on sm, 4 on lg ── */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
               {filteredBadges.map((bp, i) => (
                 <BadgeCard key={bp.achievement.id} bp={bp} index={i} onClick={setSelectedBadge} />
               ))}
@@ -451,9 +454,9 @@ export default function BadgesPage() {
                     <button
                       key={bp.achievement.id}
                       onClick={() => setSelectedBadge(bp)}
-                      className="flex items-center gap-3 p-3 bg-[var(--surface-2)] rounded-xl border border-[var(--color-border)] hover:border-[var(--color-border-strong)] transition-all text-left"
+                      className="flex items-center gap-3 p-3 bg-[var(--surface-2)] rounded-xl border border-[var(--color-border)] hover:border-[var(--color-border-strong)] transition-all duration-200 text-left cursor-pointer min-h-[44px]"
                     >
-                      <div className="w-10 h-10 bg-[var(--surface-3)] rounded-full flex items-center justify-center flex-shrink-0">
+                      <div className="w-11 h-11 bg-[var(--surface-3)] rounded-full flex items-center justify-center flex-shrink-0">
                         <Trophy className="w-5 h-5 text-[var(--color-accent-violet-light)]" />
                       </div>
                       <div className="flex-1 min-w-0">

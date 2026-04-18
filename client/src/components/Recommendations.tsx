@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { RecommendationService, type Recommendation } from '../services/recommendation.service';
 import { allChannelsConfig } from '../lib/channels-config';
+import { useUserPreferences } from '../hooks/use-user-preferences';
 import type { HistoryIndex } from './unified/QuestionHistory';
 
 interface RecommendationsProps {
@@ -103,6 +104,7 @@ export function Recommendations({
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const { preferences } = useUserPreferences();
 
   useEffect(() => {
     async function loadRecommendations() {
@@ -111,7 +113,8 @@ export function Recommendations({
         const historyIndex = await loadHistoryIndex();
         const recs = await RecommendationService.generateRecommendations(
           historyIndex,
-          channelQuestionCounts
+          channelQuestionCounts,
+          { role: preferences.role, subscribedChannels: preferences.subscribedChannels }
         );
         setRecommendations(recs);
       } catch (e) {
@@ -121,7 +124,7 @@ export function Recommendations({
     }
     
     loadRecommendations();
-  }, [channelQuestionCounts]);
+  }, [channelQuestionCounts, preferences.role, preferences.subscribedChannels]);
 
   const visibleRecommendations = recommendations.filter(
     r => !dismissed.has(`${r.type}-${r.channelId}`)

@@ -12,10 +12,10 @@ import {
 } from '../lib/tests';
 import {
   Target, Clock, CheckCircle, XCircle, Search, Star,
-  AlertTriangle, ChevronRight, SlidersHorizontal, Settings2
+  AlertTriangle, ChevronRight, SlidersHorizontal
 } from 'lucide-react';
 import { useUserPreferences } from '../context/UserPreferencesContext';
-import { PageHeader, SearchBar, FilterPills, StatCard, PageLoader } from '@/components/ui/page';
+import { PageHeader, SearchBar, FilterPills, StatCard } from '@/components/ui/page';
 
 type FilterTab = 'all' | 'passed' | 'failed' | 'not-attempted';
 type SortKey = 'name' | 'last-attempt' | 'score';
@@ -52,11 +52,13 @@ export default function TestsPage() {
   const [filter, setFilter] = useState<FilterTab>('all');
   const [sort, setSort] = useState<SortKey>('name');
   const [showSort, setShowSort] = useState(false);
-  const [subscribedOnly, setSubscribedOnly] = useState(true);
   const progress = getAllTestProgress();
   const stats = getTestStats();
   const { preferences } = useUserPreferences();
   const subscribedIds = new Set(preferences.subscribedChannels);
+  const [subscribedOnly, setSubscribedOnly] = useState(
+    () => preferences.onboardingComplete && preferences.subscribedChannels.length > 0
+  );
 
   useEffect(() => {
     (async () => {
@@ -116,7 +118,7 @@ export default function TestsPage() {
         description="Take knowledge tests and earn badges"
         canonical="https://open-interview.github.io/tests"
       />
-      <AppLayout>
+      <AppLayout fullWidth>
         <div className="min-h-screen bg-background text-foreground pb-24 lg:pb-0">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <PageHeader title="Channel Tests" subtitle="Prove what you know across every topic" />
@@ -131,11 +133,11 @@ export default function TestsPage() {
 
             {/* Search + Sort */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex gap-2 mb-4">
-              <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search tests..." />
+              <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search tests..." className="flex-1" />
               {/* Subscribed toggle */}
               <button
                 onClick={() => setSubscribedOnly(s => !s)}
-                className={`px-3 py-2.5 rounded-lg text-xs font-semibold border transition-all whitespace-nowrap ${
+                className={`cursor-pointer px-3 min-h-[44px] rounded-lg text-xs font-semibold border transition-all duration-150 whitespace-nowrap ${
                   subscribedOnly
                     ? 'bg-[var(--color-accent-violet)]/15 border-[var(--color-accent-violet)] text-[var(--color-accent-violet-light)]'
                     : 'bg-muted/50 border-border text-muted-foreground hover:border-primary/50'
@@ -146,7 +148,7 @@ export default function TestsPage() {
               <div className="relative">
                 <button
                   onClick={() => setShowSort(s => !s)}
-                  className="flex items-center gap-1.5 px-3 py-2.5 bg-muted/50 border border-border rounded-lg text-sm hover:border-primary/50 transition-colors"
+                  className="cursor-pointer flex items-center gap-1.5 px-3 min-h-[44px] bg-muted/50 border border-border rounded-lg text-sm hover:border-primary/50 transition-colors duration-150"
                 >
                   <SlidersHorizontal className="w-4 h-4" />
                   <span className="hidden sm:inline">Sort</span>
@@ -163,7 +165,7 @@ export default function TestsPage() {
                         <button
                           key={key}
                           onClick={() => { setSort(key); setShowSort(false); }}
-                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-muted/50 ${sort === key ? 'text-primary font-semibold' : 'text-muted-foreground'}`}
+                          className={`cursor-pointer w-full text-left flex items-center px-4 min-h-[44px] text-sm transition-colors duration-150 hover:bg-muted/50 ${sort === key ? 'text-primary font-semibold' : 'text-muted-foreground'}`}
                         >
                           {label}
                         </button>
@@ -175,18 +177,38 @@ export default function TestsPage() {
             </motion.div>
 
             {/* Filter Tabs */}
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="flex gap-2 mb-8 overflow-x-auto pb-1">
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="flex gap-2 mb-8 overflow-x-auto pb-1 scrollbar-none">
               <FilterPills options={FILTERS} active={filter} onChange={id => setFilter(id as FilterTab)} />
             </motion.div>
 
             {/* Grid */}
             {loading ? (
-              <PageLoader message="Loading tests..." />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="p-5 bg-card border border-border rounded-xl space-y-3 animate-pulse">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3 w-20 bg-muted rounded-full" />
+                        <div className="h-5 w-3/4 bg-muted rounded-lg" />
+                      </div>
+                      <div className="w-12 h-12 rounded-full bg-muted" />
+                    </div>
+                    <div className="h-3 w-1/2 bg-muted rounded-full" />
+                    <div className="h-4 w-24 bg-muted rounded-full" />
+                  </div>
+                ))}
+              </div>
             ) : filtered.length === 0 ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
                 <Search className="w-12 h-12 mx-auto mb-3 text-muted-foreground/40" />
                 <h3 className="text-xl font-bold mb-1">No tests found</h3>
-                <p className="text-sm text-muted-foreground">Try a different filter or search term</p>
+                <p className="text-sm text-muted-foreground mb-4">Try a different filter or search term</p>
+                <button
+                  onClick={() => { setSearchQuery(''); setFilter('all'); setSubscribedOnly(false); }}
+                  className="cursor-pointer min-h-[44px] px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-95 transition-all duration-150"
+                >
+                  Clear filters
+                </button>
               </motion.div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

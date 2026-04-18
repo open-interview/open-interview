@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useLocation } from 'wouter';
 import { 
   User, Briefcase, Target, BookOpen, CheckCircle, 
-  ArrowRight, TrendingUp, Award, Clock, Zap, Edit2
+  ArrowRight, TrendingUp, Award, Clock, Zap, Edit2, Bell
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { SEOHead } from '@/components/SEOHead';
@@ -14,6 +14,7 @@ import {
   createUserProfile,
   type UserProfile
 } from '@/lib/user-profile-service';
+import { useSubscriptions } from '@/hooks/use-subscriptions';
 
 export default function PersonalizedPath() {
   const [, setLocation] = useLocation();
@@ -46,7 +47,16 @@ export default function PersonalizedPath() {
     setShowSetup(false);
   };
 
-  const learningPath = profile ? getPersonalizedLearningPath(profile) : [];
+  const { subscribedChannelIds, subscribedChannels } = useSubscriptions();
+
+  const rawLearningPath = profile ? getPersonalizedLearningPath(profile) : [];
+
+  // Filter each path segment to only subscribed channels
+  const learningPath = rawLearningPath.map(segment => ({
+    ...segment,
+    channels: segment.channels.filter(ch => subscribedChannelIds.includes(ch)),
+  }));
+
   const jobTitles = getAvailableJobTitles();
 
   if (showSetup || !profile) {
@@ -56,8 +66,8 @@ export default function PersonalizedPath() {
           title="Personalized Learning Path | Setup Your Profile"
           description="Create your personalized learning path based on your job title and experience level"
         />
-        <AppLayout title="Setup Your Profile" showBackOnMobile>
-          <div className="max-w-2xl mx-auto px-4 py-12">
+        <AppLayout title="Setup Your Profile" showBackOnMobile fullWidth>
+          <div className="max-w-2xl mx-auto px-4 py-8 pb-24">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -105,7 +115,7 @@ export default function PersonalizedPath() {
                       <button
                         key={level}
                         onClick={() => setSelectedExperience(level)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        className={`px-4 py-3 min-h-[44px] rounded-lg text-sm font-medium cursor-pointer transition-all duration-200 ${
                           selectedExperience === level
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-background border border-border text-foreground hover:bg-muted'
@@ -134,7 +144,7 @@ export default function PersonalizedPath() {
                 <button
                   onClick={handleCreateProfile}
                   disabled={!selectedJobTitle}
-                  className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-4 min-h-[44px] bg-primary text-primary-foreground rounded-lg font-semibold cursor-pointer hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                 >
                   Create My Learning Path
                   <ArrowRight className="w-5 h-5" />
@@ -156,8 +166,8 @@ export default function PersonalizedPath() {
         title="Your Personalized Learning Path"
         description="Follow your customized learning path based on your job title and experience"
       />
-      <AppLayout title="Your Learning Path" showBackOnMobile>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <AppLayout title="Your Learning Path" showBackOnMobile fullWidth>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24">
           {/* Profile Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -189,13 +199,40 @@ export default function PersonalizedPath() {
               </div>
               <button
                 onClick={() => setShowSetup(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-background border border-border rounded-lg text-sm font-medium hover:bg-muted transition-all"
+                className="flex items-center gap-2 px-4 py-2.5 min-h-[44px] bg-background border border-border rounded-lg text-sm font-medium cursor-pointer hover:bg-muted transition-all duration-200"
               >
                 <Edit2 className="w-4 h-4" />
                 Edit Profile
               </button>
             </div>
           </motion.div>
+
+          {/* CTA: subscribe to more topics */}
+          {subscribedChannels.length < 3 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="mb-8 flex items-start gap-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-5"
+            >
+              <Bell className="w-5 h-5 text-yellow-500 mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <p className="font-semibold text-foreground mb-1">
+                  Subscribe to more topics to unlock your full learning path
+                </p>
+                <p className="text-sm text-muted-foreground mb-3">
+                  You're subscribed to {subscribedChannels.length} topic{subscribedChannels.length !== 1 ? 's' : ''}. Add at least {3 - subscribedChannels.length} more to see personalized recommendations here.
+                </p>
+                <button
+                  onClick={() => setLocation('/channels')}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 min-h-[44px] bg-yellow-500 text-black rounded-lg text-sm font-semibold cursor-pointer hover:bg-yellow-400 transition-all duration-200"
+                >
+                  Browse Topics
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </motion.div>
+          )}
 
           {/* Required Topics */}
           {requiredPath && requiredPath.channels.length > 0 && (
@@ -220,13 +257,13 @@ export default function PersonalizedPath() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.1 + idx * 0.05 }}
                     onClick={() => setLocation(`/channel/${channel}`)}
-                    className="group bg-card border border-border rounded-lg p-4 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 cursor-pointer transition-all"
+                    className="group bg-card border border-border rounded-lg p-4 min-h-[72px] hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 cursor-pointer transition-all duration-200"
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-bold text-foreground group-hover:text-primary transition-colors">
+                      <h4 className="font-bold text-foreground group-hover:text-primary transition-colors duration-200">
                         {channel.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                       </h4>
-                      <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                      <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200" />
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <BookOpen className="w-3 h-3" />
@@ -261,13 +298,13 @@ export default function PersonalizedPath() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.2 + idx * 0.05 }}
                     onClick={() => setLocation(`/channel/${channel}`)}
-                    className="group bg-card border border-border rounded-lg p-4 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 cursor-pointer transition-all"
+                    className="group bg-card border border-border rounded-lg p-4 min-h-[72px] hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 cursor-pointer transition-all duration-200"
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-bold text-foreground group-hover:text-primary transition-colors">
+                      <h4 className="font-bold text-foreground group-hover:text-primary transition-colors duration-200">
                         {channel.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                       </h4>
-                      <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                      <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200" />
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <BookOpen className="w-3 h-3" />
@@ -298,10 +335,10 @@ export default function PersonalizedPath() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 + idx * 0.05 }}
                     onClick={() => setLocation(`/certifications/${cert}`)}
-                    className="group bg-card border border-border rounded-lg p-4 hover:border-yellow-500/50 hover:shadow-lg hover:shadow-yellow-500/10 cursor-pointer transition-all"
+                    className="group bg-card border border-border rounded-lg p-4 min-h-[72px] hover:border-yellow-500/50 hover:shadow-lg hover:shadow-yellow-500/10 cursor-pointer transition-all duration-200"
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-bold text-foreground group-hover:text-yellow-500 transition-colors">
+                      <h4 className="font-bold text-foreground group-hover:text-yellow-500 transition-colors duration-200">
                         {cert.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                       </h4>
                       <Award className="w-4 h-4 text-yellow-500" />

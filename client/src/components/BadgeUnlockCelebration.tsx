@@ -6,7 +6,8 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { ReducedMotionWrapper, useMotionSafeTransition } from './ReducedMotionWrapper';
 import { useLocation } from 'wouter';
 import { 
   Trophy, Flame, CheckCircle, Award, Star, Zap, BookOpen, 
@@ -44,6 +45,8 @@ interface BadgeUnlockCelebrationProps {
 export function BadgeUnlockCelebration({ badge, onClose }: BadgeUnlockCelebrationProps) {
   const [, setLocation] = useLocation();
   const [mounted, setMounted] = useState(false);
+  const springTransition = useMotionSafeTransition({ type: 'spring', damping: 20, stiffness: 300 });
+  const progressTransition = useMotionSafeTransition({ duration: 3, ease: 'linear' });
   
   useEffect(() => {
     setMounted(true);
@@ -70,12 +73,12 @@ export function BadgeUnlockCelebration({ badge, onClose }: BadgeUnlockCelebratio
   };
 
   return createPortal(
-    <AnimatePresence>
+    <ReducedMotionWrapper>
       <motion.div
         initial={{ opacity: 0, x: 100, y: 0 }}
         animate={{ opacity: 1, x: 0, y: 0 }}
         exit={{ opacity: 0, x: 100 }}
-        transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+        transition={springTransition}
         className="fixed top-4 right-4 z-[200] max-w-xs cursor-pointer"
         onClick={handleClick}
       >
@@ -118,12 +121,12 @@ export function BadgeUnlockCelebration({ badge, onClose }: BadgeUnlockCelebratio
           <motion.div
             initial={{ scaleX: 1 }}
             animate={{ scaleX: 0 }}
-            transition={{ duration: 3, ease: 'linear' }}
+            transition={progressTransition}
             className={`h-0.5 bg-gradient-to-r ${badge.gradient} origin-left`}
           />
         </div>
       </motion.div>
-    </AnimatePresence>,
+    </ReducedMotionWrapper>,
     document.body
   );
 }

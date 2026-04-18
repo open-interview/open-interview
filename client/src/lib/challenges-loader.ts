@@ -15,8 +15,9 @@ export function loadChallenge(id: string): Promise<Challenge> {
   return fetchCached<Challenge>(`/challenges/${id}.json`);
 }
 
-export function loadChallengeIndex(): Promise<string[]> {
-  return fetchCached<string[]>('/challenges/index.json');
+export async function loadChallengeIndex(): Promise<string[]> {
+  const data = await fetchCached<{ challenges: string[] } | string[]>('/challenges/index.json');
+  return Array.isArray(data) ? data : data.challenges;
 }
 
 export async function loadAllChallenges(): Promise<ChallengeListItem[]> {

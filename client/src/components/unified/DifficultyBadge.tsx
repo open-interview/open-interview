@@ -138,11 +138,16 @@ export function DifficultyIndicator({
     advanced: 'bg-red-500'
   };
 
+  const label = levelConfig[level].label;
+
   return (
-    <span
-      className={`inline-block rounded-full ${dotSizes[size]} ${colors[level]} ${className}`}
-      title={levelConfig[level].label}
-    />
+    <span className={`inline-flex items-center gap-1 ${className}`} aria-label={label}>
+      <span
+        className={`inline-block rounded-full ${dotSizes[size]} ${colors[level]}`}
+        title={label}
+      />
+      <span className="sr-only">{label}</span>
+    </span>
   );
 }
 

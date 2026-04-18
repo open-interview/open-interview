@@ -6,16 +6,16 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { 
   History, Clock, Filter, Download, Search,
   CheckCircle, Calendar, TrendingUp, BarChart3
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
-import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
-import { MobileBottomNav } from '../components/layout/UnifiedNav';
-import { MobileHeader } from '../components/layout/MobileHeader';
+import { AppLayout } from '../components/layout/AppLayout';
 import { allChannelsConfig } from '../lib/channels-config';
+import { getQuestionById } from '../lib/questions-loader';
 
 interface HistoryEntry {
   questionId: string;
@@ -98,10 +98,12 @@ export default function AnswerHistory() {
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(h => 
-        h.questionId.toLowerCase().includes(query) ||
-        h.channelName.toLowerCase().includes(query)
-      );
+      filtered = filtered.filter(h => {
+        const question = getQuestionById(h.questionId);
+        const displayText = question?.question ?? h.questionId;
+        return displayText.toLowerCase().includes(query) ||
+          h.channelName.toLowerCase().includes(query);
+      });
     }
     
     return filtered;
@@ -167,14 +169,13 @@ export default function AnswerHistory() {
   }, [history]);
 
   return (
-    <DesktopSidebarWrapper>
-      <div className="lg:hidden"><MobileHeader title="History" showBack={true} /></div>
+    <AppLayout fullWidth>
       <SEOHead 
         title="Answer History - CodeReels"
         description="View your complete question answering history across all channels"
       />
       
-      <div className="min-h-screen bg-background pb-20 lg:pb-4 pt-14 lg:pt-0">
+      <div className="min-h-screen bg-background pb-24 pb-safe lg:pb-8 pt-14 lg:pt-0">
         <div className="max-w-6xl mx-auto px-4 py-6">
           
           {/* Header */}
@@ -240,10 +241,11 @@ export default function AnswerHistory() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
                     type="text"
-                    placeholder="Search by question ID or channel..."
+                    placeholder="Search by question text or channel..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    data-testid="history-search-input"
+                    className="w-full pl-10 pr-4 py-3 min-h-[44px] bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-base"
                   />
                 </div>
               </div>
@@ -252,7 +254,8 @@ export default function AnswerHistory() {
               <select
                 value={selectedChannel}
                 onChange={(e) => setSelectedChannel(e.target.value)}
-                className="px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                data-testid="history-channel-filter"
+                className="px-4 py-3 min-h-[44px] bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer text-base"
               >
                 <option value="all">All Channels ({history.length})</option>
                 {channels.map(channel => (
@@ -266,7 +269,8 @@ export default function AnswerHistory() {
               <select
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value as any)}
-                className="px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                data-testid="history-date-filter"
+                className="px-4 py-3 min-h-[44px] bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer text-base"
               >
                 <option value="all">All Time</option>
                 <option value="today">Today</option>
@@ -277,7 +281,8 @@ export default function AnswerHistory() {
               {/* Export Button */}
               <button
                 onClick={exportHistory}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+                data-testid="history-export-button"
+                className="px-4 py-3 min-h-[44px] bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors duration-150 flex items-center gap-2 cursor-pointer"
               >
                 <Download className="w-4 h-4" />
                 Export
@@ -294,15 +299,25 @@ export default function AnswerHistory() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center py-12"
+              className="text-center py-16"
             >
-              <History className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <History className="w-8 h-8 text-primary" />
+              </div>
               <h3 className="text-lg font-semibold mb-2">No History Found</h3>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground text-base mb-6">
                 {history.length === 0 
                   ? "Start answering questions to build your history!"
                   : "Try adjusting your filters to see more results."}
               </p>
+              {history.length === 0 && (
+                <a
+                  href="/"
+                  className="inline-flex items-center gap-2 px-6 py-3 min-h-[44px] bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors duration-150 cursor-pointer font-medium"
+                >
+                  Browse Channels
+                </a>
+              )}
             </motion.div>
           ) : (
             <div className="space-y-2">
@@ -313,8 +328,7 @@ export default function AnswerHistory() {
           )}
         </div>
       </div>
-      <MobileBottomNav />
-    </DesktopSidebarWrapper>
+    </AppLayout>
   );
 }
 
@@ -341,6 +355,10 @@ function StatCard({ icon, label, value, color, bgColor }: {
 }
 
 function HistoryItem({ entry, index }: { entry: HistoryEntry; index: number }) {
+  const [, setLocation] = useLocation();
+  const question = getQuestionById(entry.questionId);
+  const displayText = question?.question ?? entry.questionId;
+
   const timeAgo = useMemo(() => {
     const now = Date.now();
     const diff = now - entry.timestamp;
@@ -360,7 +378,9 @@ function HistoryItem({ entry, index }: { entry: HistoryEntry; index: number }) {
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.02 }}
-      className="bg-card border border-border rounded-lg p-4 hover:border-primary/50 transition-colors"
+      data-testid={`history-item-${entry.questionId}`}
+      className="bg-card border border-border rounded-lg p-4 min-h-[44px] hover:border-primary/50 transition-colors duration-150 cursor-pointer"
+      onClick={() => { if (question) setLocation(`/channel/${entry.channelId}?q=${entry.questionId}`); }}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -368,7 +388,7 @@ function HistoryItem({ entry, index }: { entry: HistoryEntry; index: number }) {
             <CheckCircle className="w-5 h-5 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-semibold text-sm truncate">{entry.questionId}</div>
+            <div className="font-semibold text-sm truncate">{displayText}</div>
             <div className="text-xs text-muted-foreground">{entry.channelName}</div>
           </div>
         </div>

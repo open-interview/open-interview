@@ -16,7 +16,10 @@ import {
   BookOpen, BarChart2, X
 } from 'lucide-react';
 import { useUserPreferences } from '../context/UserPreferencesContext';
-import { PageHeader, SearchBar, FilterPills, PageLoader } from '@/components/ui/page';
+import { getRoleCertPriority } from '../lib/personalization';
+import { PageHeader, SearchBar, FilterPills } from '@/components/ui/page';
+import { ChannelCardSkeleton } from '@/components/ui/skeleton-loaders';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 interface Certification {
   id: string;
@@ -62,21 +65,26 @@ const PROVIDER_META: Record<string, { label: string; emoji: string; order: numbe
 function useCertifications() {
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    (async () => {
-      try {
-        const base = import.meta.env.BASE_URL || '/';
-        const res = await fetch(`${base}data/certifications.json`);
-        if (!res.ok) throw new Error('Failed to fetch');
-        setCertifications(await res.json());
-      } catch (e) {
-        console.error('Failed to load certifications:', e);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-  return { certifications, loading };
+  const [error, setError] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const base = import.meta.env.BASE_URL || '/';
+      const res = await fetch(`${base}data/certifications.json`);
+      if (!res.ok) throw new Error('Failed to fetch');
+      setCertifications(await res.json());
+    } catch (e) {
+      console.error('Failed to load certifications:', e);
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+  return { certifications, loading, error, refetch: load };
 }
 
 // ── Cert Detail Modal ─────────────────────────────────────────────────────────
@@ -107,7 +115,7 @@ function CertDetail({
         onClick={e => e.stopPropagation()}
         className="relative w-full sm:max-w-lg bg-card border border-border rounded-t-2xl sm:rounded-2xl p-6 max-h-[85vh] overflow-y-auto custom-scrollbar"
       >
-        <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-muted/50 text-muted-foreground transition-colors">
+        <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-muted/50 text-muted-foreground transition-colors duration-150 ease-out cursor-pointer">
           <X className="w-4 h-4" />
         </button>
 
@@ -161,7 +169,7 @@ function CertDetail({
         <div className="flex gap-2">
           <button
             onClick={onToggle}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+            className={`flex-1 min-h-[44px] rounded-xl text-sm font-bold transition-all duration-150 ease-out flex items-center justify-center gap-2 cursor-pointer ${
               isStarted
                 ? 'bg-muted border border-border hover:bg-muted/80 text-foreground'
                 : 'bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] text-white hover:opacity-90'
@@ -172,7 +180,7 @@ function CertDetail({
           {isStarted && (
             <button
               onClick={onNavigate}
-              className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] text-white hover:opacity-90 transition-all flex items-center justify-center gap-2"
+              className="flex-1 min-h-[44px] rounded-xl text-sm font-bold bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] text-white hover:opacity-90 transition-all duration-150 ease-out flex items-center justify-center gap-2 cursor-pointer"
             >
               Practice<ChevronRight className="w-4 h-4" />
             </button>
@@ -198,7 +206,7 @@ function CertCard({
       animate={{ opacity: 1, scale: 1 }}
       whileHover={{ y: -2 }}
       onClick={onClick}
-      className="group relative p-4 bg-card border border-border rounded-xl cursor-pointer hover:border-[var(--color-accent-violet)]/40 transition-all overflow-hidden"
+      className="group relative p-4 bg-card border border-border rounded-xl cursor-pointer hover:border-[var(--color-accent-violet)]/40 transition-all duration-150 ease-out overflow-hidden"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-accent-violet)]/5 to-[var(--color-accent-cyan)]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
 
@@ -273,7 +281,7 @@ function ProviderSection({
     <div className="mb-6">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-1 py-2 mb-3 group"
+        className="w-full min-h-[44px] flex items-center justify-between px-1 py-2 mb-3 group cursor-pointer"
       >
         <div className="flex items-center gap-2.5">
           <span className="text-xl">{meta.emoji}</span>
@@ -316,13 +324,16 @@ function ProviderSection({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function CertificationsPage() {
   const [, navigate] = useLocation();
-  const { certifications, loading } = useCertifications();
+  const { certifications, loading, error, refetch } = useCertifications();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [startedCerts, setStartedCerts] = useState<Set<string>>(new Set());
   const [selectedCert, setSelectedCert] = useState<Certification | null>(null);
-  const [subscribedOnly, setSubscribedOnly] = useState(false);
   const { preferences, toggleSubscription } = useUserPreferences();
+  const [subscribedOnly, setSubscribedOnly] = useState(
+    preferences.onboardingComplete &&
+    ((preferences.subscribedCertifications?.length ?? 0) > 0 || preferences.subscribedChannels.length > 0)
+  );
   const subscribedCertIds = new Set(preferences.subscribedChannels);
 
   useEffect(() => {
@@ -359,9 +370,15 @@ export default function CertificationsPage() {
     return acc;
   }, {});
 
-  const sortedProviders = Object.keys(grouped).sort((a, b) =>
-    (PROVIDER_META[a]?.order ?? 99) - (PROVIDER_META[b]?.order ?? 99)
-  );
+  const sortedProviders = Object.keys(grouped).sort((a, b) => {
+    const priority = getRoleCertPriority(preferences.role ?? '');
+    const ai = priority.findIndex((p: string) => a.toLowerCase().startsWith(p));
+    const bi = priority.findIndex((p: string) => b.toLowerCase().startsWith(p));
+    const aRank = ai === -1 ? 999 : ai;
+    const bRank = bi === -1 ? 999 : bi;
+    if (aRank !== bRank) return aRank - bRank;
+    return (PROVIDER_META[a]?.order ?? 99) - (PROVIDER_META[b]?.order ?? 99);
+  });
 
   return (
     <>
@@ -370,14 +387,23 @@ export default function CertificationsPage() {
         description="Practice for AWS, Azure, GCP, Kubernetes, and more certifications"
         canonical="https://open-interview.github.io/certifications"
       />
-      <AppLayout>
+      <AppLayout fullWidth>
         <div className="min-h-screen bg-background text-foreground">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-24">
 
             <PageHeader title="Certifications" subtitle="Get certified, get hired" />
 
             {loading ? (
-              <PageLoader message="Loading certifications..." />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {Array.from({ length: 9 }).map((_, i) => <ChannelCardSkeleton key={i} />)}
+              </div>
+            ) : error ? (
+              <Alert variant="destructive">
+                <AlertTitle>Failed to load certifications</AlertTitle>
+                <AlertDescription>
+                  <button onClick={() => refetch()}>Try again</button>
+                </AlertDescription>
+              </Alert>
             ) : (
               <>
                 {/* Stats */}
@@ -407,7 +433,7 @@ export default function CertificationsPage() {
                     />
                     <button
                       onClick={() => setSubscribedOnly(s => !s)}
-                      className={`px-3 py-2.5 rounded-lg text-xs font-semibold border transition-all whitespace-nowrap ${
+                      className={`min-h-[44px] px-3 py-2.5 rounded-lg text-xs font-semibold border transition-all duration-150 ease-out whitespace-nowrap cursor-pointer ${
                         subscribedOnly
                           ? 'bg-[var(--color-accent-violet)]/15 border-[var(--color-accent-violet)] text-[var(--color-accent-violet-light)]'
                           : 'bg-muted/50 border-border text-muted-foreground hover:border-primary/50'
@@ -432,7 +458,15 @@ export default function CertificationsPage() {
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
                     <Search className="w-12 h-12 mx-auto mb-3 text-muted-foreground/40" />
                     <h3 className="text-xl font-bold mb-1">No certifications found</h3>
-                    <p className="text-sm text-muted-foreground">Try a different search or category</p>
+                    <p className="text-sm text-muted-foreground mb-4">Try a different search or category</p>
+                    {(searchQuery || selectedCategory || subscribedOnly) && (
+                      <button
+                        onClick={() => { setSearchQuery(''); setSelectedCategory(null); setSubscribedOnly(false); }}
+                        className="min-h-[44px] px-5 rounded-xl text-sm font-bold bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] text-white hover:opacity-90 transition-all duration-150 ease-out cursor-pointer"
+                      >
+                        Clear Filters
+                      </button>
+                    )}
                   </motion.div>
                 ) : (
                   sortedProviders.map(provider => (

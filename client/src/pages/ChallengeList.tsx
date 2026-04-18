@@ -84,7 +84,7 @@ export default function ChallengeList() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6 pb-24">
       {/* Header + Stats */}
       <div className="flex items-center justify-between">
         <div>
@@ -113,7 +113,7 @@ export default function ChallengeList() {
             <button
               key={d}
               onClick={() => setDifficulty(d)}
-              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+              className={`px-3 py-2.5 rounded-full text-xs font-medium border transition-colors duration-150 cursor-pointer min-h-[44px] ${
                 difficulty === d
                   ? 'bg-white text-zinc-900 border-white'
                   : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-500'
@@ -131,7 +131,7 @@ export default function ChallengeList() {
               <button
                 key={tag}
                 onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-                className={`px-2 py-0.5 rounded text-xs border transition-colors ${
+                className={`px-2.5 py-2 rounded text-xs border transition-colors duration-150 cursor-pointer min-h-[44px] ${
                   activeTag === tag
                     ? 'bg-indigo-500/30 text-indigo-300 border-indigo-500/50'
                     : 'bg-zinc-800/60 text-zinc-400 border-zinc-700 hover:border-zinc-500'
@@ -146,18 +146,26 @@ export default function ChallengeList() {
 
       {/* Table */}
       {filtered.length === 0 ? (
-        <div className="text-center py-16 text-zinc-500">No challenges match your filters.</div>
+        <div className="text-center py-16 space-y-3">
+          <p className="text-zinc-500">No challenges match your filters.</p>
+          <button
+            onClick={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors duration-150 cursor-pointer"
+          >
+            Clear filters
+          </button>
+        </div>
       ) : (
-        <div className="rounded-lg border border-zinc-800 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-lg border border-zinc-800 overflow-x-auto">
+          <table className="w-full text-sm min-w-[480px]">
             <thead>
               <tr className="border-b border-zinc-800 bg-zinc-900/60 text-zinc-400 text-left">
                 <th className="px-4 py-3 w-12">#</th>
                 <th className="px-4 py-3">Title</th>
                 <th className="px-4 py-3 w-28">Difficulty</th>
-                <th className="px-4 py-3">Tags</th>
+                <th className="px-4 py-3 hidden sm:table-cell">Tags</th>
                 <th className="px-4 py-3 w-32">Status</th>
-                <th className="px-4 py-3 w-24">Est. Time</th>
+                <th className="px-4 py-3 w-24 hidden sm:table-cell">Est. Time</th>
               </tr>
             </thead>
             <tbody>
@@ -167,42 +175,42 @@ export default function ChallengeList() {
                 return (
                   <tr
                     key={challenge.id}
-                    onClick={() => navigate(`/challenges/${challenge.id}`)}
-                    className="border-b border-zinc-800/60 last:border-0 hover:bg-zinc-800/40 cursor-pointer transition-colors"
+                    onClick={() => navigate(`/code/challenges/${challenge.id}`)}
+                    className="border-b border-zinc-800/60 last:border-0 hover:bg-zinc-800/40 cursor-pointer transition-colors duration-150"
                   >
-                      <td className="px-4 py-3 text-zinc-500">{idx + 1}</td>
-                      <td className="px-4 py-3 font-medium text-white">{challenge.title}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded border text-xs font-medium ${DIFFICULTY_STYLES[challenge.difficulty]}`}
-                        >
-                          {challenge.difficulty.charAt(0).toUpperCase() + challenge.difficulty.slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1 flex-wrap">
-                          {challenge.tags.slice(0, 3).map((tag) => (
-                            <span
-                              key={tag}
-                              className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 text-xs border border-zinc-700"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                          {challenge.tags.length > 3 && (
-                            <span className="text-zinc-500 text-xs">+{challenge.tags.length - 3}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded border text-xs ${STATUS_STYLES[status]}`}
-                        >
-                          {STATUS_LABEL[status]}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-zinc-400">{challenge.estimatedMinutes}m</td>
-                    </tr>
+                    <td className="px-4 py-3 text-zinc-500">{idx + 1}</td>
+                    <td className="px-4 py-3 font-medium text-white">{challenge.title}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex px-2 py-0.5 rounded border text-xs font-medium ${DIFFICULTY_STYLES[challenge.difficulty]}`}
+                      >
+                        {challenge.difficulty.charAt(0).toUpperCase() + challenge.difficulty.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      <div className="flex gap-1 flex-wrap">
+                        {challenge.tags.slice(0, 3).map((tag) => (
+                          <span
+                            key={tag}
+                            className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 text-xs border border-zinc-700"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                        {challenge.tags.length > 3 && (
+                          <span className="text-zinc-500 text-xs">+{challenge.tags.length - 3}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex px-2 py-0.5 rounded border text-xs ${STATUS_STYLES[status]}`}
+                      >
+                        {STATUS_LABEL[status]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-zinc-400 hidden sm:table-cell">{challenge.estimatedMinutes}m</td>
+                  </tr>
                 );
               })}
             </tbody>

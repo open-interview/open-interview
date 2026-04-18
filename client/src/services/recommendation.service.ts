@@ -175,9 +175,12 @@ export const RecommendationService = {
    */
   async generateRecommendations(
     historyIndex: HistoryIndex | null,
-    channelQuestionCounts: Record<string, number>
+    channelQuestionCounts: Record<string, number>,
+    options: { role?: string | null; subscribedChannels?: string[] } = {}
   ): Promise<Recommendation[]> {
+    const { subscribedChannels = [] } = options;
     const data = getEngagementData();
+    const visitedChannelIds = new Set(Object.keys(data.channels));
     const recommendations: Recommendation[] = [];
     const topChannels = this.getTopChannels(10);
     
@@ -253,13 +256,13 @@ export const RecommendationService = {
       'machine-learning': ['generative-ai', 'nlp', 'computer-vision'],
     };
     
-    const visitedChannelIds = new Set(topChannels.map(c => c.channelId));
+    const topVisitedChannelIds = new Set(topChannels.map(c => c.channelId));
     const suggestedExplore = new Set<string>();
     
     for (const channel of topChannels.slice(0, 3)) {
       const related = relatedChannels[channel.channelId] || [];
       for (const relatedId of related) {
-        if (!visitedChannelIds.has(relatedId) && !suggestedExplore.has(relatedId)) {
+        if (!topVisitedChannelIds.has(relatedId) && !suggestedExplore.has(relatedId)) {
           suggestedExplore.add(relatedId);
           recommendations.push({
             type: 'explore',
@@ -271,6 +274,20 @@ export const RecommendationService = {
       }
     }
     
+    // Apply role-based scoring:
+    // - channels in subscribedChannels get 1.5x boost
+    // - channels not in subscribedChannels AND not visited get score 0
+    if (subscribedChannels.length > 0) {
+      const subSet = new Set(subscribedChannels);
+      for (const rec of recommendations) {
+        if (subSet.has(rec.channelId)) {
+          rec.priority = Math.round(rec.priority * 1.5);
+        } else if (!visitedChannelIds.has(rec.channelId)) {
+          rec.priority = 0;
+        }
+      }
+    }
+
     // Sort by priority and limit
     return recommendations
       .sort((a, b) => b.priority - a.priority)

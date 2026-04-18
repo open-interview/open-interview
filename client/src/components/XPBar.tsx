@@ -44,6 +44,8 @@ export function XPBar({ currentXP, className = '', compact = false }: XPBarProps
         className={`relative flex items-center gap-2 ${className}`}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
+        role="status"
+        aria-live="polite"
       >
         <Zap className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
         <span className="text-xs font-bold text-amber-400 tabular-nums">{currentXP.toLocaleString()} XP</span>
@@ -84,7 +86,7 @@ export function XPBar({ currentXP, className = '', compact = false }: XPBarProps
   }
 
   return (
-    <div className={`space-y-2 ${className}`}>
+    <div className={`space-y-2 ${className}`} role="status" aria-live="polite">
       {/* Level row */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">

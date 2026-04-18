@@ -8,9 +8,7 @@ import { useUserPreferences } from '../context/UserPreferencesContext';
 import { useCredits } from '../context/CreditsContext';
 import { useAchievementContext } from '../context/AchievementContext';
 import { SEOHead } from '../components/SEOHead';
-import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
-import { MobileBottomNav } from '../components/layout/UnifiedNav';
-import { MobileHeader } from '../components/layout/MobileHeader';
+import { AppLayout } from '../components/layout/AppLayout';
 import { UnifiedSearch } from '../components/UnifiedSearch';
 import { VoiceReminder } from '../components/VoiceReminder';
 import { AnswerPanel } from '../components/question/AnswerPanel';
@@ -214,40 +212,35 @@ export default function QuestionViewer() {
   // --- Loading / error states ---
   if (loading && questions.length === 0) {
     return (
-      <DesktopSidebarWrapper>
-        <div className="lg:hidden"><MobileHeader title="Questions" showBack /></div>
+      <AppLayout fullWidth>
         <div className="min-h-screen bg-background flex flex-col gap-6 p-6 max-w-3xl mx-auto w-full pt-16">
           <div className="h-5 w-32 bg-muted rounded animate-pulse" />
           <div className="h-40 bg-muted/50 rounded-2xl animate-pulse" />
           <div className="h-4 w-2/3 bg-muted/40 rounded animate-pulse" />
           <div className="h-4 w-1/2 bg-muted/40 rounded animate-pulse" />
         </div>
-        <MobileBottomNav />
-      </DesktopSidebarWrapper>
+      </AppLayout>
     );
   }
 
   if (error || !channel) {
     return (
-      <DesktopSidebarWrapper>
-        <div className="lg:hidden"><MobileHeader title="Questions" showBack /></div>
+      <AppLayout fullWidth>
         <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4 text-center">
           <X className="w-10 h-10 text-muted-foreground" />
           <h2 className="text-xl font-bold">Channel not found</h2>
-          <button onClick={() => setLocation('/channels')} className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-full text-sm">
+          <button onClick={() => setLocation('/channels')} className="cursor-pointer flex items-center gap-2 px-5 min-h-[44px] bg-primary text-primary-foreground font-semibold rounded-full text-sm transition-opacity duration-150 ease-out hover:opacity-90">
             <ChevronLeft className="w-4 h-4" /> Back to Channels
           </button>
         </div>
-        <MobileBottomNav />
-      </DesktopSidebarWrapper>
+      </AppLayout>
     );
   }
 
   if (!loading && (!currentQuestion || totalQuestions === 0)) {
     const hasFilters = selectedSubChannel !== 'all' || selectedDifficulty !== 'all' || selectedCompany !== 'all';
     return (
-      <DesktopSidebarWrapper>
-        <div className="lg:hidden"><MobileHeader title="Questions" showBack /></div>
+      <AppLayout fullWidth>
         <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4 text-center">
           <BookOpen className="w-10 h-10 text-muted-foreground/50" />
           <h2 className="text-xl font-bold">No questions found</h2>
@@ -255,17 +248,16 @@ export default function QuestionViewer() {
           <div className="flex gap-2">
             {hasFilters && (
               <button onClick={() => { setSelectedSubChannel('all'); setSelectedDifficulty('all'); setSelectedCompany('all'); }}
-                className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-full text-sm">
+                className="cursor-pointer flex items-center gap-2 px-5 min-h-[44px] bg-primary text-primary-foreground font-semibold rounded-full text-sm transition-opacity duration-150 ease-out hover:opacity-90">
                 <X className="w-4 h-4" /> Clear filters
               </button>
             )}
-            <button onClick={() => setLocation('/channels')} className="flex items-center gap-2 px-5 py-2.5 bg-muted font-semibold rounded-full text-sm">
+            <button onClick={() => setLocation('/channels')} className="cursor-pointer flex items-center gap-2 px-5 min-h-[44px] bg-muted font-semibold rounded-full text-sm transition-colors duration-150 ease-out hover:bg-muted/80">
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
           </div>
         </div>
-        <MobileBottomNav />
-      </DesktopSidebarWrapper>
+      </AppLayout>
     );
   }
 
@@ -278,14 +270,13 @@ export default function QuestionViewer() {
 
   return (
     <>
-      <SEOHead
-        title={`${channel.name} — ${currentQuestion.question.substring(0, 60)}...`}
-        description={currentQuestion.question}
-        canonical={`https://open-interview.github.io/channel/${channelId}/${currentQuestion.id}`}
-      />
-      <DesktopSidebarWrapper>
+      <AppLayout fullWidth>
+        <SEOHead
+          title={currentQuestion ? `${currentQuestion.question.slice(0, 60)} | Code Reels` : 'Questions | Code Reels'}
+          description={currentQuestion?.tldr ?? currentQuestion?.answer?.slice(0, 160) ?? 'Practice technical interview questions'}
+          canonical={`https://open-interview.github.io/channel/${channelId}/${currentQuestion.id}`}
+        />
         <div className="min-h-screen bg-background text-foreground flex flex-col">
-          <div className="lg:hidden"><MobileHeader title={channel.name} showBack /></div>
 
           {/* Top progress bar */}
           <div className="h-0.5 bg-border w-full flex-shrink-0">
@@ -297,7 +288,7 @@ export default function QuestionViewer() {
             <div className="max-w-4xl mx-auto px-4 h-12 flex items-center justify-between gap-3">
               {/* Left: back + channel name */}
               <div className="flex items-center gap-2 min-w-0">
-                <button onClick={() => setLocation('/channels')} className="p-1.5 rounded-md hover:bg-muted transition-colors flex-shrink-0" aria-label="Back">
+                <button onClick={() => setLocation('/channels')} className="cursor-pointer p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-muted transition-colors duration-150 ease-out flex-shrink-0" aria-label="Back">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <span className="font-semibold text-sm truncate">{channel.name}</span>
@@ -306,17 +297,18 @@ export default function QuestionViewer() {
               {/* Right: actions */}
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button onClick={() => setShowFilters(v => !v)} aria-label="Filters"
-                  className={`p-1.5 rounded-md transition-colors ${hasFilters ? 'text-primary bg-primary/10' : 'hover:bg-muted'}`}>
+                  className={`cursor-pointer p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md transition-colors duration-150 ease-out ${hasFilters ? 'text-primary bg-primary/10' : 'hover:bg-muted'}`}>
                   <Filter className="w-4 h-4" />
                 </button>
-                <button onClick={() => setShowSearchModal(true)} aria-label="Search" className="p-1.5 rounded-md hover:bg-muted transition-colors">
+                <button onClick={() => setShowSearchModal(true)} aria-label="Search" className="cursor-pointer p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-muted transition-colors duration-150 ease-out">
                   <Search className="w-4 h-4" />
                 </button>
                 <button onClick={toggleMark} aria-label="Bookmark"
-                  className={`p-1.5 rounded-md transition-colors ${isMarked ? 'text-amber-500' : 'hover:bg-muted'}`}>
+                  data-testid="button-bookmark"
+                  className={`cursor-pointer p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md transition-colors duration-150 ease-out ${isMarked ? 'text-amber-500' : 'hover:bg-muted'}`}>
                   <Bookmark className="w-4 h-4" fill={isMarked ? 'currentColor' : 'none'} />
                 </button>
-                <button onClick={handleShare} aria-label="Share" className="p-1.5 rounded-md hover:bg-muted transition-colors hidden sm:block">
+                <button onClick={handleShare} aria-label="Share" data-testid="button-share" className="cursor-pointer p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-muted transition-colors duration-150 ease-out hidden sm:flex">
                   <Share2 className="w-4 h-4" />
                 </button>
               </div>
@@ -346,7 +338,7 @@ export default function QuestionViewer() {
                       {companiesWithCounts.map((c: any) => <option key={c.company} value={c.company}>{c.company} ({c.count})</option>)}
                     </FilterSelect>
                   )}
-                  <button onClick={() => setShowFilters(false)} className="p-1.5 rounded-md hover:bg-muted transition-colors ml-auto">
+                  <button onClick={() => setShowFilters(false)} className="cursor-pointer p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-muted transition-colors duration-150 ease-out ml-auto">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
@@ -357,7 +349,7 @@ export default function QuestionViewer() {
           {/* Main scrollable content */}
           <motion.div drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.1} style={{ x, opacity }}
             onDragEnd={handleDragEnd} className="flex-1 overflow-y-auto">
-            <div className="max-w-4xl mx-auto px-4 py-8 lg:py-12">
+            <div className="max-w-4xl mx-auto px-4 py-8 lg:py-12" data-testid="question-card">
 
               {/* Meta row */}
               <div className="flex items-center gap-2 flex-wrap mb-6">
@@ -411,9 +403,11 @@ export default function QuestionViewer() {
                   <div className="flex gap-2">
                     {(['again', 'hard', 'good', 'easy'] as ConfidenceRating[]).map(r => {
                       const cfg = { again: 'text-red-500 border-red-500/40 hover:bg-red-500/8', hard: 'text-amber-500 border-amber-500/40 hover:bg-amber-500/8', good: 'text-emerald-600 border-emerald-500/40 hover:bg-emerald-500/8', easy: 'text-blue-500 border-blue-500/40 hover:bg-blue-500/8' };
+                      const testIds: Record<string, string> = { hard: 'srs-button-hard', good: 'srs-button-good', easy: 'srs-button-easy' };
                       return (
                         <button key={r} onClick={() => handleSRSRating(r)}
-                          className={`px-3 py-1 text-xs font-semibold border rounded-full transition-colors capitalize ${cfg[r]}`}>
+                          {...(testIds[r] ? { 'data-testid': testIds[r] } : {})}
+                          className={`cursor-pointer px-3 min-h-[44px] text-xs font-semibold border rounded-full transition-colors duration-150 ease-out capitalize ${cfg[r]}`}>
                           {r}
                         </button>
                       );
@@ -421,7 +415,7 @@ export default function QuestionViewer() {
                   </div>
                 ) : (
                   <button onClick={handleAddToSRS}
-                    className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-full px-3 py-1 transition-colors">
+                    className="cursor-pointer flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-full px-3 min-h-[44px] transition-colors duration-150 ease-out">
                     <Brain className="w-3.5 h-3.5" /> Add to SRS
                   </button>
                 )}
@@ -434,12 +428,13 @@ export default function QuestionViewer() {
                 <div className="lg:hidden mb-6">
                   {!showAnswer ? (
                     <button onClick={() => setShowAnswer(true)}
-                      className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-primary-foreground font-semibold rounded-xl text-sm">
+                      data-testid="button-reveal-answer"
+                      className="cursor-pointer w-full flex items-center justify-center gap-2 min-h-[44px] bg-primary text-primary-foreground font-semibold rounded-xl text-sm transition-opacity duration-150 ease-out hover:opacity-90">
                       <Eye className="w-4 h-4" /> Show Answer
                     </button>
                   ) : (
                     <button onClick={() => setShowAnswer(false)}
-                      className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                      className="cursor-pointer flex items-center gap-1.5 min-h-[44px] text-sm text-muted-foreground hover:text-foreground transition-colors duration-150 ease-out">
                       <ChevronDown className="w-4 h-4" /> Hide answer
                     </button>
                   )}
@@ -457,10 +452,10 @@ export default function QuestionViewer() {
           </motion.div>
 
           {/* Bottom nav bar */}
-          <div className="border-t border-border bg-background flex-shrink-0 pb-safe">
+          <div className="border-t border-border bg-background flex-shrink-0 pb-24">
             <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
               <button onClick={prevQuestion} disabled={currentIndex === 0}
-                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                className="cursor-pointer flex items-center gap-1.5 min-h-[44px] px-2 text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-150 ease-out">
                 <ChevronLeft className="w-4 h-4" /> Prev
               </button>
               <div className="flex items-center gap-2">
@@ -470,14 +465,13 @@ export default function QuestionViewer() {
                 <span className="text-xs text-muted-foreground tabular-nums">{progress}%</span>
               </div>
               <button onClick={nextQuestion} disabled={currentIndex === totalQuestions - 1}
-                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                className="cursor-pointer flex items-center gap-1.5 min-h-[44px] px-2 text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-150 ease-out">
                 Next <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
         </div>
-        <MobileBottomNav />
-      </DesktopSidebarWrapper>
+      </AppLayout>
 
       <SwipeHint />
       <UnifiedSearch isOpen={showSearchModal} onClose={() => setShowSearchModal(false)} />
@@ -510,7 +504,7 @@ function FilterSelect({ label, value, onChange, children }: { label: string; val
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
       <div className="relative">
         <select value={value} onChange={e => onChange(e.target.value)}
-          className="appearance-none bg-background border border-border rounded-lg px-3 py-1.5 pr-7 text-sm focus:outline-none focus:border-primary transition-colors cursor-pointer">
+          className="appearance-none bg-background border border-border rounded-lg px-3 py-1.5 pr-7 min-h-[44px] text-sm focus:outline-none focus:border-primary transition-colors duration-150 ease-out cursor-pointer">
           {children}
         </select>
         <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />

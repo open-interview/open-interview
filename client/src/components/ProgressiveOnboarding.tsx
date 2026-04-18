@@ -5,13 +5,12 @@
  * while they're using the app. Never blocks direct URL access.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronRight, Sparkles, Check } from 'lucide-react';
 import { rolesConfig, getRecommendedChannels } from '../lib/channels-config';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 
-// Icon imports for roles
 import { 
   Layout, Server, Layers, Smartphone, Activity, Shield, 
   Cpu, Users, Database, Brain, Workflow, Box
@@ -34,7 +33,7 @@ const iconMap: Record<string, React.ReactNode> = {
 };
 
 const DISMISSED_KEY = 'progressive-onboarding-dismissed';
-const ROLE_PROMPT_DELAY = 3000; // Show after 3 seconds on page
+const ROLE_PROMPT_DELAY = 3000;
 
 interface ProgressiveOnboardingProps {
   onComplete?: () => void;
@@ -46,23 +45,20 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
   const [step, setStep] = useState<'role' | 'channels'>('role');
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [selectedChannels, setSelectedChannels] = useState<Set<string>>(new Set());
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
-  // Check if we should show the prompt
   useEffect(() => {
-    // Don't show if already completed onboarding
     if (!needsOnboarding) return;
-    
-    // Don't show if dismissed this session
     const dismissed = sessionStorage.getItem(DISMISSED_KEY);
     if (dismissed) return;
-
-    // Show after a delay to let user see the page first
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, ROLE_PROMPT_DELAY);
-
+    const timer = setTimeout(() => setIsVisible(true), ROLE_PROMPT_DELAY);
     return () => clearTimeout(timer);
   }, [needsOnboarding]);
+
+  // Focus heading on step change
+  useEffect(() => {
+    if (isVisible) headingRef.current?.focus();
+  }, [step, isVisible]);
 
   const handleDismiss = () => {
     sessionStorage.setItem(DISMISSED_KEY, 'true');
@@ -71,7 +67,6 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
 
   const handleRoleSelect = (roleId: string) => {
     setSelectedRole(roleId);
-    // Pre-select recommended channels
     const recommended = getRecommendedChannels(roleId);
     setSelectedChannels(new Set(recommended.map(c => c.id)));
     setStep('channels');
@@ -91,33 +86,22 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
 
   const handleComplete = () => {
     if (selectedRole) {
-      // First set the role (this also sets onboardingComplete and default channels)
       setRole(selectedRole);
-      
-      // Then adjust channels based on user selection
       const recommended = getRecommendedChannels(selectedRole);
       const recommendedIds = new Set(recommended.map(c => c.id));
-      
-      // Unsubscribe from channels user deselected
       recommendedIds.forEach(id => {
-        if (!selectedChannels.has(id)) {
-          unsubscribeChannel(id);
-        }
+        if (!selectedChannels.has(id)) unsubscribeChannel(id);
       });
-      
-      // Subscribe to any additional channels user selected
       selectedChannels.forEach(id => {
-        if (!recommendedIds.has(id)) {
-          subscribeChannel(id);
-        }
+        if (!recommendedIds.has(id)) subscribeChannel(id);
       });
-      
       setIsVisible(false);
       onComplete?.();
     }
   };
 
   const recommendedChannels = selectedRole ? getRecommendedChannels(selectedRole) : [];
+  const isCompleteDisabled = selectedChannels.size === 0;
 
   if (!isVisible) return null;
 
@@ -128,20 +112,23 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 50, scale: 0.95 }}
         className="fixed bottom-4 right-4 left-4 sm:left-auto sm:w-96 z-50"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="progressive-onboarding-heading"
       >
         <div className="bg-card border border-border rounded-xl shadow-2xl overflow-hidden">
           {/* Header */}
           <div className="bg-primary/10 px-4 py-3 flex items-center justify-between border-b border-border">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary" />
-              <span className="font-semibold text-sm">
+              <span id="progressive-onboarding-heading" className="font-semibold text-sm">
                 {step === 'role' ? 'Personalize Your Experience' : 'Select Your Channels'}
               </span>
             </div>
             <button
               onClick={handleDismiss}
+              aria-label="Skip onboarding"
               className="p-1 hover:bg-white/10 rounded transition-colors"
-              aria-label="Dismiss"
             >
               <X className="w-4 h-4 text-muted-foreground" />
             </button>
@@ -157,7 +144,11 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                 >
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <p
+                    ref={headingRef}
+                    tabIndex={-1}
+                    className="text-sm text-muted-foreground mb-4 outline-none"
+                  >
                     What's your role? We'll recommend the best channels for you.
                   </p>
                   
@@ -166,6 +157,7 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
                       <button
                         key={role.id}
                         onClick={() => handleRoleSelect(role.id)}
+                        aria-pressed={selectedRole === role.id}
                         className="p-3 border border-border rounded-lg text-left hover:border-primary hover:bg-primary/5 transition-all group"
                       >
                         <div className="text-muted-foreground group-hover:text-primary mb-1">
@@ -178,6 +170,7 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
 
                   <button
                     onClick={handleDismiss}
+                    aria-label="Skip onboarding"
                     className="w-full mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
                     I'll explore on my own
@@ -190,7 +183,11 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                 >
-                  <p className="text-sm text-muted-foreground mb-3">
+                  <p
+                    ref={headingRef}
+                    tabIndex={-1}
+                    className="text-sm text-muted-foreground mb-3 outline-none"
+                  >
                     We've selected {selectedChannels.size} channels for you. Tap to toggle.
                   </p>
                   
@@ -201,6 +198,7 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
                         <button
                           key={channel.id}
                           onClick={() => toggleChannel(channel.id)}
+                          aria-pressed={isSelected}
                           className={`
                             px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5
                             ${isSelected 
@@ -219,13 +217,15 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
                   <div className="flex gap-2">
                     <button
                       onClick={() => setStep('role')}
+                      aria-label="Go back to role selection"
                       className="flex-1 px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Back
                     </button>
                     <button
                       onClick={handleComplete}
-                      disabled={selectedChannels.size === 0}
+                      disabled={isCompleteDisabled}
+                      aria-disabled={isCompleteDisabled}
                       className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium flex items-center justify-center gap-1 hover:bg-primary/90 transition-colors disabled:opacity-50"
                     >
                       Start Learning <ChevronRight className="w-4 h-4" />
@@ -237,7 +237,7 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
           </div>
 
           {/* Progress dots */}
-          <div className="flex justify-center gap-1.5 pb-3">
+          <div className="flex justify-center gap-1.5 pb-3" aria-hidden="true">
             <div className={`w-1.5 h-1.5 rounded-full transition-colors ${step === 'role' ? 'bg-primary' : 'bg-muted'}`} />
             <div className={`w-1.5 h-1.5 rounded-full transition-colors ${step === 'channels' ? 'bg-primary' : 'bg-muted'}`} />
           </div>

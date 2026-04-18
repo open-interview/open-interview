@@ -245,7 +245,7 @@ export async function loadTests(): Promise<Test[]> {
   if (testsCache) return testsCache;
   
   try {
-    const response = await fetch('/data/tests.json');
+    const response = await fetch(import.meta.env.BASE_URL + 'data/tests.json');
     if (!response.ok) return [];
     testsCache = await response.json();
     return testsCache || [];

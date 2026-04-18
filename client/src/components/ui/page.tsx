@@ -5,6 +5,7 @@
 import { motion } from 'framer-motion';
 import { Search, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { InterviewLoader } from './InterviewLoader';
 
 // ── PageHeader ────────────────────────────────────────────────────────────────
 
@@ -39,14 +40,7 @@ interface PageLoaderProps {
 }
 
 export function PageLoader({ message = 'Loading...' }: PageLoaderProps) {
-  return (
-    <div className="flex items-center justify-center py-20">
-      <div className="text-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-muted-foreground text-sm">{message}</p>
-      </div>
-    </div>
-  );
+  return <InterviewLoader message={message} />;
 }
 
 // ── SearchBar ─────────────────────────────────────────────────────────────────
@@ -67,7 +61,7 @@ export function SearchBar({ value, onChange, placeholder = 'Search...', classNam
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full pl-9 pr-8 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground"
+        className="w-full pl-9 pr-8 min-h-[44px] rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground"
       />
       {value && (
         <button
@@ -95,7 +89,7 @@ export function FilterPill({ label, active, onClick, badge }: FilterPillProps) {
     <button
       onClick={onClick}
       className={cn(
-        'px-4 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all',
+        'cursor-pointer px-4 min-h-[44px] rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-150',
         active
           ? 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground'
           : 'bg-muted/50 border border-border text-muted-foreground hover:bg-muted'

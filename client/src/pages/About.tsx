@@ -313,7 +313,7 @@ export default function About() {
         keywords="about code reels, interview prep, ai learning, technical interviews, FAANG prep, software engineer interview, coding practice"
         canonical="https://open-interview.github.io/about"
       />
-      <AppLayout title="About" showBackOnMobile>
+      <AppLayout title="About" showBackOnMobile fullWidth>
         <div className="font-mono relative">
           <FloatingIcons />
           
@@ -333,7 +333,7 @@ export default function About() {
                   <div className="w-3 h-3 rounded-full bg-yellow-500" />
                   <div className="w-3 h-3 rounded-full bg-green-500" />
                 </div>
-                <button onClick={() => setSoundEnabled(!soundEnabled)} className="p-2 hover:bg-muted rounded transition-colors" aria-label={soundEnabled ? "Mute sound effects" : "Enable sound effects"}>
+                <button onClick={() => setSoundEnabled(!soundEnabled)} className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-muted rounded-lg transition-colors duration-150 cursor-pointer" aria-label={soundEnabled ? "Mute sound effects" : "Enable sound effects"}>
                   {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
                 </button>
               </div>
@@ -447,7 +447,7 @@ export default function About() {
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={cn(
-                    "px-4 py-3 text-xs uppercase tracking-widest font-bold border-b-2 transition-all whitespace-nowrap",
+                    "px-4 min-h-[44px] text-xs uppercase tracking-widest font-bold border-b-2 transition-all duration-150 whitespace-nowrap cursor-pointer",
                     activeTab === tab 
                       ? 'border-primary text-primary' 
                       : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
@@ -460,7 +460,7 @@ export default function About() {
           </div>
 
           {/* Content */}
-          <div className="max-w-4xl mx-auto py-4 pb-16">
+          <div className="max-w-4xl mx-auto py-4 pb-24">
             <AnimatePresence mode="wait">
               {/* Mission Tab */}
               {activeTab === 'mission' && (
@@ -487,7 +487,7 @@ export default function About() {
 
                     {/* Why Code Reels */}
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <div className="p-5 border border-border rounded-xl bg-card hover:border-primary/50 transition-colors">
+                      <div className="p-5 border border-border rounded-xl bg-card hover:border-primary/50 transition-colors duration-150">
                         <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center mb-4">
                           <Target className="w-6 h-6 text-foreground" />
                         </div>
@@ -497,7 +497,7 @@ export default function About() {
                           Most platforms charge $30-50/month for basic features.
                         </p>
                       </div>
-                      <div className="p-5 border border-border rounded-xl bg-card hover:border-primary/50 transition-colors">
+                      <div className="p-5 border border-border rounded-xl bg-card hover:border-primary/50 transition-colors duration-150">
                         <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mb-4">
                           <Sparkles className="w-6 h-6 text-foreground" />
                         </div>
@@ -542,7 +542,7 @@ pnpm dev
                         <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-gradient-to-br text-foreground", f.color)}>
                           {f.icon}
                         </div>
-                        <h3 className="font-bold text-base mb-2 group-hover:text-primary transition-colors">{f.title}</h3>
+                        <h3 className="font-bold text-base mb-2 group-hover:text-primary transition-colors duration-150">{f.title}</h3>
                         <p className="text-sm text-muted-foreground">{f.desc}</p>
                       </motion.div>
                     ))}
@@ -640,15 +640,15 @@ pnpm dev
                     </p>
                     <div className="flex flex-wrap gap-3">
                       <a href="https://github.com/open-interview/open-interview" target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg font-bold text-sm hover:opacity-90 transition-opacity">
+                        className="flex items-center gap-2 px-5 min-h-[44px] bg-primary text-primary-foreground rounded-lg font-bold text-sm hover:opacity-90 transition-opacity duration-150">
                         <Github className="w-4 h-4" /> Star on GitHub
                       </a>
                       <a href="https://github.com/open-interview/open-interview/issues/new" target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-5 py-2.5 border border-border rounded-lg font-bold text-sm hover:border-primary transition-colors">
+                        className="flex items-center gap-2 px-5 min-h-[44px] border border-border rounded-lg font-bold text-sm hover:border-primary transition-colors duration-150">
                         <Bug className="w-4 h-4" /> Report Bug
                       </a>
                       <a href="https://github.com/open-interview/open-interview/discussions" target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-5 py-2.5 border border-border rounded-lg font-bold text-sm hover:border-primary transition-colors">
+                        className="flex items-center gap-2 px-5 min-h-[44px] border border-border rounded-lg font-bold text-sm hover:border-primary transition-colors duration-150">
                         <MessageSquare className="w-4 h-4" /> Discussions
                       </a>
                     </div>
@@ -665,7 +665,7 @@ pnpm dev
                         <Sparkles className="w-6 h-6 text-foreground" />
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-bold group-hover:text-primary transition-colors">What's New</h3>
+                        <h3 className="font-bold group-hover:text-primary transition-colors duration-150">What's New</h3>
                         <p className="text-sm text-muted-foreground">Latest questions and updates</p>
                       </div>
                       <ExternalLink className="w-4 h-4 text-muted-foreground" />
@@ -679,7 +679,7 @@ pnpm dev
                         <Bot className="w-6 h-6 text-foreground" />
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-bold group-hover:text-primary transition-colors">Bot Activity</h3>
+                        <h3 className="font-bold group-hover:text-primary transition-colors duration-150">Bot Activity</h3>
                         <p className="text-sm text-muted-foreground">See what our AI bots are doing</p>
                       </div>
                       <ExternalLink className="w-4 h-4 text-muted-foreground" />
@@ -738,7 +738,7 @@ git push origin feature/awesome-feature`} />
                         href="https://satishkumar-dhule.github.io/"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-cyan-500 text-foreground rounded-lg font-bold text-sm hover:opacity-90 transition-opacity shadow-lg"
+                        className="inline-flex items-center gap-2 px-5 min-h-[44px] bg-gradient-to-r from-primary to-cyan-500 text-foreground rounded-lg font-bold text-sm hover:opacity-90 transition-opacity duration-150 shadow-lg"
                       >
                         <Globe className="w-4 h-4" /> Portfolio
                       </a>
@@ -760,7 +760,7 @@ git push origin feature/awesome-feature`} />
                         href="https://satishkumar-dhule.github.io/"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm hover:border-primary hover:text-primary transition-colors"
+                        className="flex items-center gap-2 px-4 min-h-[44px] border border-border rounded-lg text-sm hover:border-primary hover:text-primary transition-colors duration-150"
                       >
                         <Globe className="w-4 h-4" /> Website
                       </a>
@@ -768,7 +768,7 @@ git push origin feature/awesome-feature`} />
                         href="https://github.com/satishkumar-dhule"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm hover:border-primary hover:text-primary transition-colors"
+                        className="flex items-center gap-2 px-4 min-h-[44px] border border-border rounded-lg text-sm hover:border-primary hover:text-primary transition-colors duration-150"
                       >
                         <Github className="w-4 h-4" /> GitHub
                       </a>
@@ -776,7 +776,7 @@ git push origin feature/awesome-feature`} />
                         href="https://linkedin.com/in/satishkumar-dhule"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm hover:border-primary hover:text-primary transition-colors"
+                        className="flex items-center gap-2 px-4 min-h-[44px] border border-border rounded-lg text-sm hover:border-primary hover:text-primary transition-colors duration-150"
                       >
                         <Linkedin className="w-4 h-4" /> LinkedIn
                       </a>
@@ -796,7 +796,7 @@ git push origin feature/awesome-feature`} />
                         href="https://github.com/open-interview/open-interview"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-foreground rounded-lg font-bold text-sm hover:bg-amber-600 transition-colors"
+                        className="flex items-center gap-2 px-4 min-h-[44px] bg-amber-500 text-foreground rounded-lg font-bold text-sm hover:bg-amber-600 transition-colors duration-150"
                       >
                         <Award className="w-4 h-4" /> Star on GitHub
                       </a>
@@ -804,7 +804,7 @@ git push origin feature/awesome-feature`} />
                         href="https://github.com/open-interview/open-interview/fork"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 border border-amber-500/30 rounded-lg font-bold text-sm hover:bg-amber-500/10 transition-colors"
+                        className="flex items-center gap-2 px-4 min-h-[44px] border border-amber-500/30 rounded-lg font-bold text-sm hover:bg-amber-500/10 transition-colors duration-150"
                       >
                         <GitBranch className="w-4 h-4" /> Fork & Contribute
                       </a>
@@ -831,7 +831,7 @@ git push origin feature/awesome-feature`} />
                 <span>•</span>
                 <span>MIT License</span>
                 <span>•</span>
-                <a href="https://github.com/open-interview/open-interview" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+                <a href="https://github.com/open-interview/open-interview" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors duration-150 cursor-pointer">
                   GitHub
                 </a>
               </div>

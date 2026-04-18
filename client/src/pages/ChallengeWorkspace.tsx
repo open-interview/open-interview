@@ -2,15 +2,21 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'wouter';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import Editor from '@monaco-editor/react';
-import { Play, Send, CheckCircle2, XCircle, Loader2, Trophy, ChevronLeft } from 'lucide-react';
+import { Play, Send, Loader2, ChevronLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { Challenge, Language, TestResult, RunResult } from '@/types/challenges';
+import { AppLayout } from '@/components/layout/AppLayout';
+import type { Challenge, Language, RunResult } from '@/types/challenges';
 import { loadChallenge } from '@/lib/challenges-loader';
 import { runCode } from '@/lib/code-runner';
-import { markSolved, markAttempted } from '@/lib/challenge-progress';
+import { markSolved, markAttempted, addXP, awardBadge, getProgress } from '@/lib/challenge-progress';
+import { calculateScore, type ScoreResult, type Verdict } from '@/lib/test-runner';
+import { checkAndAwardBadges } from '@/lib/challenge-badges';
+import RexCompanion from '@/components/RexCompanion';
+import TestResultsPanel from '@/components/TestResultsPanel';
+import XPCelebration from '@/components/XPCelebration';
 
 const DIFFICULTY_COLORS: Record<string, string> = {
   easy: 'bg-green-500/20 text-green-400 border-green-500/30',
@@ -18,16 +24,10 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   hard: 'bg-red-500/20 text-red-400 border-red-500/30',
 };
 
-const XP_BY_DIFFICULTY: Record<string, number> = { easy: 50, medium: 100, hard: 200 };
-
 function buildTestCasesWithFunctionName(challenge: Challenge) {
-  // Extract function name from starter code (first function declaration)
   const match = challenge.starterCode.javascript.match(/function\s+(\w+)/);
   const functionName = match?.[1] ?? 'solution';
-  const allCases = [
-    ...challenge.testCases.visible,
-    ...challenge.testCases.hidden,
-  ];
+  const allCases = [...challenge.testCases.visible, ...challenge.testCases.hidden];
   return allCases.map(tc => ({ ...tc, functionName }));
 }
 
@@ -37,90 +37,11 @@ function buildVisibleTestCasesWithFunctionName(challenge: Challenge) {
   return challenge.testCases.visible.map(tc => ({ ...tc, functionName }));
 }
 
-function ResultRow({ result, index }: { result: TestResult; index: number }) {
-  return (
-    <tr className={result.passed ? 'bg-green-950/20' : 'bg-red-950/20'}>
-      <td className="px-3 py-2 text-center text-sm text-muted-foreground">{index + 1}</td>
-      <td className="px-3 py-2 font-mono text-xs">{JSON.stringify(result.input)}</td>
-      <td className="px-3 py-2 font-mono text-xs">{JSON.stringify(result.expected)}</td>
-      <td className="px-3 py-2 font-mono text-xs">
-        {result.error ? (
-          <span className="text-red-400">{result.error}</span>
-        ) : (
-          JSON.stringify(result.actual)
-        )}
-      </td>
-      <td className="px-3 py-2 text-center">
-        {result.passed
-          ? <CheckCircle2 className="w-4 h-4 text-green-400 mx-auto" />
-          : <XCircle className="w-4 h-4 text-red-400 mx-auto" />}
-      </td>
-    </tr>
-  );
-}
-
-function OutputPanel({ result, isSubmit, xp }: { result: RunResult | null; isSubmit: boolean; xp: number }) {
-  if (!result) return (
-    <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-      Run your code to see results
-    </div>
-  );
-
-  const allPassed = result.allPassed;
-  const isFullSolve = isSubmit && allPassed;
-
-  return (
-    <ScrollArea className="h-full">
-      <div className="p-3 space-y-3">
-        {isFullSolve && (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400">
-            <Trophy className="w-5 h-5" />
-            <span className="font-semibold">Challenge Solved! 🎉</span>
-            <span className="text-sm ml-auto">+{xp} XP</span>
-          </div>
-        )}
-
-        <div className="flex items-center gap-3 text-sm">
-          <span className={allPassed ? 'text-green-400' : 'text-red-400'}>
-            {result.passCount}/{result.totalCount} tests passed
-          </span>
-          <span className="text-muted-foreground">{result.executionTimeMs}ms</span>
-        </div>
-
-        {result.error && (
-          <pre className="p-2 rounded bg-red-950/30 border border-red-500/20 text-red-400 text-xs overflow-x-auto whitespace-pre-wrap">
-            {result.error}
-          </pre>
-        )}
-
-        {result.stdout && (
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">stdout</p>
-            <pre className="p-2 rounded bg-muted/30 text-xs overflow-x-auto whitespace-pre-wrap">{result.stdout}</pre>
-          </div>
-        )}
-
-        {result.results.length > 0 && (
-          <div className="overflow-x-auto rounded border border-border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="px-3 py-2 text-center text-xs text-muted-foreground w-8">#</th>
-                  <th className="px-3 py-2 text-left text-xs text-muted-foreground">Input</th>
-                  <th className="px-3 py-2 text-left text-xs text-muted-foreground">Expected</th>
-                  <th className="px-3 py-2 text-left text-xs text-muted-foreground">Actual</th>
-                  <th className="px-3 py-2 text-center text-xs text-muted-foreground w-12">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {result.results.map((r, i) => <ResultRow key={i} result={r} index={i} />)}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </ScrollArea>
-  );
+interface CelebrationState {
+  xpEarned: number;
+  leveledUp: boolean;
+  newLevel: number;
+  badgesEarned: string[];
 }
 
 export default function ChallengeWorkspace() {
@@ -133,7 +54,9 @@ export default function ChallengeWorkspace() {
   const [running, setRunning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [runResult, setRunResult] = useState<RunResult | null>(null);
+  const [score, setScore] = useState<ScoreResult | null>(null);
   const [isSubmitResult, setIsSubmitResult] = useState(false);
+  const [celebration, setCelebration] = useState<CelebrationState | null>(null);
   const startTimeRef = useRef(Date.now());
 
   useEffect(() => {
@@ -155,6 +78,7 @@ export default function ChallengeWorkspace() {
       ? challenge.starterCode.python
       : challenge.starterCode.javascript);
     setRunResult(null);
+    setScore(null);
   }, [language, challenge]);
 
   async function handleRun() {
@@ -165,6 +89,7 @@ export default function ChallengeWorkspace() {
     const testCases = buildVisibleTestCasesWithFunctionName(challenge);
     const result = await runCode(code, testCases, language);
     setRunResult(result);
+    setScore(calculateScore(challenge, result, Date.now() - startTimeRef.current));
     setRunning(false);
   }
 
@@ -175,11 +100,33 @@ export default function ChallengeWorkspace() {
     markAttempted(challenge.id, language);
     const testCases = buildTestCasesWithFunctionName(challenge);
     const result = await runCode(code, testCases, language);
+    const timeMs = Date.now() - startTimeRef.current;
+    const scoreResult = calculateScore(challenge, result, timeMs);
     setRunResult(result);
+    setScore(scoreResult);
+
     if (result.allPassed) {
-      const timeMs = Date.now() - startTimeRef.current;
-      const xp = XP_BY_DIFFICULTY[challenge.difficulty] ?? 50;
-      markSolved(challenge.id, language, timeMs, xp);
+      markSolved(challenge.id, language, timeMs, scoreResult.totalXP);
+      const { newLevel, leveledUp } = addXP(scoreResult.totalXP);
+
+      const progress = getProgress();
+      const prevLang = progress.challenges[challenge.id]?.language;
+      const previousLanguages = prevLang ? [prevLang] : [];
+      const newBadges = checkAndAwardBadges(progress, {
+        challengeId: challenge.id,
+        difficulty: challenge.difficulty as 'easy' | 'medium' | 'hard',
+        language,
+        timeMs,
+        previousLanguages,
+      });
+      newBadges.forEach(awardBadge);
+
+      setCelebration({
+        xpEarned: scoreResult.totalXP,
+        leveledUp,
+        newLevel,
+        badgesEarned: newBadges,
+      });
     }
     setSubmitting(false);
   }
@@ -196,19 +143,33 @@ export default function ChallengeWorkspace() {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4 bg-background">
         <p className="text-destructive">{error ?? 'Challenge not found'}</p>
-        <Link href="/challenges">
+        <Link href="/code">
           <Button variant="outline">Back to Challenges</Button>
         </Link>
       </div>
     );
   }
 
+  const failingTests = runResult?.results.filter(r => !r.passed);
+  const verdict = score?.verdict as Verdict | undefined;
+
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
+    <AppLayout title={challenge.title} showBackOnMobile fullWidth>
+    <div className="flex flex-col h-[calc(100dvh-var(--header-height,0px))] bg-background text-foreground overflow-hidden pb-safe">
+      {celebration && (
+        <XPCelebration
+          xpEarned={celebration.xpEarned}
+          leveledUp={celebration.leveledUp}
+          newLevel={celebration.newLevel}
+          badgesEarned={celebration.badgesEarned}
+          onClose={() => setCelebration(null)}
+        />
+      )}
+
       {/* Header */}
       <header className="flex items-center gap-3 px-4 py-2 border-b border-border shrink-0">
-        <Link href="/challenges">
-          <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground">
+        <Link href="/code">
+          <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground cursor-pointer min-h-[44px] transition-colors duration-150 ease-out">
             <ChevronLeft className="w-4 h-4" /> Challenges
           </Button>
         </Link>
@@ -224,72 +185,83 @@ export default function ChallengeWorkspace() {
       <PanelGroup direction="horizontal" className="flex-1 overflow-hidden">
         {/* Left: Problem */}
         <Panel defaultSize={40} minSize={25}>
-          <Tabs defaultValue="description" className="flex flex-col h-full">
-            <TabsList className="mx-3 mt-2 shrink-0 w-fit">
-              <TabsTrigger value="description">Description</TabsTrigger>
-              <TabsTrigger value="testcases">Test Cases</TabsTrigger>
-              <TabsTrigger value="editorial">Editorial</TabsTrigger>
-            </TabsList>
+          <div className="flex flex-col h-full">
+            <Tabs defaultValue="description" className="flex flex-col flex-1 overflow-hidden">
+              <TabsList className="mx-3 mt-2 shrink-0 w-fit">
+                <TabsTrigger value="description" className="cursor-pointer min-h-[44px]">Description</TabsTrigger>
+                <TabsTrigger value="testcases" className="cursor-pointer min-h-[44px]">Test Cases</TabsTrigger>
+                <TabsTrigger value="editorial" className="cursor-pointer min-h-[44px]">Editorial</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="description" className="flex-1 overflow-hidden mt-0">
-              <ScrollArea className="h-full">
-                <div className="p-4 space-y-4 text-sm">
-                  <p className="leading-relaxed whitespace-pre-wrap">{challenge.description}</p>
-                  {challenge.examples.length > 0 && (
-                    <div className="space-y-3">
-                      <h3 className="font-semibold">Examples</h3>
-                      {challenge.examples.map((ex, i) => (
-                        <div key={i} className="rounded-lg border border-border bg-muted/20 p-3 space-y-1 font-mono text-xs">
-                          <div><span className="text-muted-foreground">Input: </span>{ex.input}</div>
-                          <div><span className="text-muted-foreground">Output: </span>{ex.output}</div>
-                          {ex.explanation && (
-                            <div className="font-sans text-muted-foreground">{ex.explanation}</div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {challenge.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 pt-2">
-                      {challenge.tags.map(tag => (
-                        <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-            </TabsContent>
+              <TabsContent value="description" className="flex-1 overflow-hidden mt-0">
+                <ScrollArea className="h-full">
+                  <div className="p-4 space-y-4 text-sm">
+                    <p className="leading-relaxed whitespace-pre-wrap">{challenge.description}</p>
+                    {challenge.examples.length > 0 && (
+                      <div className="space-y-3">
+                        <h3 className="font-semibold">Examples</h3>
+                        {challenge.examples.map((ex, i) => (
+                          <div key={i} className="rounded-lg border border-border bg-muted/20 p-3 space-y-1 font-mono text-xs">
+                            <div><span className="text-muted-foreground">Input: </span>{ex.input}</div>
+                            <div><span className="text-muted-foreground">Output: </span>{ex.output}</div>
+                            {ex.explanation && (
+                              <div className="font-sans text-muted-foreground">{ex.explanation}</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {challenge.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-2">
+                        {challenge.tags.map(tag => (
+                          <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
 
-            <TabsContent value="testcases" className="flex-1 overflow-hidden mt-0">
-              <ScrollArea className="h-full">
-                <div className="p-4 space-y-3">
-                  <p className="text-xs text-muted-foreground">Visible test cases ({challenge.testCases.visible.length})</p>
-                  {challenge.testCases.visible.map((tc, i) => (
-                    <div key={i} className="rounded-lg border border-border bg-muted/20 p-3 font-mono text-xs space-y-1">
-                      <div><span className="text-muted-foreground">Input: </span>{JSON.stringify(tc.input)}</div>
-                      <div><span className="text-muted-foreground">Expected: </span>{JSON.stringify(tc.expected)}</div>
-                    </div>
-                  ))}
-                  {challenge.testCases.hidden.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      + {challenge.testCases.hidden.length} hidden test case{challenge.testCases.hidden.length > 1 ? 's' : ''}
-                    </p>
-                  )}
-                </div>
-              </ScrollArea>
-            </TabsContent>
+              <TabsContent value="testcases" className="flex-1 overflow-hidden mt-0">
+                <ScrollArea className="h-full">
+                  <div className="p-4 space-y-3">
+                    <p className="text-xs text-muted-foreground">Visible test cases ({challenge.testCases.visible.length})</p>
+                    {challenge.testCases.visible.map((tc, i) => (
+                      <div key={i} className="rounded-lg border border-border bg-muted/20 p-3 font-mono text-xs space-y-1">
+                        <div><span className="text-muted-foreground">Input: </span>{JSON.stringify(tc.input)}</div>
+                        <div><span className="text-muted-foreground">Expected: </span>{JSON.stringify(tc.expected)}</div>
+                      </div>
+                    ))}
+                    {challenge.testCases.hidden.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        + {challenge.testCases.hidden.length} hidden test case{challenge.testCases.hidden.length > 1 ? 's' : ''}
+                      </p>
+                    )}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
 
-            <TabsContent value="editorial" className="flex-1 overflow-hidden mt-0">
-              <ScrollArea className="h-full">
-                <div className="p-4 text-sm leading-relaxed whitespace-pre-wrap">
-                  {challenge.editorial}
-                </div>
-              </ScrollArea>
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="editorial" className="flex-1 overflow-hidden mt-0">
+                <ScrollArea className="h-full">
+                  <div className="p-4 text-sm leading-relaxed whitespace-pre-wrap">
+                    {challenge.editorial}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
+
+            {/* Rex AI Companion */}
+            <div className="p-3 border-t border-border shrink-0 flex justify-center">
+              <RexCompanion
+                challenge={challenge}
+                currentCode={code}
+                failingTests={failingTests}
+              />
+            </div>
+          </div>
         </Panel>
 
-        <PanelResizeHandle className="w-1 bg-border hover:bg-primary/50 transition-colors cursor-col-resize" />
+        <PanelResizeHandle className="w-1 bg-border hover:bg-primary/50 transition-colors duration-150 ease-out cursor-col-resize" />
 
         {/* Right: Editor + Output */}
         <Panel defaultSize={60} minSize={30}>
@@ -302,7 +274,7 @@ export default function ChallengeWorkspace() {
                   <select
                     value={language}
                     onChange={e => setLanguage(e.target.value as Language)}
-                    className="text-xs bg-muted border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="text-xs bg-muted border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer min-h-[44px] transition-colors duration-150 ease-out"
                   >
                     <option value="javascript">JavaScript</option>
                     {challenge.starterCode.python && <option value="python">Python</option>}
@@ -313,19 +285,19 @@ export default function ChallengeWorkspace() {
                       variant="outline"
                       onClick={handleRun}
                       disabled={running || submitting}
-                      className="gap-1 text-xs"
+                      className="gap-1 text-xs min-h-[44px] cursor-pointer transition-colors duration-150 ease-out"
                     >
                       {running ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-                      Run Code
+                      {running ? 'Running…' : 'Run Code'}
                     </Button>
                     <Button
                       size="sm"
                       onClick={handleSubmit}
                       disabled={running || submitting}
-                      className="gap-1 text-xs"
+                      className="gap-1 text-xs min-h-[44px] cursor-pointer transition-colors duration-150 ease-out bg-violet-600 hover:bg-violet-700"
                     >
                       {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                      Submit
+                      {submitting ? 'Submitting…' : 'Submit'}
                     </Button>
                   </div>
                 </div>
@@ -353,7 +325,7 @@ export default function ChallengeWorkspace() {
               </div>
             </Panel>
 
-            <PanelResizeHandle className="h-1 bg-border hover:bg-primary/50 transition-colors cursor-row-resize" />
+            <PanelResizeHandle className="h-1 bg-border hover:bg-primary/50 transition-colors duration-150 ease-out cursor-row-resize" />
 
             {/* Output panel */}
             <Panel defaultSize={35} minSize={15}>
@@ -367,7 +339,19 @@ export default function ChallengeWorkspace() {
                   )}
                 </div>
                 <div className="flex-1 overflow-hidden">
-                  <OutputPanel result={runResult} isSubmit={isSubmitResult} xp={XP_BY_DIFFICULTY[challenge.difficulty] ?? 50} />
+                  <ScrollArea className="h-full">
+                    <div className="pb-24">
+                    <TestResultsPanel
+                      results={runResult?.results ?? []}
+                      stdout={runResult?.stdout}
+                      error={runResult?.error}
+                      executionTimeMs={runResult?.executionTimeMs}
+                      verdict={verdict}
+                      score={score ?? undefined}
+                      isRunning={running || submitting}
+                    />
+                    </div>
+                  </ScrollArea>
                 </div>
               </div>
             </Panel>
@@ -375,5 +359,6 @@ export default function ChallengeWorkspace() {
         </Panel>
       </PanelGroup>
     </div>
+    </AppLayout>
   );
 }

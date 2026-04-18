@@ -5,9 +5,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { DesktopSidebarWrapper } from '../components/layout/DesktopSidebarWrapper';
-import { MobileBottomNav } from '../components/layout/UnifiedNav';
-import { MobileHeader } from '../components/layout/MobileHeader';
+import { AppLayout } from '../components/layout/AppLayout';
 import { useLocation, useRoute } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -19,7 +17,6 @@ import {
   getExamConfig,
   generatePracticeSession,
   CertificationQuestion,
-  CertificationDomain,
   CertificationExamConfig,
 } from '../lib/certification-questions';
 import { useCredits } from '../context/CreditsContext';
@@ -271,7 +268,7 @@ export default function CertificationExam() {
           </p>
           <button 
             onClick={() => setLocation(`/certification/${certificationId}`)}
-            className="px-4 py-2 bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground rounded-lg"
+            className="min-h-[44px] px-6 py-2 bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground rounded-lg font-medium cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90"
           >
             Go to Practice Mode
           </button>
@@ -281,8 +278,7 @@ export default function CertificationExam() {
   }
 
   return (
-    <DesktopSidebarWrapper>
-      <div className="lg:hidden"><MobileHeader title="Certification" showBack={true} /></div>
+    <AppLayout fullWidth>
       <SEOHead 
         title={`${certification.name} Exam Practice`} 
         description={`Practice exam for ${certification.name} certification`} 
@@ -349,8 +345,7 @@ export default function CertificationExam() {
           />
         )}
       </div>
-      <MobileBottomNav />
-    </DesktopSidebarWrapper>
+    </AppLayout>
   );
 }
 
@@ -393,7 +388,7 @@ function SetupScreen({
         <div className="text-center mb-8">
           <button
             onClick={onBack}
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4"
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 min-h-[44px] cursor-pointer transition-colors duration-150 ease-out"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to certification
@@ -437,7 +432,7 @@ function SetupScreen({
           
           <button
             onClick={() => setExamMode('practice')}
-            className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+            className={`w-full p-4 rounded-xl border-2 text-left transition-all duration-150 ease-out cursor-pointer min-h-[44px] ${
               examMode === 'practice' 
                 ? 'border-primary bg-gradient-to-r from-primary/5 to-cyan-500/5' 
                 : 'border-border hover:border-primary/50'
@@ -458,7 +453,7 @@ function SetupScreen({
 
           <button
             onClick={() => setExamMode('timed')}
-            className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+            className={`w-full p-4 rounded-xl border-2 text-left transition-all duration-150 ease-out cursor-pointer min-h-[44px] ${
               examMode === 'timed' 
                 ? 'border-primary bg-gradient-to-r from-primary/5 to-cyan-500/5' 
                 : 'border-border hover:border-primary/50'
@@ -486,7 +481,7 @@ function SetupScreen({
               <button
                 key={count}
                 onClick={() => setQuestionCount(count)}
-                className={`flex-1 py-2 rounded-lg font-medium transition-all ${
+                className={`flex-1 py-2 rounded-lg font-medium transition-all duration-150 ease-out cursor-pointer min-h-[44px] ${
                   questionCount === count
                     ? 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground'
                     : 'bg-muted hover:bg-muted/80'
@@ -501,7 +496,7 @@ function SetupScreen({
         {/* Start Button */}
         <button
           onClick={onStart}
-          className="w-full py-4 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-xl font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+          className="w-full min-h-[44px] py-4 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-xl font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity duration-150 ease-out cursor-pointer"
         >
           <Zap className="w-5 h-5" />
           Start Practice
@@ -559,19 +554,61 @@ function ActiveExam({
   onExit,
 }: ActiveExamProps) {
   const [showNav, setShowNav] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const isFlagged = flaggedQuestions.has(currentIndex);
   const correctOption = currentQuestion.options.find(o => o.isCorrect);
 
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Exit Confirmation Dialog */}
+      <AnimatePresence>
+        {showExitConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowExitConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              className="bg-muted/50 border border-border rounded-2xl w-full max-w-sm p-5"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <Home className="w-12 h-12 mx-auto mb-3 text-amber-500" />
+                <h3 className="font-bold mb-2">Exit Exam?</h3>
+                <p className="text-sm text-muted-foreground mb-4">Your progress will be saved. You can resume later.</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowExitConfirm(false)}
+                    className="flex-1 min-h-[44px] py-2.5 bg-muted rounded-xl font-medium cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80"
+                  >
+                    Continue
+                  </button>
+                  <button
+                    onClick={onExit}
+                    className="flex-1 min-h-[44px] py-2.5 bg-amber-500/20 text-amber-500 rounded-xl font-medium cursor-pointer transition-colors duration-150 ease-out hover:bg-amber-500/30"
+                  >
+                    Exit
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border shadow-lg shadow-primary/5">
         <div className="max-w-4xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
-                onClick={onExit}
-                className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+                onClick={() => setShowExitConfirm(true)}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-muted rounded-lg transition-colors duration-150 ease-out cursor-pointer"
                 title="Exit and save progress"
               >
                 <Home className="w-4 h-4 text-muted-foreground" />
@@ -584,7 +621,7 @@ function ActiveExam({
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowNav(!showNav)}
-                className="px-3 py-1.5 bg-muted rounded-lg text-sm font-medium"
+                className="min-h-[44px] px-3 py-1.5 bg-muted rounded-lg text-sm font-medium cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80"
               >
                 {currentIndex + 1}/{totalQuestions}
               </button>
@@ -636,7 +673,7 @@ function ActiveExam({
                         onGoToQuestion(i);
                         setShowNav(false);
                       }}
-                      className={`relative aspect-square rounded-lg font-medium text-sm transition-all ${
+                      className={`relative aspect-square rounded-lg font-medium text-sm transition-all duration-150 ease-out cursor-pointer min-h-[44px] ${
                         isCurrent
                           ? 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground'
                           : answer
@@ -687,7 +724,7 @@ function ActiveExam({
           </span>
           <button
             onClick={onToggleFlag}
-            className={`ml-auto p-1.5 rounded-lg transition-colors ${
+            className={`ml-auto min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-colors duration-150 ease-out cursor-pointer ${
               isFlagged ? 'bg-amber-500/10 text-amber-500' : 'hover:bg-muted text-muted-foreground'
             }`}
           >
@@ -712,7 +749,7 @@ function ActiveExam({
                 key={option.id}
                 onClick={() => !isAnswered && onSelectOption(option.id)}
                 disabled={isAnswered && examMode !== 'review'}
-                className={`w-full p-4 text-left border-2 rounded-xl transition-all ${
+                className={`w-full p-4 text-left border-2 rounded-xl transition-all duration-150 ease-out min-h-[44px] ${
                   showResult
                     ? isCorrect
                       ? 'border-green-500 bg-green-500/10'
@@ -722,7 +759,7 @@ function ActiveExam({
                     : isSelected
                     ? 'border-primary bg-gradient-to-r from-primary/5 to-cyan-500/5'
                     : 'border-border hover:border-primary/50'
-                } ${isAnswered && examMode !== 'review' ? 'cursor-default' : ''}`}
+                } ${isAnswered && examMode !== 'review' ? 'cursor-default' : 'cursor-pointer'}`}
               >
                 <div className="flex items-start gap-3">
                   <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
@@ -768,12 +805,12 @@ function ActiveExam({
       </main>
 
       {/* Footer Navigation */}
-      <footer className="sticky bottom-0 bg-background/95 backdrop-blur-xl border-t border-border p-4 shadow-lg shadow-primary/5">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
+      <footer className="sticky bottom-0 bg-background/95 backdrop-blur-xl border-t border-border p-4 pb-safe shadow-lg shadow-primary/5">
+        <div className="max-w-4xl mx-auto flex items-center justify-between pb-2">
           <button
             onClick={onPrev}
             disabled={currentIndex === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-muted rounded-lg disabled:opacity-50"
+            className="flex items-center gap-2 px-4 min-h-[44px] bg-muted rounded-lg disabled:opacity-50 cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80 disabled:cursor-default"
           >
             <ChevronLeft className="w-5 h-5" />
             <span className="hidden sm:inline">Previous</span>
@@ -782,7 +819,7 @@ function ActiveExam({
           {currentIndex === totalQuestions - 1 ? (
             <button
               onClick={onFinish}
-              className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground rounded-lg font-medium"
+              className="flex items-center gap-2 px-6 min-h-[44px] bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground rounded-lg font-medium cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90"
             >
               <Trophy className="w-5 h-5" />
               Finish
@@ -791,7 +828,7 @@ function ActiveExam({
             <button
               onClick={onNext}
               disabled={!isAnswered && examMode === 'practice'}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground rounded-lg disabled:opacity-50"
+              className="flex items-center gap-2 px-4 min-h-[44px] bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground rounded-lg disabled:opacity-50 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90 disabled:cursor-default"
             >
               <span className="hidden sm:inline">Next</span>
               <ChevronRight className="w-5 h-5" />
@@ -958,10 +995,10 @@ function ResultsScreen({
         )}
 
         {/* Actions */}
-        <div className="space-y-3">
+        <div className="space-y-3 pb-24">
           <button
             onClick={onReview}
-            className="w-full py-3 bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground rounded-xl font-medium flex items-center justify-center gap-2"
+            className="w-full min-h-[44px] py-3 bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground rounded-xl font-medium flex items-center justify-center gap-2 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90"
           >
             <BookOpen className="w-5 h-5" />
             Review Answers
@@ -969,7 +1006,7 @@ function ResultsScreen({
           
           <button
             onClick={onRetry}
-            className="w-full py-3 bg-muted rounded-xl font-medium flex items-center justify-center gap-2"
+            className="w-full min-h-[44px] py-3 bg-muted rounded-xl font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80"
           >
             <RotateCcw className="w-5 h-5" />
             Try Again
@@ -977,7 +1014,7 @@ function ResultsScreen({
           
           <button
             onClick={onBack}
-            className="w-full py-3 text-muted-foreground hover:text-foreground transition-colors"
+            className="w-full min-h-[44px] py-3 text-muted-foreground hover:text-foreground transition-colors duration-150 ease-out cursor-pointer"
           >
             Back to Certification
           </button>

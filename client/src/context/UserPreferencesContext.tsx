@@ -32,6 +32,7 @@ interface UserPreferencesContextType {
   resetPreferences: () => void;
   skipOnboarding: () => void;
   needsOnboarding: boolean;
+  hasCompletedOnboarding: boolean;
   toggleShuffleQuestions: () => void;
   togglePrioritizeUnvisited: () => void;
   toggleHideCertifications: () => void;
@@ -220,6 +221,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
       resetPreferences,
       skipOnboarding,
       needsOnboarding: !preferences.onboardingComplete,
+      hasCompletedOnboarding: preferences.onboardingComplete && preferences.subscribedChannels.length > 0,
       toggleShuffleQuestions,
       togglePrioritizeUnvisited,
       toggleHideCertifications

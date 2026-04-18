@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { getBadgeById, RARITY_COLORS } from '@/lib/challenge-badges';
 
 interface XPCelebrationProps {
@@ -26,6 +27,7 @@ export default function XPCelebration({
   badgesEarned,
   onClose,
 }: XPCelebrationProps) {
+  const prefersReducedMotion = useReducedMotion();
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
 
@@ -45,6 +47,7 @@ export default function XPCelebration({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       {/* Confetti */}
+      {!prefersReducedMotion && (
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         {CONFETTI.map((p) => (
           <div
@@ -58,12 +61,13 @@ export default function XPCelebration({
           />
         ))}
       </div>
+      )}
 
       {/* Card */}
       <div className="relative z-10 mx-4 w-full max-w-sm rounded-2xl bg-gradient-to-b from-indigo-900 to-teal-900 p-8 text-center shadow-2xl ring-1 ring-white/10">
 
         {/* XP earned */}
-        <div className="mb-2 animate-bounce text-6xl font-black text-teal-300 drop-shadow-lg">
+        <div className={`mb-2 ${prefersReducedMotion ? '' : 'animate-bounce'} text-6xl font-black text-teal-300 drop-shadow-lg`}>
           +{xpEarned} XP
         </div>
         <p className="mb-6 text-sm font-medium text-indigo-200 uppercase tracking-widest">
@@ -75,7 +79,7 @@ export default function XPCelebration({
           <div className="mb-6 rounded-xl bg-yellow-400/10 px-4 py-3 ring-1 ring-yellow-400/30">
             <div className="flex items-center justify-center gap-2">
               <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75" />
+                <span className={`${prefersReducedMotion ? 'hidden' : 'animate-ping'} absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75`} />
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-yellow-400" />
               </span>
               <span className="text-lg font-bold text-yellow-300">Level Up!</span>
