@@ -186,6 +186,16 @@ async function initBlogPostsTable() {
   
   // Add new columns if they don't exist (migration)
   const newColumns = [
+    { name: 'introduction', type: 'TEXT' },
+    { name: 'sections', type: 'TEXT' },
+    { name: 'conclusion', type: 'TEXT' },
+    { name: 'meta_description', type: 'TEXT' },
+    { name: 'channel', type: 'TEXT' },
+    { name: 'difficulty', type: 'TEXT' },
+    { name: 'tags', type: 'TEXT' },
+    { name: 'diagram', type: 'TEXT' },
+    { name: 'created_at', type: 'TEXT' },
+    { name: 'published_at', type: 'TEXT' },
     { name: 'quick_reference', type: 'TEXT' },
     { name: 'glossary', type: 'TEXT' },
     { name: 'real_world_example', type: 'TEXT' },
@@ -195,7 +205,7 @@ async function initBlogPostsTable() {
     { name: 'diagram_type', type: 'TEXT' },
     { name: 'diagram_label', type: 'TEXT' },
     { name: 'images', type: 'TEXT' },
-    { name: 'svg_content', type: 'TEXT' }  // Store SVG content to avoid regeneration
+    { name: 'svg_content', type: 'TEXT' }
   ];
   
   for (const col of newColumns) {

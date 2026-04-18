@@ -191,7 +191,8 @@ function calculateKeywordDensity(text, keywords) {
   
   let keywordCount = 0;
   for (const keyword of keywords) {
-    const regex = new RegExp(`\\b${keyword.toLowerCase()}\\b`, 'g');
+    const escaped = keyword.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\b${escaped}\\b`, 'g');
     const matches = lowerText.match(regex);
     if (matches) keywordCount += matches.length;
   }
