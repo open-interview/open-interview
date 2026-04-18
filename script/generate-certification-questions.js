@@ -191,48 +191,38 @@ async function main() {
   
   let totalGenerated = 0;
   let totalSaved = 0;
-  
-  for (const certId of targetCerts) {
-    console.log(`\n${'─'.repeat(50)}`);
-    console.log(`📝 Generating questions for: ${certId}`);
-    
+
+  const { WorkerPool } = await import('./ai/graphs/parallel-bot-executor.js');
+  const { safeConcurrency } = await import('./ai/providers/opencode.js');
+
+  const tasks = await Promise.all(targetCerts.map(async certId => {
     const domains = certificationDomains[certId];
-    if (!domains || domains.length === 0) {
-      console.log(`   ⚠️ No domains configured for ${certId}`);
-      continue;
-    }
-    
-    try {
-      // Get prioritized domain (one with fewest questions)
-      const prioritizedDomain = await getPrioritizedDomain(certId);
-      
-      // Generate questions (use prioritized domain instead of random selection)
-      const result = await generateCertificationQuestions({
-        certificationId: certId,
-        domain: prioritizedDomain, // Use prioritized domain
-        difficulty: 'intermediate',
-        count: QUESTIONS_PER_CERT
-      });
-      
-      if (result.success && result.questions?.length > 0) {
-        totalGenerated += result.questions.length;
-        
-        // Save each question
-        for (const question of result.questions) {
-          const saved = await saveCertQuestion(question);
-          if (saved) totalSaved++;
-        }
-      } else {
-        console.log(`   ⚠️ Generation failed: ${result.error || 'No questions returned'}`);
+    if (!domains?.length) return null;
+    const domain = await getPrioritizedDomain(certId);
+    return { id: `cert-${certId}`, fn: generateCertificationQuestions, args: [{ certificationId: certId, domain, difficulty: 'intermediate', count: QUESTIONS_PER_CERT }] };
+  }));
+
+  const pool = new WorkerPool({
+    maxConcurrency: safeConcurrency(4),
+    batchSize: 4,
+    taskTimeout: 180_000,
+    retryAttempts: 2,
+    rateLimitDelay: 300,
+  });
+  pool.addTasks(tasks.filter(Boolean));
+  const poolResults = await pool.execute();
+
+  for (const task of poolResults.completed) {
+    const result = task.result;
+    if (result?.success && result.questions?.length > 0) {
+      totalGenerated += result.questions.length;
+      for (const question of result.questions) {
+        const saved = await saveCertQuestion(question);
+        if (saved) totalSaved++;
       }
-    } catch (error) {
-      console.log(`   ❌ Error: ${error.message}`);
     }
-    
-    // Small delay between certifications
-    await new Promise(r => setTimeout(r, 1000));
   }
-  
+
   console.log('\n' + '═'.repeat(60));
   console.log('📊 GENERATION COMPLETE');
   console.log('═'.repeat(60));

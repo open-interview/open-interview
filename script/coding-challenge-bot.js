@@ -207,69 +207,48 @@ async function main() {
   
   const generated = [];
   const failed = [];
-  
-  for (let i = 0; i < inputCount; i++) {
-    console.log(`\n--- Challenge ${i + 1}/${inputCount} ---`);
-    
+
+  // Build task list
+  const tasks = Array.from({ length: inputCount }, (_, i) => {
     const difficulty = inputDifficulty === 'random'
       ? DIFFICULTIES[Math.floor(Math.random() * DIFFICULTIES.length)]
       : inputDifficulty;
-    
     const category = inputCategory === 'random'
       ? CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)]
       : inputCategory;
+    return { id: `challenge-${i + 1}`, fn: generateChallengeWrapper, args: [difficulty, category, dryRun] };
+  });
 
-    // Per-challenge timeout of 90s + refusal handling
-    let challenge = null;
+  const { WorkerPool } = await import('./ai/graphs/parallel-bot-executor.js');
+  const { safeConcurrency } = await import('./ai/providers/opencode.js');
+  const pool = new WorkerPool({
+    maxConcurrency: safeConcurrency(3),
+    batchSize: 3,
+    taskTimeout: 120_000,
+    retryAttempts: 2,
+    rateLimitDelay: 500,
+  });
+  pool.addTasks(tasks);
+  const poolResults = await pool.execute();
+
+  for (const task of poolResults.completed) {
+    const challenge = task.result;
+    if (!challenge) { failed.push({ reason: 'No result' }); continue; }
+    if (dryRun) { generated.push(challenge); continue; }
+    if (await isDuplicateChallenge(challenge.title)) {
+      failed.push({ reason: 'Duplicate title' }); continue;
+    }
     try {
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Challenge generation timed out (90s)')), 90_000)
-      );
-      challenge = await Promise.race([generateChallengeWrapper(difficulty, category, dryRun), timeoutPromise]);
-    } catch (err) {
-      if (err.isRefusal) {
-        console.log(`⚠️ AI refused to generate challenge (${category}/${difficulty}): ${err.message}`);
-      } else {
-        console.log(`❌ Challenge generation error: ${err.message}`);
-      }
-      failed.push({ difficulty, category, reason: err.message });
-      continue;
+      const challengeId = await saveChallengeToDb(challenge);
+      challenge.id = challengeId;
+      generated.push(challenge);
+      console.log(`✅ Saved: ${challengeId} — ${challenge.title}`);
+    } catch (dbError) {
+      failed.push({ reason: `DB error: ${dbError.message}` });
     }
-    
-    if (challenge) {
-      if (dryRun) {
-        console.log('🔍 DRY RUN - would save:');
-        console.log(JSON.stringify(challenge, null, 2));
-        generated.push(challenge);
-        continue;
-      }
-
-      // Check for duplicates
-      if (await isDuplicateChallenge(challenge.title)) {
-        console.log(`⚠️ Duplicate title detected: ${challenge.title}`);
-        failed.push({ difficulty, category, reason: 'Duplicate title' });
-        continue;
-      }
-      
-      // Save to database
-      try {
-        const challengeId = await saveChallengeToDb(challenge);
-        challenge.id = challengeId;
-        generated.push(challenge);
-        
-        console.log(`✅ Saved to database: ${challengeId}`);
-        console.log(`   Title: ${challenge.title}`);
-        console.log(`   Difficulty: ${challenge.difficulty}`);
-        console.log(`   Category: ${challenge.category}`);
-        console.log(`   Companies: ${challenge.companies?.join(', ') || 'N/A'}`);
-        console.log(`   Test cases: ${challenge.testCases.length}`);
-      } catch (dbError) {
-        console.log(`❌ Database error: ${dbError.message}`);
-        failed.push({ difficulty, category, reason: `DB error: ${dbError.message}` });
-      }
-    } else {
-      failed.push({ difficulty, category, reason: 'Generation failed' });
-    }
+  }
+  for (const task of poolResults.failed) {
+    failed.push({ reason: task.error || 'Failed' });
   }
   
   const finalCount = dryRun ? 0 : await getChallengeCount();
