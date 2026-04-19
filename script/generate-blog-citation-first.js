@@ -246,7 +246,7 @@ async function getRandomTopic() {
 // Mark topic as used
 async function markTopicUsed(topic) {
   await client.execute({
-    sql: 'INSERT OR REPLACE INTO citation_blog_topics (topic, used_at) VALUES (?, ?)',
+    sql: 'INSERT INTO citation_blog_topics (topic, used_at) VALUES (?, ?) ON CONFLICT (topic) DO UPDATE SET used_at = EXCLUDED.used_at',
     args: [topic, new Date().toISOString()]
   });
 }
