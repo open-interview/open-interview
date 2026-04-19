@@ -11,7 +11,6 @@
 
 import 'dotenv/config';
 import { dbClient as client } from './db/pg-client.js';
-const url = process.env.SQLITE_URL || 'file:local.db';
 
 console.log('🔧 Fixing malformed questions in database...\n');
 
