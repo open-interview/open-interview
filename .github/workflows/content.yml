@@ -154,6 +154,19 @@ jobs:
             verifier)  pnpm run bot:verifier ;;
             processor) pnpm run bot:processor ;;
           esac
+      - name: Export DB snapshot
+        if: always()
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          pg_dump $DATABASE_URL --data-only --no-owner --no-privileges             -t questions -t certifications -t channel_mappings -t voice_sessions             -t learning_paths -t flashcards -t bot_ledger -t bot_runs             > /tmp/ingest-${{ matrix.bot }}.sql || true
+      - name: Upload DB snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-snapshot-${{ matrix.bot }}
+          path: /tmp/ingest-${{ matrix.bot }}.sql
+          retention-days: 1
 
   enrich:
     name: ✨ Enrich (${{ matrix.stage }})
@@ -194,6 +207,20 @@ jobs:
           psql $DATABASE_URL --on-error-stop -f TURSO_SCHEMA.sql
           pnpm run db:seed:certifications || true
           pnpm run db:seed:channels || true
+      - name: Download ingest snapshots
+        uses: actions/download-artifact@v4
+        with:
+          pattern: db-snapshot-*
+          path: /tmp/snapshots
+          merge-multiple: true
+        continue-on-error: true
+      - name: Restore ingest data
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          for f in /tmp/snapshots/*.sql; do
+            [ -f "$f" ] && psql $DATABASE_URL -f "$f" || true
+          done
       - name: Run ${{ matrix.stage }}
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
@@ -246,6 +273,20 @@ jobs:
           psql $DATABASE_URL --on-error-stop -f TURSO_SCHEMA.sql
           pnpm run db:seed:certifications || true
           pnpm run db:seed:channels || true
+      - name: Download ingest snapshots
+        uses: actions/download-artifact@v4
+        with:
+          pattern: db-snapshot-*
+          path: /tmp/snapshots
+          merge-multiple: true
+        continue-on-error: true
+      - name: Restore ingest data
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          for f in /tmp/snapshots/*.sql; do
+            [ -f "$f" ] && psql $DATABASE_URL -f "$f" || true
+          done
       - name: Generate static data files
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
