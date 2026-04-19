@@ -30,11 +30,6 @@ const TOP_COMPANIES = [
   'Travis CI', 'Heroku'
 ];
 
-// Database connection
-const url = process.env.SQLITE_URL || 'file:local.db';
-
-// URL defaults to file:local.db if not set
-
 // Initialize tables
 async function initTables() {
   console.log('📦 Ensuring tables exist...');
