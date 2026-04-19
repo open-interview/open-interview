@@ -415,7 +415,7 @@ class DuplicatePreventionService {
       try {
         await db.execute(`
           CREATE TABLE IF NOT EXISTS duplicate_checks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             content_type TEXT NOT NULL,
             action TEXT NOT NULL,
             is_duplicate INTEGER NOT NULL,
