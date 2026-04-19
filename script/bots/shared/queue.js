@@ -227,7 +227,7 @@ export async function addBatchToQueue(items) {
     } else {
       const r = await db.execute({
         sql: `INSERT INTO work_queue (item_type, item_id, action, priority, reason, created_by, assigned_to, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [item.itemType, item.itemId, item.action, item.priority ?? 5, item.reason ?? null, item.createdBy ?? null, item.assignedTo ?? null, now]
       });
       results.push({ id: r.lastInsertRowid, isNew: !!r.lastInsertRowid });
