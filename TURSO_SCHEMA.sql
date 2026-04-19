@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS questions (
 -- Purpose: Maps questions to channels and sub-channels
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS channel_mappings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     channel_id TEXT NOT NULL,
     sub_channel TEXT NOT NULL,
     question_id TEXT NOT NULL,
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS channel_mappings (
 -- Purpose: Work queue for bot coordination and task management
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS work_queue (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     item_type TEXT NOT NULL,
     item_id TEXT NOT NULL,
     action TEXT NOT NULL,
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS work_queue (
 -- Purpose: Audit ledger for all bot actions
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS bot_ledger (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     bot_name TEXT NOT NULL,
     action TEXT NOT NULL,
     item_type TEXT NOT NULL,
@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS bot_ledger (
 -- Purpose: Bot execution history and statistics
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS bot_runs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     bot_name TEXT NOT NULL,
     started_at TEXT NOT NULL,
     completed_at TEXT,
@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS bot_runs (
 -- Purpose: Relationships between questions for voice session grouping
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS question_relationships (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     source_question_id TEXT NOT NULL,
     target_question_id TEXT NOT NULL,
     relationship_type TEXT NOT NULL,
@@ -176,7 +176,7 @@ CREATE TABLE IF NOT EXISTS certifications (
 -- Purpose: Tracks all changes and events for each question
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS question_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     question_id TEXT NOT NULL,
     question_type TEXT NOT NULL DEFAULT 'question',
     event_type TEXT NOT NULL,
@@ -248,7 +248,7 @@ CREATE TABLE IF NOT EXISTS learning_paths (
 -- Purpose: GitHub repository analytics (stars, forks, traffic, referrers)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS github_analytics (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     metric_type TEXT NOT NULL,
     metric_name TEXT,
     repo TEXT,
@@ -340,7 +340,7 @@ CREATE INDEX IF NOT EXISTS idx_question_relationships_target ON question_relatio
 -- ============================================================================
 
 -- Active questions with channel info
-CREATE VIEW IF NOT EXISTS v_active_questions AS
+CREATE OR REPLACE VIEW v_active_questions AS
 SELECT 
     q.*,
     COUNT(DISTINCT cm.id) as channel_count
@@ -350,7 +350,7 @@ WHERE q.status = 'active'
 GROUP BY q.id;
 
 -- Bot activity summary
-CREATE VIEW IF NOT EXISTS v_bot_activity AS
+CREATE OR REPLACE VIEW v_bot_activity AS
 SELECT 
     bot_name,
     COUNT(*) as total_actions,
@@ -362,7 +362,7 @@ FROM bot_ledger
 GROUP BY bot_name;
 
 -- Active user sessions summary
-CREATE VIEW IF NOT EXISTS v_active_sessions AS
+CREATE OR REPLACE VIEW v_active_sessions AS
 SELECT 
     session_type,
     COUNT(*) as total_sessions,
@@ -377,20 +377,20 @@ GROUP BY session_type;
 -- ============================================================================
 
 -- Update last_updated timestamp on questions
-CREATE TRIGGER IF NOT EXISTS trg_questions_update
+CREATE OR REPLACE TRIGGER trg_questions_update
 AFTER UPDATE ON questions
 BEGIN
     UPDATE questions 
-    SET last_updated = datetime('now')
+    SET last_updated = NOW()
     WHERE id = NEW.id;
 END;
 
 -- Update last_accessed_at on user sessions
-CREATE TRIGGER IF NOT EXISTS trg_user_sessions_access
+CREATE OR REPLACE TRIGGER trg_user_sessions_access
 AFTER UPDATE ON user_sessions
 BEGIN
     UPDATE user_sessions 
-    SET last_accessed_at = datetime('now')
+    SET last_accessed_at = NOW()
     WHERE id = NEW.id;
 END;
 
