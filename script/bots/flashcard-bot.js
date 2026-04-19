@@ -48,7 +48,12 @@ async function main() {
   await ensureTable();
 
   const argv    = process.argv.slice(2);
-  const get     = name => { const a = argv.find((_, i) => argv[i-1] === `--${name}`); return a ?? null; };
+  const get     = name => {
+    const eq = argv.find(a => a.startsWith(`--${name}=`));
+    if (eq) return eq.split('=')[1];
+    const i = argv.indexOf(`--${name}`);
+    return i !== -1 ? argv[i + 1] : null;
+  };
   const channel = get('channel');
   const limit   = get('limit') ? parseInt(get('limit')) : null;
   const dryRun  = argv.includes('--dry-run');

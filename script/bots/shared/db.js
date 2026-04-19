@@ -111,6 +111,18 @@ export async function initBotTables() {
     CREATE INDEX IF NOT EXISTS idx_voice_sessions_channel ON voice_sessions(channel)
   `).catch(() => {});
 
+  // Repair sequences in case they were reset (e.g. after table recreation)
+  const seqFixes = [
+    ['bot_runs_id_seq',        'bot_runs'],
+    ['bot_ledger_id_seq',      'bot_ledger'],
+    ['work_queue_id_seq',      'work_queue'],
+  ];
+  for (const [seq, table] of seqFixes) {
+    await pool.query(
+      `SELECT setval('${seq}', GREATEST((SELECT COALESCE(MAX(id), 1) FROM ${table}), 1))`
+    ).catch(() => {});
+  }
+
   console.log('✓ Bot tables initialized (PostgreSQL)');
 }
 

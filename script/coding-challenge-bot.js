@@ -66,7 +66,7 @@ async function generateChallengeId() {
   const result = await dbClient.execute(`
     SELECT MAX(CAST(SUBSTR(id, 3) AS INTEGER)) as max_num 
     FROM coding_challenges 
-    WHERE id LIKE 'cc%' AND id GLOB 'cc[0-9]*'
+    WHERE id ~ '^cc[0-9]+'
   `);
   
   const maxNum = result.rows[0]?.max_num || 0;

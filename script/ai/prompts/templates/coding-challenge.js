@@ -23,8 +23,8 @@ export const schema = {
   ],
   hints: ["Hint 1", "Hint 2"],
   sampleSolution: {
-    javascript: "function solve(param) { return result; }",
-    python: "def solve(param): return result"
+    javascript: "function solve(nums) {\n  return nums.reduce((sum, n) => sum + n, 0);\n}",
+    python: "def solve(nums):\n    return sum(nums)"
   },
   complexity: {
     time: "O(n)",
