@@ -423,7 +423,7 @@ class DuplicatePreventionService {
             similar_count INTEGER NOT NULL,
             recommendation TEXT NOT NULL,
             timestamp TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           )
         `);
         
