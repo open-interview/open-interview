@@ -381,7 +381,7 @@ async function testDatabaseIntegration() {
     // Create test table
     await db.execute(`
       CREATE TABLE IF NOT EXISTS test_validation_results (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         question_id TEXT,
         validation_score INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
