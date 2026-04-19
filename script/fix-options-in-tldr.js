@@ -11,12 +11,7 @@
  */
 
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
-
-const db = createClient({
-  url: process.env.SQLITE_URL || 'file:local.db',
-});
-
+import { dbClient as db } from './db/pg-client.js';
 const DRY_RUN = !process.argv.includes('--fix');
 
 // Pattern to detect MCQ options in JSON format

@@ -1,19 +1,17 @@
 #!/usr/bin/env node
-
 /**
- * Migration: Add learning_paths table
- * Creates the learning_paths table for storing dynamically generated learning paths
+ * Migration: Add learning_paths table (PostgreSQL)
  */
 
 import 'dotenv/config';
-import { dbClient } from '../utils.js';
+import { getPool } from '../db/pg-client.js';
 
 async function migrate() {
+  const pool = getPool();
   console.log('🔄 Running migration: Add learning_paths table...\n');
 
   try {
-    // Create learning_paths table
-    await dbClient.execute(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS learning_paths (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
@@ -39,56 +37,32 @@ async function migrate() {
         last_generated TEXT
       )
     `);
-
     console.log('✅ Created learning_paths table');
 
-    // Create indexes for better query performance
-    await dbClient.execute(`
-      CREATE INDEX IF NOT EXISTS idx_learning_paths_type 
-      ON learning_paths(path_type)
-    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_learning_paths_type ON learning_paths(path_type)`);
     console.log('✅ Created index on path_type');
 
-    await dbClient.execute(`
-      CREATE INDEX IF NOT EXISTS idx_learning_paths_difficulty 
-      ON learning_paths(difficulty)
-    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_learning_paths_difficulty ON learning_paths(difficulty)`);
     console.log('✅ Created index on difficulty');
 
-    await dbClient.execute(`
-      CREATE INDEX IF NOT EXISTS idx_learning_paths_company 
-      ON learning_paths(target_company)
-    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_learning_paths_company ON learning_paths(target_company)`);
     console.log('✅ Created index on target_company');
 
-    await dbClient.execute(`
-      CREATE INDEX IF NOT EXISTS idx_learning_paths_job_title 
-      ON learning_paths(target_job_title)
-    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_learning_paths_job_title ON learning_paths(target_job_title)`);
     console.log('✅ Created index on target_job_title');
 
-    await dbClient.execute(`
-      CREATE INDEX IF NOT EXISTS idx_learning_paths_status 
-      ON learning_paths(status)
-    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_learning_paths_status ON learning_paths(status)`);
     console.log('✅ Created index on status');
 
-    await dbClient.execute(`
-      CREATE INDEX IF NOT EXISTS idx_learning_paths_popularity 
-      ON learning_paths(popularity DESC)
-    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_learning_paths_popularity ON learning_paths(popularity DESC)`);
     console.log('✅ Created index on popularity');
 
     console.log('\n🎉 Migration completed successfully!');
+    await pool.end();
   } catch (error) {
     console.error('❌ Migration failed:', error);
     process.exit(1);
   }
 }
 
-migrate()
-  .then(() => process.exit(0))
-  .catch(err => {
-    console.error(err);
-    process.exit(1);
-  });
+migrate().catch(err => { console.error(err); process.exit(1); });

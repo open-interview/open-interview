@@ -83,7 +83,7 @@ export async function getLedgerStats() {
       action,
       COUNT(*) as count
     FROM bot_ledger
-    WHERE created_at > datetime('now', '-7 days')
+    WHERE created_at > TO_CHAR(NOW() - INTERVAL '7 days', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
     GROUP BY bot_name, action
     ORDER BY bot_name, count DESC
   `);

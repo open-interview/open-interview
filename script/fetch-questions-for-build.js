@@ -3,22 +3,11 @@
  * This script runs during the build process to embed all questions into the static site.
  */
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
 import fs from 'fs';
 import path from 'path';
+import { dbClient as client } from './db/pg-client.js';
 
 const OUTPUT_DIR = 'client/public/data';
-
-// Use read-only credentials
-const url = process.env.SQLITE_URL || 'file:local.db';
-
-let client;
-try {
-  client = createClient({ url });
-} catch (e) {
-  console.warn(`⚠️  DB unavailable (${e.message}). Skipping data fetch — build will use empty data files.`);
-  process.exit(0);
-}
 
 /**
  * Quality Gate: Validate question format

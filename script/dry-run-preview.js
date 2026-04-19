@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { dbClient as db } from './db/pg-client.js';
 /**
  * Dry-run preview: shows exactly how a LinkedIn post and poll will look
  * Uses real question data from local DB, no external API calls.
@@ -9,14 +10,11 @@
  *   node script/dry-run-preview.js --id gh-78
  */
 
-import { createClient } from '@libsql/client';
-
 const args = process.argv.slice(2).reduce((acc, arg, i, arr) => {
   if (arg.startsWith('--')) acc[arg.slice(2)] = arr[i + 1] ?? true;
   return acc;
 }, {});
 
-const db = createClient({ url: `file:${args.db || 'local.db'}` });
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

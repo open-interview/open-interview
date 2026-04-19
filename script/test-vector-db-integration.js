@@ -11,8 +11,7 @@
  */
 
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
-
+import { dbClient as dbClient } from './db/pg-client.js';
 // Test utilities
 const colors = {
   green: '\x1b[32m',
@@ -41,10 +40,6 @@ function section(title) {
 }
 
 // Database client
-const dbClient = createClient({
-  url: process.env.SQLITE_URL || 'file:local.db',
-});
-
 // Test results
 const results = { passed: 0, failed: 0, skipped: 0 };
 

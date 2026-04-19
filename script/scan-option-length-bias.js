@@ -16,12 +16,8 @@
  */
 
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
 import { addWorkItem, initWorkQueue } from './utils.js';
-
-const client = createClient({
-  url: process.env.SQLITE_URL || 'file:local.db',
-});
+import { dbClient as client } from './db/pg-client.js';
 
 // Configuration
 const CONFIG = {

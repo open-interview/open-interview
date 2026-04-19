@@ -1,6 +1,5 @@
 import { client } from "./db";
 
-// User storage interface (using raw SQL to avoid type conflicts)
 export interface User {
   id: string;
   username: string;
@@ -18,10 +17,10 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
 }
 
-export class SqliteStorage implements IStorage {
+export class PostgresStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const result = await client.execute({
-      sql: "SELECT id, username, password FROM users WHERE id = ?",
+      sql: "SELECT id, username, password FROM users WHERE id = $1",
       args: [id]
     });
     if (result.rows.length === 0) return undefined;
@@ -35,7 +34,7 @@ export class SqliteStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const result = await client.execute({
-      sql: "SELECT id, username, password FROM users WHERE username = ?",
+      sql: "SELECT id, username, password FROM users WHERE username = $1",
       args: [username]
     });
     if (result.rows.length === 0) return undefined;
@@ -50,11 +49,11 @@ export class SqliteStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = crypto.randomUUID();
     await client.execute({
-      sql: "INSERT INTO users (id, username, password) VALUES (?, ?, ?)",
+      sql: "INSERT INTO users (id, username, password) VALUES ($1, $2, $3)",
       args: [id, insertUser.username, insertUser.password]
     });
     return { id, ...insertUser };
   }
 }
 
-export const storage = new SqliteStorage();
+export const storage = new PostgresStorage();

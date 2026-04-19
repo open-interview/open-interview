@@ -12,9 +12,9 @@
  */
 
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
 import fs from 'fs';
 import { generateRCABlog } from './ai/graphs/rca-blog-graph.js';
+import { dbClient as client } from './db/pg-client.js';
 
 const OUTPUT_DIR = 'blog-output';
 
@@ -35,8 +35,6 @@ const url = process.env.SQLITE_URL || 'file:local.db';
 
 // URL defaults to file:local.db if not set
 
-const client = createClient({ url });
-
 // Initialize tables
 async function initTables() {
   console.log('📦 Ensuring tables exist...');
@@ -44,7 +42,7 @@ async function initTables() {
   // Track which companies we've used
   await client.execute(`
     CREATE TABLE IF NOT EXISTS rca_blog_companies (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       company TEXT UNIQUE NOT NULL,
       used_at TEXT NOT NULL
     )
@@ -53,7 +51,7 @@ async function initTables() {
   // Blog posts table (same as before)
   await client.execute(`
     CREATE TABLE IF NOT EXISTS blog_posts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       question_id TEXT UNIQUE NOT NULL,
       title TEXT NOT NULL,
       slug TEXT NOT NULL,

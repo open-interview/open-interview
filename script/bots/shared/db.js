@@ -1,31 +1,21 @@
 /**
- * Database utilities for bots
- * Shared database connection and helpers
+ * Database utilities for bots — PostgreSQL edition
+ * Provides the same API as the old @libsql/client version.
  */
 
-import { createClient } from '@libsql/client';
-
-let dbClient = null;
+import { dbClient, getPool } from '../../db/pg-client.js';
 
 export function getDb() {
-  if (!dbClient) {
-    const url = process.env.SQLITE_URL || 'file:local.db';
-    dbClient = createClient({ url, authToken: process.env.SQLITE_AUTH_TOKEN });
-    // Enable WAL mode for better concurrent access (reduces SQLITE_BUSY errors)
-    dbClient.execute('PRAGMA journal_mode=WAL').catch(() => {});
-    dbClient.execute('PRAGMA busy_timeout=5000').catch(() => {});
-  }
   return dbClient;
 }
 
-// Initialize all bot tables (creates if not exists, preserves data)
+// Initialize all bot tables (idempotent — CREATE IF NOT EXISTS)
 export async function initBotTables() {
-  const db = getDb();
-  
-  // Work queue table - CREATE IF NOT EXISTS (preserves existing data)
-  await db.execute(`
+  const pool = getPool();
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS work_queue (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       item_type TEXT NOT NULL,
       item_id TEXT NOT NULL,
       action TEXT NOT NULL,
@@ -34,16 +24,15 @@ export async function initBotTables() {
       reason TEXT,
       created_by TEXT,
       assigned_to TEXT,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      created_at TEXT DEFAULT TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
       processed_at TEXT,
       result TEXT
     )
   `);
-  
-  // Bot ledger table - CREATE IF NOT EXISTS (preserves existing data)
-  await db.execute(`
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS bot_ledger (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       bot_name TEXT NOT NULL,
       action TEXT NOT NULL,
       item_type TEXT NOT NULL,
@@ -51,14 +40,13 @@ export async function initBotTables() {
       before_state TEXT,
       after_state TEXT,
       reason TEXT,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      created_at TEXT DEFAULT TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
     )
   `);
-  
-  // Bot runs table - CREATE IF NOT EXISTS (preserves existing data)
-  await db.execute(`
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS bot_runs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       bot_name TEXT NOT NULL,
       started_at TEXT NOT NULL,
       completed_at TEXT,
@@ -70,23 +58,21 @@ export async function initBotTables() {
       summary TEXT
     )
   `);
-  
-  // Question relationships table for voice session grouping
-  await db.execute(`
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS question_relationships (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       source_question_id TEXT NOT NULL,
       target_question_id TEXT NOT NULL,
       relationship_type TEXT NOT NULL,
       strength INTEGER DEFAULT 50,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      created_at TEXT DEFAULT TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
       FOREIGN KEY (source_question_id) REFERENCES questions(id),
       FOREIGN KEY (target_question_id) REFERENCES questions(id)
     )
   `);
-  
-  // Voice sessions table - pre-built sessions of related questions
-  await db.execute(`
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS voice_sessions (
       id TEXT PRIMARY KEY,
       topic TEXT NOT NULL,
@@ -96,42 +82,45 @@ export async function initBotTables() {
       question_ids TEXT NOT NULL,
       total_questions INTEGER NOT NULL,
       estimated_minutes INTEGER DEFAULT 5,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      created_at TEXT DEFAULT TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
       last_updated TEXT
     )
   `);
-  
-  // Add status column to questions if not exists
-  try {
-    await db.execute(`ALTER TABLE questions ADD COLUMN status TEXT DEFAULT 'active'`);
-  } catch (e) {
-    // Column already exists
-  }
-  
-  // Create indexes for faster lookups
-  try {
-    await db.execute(`CREATE INDEX IF NOT EXISTS idx_relationships_source ON question_relationships(source_question_id)`);
-    await db.execute(`CREATE INDEX IF NOT EXISTS idx_relationships_target ON question_relationships(target_question_id)`);
-    await db.execute(`CREATE INDEX IF NOT EXISTS idx_voice_sessions_channel ON voice_sessions(channel)`);
-  } catch (e) {
-    // Indexes might already exist
-  }
-  
-  console.log('✓ Bot tables initialized');
+
+  // Add status column to questions if it doesn't exist
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name='questions' AND column_name='status'
+      ) THEN
+        ALTER TABLE questions ADD COLUMN status TEXT DEFAULT 'active';
+      END IF;
+    END$$;
+  `);
+
+  // Indexes
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_relationships_source ON question_relationships(source_question_id)
+  `).catch(() => {});
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_relationships_target ON question_relationships(target_question_id)
+  `).catch(() => {});
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_voice_sessions_channel ON voice_sessions(channel)
+  `).catch(() => {});
+
+  console.log('✓ Bot tables initialized (PostgreSQL)');
 }
 
-// Reset bot tables (use only when schema changes are needed)
 export async function resetBotTables() {
-  const db = getDb();
-  
+  const pool = getPool();
   console.log('⚠️ Resetting bot tables (all data will be lost)...');
-  
-  await db.execute(`DROP TABLE IF EXISTS work_queue`);
-  await db.execute(`DROP TABLE IF EXISTS bot_ledger`);
-  await db.execute(`DROP TABLE IF EXISTS bot_runs`);
-  
+  await pool.query('DROP TABLE IF EXISTS work_queue CASCADE');
+  await pool.query('DROP TABLE IF EXISTS bot_ledger CASCADE');
+  await pool.query('DROP TABLE IF EXISTS bot_runs CASCADE');
   await initBotTables();
-  
   console.log('✓ Bot tables reset complete');
 }
 

@@ -4,12 +4,7 @@
  */
 
 import { runWithRetries, parseJson } from './utils.js';
-import { createClient } from '@libsql/client';
-
-const db = createClient({
-  url: process.env.SQLITE_URL || 'file:local.db',
-});
-
+import { dbClient as db } from './db/pg-client.js';
 /**
  * Generate voice interview keywords for a question and persist them.
  * @returns {{ suitable: boolean, keywords: string[] } | null}

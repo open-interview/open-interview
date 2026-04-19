@@ -5,12 +5,7 @@
  */
 
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
-
-const db = createClient({
-  url: process.env.SQLITE_URL || 'file:local.db',
-});
-
+import { dbClient as db } from './db/pg-client.js';
 async function main() {
   console.log('=== 🔍 Finding JSON in Question Fields ===\n');
   

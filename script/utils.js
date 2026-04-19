@@ -1,34 +1,14 @@
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
 import { spawn } from 'child_process';
 import https from 'https';
 import fs from 'fs';
+import { dbClient as _pgDbClient } from './db/pg-client.js';
 
 // ============================================
-// DATABASE CONNECTION
+// DATABASE CONNECTION (PostgreSQL)
 // ============================================
 
-const url = process.env.SQLITE_URL || 'file:local.db';
-
-// Create database client lazily
-let _dbClient = null;
-function getDbClient() {
-  if (!_dbClient) {
-    _dbClient = createClient({ url, authToken: process.env.SQLITE_AUTH_TOKEN });
-    // Enable WAL mode for better concurrent access (reduces SQLITE_BUSY errors)
-    _dbClient.execute('PRAGMA journal_mode=WAL').catch(() => {});
-    _dbClient.execute('PRAGMA busy_timeout=5000').catch(() => {});
-  }
-  return _dbClient;
-}
-export const dbClient = {
-  get execute() {
-    return getDbClient().execute.bind(getDbClient());
-  },
-  get batch() {
-    return getDbClient().batch.bind(getDbClient());
-  }
-};
+export const dbClient = _pgDbClient;
 
 // Constants
 export const MAX_RETRIES = 3;

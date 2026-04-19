@@ -5,9 +5,7 @@
  */
 
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
-
-const url = process.env.SQLITE_URL || 'file:local.db';
+import { dbClient as client } from './db/pg-client.js';
 const postId = process.env.POST_ID;
 
 if (!postId) {
@@ -15,15 +13,13 @@ if (!postId) {
   process.exit(1);
 }
 
-const client = createClient({ url });
-
 async function markAsShared() {
   console.log(`📝 Marking post ${postId} as shared on LinkedIn...`);
 
   // Ensure table exists (may not if running standalone against a fresh DB)
   await client.execute(`
     CREATE TABLE IF NOT EXISTS blog_posts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       question_id TEXT UNIQUE NOT NULL,
       title TEXT NOT NULL,
       slug TEXT NOT NULL,

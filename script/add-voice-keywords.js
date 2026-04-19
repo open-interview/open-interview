@@ -8,15 +8,8 @@
  * Usage: node script/add-voice-keywords.js [--limit=100] [--channel=system-design]
  */
 
-import { createClient } from '@libsql/client';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const db = createClient({
-  url: process.env.SQLITE_URL || 'file:local.db',
-});
-
+import 'dotenv/config';
+import { dbClient as db } from './db/pg-client.js';
 // Channels suitable for voice interviews
 const VOICE_CHANNELS = [
   'behavioral', 'system-design', 'sre', 'devops', 

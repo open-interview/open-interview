@@ -1,23 +1,17 @@
 #!/usr/bin/env node
-
 /**
- * Migration: Add flashcards table
+ * Migration: Add flashcards table (PostgreSQL)
  */
 
-import { createClient } from '@libsql/client';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const dbClient = createClient({
-  url: process.env.SQLITE_URL || 'file:local.db',
-});
+import 'dotenv/config';
+import { getPool } from '../db/pg-client.js';
 
 async function migrate() {
+  const pool = getPool();
   console.log('🔄 Running migration: Add flashcards table...\n');
 
   try {
-    await dbClient.execute(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS flashcards (
         id TEXT PRIMARY KEY,
         question_id TEXT REFERENCES questions(id),
@@ -34,26 +28,18 @@ async function migrate() {
     `);
     console.log('✅ Created flashcards table');
 
-    await dbClient.execute(`
-      CREATE INDEX IF NOT EXISTS idx_flashcards_channel ON flashcards(channel)
-    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_flashcards_channel ON flashcards(channel)`);
     console.log('✅ Created index on channel');
 
-    await dbClient.execute(`
-      CREATE INDEX IF NOT EXISTS idx_flashcards_question_id ON flashcards(question_id)
-    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_flashcards_question_id ON flashcards(question_id)`);
     console.log('✅ Created index on question_id');
 
     console.log('\n🎉 Migration completed successfully!');
+    await pool.end();
   } catch (error) {
     console.error('❌ Migration failed:', error);
     process.exit(1);
   }
 }
 
-migrate()
-  .then(() => process.exit(0))
-  .catch(err => {
-    console.error(err);
-    process.exit(1);
-  });
+migrate().catch(err => { console.error(err); process.exit(1); });

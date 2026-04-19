@@ -1,28 +1,21 @@
 #!/usr/bin/env node
 /**
- * Migration: Add question_history table
- * 
- * This table tracks all changes and events for questions, test questions, and coding challenges.
- * It provides a complete audit trail accessible via a small icon on each question.
+ * Migration: Add question_history table (PostgreSQL)
+ *
+ * Tracks all changes and events for questions, test questions, and coding challenges.
  */
 
-import { createClient } from '@libsql/client';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const client = createClient({
-  url: process.env.SQLITE_URL || 'file:local.db',
-});
+import 'dotenv/config';
+import { getPool } from '../db/pg-client.js';
 
 async function migrate() {
+  const pool = getPool();
   console.log('🔄 Running migration: add-question-history');
-  
+
   try {
-    // Create question_history table
-    await client.execute(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS question_history (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         question_id TEXT NOT NULL,
         question_type TEXT NOT NULL DEFAULT 'question',
         event_type TEXT NOT NULL,
@@ -34,81 +27,59 @@ async function migrate() {
         after_snapshot TEXT,
         reason TEXT,
         metadata TEXT,
-        created_at TEXT DEFAULT (datetime('now'))
+        created_at TEXT DEFAULT TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
       )
     `);
     console.log('✅ Created question_history table');
 
-    // Create indexes for efficient querying
-    await client.execute(`
-      CREATE INDEX IF NOT EXISTS idx_question_history_question_id 
-      ON question_history(question_id)
-    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_question_history_question_id ON question_history(question_id)`);
     console.log('✅ Created index on question_id');
 
-    await client.execute(`
-      CREATE INDEX IF NOT EXISTS idx_question_history_type 
-      ON question_history(question_type)
-    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_question_history_type ON question_history(question_type)`);
     console.log('✅ Created index on question_type');
 
-    await client.execute(`
-      CREATE INDEX IF NOT EXISTS idx_question_history_event_type 
-      ON question_history(event_type)
-    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_question_history_event_type ON question_history(event_type)`);
     console.log('✅ Created index on event_type');
 
-    await client.execute(`
-      CREATE INDEX IF NOT EXISTS idx_question_history_created_at 
-      ON question_history(created_at DESC)
-    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_question_history_created_at ON question_history(created_at DESC)`);
     console.log('✅ Created index on created_at');
 
-    // Seed initial history from existing questions (mark them as 'created')
     console.log('\n📝 Seeding initial history from existing questions...');
-    
-    // Get count of existing questions
-    const questionsCount = await client.execute(
-      'SELECT COUNT(*) as count FROM questions'
-    );
-    const qCount = Number(questionsCount.rows[0].count);
-    
+
+    const { rows: countRows } = await pool.query(`SELECT COUNT(*) as count FROM questions`);
+    const qCount = parseInt(countRows[0].count, 10);
+
     if (qCount > 0) {
-      // Insert creation records for existing questions
-      await client.execute(`
+      await pool.query(`
         INSERT INTO question_history (question_id, question_type, event_type, event_source, source_name, changes_summary, created_at)
-        SELECT 
+        SELECT
           id,
           'question',
           'created',
           'import',
           'initial-seed',
           'Question imported from initial dataset',
-          COALESCE(created_at, datetime('now'))
+          COALESCE(created_at, TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
         FROM questions
         WHERE id NOT IN (SELECT DISTINCT question_id FROM question_history WHERE question_type = 'question')
       `);
       console.log(`✅ Added creation history for ${qCount} questions`);
     }
 
-    // Check for coding_challenges table and seed history
     try {
-      const challengesCount = await client.execute(
-        'SELECT COUNT(*) as count FROM coding_challenges'
-      );
-      const cCount = Number(challengesCount.rows[0].count);
-      
+      const { rows: ccRows } = await pool.query(`SELECT COUNT(*) as count FROM coding_challenges`);
+      const cCount = parseInt(ccRows[0].count, 10);
       if (cCount > 0) {
-        await client.execute(`
+        await pool.query(`
           INSERT INTO question_history (question_id, question_type, event_type, event_source, source_name, changes_summary, created_at)
-          SELECT 
+          SELECT
             id,
             'coding',
             'created',
             'import',
             'initial-seed',
             'Coding challenge imported from initial dataset',
-            COALESCE(created_at, datetime('now'))
+            COALESCE(created_at, TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
           FROM coding_challenges
           WHERE id NOT IN (SELECT DISTINCT question_id FROM question_history WHERE question_type = 'coding')
         `);
@@ -119,13 +90,11 @@ async function migrate() {
     }
 
     console.log('\n✅ Migration completed successfully!');
-    
-    // Show summary
-    const historyCount = await client.execute(
-      'SELECT COUNT(*) as count FROM question_history'
-    );
-    console.log(`📊 Total history records: ${historyCount.rows[0].count}`);
 
+    const { rows: histRows } = await pool.query(`SELECT COUNT(*) as count FROM question_history`);
+    console.log(`📊 Total history records: ${histRows[0].count}`);
+
+    await pool.end();
   } catch (error) {
     console.error('❌ Migration failed:', error);
     process.exit(1);

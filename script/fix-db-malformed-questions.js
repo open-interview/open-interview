@@ -10,11 +10,8 @@
  */
 
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
-
+import { dbClient as client } from './db/pg-client.js';
 const url = process.env.SQLITE_URL || 'file:local.db';
-
-const client = createClient({ url });
 
 console.log('🔧 Fixing malformed questions in database...\n');
 

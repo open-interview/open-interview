@@ -13,13 +13,7 @@
  */
 
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
-
-const dbClient = createClient({
-  url: process.env.SQLITE_URL || 'file:local.db',
-  authToken: process.env.SQLITE_AUTH_TOKEN,
-});
-
+import { dbClient as dbClient } from './db/pg-client.js';
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled rejection:', err.message);
   process.exitCode = 1;

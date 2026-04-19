@@ -13,18 +13,13 @@ import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createClient } from '@libsql/client';
-
+import { dbClient as db } from './db/pg-client.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function main() {
   console.log('=== Export Voice Sessions ===\n');
   
-  const db = createClient({
-    url: process.env.SQLITE_URL || 'file:local.db',
-  });
-  
-  try {
+    try {
     // Fetch all voice sessions
     const result = await db.execute({
       sql: `SELECT id, topic, description, channel, difficulty, question_ids, total_questions, estimated_minutes

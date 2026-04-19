@@ -10,9 +10,9 @@
  */
 
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
 import fs from 'fs';
 import { generateCitationBlog } from './ai/graphs/citation-blog-graph.js';
+import { dbClient as client } from './db/pg-client.js';
 
 const OUTPUT_DIR = 'blog-output';
 const MIN_VALID_SOURCES = 8;
@@ -181,15 +181,13 @@ const url = process.env.SQLITE_URL || 'file:local.db';
 
 // URL defaults to file:local.db if not set
 
-const client = createClient({ url });
-
 // Track used topics
 async function initTables() {
   console.log('📦 Ensuring tables exist...');
   
   await client.execute(`
     CREATE TABLE IF NOT EXISTS citation_blog_topics (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       topic TEXT UNIQUE NOT NULL,
       used_at TEXT NOT NULL
     )
@@ -198,7 +196,7 @@ async function initTables() {
   // Ensure blog_posts table exists
   await client.execute(`
     CREATE TABLE IF NOT EXISTS blog_posts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       question_id TEXT UNIQUE NOT NULL,
       title TEXT NOT NULL,
       slug TEXT NOT NULL,

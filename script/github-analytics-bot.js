@@ -10,8 +10,7 @@
  */
 
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
-
+import { dbClient as db } from './db/pg-client.js';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
 const REPO_OWNER = process.env.REPO_OWNER || 'satishkumar-dhule';
 const REPO_NAME = process.env.REPO_NAME || 'code-reels';
@@ -20,14 +19,10 @@ const REPO_NAME = process.env.REPO_NAME || 'code-reels';
 const PAGES_REPO_OWNER = process.env.PAGES_REPO_OWNER || 'open-interview';
 const PAGES_REPO_NAME = process.env.PAGES_REPO_NAME || 'open-interview.github.io';
 
-const db = createClient({
-  url: process.env.SQLITE_URL || 'file:local.db',
-});
-
 async function initializeTable() {
   await db.execute(`
     CREATE TABLE IF NOT EXISTS github_analytics (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       date TEXT NOT NULL,
       repo TEXT NOT NULL,
       metric_type TEXT NOT NULL,

@@ -500,7 +500,7 @@ export async function registerRoutes(
         ]
       });
 
-      res.json({ success: true, id: result.lastInsertRowid });
+      res.json({ success: true, id: result.rows[0]?.id ?? result.lastInsertRowid });
     } catch (error) {
       console.error("Error adding history record:", error);
       res.status(500).json({ error: "Failed to add history record" });

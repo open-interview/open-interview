@@ -6,11 +6,11 @@
  */
 
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
 import fs from 'fs';
 import path from 'path';
 import { generateBlogPost } from './ai/graphs/blog-graph.js';
 import { generateIllustration, generatePixelIllustration } from './ai/utils/blog-illustration-generator.js';
+import { dbClient as client } from './db/pg-client.js';
 
 // Author info for credits
 const AUTHOR = {
@@ -32,7 +32,6 @@ const url = process.env.SQLITE_URL || 'file:local.db';
 
 // URL defaults to file:local.db if not set
 
-const client = createClient({ url, authToken: process.env.SQLITE_AUTH_TOKEN });
 const writeClient = client;
 
 /**
@@ -166,7 +165,7 @@ async function initBlogPostsTable() {
   console.log('📦 Ensuring blog_posts table exists...');
   await writeClient.execute(`
     CREATE TABLE IF NOT EXISTS blog_posts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       question_id TEXT UNIQUE NOT NULL,
       title TEXT NOT NULL,
       slug TEXT NOT NULL,

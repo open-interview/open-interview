@@ -14,15 +14,11 @@
  */
 
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
 import vectorDB from './ai/services/vector-db.js';
 import mlDecisions from './ai/services/ml-decisions.js';
+import { dbClient as client } from './db/pg-client.js';
 
 // Database connection
-const client = createClient({
-  url: process.env.SQLITE_URL || 'file:local.db',
-});
-
 async function fetchQuestions(limit = null) {
   const query = limit 
     ? `SELECT * FROM questions WHERE status = 'active' LIMIT ${limit}`

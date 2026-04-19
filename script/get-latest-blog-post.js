@@ -5,24 +5,19 @@
  */
 
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
 import fs from 'fs';
+import { dbClient as client } from './db/pg-client.js';
 
 const BLOG_BASE_URL = 'https://openstackdaily.github.io';
 
-const url = process.env.SQLITE_URL || 'file:local.db';
 const specificUrl = process.env.SPECIFIC_URL;
-
-// URL defaults to file:local.db if not set
-
-const client = createClient({ url });
 
 async function ensureLinkedInColumn() {
   try {
     // Ensure blog_posts table exists (created by generate-blog.js, but handle missing gracefully)
     await client.execute(`
       CREATE TABLE IF NOT EXISTS blog_posts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         question_id TEXT UNIQUE NOT NULL,
         title TEXT NOT NULL,
         slug TEXT NOT NULL,

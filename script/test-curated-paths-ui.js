@@ -3,15 +3,8 @@
  * Tests both database and API endpoints
  */
 
-import { createClient } from '@libsql/client';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const db = createClient({
-  url: process.env.SQLITE_URL || 'file:local.db',
-});
-
+import 'dotenv/config';
+import { dbClient as db } from './db/pg-client.js';
 async function testCuratedPaths() {
   console.log('🔍 Testing Curated Paths System...\n');
 

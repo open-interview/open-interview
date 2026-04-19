@@ -4,16 +4,8 @@
  * Run this daily via cron or GitHub Actions to keep the "NEW" badge accurate
  */
 
-import { createClient } from '@libsql/client';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const dbClient = createClient({
-  url: process.env.SQLITE_URL || 'file:local.db',
-  authToken: process.env.SQLITE_AUTH_TOKEN,
-});
-
+import 'dotenv/config';
+import { dbClient as dbClient } from '../db/pg-client.js';
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled rejection:', err.message);
   process.exitCode = 1;

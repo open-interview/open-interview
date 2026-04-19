@@ -226,11 +226,12 @@ export async function addBatchToQueue(items) {
       results.push({ id: existingSet.get(key), isNew: false });
     } else {
       const r = await db.execute({
-        sql: `INSERT OR IGNORE INTO work_queue (item_type, item_id, action, priority, reason, created_by, assigned_to, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT INTO work_queue (item_type, item_id, action, priority, reason, created_by, assigned_to, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              ON CONFLICT DO NOTHING`,
         args: [item.itemType, item.itemId, item.action, item.priority ?? 5, item.reason ?? null, item.createdBy ?? null, item.assignedTo ?? null, now]
       });
-      results.push({ id: r.lastInsertRowid, isNew: r.rowsAffected > 0 });
+      results.push({ id: r.lastInsertRowid, isNew: !!r.lastInsertRowid });
     }
   }
 

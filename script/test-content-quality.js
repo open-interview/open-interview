@@ -9,15 +9,7 @@
  */
 
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
-
-const SQLITE_URL = process.env.SQLITE_URL || 'file:local.db';
-const SQLITE_AUTH_TOKEN = process.env.SQLITE_AUTH_TOKEN;
-
-const client = createClient({
-  url: SQLITE_URL,
-  ...(SQLITE_AUTH_TOKEN ? { authToken: SQLITE_AUTH_TOKEN } : {}),
-});
+import { dbClient as client } from './db/pg-client.js';
 
 function validateQuestionFormat(question) {
   const issues = [];

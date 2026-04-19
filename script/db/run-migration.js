@@ -1,64 +1,63 @@
 #!/usr/bin/env node
 /**
- * Database Migration Runner
- * 
- * Runs SQL migrations against the SQLite database.
+ * Database Migration Runner (PostgreSQL)
+ *
+ * Runs SQL migrations against the PostgreSQL database.
  * Usage: node script/db/run-migration.js [migration-file]
  */
 
-import { createClient } from '@libsql/client';
+import 'dotenv/config';
+import { getPool } from './pg-client.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const url = process.env.SQLITE_URL || 'file:local.db';
-
-// URL defaults to file:local.db if not set
-
-const db = createClient({ url });
-
 async function runMigration(migrationFile) {
+  const pool = getPool();
+
   console.log('\n' + '═'.repeat(60));
-  console.log('🗄️  DATABASE MIGRATION RUNNER');
+  console.log('🗄️  DATABASE MIGRATION RUNNER (PostgreSQL)');
   console.log('═'.repeat(60));
   console.log(`Migration: ${migrationFile}`);
-  console.log(`Database: ${url.substring(0, 30)}...`);
-  
-  const migrationPath = path.join(__dirname, 'migrations', migrationFile);
-  
+  console.log(`Database: ${(process.env.DATABASE_URL || process.env.PGDATABASE || 'postgres').substring(0, 40)}`);
+
+  const migrationPath = path.join(__dirname, '..', 'migrations', migrationFile);
+
   if (!fs.existsSync(migrationPath)) {
     console.error(`❌ Migration file not found: ${migrationPath}`);
     process.exit(1);
   }
-  
+
   const sql = fs.readFileSync(migrationPath, 'utf-8');
-  
-  // Split by semicolons and filter empty statements
+
   const statements = sql
     .split(';')
     .map(s => s.trim())
     .filter(s => s.length > 0 && !s.startsWith('--'));
-  
+
   console.log(`\n📝 Found ${statements.length} SQL statements\n`);
-  
+
   let success = 0;
   let skipped = 0;
   let failed = 0;
-  
+
   for (const statement of statements) {
     const shortStmt = statement.substring(0, 60).replace(/\n/g, ' ');
-    
+
     try {
-      await db.execute(statement);
+      await pool.query(statement);
       console.log(`   ✅ ${shortStmt}...`);
       success++;
     } catch (error) {
-      // Check if it's a "already exists" error (which is fine for IF NOT EXISTS)
-      if (error.message?.includes('already exists') || 
-          error.message?.includes('no such table')) {
-        console.log(`   ⏭️  ${shortStmt}... (skipped)`);
+      if (
+        error.message?.includes('already exists') ||
+        error.message?.includes('does not exist') ||
+        error.code === '42P07' ||
+        error.code === '42703'
+      ) {
+        console.log(`   ⏭️  ${shortStmt}... (skipped: ${error.message.split('\n')[0]})`);
         skipped++;
       } else {
         console.log(`   ❌ ${shortStmt}...`);
@@ -67,7 +66,7 @@ async function runMigration(migrationFile) {
       }
     }
   }
-  
+
   console.log('\n' + '═'.repeat(60));
   console.log('📊 MIGRATION RESULTS');
   console.log('═'.repeat(60));
@@ -75,12 +74,16 @@ async function runMigration(migrationFile) {
   console.log(`   Skipped: ${skipped}`);
   console.log(`   Failed:  ${failed}`);
   console.log('═'.repeat(60) + '\n');
-  
+
+  await pool.end();
+
   if (failed > 0) {
     process.exit(1);
   }
 }
 
-// Get migration file from args or default to latest
 const migrationFile = process.argv[2] || '001_add_indexes.sql';
-runMigration(migrationFile);
+runMigration(migrationFile).catch(err => {
+  console.error('Migration error:', err);
+  process.exit(1);
+});

@@ -1,215 +1,205 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = sqliteTable("users", {
+export const users = pgTable("users", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
 });
 
-export const questions = sqliteTable("questions", {
+export const questions = pgTable("questions", {
   id: text("id").primaryKey(),
   question: text("question").notNull(),
   answer: text("answer").notNull(),
   explanation: text("explanation").notNull(),
   diagram: text("diagram"),
-  difficulty: text("difficulty").notNull(), // beginner, intermediate, advanced
-  tags: text("tags"), // JSON array stored as text
+  difficulty: text("difficulty").notNull(),
+  tags: text("tags"),
   channel: text("channel").notNull(),
   subChannel: text("sub_channel").notNull(),
   sourceUrl: text("source_url"),
-  videos: text("videos"), // JSON object stored as text
-  companies: text("companies"), // JSON array stored as text
+  videos: text("videos"),
+  companies: text("companies"),
   eli5: text("eli5"),
   tldr: text("tldr"),
-  relevanceScore: integer("relevance_score"), // 0-100 interview relevance score
-  relevanceDetails: text("relevance_details"), // JSON with detailed scoring breakdown
-  jobTitleRelevance: text("job_title_relevance"), // JSON mapping job titles to relevance scores
-  experienceLevelTags: text("experience_level_tags"), // JSON array: ['entry', 'mid', 'senior', etc.]
-  voiceKeywords: text("voice_keywords"), // JSON array of mandatory keywords for voice interview
-  voiceSuitable: integer("voice_suitable"), // 1 = suitable for voice interview, 0 = not suitable
-  status: text("status").default("active"), // active, flagged, deleted
-  isNew: integer("is_new").default(1), // 1 = new (less than 7 days old), 0 = not new
+  relevanceScore: integer("relevance_score"),
+  relevanceDetails: text("relevance_details"),
+  jobTitleRelevance: text("job_title_relevance"),
+  experienceLevelTags: text("experience_level_tags"),
+  voiceKeywords: text("voice_keywords"),
+  voiceSuitable: integer("voice_suitable"),
+  status: text("status").default("active"),
+  isNew: integer("is_new").default(1),
   lastUpdated: text("last_updated"),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
 });
 
-export const channelMappings = sqliteTable("channel_mappings", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const channelMappings = pgTable("channel_mappings", {
+  id: serial("id").primaryKey(),
   channelId: text("channel_id").notNull(),
   subChannel: text("sub_channel").notNull(),
   questionId: text("question_id").notNull().references(() => questions.id),
 });
 
-// Work queue for bot coordination
-export const workQueue = sqliteTable("work_queue", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  itemType: text("item_type").notNull(), // 'question', 'challenge', 'test', 'blog'
-  itemId: text("item_id").notNull(),
-  action: text("action").notNull(), // 'improve', 'delete', 'verify', 'enrich'
-  priority: integer("priority").default(5), // 1=highest, 10=lowest
-  status: text("status").default("pending"), // 'pending', 'processing', 'completed', 'failed'
-  reason: text("reason"), // why this work was created
-  createdBy: text("created_by"), // which bot created this work item
-  assignedTo: text("assigned_to"), // which bot should process
-  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
-  processedAt: text("processed_at"),
-  result: text("result"), // JSON result or error message
-});
-
-// Audit ledger for all bot actions
-export const botLedger = sqliteTable("bot_ledger", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  botName: text("bot_name").notNull(),
-  action: text("action").notNull(), // 'create', 'update', 'delete', 'verify', 'flag'
+export const workQueue = pgTable("work_queue", {
+  id: serial("id").primaryKey(),
   itemType: text("item_type").notNull(),
   itemId: text("item_id").notNull(),
-  beforeState: text("before_state"), // JSON snapshot before action
-  afterState: text("after_state"), // JSON snapshot after action
+  action: text("action").notNull(),
+  priority: integer("priority").default(5),
+  status: text("status").default("pending"),
+  reason: text("reason"),
+  createdBy: text("created_by"),
+  assignedTo: text("assigned_to"),
+  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+  processedAt: text("processed_at"),
+  result: text("result"),
+});
+
+export const botLedger = pgTable("bot_ledger", {
+  id: serial("id").primaryKey(),
+  botName: text("bot_name").notNull(),
+  action: text("action").notNull(),
+  itemType: text("item_type").notNull(),
+  itemId: text("item_id").notNull(),
+  beforeState: text("before_state"),
+  afterState: text("after_state"),
   reason: text("reason"),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
 });
 
-// Bot run history
-export const botRuns = sqliteTable("bot_runs", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const botRuns = pgTable("bot_runs", {
+  id: serial("id").primaryKey(),
   botName: text("bot_name").notNull(),
   startedAt: text("started_at").notNull(),
   completedAt: text("completed_at"),
-  status: text("status").default("running"), // 'running', 'completed', 'failed'
+  status: text("status").default("running"),
   itemsProcessed: integer("items_processed").default(0),
   itemsCreated: integer("items_created").default(0),
   itemsUpdated: integer("items_updated").default(0),
   itemsDeleted: integer("items_deleted").default(0),
-  summary: text("summary"), // JSON summary
+  summary: text("summary"),
 });
 
-// Question relationships for voice session grouping
-export const questionRelationships = sqliteTable("question_relationships", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const questionRelationships = pgTable("question_relationships", {
+  id: serial("id").primaryKey(),
   sourceQuestionId: text("source_question_id").notNull().references(() => questions.id),
   targetQuestionId: text("target_question_id").notNull().references(() => questions.id),
-  relationshipType: text("relationship_type").notNull(), // 'prerequisite', 'follow_up', 'related', 'deeper_dive'
-  strength: integer("strength").default(50), // 0-100 how strongly related
+  relationshipType: text("relationship_type").notNull(),
+  strength: integer("strength").default(50),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
 });
 
-// Voice sessions - pre-built sessions of related questions
-export const voiceSessions = sqliteTable("voice_sessions", {
+export const voiceSessions = pgTable("voice_sessions", {
   id: text("id").primaryKey(),
   topic: text("topic").notNull(),
   description: text("description"),
   channel: text("channel").notNull(),
   difficulty: text("difficulty").notNull(),
-  questionIds: text("question_ids").notNull(), // JSON array of question IDs in order
+  questionIds: text("question_ids").notNull(),
   totalQuestions: integer("total_questions").notNull(),
   estimatedMinutes: integer("estimated_minutes").default(5),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
   lastUpdated: text("last_updated"),
 });
 
-// Certifications table - stores all certification tracks
-export const certifications = sqliteTable("certifications", {
+export const certifications = pgTable("certifications", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   provider: text("provider").notNull(),
   description: text("description").notNull(),
   icon: text("icon").default("award"),
   color: text("color").default("text-primary"),
-  difficulty: text("difficulty").notNull(), // beginner, intermediate, advanced, expert
-  category: text("category").notNull(), // cloud, devops, security, data, ai, development, management
+  difficulty: text("difficulty").notNull(),
+  category: text("category").notNull(),
   estimatedHours: integer("estimated_hours").default(40),
   examCode: text("exam_code"),
   officialUrl: text("official_url"),
-  domains: text("domains"), // JSON array of exam domains with weights
-  channelMappings: text("channel_mappings"), // JSON array of channel mappings
-  tags: text("tags"), // JSON array of tags
-  prerequisites: text("prerequisites"), // JSON array of prerequisite cert IDs
-  status: text("status").default("active"), // active, draft, archived
-  questionCount: integer("question_count").default(0), // cached count of questions
-  passingScore: integer("passing_score").default(70), // percentage needed to pass
-  examDuration: integer("exam_duration").default(90), // minutes
+  domains: text("domains"),
+  channelMappings: text("channel_mappings"),
+  tags: text("tags"),
+  prerequisites: text("prerequisites"),
+  status: text("status").default("active"),
+  questionCount: integer("question_count").default(0),
+  passingScore: integer("passing_score").default(70),
+  examDuration: integer("exam_duration").default(90),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
   lastUpdated: text("last_updated"),
 });
 
-// Question history tracking - records all changes and events for each question
-export const questionHistory = sqliteTable("question_history", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  questionId: text("question_id").notNull(), // Can be question ID, test question ID, or coding challenge ID
-  questionType: text("question_type").notNull().default("question"), // 'question', 'test', 'coding'
-  eventType: text("event_type").notNull(), // 'created', 'updated', 'improved', 'flagged', 'verified', 'enriched', 'deleted', 'restored'
-  eventSource: text("event_source").notNull(), // 'bot', 'user', 'system', 'import'
-  sourceName: text("source_name"), // specific bot name or user identifier
-  changesSummary: text("changes_summary"), // human-readable summary of what changed
-  changedFields: text("changed_fields"), // JSON array of field names that changed
-  beforeSnapshot: text("before_snapshot"), // JSON snapshot of relevant fields before change
-  afterSnapshot: text("after_snapshot"), // JSON snapshot of relevant fields after change
-  reason: text("reason"), // why this change was made
-  metadata: text("metadata"), // JSON for additional context (e.g., improvement score, verification result)
+export const questionHistory = pgTable("question_history", {
+  id: serial("id").primaryKey(),
+  questionId: text("question_id").notNull(),
+  questionType: text("question_type").notNull().default("question"),
+  eventType: text("event_type").notNull(),
+  eventSource: text("event_source").notNull(),
+  sourceName: text("source_name"),
+  changesSummary: text("changes_summary"),
+  changedFields: text("changed_fields"),
+  beforeSnapshot: text("before_snapshot"),
+  afterSnapshot: text("after_snapshot"),
+  reason: text("reason"),
+  metadata: text("metadata"),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
 });
 
-// User sessions - track active/in-progress sessions for resume functionality
-export const userSessions = sqliteTable("user_sessions", {
+export const userSessions = pgTable("user_sessions", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text("user_id"), // Optional - for future user auth
-  sessionType: text("session_type").notNull(), // 'test', 'voice-interview', 'certification', 'channel'
-  sessionKey: text("session_key").notNull(), // Unique key for the session (e.g., 'test-session-aws')
+  userId: text("user_id"),
+  sessionType: text("session_type").notNull(),
+  sessionKey: text("session_key").notNull(),
   title: text("title").notNull(),
   subtitle: text("subtitle"),
   channelId: text("channel_id"),
   certificationId: text("certification_id"),
-  progress: integer("progress").default(0), // 0-100
+  progress: integer("progress").default(0),
   totalItems: integer("total_items").notNull(),
   completedItems: integer("completed_items").default(0),
-  sessionData: text("session_data"), // JSON blob with session-specific data
+  sessionData: text("session_data"),
   startedAt: text("started_at").$defaultFn(() => new Date().toISOString()),
   lastAccessedAt: text("last_accessed_at").$defaultFn(() => new Date().toISOString()),
   completedAt: text("completed_at"),
-  status: text("status").default("active"), // 'active', 'completed', 'abandoned'
+  status: text("status").default("active"),
 });
 
-// Learning paths - dynamically generated paths based on company, job title, and RAG analysis
-export const learningPaths = sqliteTable("learning_paths", {
+export const learningPaths = pgTable("learning_paths", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description").notNull(),
-  pathType: text("path_type").notNull(), // 'company', 'job-title', 'skill', 'certification'
-  targetCompany: text("target_company"), // e.g., 'Google', 'Amazon', 'Meta'
-  targetJobTitle: text("target_job_title"), // e.g., 'frontend-engineer', 'backend-engineer'
-  difficulty: text("difficulty").notNull(), // 'beginner', 'intermediate', 'advanced'
+  pathType: text("path_type").notNull(),
+  targetCompany: text("target_company"),
+  targetJobTitle: text("target_job_title"),
+  difficulty: text("difficulty").notNull(),
   estimatedHours: integer("estimated_hours").default(40),
-  questionIds: text("question_ids").notNull(), // JSON array of question IDs in recommended order
-  channels: text("channels").notNull(), // JSON array of channels covered
-  tags: text("tags"), // JSON array of tags
-  prerequisites: text("prerequisites"), // JSON array of prerequisite path IDs
-  learningObjectives: text("learning_objectives"), // JSON array of learning objectives
-  milestones: text("milestones"), // JSON array of milestone objects
-  popularity: integer("popularity").default(0), // How many users have started this path
-  completionRate: integer("completion_rate").default(0), // Percentage of users who completed
-  averageRating: integer("average_rating").default(0), // 0-100 user rating
-  metadata: text("metadata"), // JSON for additional data (RAG insights, company patterns, etc.)
-  status: text("status").default("active"), // 'active', 'draft', 'archived'
+  questionIds: text("question_ids").notNull(),
+  channels: text("channels").notNull(),
+  tags: text("tags"),
+  prerequisites: text("prerequisites"),
+  learningObjectives: text("learning_objectives"),
+  milestones: text("milestones"),
+  popularity: integer("popularity").default(0),
+  completionRate: integer("completion_rate").default(0),
+  averageRating: integer("average_rating").default(0),
+  metadata: text("metadata"),
+  status: text("status").default("active"),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
   lastUpdated: text("last_updated"),
-  lastGenerated: text("last_generated"), // When this path was last regenerated by the daily job
+  lastGenerated: text("last_generated"),
 });
 
-// Coding challenges - in-browser coding problems with JS/Python support
-export const codingChallenges = sqliteTable("coding_challenges", {
+export const codingChallenges = pgTable("coding_challenges", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description").notNull(),
-  difficulty: text("difficulty").notNull(), // easy, medium, hard
+  difficulty: text("difficulty").notNull(),
   category: text("category").notNull(),
-  tags: text("tags"), // JSON array
-  companies: text("companies"), // JSON array
+  tags: text("tags"),
+  companies: text("companies"),
   starterCodeJs: text("starter_code_js"),
   starterCodePy: text("starter_code_py"),
-  testCases: text("test_cases").notNull(), // JSON array
-  hints: text("hints"), // JSON array
+  testCases: text("test_cases").notNull(),
+  hints: text("hints"),
   solutionJs: text("solution_js"),
   solutionPy: text("solution_py"),
   complexityTime: text("complexity_time"),
@@ -220,30 +210,28 @@ export const codingChallenges = sqliteTable("coding_challenges", {
   lastUpdated: text("last_updated"),
 });
 
-// Blog posts - AI-generated posts derived from questions
-export const blogPosts = sqliteTable("blog_posts", {
+export const blogPosts = pgTable("blog_posts", {
   id: text("id").primaryKey(),
   questionId: text("question_id").references(() => questions.id),
   title: text("title").notNull(),
   slug: text("slug").notNull().unique(),
   summary: text("summary"),
-  sections: text("sections"), // JSON array of {heading, content}
-  tags: text("tags"), // JSON array
+  sections: text("sections"),
+  tags: text("tags"),
   channel: text("channel"),
   imageUrl: text("image_url"),
   svgContent: text("svg_content"),
-  status: text("status").default("published"), // draft, published, archived
+  status: text("status").default("published"),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
   lastUpdated: text("last_updated"),
 });
 
-// Flashcards - spaced-repetition cards derived from questions
-export const flashcards = sqliteTable("flashcards", {
+export const flashcards = pgTable("flashcards", {
   id: text("id").primaryKey(),
   questionId: text("question_id").references(() => questions.id),
   channel: text("channel"),
   difficulty: text("difficulty"),
-  tags: text("tags"), // JSON array
+  tags: text("tags"),
   front: text("front").notNull(),
   back: text("back").notNull(),
   hint: text("hint"),
@@ -252,14 +240,13 @@ export const flashcards = sqliteTable("flashcards", {
   updatedAt: text("updated_at"),
 });
 
-// Channel tests - 20-question quizzes per topic
-export const tests = sqliteTable("tests", {
+export const tests = pgTable("tests", {
   id: text("id").primaryKey(),
   channelId: text("channel_id").notNull(),
   channelName: text("channel_name").notNull(),
   title: text("title").notNull(),
   description: text("description"),
-  questions: text("questions").notNull(), // JSON array of test question objects
+  questions: text("questions").notNull(),
   passingScore: integer("passing_score").default(70),
   version: integer("version").default(1),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
@@ -302,9 +289,7 @@ export type Flashcard = typeof flashcards.$inferSelect;
 export type InsertTest = z.infer<typeof insertTestSchema>;
 export type Test = typeof tests.$inferSelect;
 
-// ── Blog Schema ────────────────────────────────────────────────────────────
-
-export const blogAuthors = sqliteTable("blog_authors", {
+export const blogAuthors = pgTable("blog_authors", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
   bio: text("bio"),
@@ -312,7 +297,7 @@ export const blogAuthors = sqliteTable("blog_authors", {
   twitterHandle: text("twitter_handle"),
 });
 
-export const blogCategories = sqliteTable("blog_categories", {
+export const blogCategories = pgTable("blog_categories", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),

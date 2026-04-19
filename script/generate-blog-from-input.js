@@ -8,16 +8,14 @@
  */
 
 import 'dotenv/config';
-import { createClient } from '@libsql/client';
 import { runWithRetries, parseJson, writeGitHubOutput } from './utils.js';
 import blogInputTemplate from './ai/prompts/templates/blog-input.js';
+import { dbClient as client } from './db/pg-client.js';
 
 // Database connection
 const url = process.env.SQLITE_URL || 'file:local.db';
 
 // URL defaults to file:local.db if not set
-
-const client = createClient({ url });
 
 // Valid channels for validation
 const VALID_CHANNELS = blogInputTemplate.CHANNELS;
@@ -28,7 +26,7 @@ async function initBlogPostsTable() {
   console.log('📦 Ensuring blog_posts table exists...');
   await client.execute(`
     CREATE TABLE IF NOT EXISTS blog_posts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       question_id TEXT UNIQUE NOT NULL,
       title TEXT NOT NULL,
       slug TEXT NOT NULL,
