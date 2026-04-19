@@ -293,7 +293,7 @@ async function main() {
           sql: `INSERT INTO tests (id, channel_id, channel_name, title, description, questions, passing_score, created_at, last_updated)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
-                  questions = json_insert(questions, '$[#]', json(?)),
+                  questions = (tests.questions::jsonb || ?::jsonb)::text,
                   last_updated = ?`,
           args: [
             `test-${channel}-converted`,
@@ -305,7 +305,7 @@ async function main() {
             70,
             new Date().toISOString(),
             new Date().toISOString(),
-            JSON.stringify(test.questions[0]),
+            JSON.stringify([test.questions[0]]),
             new Date().toISOString()
           ]
         });
