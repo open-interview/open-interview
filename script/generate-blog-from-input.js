@@ -12,11 +12,6 @@ import { runWithRetries, parseJson, writeGitHubOutput } from './utils.js';
 import blogInputTemplate from './ai/prompts/templates/blog-input.js';
 import { dbClient as client } from './db/pg-client.js';
 
-// Database connection
-const url = process.env.SQLITE_URL || 'file:local.db';
-
-// URL defaults to file:local.db if not set
-
 // Valid channels for validation
 const VALID_CHANNELS = blogInputTemplate.CHANNELS;
 const VALID_DIFFICULTIES = ['beginner', 'intermediate', 'advanced'];
