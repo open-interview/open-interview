@@ -60,8 +60,9 @@ async function collectTrafficViews(repo) {
   
   for (const view of data.views || []) {
     await db.execute({
-      sql: `INSERT OR REPLACE INTO github_analytics (date, repo, metric_type, metric_name, count, uniques)
-            VALUES (?, ?, 'views', 'daily', ?, ?)`,
+      sql: `INSERT INTO github_analytics (date, repo, metric_type, metric_name, count, uniques)
+            VALUES (?, ?, 'views', 'daily', ?, ?)
+            ON CONFLICT (date, repo, metric_type, metric_name) DO UPDATE SET count = EXCLUDED.count, uniques = EXCLUDED.uniques`,
       args: [view.timestamp.split('T')[0], repo, view.count, view.uniques]
     });
   }
@@ -76,8 +77,9 @@ async function collectTrafficClones(repo) {
   
   for (const clone of data.clones || []) {
     await db.execute({
-      sql: `INSERT OR REPLACE INTO github_analytics (date, repo, metric_type, metric_name, count, uniques)
-            VALUES (?, ?, 'clones', 'daily', ?, ?)`,
+      sql: `INSERT INTO github_analytics (date, repo, metric_type, metric_name, count, uniques)
+            VALUES (?, ?, 'clones', 'daily', ?, ?)
+            ON CONFLICT (date, repo, metric_type, metric_name) DO UPDATE SET count = EXCLUDED.count, uniques = EXCLUDED.uniques`,
       args: [clone.timestamp.split('T')[0], repo, clone.count, clone.uniques]
     });
   }
@@ -93,8 +95,9 @@ async function collectReferrers(repo) {
   
   for (const ref of data || []) {
     await db.execute({
-      sql: `INSERT OR REPLACE INTO github_analytics (date, repo, metric_type, metric_name, count, uniques)
-            VALUES (?, ?, 'referrer', ?, ?, ?)`,
+      sql: `INSERT INTO github_analytics (date, repo, metric_type, metric_name, count, uniques)
+            VALUES (?, ?, 'referrer', ?, ?, ?)
+            ON CONFLICT (date, repo, metric_type, metric_name) DO UPDATE SET count = EXCLUDED.count, uniques = EXCLUDED.uniques`,
       args: [today, repo, ref.referrer, ref.count, ref.uniques]
     });
   }
@@ -110,8 +113,9 @@ async function collectPopularPaths(repo) {
   
   for (const path of data || []) {
     await db.execute({
-      sql: `INSERT OR REPLACE INTO github_analytics (date, repo, metric_type, metric_name, count, uniques)
-            VALUES (?, ?, 'path', ?, ?, ?)`,
+      sql: `INSERT INTO github_analytics (date, repo, metric_type, metric_name, count, uniques)
+            VALUES (?, ?, 'path', ?, ?, ?)
+            ON CONFLICT (date, repo, metric_type, metric_name) DO UPDATE SET count = EXCLUDED.count, uniques = EXCLUDED.uniques`,
       args: [today, repo, path.path, path.count, path.uniques]
     });
   }
@@ -135,8 +139,9 @@ async function collectRepoStats(repo) {
   
   for (const stat of stats) {
     await db.execute({
-      sql: `INSERT OR REPLACE INTO github_analytics (date, repo, metric_type, metric_name, count, uniques)
-            VALUES (?, ?, 'repo_stat', ?, ?, 0)`,
+      sql: `INSERT INTO github_analytics (date, repo, metric_type, metric_name, count, uniques)
+            VALUES (?, ?, 'repo_stat', ?, ?, 0)
+            ON CONFLICT (date, repo, metric_type, metric_name) DO UPDATE SET count = EXCLUDED.count, uniques = EXCLUDED.uniques`,
       args: [today, repo, stat.name, stat.count]
     });
   }
