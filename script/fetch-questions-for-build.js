@@ -199,6 +199,8 @@ async function main() {
     fetchChangelog(client, OUTPUT_DIR, questions),
     fetchBlogPosts(client, OUTPUT_DIR),
     fetchCertifications(client, OUTPUT_DIR),
+    fetchVoiceSessions(client, OUTPUT_DIR),
+    generateInterviewerComments(OUTPUT_DIR),
   ]);
 
   console.log('\n✅ Static data files generated successfully!');
@@ -387,6 +389,43 @@ async function fetchCertifications(client, OUTPUT_DIR) {
     console.log(`   ⚠️ certifications: ${e.message}`);
     fs.writeFileSync(path.join(OUTPUT_DIR, 'certifications.json'), JSON.stringify([], null, 0));
   }
+}
+
+async function fetchVoiceSessions(client, OUTPUT_DIR) {
+  console.log('   📥 voice-sessions...');
+  try {
+    const result = await client.execute(`SELECT id, topic, description, channel, difficulty, question_ids, total_questions, estimated_minutes, created_at FROM voice_sessions ORDER BY channel, created_at DESC`);
+    const sessions = result.rows.map(row => ({
+      id: row.id, topic: row.topic, description: row.description,
+      channel: row.channel, difficulty: row.difficulty,
+      questionIds: row.question_ids ? JSON.parse(row.question_ids) : [],
+      totalQuestions: row.total_questions, estimatedMinutes: row.estimated_minutes,
+      createdAt: row.created_at
+    }));
+    fs.writeFileSync(path.join(OUTPUT_DIR, 'voice-sessions.json'), JSON.stringify({ sessions }, null, 0));
+    console.log(`   ✓ voice-sessions.json (${sessions.length} sessions)`);
+  } catch (e) {
+    console.log(`   ⚠️ voice-sessions: ${e.message}`);
+    fs.writeFileSync(path.join(OUTPUT_DIR, 'voice-sessions.json'), JSON.stringify({ sessions: [] }, null, 0));
+  }
+}
+
+function generateInterviewerComments(OUTPUT_DIR) {
+  console.log('   📥 interviewer-comments...');
+  const comments = {
+    skip: ["No worries, let's move on.", "That's fine, we'll skip this one.", "Okay, next question.", "Moving on — that's perfectly normal."],
+    shuffle: ["Let's mix things up a bit.", "Switching to a different topic.", "Okay, let's try something different.", "Good idea to vary the questions."],
+    quick_answer: ["Nice and concise — I like that.", "Quick and to the point!", "Good speed. Let's keep going.", "Efficient answer!"],
+    long_pause: ["Take your time, there's no rush.", "It's okay to think it through.", "No pressure — think out loud if it helps.", "Still there? Take all the time you need."],
+    retry: ["Let's give that one another shot.", "No problem, try again.", "Second attempt — you've got this.", "Let's revisit that question."],
+    good_score: ["Excellent work! You're doing great.", "Strong performance — keep it up!", "Very impressive answers.", "You're well-prepared for this."],
+    bad_score: ["Don't worry — practice makes perfect.", "Keep going, you're learning as you go.", "These are tough questions. Keep at it.", "Every attempt makes you better."],
+    first_question: ["Let's get started! Take a breath and go.", "Here's your first question — good luck!", "Ready? Here we go.", "Interview starting — you've got this!"],
+    last_question: ["Last one — finish strong!", "Final question coming up.", "Almost there — one more to go.", "Last question — give it your best!"],
+    idle: ["Whenever you're ready.", "Take your time.", "No rush — I'm here when you're ready.", "Ready when you are."]
+  };
+  fs.writeFileSync(path.join(OUTPUT_DIR, 'interviewer-comments.json'), JSON.stringify(comments, null, 0));
+  console.log('   ✓ interviewer-comments.json');
 }
 
 main().catch(e => {
