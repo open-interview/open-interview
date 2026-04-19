@@ -242,9 +242,24 @@ export async function saveQuestion(question) {
   await retryDatabaseOperation(
     async () => {
       await dbClient.execute({
-        sql: `INSERT OR REPLACE INTO questions 
+        sql: `INSERT INTO questions 
               (id, question, answer, explanation, diagram, difficulty, tags, channel, sub_channel, source_url, videos, companies, eli5, tldr, last_updated, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM questions WHERE id = ?), ?))`,
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM questions WHERE id = ?), ?))
+              ON CONFLICT (id) DO UPDATE SET
+                question = EXCLUDED.question,
+                answer = EXCLUDED.answer,
+                explanation = EXCLUDED.explanation,
+                diagram = EXCLUDED.diagram,
+                difficulty = EXCLUDED.difficulty,
+                tags = EXCLUDED.tags,
+                channel = EXCLUDED.channel,
+                sub_channel = EXCLUDED.sub_channel,
+                source_url = EXCLUDED.source_url,
+                videos = EXCLUDED.videos,
+                companies = EXCLUDED.companies,
+                eli5 = EXCLUDED.eli5,
+                tldr = EXCLUDED.tldr,
+                last_updated = EXCLUDED.last_updated`,
         args: [
           sanitized.id,
           sanitized.question,
@@ -294,9 +309,24 @@ export async function saveUnifiedQuestions(questions) {
       }
       
       batch.push({
-        sql: `INSERT OR REPLACE INTO questions 
+        sql: `INSERT INTO questions 
               (id, question, answer, explanation, diagram, difficulty, tags, channel, sub_channel, source_url, videos, companies, eli5, tldr, last_updated)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ON CONFLICT (id) DO UPDATE SET
+                question = EXCLUDED.question,
+                answer = EXCLUDED.answer,
+                explanation = EXCLUDED.explanation,
+                diagram = EXCLUDED.diagram,
+                difficulty = EXCLUDED.difficulty,
+                tags = EXCLUDED.tags,
+                channel = EXCLUDED.channel,
+                sub_channel = EXCLUDED.sub_channel,
+                source_url = EXCLUDED.source_url,
+                videos = EXCLUDED.videos,
+                companies = EXCLUDED.companies,
+                eli5 = EXCLUDED.eli5,
+                tldr = EXCLUDED.tldr,
+                last_updated = EXCLUDED.last_updated`,
         args: [
           id,
           sanitized.question,
@@ -402,7 +432,7 @@ export async function addUnifiedQuestion(question, channels) {
   // Batch insert channel mappings (single transaction instead of multiple calls)
   if (channels.length > 0) {
     const batch = channels.map(({ channel, subChannel }) => ({
-      sql: 'INSERT OR IGNORE INTO channel_mappings (channel_id, sub_channel, question_id) VALUES (?, ?, ?)',
+      sql: 'INSERT INTO channel_mappings (channel_id, sub_channel, question_id) VALUES (?, ?, ?) ON CONFLICT DO NOTHING',
       args: [channel, subChannel, question.id]
     }));
     
@@ -1016,7 +1046,7 @@ export async function initWorkQueue() {
   
   await dbClient.execute(`
     CREATE TABLE IF NOT EXISTS work_queue (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       question_id TEXT NOT NULL,
       bot_type TEXT NOT NULL,
       priority INTEGER DEFAULT 5,
@@ -1413,7 +1443,7 @@ export class BaseBotRunner {
         )
       `);
       await dbClient.execute({
-        sql: "INSERT OR REPLACE INTO bot_state (bot_name, value, updated_at) VALUES (?, ?, ?)",
+        sql: "INSERT INTO bot_state (bot_name, value, updated_at) VALUES (?, ?, ?) ON CONFLICT (bot_name) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at",
         args: [this.botName, JSON.stringify(state), new Date().toISOString()]
       });
     } catch (e) {
@@ -1913,3 +1943,4 @@ async function graphqlRequest(token, query) {
     req.end();
   });
 }
+
