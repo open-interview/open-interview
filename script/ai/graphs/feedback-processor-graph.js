@@ -36,7 +36,7 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 // Processing history table for circular loop prevention
 const PROCESSING_HISTORY_TABLE = `
   CREATE TABLE IF NOT EXISTS feedback_processing_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     issue_number INTEGER NOT NULL,
     question_id TEXT NOT NULL,
     feedback_type TEXT NOT NULL,
@@ -96,7 +96,7 @@ async function wasRecentlyProcessed(issueNumber) {
       sql: `SELECT * FROM feedback_processing_history 
             WHERE issue_number = ? 
             AND status = 'completed'
-            AND datetime(completed_at) > datetime('now', '-24 hours')`,
+            AND completed_at > TO_CHAR(NOW() - INTERVAL '24 hours', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`,
       args: [issueNumber]
     });
     return result.rows.length > 0;
@@ -111,9 +111,14 @@ async function wasRecentlyProcessed(issueNumber) {
 async function recordProcessingStart(issueNumber, questionId, feedbackType) {
   try {
     await dbClient.execute({
-      sql: `INSERT OR REPLACE INTO feedback_processing_history 
+      sql: `INSERT INTO feedback_processing_history 
             (issue_number, question_id, feedback_type, status, processed_at)
-            VALUES (?, ?, ?, 'processing', ?)`,
+            VALUES (?, ?, ?, 'processing', ?)
+            ON CONFLICT (issue_number) DO UPDATE SET
+              question_id = EXCLUDED.question_id,
+              feedback_type = EXCLUDED.feedback_type,
+              status = EXCLUDED.status,
+              processed_at = EXCLUDED.processed_at`,
       args: [issueNumber, questionId, feedbackType, new Date().toISOString()]
     });
   } catch (e) {
