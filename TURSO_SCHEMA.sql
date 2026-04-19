@@ -364,6 +364,31 @@ CREATE TABLE IF NOT EXISTS feedback_processing_history (
 );
 
 -- ============================================================================
+-- TABLE: codingChallenges
+-- Purpose: Coding challenge problems linked to questions
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS coding_challenges (
+    id TEXT PRIMARY KEY,
+    question_id TEXT,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    difficulty TEXT NOT NULL,
+    language TEXT DEFAULT 'python',
+    starter_code TEXT,
+    solution TEXT,
+    test_cases TEXT,
+    hints TEXT,
+    channel TEXT,
+    tags TEXT,
+    status TEXT DEFAULT 'active',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    last_updated TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_coding_challenges_channel ON coding_challenges(channel);
+CREATE INDEX IF NOT EXISTS idx_coding_challenges_difficulty ON coding_challenges(difficulty);
+CREATE INDEX IF NOT EXISTS idx_coding_challenges_question ON coding_challenges(question_id);
+
+-- ============================================================================
 -- INDEXES
 -- Purpose: Improve query performance
 -- ============================================================================
