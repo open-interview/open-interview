@@ -144,9 +144,19 @@ async function saveCertQuestion(question) {
     ];
     
     await dbClient.execute({
-      sql: `INSERT OR REPLACE INTO questions 
+      sql: `INSERT INTO questions 
             (id, channel, sub_channel, question, answer, explanation, difficulty, tags, status, last_updated)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
+            ON CONFLICT (id) DO UPDATE SET
+              channel = EXCLUDED.channel,
+              sub_channel = EXCLUDED.sub_channel,
+              question = EXCLUDED.question,
+              answer = EXCLUDED.answer,
+              explanation = EXCLUDED.explanation,
+              difficulty = EXCLUDED.difficulty,
+              tags = EXCLUDED.tags,
+              status = EXCLUDED.status,
+              last_updated = EXCLUDED.last_updated`,
       args: [
         id,
         question.certificationId,

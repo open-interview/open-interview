@@ -890,11 +890,28 @@ async function upsertCertification(cert) {
   
   try {
     await dbClient.execute({
-      sql: `INSERT OR REPLACE INTO certifications 
+      sql: `INSERT INTO certifications 
             (id, name, provider, description, icon, color, difficulty, category, 
              estimated_hours, exam_code, official_url, domains, prerequisites, 
              status, passing_score, exam_duration, created_at, last_updated)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
+            ON CONFLICT (id) DO UPDATE SET
+              name = EXCLUDED.name,
+              provider = EXCLUDED.provider,
+              description = EXCLUDED.description,
+              icon = EXCLUDED.icon,
+              color = EXCLUDED.color,
+              difficulty = EXCLUDED.difficulty,
+              category = EXCLUDED.category,
+              estimated_hours = EXCLUDED.estimated_hours,
+              exam_code = EXCLUDED.exam_code,
+              official_url = EXCLUDED.official_url,
+              domains = EXCLUDED.domains,
+              prerequisites = EXCLUDED.prerequisites,
+              status = EXCLUDED.status,
+              passing_score = EXCLUDED.passing_score,
+              exam_duration = EXCLUDED.exam_duration,
+              last_updated = EXCLUDED.last_updated`,
       args: [
         cert.id,
         cert.name,

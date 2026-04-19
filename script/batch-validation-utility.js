@@ -144,7 +144,7 @@ async function saveValidationResults(results) {
   // Create batch validation reports table
   await db.execute(`
     CREATE TABLE IF NOT EXISTS batch_validation_reports (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       question_id TEXT NOT NULL,
       channel TEXT,
       difficulty TEXT,
