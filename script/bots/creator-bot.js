@@ -134,7 +134,7 @@ async function logAnswerFormattingValidation(validationData) {
     // Create validation reports table if it doesn't exist
     await db.execute(`
       CREATE TABLE IF NOT EXISTS answer_formatting_reports (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         question_id TEXT NOT NULL,
         pattern TEXT,
         score INTEGER NOT NULL,
