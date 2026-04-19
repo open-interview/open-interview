@@ -1662,7 +1662,12 @@ async function main() {
 
   console.log('=== 🚀 Blog Generator (LangGraph) ===\n');
   if (dryRun) console.log('🔍 DRY RUN MODE - no DB writes\n');
-  
+
+  if (htmlOnly && !process.env.DATABASE_URL) {
+    console.log('⚠️  DATABASE_URL not set — skipping blog generation (--html-only with no DB)');
+    process.exit(0);
+  }
+
   await initBlogPostsTable();
   
   const stats = await getBlogStats();
