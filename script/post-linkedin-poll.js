@@ -130,7 +130,7 @@ async function fetchQuestion() {
   console.log('🔍 Fetching question from database...');
 
   // Ensure status column exists (older DBs may not have it)
-  const cols = await dbClient.execute("PRAGMA table_info(questions)");
+  const cols = await dbClient.execute({ sql: "SELECT column_name as name FROM information_schema.columns WHERE table_name = 'questions'", args: [] });
   const hasStatus = cols.rows.some(r => r.name === 'status');
   if (!hasStatus) {
     console.log('⚠️ Adding missing status column to questions table...');
@@ -224,12 +224,13 @@ async function fetchBlogPostUrl(question) {
     const now = new Date().toISOString();
 
     await dbClient.execute({
-      sql: `INSERT OR IGNORE INTO blog_posts
+      sql: `INSERT INTO blog_posts
             (question_id, title, slug, introduction, sections, conclusion,
              meta_description, channel, difficulty, tags, diagram, quick_reference,
              glossary, real_world_example, fun_fact, sources, social_snippet,
              diagram_type, diagram_label, images, svg_content, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT DO NOTHING`,
       args: [
         qId,
         blogContent.title,
