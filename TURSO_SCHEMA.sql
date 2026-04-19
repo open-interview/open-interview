@@ -277,6 +277,93 @@ CREATE TABLE IF NOT EXISTS tests (
 );
 
 -- ============================================================================
+-- TABLE: flashcards
+-- Purpose: Flashcard content for spaced repetition learning
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS flashcards (
+    id TEXT PRIMARY KEY,
+    question_id TEXT,
+    channel TEXT,
+    difficulty TEXT,
+    tags TEXT,
+    front TEXT NOT NULL,
+    back TEXT NOT NULL,
+    hint TEXT,
+    mnemonic TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT
+);
+
+-- ============================================================================
+-- TABLE: bot_state
+-- Purpose: Persistent key-value state for bots
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS bot_state (
+    bot_name TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at TEXT
+);
+
+-- ============================================================================
+-- TABLE: blog_posts
+-- Purpose: Generated blog post content per question
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS blog_posts (
+    id TEXT PRIMARY KEY,
+    question_id TEXT UNIQUE,
+    title TEXT,
+    slug TEXT UNIQUE,
+    introduction TEXT,
+    sections TEXT,
+    conclusion TEXT,
+    meta_description TEXT,
+    channel TEXT,
+    difficulty TEXT,
+    tags TEXT,
+    diagram TEXT,
+    quick_reference TEXT,
+    glossary TEXT,
+    real_world_example TEXT,
+    fun_fact TEXT,
+    sources TEXT,
+    social_snippet TEXT,
+    diagram_type TEXT,
+    diagram_label TEXT,
+    images TEXT,
+    svg_content TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
+-- TABLE: citation_blog_topics
+-- Purpose: Tracks blog topics used for citation posts
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS citation_blog_topics (
+    topic TEXT PRIMARY KEY,
+    used_at TEXT
+);
+
+-- ============================================================================
+-- TABLE: rca_blog_companies
+-- Purpose: Tracks companies used for RCA blog posts
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS rca_blog_companies (
+    company TEXT PRIMARY KEY,
+    used_at TEXT
+);
+
+-- ============================================================================
+-- TABLE: feedback_processing_history
+-- Purpose: Tracks processed GitHub issue feedback
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS feedback_processing_history (
+    id SERIAL PRIMARY KEY,
+    issue_number INTEGER UNIQUE,
+    processed_at TEXT,
+    result TEXT
+);
+
+-- ============================================================================
 -- INDEXES
 -- Purpose: Improve query performance
 -- ============================================================================
@@ -335,6 +422,18 @@ CREATE INDEX IF NOT EXISTS idx_voice_sessions_difficulty ON voice_sessions(diffi
 CREATE INDEX IF NOT EXISTS idx_question_relationships_source ON question_relationships(source_question_id);
 CREATE INDEX IF NOT EXISTS idx_question_relationships_target ON question_relationships(target_question_id);
 
+-- Flashcards indexes
+CREATE INDEX IF NOT EXISTS idx_fc_channel ON flashcards(channel);
+CREATE INDEX IF NOT EXISTS idx_fc_qid ON flashcards(question_id);
+
+-- ============================================================================
+-- UNIQUE INDEXES
+-- Purpose: Support ON CONFLICT clauses in application scripts
+-- ============================================================================
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_channel_mappings ON channel_mappings(channel_id, sub_channel, question_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_github_analytics ON github_analytics(date, repo, metric_type, metric_name);
+
 -- ============================================================================
 -- VIEWS (Optional - for common queries)
 -- ============================================================================
@@ -373,26 +472,35 @@ WHERE status = 'active'
 GROUP BY session_type;
 
 -- ============================================================================
--- TRIGGERS (Optional - for data integrity)
+-- TRIGGERS
+-- Purpose: Data integrity via proper PostgreSQL trigger functions
 -- ============================================================================
 
 -- Update last_updated timestamp on questions
-CREATE OR REPLACE TRIGGER trg_questions_update
-AFTER UPDATE ON questions
+CREATE OR REPLACE FUNCTION trg_questions_update_fn()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
-    UPDATE questions 
-    SET last_updated = NOW()
-    WHERE id = NEW.id;
+  NEW.last_updated = NOW()::TEXT;
+  RETURN NEW;
 END;
+$$;
+DROP TRIGGER IF EXISTS trg_questions_update ON questions;
+CREATE TRIGGER trg_questions_update
+BEFORE UPDATE ON questions
+FOR EACH ROW EXECUTE FUNCTION trg_questions_update_fn();
 
 -- Update last_accessed_at on user sessions
-CREATE OR REPLACE TRIGGER trg_user_sessions_access
-AFTER UPDATE ON user_sessions
+CREATE OR REPLACE FUNCTION trg_user_sessions_access_fn()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
-    UPDATE user_sessions 
-    SET last_accessed_at = NOW()
-    WHERE id = NEW.id;
+  NEW.last_accessed_at = NOW()::TEXT;
+  RETURN NEW;
 END;
+$$;
+DROP TRIGGER IF EXISTS trg_user_sessions_access ON user_sessions;
+CREATE TRIGGER trg_user_sessions_access
+BEFORE UPDATE ON user_sessions
+FOR EACH ROW EXECUTE FUNCTION trg_user_sessions_access_fn();
 
 -- ============================================================================
 -- COMMENTS
