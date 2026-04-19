@@ -110,7 +110,7 @@ async function getRandomUnusedCompany() {
 // Mark company as used
 async function markCompanyUsed(company) {
   await client.execute({
-    sql: 'INSERT OR REPLACE INTO rca_blog_companies (company, used_at) VALUES (?, ?)',
+    sql: 'INSERT INTO rca_blog_companies (company, used_at) VALUES (?, ?) ON CONFLICT (company) DO UPDATE SET used_at = EXCLUDED.used_at',
     args: [company, new Date().toISOString()]
   });
 }
