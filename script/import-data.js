@@ -45,8 +45,8 @@ async function main() {
             q.companies ? JSON.stringify(q.companies) : null,
             q.eli5,
             q.voiceKeywords ? JSON.stringify(q.voiceKeywords) : null,
-            q.voiceSuitable ?? false,
-            q.isNew ?? false,
+            (q.voiceSuitable ?? false) ? 1 : 0,
+            (q.isNew ?? false) ? 1 : 0,
             q.lastUpdated, q.createdAt,
           ]
         );
