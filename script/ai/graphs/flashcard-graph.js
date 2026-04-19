@@ -32,9 +32,10 @@ export async function generateFlashcard(input) {
 
   const flashcardId = crypto.randomUUID();
   await db.execute({
-    sql: `INSERT OR IGNORE INTO flashcards
+    sql: `INSERT INTO flashcards
           (id, question_id, channel, difficulty, tags, front, back, hint, mnemonic, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT DO NOTHING`,
     args: [
       flashcardId, questionId, channel ?? null, difficulty ?? null,
       tags ?? null,
