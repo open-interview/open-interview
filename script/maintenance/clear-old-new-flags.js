@@ -18,7 +18,7 @@ async function clearOldNewFlags() {
 
   try {
     // Check if is_new column exists
-    const tableInfo = await dbClient.execute('PRAGMA table_info(questions)');
+    const tableInfo = await dbClient.execute({ sql: "SELECT column_name as name FROM information_schema.columns WHERE table_name = 'questions'", args: [] });
     const hasColumn = tableInfo.rows.some(row => row.name === 'is_new');
 
     if (!hasColumn) {
