@@ -318,8 +318,8 @@ async function fetchFlashcards(client, OUTPUT_DIR) {
     fs.writeFileSync(path.join(OUTPUT_DIR, 'flashcards.json'), JSON.stringify(flashcards, null, 0));
     console.log(`   ✓ flashcards.json (${flashcards.length} flashcards)`);
   } catch (e) {
-    console.log(`   ⚠️ flashcards: ${e.message}`);
-    fs.writeFileSync(path.join(OUTPUT_DIR, 'flashcards.json'), JSON.stringify([], null, 0));
+    console.error(`   ❌ flashcards FAILED: ${e.message}`);
+    throw e;  // fail loudly — empty flashcards.json must not be committed
   }
 }
 
