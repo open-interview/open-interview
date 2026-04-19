@@ -142,7 +142,7 @@ async function logAnswerFormattingValidation(validationData) {
         violations TEXT,
         auto_formatted BOOLEAN DEFAULT FALSE,
         timestamp TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     
