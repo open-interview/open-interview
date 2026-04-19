@@ -61,8 +61,10 @@ async function execute(sqlOrObj) {
   const normalised = pgSql.trim().toUpperCase();
   const isInsert = normalised.startsWith('INSERT');
   const hasReturning = normalised.includes('RETURNING');
-  if (isInsert && !hasReturning) {
-    pgSql = pgSql.replace(/;\s*$/, '') + ' RETURNING id';
+  // Only append RETURNING id if it's a simple INSERT (not INSERT...SELECT)
+  const isSimpleInsert = isInsert && !normalised.includes(' SELECT ');
+  if (isSimpleInsert && !hasReturning) {
+    pgSql = pgSql.trimEnd().replace(/;\s*$/, '') + ' RETURNING id';
   }
 
   const pool = getPool();
