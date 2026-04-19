@@ -147,7 +147,7 @@ function box(title, content) {
 }
 
 async function main() {
-  console.log('\n🔍 Fetching question from local.db...');
+  console.log('\n🔍 Fetching question from database...');
   const q = await fetchQuestion();
   console.log(`   ✅ ${q.id} | ${q.channel} | ${q.difficulty}`);
   console.log(`   Q: ${q.question.slice(0, 80)}...`);
