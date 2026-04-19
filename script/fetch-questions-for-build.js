@@ -214,41 +214,34 @@ async function main() {
 async function fetchBotActivity(client, OUTPUT_DIR) {
   console.log('   📥 bot-activity...');
   try {
-    const tableInfo = await client.execute(`SELECT name FROM sqlite_master WHERE type='table' AND name='work_queue'`);
-    if (tableInfo.rows.length === 0) throw new Error('work_queue table does not exist');
-    const testQuery = await client.execute(`SELECT * FROM work_queue LIMIT 1`);
-    const hasCompletedAt = testQuery.columns.includes('completed_at');
-    const hasBotType = testQuery.columns.includes('bot_type');
-    if (!hasCompletedAt || !hasBotType) throw new Error('Required columns missing from work_queue table');
-
     const [activityResult, statsResult] = await Promise.all([
       client.execute(`
         WITH RankedActivity AS (
-          SELECT w.id, w.bot_type as botType, w.question_id as questionId, q.question as questionText,
-                 q.channel, w.reason as action, w.status, w.result, w.completed_at as completedAt,
-                 ROW_NUMBER() OVER (PARTITION BY w.bot_type, w.question_id ORDER BY w.completed_at DESC) as rn
-          FROM work_queue w LEFT JOIN questions q ON w.question_id = q.id
+          SELECT w.id, w.item_type as botType, w.item_id as questionId, q.question as questionText,
+                 q.channel, w.action, w.status, w.result, w.processed_at as completedAt,
+                 ROW_NUMBER() OVER (PARTITION BY w.item_type, w.item_id ORDER BY w.processed_at DESC) as rn
+          FROM work_queue w LEFT JOIN questions q ON w.item_id = q.id
           WHERE w.status IN ('completed', 'failed')
         )
         SELECT id, botType, questionId, questionText, channel, action, status, result, completedAt
-        FROM RankedActivity WHERE rn = 1 ORDER BY completedAt DESC LIMIT 100`),
+        FROM RankedActivity WHERE rn = 1 ORDER BY completedAt DESC NULLS LAST LIMIT 100`),
       client.execute(`
-        SELECT bot_type as botType,
+        SELECT item_type as botType,
                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-               MAX(completed_at) as lastRun
-        FROM work_queue WHERE status IN ('completed', 'failed') GROUP BY bot_type ORDER BY lastRun DESC`)
+               MAX(processed_at) as lastRun
+        FROM work_queue WHERE status IN ('completed', 'failed') GROUP BY item_type ORDER BY lastRun DESC NULLS LAST`)
     ]);
 
     const activities = activityResult.rows.map(row => ({
-      id: row.id, botType: row.botType, questionId: row.questionId,
-      questionText: row.questionText ? String(row.questionText).substring(0, 100) : 'Unknown question',
+      id: row.id, botType: row.bottype, questionId: row.questionid,
+      questionText: row.questiontext ? String(row.questiontext).substring(0, 100) : 'Unknown question',
       channel: row.channel || 'unknown', action: row.action || 'processed',
-      status: row.status, completedAt: row.completedAt
+      status: row.status, completedAt: row.completedat
     }));
     const botStats = statsResult.rows.map(row => ({
-      botType: row.botType, completed: Number(row.completed) || 0,
-      failed: Number(row.failed) || 0, lastRun: row.lastRun || new Date().toISOString()
+      botType: row.bottype, completed: Number(row.completed) || 0,
+      failed: Number(row.failed) || 0, lastRun: row.lastrun || new Date().toISOString()
     }));
     fs.writeFileSync(path.join(OUTPUT_DIR, 'bot-activity.json'), JSON.stringify({ activities, stats: botStats, lastUpdated: new Date().toISOString() }, null, 0));
     console.log(`   ✓ bot-activity.json (${activities.length} activities)`);
@@ -333,14 +326,9 @@ async function fetchFlashcards(client, OUTPUT_DIR) {
 async function fetchChangelog(client, OUTPUT_DIR, questions) {
   console.log('   📥 changelog...');
   try {
-    const tableInfo = await client.execute(`SELECT name FROM sqlite_master WHERE type='table' AND name='work_queue'`);
-    if (tableInfo.rows.length === 0) throw new Error('work_queue table does not exist');
-    const testQuery = await client.execute(`SELECT * FROM work_queue LIMIT 1`);
-    if (!testQuery.columns.includes('completed_at') || !testQuery.columns.includes('bot_type')) throw new Error('Required columns missing');
-
     const [changelogResult, totals] = await Promise.all([
-      client.execute(`SELECT DATE(completed_at) as date, bot_type, COUNT(*) as count, GROUP_CONCAT(DISTINCT q.channel) as channels FROM work_queue w LEFT JOIN questions q ON w.question_id = q.id WHERE w.status = 'completed' AND w.completed_at >= DATE('now', '-30 days') GROUP BY DATE(completed_at), bot_type ORDER BY date DESC, count DESC`),
-      client.execute(`SELECT SUM(CASE WHEN bot_type IN ('generate', 'coding-challenge') THEN 1 ELSE 0 END) as added, SUM(CASE WHEN bot_type NOT IN ('generate', 'coding-challenge') THEN 1 ELSE 0 END) as improved FROM work_queue WHERE status = 'completed'`)
+      client.execute(`SELECT DATE(processed_at::timestamptz) as date, item_type as bot_type, COUNT(*) as count, STRING_AGG(DISTINCT q.channel, ',') as channels FROM work_queue w LEFT JOIN questions q ON w.item_id = q.id WHERE w.status = 'completed' AND processed_at::timestamptz >= NOW() - INTERVAL '30 days' GROUP BY DATE(processed_at::timestamptz), item_type ORDER BY date DESC, count DESC`),
+      client.execute(`SELECT SUM(CASE WHEN action = 'new question created' THEN 1 ELSE 0 END) as added, SUM(CASE WHEN action != 'new question created' THEN 1 ELSE 0 END) as improved FROM work_queue WHERE status = 'completed'`)
     ]);
 
     const entriesByDate = {};
@@ -350,7 +338,7 @@ async function fetchChangelog(client, OUTPUT_DIR, questions) {
       const entry = entriesByDate[date];
       const channels = row.channels ? row.channels.split(',').filter(Boolean) : [];
       channels.forEach(c => entry.channels.add(c));
-      if (row.bot_type === 'generate' || row.bot_type === 'coding-challenge') { entry.questionsAdded += Number(row.count) || 0; entry.activities.push({ type: row.bot_type, action: 'added', count: Number(row.count) || 0 }); }
+      if (row.bot_type === 'generate' || row.bot_type === 'coding-challenge' || row.bot_type === 'question') { entry.questionsAdded += Number(row.count) || 0; entry.activities.push({ type: row.bot_type, action: 'added', count: Number(row.count) || 0 }); }
       else { entry.questionsImproved += Number(row.count) || 0; entry.activities.push({ type: row.bot_type, action: 'improved', count: Number(row.count) || 0 }); }
     }
     const changelogEntries = Object.values(entriesByDate).filter(e => e.questionsAdded > 0 || e.questionsImproved > 0).map(e => ({ date: e.date, type: e.questionsAdded > 0 ? 'added' : 'improved', title: e.questionsAdded > 0 ? `${e.questionsAdded} new question${e.questionsAdded > 1 ? 's' : ''} added` : `${e.questionsImproved} question${e.questionsImproved > 1 ? 's' : ''} improved`, description: `Bot activity on ${e.date}`, details: { questionsAdded: e.questionsAdded, questionsImproved: e.questionsImproved, channels: Array.from(e.channels), activities: e.activities } })).slice(0, 30);
