@@ -50,8 +50,20 @@ async function generateSimilarQuestions() {
   await vectorDB.init();
   
   // Get all questions
-  let questions = await getAllUnifiedQuestions();
+  let questions;
+  try {
+    questions = await getAllUnifiedQuestions();
+  } catch (err) {
+    console.warn(`⚠️  Could not connect to database: ${err.message}`);
+    console.warn('   Skipping similar questions generation');
+    return {};
+  }
   console.log(`📚 Loaded ${questions.length} questions`);
+  
+  if (questions.length === 0) {
+    console.log('⚠️  No questions found in database — skipping similarity generation');
+    return {};
+  }
   
   // Filter by channel if specified
   if (options.channel) {

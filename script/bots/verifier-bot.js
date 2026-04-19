@@ -841,6 +841,10 @@ function generateReport(stats, results) {
   
   console.log(`\n📈 SUMMARY`);
   console.log(`   Total Analyzed: ${stats.totalAnalyzed}`);
+  if (stats.totalAnalyzed === 0) {
+    console.log('   ⚠️  No questions analyzed (empty database or all filtered out)');
+    return;
+  }
   console.log(`   ✅ Passed: ${stats.passed} (${Math.round(stats.passed / stats.totalAnalyzed * 100)}%)`);
   console.log(`   🚩 Flagged: ${stats.flagged} (${Math.round(stats.flagged / stats.totalAnalyzed * 100)}%)`);
   
@@ -888,12 +892,12 @@ function generateReport(stats, results) {
 async function main() {
   console.log('=== 🔬 Verifier Bot - Advanced Analysis Engine ===\n');
   
-  await initBotTables();
-  
-  const run = await startRun(BOT_NAME);
-  const runStats = { processed: 0, created: 0, updated: 0, deleted: 0 };
-  
+  let run = null;
   try {
+    await initBotTables();
+    run = await startRun(BOT_NAME);
+    const runStats = { processed: 0, created: 0, updated: 0, deleted: 0 };
+
     const mode = process.env.MODE || 'scan';
     const limit = parseInt(process.env.LIMIT || '100');
     const channel = process.env.CHANNEL || null;
@@ -922,7 +926,7 @@ async function main() {
     
   } catch (error) {
     console.error('Fatal error:', error);
-    await failRun(run.id, error);
+    if (run) await failRun(run.id, error).catch(() => {});
     process.exit(1);
   }
 }

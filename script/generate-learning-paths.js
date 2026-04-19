@@ -35,6 +35,15 @@ async function generateAllLearningPaths() {
   
   await vectorDB.init();
   
+  // Verify DB connectivity before proceeding
+  try {
+    await client.execute({ sql: 'SELECT 1', args: [] });
+  } catch (err) {
+    console.warn(`⚠️  Could not connect to database: ${err.message}`);
+    console.warn('   Skipping learning path generation');
+    return;
+  }
+  
   const stats = {
     companyPaths: 0,
     jobTitlePaths: 0,
