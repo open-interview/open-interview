@@ -57,6 +57,18 @@ async function main() {
   console.log(`\n✓ Exported ${rows.length} questions across ${channelStats.length} channels`);
   console.log('Commit the data/ directory to make changes available in CI.');
 
+  // Export flashcards
+  const fcResult = await client.execute('SELECT * FROM flashcards ORDER BY channel, created_at DESC');
+  const flashcards = fcResult.rows.map(row => ({
+    id: row.id, questionId: row.question_id, channel: row.channel,
+    difficulty: row.difficulty, tags: row.tags ? JSON.parse(row.tags) : [],
+    front: row.front, back: row.back, hint: row.hint, mnemonic: row.mnemonic,
+    createdAt: row.created_at, updatedAt: row.updated_at,
+  }));
+  fs.mkdirSync('data/flashcards', { recursive: true });
+  fs.writeFileSync('data/flashcards/all.json', JSON.stringify(flashcards, null, 2));
+  console.log(`  ✓ flashcards/all.json (${flashcards.length} flashcards)`);
+
   await getPool().end();
 }
 
