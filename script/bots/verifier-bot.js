@@ -680,7 +680,7 @@ async function getUnverifiedQuestions(limit = 100, channel = null) {
                SELECT DISTINCT item_id FROM bot_ledger 
                WHERE bot_name = 'verifier' 
                AND action IN ('verify', 'flag')
-               AND created_at > NOW() - INTERVAL '7 days'
+               AND created_at > TO_CHAR(NOW() - INTERVAL '7 days', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
              )`;
   
   const args = [];
