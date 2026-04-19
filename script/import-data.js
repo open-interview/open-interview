@@ -59,6 +59,25 @@ async function main() {
   }
 
   console.log(`\n✓ Imported ${total} questions from ${files.length} files`);
+
+  // Import flashcards
+  const FC_FILE = 'data/flashcards/all.json';
+  if (fs.existsSync(FC_FILE)) {
+    const flashcards = JSON.parse(fs.readFileSync(FC_FILE, 'utf8'));
+    let fcInserted = 0;
+    for (const f of flashcards) {
+      await pool.query(
+        `INSERT INTO flashcards (id, question_id, channel, difficulty, tags, front, back, hint, mnemonic, created_at, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (id) DO NOTHING`,
+        [f.id, f.questionId, f.channel, f.difficulty,
+         JSON.stringify(f.tags ?? []), f.front, f.back, f.hint ?? null, f.mnemonic ?? null,
+         f.createdAt, f.updatedAt ?? null]
+      );
+      fcInserted++;
+    }
+    console.log(`✓ Imported ${fcInserted} flashcards`);
+  }
+
   await pool.end();
 }
 
