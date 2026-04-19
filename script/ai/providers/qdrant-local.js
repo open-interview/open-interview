@@ -11,8 +11,8 @@
  * computed in JS (fast enough for local dev / CI with <100k rows).
  */
 
+import { createClient } from '@libsql/client';
 import crypto from 'crypto';
-import { dbClient as db } from '../../db/pg-client.js';
 
 // RAG always uses local SQLite
 const DB_URL = 'file:local.db';
@@ -26,7 +26,8 @@ class LocalQdrantProvider {
 
   _getDb() {
     if (!this.db) {
-      this.      this.db.execute('PRAGMA journal_mode=WAL').catch(() => {});
+      this.db = createClient({ url: DB_URL });
+      this.db.execute('PRAGMA journal_mode=WAL').catch(() => {});
       this.db.execute('PRAGMA busy_timeout=5000').catch(() => {});
     }
     return this.db;
