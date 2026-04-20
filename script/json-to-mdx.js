@@ -55,6 +55,7 @@ function buildFrontmatter(p) {
     p.images.forEach(img => {
       lines.push(`  - url: ${img.url}`);
       lines.push(`    alt: ${yamlStr(img.alt || '')}`);
+      lines.push(`    placement: ${img.placement || 'after-intro'}`);
     });
   } else {
     lines.push('images: []');

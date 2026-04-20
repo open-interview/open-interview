@@ -286,7 +286,7 @@ function parseYamlFrontmatter(yaml) {
       i++;
       while (i < lines.length) {
         const bl = lines[i];
-        if (bl.trim() === '' || /^\w+:/.test(bl)) break;
+        if (bl.trim() !== '' && /^[\w-]+:/.test(bl)) break;
         if (indent === null) indent = bl.match(/^(\s+)/)?.[1]?.length || 0;
         blockLines.push(bl.slice(indent));
         i++;
@@ -362,16 +362,17 @@ function loadPostsFromMDX() {
     const blogIntro = introMatch ? introMatch[1].replace(/^\*\*.*?\*\*\s*/, '') : '';
 
     // ## headings → blogSections (exclude Conclusion/Wrapping Up)
-    const sectionRegex = /^## (.+)\n+([\s\S]*?)(?=^## |\s*$)/gm;
+    const sectionParts = body.split(/^(?=## )/m);
     const blogSections = [];
     let conclusionText = '';
-    let match;
-    while ((match = sectionRegex.exec(body)) !== null) {
-      const heading = match[1].trim();
-      const content = match[2].trim();
-      if (/conclusion|wrapping up/i.test(heading)) {
+    for (const part of sectionParts) {
+      const headingMatch = part.match(/^## (.+)\n([\s\S]*)/);
+      if (!headingMatch) continue;
+      const heading = headingMatch[1].trim();
+      const content = headingMatch[2].trim();
+      if (/^(wrapping up|conclusion)$/i.test(heading)) {
         conclusionText = content;
-      } else {
+      } else if (content) {
         blogSections.push({ heading, content });
       }
     }
@@ -390,7 +391,7 @@ function loadPostsFromMDX() {
       createdAt: fm.createdAt || '',
       funFact: fm.funFact || '',
       diagram: fm.diagram || '',
-      images: Array.isArray(fm.images) ? fm.images : [],
+      images: Array.isArray(fm.images) ? fm.images.map(img => ({ ...img, placement: img.placement || 'after-intro' })) : [],
       sources: Array.isArray(fm.sources) ? fm.sources : [],
       svgContent: {},
     };
@@ -614,7 +615,8 @@ function markdownToHtml(md, glossary = []) {
   const codeBlocks = [];
   html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
     const index = codeBlocks.length;
-    codeBlocks.push({ lang: lang || '', code: escapeHtml(code.trim()) });
+    const escaped = lang === 'mermaid' ? code.trim() : escapeHtml(code.trim());
+    codeBlocks.push({ lang: lang || '', code: escaped });
     return `\n__CODE_BLOCK_${index}__\n`;
   });
   
@@ -631,13 +633,13 @@ function markdownToHtml(md, glossary = []) {
   html = html.replace(/^## (.*$)/gm, '</p>\n<h2>$1</h2>\n<p>');
   html = html.replace(/^# (.*$)/gm, '</p>\n<h1>$1</h1>\n<p>');
   
+  // Callout boxes - must run BEFORE bold/italic so **title** is still raw markdown
+  html = html.replace(/^>\s*(💡|⚠️|✅|🔥|🎯|❌|ℹ️)\s*\*\*([^*]+)\*\*:?\s*(.*)$/gm,
+    '</p>\n<div class="callout"><span class="callout-icon">$1</span><div><strong>$2</strong><p>$3</p></div></div>\n<p>');
+
   // Bold and italic
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  
-  // Callout boxes - close paragraph before, open after
-  html = html.replace(/^>\s*(💡|⚠️|✅|🔥|🎯|❌|ℹ️)\s*([^:]+):\s*(.*)$/gm, 
-    '</p>\n<div class="callout"><span class="callout-icon">$1</span><div><strong>$2</strong><p>$3</p></div></div>\n<p>');
   html = html.replace(/^>\s*(.*)$/gm, '</p>\n<blockquote>$1</blockquote>\n<p>');
   
   // Tables - close paragraph before, open after
@@ -714,8 +716,14 @@ function markdownToHtml(md, glossary = []) {
   
   // Restore code blocks
   codeBlocks.forEach((block, index) => {
-    const langClass = block.lang ? ` class="language-${block.lang}"` : '';
-    html = html.replace(`__CODE_BLOCK_${index}__`, `<pre><code${langClass}>${block.code}</code></pre>`);
+    let replacement;
+    if (block.lang === 'mermaid') {
+      replacement = `<div class="mermaid">${block.code}</div>`;
+    } else {
+      const langClass = block.lang ? ` class="language-${block.lang}"` : '';
+      replacement = `<pre><code${langClass}>${block.code}</code></pre>`;
+    }
+    html = html.replace(`__CODE_BLOCK_${index}__`, replacement);
   });
   
   // Restore inline code
@@ -1182,7 +1190,7 @@ footer { background: var(--bg-secondary); border-top: 1px solid var(--border); p
 // HTML Generation
 function generateHead(title, description, includeMermaid = false) {
   const mermaidScript = includeMermaid ? `
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <script>mermaid.initialize({startOnLoad:true,theme:'base',themeVariables:{primaryColor:'#e8f4f8',primaryTextColor:'#1a1a1a',primaryBorderColor:'#2c3e50',lineColor:'#2c3e50',secondaryColor:'#ffeaa7',tertiaryColor:'#dfe6e9',background:'#ffffff',mainBkg:'#e8f4f8',nodeBorder:'#2c3e50',clusterBkg:'#f5f5f5',titleColor:'#1a1a1a',edgeLabelBackground:'#ffffff',nodeTextColor:'#1a1a1a',fontSize:'16px'},flowchart:{curve:'basis',padding:20,nodeSpacing:60,rankSpacing:60,htmlLabels:true,useMaxWidth:true}});</script>` : '';
   
   const gaScript = GA_MEASUREMENT_ID ? `
@@ -1196,6 +1204,10 @@ function generateHead(title, description, includeMermaid = false) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>${escapeHtml(title)} | DevInsights</title>
   <meta name="description" content="${escapeHtml(description)}">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:type" content="article">
+  <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#0d1117">${gaScript}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1818,7 +1830,7 @@ function generateArticlePage(article, allArticles) {
   
   const tags = (article.tags || []).slice(0, 3).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join(' ');
   
-  return `${generateHead(article.blogTitle, article.blogMeta || '', hasDiagram)}
+  return `${generateHead(article.blogTitle, article.blogMeta || article.blogIntro?.substring(0,160) || article.blogTitle, hasDiagram)}
 <style>
 .related-articles { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); }
 .related-articles h3 { font-size: 1rem; margin-bottom: 1rem; color: var(--text); }
@@ -1927,6 +1939,20 @@ async function main() {
       fs.writeFileSync(path.join(dir, 'index.html'), generateArticlePage(article, articles));
     }
     fs.writeFileSync(path.join(OUTPUT_DIR, '.nojekyll'), '');
+    fs.writeFileSync(path.join(OUTPUT_DIR, 'robots.txt'),
+`User-agent: *
+Disallow: /admin/
+Sitemap: https://openstackdaily.github.io/sitemap.xml
+`);
+    const sitemapUrlsFb = [
+      `<url><loc>https://openstackdaily.github.io/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+      ...articles.map(a => `<url><loc>https://openstackdaily.github.io/posts/${a.id}/${a.blogSlug}/</loc><lastmod>${(a.createdAt||'').substring(0,10)}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>`)
+    ].join('\n');
+    fs.writeFileSync(path.join(OUTPUT_DIR, 'sitemap.xml'),
+`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${sitemapUrlsFb}
+</urlset>`);
     const adminSrcFb = path.join(process.cwd(), 'admin');
     if (fs.existsSync(adminSrcFb)) {
       const adminDestFb = path.join(OUTPUT_DIR, 'admin');
@@ -2165,6 +2191,20 @@ async function main() {
   }
   
   fs.writeFileSync(path.join(OUTPUT_DIR, '.nojekyll'), '');
+  fs.writeFileSync(path.join(OUTPUT_DIR, 'robots.txt'),
+`User-agent: *
+Disallow: /admin/
+Sitemap: https://openstackdaily.github.io/sitemap.xml
+`);
+  const sitemapUrls = [
+    `<url><loc>https://openstackdaily.github.io/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+    ...articles.map(a => `<url><loc>https://openstackdaily.github.io/posts/${a.id}/${a.blogSlug}/</loc><lastmod>${(a.createdAt||'').substring(0,10)}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>`)
+  ].join('\n');
+  fs.writeFileSync(path.join(OUTPUT_DIR, 'sitemap.xml'),
+`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${sitemapUrls}
+</urlset>`);
 
   // Copy admin/ directory if it exists
   const adminSrc = path.join(process.cwd(), 'admin');

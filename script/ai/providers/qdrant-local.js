@@ -1,135 +1,144 @@
 /**
- * Local SQLite-backed Vector Store — drop-in replacement for Qdrant
- * Always used — QDRANT_URL is no longer required.
+ * Postgres-backed Vector Store — drop-in replacement for qdrant-local.js
  *
- * Implements the same interface as qdrant.js:
+ * Stores vectors as REAL[] in Postgres and computes cosine similarity in SQL.
+ * No external dependencies beyond the existing pg-client.
+ *
+ * Implements the same interface as the old LocalQdrantProvider:
  *   init, ensureCollection, upsert, search, findDuplicates,
  *   batchSearch, delete, deleteByFilter, getCollectionInfo,
  *   scroll, createPayloadIndex, getPoint, exists
- *
- * Vectors are stored as JSON blobs; similarity is cosine distance
- * computed in JS (fast enough for local dev / CI with <100k rows).
  */
 
-import Database from 'better-sqlite3';
+import { getPool } from '../../db/pg-client.js';
 import crypto from 'crypto';
 
-// RAG always uses local SQLite
-const DB_PATH = 'local.db';
-
-class LocalQdrantProvider {
+class PgVectorProvider {
   constructor() {
-    this.db = null;
-    this.initialized = false;
     this._ensuredCollections = new Set();
   }
 
-  _getDb() {
-    if (!this.db) {
-      this.db = new Database(DB_PATH);
-      this.db.pragma('journal_mode = WAL');
-      this.db.pragma('busy_timeout = 5000');
-    }
-    return this.db;
-  }
+  _pool() { return getPool(); }
+
+  _table(name) { return `vec_${name.replace(/[^a-z0-9_]/gi, '_')}`; }
 
   async init() {
-    if (this.initialized) return;
-    // Base table for all collections — one table per collection created lazily
-    this.initialized = true;
-    console.log('✅ Local SQLite vector store initialized');
+    console.log('✅ Postgres vector store initialized');
   }
 
-  _tableName(collectionName) {
-    return `vec_${collectionName.replace(/[^a-z0-9_]/gi, '_')}`;
-  }
-
-  async ensureCollection(collectionName) {
-    if (this._ensuredCollections.has(collectionName)) return true;
-    await this.init();
-    const t = this._tableName(collectionName);
-    const db = this._getDb();
-    db.exec(`
+  async ensureCollection(name) {
+    if (this._ensuredCollections.has(name)) return true;
+    const t = this._table(name);
+    await this._pool().query(`
       CREATE TABLE IF NOT EXISTS ${t} (
-        id TEXT PRIMARY KEY,
+        id          TEXT PRIMARY KEY,
         original_id TEXT NOT NULL,
-        vector TEXT NOT NULL,
-        payload TEXT NOT NULL,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        vector      REAL[] NOT NULL,
+        payload     JSONB NOT NULL,
+        created_at  TIMESTAMPTZ DEFAULT NOW()
       )
     `);
-    db.exec(`CREATE INDEX IF NOT EXISTS idx_${t}_oid ON ${t}(original_id)`);
-    this._ensuredCollections.add(collectionName);
-    console.log(`✅ Local collection ready: ${collectionName}`);
+    await this._pool().query(`CREATE INDEX IF NOT EXISTS idx_${t}_oid ON ${t}(original_id)`);
+    this._ensuredCollections.add(name);
+    console.log(`✅ Postgres vector collection ready: ${name}`);
     return true;
   }
 
-  stringToUUID(str) {
-    const hash = crypto.createHash('md5').update(str).digest('hex');
-    return `${hash.slice(0,8)}-${hash.slice(8,12)}-4${hash.slice(13,16)}-${hash.slice(16,20)}-${hash.slice(20,32)}`;
+  _uuid(str) {
+    const h = crypto.createHash('md5').update(str).digest('hex');
+    return `${h.slice(0,8)}-${h.slice(8,12)}-4${h.slice(13,16)}-${h.slice(16,20)}-${h.slice(20,32)}`;
   }
 
-  async upsert(collectionName, points) {
-    await this.ensureCollection(collectionName);
-    const t = this._tableName(collectionName);
-
+  async upsert(name, points) {
+    await this.ensureCollection(name);
+    const t = this._table(name);
     const valid = points.filter(p =>
       Array.isArray(p.vector) && p.vector.length > 0 &&
       p.vector.every(v => typeof v === 'number' && isFinite(v))
     );
     if (!valid.length) return { status: 'skipped' };
 
-    const db = this._getDb();
-    const stmt = db.prepare(`INSERT OR REPLACE INTO ${t} (id, original_id, vector, payload) VALUES (?,?,?,?)`);
+    const pool = this._pool();
     for (const p of valid) {
-      const uuid = this.stringToUUID(p.id);
-      stmt.run(uuid, p.id, JSON.stringify(p.vector), JSON.stringify({ ...p.payload, originalId: p.id }));
+      await pool.query(
+        `INSERT INTO ${t} (id, original_id, vector, payload)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (id) DO UPDATE SET vector = EXCLUDED.vector, payload = EXCLUDED.payload`,
+        [this._uuid(p.id), p.id, p.vector, { ...p.payload, originalId: p.id }]
+      );
     }
     return { status: 'ok', upserted: valid.length };
   }
 
-  _cosine(a, b) {
-    let dot = 0, na = 0, nb = 0;
-    for (let i = 0; i < a.length; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
-    const denom = Math.sqrt(na) * Math.sqrt(nb);
-    return denom > 0 ? dot / denom : 0;
-  }
-
-  async search(collectionName, vector, options = {}) {
-    await this.ensureCollection(collectionName);
+  /**
+   * Cosine similarity in SQL:
+   *   dot(a,b) / (||a|| * ||b||)
+   * Postgres doesn't have a built-in, so we use array operators.
+   */
+  async search(name, vector, options = {}) {
+    await this.ensureCollection(name);
     const { limit = 10, scoreThreshold = 0, filter = null, withPayload = true } = options;
-    const t = this._tableName(collectionName);
-    const db = this._getDb();
+    const t = this._table(name);
+    const pool = this._pool();
 
-    const rows = db.prepare(`SELECT id, original_id, vector, payload FROM ${t}`).all();
-    const scored = [];
+    // Build WHERE clause from filter
+    const conditions = [`score >= $2`];
+    const params = [vector, scoreThreshold];
 
-    for (const row of rows) {
-      const vec = JSON.parse(row.vector);
-      const score = this._cosine(vector, vec);
-      if (score < scoreThreshold) continue;
-      const payload = JSON.parse(row.payload);
-
-      if (filter) {
-        if (filter.must) {
-          const pass = filter.must.every(f => payload[f.key] === f.match?.value);
-          if (!pass) continue;
-        }
-        if (filter.must_not) {
-          const fail = filter.must_not.some(f => payload[f.key] === f.match?.value);
-          if (fail) continue;
-        }
+    // We compute similarity as a subquery so we can filter on it
+    let filterSql = '';
+    if (filter?.must?.length) {
+      for (const f of filter.must) {
+        params.push(f.match?.value);
+        filterSql += ` AND payload->>'${f.key}' = $${params.length}`;
       }
-
-      scored.push({ id: row.id, score, payload: withPayload ? payload : {} });
+    }
+    if (filter?.must_not?.length) {
+      for (const f of filter.must_not) {
+        params.push(f.match?.value);
+        filterSql += ` AND payload->>'${f.key}' != $${params.length}`;
+      }
     }
 
-    scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, limit);
+    params.push(limit);
+    const limitParam = params.length;
+
+    const sql = `
+      SELECT id, original_id, payload,
+        (
+          (SELECT SUM(a*b) FROM UNNEST(vector, $1::REAL[]) AS t(a,b))
+          /
+          NULLIF(
+            SQRT((SELECT SUM(a*a) FROM UNNEST(vector) AS t(a))) *
+            SQRT((SELECT SUM(b*b) FROM UNNEST($1::REAL[]) AS t(b))),
+            0
+          )
+        ) AS score
+      FROM ${t}
+      WHERE (
+          (SELECT SUM(a*b) FROM UNNEST(vector, $1::REAL[]) AS t(a,b))
+          /
+          NULLIF(
+            SQRT((SELECT SUM(a*a) FROM UNNEST(vector) AS t(a))) *
+            SQRT((SELECT SUM(b*b) FROM UNNEST($1::REAL[]) AS t(b))),
+            0
+          )
+        ) >= $2
+        ${filterSql}
+      ORDER BY score DESC
+      LIMIT $${limitParam}
+    `;
+
+    const res = await pool.query(sql, params);
+    return res.rows.map(r => ({
+      id: r.id,
+      score: parseFloat(r.score) || 0,
+      payload: withPayload ? r.payload : {}
+    }));
   }
 
-  async findDuplicates(collectionName, vector, questionId, threshold = 0.85) {
-    const results = await this.search(collectionName, vector, {
+  async findDuplicates(name, vector, questionId, threshold = 0.85) {
+    const results = await this.search(name, vector, {
       limit: 20, scoreThreshold: threshold,
       filter: { must_not: [{ key: 'originalId', match: { value: questionId } }] }
     });
@@ -141,66 +150,63 @@ class LocalQdrantProvider {
     }));
   }
 
-  async batchSearch(collectionName, vectors, options = {}) {
+  async batchSearch(name, vectors, options = {}) {
     return Promise.all(vectors.map(v =>
-      this.search(collectionName, v.vector, { ...options, filter: v.filter || null })
+      this.search(name, v.vector, { ...options, filter: v.filter || null })
     ));
   }
 
-  async delete(collectionName, ids) {
-    await this.ensureCollection(collectionName);
-    const t = this._tableName(collectionName);
-    const db = this._getDb();
-    const stmt = db.prepare(`DELETE FROM ${t} WHERE id = ?`);
+  async delete(name, ids) {
+    await this.ensureCollection(name);
+    const t = this._table(name);
     for (const id of ids) {
-      stmt.run(this.stringToUUID(id));
+      await this._pool().query(`DELETE FROM ${t} WHERE id = $1`, [this._uuid(id)]);
     }
     return true;
   }
 
-  async deleteByFilter(collectionName, filter) {
-    console.warn('deleteByFilter: not fully implemented in local provider');
+  async deleteByFilter(name, filter) {
+    console.warn('deleteByFilter: not implemented in pg provider');
     return true;
   }
 
-  async getCollectionInfo(collectionName) {
-    await this.ensureCollection(collectionName);
-    const t = this._tableName(collectionName);
-    const db = this._getDb();
-    const cnt = db.prepare(`SELECT COUNT(*) as cnt FROM ${t}`).get().cnt;
-    return { name: collectionName, vectorsCount: cnt, pointsCount: cnt, status: 'green' };
+  async getCollectionInfo(name) {
+    await this.ensureCollection(name);
+    const t = this._table(name);
+    const res = await this._pool().query(`SELECT COUNT(*) AS cnt FROM ${t}`);
+    const cnt = parseInt(res.rows[0].cnt);
+    return { name, vectorsCount: cnt, pointsCount: cnt, status: 'green' };
   }
 
-  async scroll(collectionName, options = {}) {
-    await this.ensureCollection(collectionName);
+  async scroll(name, options = {}) {
+    await this.ensureCollection(name);
     const { limit = 100, withPayload = true } = options;
-    const t = this._tableName(collectionName);
-    const db = this._getDb();
-    const rows = db.prepare(`SELECT * FROM ${t} LIMIT ?`).all(limit);
+    const t = this._table(name);
+    const res = await this._pool().query(`SELECT id, payload FROM ${t} LIMIT $1`, [limit]);
     return {
-      points: rows.map(r => ({ id: r.id, payload: withPayload ? JSON.parse(r.payload) : {} })),
+      points: res.rows.map(r => ({ id: r.id, payload: withPayload ? r.payload : {} })),
       nextOffset: null
     };
   }
 
-  async createPayloadIndex(collectionName, fieldName) {
-    return true;
+  async createPayloadIndex() { return true; }
+
+  async getPoint(name, id) {
+    await this.ensureCollection(name);
+    const t = this._table(name);
+    const res = await this._pool().query(
+      `SELECT id, payload, vector FROM ${t} WHERE id = $1`, [this._uuid(id)]
+    );
+    if (!res.rows.length) return null;
+    const r = res.rows[0];
+    return { id: r.id, payload: r.payload, vector: r.vector };
   }
 
-  async getPoint(collectionName, id) {
-    await this.ensureCollection(collectionName);
-    const t = this._tableName(collectionName);
-    const db = this._getDb();
-    const row = db.prepare(`SELECT * FROM ${t} WHERE id = ?`).get(this.stringToUUID(id));
-    if (!row) return null;
-    return { id: row.id, payload: JSON.parse(row.payload), vector: JSON.parse(row.vector) };
-  }
-
-  async exists(collectionName, id) {
-    return (await this.getPoint(collectionName, id)) !== null;
+  async exists(name, id) {
+    return (await this.getPoint(name, id)) !== null;
   }
 }
 
-const localQdrant = new LocalQdrantProvider();
-export default localQdrant;
-export { localQdrant };
+const pgVector = new PgVectorProvider();
+export default pgVector;
+export { pgVector };

@@ -160,7 +160,7 @@ jobs:
           case "${{ matrix.task }}" in
             questions)        pnpm run generate:question ;;
             flashcards)       pnpm run bot:flashcard -- --limit=50 ;;
-            voice-sessions)   pnpm run generate:voice-sessions -- --use-vector-db --limit=20 ;;
+            voice-sessions)   pnpm run bot:sessions -- --limit=20 ;;
           esac
         continue-on-error: true
       - name: Sync to Vector DB
@@ -364,7 +364,7 @@ jobs:
         run: |
           case "${{ matrix.stage }}" in
             blog-generator)           pnpm run blog:generate ;;
-            voice-sessions)           pnpm run generate:voice-sessions -- --use-vector-db --limit=50 ;;
+            voice-sessions)           pnpm run bot:sessions -- --limit=50 ;;
             interview-intelligence)   pnpm run rag:intelligence ;;
             coding-challenges)        pnpm run bot:coding-challenge ;;
             flashcards)               pnpm run bot:flashcard -- --limit=50 ;;
@@ -375,6 +375,14 @@ jobs:
             rss-sitemap)              pnpm run generate:rss && pnpm run generate:sitemap ;;
           esac
         continue-on-error: true
+      - name: Upload MDX files (blog-generator only)
+        if: matrix.stage == 'blog-generator'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mdx-blog-generator
+          path: content/posts/
+          retention-days: 1
+
       - name: Dump enrich output
         if: always() && !contains(fromJSON('["readme", "rss-sitemap"]'), matrix.stage)
         env:
@@ -430,6 +438,13 @@ jobs:
           path: /tmp/snapshots
           merge-multiple: true
         continue-on-error: true
+      - name: Download MDX files from blog-generator
+        uses: actions/download-artifact@v4
+        with:
+          name: mdx-blog-generator
+          path: content/posts/
+        continue-on-error: true
+
       - name: Restore all snapshots in order
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
@@ -696,11 +711,36 @@ jobs:
 
             fs.writeFileSync(path, JSON.stringify(posts, null, 2));
 
+      - name: Sync MDX file
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const payload = JSON.parse('${{ inputs.override_payload }}');
+            const { action, id } = payload;
+            const postsDir = 'content/posts';
+            const files = fs.readdirSync(postsDir).filter(f => f.startsWith(id + '--'));
+            if (action === 'delete') {
+              files.forEach(f => fs.unlinkSync(path.join(postsDir, f)));
+              core.info(`Deleted MDX: ${files.join(', ')}`);
+            } else if (action === 'patch' && files.length > 0) {
+              const posts = JSON.parse(fs.readFileSync('data/blog-posts.json', 'utf8'));
+              const post = posts.find(p => p.id === id);
+              if (post) {
+                const slug = post.blogSlug || '';
+                const fname = path.join(postsDir, `${id}--${slug}.mdx`);
+                // Delete old file if slug changed
+                files.filter(f => f !== `${id}--${slug}.mdx`).forEach(f => fs.unlinkSync(path.join(postsDir, f)));
+                core.info(`MDX sync: ${fname}`);
+              }
+            }
+
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/blog-posts.json
+          git add data/blog-posts.json content/posts/
           git diff --staged --quiet || git commit -m "editorial: ${{ inputs.override_payload }}"
           git push
 

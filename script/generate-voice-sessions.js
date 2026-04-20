@@ -1,359 +1,227 @@
 #!/usr/bin/env node
 /**
- * Generate Voice Sessions from Existing Questions
- * 
- * This script processes questions with voiceKeywords and generates
- * micro-question sessions for the session-based voice interview.
- * Enhanced with Vector DB for finding semantically related follow-up questions.
- * 
+ * Generate Voice Sessions from Postgres
+ *
+ * Reads voice-suitable questions from Postgres (not static files),
+ * generates micro-question sessions, and saves back to Postgres.
+ * Uses WorkerPool parallel pattern (same as flashcard-bot.js).
+ *
  * Usage:
  *   node script/generate-voice-sessions.js
- *   node script/generate-voice-sessions.js --channel=system-design
- *   node script/generate-voice-sessions.js --limit=10
- *   node script/generate-voice-sessions.js --use-vector-db
+ *   node script/generate-voice-sessions.js --channel=system-design --limit=20
+ *   node script/generate-voice-sessions.js --dry-run
  */
 
 import 'dotenv/config';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { getDb, initBotTables } from './bots/shared/db.js';
+import { startRun, completeRun, failRun, updateRunStats } from './bots/shared/runs.js';
+import { WorkerPool } from './ai/graphs/parallel-bot-executor.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const BOT_NAME = 'voice-sessions';
+const CONCURRENCY = 6;
+const BATCH_SIZE = 10;
 
-// Parse command line arguments
+// Parse CLI args
 const args = process.argv.slice(2);
+const getArg = (name) => { const a = args.find(a => a.startsWith(`--${name}=`)); return a ? a.split('=')[1] : null; };
 const options = {
-  channel: null,
-  limit: 50,
-  dryRun: false,
-  useVectorDB: false
+  channel: getArg('channel'),
+  limit: getArg('limit') ? parseInt(getArg('limit')) : 50,
+  dryRun: args.includes('--dry-run'),
 };
 
-for (const arg of args) {
-  if (arg.startsWith('--channel=')) {
-    options.channel = arg.split('=')[1];
-  } else if (arg.startsWith('--limit=')) {
-    options.limit = parseInt(arg.split('=')[1]);
-  } else if (arg === '--dry-run') {
-    options.dryRun = true;
-  } else if (arg === '--use-vector-db') {
-    options.useVectorDB = true;
-  }
-}
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection:', err.message);
+  process.exitCode = 1;
+});
 
-// Lazy load vector DB only when needed
-let vectorDB = null;
-async function getVectorDB() {
-  if (!vectorDB) {
-    const module = await import('./ai/services/vector-db.js');
-    vectorDB = module.default;
-    await vectorDB.init();
-  }
-  return vectorDB;
-}
+const db = getDb();
 
-// Question templates for different channels
-const QUESTION_TEMPLATES = {
+// ── Templates ────────────────────────────────────────────────────────────────
+
+const TEMPLATES = {
   'system-design': [
-    "What is the purpose of {keywords} in system design?",
-    "How does {keywords} help with scalability?",
-    "When would you use {keywords}?",
-    "What are the trade-offs of {keywords}?",
-    "How do {keywords} work together?",
-    "What problems does {keywords} solve?"
+    "What is the purpose of {kw} in system design?",
+    "How does {kw} help with scalability?",
+    "When would you use {kw}?",
+    "What are the trade-offs of {kw}?",
+    "How do {kw} work together?",
+    "What problems does {kw} solve?"
   ],
   'behavioral': [
-    "Describe a situation involving {keywords}.",
-    "How did you handle {keywords}?",
-    "What was the outcome of {keywords}?",
-    "What did you learn about {keywords}?",
-    "How would you approach {keywords} differently?",
-    "Give an example of {keywords}."
+    "Describe a situation involving {kw}.",
+    "How did you handle {kw}?",
+    "What was the outcome of {kw}?",
+    "What did you learn about {kw}?",
+    "How would you approach {kw} differently?",
+    "Give an example of {kw}."
   ],
   'devops': [
-    "What is {keywords} used for?",
-    "How do you implement {keywords}?",
-    "What are the benefits of {keywords}?",
-    "How does {keywords} improve reliability?",
-    "When should you use {keywords}?",
-    "What tools support {keywords}?"
+    "What is {kw} used for?",
+    "How do you implement {kw}?",
+    "What are the benefits of {kw}?",
+    "How does {kw} improve reliability?",
+    "When should you use {kw}?",
+    "What tools support {kw}?"
   ],
   'sre': [
-    "How does {keywords} affect reliability?",
-    "What metrics relate to {keywords}?",
-    "How do you monitor {keywords}?",
-    "What's the impact of {keywords} on SLOs?",
-    "How do you troubleshoot {keywords}?",
-    "What's the relationship between {keywords}?"
+    "How does {kw} affect reliability?",
+    "What metrics relate to {kw}?",
+    "How do you monitor {kw}?",
+    "What's the impact of {kw} on SLOs?",
+    "How do you troubleshoot {kw}?",
+    "What's the relationship between {kw}?"
   ],
-  'default': [
-    "What is {keywords}?",
-    "How does {keywords} work?",
-    "Why is {keywords} important?",
-    "When would you use {keywords}?",
-    "What are the benefits of {keywords}?",
-    "Explain {keywords} briefly."
+  default: [
+    "What is {kw}?",
+    "How does {kw} work?",
+    "Why is {kw} important?",
+    "When would you use {kw}?",
+    "What are the benefits of {kw}?",
+    "Explain {kw} briefly."
   ]
 };
 
-// Common abbreviations and synonyms
-const ABBREVIATIONS = {
-  'kubernetes': ['k8s', 'kube'],
-  'continuous integration': ['ci', 'ci/cd'],
-  'continuous deployment': ['cd', 'ci/cd'],
-  'load balancer': ['lb', 'load balancing'],
-  'database': ['db', 'data store'],
-  'availability': ['uptime', 'high availability', 'ha'],
-  'latency': ['response time', 'delay'],
-  'throughput': ['bandwidth', 'capacity'],
-  'microservices': ['micro services', 'microservice'],
-  'authentication': ['auth', 'authn'],
-  'authorization': ['authz', 'permissions']
-};
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-function chunkArray(array, size) {
-  const chunks = [];
-  for (let i = 0; i < array.length; i += size) {
-    chunks.push(array.slice(i, i + size));
-  }
-  return chunks;
+function chunk(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
 }
 
 function extractTopic(question) {
-  const cleaned = question
+  return question
     .replace(/^(what|how|why|when|explain|describe|tell me about)\s+/i, '')
     .replace(/\?$/, '')
-    .trim();
-  
-  const endIndex = Math.min(
-    cleaned.length,
-    50,
-    cleaned.indexOf(',') > 0 ? cleaned.indexOf(',') : cleaned.length,
-    cleaned.indexOf('.') > 0 ? cleaned.indexOf('.') : cleaned.length
-  );
-  
-  return cleaned.substring(0, endIndex).trim();
+    .trim()
+    .substring(0, 50);
 }
 
-function extractRelevantAnswer(keywords, answer, explanation) {
-  const fullText = `${answer} ${explanation}`.toLowerCase();
-  const sentences = fullText.split(/[.!?]+/).filter(s => s.trim().length > 10);
-  
-  const relevantSentences = sentences.filter(sentence => 
-    keywords.some(kw => sentence.includes(kw.toLowerCase()))
-  );
-  
-  if (relevantSentences.length > 0) {
-    return relevantSentences.slice(0, 2).join('. ').trim() + '.';
-  }
-  
-  return answer.split(/[.!?]+/)[0].trim() + '.';
+function extractAnswer(keywords, answer, explanation) {
+  const text = `${answer} ${explanation}`.toLowerCase();
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+  const relevant = sentences.filter(s => keywords.some(k => s.includes(k.toLowerCase())));
+  return (relevant.length > 0 ? relevant.slice(0, 2).join('. ') : answer.split(/[.!?]/)[0]).trim() + '.';
 }
 
-function generateAcceptablePhrases(keywords) {
-  const phrases = [];
-  
-  for (const keyword of keywords) {
-    const kw = keyword.toLowerCase();
-    
-    // Plural/singular variations
-    if (kw.endsWith('s')) {
-      phrases.push(kw.slice(0, -1));
-    } else {
-      phrases.push(kw + 's');
-    }
-    
-    // Common abbreviations
-    if (ABBREVIATIONS[kw]) {
-      phrases.push(...ABBREVIATIONS[kw]);
-    }
-  }
-  
-  return [...new Set(phrases)];
-}
+// ── Core session generator (runs in WorkerPool) ───────────────────────────────
 
-function createMicroQuestion(questionId, index, keywords, answer, explanation, channel) {
-  const templates = QUESTION_TEMPLATES[channel] || QUESTION_TEMPLATES['default'];
-  const template = templates[index % templates.length];
-  
-  const microQuestion = template.replace('{keywords}', keywords.join(' and '));
-  const expectedAnswer = extractRelevantAnswer(keywords, answer, explanation);
-  const acceptablePhrases = generateAcceptablePhrases(keywords);
-  
-  return {
-    id: `${questionId}-micro-${index + 1}`,
-    question: microQuestion,
-    expectedAnswer,
-    keywords,
-    acceptablePhrases,
-    difficulty: index < 2 ? 'easy' : index < 4 ? 'medium' : 'hard',
-    order: index + 1
-  };
-}
+async function generateSession(question) {
+  const keywords = question.voice_keywords ? JSON.parse(question.voice_keywords) : [];
+  if (keywords.length < 4) return null;
 
-function generateSessionFromQuestion(question) {
-  const keywords = question.voiceKeywords || [];
-  
-  if (keywords.length < 4) {
-    return null;
-  }
-  
-  const microQuestions = [];
-  const keywordGroups = chunkArray(keywords, 2);
-  
-  keywordGroups.forEach((group, index) => {
-    const microQ = createMicroQuestion(
-      question.id,
-      index,
-      group,
-      question.answer || '',
-      question.explanation || '',
-      question.channel
-    );
-    if (microQ) {
-      microQuestions.push(microQ);
-    }
-  });
-  
-  if (microQuestions.length < 3) {
-    return null;
-  }
-  
-  return {
-    id: `session-${question.id}`,
-    topic: extractTopic(question.question),
-    channel: question.channel,
-    difficulty: question.difficulty,
-    contextQuestion: question.question,
-    microQuestions: microQuestions.slice(0, 6),
-    totalQuestions: Math.min(microQuestions.length, 6),
-    sourceQuestionId: question.id,
-    relatedQuestionIds: [] // Will be populated by vector DB
-  };
-}
+  const templates = TEMPLATES[question.channel] || TEMPLATES.default;
+  const groups = chunk(keywords, 2);
 
-/**
- * Find related questions using Vector DB for session enrichment
- */
-async function findRelatedQuestions(session, allQuestions) {
-  if (!options.useVectorDB) {
-    return session;
-  }
-  
-  try {
-    const vdb = await getVectorDB();
-    const searchQuery = `${session.topic} ${session.contextQuestion}`;
-    
-    const similar = await vdb.findSimilar(searchQuery, {
-      limit: 5,
-      threshold: 0.1,
-      channel: session.channel,
-      excludeIds: [session.sourceQuestionId]
+  const microQuestions = groups.slice(0, 6).map((group, i) => ({
+    id: `${question.id}-micro-${i + 1}`,
+    question: templates[i % templates.length].replace('{kw}', group.join(' and ')),
+    expectedAnswer: extractAnswer(group, question.answer || '', question.explanation || ''),
+    keywords: group,
+    difficulty: i < 2 ? 'easy' : i < 4 ? 'medium' : 'hard',
+    order: i + 1
+  }));
+
+  if (microQuestions.length < 3) return null;
+
+  const sessionId = `vs-${question.channel}-${question.id}`;
+
+  if (!options.dryRun) {
+    await db.execute({
+      sql: `INSERT INTO voice_sessions
+              (id, topic, description, channel, difficulty, question_ids, total_questions, estimated_minutes, last_updated)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (id) DO UPDATE SET
+              topic = EXCLUDED.topic,
+              question_ids = EXCLUDED.question_ids,
+              total_questions = EXCLUDED.total_questions,
+              last_updated = EXCLUDED.last_updated`,
+      args: [
+        sessionId,
+        extractTopic(question.question),
+        `Voice session for ${question.channel}: ${extractTopic(question.question)}`,
+        question.channel,
+        question.difficulty,
+        JSON.stringify([question.id]),
+        microQuestions.length,
+        microQuestions.length * 2,
+        new Date().toISOString()
+      ]
     });
-    
-    session.relatedQuestionIds = similar.map(s => s.id);
-    console.log(`   Found ${similar.length} related questions for session`);
-  } catch (error) {
-    console.log(`   ⚠️ Vector DB search failed: ${error.message}`);
   }
-  
-  return session;
+
+  return { sessionId, microQuestions: microQuestions.length };
 }
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log('=== Voice Session Generator ===\n');
+  console.log('=== 🎙️ Voice Session Generator (Postgres + WorkerPool) ===\n');
   console.log('Options:', options);
-  
-  // Load questions from data files
-  const dataDir = path.join(__dirname, '..', 'client', 'public', 'data', 'questions');
-  
-  if (!fs.existsSync(dataDir)) {
-    console.log('⚠️  Questions directory not found:', dataDir);
-    console.log('This is expected in CI environment. Skipping voice session generation.');
-    console.log('Voice sessions are generated from the static site build process.');
+  if (options.dryRun) console.log('🔍 DRY RUN — no DB writes\n');
+
+  await initBotTables();
+
+  // Load voice-suitable questions from Postgres
+  let sql = `SELECT id, question, answer, explanation, channel, difficulty, voice_keywords
+             FROM questions
+             WHERE voice_suitable = 1
+               AND status = 'active'
+               AND voice_keywords IS NOT NULL`;
+  const sqlArgs = [];
+  if (options.channel) { sql += ' AND channel = ?'; sqlArgs.push(options.channel); }
+  sql += ' ORDER BY channel';
+  if (options.limit) { sql += ' LIMIT ?'; sqlArgs.push(options.limit); }
+
+  const result = await db.execute({ sql, args: sqlArgs });
+  const questions = result.rows;
+
+  console.log(`Found ${questions.length} voice-suitable questions in Postgres\n`);
+
+  if (questions.length === 0) {
+    console.log('Nothing to do.');
     process.exit(0);
   }
-  
-  const channelFiles = fs.readdirSync(dataDir).filter(f => f.endsWith('.json'));
-  console.log(`\nFound ${channelFiles.length} channel files`);
-  
-  let allQuestions = [];
-  
-  for (const file of channelFiles) {
-    const channelId = file.replace('.json', '');
-    
-    // Skip if filtering by channel
-    if (options.channel && channelId !== options.channel) {
-      continue;
-    }
-    
-    const filePath = path.join(dataDir, file);
-    const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-    
-    // Filter questions suitable for voice sessions
-    const suitable = data.questions.filter(q => 
-      q.voiceSuitable === true && 
-      q.voiceKeywords && 
-      q.voiceKeywords.length >= 4
-    );
-    
-    console.log(`  ${channelId}: ${suitable.length} suitable questions`);
-    allQuestions.push(...suitable);
-  }
-  
-  console.log(`\nTotal suitable questions: ${allQuestions.length}`);
-  
-  // Limit questions
-  const questionsToProcess = allQuestions.slice(0, options.limit);
-  console.log(`Processing ${questionsToProcess.length} questions\n`);
-  
-  // Generate sessions
-  const sessions = [];
-  let successCount = 0;
-  let failCount = 0;
-  
-  for (const question of questionsToProcess) {
-    let session = generateSessionFromQuestion(question);
-    
-    if (session) {
-      // Enrich with related questions if vector DB is enabled
-      if (options.useVectorDB) {
-        session = await findRelatedQuestions(session, allQuestions);
-      }
-      
-      sessions.push(session);
-      successCount++;
-      console.log(`✅ ${question.id}: ${session.totalQuestions} micro-questions`);
-    } else {
-      failCount++;
-      console.log(`❌ ${question.id}: Not enough keywords`);
-    }
-  }
-  
-  console.log(`\n=== Summary ===`);
-  console.log(`Generated: ${successCount} sessions`);
-  console.log(`Skipped: ${failCount} questions`);
-  
-  if (!options.dryRun && sessions.length > 0) {
-    // Save sessions to a JSON file for reference
-    const outputPath = path.join(__dirname, '..', 'client', 'public', 'data', 'voice-sessions.json');
-    fs.writeFileSync(outputPath, JSON.stringify({ sessions }, null, 2));
-    console.log(`\nSaved to: ${outputPath}`);
-  }
-  
-  // Show sample session
-  if (sessions.length > 0) {
-    console.log('\n=== Sample Session ===');
-    const sample = sessions[0];
-    console.log(`Topic: ${sample.topic}`);
-    console.log(`Questions: ${sample.totalQuestions}`);
-    console.log('\nMicro-questions:');
-    sample.microQuestions.forEach((mq, i) => {
-      console.log(`  ${i + 1}. ${mq.question}`);
-      console.log(`     Keywords: ${mq.keywords.join(', ')}`);
-      console.log(`     Expected: ${mq.expectedAnswer.substring(0, 80)}...`);
+
+  const run = await startRun(BOT_NAME);
+
+  try {
+    const pool = new WorkerPool({
+      maxConcurrency: CONCURRENCY,
+      batchSize: BATCH_SIZE,
+      taskTimeout: 30_000,
+      retryAttempts: 2,
+      rateLimitDelay: 100,
     });
+
+    pool.addTasks(questions.map(q => ({
+      id: `vs-${q.id}`,
+      fn: generateSession,
+      args: [q],
+    })));
+
+    const results = await pool.execute();
+
+    const stats = {
+      processed: results.stats.total,
+      created: results.stats.completed,
+      updated: 0,
+      deleted: 0,
+    };
+
+    await updateRunStats(run.id, stats);
+    await completeRun(run.id, stats, { failed: results.stats.failed });
+
+    console.log(`\nDone. Created/updated: ${stats.created} / Failed: ${results.stats.failed}`);
+  } catch (err) {
+    console.error('Fatal:', err);
+    await failRun(run.id, err);
+    process.exit(1);
   }
 }
 
-main().catch(console.error);
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+if (isMainModule) main().catch(console.error);
+
+export default { main };
