@@ -13,7 +13,7 @@ async function globalSetup(config: FullConfig) {
 
   try {
     // Wait for server to be ready
-    const baseURL = config.use?.baseURL || 'http://localhost:5001';
+    const baseURL = config.use?.baseURL || 'http://localhost:5000';
     console.log(`⏳ Waiting for server at ${baseURL}...`);
     
     await page.goto(baseURL, { waitUntil: 'networkidle', timeout: 60000 });
