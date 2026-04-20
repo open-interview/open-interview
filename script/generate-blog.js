@@ -1704,6 +1704,14 @@ async function main() {
       fs.writeFileSync(path.join(dir, 'index.html'), generateArticlePage(article, articles));
     }
     fs.writeFileSync(path.join(OUTPUT_DIR, '.nojekyll'), '');
+    const adminSrcFb = path.join(process.cwd(), 'admin');
+    if (fs.existsSync(adminSrcFb)) {
+      const adminDestFb = path.join(OUTPUT_DIR, 'admin');
+      fs.mkdirSync(adminDestFb, { recursive: true });
+      for (const f of fs.readdirSync(adminSrcFb)) {
+        fs.copyFileSync(path.join(adminSrcFb, f), path.join(adminDestFb, f));
+      }
+    }
     console.log(`\n✅ Blog generated from JSON fallback!`);
     console.log(`   Total posts: ${articles.length}`);
     console.log(`   Output: ${OUTPUT_DIR}/`);
@@ -1934,6 +1942,17 @@ async function main() {
   }
   
   fs.writeFileSync(path.join(OUTPUT_DIR, '.nojekyll'), '');
+
+  // Copy admin/ directory if it exists
+  const adminSrc = path.join(process.cwd(), 'admin');
+  if (fs.existsSync(adminSrc)) {
+    const adminDest = path.join(OUTPUT_DIR, 'admin');
+    fs.mkdirSync(adminDest, { recursive: true });
+    for (const f of fs.readdirSync(adminSrc)) {
+      fs.copyFileSync(path.join(adminSrc, f), path.join(adminDest, f));
+    }
+    console.log('   ✓ admin/ copied');
+  }
   
   const newStats = await getBlogStats();
   console.log(`\n✅ Blog generated!`);
