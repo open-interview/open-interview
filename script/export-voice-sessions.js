@@ -68,15 +68,12 @@ async function main() {
   } catch (error) {
     console.error('Error:', error.message);
     
-    // If table doesn't exist, create empty file
-    if (error.message.includes('no such table')) {
-      console.log('\nNo voice_sessions table found. Creating empty file...');
-      const outputPath = path.join(__dirname, '..', 'client', 'public', 'data', 'voice-sessions.json');
-      fs.writeFileSync(outputPath, JSON.stringify({ sessions: [] }, null, 2));
-      console.log(`✓ Created empty file: ${outputPath}`);
-    } else {
-      process.exit(1);
-    }
+    // Write empty file for any DB error (no connection, no table, etc.)
+    const outputPath = path.join(__dirname, '..', 'client', 'public', 'data', 'voice-sessions.json');
+    const dir = path.dirname(outputPath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(outputPath, JSON.stringify({ sessions: [] }, null, 2));
+    console.log(`⚠️  DB unavailable, writing empty voice-sessions.json`);
   }
 }
 
