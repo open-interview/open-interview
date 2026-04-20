@@ -331,7 +331,9 @@ CREATE TABLE IF NOT EXISTS blog_posts (
     diagram_label TEXT,
     images TEXT,
     svg_content TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    published_at TEXT,
+    linkedin_shared_at TEXT
 );
 
 -- ============================================================================
