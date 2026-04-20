@@ -475,32 +475,29 @@ export default function MyPath() {
 
             {/* Custom Paths Grid */}
             {customPaths.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {customPaths.map((path, i) => {
+              <div>
+                {(() => {
+                  const idx = Math.min(selectedCustomIdx, customPaths.length - 1);
+                  const path = customPaths[idx];
                   const isActive = isPathActive(path.id);
-
                   return (
                     <motion.div
                       key={path.id}
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.2 + i * 0.05 }}
                       className={`group relative p-6 backdrop-blur-xl rounded-[24px] border-2 transition-all overflow-hidden ${
                         isActive
                           ? 'bg-gradient-to-br from-primary/20 to-cyan-500/20 border-primary'
                           : 'bg-muted/50 border-border hover:border-border'
                       }`}
                     >
-                      {/* Active Badge */}
                       {isActive && (
                         <div className="absolute top-4 right-4 px-3 py-1 bg-primary text-primary-foreground rounded-full text-xs font-bold flex items-center gap-1">
                           <Check className="w-3 h-3" />
                           Active
                         </div>
                       )}
-
                       <div className="space-y-4">
-                        {/* Header */}
                         <div className="flex items-start gap-4">
                           <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-[16px] flex items-center justify-center flex-shrink-0">
                             <Brain className="w-8 h-8 text-foreground" strokeWidth={2.5} />
@@ -512,8 +509,6 @@ export default function MyPath() {
                             </p>
                           </div>
                         </div>
-
-                        {/* Stats */}
                         <div className="grid grid-cols-2 gap-3">
                           <div className="p-3 bg-background/30 rounded-[12px]">
                             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
@@ -530,30 +525,19 @@ export default function MyPath() {
                             <div className="font-bold">{path.certifications.length}</div>
                           </div>
                         </div>
-
-                        {/* Channels Preview */}
                         {path.channels.length > 0 && (
                           <div>
                             <div className="text-xs text-muted-foreground mb-2">Channels</div>
                             <div className="flex flex-wrap gap-2">
                               {path.channels.slice(0, 3).map((channel: string) => (
-                                <span
-                                  key={channel}
-                                  className="px-2 py-1 bg-muted/50 rounded-full text-xs font-medium"
-                                >
-                                  {channel}
-                                </span>
+                                <span key={channel} className="px-2 py-1 bg-muted/50 rounded-full text-xs font-medium">{channel}</span>
                               ))}
                               {path.channels.length > 3 && (
-                                <span className="px-2 py-1 bg-muted/50 rounded-full text-xs font-medium text-muted-foreground">
-                                  +{path.channels.length - 3} more
-                                </span>
+                                <span className="px-2 py-1 bg-muted/50 rounded-full text-xs font-medium text-muted-foreground">+{path.channels.length - 3} more</span>
                               )}
                             </div>
                           </div>
                         )}
-
-                        {/* Actions */}
                         <div className="flex items-center gap-3 pt-2">
                           <button
                             onClick={() => togglePathActivation(path)}
@@ -565,27 +549,35 @@ export default function MyPath() {
                           >
                             {isActive ? 'Deactivate' : 'Activate'}
                           </button>
-                          
-                          <button
-                            onClick={() => openEditModal(path)}
-                            className="px-4 py-3 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-[16px] transition-all"
-                            title="Edit path"
-                          >
+                          <button onClick={() => openEditModal(path)} className="px-4 py-3 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-[16px] transition-all" title="Edit path">
                             <Edit className="w-5 h-5 text-blue-400" />
                           </button>
-                          
-                          <button
-                            onClick={() => deletePath(path.id)}
-                            className="px-4 py-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-[16px] transition-all"
-                            title="Delete path"
-                          >
+                          <button onClick={() => deletePath(path.id)} className="px-4 py-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-[16px] transition-all" title="Delete path">
                             <Trash2 className="w-5 h-5 text-red-500" />
+                          </button>
+                        </div>
+                        {/* Prev/Next Navigation */}
+                        <div className="flex items-center justify-between pt-2 border-t border-border">
+                          <button
+                            onClick={() => setSelectedCustomIdx(i => Math.max(0, i - 1))}
+                            disabled={idx === 0}
+                            className="flex items-center gap-1 px-4 py-2 rounded-[12px] bg-muted/50 border border-border disabled:opacity-30 hover:bg-muted transition-all text-sm font-medium"
+                          >
+                            <ChevronLeft className="w-4 h-4" /> Previous Path
+                          </button>
+                          <span className="text-sm text-muted-foreground font-medium">{idx + 1} / {customPaths.length}</span>
+                          <button
+                            onClick={() => setSelectedCustomIdx(i => Math.min(customPaths.length - 1, i + 1))}
+                            disabled={idx === customPaths.length - 1}
+                            className="flex items-center gap-1 px-4 py-2 rounded-[12px] bg-muted/50 border border-border disabled:opacity-30 hover:bg-muted transition-all text-sm font-medium"
+                          >
+                            Next Path <ChevronRight className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
                     </motion.div>
                   );
-                })}
+                })()}
               </div>
             ) : (
               /* Empty State */
@@ -621,36 +613,31 @@ export default function MyPath() {
                 <p className="text-muted-foreground">Pre-built learning journeys for popular career paths</p>
               </motion.div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {visibleCuratedPaths.map((path, i) => {
-                  const Icon = path.icon;
-                  const isActive = isPathActive(path.id);
-
-                  return (
+              {visibleCuratedPaths.length > 0 && (() => {
+                const idx = Math.min(selectedCuratedIdx, visibleCuratedPaths.length - 1);
+                const path = visibleCuratedPaths[idx];
+                const Icon = path.icon;
+                const isActive = isPathActive(path.id);
+                return (
+                  <div>
                     <motion.div
                       key={path.id}
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.4 + i * 0.05 }}
                       className={`group relative p-6 backdrop-blur-xl rounded-[24px] border-2 transition-all overflow-hidden ${
                         isActive
                           ? 'bg-gradient-to-br from-primary/20 to-cyan-500/20 border-primary'
                           : 'bg-muted/50 border-border hover:border-border'
                       }`}
                     >
-                      {/* Background gradient on hover */}
                       <div className={`absolute inset-0 bg-gradient-to-br ${path.color} opacity-0 group-hover:opacity-10 transition-opacity`} />
-
-                      {/* Active Badge */}
                       {isActive && (
                         <div className="absolute top-4 right-4 px-3 py-1 bg-primary text-primary-foreground rounded-full text-xs font-bold flex items-center gap-1">
                           <Check className="w-3 h-3" />
                           Active
                         </div>
                       )}
-
                       <div className="relative space-y-4">
-                        {/* Header */}
                         <div className="flex items-start gap-4">
                           <div className={`w-16 h-16 bg-gradient-to-br ${path.color} rounded-[16px] flex items-center justify-center flex-shrink-0`}>
                             <Icon className="w-8 h-8 text-foreground" strokeWidth={2.5} />
@@ -660,8 +647,6 @@ export default function MyPath() {
                             <p className="text-sm text-muted-foreground line-clamp-2">{path.description}</p>
                           </div>
                         </div>
-
-                        {/* Stats */}
                         <div className="grid grid-cols-2 gap-3">
                           <div className="p-3 bg-background/30 rounded-[12px]">
                             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
@@ -678,34 +663,21 @@ export default function MyPath() {
                             <div className="font-bold text-sm">{path.duration}</div>
                           </div>
                         </div>
-
-                        {/* Channels Preview */}
                         <div>
                           <div className="text-xs text-muted-foreground mb-2">Channels ({path.channels.length})</div>
                           <div className="flex flex-wrap gap-2">
                             {path.channels.slice(0, 3).map((channel: string) => (
-                              <span
-                                key={channel}
-                                className="px-2 py-1 bg-muted/50 rounded-full text-xs font-medium"
-                              >
-                                {channel}
-                              </span>
+                              <span key={channel} className="px-2 py-1 bg-muted/50 rounded-full text-xs font-medium">{channel}</span>
                             ))}
                             {path.channels.length > 3 && (
-                              <span className="px-2 py-1 bg-muted/50 rounded-full text-xs font-medium text-muted-foreground">
-                                +{path.channels.length - 3} more
-                              </span>
+                              <span className="px-2 py-1 bg-muted/50 rounded-full text-xs font-medium text-muted-foreground">+{path.channels.length - 3} more</span>
                             )}
                           </div>
                         </div>
-
-                        {/* Salary */}
                         <div className="pt-2 border-t border-border">
                           <div className="text-xs text-muted-foreground mb-1">Avg. salary</div>
                           <div className="font-bold text-primary">{path.salary}</div>
                         </div>
-
-                        {/* Actions */}
                         <div className="pt-2">
                           <button
                             onClick={() => toggleCuratedPathActivation(path)}
@@ -718,11 +690,29 @@ export default function MyPath() {
                             {isActive ? 'Deactivate' : 'Activate Path'}
                           </button>
                         </div>
+                        {/* Prev/Next Navigation */}
+                        <div className="flex items-center justify-between pt-2 border-t border-border">
+                          <button
+                            onClick={() => setSelectedCuratedIdx(i => Math.max(0, i - 1))}
+                            disabled={idx === 0}
+                            className="flex items-center gap-1 px-4 py-2 rounded-[12px] bg-muted/50 border border-border disabled:opacity-30 hover:bg-muted transition-all text-sm font-medium"
+                          >
+                            <ChevronLeft className="w-4 h-4" /> Previous Path
+                          </button>
+                          <span className="text-sm text-muted-foreground font-medium">{idx + 1} / {visibleCuratedPaths.length}</span>
+                          <button
+                            onClick={() => setSelectedCuratedIdx(i => Math.min(visibleCuratedPaths.length - 1, i + 1))}
+                            disabled={idx === visibleCuratedPaths.length - 1}
+                            className="flex items-center gap-1 px-4 py-2 rounded-[12px] bg-muted/50 border border-border disabled:opacity-30 hover:bg-muted transition-all text-sm font-medium"
+                          >
+                            Next Path <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </motion.div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
