@@ -1917,6 +1917,16 @@ async function main() {
   const postsDir = path.join(OUTPUT_DIR, 'posts');
   fs.mkdirSync(postsDir, { recursive: true });
   
+  // Detect duplicate slugs before writing any files
+  const seenSlugs = new Set();
+  for (const article of articles) {
+    if (seenSlugs.has(article.blogSlug)) {
+      console.error(`❌ Duplicate blogSlug detected: "${article.blogSlug}" — aborting`);
+      process.exit(1);
+    }
+    seenSlugs.add(article.blogSlug);
+  }
+
   for (const article of articles) {
     const dir = path.join(postsDir, article.id, article.blogSlug);
     fs.mkdirSync(dir, { recursive: true });

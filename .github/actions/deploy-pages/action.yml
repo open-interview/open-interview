@@ -1,5 +1,5 @@
 name: 'Deploy to GitHub Pages'
-description: 'Deploys content to a GitHub Pages repository'
+description: 'Incrementally deploys content to a GitHub Pages repository'
 
 inputs:
   source-dir:
@@ -42,31 +42,98 @@ runs:
           "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ inputs.repo }}.git" _deploy \
           || git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ inputs.repo }}.git" _deploy
 
-    - name: Prepare deployment
+    - name: Incremental deploy
       shell: bash
       run: |
+        # Bootstrap deployed-ids.txt
+        touch _deploy/deployed-ids.txt
+
+        # Read slugs from source repo (workspace root) before cd
+        mapfile -t CURRENT_SLUGS < <(jq -r '.[].blogSlug' data/blog-posts.json 2>/dev/null || true)
+        mapfile -t DEPLOYED_SLUGS < <(cat _deploy/deployed-ids.txt)
+
         cd _deploy
         git checkout ${{ inputs.branch }} 2>/dev/null || git checkout -b ${{ inputs.branch }}
-        
-        # Clear old files, optionally preserving CNAME
-        if [ "${{ inputs.preserve-cname }}" = "true" ]; then
-          find . -maxdepth 1 ! -name '.git' ! -name '.' ! -name 'CNAME' -exec rm -rf {} +
-        else
-          find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} +
-        fi
 
-    - name: Copy content
-      shell: bash
-      run: |
-        cp -r ${{ inputs.source-dir }}/* _deploy/
+        # Wipe non-post files, preserving posts/, deployed-ids.txt, CNAME, .git
+        find . -maxdepth 1 \
+          ! -name '.' \
+          ! -name '.git' \
+          ! -name 'posts' \
+          ! -name 'deployed-ids.txt' \
+          ! -name 'CNAME' \
+          -exec rm -rf {} +
+
+        cd ..
+
+        # Copy non-post files from source-dir into _deploy
+        if command -v rsync > /dev/null 2>&1; then
+          rsync -a --exclude='posts/' ${{ inputs.source-dir }}/ _deploy/
+        else
+          # cp -r fallback: copy everything except posts/
+          for item in ${{ inputs.source-dir }}/*/; do
+            name=$(basename "$item")
+            [ "$name" = "posts" ] && continue
+            cp -r "$item" _deploy/
+          done
+          # copy top-level files
+          for item in ${{ inputs.source-dir }}/*; do
+            [ -d "$item" ] && continue
+            cp "$item" _deploy/
+          done
+        fi
         touch _deploy/.nojekyll
 
-    - name: Push changes
-      shell: bash
-      env:
-        GITHUB_TOKEN: ${{ inputs.token }}
-      run: |
+        # Compute new and orphaned slugs
+        declare -A CURRENT_MAP
+        for slug in "${CURRENT_SLUGS[@]}"; do
+          CURRENT_MAP["$slug"]=1
+        done
+        declare -A DEPLOYED_MAP
+        for slug in "${DEPLOYED_SLUGS[@]}"; do
+          DEPLOYED_MAP["$slug"]=1
+        done
+
+        NEW_SLUGS=()
+        for slug in "${CURRENT_SLUGS[@]}"; do
+          [ -z "${DEPLOYED_MAP[$slug]+x}" ] && NEW_SLUGS+=("$slug")
+        done
+
+        ORPHANED_SLUGS=()
+        for slug in "${DEPLOYED_SLUGS[@]}"; do
+          [ -z "${CURRENT_MAP[$slug]+x}" ] && ORPHANED_SLUGS+=("$slug")
+        done
+
+        # Copy new post dirs
+        mkdir -p _deploy/posts
+        for slug in "${NEW_SLUGS[@]}"; do
+          src="${{ inputs.source-dir }}/posts/$slug"
+          if [ -d "$src" ]; then
+            cp -r "$src" "_deploy/posts/$slug"
+          fi
+        done
+
+        # Remove orphaned post dirs
+        for slug in "${ORPHANED_SLUGS[@]}"; do
+          dir="_deploy/posts/$slug"
+          if [ -d "$dir" ]; then
+            git -C _deploy rm -rf "posts/$slug"
+          fi
+        done
+
+        # Update deployed-ids.txt
+        printf '%s\n' "${CURRENT_SLUGS[@]}" > _deploy/deployed-ids.txt
+
+        # Selective git add
         cd _deploy
-        git add -A
+        # Add non-post files
+        git add --all -- ':!posts/'
+        # Add new post dirs
+        for slug in "${NEW_SLUGS[@]}"; do
+          [ -d "posts/$slug" ] && git add "posts/$slug"
+        done
+        # deployed-ids.txt already covered by --all above
+
+        # Commit only if staged diff is non-empty
         git diff --staged --quiet || git commit -m "${{ inputs.commit-message }}"
-        git push --force origin ${{ inputs.branch }}
+        git push origin ${{ inputs.branch }}

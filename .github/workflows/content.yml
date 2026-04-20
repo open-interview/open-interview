@@ -12,7 +12,7 @@ on:
         required: true
         default: 'full-pipeline'
         type: choice
-        options: [quick, full-pipeline, intake, blog, specific-stage]
+        options: [quick, full-pipeline, intake, blog, specific-stage, editorial-override]
       stage:
         description: 'Specific stage (for specific-stage mode)'
         required: false
@@ -41,6 +41,9 @@ on:
         type: boolean
       question:
         description: 'Question to add (mode=intake)'
+        required: false
+      override_payload:
+        description: 'Editorial: {"action":"patch","id":"ID","fields":{...}} or {"action":"delete","id":"ID"}'
         required: false
 
 jobs:
@@ -655,3 +658,57 @@ jobs:
           github-token: ${{ secrets.GH_TOKEN }}
           script: |
             await github.rest.actions.createWorkflowDispatch({ owner: context.repo.owner, repo: context.repo.repo, workflow_id: 'deploy-blog.yml', ref: 'main' });
+
+  editorial-override:
+    name: ✏️ Editorial Override
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'editorial-override'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply override
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'data/blog-posts.json';
+            let posts = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const payload = JSON.parse('${{ inputs.override_payload }}');
+            const { action, id, fields } = payload;
+
+            if (action === 'delete') {
+              const before = posts.length;
+              posts = posts.filter(p => p.id !== id);
+              if (posts.length === before) core.setFailed(`Post ${id} not found`);
+              else core.info(`Deleted post ${id}`);
+            } else if (action === 'patch') {
+              const idx = posts.findIndex(p => p.id === id);
+              if (idx === -1) core.setFailed(`Post ${id} not found`);
+              else { posts[idx] = { ...posts[idx], ...fields }; core.info(`Patched post ${id}`); }
+            } else {
+              core.setFailed(`Unknown action: ${action}. Use 'patch' or 'delete'`);
+            }
+
+            fs.writeFileSync(path, JSON.stringify(posts, null, 2));
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/blog-posts.json
+          git diff --staged --quiet || git commit -m "editorial: ${{ inputs.override_payload }}"
+          git push
+
+      - name: Trigger deploy
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner, repo: context.repo.repo,
+              workflow_id: 'deploy-blog.yml', ref: 'main'
+            });

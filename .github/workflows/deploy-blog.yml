@@ -1,14 +1,14 @@
 name: 🚀 Deploy Blog
 
-# Deploys the blog site to GitHub Pages
-# Only builds static HTML from existing content (no AI generation)
-# Schedule: Daily at 4:00 AM UTC
-
 on:
   workflow_dispatch:
   workflow_run:
     workflows: ["🤖 Content Pipeline"]
     types: [completed]
+
+concurrency:
+  group: deploy-pages
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -19,46 +19,39 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
     permissions:
       contents: write
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: openinterview
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
       - uses: ./.github/actions/setup-node-pnpm
 
-      - name: Init schema + seed blog posts
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+      - name: Check blog-posts.json is populated
+        id: check-json
         run: |
-          psql $DATABASE_URL -v ON_ERROR_STOP=1 -f TURSO_SCHEMA.sql
-          pnpm run data:import || true
+          COUNT=$(jq 'length' data/blog-posts.json 2>/dev/null || echo 0)
+          if [ "$COUNT" = "0" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "## ⚠️ Deploy Skipped" >> $GITHUB_STEP_SUMMARY
+            echo "data/blog-posts.json is empty — nothing to deploy." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "count=$COUNT" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build static site
+        if: steps.check-json.outputs.skip == 'false'
         run: pnpm run blog:generate -- --html-only
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
           GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
 
       - name: Check blog output exists
         id: check-output
+        if: steps.check-json.outputs.skip == 'false'
         run: |
           if [ -d blog-output ] && [ "$(ls -A blog-output)" ]; then
             echo "exists=true" >> $GITHUB_OUTPUT
           else
             echo "exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️ No blog output generated, skipping deploy" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ No blog output generated" >> $GITHUB_STEP_SUMMARY
           fi
 
       - uses: ./.github/actions/deploy-pages
@@ -68,14 +61,13 @@ jobs:
           repo: openstackdaily/openstackdaily.github.io
           branch: main
           token: ${{ secrets.GH_TOKEN }}
-          commit-message: 'Deploy blog'
+          commit-message: "deploy: ${{ steps.check-json.outputs.count }} posts (run #${{ github.run_number }})"
           preserve-cname: 'true'
 
       - name: Summary
         if: steps.check-output.outputs.exists == 'true'
         run: |
           echo "## 🚀 Blog Deployed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "**URL:** https://openstackdaily.github.io" >> $GITHUB_STEP_SUMMARY
-          echo "**Articles:** $(find blog-output/posts -type f -name 'index.html' 2>/dev/null | wc -l)" >> $GITHUB_STEP_SUMMARY
+          echo "**Posts:** ${{ steps.check-json.outputs.count }}" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
