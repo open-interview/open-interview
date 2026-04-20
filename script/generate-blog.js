@@ -13,6 +13,8 @@ import { marked } from 'marked';
 import { fileURLToPath } from 'url';
 import { generateBlogPost } from './ai/graphs/blog-graph.js';
 import { generateIllustration, generatePixelIllustration } from './ai/utils/blog-illustration-generator.js';
+import { dbClient as client } from './db/pg-client.js';
+import { serializeMD } from './ai/utils/md-serializer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -401,6 +403,53 @@ async function saveBlogPost(questionId, blogContent, question, svgContent = {}) 
   };
   fs.writeFileSync(path.join(BLOG_POSTS_DIR, `${id}.json`), JSON.stringify(post, null, 2));
   console.log(`   ✅ Saved blog post: ${id}.json`);
+
+  // Also generate standalone Markdown file
+  try {
+    const mdPost = {
+      id,
+      question_id: questionId,
+      blogTitle: blogContent.title,
+      title: blogContent.title,
+      blogSlug: slug,
+      slug,
+      channel: question.channel,
+      difficulty: question.difficulty,
+      tags: question.tags,
+      createdAt: now,
+      funFact: blogContent.funFact || null,
+      fun_fact: blogContent.funFact || null,
+      diagram: diagram || null,
+      diagramLabel: blogContent.diagramLabel || null,
+      diagram_label: blogContent.diagramLabel || null,
+      images: blogContent.images || [],
+      sources: blogContent.sources || [],
+      blogIntro: blogContent.introduction,
+      introduction: blogContent.introduction,
+      blogSections: blogContent.sections,
+      sections: blogContent.sections,
+      blogConclusion: blogContent.conclusion,
+      conclusion: blogContent.conclusion,
+      blogMeta: blogContent.metaDescription,
+      meta_description: blogContent.metaDescription,
+      quickReference: blogContent.quickReference || [],
+      quick_reference: blogContent.quickReference || [],
+      glossary: blogContent.glossary || [],
+      realWorldExample: blogContent.realWorldExample || null,
+      real_world_example: blogContent.realWorldExample || null,
+      svgContent,
+      svg_content: svgContent,
+    };
+    const originalQuestion = { question: question.question, answer: question.answer };
+    const mdContent = serializeMD(mdPost, originalQuestion);
+    const mdDir = path.resolve('content/posts');
+    fs.mkdirSync(mdDir, { recursive: true });
+    const mdPath = path.join(mdDir, `${slug}.md`);
+    fs.writeFileSync(mdPath, mdContent, 'utf-8');
+    console.log(`   📄 Standalone MD: ${mdPath}`);
+  } catch (err) {
+    console.warn(`   ⚠️ MD write failed (non-fatal): ${err.message}`);
+  }
   return id;
 }
 
