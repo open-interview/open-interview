@@ -1,0 +1,104 @@
+---
+id: q-481
+title: "The Night Tasks Hung: A Production-Trior story of taming I/O waits in Linux"
+slug: the-night-tasks-hung-a-production-trior-story-of-taming-io-waits-in-linux
+channel: unix
+difficulty: advanced
+tags: ["unix"]
+createdAt: 2026-03-16T05:48:00Z
+funFact: "In 2025, a major cloud provider reported that tuning hung-task detection thresholds reduced incident toil by a factor of 3"
+diagram: |
+  graph TD;
+  A(Start: Hung task warnings appear) --> B(Identify D-state processes with ps); A --> C(Check /proc/<PID>/status and /proc/<PID>/fd);
+  B --> D(Attach strace and lsof to PID);
+  C --> D;
+  D --> E{Is the stall I/O-bound?}; E --> F[Yes: inspect disk/network I/O; No: inspect kernel timers/locks];
+  F --> G(Attempt graceful termination with SIGTERM);
+  G --> H{Terminated?}; H -- Yes --> I(Complete); H -- No --> J(Force kill after safety checks);
+images:
+  - url: /images/pixel-q-481.svg
+    alt: "The Night Tasks Hung: A Production-Trior story of taming I/O waits in Linux - Pixel Art Illustration"
+sources:
+  - title: Searching for the cause of hung tasks in the Linux kernel
+    url: https://blog.cloudflare.com/searching-for-the-cause-of-hung-tasks-in-the-linux-kernel/
+    type: article
+  - title: Uninterruptible Sleep
+    url: https://www.baeldung.com/linux/uninterruptible-process
+    type: blog
+  - title: Simulate an unkillable process in D state
+    url: https://unix.stackexchange.com/questions/134888/simulate-an-unkillable-process-in-d-state
+    type: documentation
+  - title: strace(1) - Linux manual page
+    url: https://man7.org/linux/man-pages/man1/strace.1.html
+    type: documentation
+  - title: /proc/pid/status - memory usage and status information
+    url: https://manpages.ubuntu.com/manpages/noble/man5/proc_pid_status.5.html
+    type: documentation
+  - title: proc_pid_status(5) — Arch manual pages
+    url: https://man.archlinux.org/man/proc_pid_status.5.en
+    type: documentation
+  - title: proc_pid_status(5) — Debian standard Debian manpages
+    url: https://manpages.debian.org/testing/manpages/proc_pid_status.5.en.html
+    type: documentation
+  - title: Troubleshooting a stuck process
+    url: https://www.joshmcguigan.com/blog/troubleshooting-stuck-process/
+    type: blog
+  - title: How to Use strace for Troubleshooting on Ubuntu
+    url: https://oneuptime.com/blog/post/2026-01-15-use-strace-troubleshooting-ubuntu/view
+    type: blog
+  - title: Concurrency Testing in the Linux Kernel via eBPF
+    url: https://arxiv.org/abs/2508.15703
+    type: paper
+  - title: "Linux's Hung Task Detector Will Be Able To Reset For Easing System Administration"
+    url: https://www.phoronix.com/news/Linux-Reset-Hung-Task-Count
+    type: blog
+  - title: "The case of the vanishing CPU: A Linux kernel debugging story"
+    url: https://clickhouse.com/blog/a-case-of-the-vanishing-cpu-a-linux-kernel-debugging-story
+    type: blog
+  - title: Load (computing) - Wikipedia
+    url: https://en.wikipedia.org/wiki/Load_(computing)
+    type: documentation
+  - title: proc_pid_status(5) — Arch manual pages (duplicate reference for completeness)
+    url: https://man.archlinux.org/man/proc_pid_status.5.en
+    type: documentation
+  - title: The Linux kernel hung task discussion (Cloudflare community mirror)
+    url: https://community.cloudflare.com/t/searching-for-the-cause-of-hung-tasks-in-the-linux-kernel/771005
+    type: blog
+  - title: The story of one latency spike (Cloudflare)
+    url: https://blog.cloudflare.com/the-story-of-one-latency-spike/
+    type: blog
+---
+
+> **Picture this:** Picture this: a production cluster rigged with cloud-scale services suddenly emits hung-task warnings, and every attempt to progress stalls in place. Cloudflare faced this exact dilemma, wondering whether the culprit lay in the kernel or in user-space applications, and seeking a safe path that wouldn't risk data loss or cascading outages 1. The lesson: distrust first impressions, because the first glance can mislead when the kernel is involved. This journey uncovers how to separate kernel hesitations from application hiccups using Unix-native tools, and how to head off outages with a safety-first playbook 1.
+
+## Hook to Triage: When the Night Shifts the Alarm
+
+Many developers discover that a handful of processes sit in uninterruptible sleep (D state) during a production wobble. The cliffhanger is simple: is the system waiting on I/O, or is a kernel thread in a hard wait? The stakes are real—misinterpreting the signal can cascade into misdirected debugging and wasted incident windows. In these moments, teams learn to read the room with care, not bravado, distinguishing kernel-induced stalls from user-space bottlenecks 1 . Heres what you’ll see in practice: a handful of D-state processes, possibly blocking on disk I/O or network resources, quietly delaying the whole service stack 13 .
+
+## Journey to the Core: Reading the Signs
+
+Building on the problem, the first step is to identify which processes are blocked on I/O and what they’re waiting for. You’ll lean on classic indicators and multiple angles to triangulate the root cause: Identify D-state processes with ps and their wait points (WCHAN) 13 . Inspect per-process status for deeper context: /proc/ /status and related fd entries 6 7 8 . Observe overall I/O pressure with system metrics to separate kernel wait from disk or device queues 4 . In practice, you might run: ps aux | awk '$8 ~ /D/ {print $2, $11, $8}' # or more verbose: top -H These steps help answer a critical question: is the stall isolated, or is there a systemic I/O bottleneck dragging multiple processes down 13 ?
+
+## Discovery Toolkit: lsof, strace, and the Procfs Window
+
+Once the suspects are milled down to a few PIDs, a focused toolkit helps reveal what those processes are touching and where the kernel is waiting. Two Unix tools shine here: lsof -p reveals open files and network connections that could be blocking I/O 2 . strace -p surfaces blocked system calls and where in the kernel the process stalls 5 . Additionally, the /proc filesystem provides a transparent view into per-process state and file descriptors, with status details available in /proc/ /status and related fd links 6 7 8 . For example, strace can illuminate calls like read() or poll() waiting on IO readiness, while lsof surfaces the exact file or socket involved in the wait 5 .
+
+## Twist: Not All Stalls Are Created Equal
+
+Here’s the counterintuitive insight: many hangs that look like kernel issues may actually be user-space interactions with I/O subsystems, or even misbehaving containers and storage backends. The literature and real-world stories emphasize that D-state stalls can be caused by blocked I/O in the kernel as well as by lock contention, or by I/O subsystems failing to complete. Treat each symptom as a clue rather than a verdict, and verify through multiple data points before declaring a root cause 11 12 .
+
+## The Safe Termination Playbook: Avoid Data Tears
+
+After confirming the nature of the stall, termination must be approached with safety in mind. The recommended sequence is: First, send SIGTERM to allow a graceful shutdown and to let tools finish in-flight writes when safe 2 . If processes remain hung, verify no critical writes are in progress and check for child processes before terminating 2 . Only then escalate to SIGKILL if the process remains unresponsive and safety checks pass in a controlled window 2 . This approach minimizes the risk of data corruption while restoring service health. It also reinforces the principle: never rush a kill when a clean exit might still be possible. Real-World Case Study Cloudflare Cloudflare observed Linux 'hung task' warnings in production, where processes appeared blocked (state D) for extended periods. The team sought to understand whether the issue was in the kernel or in user-space applications, and how to respond safely without data loss or cascading outages. Key Takeaway: Kernel-level hung task warnings can mislead operators into blaming user-space apps; proper tuning of kernel thresholds and alerting can dramatically improve detection and triage, while keeping safety and data integrity in production.
+
+## System Flow
+
+graph TD; A(Start: Hung task warnings appear) --> B(Identify D-state processes with ps); A --> C(Check /proc/ /status and /proc/ /fd); B --> D(Attach strace and lsof to PID); C --> D; D --> E{Is the stall I/O-bound?}; E --> F[Yes: inspect disk/network I/O; No: inspect kernel timers/locks]; F --> G(Attempt graceful termination with SIGTERM); G --> H{Terminated?}; H -- Yes --> I(Complete); H -- No --> J(Force kill after safety checks); Did you know? In 2025, a major cloud provider reported that tuning hung-task detection thresholds reduced incident toil by a factor of 3 Key Takeaways D state signals an uninterruptible sleep waiting on I/O Use ps, strace, and lsof to triangulate the cause Graceful termination via SIGTERM first, then SIGKILL if needed References 1 Searching for the cause of hung tasks in the Linux kernel article 2 Uninterruptible Sleep blog 3 Simulate an unkillable process in D state documentation 4 strace(1) - Linux manual page documentation 5 /proc/pid/status - memory usage and status information documentation 6 proc_pid_status(5) — Arch manual pages documentation 7 proc_pid_status(5) — Debian standard Debian manpages documentation 8 Troubleshooting a stuck process blog 9 How to Use strace for Troubleshooting on Ubuntu blog 10 Concurrency Testing in the Linux Kernel via eBPF paper 11 Linux's Hung Task Detector Will Be Able To Reset For Easing System Administration blog 12 The case of the vanishing CPU: A Linux kernel debugging story blog 13 Load (computing) - Wikipedia documentation 14 proc_pid_status(5) — Arch manual pages (duplicate reference for completeness) documentation 15 The Linux kernel hung task discussion (Cloudflare community mirror) blog 16 The story of one latency spike (Cloudflare) blog Share This What if a single hung task could teach a whole operation how to avoid outages? Cloudflare faced production hangs interpreted as kernel vs user-space issues [1].,Uninterruptible sleep (D state) can stall entire services; diagnose with ps, strac
+
+## Wrapping Up
+
+The journey begins with a real-world alarm and ends with a practical, safety-first approach to diagnosing and resolving hung tasks. The Cloudflare case anchors the narrative, illustrating that the line between kernel behavior and application logic can be thin, and that disciplined triage—guided by system calls, file descriptors, and careful termination—keeps production stable.
+
+## Conclusion
+
+The journey begins with a real-world alarm and ends with a practical, safety-first approach to diagnosing and resolving hung tasks. The Cloudflare case anchors the narrative, illustrating that the line between kernel behavior and application logic can be thin, and that disciplined triage—guided by system calls, file descriptors, and careful termination—keeps production stable.

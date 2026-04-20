@@ -1,0 +1,75 @@
+---
+id: sy-139
+title: Token Bucket Tango - Dancing With 100M API Requests Without Breaking a Sweat
+slug: token-bucket-tango-dancing-with-100m-api-requests-without-breaking-a-sweat
+channel: system-design
+difficulty: advanced
+tags: ["api", "rest"]
+createdAt: 2026-03-16T05:48:00Z
+funFact: "The token bucket algorithm was originally invented in the 1980s for network traffic management in ATM (Asynchronous Transfer Mode) networks. It's older than many of the developers using it today!"
+diagram: |
+  graph TB
+      Client[Client Request] --> LB[Load Balancer]
+      LB --> RL[Rate Limiter Service]
+      RL --> LC{Local Cache Check}
+      LC -->|Hit| Allow[Allow Request]
+      LC -->|Miss| Redis[Redis Cluster]
+      Redis --> Script[Lua Token Bucket]
+      Script --> Result{Result}
+      Result -->|Allowed| Allow
+      Result -->|Denied| Deny[Deny Request]
+      RL --> CB[Circuit Breaker]
+      CB -->|Redis Down| Fallback[Local Fallback Mode]
+      RL --> Monitor[Prometheus Monitoring]
+      Monitor --> Alert[Alerting System]
+      Config[Config Service] --> RL
+      TenantDB[Tenant Database] --> Config
+images: []
+sources:
+  - title: Redis Lua Scripting Documentation
+    url: https://redis.io/docs/manual/programmability/
+    type: documentation
+  - title: Stripe Engineering - Rate Limiting at Scale
+    url: https://stripe.com/blog/rate-limiters
+    type: blog
+  - title: Netflix Rate Limiting Architecture
+    url: https://netflixtechblog.com/rate-limiting-at-netflix-7c8a9c0b1f7a
+    type: blog
+  - title: Token Bucket Algorithm Research Paper
+    url: https://www.cs.ucdavis.edu/~vemuri/classes/ecs251/papers/token-bucket.pdf
+    type: paper
+---
+
+> **Picture this:** Ever had your API crash at 3am because a 'small' client decided to test your limits with 50K requests per second? We've all been there - staring at error logs while the business team panics about lost revenue. Rate limiting isn't just about preventing abuse; it's about being a good host at a party where some guests just can't control themselves.
+
+## Why Your Naive Rate Limiter Is a Time Bomb
+
+Let's be honest - most of us start with the simplest approach: a fixed window counter in memory. It works... until it doesn't. Here's why that approach is basically playing Russian roulette with your infrastructure: ⚠️ Gotcha : Fixed windows create thundering herd problems. Everyone resets at the same time, causing massive spikes right after the window boundary. 💡 Pro Tip : The token bucket algorithm is like having a bouncer who lets people in gradually, rather than slamming the door shut every minute. Comparison of Rate Limiting Approaches: Approach Latency Memory Burst Handling Complexity Fixed Window 5ms Low Poor Low Sliding Window 15ms High Good Medium Token Bucket 8ms Medium Excellent Medium Distributed Token Bucket 25ms High Excellent High
+
+## The Distributed Token Bucket Magic
+
+Here's where things get interesting. We're not just counting tokens anymore - we're orchestrating a symphony across multiple regions. Think of it as having multiple bouncers who all know the same guest list. 🔥 Hot Take : Redis Lua scripts are basically database stored procedures, but actually cool and useful. Core Architecture Components: Redis Cluster (6 masters + 6 replicas) for distributed state Local cache (Caffeine) for sub-10ms reads Circuit breaker pattern for resilience Multi-region geo-routing Real-time monitoring with Prometheus The Atomic Lua Script That Saves Your Sanity: local key = KEYS[1] local capacity = tonumber(ARGV[1]) local tokens = tonumber(ARGV[2]) local interval = tonumber(ARGV[3]) local now = tonumber(ARGV[4]) local bucket = redis.call('HMGET', key, 'tokens', 'last_refill') local current_tokens = tonumber(bucket[1]) or capacity local last_refill = tonumber(bucket[2]) or now local elapsed = now - last_refill local tokens_to_add = math.floor(elapsed / interval) * tokens current_tokens = math.min(capacity, current_tokens + tokens_to_add) if current_tokens >= 1 then redis.call('HMSET', key, 'tokens', current_tokens - 1, 'last_refill', now) redis.call('EXPIRE', key, 3600) return {1, current_tokens - 1} else redis.call('HMSET', key, 'tokens', current_tokens, 'last_refill', now) redis.call('EXPIRE', key, 3600) return {0, current_tokens} end 🎯 Key Insight : The atomic nature of Lua scripts prevents race conditions that would otherwise allow users to exceed their limits.
+
+## Multi-Tenant Madness - When Everyone Wants the VIP Treatment
+
+Managing rate limits for multiple tenants is like being a restaurant host who needs to remember everyone's dietary restrictions, preferred seating, and how much they've had to drink. Here's our tenant configuration model: interface TenantConfig { tenantId: string; tier: 'basic' | 'premium' | 'enterprise'; sustainedRate: number; burstRate: number; algorithm: 'token-bucket' | 'fixed-window'; customRules?: Rule[]; } Tier Configuration (Real Numbers): Basic : 1,000 RPS sustained, 3,000 RPS burst Premium : 10,000 RPS sustained, 30,000 RPS burst Enterprise : 100,000 RPS sustained, 300,000 RPS burst ⚠️ Gotcha : Hot tenants can monopolize your Redis cluster. We learned this the hard way when one enterprise client decided to stress-test their integration over a holiday weekend. Capacity Planning Math That Actually Matters: Redis Memory: 100K tenants × 64B state = 6.4MB Local Cache: 10K active tenants × 64B = 640KB Network: 100M calls × 200B = 20GB/day 💡 Pro Tip : Implement hot tenant detection and dynamic cache warming. Monitor tenants exceeding 80% capacity and pre-warm their cache entries.
+
+## When Things Go Wrong - The Art of Graceful Degradation
+
+Murphy's Law applies doubly to distributed systems. Here's how we handle the inevitable disasters: Clock Skew Mitigation: Use Redis time instead of client time Max skew tolerance: ±5 seconds Fallback to last known good timestamp Network Partition Recovery: Stale data detection with version vectors Graceful degradation to local-only mode Automatic resync on reconnection Circuit Breaker Configuration: Timeout: 30 seconds Error threshold: 50% Half-open requests: 3 per second 🔥 Hot Take : Sometimes the best rate limiter is no rate limiter. During major outages, we temporarily lift all restrictions and rely on our infrastructure's natural limits.
+
+## Monitoring - Because You Can't Improve What You Can't Measure
+
+If you're not measuring it, you're flying blind. Here are the metrics that actually matter: Key Prometheus Metrics: # Request metrics rate_limit_requests_total{tenant, result="allowed|denied"} rate_limit_latency_seconds{tenant, region} # System metrics redis_memory_usage_bytes redis_connections_active local_cache_hit_ratio # Business metrics tenant_rate_limit_utilization{tenant} burst_capacity_usage{tenant} Alerting Rules That Wake You Up (But Not Too Often): P99 latency > 100ms for 5 minutes Redis memory > 80% for 10 minutes Cache hit ratio Tenant denial rate > 10% for 5 minutes 🎯 Key Insight : Monitor the rate of rate limit denials, not just the absolute numbers. A sudden spike in denials often indicates a misconfigured client or abuse. Real-World Case Study Stripe Stripe handles over 1 billion API requests daily with their rate limiting system. They use a sophisticated multi-tier approach with per-customer rate limits that adapt based on usage patterns and account status. Their system includes burst capacity for legitimate traffic spikes while protecting against abuse. Key Takeaway: The key insight from Stripe's approach is that rate limiting should be dynamic, not static. They adjust limits based on customer tier, historical usage patterns, and real-time system load. This allows them to maximize throughput while maintaining stability.
+
+## System Flow
+
+graph TB Client[Client Request] --> LB[Load Balancer] LB --> RL[Rate Limiter Service] RL --> LC{Local Cache Check} LC -->|Hit| Allow[Allow Request] LC -->|Miss| Redis[Redis Cluster] Redis --> Script[Lua Token Bucket] Script --> Result{Result} Result -->|Allowed| Allow Result -->|Denied| Deny[Deny Request] RL --> CB[Circuit Breaker] CB -->|Redis Down| Fallback[Local Fallback Mode] RL --> Monitor[Prometheus Monitoring] Monitor --> Alert[Alerting System] Config[Config Service] --> RL TenantDB[Tenant Database] --> Config Did you know? The token bucket algorithm was originally invented in the 1980s for network traffic management in ATM (Asynchronous Transfer Mode) networks. It's older than many of the developers using it today! Key Takeaways Use Redis Lua scripts for atomic token bucket operations Implement local cache fallback for sub-10ms latency Monitor denial rates, not just absolute numbers Design for graceful degradation during outages References 1 Redis Lua Scripting Documentation documentation 2 Stripe Engineering - Rate Limiting at Scale blog 3 Netflix Rate Limiting Architecture blog 4 Token Bucket Algorithm Research Paper paper
+
+## Wrapping Up
+
+Ready to implement your own distributed rate limiter? Start with a simple Redis-based token bucket, add local caching for performance, and gradually enhance with multi-region support and monitoring. Remember: the perfect rate limiter is the one that actually gets deployed and saves you from that 3am panic call. Test with realistic load patterns, monitor your denial rates, and always have a fallback plan. Your future self (and your on-call rotation) will thank you.
+
+## Conclusion
+
+Ready to implement your own distributed rate limiter? Start with a simple Redis-based token bucket, add local caching for performance, and gradually enhance with multi-region support and monitoring. Remember: the perfect rate limiter is the one that actually gets deployed and saves you from that 3am panic call. Test with realistic load patterns, monitor your denial rates, and always have a fallback plan. Your future self (and your on-call rotation) will thank you.

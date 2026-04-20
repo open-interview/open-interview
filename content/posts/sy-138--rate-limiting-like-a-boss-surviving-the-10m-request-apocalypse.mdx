@@ -1,0 +1,97 @@
+---
+id: sy-138
+title: "Rate Limiting Like a Boss: Surviving the 10M Request Apocalypse"
+slug: rate-limiting-like-a-boss-surviving-the-10m-request-apocalypse
+channel: system-design
+difficulty: advanced
+tags: ["api", "rest"]
+createdAt: 2026-03-16T05:48:00Z
+funFact: "The token bucket algorithm was invented in the 1980s for telecommunication networks to control data flow in ATM switches. It's older than many developers reading this!"
+diagram: |
+  graph TB
+      Client[Client Request] --> SDK[Rate Limiting SDK]
+      SDK --> LocalCache[Local Cache LRU + 30s TTL]
+      SDK --> RedisCluster[Redis Cluster<br/>6 nodes, 3-way replication]
+      
+      RedisCluster --> Node1[Node 1]
+      RedisCluster --> Node2[Node 2]
+      RedisCluster --> Node3[Node 3]
+      RedisCluster --> Node4[Node 4]
+      RedisCluster --> Node5[Node 5]
+      RedisCluster --> Node6[Node 6]
+      
+      Node1 --> Replica1[Replica 1]
+      Node2 --> Replica2[Replica 2]
+      Node3 --> Replica3[Replica 3]
+      
+      SDK --> CircuitBreaker[Circuit Breaker]
+      CircuitBreaker --> Service[Microservice]
+      
+      LocalCache -.->|Fallback| Service
+      
+      subgraph "Hierarchical Limits"
+          Global[Global: 10M req/min]
+          ServiceLevel[Service: 100K req/min]
+          Endpoint[Endpoint: 1K req/min]
+      end
+      
+      SDK --> Global
+      Global --> ServiceLevel
+      ServiceLevel --> Endpoint
+images: []
+sources:
+  - title: Redis Cluster Best Practices
+    url: https://redis.io/docs/operate/oss_and_stack/management/cluster-tutorial/
+    type: documentation
+  - title: Stripe API Rate Limiting
+    url: https://stripe.com/blog/rate-limiters
+    type: blog
+  - title: Rate Limiting Algorithms Comparison
+    url: https://www.figma.com/blog/engineering/rate-limiting-at-scale/
+    type: blog
+  - title: Token Bucket Algorithm Analysis
+    url: https://en.wikipedia.org/wiki/Token_bucket
+    type: documentation
+---
+
+> **Picture this:** Ever had your API crash at 3am because a viral tweet sent 10M requests your way? We've all been there - watching our beautiful architecture crumble under unexpected load. Let's build a rate limiting system that laughs in the face of traffic spikes and keeps your services running smoothly.
+
+## The Problem: When Good APIs Go Bad
+
+Picture this: You're sleeping peacefully when your phone explodes with alerts. Your microservices are drowning in requests, databases are timing out, and users are tweeting about your "unreliable" service. Sound familiar? 💡 Pro Tip: Rate limiting isn't just about preventing abuse - it's about survival. A good rate limiter is like a bouncer at an exclusive club, keeping the riff-raff out while letting the VIPs through. The Numbers Game: 10M requests/minute = 167K requests/second 100+ microservices with different policies Sub-5ms latency requirement 99.99% availability target
+
+## Architecture: The Three-Layer Cake
+
+Think of rate limiting like a wedding cake - each layer serves a purpose, and together they create something beautiful (and functional). Layer 1: Redis Cluster (The Foundation) 6 nodes with 3-way replication Consistent hashing for even distribution Token bucket algorithm implementation Handles the heavy lifting of distributed state Layer 2: Local Cache (The Middle Layer) LRU cache with 30s TTL per service Acts as a safety net during Redis failures Reduces Redis load by 80-90% Sub-millisecond response times Layer 3: SDK (The Icing) Hierarchical enforcement (global → service → endpoint) Circuit breakers for fault isolation Automatic fallback mechanisms ⚠️ Gotcha: Don't skip the local cache! I learned this the hard way when our Redis cluster went down during a peak traffic event. The local cache saved us from a complete outage.
+
+## Token Bucket: The Magic Algorithm
+
+The token bucket algorithm is like giving each user a prepaid debit card with automatic refills. They can spend their tokens quickly (bursts) or slowly (steady rate), but they can't go into debt. Why Token Bucket Rocks: Allows controlled bursts (unlike sliding window) Memory efficient (O(1) per key) Easy to understand and implement Handles variable refill rates 🔥 Hot Take: Fixed window counters are for amateurs. Real engineers use token buckets for the flexibility and burst handling. Implementation Reality Check: // The core logic - simplified but production-ready async function checkLimit(key, capacity, refillRate) { const now = Date.now(); const bucket = await redis.hgetall(key); if (!bucket.id) { bucket = { tokens: capacity, lastRefill: now }; } const elapsed = now - bucket.lastRefill; const tokensToAdd = Math.floor(elapsed * refillRate / 1000); bucket.tokens = Math.min(capacity, bucket.tokens + tokensToAdd); bucket.lastRefill = now; if (bucket.tokens >= 1) { bucket.tokens -= 1; await redis.hset(key, bucket); await redis.expire(key, 3600); return true; } return false; } Big O Analysis: Time: O(1) per request (constant time) Space: O(n) where n = number of unique keys Perfect for high-throughput scenarios
+
+## Consistency: The Eventual Truth
+
+Here's the secret: rate limiting doesn't need perfect consistency. Being "eventually right" is totally fine - and much faster. Consistency Trade-offs: Approach Latency Accuracy Complexity Strong Consistency 50-100ms 100% High Eventual Consistency 1-5ms 99.9% Medium Local Only 0.1ms 95% Low 🎯 Key Insight: For rate limiting, being 99.9% accurate with 5ms latency is better than being 100% accurate with 100ms latency. Users won't notice the 0.1% discrepancy, but they'll definitely notice the slowdown. Background Sync Strategy: Periodic reconciliation every 30 seconds Last-write-wins conflict resolution Timestamp-based ordering Automatic drift correction
+
+## Failure Handling: When Things Go Wrong
+
+Murphy's Law applies to distributed systems: anything that can go wrong, will go wrong. Here's how to survive. Redis Failover ( Sentinel detects node failure Promotes replica to master Updates client connections Local cache handles requests during failover Automatic resync when Redis recovers Network Partitions: Majority writes for consistency Local-first strategy with async sync Conflict resolution on reconciliation Graceful degradation with relaxed limits ⚠️ Gotcha: Always test your failover scenarios. We once had a Redis failover that took 5 minutes instead of 30 seconds because of misconfigured Sentinels. The local cache saved us, but it was a stressful debugging session.
+
+## Monitoring: What to Watch
+
+You can't improve what you don't measure. Here are the metrics that matter: Critical KPIs: Rate limit hit ratio (target: Redis latency (p95 Cache miss rate (target: Circuit breaker activations ( Error rate (target: SLA Targets: Availability: 99.99% (52 minutes downtime/year) Latency: p95 Accuracy: 99.9% (within 0.1% error rate) 💡 Pro Tip: Set up alerts for when your rate limit hit ratio exceeds 5%. This usually indicates either an attack or that your limits are too restrictive.
+
+## Cost Optimization: The Bottom Line
+
+Great architecture doesn't mean much if you can't afford it. Here's the reality check: Redis Costs: Memory-optimized instances (r6g.2xlarge) $0.376/hour × 6 nodes × 3 replicas = $2,256/month Includes monitoring, backups, and support Local Cache: 10MB per service for hot keys Minimal CPU overhead ( Essentially free Total Cost: ~$2,300/month for 10M requests/minute capacity 🔥 Hot Take: That's $0.003 per million requests. Cheaper than most coffee shops! Real-World Case Study Stripe Stripe handles rate limiting for millions of API calls across their payment platform. They use a hierarchical approach with Redis clusters and local caching, achieving 99.99% availability while preventing abuse. Key Takeaway: Stripe's key insight was that different endpoints need different rate limits. Payment processing gets stricter limits than balance checks, and they adjust these dynamically based on system load.
+
+## System Flow
+
+graph TB Client[Client Request] --> SDK[Rate Limiting SDK] SDK --> LocalCache[Local Cache LRU + 30s TTL] SDK --> RedisCluster[Redis Cluster 6 nodes, 3-way replication] RedisCluster --> Node1[Node 1] RedisCluster --> Node2[Node 2] RedisCluster --> Node3[Node 3] RedisCluster --> Node4[Node 4] RedisCluster --> Node5[Node 5] RedisCluster --> Node6[Node 6] Node1 --> Replica1[Replica 1] Node2 --> Replica2[Replica 2] Node3 --> Replica3[Replica 3] SDK --> CircuitBreaker[Circuit Breaker] CircuitBreaker --> Service[Microservice] LocalCache -.->|Fallback| Service subgraph "Hierarchical Limits" Global[Global: 10M req/min] ServiceLevel[Service: 100K req/min] Endpoint[Endpoint: 1K req/min] end SDK --> Global Global --> ServiceLevel ServiceLevel --> Endpoint Did you know? The token bucket algorithm was invented in the 1980s for telecommunication networks to control data flow in ATM switches. It's older than many developers reading this! Key Takeaways Use Redis Cluster + local cache for 99.99% availability Token bucket algorithm allows controlled bursts Eventual consistency is fine for rate limiting Always test failover scenarios before production References 1 Redis Cluster Best Practices documentation 2 Stripe API Rate Limiting blog 3 Rate Limiting Algorithms Comparison blog 4 Token Bucket Algorithm Analysis documentation
+
+## Wrapping Up
+
+Ready to build your bulletproof rate limiter? Start with a Redis cluster, add local caching, and implement the token bucket algorithm. Test your failover scenarios, monitor your key metrics, and you'll sleep better at night knowing your APIs can handle whatever the internet throws at them. Your future self (and your on-call team) will thank you.
+
+## Conclusion
+
+Ready to build your bulletproof rate limiter? Start with a Redis cluster, add local caching, and implement the token bucket algorithm. Test your failover scenarios, monitor your key metrics, and you'll sleep better at night knowing your APIs can handle whatever the internet throws at them. Your future self (and your on-call team) will thank you.

@@ -270,10 +270,137 @@ async function getNextQuestionForBlog(limit = 1) {
   }));
 }
 
+// Parse YAML frontmatter from MDX files (no external deps)
+function parseYamlFrontmatter(yaml) {
+  const result = {};
+  const lines = yaml.split('\n');
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    // Block scalar (diagram: |)
+    const blockMatch = line.match(/^(\w+):\s*\|(.*)$/);
+    if (blockMatch) {
+      const key = blockMatch[1];
+      const blockLines = [];
+      let indent = null;
+      i++;
+      while (i < lines.length) {
+        const bl = lines[i];
+        if (bl.trim() === '' || /^\w+:/.test(bl)) break;
+        if (indent === null) indent = bl.match(/^(\s+)/)?.[1]?.length || 0;
+        blockLines.push(bl.slice(indent));
+        i++;
+      }
+      result[key] = blockLines.join('\n');
+      continue;
+    }
+    // Array block (key:\n  - item)
+    const arrayKeyMatch = line.match(/^(\w+):\s*$/);
+    if (arrayKeyMatch && lines[i + 1] && /^\s+-/.test(lines[i + 1])) {
+      const key = arrayKeyMatch[1];
+      const items = [];
+      i++;
+      while (i < lines.length && /^\s+-/.test(lines[i])) {
+        const itemLine = lines[i].replace(/^\s+-\s*/, '');
+        // Nested object (- key: val\n    key2: val2)
+        if (/^\w+:/.test(itemLine)) {
+          const obj = {};
+          const parseKV = (s) => {
+            const m = s.match(/^(\w+):\s*(.*)$/);
+            if (m) obj[m[1]] = m[2].replace(/^["']|["']$/g, '');
+          };
+          parseKV(itemLine);
+          i++;
+          while (i < lines.length && /^\s{4,}\w+:/.test(lines[i])) {
+            parseKV(lines[i].trim());
+            i++;
+          }
+          items.push(obj);
+        } else {
+          items.push(itemLine.replace(/^["']|["']$/g, ''));
+          i++;
+        }
+      }
+      result[key] = items;
+      continue;
+    }
+    // Inline array: key: [a, b, c]
+    const inlineArrayMatch = line.match(/^(\w+):\s*\[(.+)\]$/);
+    if (inlineArrayMatch) {
+      result[inlineArrayMatch[1]] = inlineArrayMatch[2]
+        .split(',')
+        .map(s => s.trim().replace(/^["']|["']$/g, ''));
+      i++;
+      continue;
+    }
+    // Key: "quoted value" or key: plain value
+    const kvMatch = line.match(/^(\w+):\s*(.+)$/);
+    if (kvMatch) {
+      result[kvMatch[1]] = kvMatch[2].replace(/^["']|["']$/g, '');
+    }
+    i++;
+  }
+  return result;
+}
+
+function loadPostsFromMDX() {
+  const postsDir = path.join(process.cwd(), 'content/posts');
+  if (!fs.existsSync(postsDir)) return [];
+  const files = fs.readdirSync(postsDir).filter(f => f.endsWith('.mdx'));
+  if (!files.length) return [];
+
+  return files.map(file => {
+    const raw = fs.readFileSync(path.join(postsDir, file), 'utf-8');
+    const fmMatch = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+    if (!fmMatch) return null;
+
+    const fm = parseYamlFrontmatter(fmMatch[1]);
+    const body = fmMatch[2];
+
+    // blockquote → blogIntro
+    const introMatch = body.match(/^>\s*(.+)/m);
+    const blogIntro = introMatch ? introMatch[1].replace(/^\*\*.*?\*\*\s*/, '') : '';
+
+    // ## headings → blogSections (exclude Conclusion/Wrapping Up)
+    const sectionRegex = /^## (.+)\n+([\s\S]*?)(?=^## |\s*$)/gm;
+    const blogSections = [];
+    let conclusionText = '';
+    let match;
+    while ((match = sectionRegex.exec(body)) !== null) {
+      const heading = match[1].trim();
+      const content = match[2].trim();
+      if (/conclusion|wrapping up/i.test(heading)) {
+        conclusionText = content;
+      } else {
+        blogSections.push({ heading, content });
+      }
+    }
+
+    return {
+      id: fm.id || file.replace('.mdx', ''),
+      blogTitle: fm.title || '',
+      blogSlug: fm.slug || '',
+      blogIntro,
+      blogSections,
+      blogConclusion: conclusionText,
+      blogMeta: fm.metaDescription || fm.description || '',
+      channel: fm.channel || '',
+      difficulty: fm.difficulty || '',
+      tags: Array.isArray(fm.tags) ? fm.tags : [],
+      createdAt: fm.createdAt || '',
+      funFact: fm.funFact || '',
+      diagram: fm.diagram || '',
+      images: Array.isArray(fm.images) ? fm.images : [],
+      sources: Array.isArray(fm.sources) ? fm.sources : [],
+      svgContent: {},
+    };
+  }).filter(Boolean);
+}
+
 // Get all existing blog posts
 async function getAllBlogPosts() {
   const result = await client.execute(`SELECT * FROM blog_posts ORDER BY created_at DESC`);
-  return result.rows.map(row => ({
+  const dbPosts = result.rows.map(row => ({
     id: row.question_id,
     blogTitle: row.title,
     blogSlug: row.slug,
@@ -293,13 +420,88 @@ async function getAllBlogPosts() {
     funFact: row.fun_fact,
     sources: row.sources ? JSON.parse(row.sources) : [],
     images: row.images ? JSON.parse(row.images) : [],
-    svgContent: row.svg_content ? JSON.parse(row.svg_content) : {},  // Map of filename -> SVG content
+    svgContent: row.svg_content ? JSON.parse(row.svg_content) : {},
     socialSnippet: row.social_snippet ? JSON.parse(row.social_snippet) : null,
     createdAt: row.created_at
   }));
+  const dbIds = new Set(dbPosts.map(p => p.id));
+  const mdxPosts = loadPostsFromMDX().filter(p => !dbIds.has(p.id));
+  if (mdxPosts.length) console.log(`📂 Merged ${mdxPosts.length} MDX-only posts into DB results`);
+  return [...dbPosts, ...mdxPosts];
 }
 
 // Save blog post to database
+function savePostAsMDX(post) {
+  const outDir = path.join(path.dirname(new URL(import.meta.url).pathname), '../content/posts');
+  fs.mkdirSync(outDir, { recursive: true });
+
+  function yamlStr(val) {
+    if (!val) return '""';
+    const s = String(val);
+    if (/[:#\[\]{}&*!|>'"%@`,]/.test(s) || s.includes('\n') || s.startsWith(' ') || s.endsWith(' ')) {
+      return '"' + s.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+    }
+    return s;
+  }
+
+  const lines = ['---'];
+  lines.push(`id: ${post.id}`);
+  lines.push(`title: ${yamlStr(post.blogTitle)}`);
+  lines.push(`slug: ${post.blogSlug}`);
+  lines.push(`channel: ${post.channel}`);
+  lines.push(`difficulty: ${post.difficulty}`);
+  const tags = (post.tags || []).map(t => JSON.stringify(t)).join(', ');
+  lines.push(`tags: [${tags}]`);
+  lines.push(`createdAt: ${post.createdAt}`);
+  if (post.funFact) lines.push(`funFact: ${yamlStr(post.funFact)}`);
+  if (post.diagram) {
+    lines.push('diagram: |');
+    post.diagram.split('\n').forEach(l => lines.push('  ' + l));
+  }
+  if (post.images && post.images.length) {
+    lines.push('images:');
+    post.images.forEach(img => {
+      lines.push(`  - url: ${img.url}`);
+      lines.push(`    alt: ${yamlStr(img.alt || '')}`);
+    });
+  } else {
+    lines.push('images: []');
+  }
+  if (post.sources && post.sources.length) {
+    lines.push('sources:');
+    post.sources.forEach(s => {
+      lines.push(`  - title: ${yamlStr(s.title)}`);
+      lines.push(`    url: ${s.url}`);
+      lines.push(`    type: ${s.type}`);
+    });
+  } else {
+    lines.push('sources: []');
+  }
+  lines.push('---');
+  const frontmatter = lines.join('\n');
+
+  const parts = [];
+  if (post.blogIntro) parts.push(`> **Picture this:** ${post.blogIntro}\n`);
+  (post.blogSections || []).forEach(sec => {
+    parts.push(`## ${sec.heading}\n`);
+    parts.push(sec.content + '\n');
+  });
+  if (post.funFact) parts.push(`> 💡 **Did you know?** ${post.funFact}\n`);
+  if (post.sources && post.sources.length) {
+    parts.push('## References\n');
+    post.sources.forEach((s, i) => parts.push(`${i + 1}. [${s.title}](${s.url})`));
+    parts.push('');
+  }
+  if (post.blogConclusion) {
+    parts.push('## Wrapping Up\n');
+    parts.push(post.blogConclusion + '\n');
+  }
+  const body = parts.join('\n');
+
+  const filename = `${post.id}--${post.blogSlug}.mdx`;
+  fs.writeFileSync(path.join(outDir, filename), frontmatter + '\n\n' + body, 'utf8');
+}
+
 async function saveBlogPost(questionId, blogContent, question, svgContent = {}) {
   const now = new Date().toISOString();
   const diagram = blogContent.diagram || question.diagram;
@@ -336,6 +538,22 @@ async function saveBlogPost(questionId, blogContent, question, svgContent = {}) 
       JSON.stringify(svgContent),
       now
     ]
+  });
+  savePostAsMDX({
+    id,
+    blogTitle: blogContent.title,
+    blogSlug: generateSlug(blogContent.title),
+    channel: question.channel,
+    difficulty: question.difficulty,
+    tags: question.tags,
+    createdAt: now,
+    funFact: blogContent.funFact || null,
+    diagram: diagram || null,
+    images: blogContent.images || [],
+    sources: blogContent.sources || [],
+    blogIntro: blogContent.introduction,
+    blogSections: blogContent.sections,
+    blogConclusion: blogContent.conclusion,
   });
 }
 
@@ -1664,18 +1882,23 @@ async function main() {
   if (dryRun) console.log('🔍 DRY RUN MODE - no DB writes\n');
 
   if (htmlOnly && !process.env.DATABASE_URL) {
-    // Fallback: generate static site from committed data/blog-posts.json
-    const fallbackPath = path.join(process.cwd(), 'data/blog-posts.json');
-    if (!fs.existsSync(fallbackPath)) {
-      console.log('⚠️  DATABASE_URL not set and data/blog-posts.json not found — skipping blog generation');
-      process.exit(0);
-    }
-    const articles = JSON.parse(fs.readFileSync(fallbackPath, 'utf-8'));
+    // Fallback: load from MDX files in content/posts/, then data/blog-posts.json
+    let articles = loadPostsFromMDX();
     if (!articles.length) {
-      console.log('⚠️  data/blog-posts.json is empty — skipping blog generation');
-      process.exit(0);
+      const fallbackPath = path.join(process.cwd(), 'data/blog-posts.json');
+      if (!fs.existsSync(fallbackPath)) {
+        console.log('⚠️  DATABASE_URL not set, no MDX posts found, and data/blog-posts.json not found — skipping blog generation');
+        process.exit(0);
+      }
+      articles = JSON.parse(fs.readFileSync(fallbackPath, 'utf-8'));
+      if (!articles.length) {
+        console.log('⚠️  data/blog-posts.json is empty — skipping blog generation');
+        process.exit(0);
+      }
+      console.log(`📂 Using JSON fallback: ${articles.length} posts from data/blog-posts.json`);
+    } else {
+      console.log(`📂 Using MDX fallback: ${articles.length} posts from content/posts/`);
     }
-    console.log(`📂 Using JSON fallback: ${articles.length} posts from data/blog-posts.json`);
     fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
     fs.mkdirSync(path.join(OUTPUT_DIR, 'images'), { recursive: true });

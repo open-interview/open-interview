@@ -1,0 +1,88 @@
+---
+id: sy-158
+title: "Mastering Distributed Rate Limiting: Scaling to 1M Requests Per Second"
+slug: mastering-distributed-rate-limiting-scaling-to-1m-requests-per-second
+channel: system-design
+difficulty: advanced
+tags: ["dist-sys", "architecture"]
+createdAt: 2026-03-16T05:48:00Z
+diagram: |
+  graph TD
+      A[Client Request] --> B[Load Balancer]
+      B --> C[Node 1: Local Rate Limiter]
+      B --> D[Node 2: Local Rate Limiter]
+      B --> E[Node 3: Local Rate Limiter]
+      
+      C --> F[Local Token Bucket]
+      D --> G[Local Token Bucket]
+      E --> H[Local Token Bucket]
+      
+      F -.Gossip Sync.-> G
+      G -.Gossip Sync.-> H
+      H -.Gossip Sync.-> F
+      
+      C --> I[Redis Cache]
+      D --> I
+      E --> I
+      
+      I --> J[Sliding Window Counters]
+      
+      F --> K{Tokens Available?}
+      K -->|Yes| L[Allow Request]
+      K -->|No| M[Reject: 429]
+      
+      N[Gossip Manager] --> F
+      N --> G
+      N --> H
+      
+      O[Quota Adjuster] --> N
+      I -.Periodic Sync.-> O
+images: []
+sources: []
+---
+
+> **Picture this:** In today's hyper-connected world, distributed systems must handle massive traffic loads while maintaining fairness and preventing abuse. Designing a rate limiter that can process 1 million requests per second across 100 data centers with sub-10ms latency is one of the most challenging problems in system architecture. Let's explore how to build such a system without sacrificing performance or accuracy.
+
+## The Core Challenge: Accuracy vs Performance
+
+When building distributed rate limiters at scale, you face a fundamental trade-off. Strict accuracy requires coordination between nodes, which introduces latency. High performance demands local decisions, which may lead to temporary overages. The sweet spot lies in a hybrid approach that combines fast local processing with eventual consistency guarantees. The key insight is that perfect accuracy isn't always necessary. A 1-2% temporary overage is often acceptable in exchange for order-of-magnitude performance improvements. This allows us to design systems that can handle enterprise-scale traffic while maintaining reasonable fairness guarantees.
+
+## Architecture Overview: The Hybrid Approach
+
+Our solution combines three key components working in harmony: Local Rate Limiters : Each node maintains its own counters using efficient algorithms Gossip Protocol : Nodes periodically exchange information to achieve cluster-wide consistency Hybrid Decision Making : Fast local decisions with periodic synchronization This architecture allows us to make decisions in under 1ms for most requests while keeping the system accurate within acceptable tolerances. The gossip protocol ensures that no single node becomes a bottleneck, and the system can gracefully handle node failures and network partitions.
+
+## Local Token Buckets: The First Line of Defense
+
+Each node in our distributed system maintains a local token bucket implementation. Here's how it works: Each node receives a quota allocation (total_limit / num_nodes) Tokens refill at a configured rate based on the global limit Local decisions happen in microseconds ( The system may briefly allow bursts above the global limit The token bucket algorithm is particularly well-suited for this use case because it handles burst traffic gracefully while maintaining long-term rate compliance. When a request arrives, we check if tokens are available locally. If so, we allow the request immediately and deduct a token. This path is extremely fast and handles the vast majority of requests.
+
+## Sliding Window Counters: Precision Timing
+
+For more granular control, we implement sliding window counters alongside our token buckets. These track requests in time-based buckets (typically 1-second intervals) and provide more accurate rate limiting for specific time windows. The sliding window approach can use either Redis sorted sets for distributed scenarios or in-memory data structures for local-only decisions. The key innovation is weighted counting for window boundaries, which smooths the transition between time buckets and prevents artificial spikes at bucket boundaries. This combination of token buckets (for burst handling) and sliding windows (for precision) gives us the best of both worlds: fast response times with accurate rate limiting.
+
+## Gossip Synchronization: Achieving Eventual Consistency
+
+The magic happens in our gossip protocol implementation. Nodes exchange counter deltas every 100-500ms using an epidemic broadcast pattern. This ensures that information about cluster-wide usage propagates quickly without creating a central bottleneck. Here's the synchronization flow: Nodes track their local usage deltas between sync cycles Every 200ms (configurable), nodes exchange deltas with random peers Each node adjusts its local quota based on cluster-wide usage The epidemic spread ensures all nodes eventually converge This approach means that during normal operation, most nodes will have a reasonably accurate view of global usage. If one node is experiencing higher traffic, it will automatically receive a smaller quota allocation in the next sync cycle.
+
+## Handling Edge Cases and Failure Modes
+
+Real-world systems must handle edge cases gracefully. Here's how we address common failure scenarios: Hot Partitions : When certain keys or users generate disproportionate traffic, we use consistent hashing with virtual nodes to distribute the load evenly across the cluster. Network Partitions : During network splits, we implement conservative limits (fail-safe mode). Nodes assume they're the only active partition and reduce their quotas accordingly to prevent global overages. Burst Traffic : We pre-allocate burst capacity (typically 120% of steady-state limit) to handle legitimate traffic spikes without blocking valid users. Node Failures : When nodes leave or join the cluster, quotas are automatically redistributed among remaining nodes to maintain the global rate limit.
+
+## Implementation Details: The Algorithm in Action
+
+Here's our complete hybrid rate limiting algorithm: Algorithm: Hybrid Rate Limiter 1. Check local token bucket for available tokens 2. If tokens available, allow request immediately (<1ms) 3. If near local limit, check gossip state for cluster usage 4. Background: sync counter deltas every 200ms via gossip 5. Adjust local quota based on cluster-wide load patterns 6. Handle edge cases (partitions, hot keys, bursts) The beauty of this approach is its simplicity. Most requests follow the fast path (steps 1-2), while the background synchronization (steps 4-5) ensures long-term accuracy. The system self-heals and adapts to changing traffic patterns without manual intervention.
+
+## Scalability Considerations: Beyond the Basics
+
+Building a rate limiter that handles 1M RPS requires careful attention to scalability: Horizontal Scaling : Nodes can be added dynamically, with quotas automatically redistributed. The gossip protocol naturally incorporates new nodes without requiring reconfiguration. Geographic Distribution : For global applications, implement regional rate limiters with cross-region aggregation. Each region handles its local traffic while periodically syncing with other regions to maintain global limits. Storage Optimization : Use in-memory stores like Redis or Memcached with TTL-based cleanup for counter data. This ensures that storage doesn't become a bottleneck as the system scales. Monitoring and Alerting : Implement comprehensive monitoring to track overage rates, sync latency, and node health. Set up alerts for when the system deviates from expected accuracy thresholds.
+
+## Performance Trade-offs: Choosing the Right Approach
+
+Different applications require different balances between accuracy and performance: Strict Accuracy : Use centralized Redis with Lua scripts for atomic operations. This provides perfect accuracy but introduces higher latency (~50ms) and creates a potential bottleneck. High Performance : Local-only decisions with minimal coordination. This delivers the best performance ( Balanced Approach : Our gossip-based hybrid solution with 1-2% overage tolerance. This provides sub-10ms latency while maintaining reasonable accuracy for most use cases. The choice depends on your specific requirements. Financial applications might prefer strict accuracy, while social media platforms often opt for maximum performance with looser accuracy requirements.
+
+## System Flow
+
+graph TD A[Client Request] --> B[Load Balancer] B --> C[Node 1: Local Rate Limiter] B --> D[Node 2: Local Rate Limiter] B --> E[Node 3: Local Rate Limiter] C --> F[Local Token Bucket] D --> G[Local Token Bucket] E --> H[Local Token Bucket] F -.Gossip Sync.-> G G -.Gossip Sync.-> H H -.Gossip Sync.-> F C --> I[Redis Cache] D --> I E --> I I --> J[Sliding Window Counters] F --> K{Tokens Available?} K -->|Yes| L[Allow Request] K -->|No| M[Reject: 429] N[Gossip Manager] --> F N --> G N --> H O[Quota Adjuster] --> N I -.Periodic Sync.-> O
+
+## Wrapping Up
+
+Building a distributed rate limiter that can handle 1 million requests per second is challenging but achievable with the right architecture. By combining local token buckets, sliding window counters, and gossip-based synchronization, we can create systems that deliver sub-10ms latency while maintaining reasonable accuracy. The key is understanding your specific requirements and choosing the right balance between performance and consistency. As you implement these patterns, remember that the best systems are those that can gracefully handle failures and adapt to changing traffic patterns without manual intervention.
