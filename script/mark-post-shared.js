@@ -5,10 +5,7 @@
  */
 
 import 'dotenv/config';
-import { dbClient as pgClient } from './db/pg-client.js';
-import { dbClient as tursoClient } from './db/turso-client.js';
-
-const client = process.env.TURSO_DATABASE_URL ? tursoClient : pgClient;
+import { dbClient as client } from './db/pg-client.js';
 const postId = process.env.POST_ID;
 
 if (!postId) {

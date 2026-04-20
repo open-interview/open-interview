@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blog CMS Admin</title>
+<script type="module">
+import { Octokit } from 'https://cdn.jsdelivr.net/npm/@octokit/rest@20/dist-web/rest.js';
+
+const OWNER = 'open-interview';
+const REPO  = 'open-interview';
+const FILE  = 'data/blog-posts.json';
+
+let octokit, allPosts = [], fileSha, filteredPosts = [];
+
+// --- Auth ---
+const patInput   = document.getElementById('pat');
+const authBtn    = document.getElementById('auth-btn');
+const authStatus = document.getElementById('auth-status');
+
+function savedPat() { return sessionStorage.getItem('gh_pat'); }
+
+authBtn.addEventListener('click', async () => {
+  const pat = patInput.value.trim();
+  if (!pat) return setStatus(authStatus, 'Enter a PAT.', true);
+  sessionStorage.setItem('gh_pat', pat);
+  await init(pat);
+});
+
+async function init(pat) {
+  octokit = new Octokit({ auth: pat });
+  try {
+    const { data: user } = await octokit.rest.users.getAuthenticated();
+    setStatus(authStatus, `Authenticated as ${user.login}`, false);
+    document.getElementById('main').hidden = false;
+    await loadPosts();
+  } catch (e) {
+    setStatus(authStatus, `Auth failed: ${e.message}`, true);
+    sessionStorage.removeItem('gh_pat');
+  }
+}
+
+// --- Load posts ---
+async function loadPosts() {
+  setStatus(mainStatus, 'Loading…', false);
+  try {
+    const { data } = await octokit.rest.repos.getContent({ owner: OWNER, repo: REPO, path: FILE });
+    fileSha = data.sha;
+    allPosts = JSON.parse(atob(data.content.replace(/\n/g, '')));
+    filteredPosts = allPosts;
+    renderList(filteredPosts);
+    setStatus(mainStatus, `Loaded ${allPosts.length} posts.`, false);
+  } catch (e) {
+    setStatus(mainStatus, `Load failed: ${e.message}`, true);
+  }
+}
+
+// --- List ---
+const listEl    = document.getElementById('post-list');
+const searchEl  = document.getElementById('search');
+const mainStatus = document.getElementById('main-status');
+
+searchEl.addEventListener('input', () => {
+  const q = searchEl.value.toLowerCase();
+  filteredPosts = q ? allPosts.filter(p =>
+    (p.blogTitle||'').toLowerCase().includes(q) ||
+    (p.channel||'').toLowerCase().includes(q) ||
+    String(p.id||'').includes(q)
+  ) : allPosts;
+  renderList(filteredPosts);
+});
+
+function renderList(posts) {
+  listEl.innerHTML = '';
+  posts.forEach(p => {
+    const li = document.createElement('li');
+    const intro = (p.blogIntro || '').replace(/<[^>]+>/g, '').slice(0, 60);
+    li.innerHTML = `<span class="pid">#${p.id}</span> <span class="ch">${p.channel||'—'}</span> <strong>${esc(p.blogTitle||'Untitled')}</strong><br><small>${esc(intro)}…</small>`;
+    li.addEventListener('click', () => loadForm(p));
+    listEl.appendChild(li);
+  });
+}
+
+// --- Edit form ---
+const form       = document.getElementById('edit-form');
+const formStatus = document.getElementById('form-status');
+let currentPost  = null;
+
+function loadForm(p) {
+  currentPost = p;
+  document.getElementById('f-title').value      = p.blogTitle || '';
+  document.getElementById('f-intro').value      = p.blogIntro || '';
+  document.getElementById('f-conclusion').value = p.blogConclusion || '';
+  document.getElementById('f-channel').value    = p.channel || '';
+  document.getElementById('f-difficulty').value = p.difficulty || 'beginner';
+  document.getElementById('f-tags').value       = (p.tags || []).join(', ');
+  form.hidden = false;
+  form.scrollIntoView({ behavior: 'smooth' });
+  setStatus(formStatus, `Editing: ${p.blogTitle}`, false);
+}
+
+document.getElementById('save-btn').addEventListener('click', async () => {
+  if (!currentPost) return;
+  const updated = {
+    ...currentPost,
+    blogTitle:      document.getElementById('f-title').value,
+    blogIntro:      document.getElementById('f-intro').value,
+    blogConclusion: document.getElementById('f-conclusion').value,
+    channel:        document.getElementById('f-channel').value,
+    difficulty:     document.getElementById('f-difficulty').value,
+    tags:           document.getElementById('f-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+  };
+  const idx = allPosts.findIndex(p => p.id === currentPost.id);
+  if (idx === -1) return setStatus(formStatus, 'Post not found.', true);
+  allPosts[idx] = updated;
+  currentPost = updated;
+  await commitFile(`Update blog post: ${updated.blogTitle}`, formStatus);
+  if (!formStatus.classList.contains('error')) await dispatch('deploy-blog.yml', {});
+});
+
+document.getElementById('delete-btn').addEventListener('click', async () => {
+  if (!currentPost) return;
+  if (!confirm(`Delete "${currentPost.blogTitle}"?`)) return;
+  allPosts = allPosts.filter(p => p.id !== currentPost.id);
+  filteredPosts = allPosts;
+  await commitFile(`Delete blog post: ${currentPost.blogTitle}`, formStatus);
+  if (!formStatus.classList.contains('error')) {
+    await dispatch('deploy-blog.yml', {});
+    form.hidden = true;
+    currentPost = null;
+  }
+});
+
+// --- Commit helper ---
+async function commitFile(message, statusEl) {
+  try {
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(allPosts, null, 2))));
+    const { data } = await octokit.rest.repos.createOrUpdateFileContents({
+      owner: OWNER, repo: REPO, path: FILE,
+      message, content, sha: fileSha,
+    });
+    fileSha = data.content.sha;
+    renderList(filteredPosts);
+    setStatus(statusEl, `Committed: ${message}`, false);
+  } catch (e) {
+    if (e.status === 409) {
+      setStatus(statusEl, 'SHA conflict — someone else committed. Reload to refresh.', true);
+    } else {
+      setStatus(statusEl, `Commit failed: ${e.message}`, true);
+    }
+  }
+}
+
+// --- Dispatch helper ---
+async function dispatch(workflow, inputs) {
+  try {
+    await octokit.rest.actions.createWorkflowDispatch({
+      owner: OWNER, repo: REPO,
+      workflow_id: workflow,
+      ref: 'main',
+      inputs,
+    });
+  } catch (e) {
+    setStatus(mainStatus, `Dispatch ${workflow} failed: ${e.message}`, true);
+  }
+}
+
+// --- Generate ---
+document.getElementById('gen-btn').addEventListener('click', async () => {
+  const topic   = document.getElementById('gen-topic').value.trim();
+  const channel = document.getElementById('gen-channel').value.trim();
+  if (!topic || !channel) return setStatus(genStatus, 'Topic and channel required.', true);
+  await dispatch('content.yml', { mode: 'blog', topic, channel });
+  setStatus(genStatus, `Dispatched content.yml for topic "${topic}" in channel "${channel}".`, false);
+});
+
+const genStatus = document.getElementById('gen-status');
+
+// --- Util ---
+function setStatus(el, msg, isError) {
+  el.textContent = msg;
+  el.className = 'status ' + (isError ? 'error' : 'ok');
+}
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Auto-init if PAT already in session
+if (savedPat()) {
+  patInput.value = '••••••••';
+  init(savedPat());
+}
+</script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; font-size: 15px; background: #f5f5f5; color: #222; padding: 24px 16px; }
+.wrap { max-width: 900px; margin: 0 auto; }
+h1 { font-size: 1.4rem; margin-bottom: 4px; }
+h2 { font-size: 1.1rem; margin: 24px 0 10px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+.card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; margin-top: 12px; }
+label:first-child { margin-top: 0; }
+input[type=text], input[type=password], textarea, select {
+  width: 100%; padding: 7px 10px; border: 1px solid #ccc; border-radius: 5px;
+  font-family: inherit; font-size: 14px;
+}
+textarea { min-height: 90px; resize: vertical; }
+button { padding: 8px 18px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: 600; }
+.btn-primary { background: #0070f3; color: #fff; }
+.btn-primary:hover { background: #005cc5; }
+.btn-danger  { background: #e53e3e; color: #fff; margin-left: 8px; }
+.btn-danger:hover  { background: #c53030; }
+.btn-gen     { background: #38a169; color: #fff; }
+.btn-gen:hover { background: #276749; }
+.status { margin-top: 10px; font-size: 13px; min-height: 18px; }
+.status.ok    { color: #276749; }
+.status.error { color: #c53030; font-weight: 600; }
+#search { margin-bottom: 10px; }
+#post-list { list-style: none; max-height: 380px; overflow-y: auto; border: 1px solid #ddd; border-radius: 6px; }
+#post-list li { padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #f0f0f0; line-height: 1.4; }
+#post-list li:last-child { border-bottom: none; }
+#post-list li:hover { background: #f0f7ff; }
+.pid  { font-size: 11px; color: #888; font-family: monospace; }
+.ch   { font-size: 11px; background: #e8f0fe; color: #1a56db; border-radius: 3px; padding: 1px 5px; margin: 0 4px; }
+.row  { display: flex; gap: 12px; }
+.row > * { flex: 1; }
+.hint { font-size: 12px; color: #666; margin-top: 6px; line-height: 1.5; }
+.hint code { background: #f0f0f0; padding: 1px 4px; border-radius: 3px; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📝 Blog CMS Admin</h1>
+  <p style="color:#666;font-size:13px;margin-bottom:16px;">open-interview / open-interview — data/blog-posts.json</p>
+
+  <div class="card">
+    <h2>🔑 Authentication</h2>
+    <label for="pat">GitHub Fine-Grained PAT</label>
+    <input type="password" id="pat" placeholder="github_pat_…" autocomplete="off">
+    <button class="btn-primary" id="auth-btn" style="margin-top:10px;">Connect</button>
+    <div class="status" id="auth-status"></div>
+    <p class="hint" style="margin-top:10px;">
+      <strong>How to create a fine-grained PAT:</strong><br>
+      GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token.<br>
+      Resource owner: <code>open-interview</code> · Repository: <code>open-interview</code><br>
+      Permissions needed: <code>Contents: Read &amp; write</code>, <code>Actions: Write</code>, <code>Metadata: Read</code>
+    </p>
+  </div>
+
+  <div id="main" hidden>
+    <div class="card">
+      <h2>📋 Posts</h2>
+      <input type="text" id="search" placeholder="Search by title, channel, or id…">
+      <ul id="post-list"></ul>
+      <div class="status" id="main-status"></div>
+    </div>
+
+    <div class="card" id="edit-form" hidden>
+      <h2>✏️ Edit Post</h2>
+      <label for="f-title">Blog Title</label>
+      <input type="text" id="f-title">
+
+      <label for="f-intro">Blog Intro</label>
+      <textarea id="f-intro"></textarea>
+
+      <label for="f-conclusion">Blog Conclusion</label>
+      <textarea id="f-conclusion"></textarea>
+
+      <div class="row">
+        <div>
+          <label for="f-channel">Channel</label>
+          <input type="text" id="f-channel">
+        </div>
+        <div>
+          <label for="f-difficulty">Difficulty</label>
+          <select id="f-difficulty">
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </div>
+      </div>
+
+      <label for="f-tags">Tags (comma-separated)</label>
+      <input type="text" id="f-tags" placeholder="aws, cloud, s3">
+
+      <div style="margin-top:14px;">
+        <button class="btn-primary" id="save-btn">💾 Save &amp; Deploy</button>
+        <button class="btn-danger"  id="delete-btn">🗑 Delete</button>
+      </div>
+      <div class="status" id="form-status"></div>
+    </div>
+
+    <div class="card">
+      <h2>⚡ Generate New Post</h2>
+      <div class="row">
+        <div>
+          <label for="gen-topic">Topic</label>
+          <input type="text" id="gen-topic" placeholder="e.g. AWS Lambda cold starts">
+        </div>
+        <div>
+          <label for="gen-channel">Channel</label>
+          <input type="text" id="gen-channel" placeholder="e.g. aws">
+        </div>
+      </div>
+      <button class="btn-gen" id="gen-btn" style="margin-top:12px;">🚀 Generate</button>
+      <div class="status" id="gen-status"></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

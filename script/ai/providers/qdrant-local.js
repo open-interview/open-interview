@@ -11,11 +11,11 @@
  * computed in JS (fast enough for local dev / CI with <100k rows).
  */
 
-import { createClient } from '@libsql/client';
+import Database from 'better-sqlite3';
 import crypto from 'crypto';
 
 // RAG always uses local SQLite
-const DB_URL = 'file:local.db';
+const DB_PATH = 'local.db';
 
 class LocalQdrantProvider {
   constructor() {
@@ -26,9 +26,9 @@ class LocalQdrantProvider {
 
   _getDb() {
     if (!this.db) {
-      this.db = createClient({ url: DB_URL });
-      this.db.execute('PRAGMA journal_mode=WAL').catch(() => {});
-      this.db.execute('PRAGMA busy_timeout=5000').catch(() => {});
+      this.db = new Database(DB_PATH);
+      this.db.pragma('journal_mode = WAL');
+      this.db.pragma('busy_timeout = 5000');
     }
     return this.db;
   }
@@ -49,7 +49,7 @@ class LocalQdrantProvider {
     await this.init();
     const t = this._tableName(collectionName);
     const db = this._getDb();
-    await db.execute(`
+    db.exec(`
       CREATE TABLE IF NOT EXISTS ${t} (
         id TEXT PRIMARY KEY,
         original_id TEXT NOT NULL,
@@ -58,7 +58,7 @@ class LocalQdrantProvider {
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    await db.execute(`CREATE INDEX IF NOT EXISTS idx_${t}_oid ON ${t}(original_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_${t}_oid ON ${t}(original_id)`);
     this._ensuredCollections.add(collectionName);
     console.log(`✅ Local collection ready: ${collectionName}`);
     return true;
@@ -72,7 +72,6 @@ class LocalQdrantProvider {
   async upsert(collectionName, points) {
     await this.ensureCollection(collectionName);
     const t = this._tableName(collectionName);
-    const db = this._getDb();
 
     const valid = points.filter(p =>
       Array.isArray(p.vector) && p.vector.length > 0 &&
@@ -80,12 +79,11 @@ class LocalQdrantProvider {
     );
     if (!valid.length) return { status: 'skipped' };
 
+    const db = this._getDb();
+    const stmt = db.prepare(`INSERT OR REPLACE INTO ${t} (id, original_id, vector, payload) VALUES (?,?,?,?)`);
     for (const p of valid) {
       const uuid = this.stringToUUID(p.id);
-      await db.execute({
-        sql: `INSERT OR REPLACE INTO ${t} (id, original_id, vector, payload) VALUES (?,?,?,?)`,
-        args: [uuid, p.id, JSON.stringify(p.vector), JSON.stringify({ ...p.payload, originalId: p.id })]
-      });
+      stmt.run(uuid, p.id, JSON.stringify(p.vector), JSON.stringify({ ...p.payload, originalId: p.id }));
     }
     return { status: 'ok', upserted: valid.length };
   }
@@ -103,16 +101,15 @@ class LocalQdrantProvider {
     const t = this._tableName(collectionName);
     const db = this._getDb();
 
-    const rows = await db.execute(`SELECT id, original_id, vector, payload FROM ${t}`);
+    const rows = db.prepare(`SELECT id, original_id, vector, payload FROM ${t}`).all();
     const scored = [];
 
-    for (const row of rows.rows) {
+    for (const row of rows) {
       const vec = JSON.parse(row.vector);
       const score = this._cosine(vector, vec);
       if (score < scoreThreshold) continue;
       const payload = JSON.parse(row.payload);
 
-      // Apply simple filter (must / must_not)
       if (filter) {
         if (filter.must) {
           const pass = filter.must.every(f => payload[f.key] === f.match?.value);
@@ -154,15 +151,14 @@ class LocalQdrantProvider {
     await this.ensureCollection(collectionName);
     const t = this._tableName(collectionName);
     const db = this._getDb();
+    const stmt = db.prepare(`DELETE FROM ${t} WHERE id = ?`);
     for (const id of ids) {
-      const uuid = this.stringToUUID(id);
-      await db.execute({ sql: `DELETE FROM ${t} WHERE id = ?`, args: [uuid] });
+      stmt.run(this.stringToUUID(id));
     }
     return true;
   }
 
   async deleteByFilter(collectionName, filter) {
-    // For local use, just log — full filter-based delete not needed
     console.warn('deleteByFilter: not fully implemented in local provider');
     return true;
   }
@@ -171,8 +167,7 @@ class LocalQdrantProvider {
     await this.ensureCollection(collectionName);
     const t = this._tableName(collectionName);
     const db = this._getDb();
-    const res = await db.execute(`SELECT COUNT(*) as cnt FROM ${t}`);
-    const cnt = Number(res.rows[0].cnt);
+    const cnt = db.prepare(`SELECT COUNT(*) as cnt FROM ${t}`).get().cnt;
     return { name: collectionName, vectorsCount: cnt, pointsCount: cnt, status: 'green' };
   }
 
@@ -181,18 +176,14 @@ class LocalQdrantProvider {
     const { limit = 100, withPayload = true } = options;
     const t = this._tableName(collectionName);
     const db = this._getDb();
-    const rows = await db.execute({ sql: `SELECT * FROM ${t} LIMIT ?`, args: [limit] });
+    const rows = db.prepare(`SELECT * FROM ${t} LIMIT ?`).all(limit);
     return {
-      points: rows.rows.map(r => ({
-        id: r.id,
-        payload: withPayload ? JSON.parse(r.payload) : {}
-      })),
+      points: rows.map(r => ({ id: r.id, payload: withPayload ? JSON.parse(r.payload) : {} })),
       nextOffset: null
     };
   }
 
   async createPayloadIndex(collectionName, fieldName) {
-    // No-op for local SQLite — filtering is done in JS
     return true;
   }
 
@@ -200,10 +191,8 @@ class LocalQdrantProvider {
     await this.ensureCollection(collectionName);
     const t = this._tableName(collectionName);
     const db = this._getDb();
-    const uuid = this.stringToUUID(id);
-    const res = await db.execute({ sql: `SELECT * FROM ${t} WHERE id = ?`, args: [uuid] });
-    if (!res.rows.length) return null;
-    const row = res.rows[0];
+    const row = db.prepare(`SELECT * FROM ${t} WHERE id = ?`).get(this.stringToUUID(id));
+    if (!row) return null;
     return { id: row.id, payload: JSON.parse(row.payload), vector: JSON.parse(row.vector) };
   }
 

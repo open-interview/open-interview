@@ -1,6 +1,6 @@
 /**
  * Shared PostgreSQL client for scripts
- * Provides a @libsql/client-compatible API so all 40+ scripts work unchanged.
+ * Provides a unified DB client API for all scripts.
  *
  * Key behaviours:
  *  - Converts `?` positional placeholders → PostgreSQL `$1, $2, ...`

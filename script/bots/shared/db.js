@@ -1,6 +1,6 @@
 /**
  * Database utilities for bots — PostgreSQL edition
- * Provides the same API as the old @libsql/client version.
+ * Provides a unified PostgreSQL client API.
  */
 
 import { dbClient, getPool } from '../../db/pg-client.js';

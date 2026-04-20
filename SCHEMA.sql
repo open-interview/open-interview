@@ -1,4 +1,4 @@
--- Turso Database Schema
+-- Database Schema
 -- Generated from shared/schema.ts
 -- Version: 2.2.0
 -- Date: January 25, 2026
