@@ -120,7 +120,7 @@ test.describe('Onboarding', () => {
     // SubscriptionGate shows OnboardingFlow ("Personalize your feed" / "Choose your topics")
     // HomePage fallback shows "Ace Your Tech Interview" / "Start Practicing Now"
     await expect(
-      page.getByText(/Personalize your feed|Choose your topics|Ace Your Tech Interview|Start Practicing Now|Welcome|Get Started/i).first()
+      page.getByText(/Personalize your feed|Choose your topics|Ace your next|What's your role|Ace Your Tech Interview|Start Practicing Now|Welcome|Get Started/i).first()
     ).toBeVisible({ timeout: 10000 });
   });
 
