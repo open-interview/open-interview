@@ -24,8 +24,8 @@ import path from 'path';
 import { generateLinkedInPost } from './ai/graphs/linkedin-graph.js';
 
 // Constants
-const LINKEDIN_API_URL = 'https://api.linkedin.com/v2/ugcPosts';
-const LINKEDIN_UPLOAD_URL = 'https://api.linkedin.com/v2/assets?action=registerUpload';
+const LINKEDIN_API_URL = 'https://api.linkedin.com/rest/posts';
+const LINKEDIN_UPLOAD_URL = 'https://api.linkedin.com/rest/images?action=initializeUpload';
 const MAX_CONTENT_LENGTH = 3000;
 const MAX_TITLE_LENGTH = 200;
 const MAX_DESCRIPTION_LENGTH = 256;
@@ -229,15 +229,8 @@ async function registerImageUpload() {
   console.log('📝 Registering image upload with LinkedIn...');
   
   const payload = {
-    registerUploadRequest: {
-      recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
-      owner: personUrn,
-      serviceRelationships: [
-        {
-          relationshipType: 'OWNER',
-          identifier: 'urn:li:userGeneratedContent'
-        }
-      ]
+    initializeUploadRequest: {
+      owner: personUrn
     }
   };
   
@@ -246,7 +239,7 @@ async function registerImageUpload() {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
-      'X-Restli-Protocol-Version': '2.0.0'
+      'LinkedIn-Version': '202506'
     },
     body: JSON.stringify(payload)
   });
@@ -258,19 +251,18 @@ async function registerImageUpload() {
   
   const data = await response.json();
   
-  // Validate response structure
-  const uploadMechanism = data?.value?.uploadMechanism?.['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'];
-  if (!uploadMechanism?.uploadUrl) {
+  const uploadUrl = data?.value?.uploadUrl;
+  if (!uploadUrl) {
     throw new Error('Invalid response: missing uploadUrl');
   }
   
-  const asset = data?.value?.asset;
+  const asset = data?.value?.image;
   if (!asset) {
     throw new Error('Invalid response: missing asset URN');
   }
   
   console.log(`   ✅ Got upload URL and asset: ${asset}`);
-  return { uploadUrl: uploadMechanism.uploadUrl, asset };
+  return { uploadUrl, asset };
 }
 
 /**
@@ -309,30 +301,12 @@ async function publishToLinkedInWithImage(content, imageAsset) {
   
   const payload = {
     author: personUrn,
+    commentary: content.substring(0, MAX_CONTENT_LENGTH),
+    visibility: 'PUBLIC',
+    distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] },
+    content: { media: { id: imageAsset } },
     lifecycleState: 'PUBLISHED',
-    specificContent: {
-      'com.linkedin.ugc.ShareContent': {
-        shareCommentary: {
-          text: content.substring(0, MAX_CONTENT_LENGTH)
-        },
-        shareMediaCategory: 'IMAGE',
-        media: [
-          {
-            status: 'READY',
-            media: imageAsset,
-            title: {
-              text: postTitle.substring(0, MAX_TITLE_LENGTH)
-            },
-            description: {
-              text: (postExcerpt || 'Technical interview preparation').substring(0, MAX_DESCRIPTION_LENGTH)
-            }
-          }
-        ]
-      }
-    },
-    visibility: {
-      'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC'
-    }
+    isReshareDisabledByAuthor: false
   };
   
   const response = await fetchWithRetry(LINKEDIN_API_URL, {
@@ -340,7 +314,7 @@ async function publishToLinkedInWithImage(content, imageAsset) {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
-      'X-Restli-Protocol-Version': '2.0.0'
+      'LinkedIn-Version': '202506'
     },
     body: JSON.stringify(payload)
   });
@@ -350,13 +324,13 @@ async function publishToLinkedInWithImage(content, imageAsset) {
     throw new Error(`LinkedIn API error (${response.status}): ${errorMsg}`);
   }
   
-  const result = await response.json();
+  const id = response.headers.get('x-restli-id');
   
-  if (!result.id) {
+  if (!id) {
     throw new Error('Invalid response: missing post ID');
   }
   
-  return result;
+  return { id };
 }
 
 /**
@@ -367,30 +341,12 @@ async function publishToLinkedInArticle(content) {
   
   const payload = {
     author: personUrn,
+    commentary: content.substring(0, MAX_CONTENT_LENGTH),
+    visibility: 'PUBLIC',
+    distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] },
+    content: { article: { source: postUrl, title: postTitle.substring(0, MAX_TITLE_LENGTH), description: (postExcerpt || 'Technical interview preparation').substring(0, MAX_DESCRIPTION_LENGTH) } },
     lifecycleState: 'PUBLISHED',
-    specificContent: {
-      'com.linkedin.ugc.ShareContent': {
-        shareCommentary: {
-          text: content.substring(0, MAX_CONTENT_LENGTH)
-        },
-        shareMediaCategory: 'ARTICLE',
-        media: [
-          {
-            status: 'READY',
-            originalUrl: postUrl,
-            title: {
-              text: postTitle.substring(0, MAX_TITLE_LENGTH)
-            },
-            description: {
-              text: (postExcerpt || 'Technical interview preparation').substring(0, MAX_DESCRIPTION_LENGTH)
-            }
-          }
-        ]
-      }
-    },
-    visibility: {
-      'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC'
-    }
+    isReshareDisabledByAuthor: false
   };
   
   const response = await fetchWithRetry(LINKEDIN_API_URL, {
@@ -398,7 +354,7 @@ async function publishToLinkedInArticle(content) {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
-      'X-Restli-Protocol-Version': '2.0.0'
+      'LinkedIn-Version': '202506'
     },
     body: JSON.stringify(payload)
   });
@@ -408,13 +364,13 @@ async function publishToLinkedInArticle(content) {
     throw new Error(`LinkedIn API error (${response.status}): ${errorMsg}`);
   }
   
-  const result = await response.json();
+  const id = response.headers.get('x-restli-id');
   
-  if (!result.id) {
+  if (!id) {
     throw new Error('Invalid response: missing post ID');
   }
   
-  return result;
+  return { id };
 }
 
 /**

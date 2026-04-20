@@ -1664,7 +1664,49 @@ async function main() {
   if (dryRun) console.log('🔍 DRY RUN MODE - no DB writes\n');
 
   if (htmlOnly && !process.env.DATABASE_URL) {
-    console.log('⚠️  DATABASE_URL not set — skipping blog generation (--html-only with no DB)');
+    // Fallback: generate static site from committed data/blog-posts.json
+    const fallbackPath = path.join(process.cwd(), 'data/blog-posts.json');
+    if (!fs.existsSync(fallbackPath)) {
+      console.log('⚠️  DATABASE_URL not set and data/blog-posts.json not found — skipping blog generation');
+      process.exit(0);
+    }
+    const articles = JSON.parse(fs.readFileSync(fallbackPath, 'utf-8'));
+    if (!articles.length) {
+      console.log('⚠️  data/blog-posts.json is empty — skipping blog generation');
+      process.exit(0);
+    }
+    console.log(`📂 Using JSON fallback: ${articles.length} posts from data/blog-posts.json`);
+    fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+    fs.mkdirSync(path.join(OUTPUT_DIR, 'images'), { recursive: true });
+    // Write SVG images from cached svgContent
+    for (const article of articles) {
+      const svgContent = article.svgContent || {};
+      for (const [filename, svg] of Object.entries(svgContent)) {
+        fs.writeFileSync(path.join(OUTPUT_DIR, 'images', filename), svg);
+      }
+    }
+    fs.writeFileSync(path.join(OUTPUT_DIR, 'style.css'), generateCSS());
+    fs.writeFileSync(path.join(OUTPUT_DIR, 'index.html'), generateIndexPage(articles));
+    fs.mkdirSync(path.join(OUTPUT_DIR, 'categories'), { recursive: true });
+    fs.writeFileSync(path.join(OUTPUT_DIR, 'categories', 'index.html'), generateCategoriesIndexPage(articles));
+    for (const category of Object.keys(categoryMap)) {
+      const slug = category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const dir = path.join(OUTPUT_DIR, 'categories', slug);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'index.html'), generateCategoryPage(category, articles, articles));
+    }
+    const postsDir = path.join(OUTPUT_DIR, 'posts');
+    fs.mkdirSync(postsDir, { recursive: true });
+    for (const article of articles) {
+      const dir = path.join(postsDir, article.id, article.blogSlug);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'index.html'), generateArticlePage(article, articles));
+    }
+    fs.writeFileSync(path.join(OUTPUT_DIR, '.nojekyll'), '');
+    console.log(`\n✅ Blog generated from JSON fallback!`);
+    console.log(`   Total posts: ${articles.length}`);
+    console.log(`   Output: ${OUTPUT_DIR}/`);
     process.exit(0);
   }
 

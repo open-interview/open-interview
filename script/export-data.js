@@ -135,6 +135,37 @@ async function main() {
     console.log(`  ✓ voice-sessions.json (${sessions.length})`);
   } catch (e) { console.log(`  ⚠️ voice-sessions: ${e.message}`); }
 
+  // ── Blog Posts ─────────────────────────────────────────────────────────────
+  try {
+    const bpRows = (await client.execute('SELECT * FROM blog_posts ORDER BY created_at DESC')).rows;
+    const blogPosts = bpRows.map(r => ({
+      id: r.question_id,
+      blogTitle: r.title,
+      blogSlug: r.slug,
+      blogIntro: r.introduction,
+      blogSections: r.sections ? JSON.parse(r.sections) : [],
+      blogConclusion: r.conclusion,
+      blogMeta: r.meta_description,
+      channel: r.channel,
+      difficulty: r.difficulty,
+      tags: r.tags ? JSON.parse(r.tags) : [],
+      diagram: r.diagram,
+      diagramType: r.diagram_type,
+      diagramLabel: r.diagram_label,
+      quickReference: r.quick_reference ? JSON.parse(r.quick_reference) : [],
+      glossary: r.glossary ? JSON.parse(r.glossary) : [],
+      realWorldExample: r.real_world_example ? JSON.parse(r.real_world_example) : null,
+      funFact: r.fun_fact,
+      sources: r.sources ? JSON.parse(r.sources) : [],
+      images: r.images ? JSON.parse(r.images) : [],
+      svgContent: r.svg_content ? JSON.parse(r.svg_content) : {},
+      socialSnippet: r.social_snippet ? JSON.parse(r.social_snippet) : null,
+      createdAt: r.created_at,
+    }));
+    write('data/blog-posts.json', blogPosts);
+    console.log(`  ✓ blog-posts.json (${blogPosts.length})`);
+  } catch (e) { console.log(`  ⚠️ blog-posts: ${e.message}`); }
+
   console.log('\n✅ Export complete. Commit the data/ directory.');
   await getPool().end();
 }
