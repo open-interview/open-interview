@@ -135,6 +135,24 @@ async function main() {
     console.log(`  ✓ voice-sessions.json (${sessions.length})`);
   } catch (e) { console.log(`  ⚠️ voice-sessions: ${e.message}`); }
 
+  // ── Blog Posts ─────────────────────────────────────────────────────────────
+  try {
+    const bpRows = (await client.execute('SELECT * FROM blog_posts ORDER BY created_at DESC')).rows;
+    const posts = bpRows.map(r => ({
+      id: r.id, questionId: r.question_id, title: r.title, slug: r.slug,
+      introduction: r.introduction, sections: r.sections, conclusion: r.conclusion,
+      metaDescription: r.meta_description, channel: r.channel, difficulty: r.difficulty,
+      tags: r.tags, diagram: r.diagram, quickReference: r.quick_reference,
+      glossary: r.glossary, realWorldExample: r.real_world_example,
+      funFact: r.fun_fact, sources: r.sources, socialSnippet: r.social_snippet,
+      diagramType: r.diagram_type, diagramLabel: r.diagram_label,
+      images: r.images, svgContent: r.svg_content,
+      createdAt: r.created_at, publishedAt: r.published_at,
+    }));
+    write('data/blog-posts.json', posts);
+    console.log(`  ✓ blog-posts.json (${posts.length})`);
+  } catch (e) { console.log(`  ⚠️ blog-posts: ${e.message}`); }
+
   console.log('\n✅ Export complete. Commit the data/ directory.');
   await getPool().end();
 }

@@ -78,6 +78,33 @@ async function main() {
     console.log(`✓ Imported ${fcInserted} flashcards`);
   }
 
+  // Import blog posts
+  const BP_FILE = 'data/blog-posts.json';
+  if (fs.existsSync(BP_FILE)) {
+    const posts = JSON.parse(fs.readFileSync(BP_FILE, 'utf8'));
+    let bpInserted = 0;
+    for (const p of posts) {
+      await pool.query(
+        `INSERT INTO blog_posts (
+          id, question_id, title, slug, introduction, sections, conclusion,
+          meta_description, channel, difficulty, tags, diagram, quick_reference,
+          glossary, real_world_example, fun_fact, sources, social_snippet,
+          diagram_type, diagram_label, images, svg_content, created_at, published_at
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
+        ON CONFLICT (id) DO NOTHING`,
+        [
+          p.id, p.questionId, p.title, p.slug, p.introduction, p.sections, p.conclusion,
+          p.metaDescription, p.channel, p.difficulty, p.tags, p.diagram, p.quickReference,
+          p.glossary, p.realWorldExample, p.funFact, p.sources, p.socialSnippet,
+          p.diagramType, p.diagramLabel, p.images, p.svgContent,
+          p.createdAt, p.publishedAt ?? null,
+        ]
+      );
+      bpInserted++;
+    }
+    console.log(`✓ Imported ${bpInserted} blog posts`);
+  }
+
   await pool.end();
 }
 
