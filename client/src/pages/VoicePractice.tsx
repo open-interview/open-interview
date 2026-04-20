@@ -304,7 +304,7 @@ export default function VoicePractice() {
                   <li>• Channels with voice-suitable questions will appear here</li>
                   <li>• Try AWS, System Design, or Behavioral channels</li>
                 </ul>
-                <Button onClick={() => setLocation('/channels')} className="cursor-pointer">Subscribe to Topics</Button>
+                <Button onClick={() => setLocation('/channels')} className="cursor-pointer">Browse Channels</Button>
               </div>
             </div>
           </div>
@@ -362,16 +362,12 @@ export default function VoicePractice() {
               <h1 className="text-3xl font-bold text-foreground">Session Complete!</h1>
               <p className="text-muted-foreground mt-2">{questions.length} questions practiced</p>
             </div>
-            <div className="flex gap-3 justify-center flex-wrap">
+            <div className="flex gap-3 justify-center">
               <Button variant="secondary" onClick={() => { setCurrentIndex(0); setCompleted(false); resetForNewQuestion(); }} className="cursor-pointer min-h-[44px]">
                 <RotateCcw className="w-4 h-4 mr-2" />
                 Practice Again
               </Button>
-              <Button variant="primary" onClick={() => setLocation('/voice-interview')} className="cursor-pointer min-h-[44px]">
-                Try Voice Interview
-                <ChevronRight className="w-4 h-4 ml-2" />
-              </Button>
-              <Button variant="secondary" onClick={() => setLocation('/')} className="cursor-pointer min-h-[44px]">
+              <Button variant="primary" onClick={() => setLocation('/')} className="cursor-pointer min-h-[44px]">
                 Go Home
               </Button>
             </div>
@@ -436,13 +432,6 @@ export default function VoicePractice() {
               >
                 Start Practicing
               </button>
-
-              <button
-                onClick={() => setLocation('/answer-history')}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                View Answer History →
-              </button>
             </div>
           </div>
         </AppLayout>
@@ -471,18 +460,12 @@ export default function VoicePractice() {
               >
                 <ArrowLeft className="w-4 h-4 text-muted-foreground" />
               </button>
-              <div className="flex-1">
+              <div>
                 <h1 className="font-semibold text-foreground text-sm">Voice Practice</h1>
                 {currentQuestion?.channel && (
                   <p className="text-[10px] text-muted-foreground capitalize">{currentQuestion.channel}</p>
                 )}
               </div>
-              <button
-                onClick={() => setLocation('/answer-history')}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                History
-              </button>
             </div>
 
             <div className="max-w-4xl mx-auto px-4 pb-2 space-y-1.5">

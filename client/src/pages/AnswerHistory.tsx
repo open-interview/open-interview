@@ -26,7 +26,6 @@ interface HistoryEntry {
 }
 
 export default function AnswerHistory() {
-  const [, setLocation] = useLocation();
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -312,12 +311,12 @@ export default function AnswerHistory() {
                   : "Try adjusting your filters to see more results."}
               </p>
               {history.length === 0 && (
-                <button
-                  onClick={() => setLocation('/channels')}
+                <a
+                  href="/"
                   className="inline-flex items-center gap-2 px-6 py-3 min-h-[44px] bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors duration-150 cursor-pointer font-medium"
                 >
-                  Start Your First Session
-                </button>
+                  Browse Channels
+                </a>
               )}
             </motion.div>
           ) : (
@@ -325,20 +324,6 @@ export default function AnswerHistory() {
               {filteredHistory.map((entry, index) => (
                 <HistoryItem key={`${entry.questionId}-${entry.timestamp}`} entry={entry} index={index} />
               ))}
-              <div className="flex gap-3 justify-center pt-6">
-                <button
-                  onClick={() => setLocation('/channels')}
-                  className="px-6 py-3 min-h-[44px] bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors duration-150 cursor-pointer font-medium"
-                >
-                  Continue Practicing
-                </button>
-                <button
-                  onClick={() => setLocation('/stats')}
-                  className="px-6 py-3 min-h-[44px] bg-card border border-border rounded-lg hover:border-primary/50 transition-colors duration-150 cursor-pointer font-medium"
-                >
-                  View Stats
-                </button>
-              </div>
             </div>
           )}
         </div>

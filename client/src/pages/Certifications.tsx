@@ -198,7 +198,6 @@ function CertCard({
   cert: Certification; isStarted: boolean;
   onClick: () => void;
 }) {
-  const [, navigate] = useLocation();
   const Icon = iconMap[cert.icon] || Award;
   return (
     <motion.div
@@ -257,14 +256,6 @@ function CertCard({
           <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{cert.estimatedHours}h</span>
           <span className={`font-semibold capitalize ${DIFFICULTY_COLOR[cert.difficulty]}`}>{cert.difficulty}</span>
         </div>
-
-        {/* Start Practicing CTA */}
-        <button
-          onClick={e => { e.stopPropagation(); navigate(`/certifications/${cert.id}`); }}
-          className="w-full min-h-[36px] rounded-lg text-xs font-bold bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] text-white hover:opacity-90 transition-all duration-150 ease-out"
-        >
-          Start Practicing
-        </button>
 
       </div>
     </motion.div>
@@ -401,14 +392,6 @@ export default function CertificationsPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-24">
 
             <PageHeader title="Certifications" subtitle="Get certified, get hired" />
-            <div className="text-center -mt-4 mb-6">
-              <button
-                onClick={() => navigate('/learning-paths')}
-                className="text-sm text-muted-foreground hover:text-primary transition-colors underline underline-offset-4"
-              >
-                View Learning Paths
-              </button>
-            </div>
 
             {loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -481,7 +464,7 @@ export default function CertificationsPage() {
                         onClick={() => { setSearchQuery(''); setSelectedCategory(null); setSubscribedOnly(false); }}
                         className="min-h-[44px] px-5 rounded-xl text-sm font-bold bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] text-white hover:opacity-90 transition-all duration-150 ease-out cursor-pointer"
                       >
-                        {searchQuery && !selectedCategory && !subscribedOnly ? 'Browse All Certifications' : 'Clear Filters'}
+                        Clear Filters
                       </button>
                     )}
                   </motion.div>

@@ -3,7 +3,6 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
 import { SEOHead } from '../components/SEOHead';
@@ -305,7 +304,6 @@ function BadgeModal({
 
 // ── Main Page ────────────────────────────────────────────────
 export default function BadgesPage() {
-  const [, setLocation] = useLocation();
   const { progress: allBadges, unlocked: unlockedBadges, stats, nextUp, isLoading } = useAchievements();
   const [activeTab, setActiveTab] = useState<CategoryTab>('all');
   const [selectedBadge, setSelectedBadge] = useState<AchievementProgress | null>(null);
@@ -439,27 +437,6 @@ export default function BadgesPage() {
               ))}
             </div>
 
-            {/* ── Unlock CTA (when locked badges exist) ── */}
-            {stats.locked > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="flex items-center justify-between p-4 bg-[var(--surface-2)] border border-[var(--color-border)] rounded-xl"
-              >
-                <div className="flex items-center gap-3">
-                  <Lock className="w-5 h-5 text-[var(--text-tertiary)]" />
-                  <p className="text-sm font-medium">Unlock more badges by practicing</p>
-                </div>
-                <button
-                  onClick={() => setLocation('/channels')}
-                  className="px-4 py-2 bg-[var(--color-accent-violet)] text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-opacity cursor-pointer min-h-[44px]"
-                >
-                  Start Practicing
-                </button>
-              </motion.div>
-            )}
-
             {/* ── Next Up ── */}
             {nextUp.length > 0 && (
               <motion.div
@@ -497,14 +474,6 @@ export default function BadgesPage() {
                 </div>
               </motion.div>
             )}
-          </div>
-          <div className="flex justify-center pt-2 pb-4">
-            <button
-              onClick={() => setLocation('/stats')}
-              className="text-sm text-[var(--text-tertiary)] hover:text-[var(--text-primary)] underline transition-colors cursor-pointer"
-            >
-              View Your Stats
-            </button>
           </div>
         </div>
       </AppLayout>

@@ -237,17 +237,6 @@ export default function StatsRedesigned() {
             )}
           </motion.div>
 
-          {/* Keep Practicing CTA */}
-          <div className="flex justify-center">
-            <button
-              onClick={() => setLocation('/channels')}
-              className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity flex items-center gap-2"
-            >
-              <Zap className="w-4 h-4" />
-              Keep Practicing
-            </button>
-          </div>
-
           {/* Difficulty Breakdown */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -372,15 +361,6 @@ export default function StatsRedesigned() {
                   </div>
                 </motion.div>
               ))}
-            </div>
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={() => setLocation('/learning-paths')}
-                className="text-sm text-primary hover:underline flex items-center gap-1"
-              >
-                View Learning Paths
-                <ChevronRight className="w-4 h-4" />
-              </button>
             </div>
           </motion.div>
         </div>

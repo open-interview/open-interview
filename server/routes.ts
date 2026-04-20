@@ -1,11 +1,6 @@
 import type { Express } from "express";
 import { type Server } from "http";
-import * as QRepo from './repositories/questions';
-import * as CRepo from './repositories/certifications';
-import * as SRepo from './repositories/sessions';
-import { db } from './db';
-import { learningPaths, userSessions, flashcards, voiceSessions, tests } from '@shared/schema';
-import { eq, sql, desc, asc, and, ne, like } from 'drizzle-orm';
+import { client } from "./db";
 
 // Helper to parse JSON fields from DB
 function parseQuestion(row: any) {
@@ -58,8 +53,10 @@ export async function registerRoutes(
   // Get all channels with question counts
   app.get("/api/channels", async (_req, res) => {
     try {
-      const rows = await QRepo.getChannels();
-      res.json(rows.map(r => ({ id: r.channel, questionCount: r.count })));
+      const result = await client.execute(
+        "SELECT channel, COUNT(*) as count FROM questions WHERE status != 'deleted' GROUP BY channel"
+      );
+      res.json(result.rows.map(r => ({ id: r.channel, questionCount: r.count })));
     } catch (error) {
       console.error("Error fetching channels:", error);
       res.status(500).json({ error: "Failed to fetch channels" });
@@ -71,8 +68,22 @@ export async function registerRoutes(
     try {
       const { channelId } = req.params;
       const { subChannel, difficulty } = req.query;
-      const rows = await QRepo.getQuestionsByChannel(channelId, subChannel as string, difficulty as string);
-      res.json(rows);
+
+      let sql = "SELECT id, difficulty, sub_channel as subChannel FROM questions WHERE channel = ?";
+      const args: any[] = [channelId];
+
+      if (subChannel && subChannel !== "all") {
+        sql += " AND sub_channel = ?";
+        args.push(subChannel);
+      }
+      
+      if (difficulty && difficulty !== "all") {
+        sql += " AND difficulty = ?";
+        args.push(difficulty);
+      }
+
+      const result = await client.execute({ sql, args });
+      res.json(result.rows);
     } catch (error) {
       console.error("Error fetching questions:", error);
       res.status(500).json({ error: "Failed to fetch questions" });
@@ -83,11 +94,28 @@ export async function registerRoutes(
   app.get("/api/question/random", async (req, res) => {
     try {
       const { channel, difficulty } = req.query;
-      const row = await QRepo.getRandomQuestion(channel as string, difficulty as string);
-      if (!row) {
+      
+      let sql = "SELECT * FROM questions WHERE 1=1";
+      const args: any[] = [];
+
+      if (channel && channel !== "all") {
+        sql += " AND channel = ?";
+        args.push(channel);
+      }
+      if (difficulty && difficulty !== "all") {
+        sql += " AND difficulty = ?";
+        args.push(difficulty);
+      }
+
+      sql += " ORDER BY RANDOM() LIMIT 1";
+
+      const result = await client.execute({ sql, args });
+
+      if (result.rows.length === 0) {
         return res.status(404).json({ error: "No questions found" });
       }
-      res.json(parseQuestion(row));
+
+      res.json(parseQuestion(result.rows[0]));
     } catch (error) {
       console.error("Error fetching random question:", error);
       res.status(500).json({ error: "Failed to fetch random question" });
@@ -98,11 +126,17 @@ export async function registerRoutes(
   app.get("/api/question/:questionId", async (req, res) => {
     try {
       const { questionId } = req.params;
-      const row = await QRepo.getQuestionById(questionId);
-      if (!row) {
+      
+      const result = await client.execute({
+        sql: "SELECT * FROM questions WHERE id = ? LIMIT 1",
+        args: [questionId]
+      });
+
+      if (result.rows.length === 0) {
         return res.status(404).json({ error: "Question not found" });
       }
-      res.json(parseQuestion(row));
+
+      res.json(parseQuestion(result.rows[0]));
     } catch (error) {
       console.error("Error fetching question:", error);
       res.status(500).json({ error: "Failed to fetch question" });
@@ -112,12 +146,14 @@ export async function registerRoutes(
   // Get channel stats
   app.get("/api/stats", async (_req, res) => {
     try {
-      const rows = await QRepo.getStats();
+      const result = await client.execute(
+        "SELECT channel, difficulty, COUNT(*) as count FROM questions WHERE status != 'deleted' GROUP BY channel, difficulty"
+      );
 
       // Aggregate by channel
       const statsMap = new Map<string, { total: number; beginner: number; intermediate: number; advanced: number }>();
       
-      for (const row of rows) {
+      for (const row of result.rows) {
         const channel = row.channel as string;
         const difficulty = row.difficulty as string;
         const count = Number(row.count);
@@ -148,8 +184,14 @@ export async function registerRoutes(
   app.get("/api/subchannels/:channelId", async (req, res) => {
     try {
       const { channelId } = req.params;
-      const rows = await QRepo.getSubchannels(channelId);
-      res.json(rows.map(r => r.sub_channel));
+      
+      const result = await client.execute({
+        sql: "SELECT DISTINCT sub_channel FROM questions WHERE channel = ? ORDER BY sub_channel",
+        args: [channelId]
+      });
+
+      const subChannels = result.rows.map(r => r.sub_channel);
+      res.json(subChannels);
     } catch (error) {
       console.error("Error fetching subchannels:", error);
       res.status(500).json({ error: "Failed to fetch subchannels" });
@@ -160,14 +202,20 @@ export async function registerRoutes(
   app.get("/api/companies/:channelId", async (req, res) => {
     try {
       const { channelId } = req.params;
-      const rows = await QRepo.getCompaniesByChannel(channelId);
+      
+      const result = await client.execute({
+        sql: "SELECT companies FROM questions WHERE channel = ? AND companies IS NOT NULL",
+        args: [channelId]
+      });
+
       const companiesSet = new Set<string>();
-      for (const row of rows) {
+      for (const row of result.rows) {
         if (row.companies) {
           const parsed = JSON.parse(row.companies as string);
           parsed.forEach((c: string) => companiesSet.add(c));
         }
       }
+
       res.json(Array.from(companiesSet).sort());
     } catch (error) {
       console.error("Error fetching companies:", error);
@@ -215,8 +263,23 @@ export async function registerRoutes(
   app.get("/api/coding/challenges", async (req, res) => {
     try {
       const { difficulty, category } = req.query;
-      const rows = await CRepo.getCodingChallenges({ difficulty: difficulty as string, category: category as string });
-      res.json(rows.map(parseCodingChallenge));
+      
+      let sql = "SELECT * FROM coding_challenges WHERE 1=1";
+      const args: any[] = [];
+
+      if (difficulty && difficulty !== "all") {
+        sql += " AND difficulty = ?";
+        args.push(difficulty);
+      }
+      if (category && category !== "all") {
+        sql += " AND category = ?";
+        args.push(category);
+      }
+
+      sql += " ORDER BY created_at DESC";
+
+      const result = await client.execute({ sql, args });
+      res.json(result.rows.map(parseCodingChallenge));
     } catch (error) {
       console.error("Error fetching coding challenges:", error);
       // Return empty array if table doesn't exist yet
@@ -228,11 +291,17 @@ export async function registerRoutes(
   app.get("/api/coding/challenge/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const row = await CRepo.getCodingChallengeById(id);
-      if (!row) {
+      
+      const result = await client.execute({
+        sql: "SELECT * FROM coding_challenges WHERE id = ? LIMIT 1",
+        args: [id]
+      });
+
+      if (result.rows.length === 0) {
         return res.status(404).json({ error: "Challenge not found" });
       }
-      res.json(parseCodingChallenge(row));
+
+      res.json(parseCodingChallenge(result.rows[0]));
     } catch (error) {
       console.error("Error fetching coding challenge:", error);
       res.status(500).json({ error: "Failed to fetch challenge" });
@@ -243,11 +312,24 @@ export async function registerRoutes(
   app.get("/api/coding/random", async (req, res) => {
     try {
       const { difficulty } = req.query;
-      const row = await CRepo.getRandomCodingChallenge(difficulty as string);
-      if (!row) {
+      
+      let sql = "SELECT * FROM coding_challenges WHERE 1=1";
+      const args: any[] = [];
+
+      if (difficulty && difficulty !== "all") {
+        sql += " AND difficulty = ?";
+        args.push(difficulty);
+      }
+
+      sql += " ORDER BY RANDOM() LIMIT 1";
+
+      const result = await client.execute({ sql, args });
+
+      if (result.rows.length === 0) {
         return res.status(404).json({ error: "No challenges found" });
       }
-      res.json(parseCodingChallenge(row));
+
+      res.json(parseCodingChallenge(result.rows[0]));
     } catch (error) {
       console.error("Error fetching random challenge:", error);
       res.status(500).json({ error: "Failed to fetch random challenge" });
@@ -257,7 +339,9 @@ export async function registerRoutes(
   // Get coding challenge stats
   app.get("/api/coding/stats", async (_req, res) => {
     try {
-      const rows = await CRepo.getCodingStats();
+      const result = await client.execute(
+        "SELECT difficulty, category, COUNT(*) as count FROM coding_challenges GROUP BY difficulty, category"
+      );
 
       const stats = {
         total: 0,
@@ -265,7 +349,7 @@ export async function registerRoutes(
         byCategory: {} as Record<string, number>,
       };
 
-      for (const row of rows) {
+      for (const row of result.rows) {
         const count = Number(row.count);
         stats.total += count;
         
@@ -313,10 +397,19 @@ export async function registerRoutes(
     try {
       const { questionId } = req.params;
       const { type = 'question', limit = '50' } = req.query;
-      const rows = await SRepo.getQuestionHistory(questionId, type as string, parseInt(limit as string));
-      res.json(rows.map(parseHistoryRecord));
+      
+      const result = await client.execute({
+        sql: `SELECT * FROM question_history 
+              WHERE question_id = ? AND question_type = ? 
+              ORDER BY created_at DESC 
+              LIMIT ?`,
+        args: [questionId, type as string, parseInt(limit as string)]
+      });
+
+      res.json(result.rows.map(parseHistoryRecord));
     } catch (error) {
       console.error("Error fetching question history:", error);
+      // Return empty array if table doesn't exist yet
       res.json([]);
     }
   });
@@ -326,15 +419,36 @@ export async function registerRoutes(
     try {
       const { questionId } = req.params;
       const { type = 'question' } = req.query;
-      const { counts, latest } = await SRepo.getHistoryById(questionId, type as string);
-      const byType: Record<string, number> = {};
+      
+      const result = await client.execute({
+        sql: `SELECT event_type, COUNT(*) as count 
+              FROM question_history 
+              WHERE question_id = ? AND question_type = ?
+              GROUP BY event_type`,
+        args: [questionId, type as string]
+      });
+
+      const summary: Record<string, number> = {};
       let total = 0;
-      for (const row of counts) {
+      for (const row of result.rows) {
         const count = Number(row.count);
-        byType[row.event_type as string] = count;
+        summary[row.event_type as string] = count;
         total += count;
       }
-      res.json({ total, byType, latest: latest ? parseHistoryRecord(latest) : null });
+
+      // Get latest event
+      const latestResult = await client.execute({
+        sql: `SELECT * FROM question_history 
+              WHERE question_id = ? AND question_type = ?
+              ORDER BY created_at DESC LIMIT 1`,
+        args: [questionId, type as string]
+      });
+
+      const latest = latestResult.rows.length > 0 
+        ? parseHistoryRecord(latestResult.rows[0]) 
+        : null;
+
+      res.json({ total, byType: summary, latest });
     } catch (error) {
       console.error("Error fetching history summary:", error);
       res.json({ total: 0, byType: {}, latest: null });
@@ -364,22 +478,29 @@ export async function registerRoutes(
         });
       }
 
-      const row = await SRepo.addHistoryRecord({
-        questionId,
-        questionType,
-        eventType,
-        eventSource,
-        sourceName,
-        changesSummary,
-        changedFields: JSON.stringify(changedFields),
-        beforeSnapshot: JSON.stringify(beforeSnapshot),
-        afterSnapshot: JSON.stringify(afterSnapshot),
-        reason,
-        metadata: JSON.stringify(metadata),
-        createdAt: new Date().toISOString(),
+      const result = await client.execute({
+        sql: `INSERT INTO question_history 
+              (question_id, question_type, event_type, event_source, source_name, 
+               changes_summary, changed_fields, before_snapshot, after_snapshot, 
+               reason, metadata, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          questionId,
+          questionType,
+          eventType,
+          eventSource,
+          sourceName || null,
+          changesSummary || null,
+          changedFields ? JSON.stringify(changedFields) : null,
+          beforeSnapshot ? JSON.stringify(beforeSnapshot) : null,
+          afterSnapshot ? JSON.stringify(afterSnapshot) : null,
+          reason || null,
+          metadata ? JSON.stringify(metadata) : null,
+          new Date().toISOString()
+        ]
       });
 
-      res.json({ success: true, id: row.id });
+      res.json({ success: true, id: result.rows[0]?.id ?? result.lastInsertRowid });
     } catch (error) {
       console.error("Error adding history record:", error);
       res.status(500).json({ error: "Failed to add history record" });
@@ -390,8 +511,28 @@ export async function registerRoutes(
   app.get("/api/history", async (req, res) => {
     try {
       const { limit = '100', type, eventType, source } = req.query;
-      const rows = await SRepo.getRecentHistory({ type, eventType, source, limit: parseInt(limit as string) });
-      res.json(rows.map(parseHistoryRecord));
+      
+      let sql = "SELECT * FROM question_history WHERE 1=1";
+      const args: any[] = [];
+
+      if (type && type !== 'all') {
+        sql += " AND question_type = ?";
+        args.push(type);
+      }
+      if (eventType && eventType !== 'all') {
+        sql += " AND event_type = ?";
+        args.push(eventType);
+      }
+      if (source && source !== 'all') {
+        sql += " AND event_source = ?";
+        args.push(source);
+      }
+
+      sql += " ORDER BY created_at DESC LIMIT ?";
+      args.push(parseInt(limit as string));
+
+      const result = await client.execute({ sql, args });
+      res.json(result.rows.map(parseHistoryRecord));
     } catch (error) {
       console.error("Error fetching history:", error);
       res.json([]);
@@ -432,9 +573,28 @@ export async function registerRoutes(
   // Get all certifications
   app.get("/api/certifications", async (req, res) => {
     try {
-      const { category, difficulty, provider, status } = req.query;
-      const rows = await CRepo.getCertifications({ category: category as string, difficulty: difficulty as string, provider: provider as string, status: status as string });
-      res.json(rows.map(parseCertification));
+      const { category, difficulty, provider, status = 'active' } = req.query;
+      
+      let sql = "SELECT * FROM certifications WHERE status = ?";
+      const args: any[] = [status];
+
+      if (category && category !== 'all') {
+        sql += " AND category = ?";
+        args.push(category);
+      }
+      if (difficulty && difficulty !== 'all') {
+        sql += " AND difficulty = ?";
+        args.push(difficulty);
+      }
+      if (provider && provider !== 'all') {
+        sql += " AND provider LIKE ?";
+        args.push(`%${provider}%`);
+      }
+
+      sql += " ORDER BY name ASC";
+
+      const result = await client.execute({ sql, args });
+      res.json(result.rows.map(parseCertification));
     } catch (error) {
       console.error("Error fetching certifications:", error);
       // Return empty array if table doesn't exist yet
@@ -446,11 +606,17 @@ export async function registerRoutes(
   app.get("/api/certification/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const row = await CRepo.getCertificationById(id);
-      if (!row) {
+      
+      const result = await client.execute({
+        sql: "SELECT * FROM certifications WHERE id = ? LIMIT 1",
+        args: [id]
+      });
+
+      if (result.rows.length === 0) {
         return res.status(404).json({ error: "Certification not found" });
       }
-      res.json(parseCertification(row));
+
+      res.json(parseCertification(result.rows[0]));
     } catch (error) {
       console.error("Error fetching certification:", error);
       res.status(500).json({ error: "Failed to fetch certification" });
@@ -460,7 +626,9 @@ export async function registerRoutes(
   // Get certification stats
   app.get("/api/certifications/stats", async (_req, res) => {
     try {
-      const rows = await CRepo.getCertificationStats();
+      const result = await client.execute(
+        "SELECT category, difficulty, COUNT(*) as count, SUM(question_count) as questions FROM certifications WHERE status = 'active' GROUP BY category, difficulty"
+      );
 
       const stats = {
         total: 0,
@@ -469,7 +637,7 @@ export async function registerRoutes(
         byDifficulty: {} as Record<string, number>,
       };
 
-      for (const row of rows) {
+      for (const row of result.rows) {
         const count = Number(row.count);
         const questions = Number(row.questions) || 0;
         stats.total += count;
@@ -494,8 +662,24 @@ export async function registerRoutes(
     try {
       const { id } = req.params;
       const { domain, difficulty, limit = '50' } = req.query;
-      const rows = await CRepo.getCertificationQuestions(id, domain as string, difficulty as string, parseInt(limit as string));
-      res.json(rows.map(parseQuestion));
+      
+      let sql = "SELECT * FROM questions WHERE channel = ? AND status != 'deleted'";
+      const args: any[] = [id];
+
+      if (domain && domain !== 'all') {
+        sql += " AND sub_channel = ?";
+        args.push(domain);
+      }
+      if (difficulty && difficulty !== 'all') {
+        sql += " AND difficulty = ?";
+        args.push(difficulty);
+      }
+
+      sql += " ORDER BY RANDOM() LIMIT ?";
+      args.push(parseInt(limit as string));
+
+      const result = await client.execute({ sql, args });
+      res.json(result.rows.map(parseQuestion));
     } catch (error) {
       console.error("Error fetching certification questions:", error);
       res.json([]);
@@ -506,8 +690,20 @@ export async function registerRoutes(
   app.post("/api/certification/:id/update-count", async (req, res) => {
     try {
       const { id } = req.params;
-      const { questionCount } = await CRepo.updateCertificationQuestionCount(id);
-      res.json({ success: true, questionCount });
+      
+      const countResult = await client.execute({
+        sql: "SELECT COUNT(*) as count FROM questions WHERE channel = ? AND status != 'deleted'",
+        args: [id]
+      });
+      
+      const count = countResult.rows[0]?.count || 0;
+      
+      await client.execute({
+        sql: "UPDATE certifications SET question_count = ?, last_updated = ? WHERE id = ?",
+        args: [count, new Date().toISOString(), id]
+      });
+
+      res.json({ success: true, questionCount: count });
     } catch (error) {
       console.error("Error updating certification count:", error);
       res.status(500).json({ error: "Failed to update count" });
@@ -549,13 +745,46 @@ export async function registerRoutes(
   // Get all learning paths with filters
   app.get("/api/learning-paths", async (req, res) => {
     try {
-      const { pathType, difficulty, company, jobTitle, search, limit = '50', offset = '0' } = req.query;
-      const rows = await SRepo.getLearningPaths({
-        pathType, difficulty, company, jobTitle, search,
-        limit: parseInt(limit as string),
-        offset: parseInt(offset as string),
-      });
-      res.json(rows.map(parseLearningPath));
+      const { 
+        pathType, 
+        difficulty, 
+        company, 
+        jobTitle, 
+        search,
+        limit = '50',
+        offset = '0'
+      } = req.query;
+      
+      let sql = "SELECT * FROM learning_paths WHERE status = 'active'";
+      const args: any[] = [];
+
+      if (pathType && pathType !== 'all') {
+        sql += " AND path_type = ?";
+        args.push(pathType);
+      }
+      if (difficulty && difficulty !== 'all') {
+        sql += " AND difficulty = ?";
+        args.push(difficulty);
+      }
+      if (company) {
+        sql += " AND target_company = ?";
+        args.push(company);
+      }
+      if (jobTitle) {
+        sql += " AND target_job_title = ?";
+        args.push(jobTitle);
+      }
+      if (search) {
+        sql += " AND (title LIKE ? OR description LIKE ? OR tags LIKE ?)";
+        const searchPattern = `%${search}%`;
+        args.push(searchPattern, searchPattern, searchPattern);
+      }
+
+      sql += " ORDER BY popularity DESC, created_at DESC LIMIT ? OFFSET ?";
+      args.push(parseInt(limit as string), parseInt(offset as string));
+
+      const result = await client.execute({ sql, args });
+      res.json(result.rows.map(parseLearningPath));
     } catch (error) {
       console.error("Error fetching learning paths:", error);
       res.json([]);
@@ -566,11 +795,17 @@ export async function registerRoutes(
   app.get("/api/learning-paths/:pathId", async (req, res) => {
     try {
       const { pathId } = req.params;
-      const row = await SRepo.getLearningPathById(pathId);
-      if (!row) {
+      
+      const result = await client.execute({
+        sql: "SELECT * FROM learning_paths WHERE id = ? LIMIT 1",
+        args: [pathId]
+      });
+
+      if (result.rows.length === 0) {
         return res.status(404).json({ error: "Learning path not found" });
       }
-      res.json(parseLearningPath(row));
+
+      res.json(parseLearningPath(result.rows[0]));
     } catch (error) {
       console.error("Error fetching learning path:", error);
       res.status(500).json({ error: "Failed to fetch learning path" });
@@ -580,8 +815,10 @@ export async function registerRoutes(
   // Get available companies (for filtering)
   app.get("/api/learning-paths/filters/companies", async (_req, res) => {
     try {
-      const rows = await SRepo.getLearningPathCompanies();
-      res.json(rows.map(r => r.target_company));
+      const result = await client.execute(
+        "SELECT DISTINCT target_company FROM learning_paths WHERE target_company IS NOT NULL AND status = 'active' ORDER BY target_company"
+      );
+      res.json(result.rows.map(r => r.target_company));
     } catch (error) {
       console.error("Error fetching companies:", error);
       res.json([]);
@@ -591,8 +828,10 @@ export async function registerRoutes(
   // Get available job titles (for filtering)
   app.get("/api/learning-paths/filters/job-titles", async (_req, res) => {
     try {
-      const rows = await SRepo.getLearningPathJobTitles();
-      res.json(rows.map(r => r.target_job_title));
+      const result = await client.execute(
+        "SELECT DISTINCT target_job_title FROM learning_paths WHERE target_job_title IS NOT NULL AND status = 'active' ORDER BY target_job_title"
+      );
+      res.json(result.rows.map(r => r.target_job_title));
     } catch (error) {
       console.error("Error fetching job titles:", error);
       res.json([]);
@@ -602,7 +841,9 @@ export async function registerRoutes(
   // Get learning path stats
   app.get("/api/learning-paths/stats", async (_req, res) => {
     try {
-      const rows = await SRepo.getLearningPathStats();
+      const result = await client.execute(
+        "SELECT path_type, difficulty, COUNT(*) as count FROM learning_paths WHERE status = 'active' GROUP BY path_type, difficulty"
+      );
 
       const stats = {
         total: 0,
@@ -610,11 +851,13 @@ export async function registerRoutes(
         byDifficulty: {} as Record<string, number>,
       };
 
-      for (const row of rows) {
+      for (const row of result.rows) {
         const count = Number(row.count);
         stats.total += count;
+        
         const type = row.path_type as string;
         stats.byType[type] = (stats.byType[type] || 0) + count;
+        
         const diff = row.difficulty as string;
         stats.byDifficulty[diff] = (stats.byDifficulty[diff] || 0) + count;
       }
@@ -630,7 +873,12 @@ export async function registerRoutes(
   app.post("/api/learning-paths/:pathId/start", async (req, res) => {
     try {
       const { pathId } = req.params;
-      await db.update(learningPaths).set({ popularity: sql`popularity + 1` }).where(eq(learningPaths.id, pathId));
+      
+      await client.execute({
+        sql: "UPDATE learning_paths SET popularity = popularity + 1 WHERE id = ?",
+        args: [pathId]
+      });
+
       res.json({ success: true });
     } catch (error) {
       console.error("Error updating path popularity:", error);
@@ -645,8 +893,10 @@ export async function registerRoutes(
   // Get all active sessions for a user
   app.get("/api/user/sessions", async (_req, res) => {
     try {
-      const rows = await db.select().from(userSessions).where(eq(userSessions.status, 'active')).orderBy(desc(userSessions.lastAccessedAt));
-      res.json(rows);
+      const result = await client.execute(
+        "SELECT * FROM user_sessions WHERE status = 'active' ORDER BY last_accessed_at DESC"
+      );
+      res.json(result.rows);
     } catch (error) {
       console.error("Error fetching user sessions:", error);
       res.status(500).json({ error: "Failed to fetch sessions" });
@@ -657,11 +907,16 @@ export async function registerRoutes(
   app.get("/api/user/sessions/:sessionId", async (req, res) => {
     try {
       const { sessionId } = req.params;
-      const rows = await db.select().from(userSessions).where(eq(userSessions.id, sessionId)).limit(1);
-      if (rows.length === 0) {
+      const result = await client.execute({
+        sql: "SELECT * FROM user_sessions WHERE id = ?",
+        args: [sessionId]
+      });
+      
+      if (result.rows.length === 0) {
         return res.status(404).json({ error: "Session not found" });
       }
-      res.json(rows[0]);
+      
+      res.json(result.rows[0]);
     } catch (error) {
       console.error("Error fetching session:", error);
       res.status(500).json({ error: "Failed to fetch session" });
@@ -685,31 +940,54 @@ export async function registerRoutes(
       } = req.body;
 
       // Check if session already exists
-      const existing = await db.select({ id: userSessions.id }).from(userSessions).where(and(eq(userSessions.sessionKey, sessionKey), eq(userSessions.status, 'active'))).limit(1);
+      const existing = await client.execute({
+        sql: "SELECT id FROM user_sessions WHERE session_key = ? AND status = 'active'",
+        args: [sessionKey]
+      });
 
-      if (existing.length > 0) {
+      if (existing.rows.length > 0) {
         // Update existing session
-        const sessionId = existing[0].id;
-        await db.update(userSessions).set({ title, subtitle, progress, completedItems, sessionData: JSON.stringify(sessionData), lastAccessedAt: new Date().toISOString() }).where(eq(userSessions.id, sessionId));
+        const sessionId = existing.rows[0].id;
+        await client.execute({
+          sql: `UPDATE user_sessions 
+                SET title = ?, subtitle = ?, progress = ?, completed_items = ?, 
+                    session_data = ?, last_accessed_at = ?
+                WHERE id = ?`,
+          args: [
+            title,
+            subtitle || null,
+            progress,
+            completedItems,
+            JSON.stringify(sessionData),
+            new Date().toISOString(),
+            sessionId
+          ]
+        });
         res.json({ id: sessionId, updated: true });
       } else {
         // Create new session
         const sessionId = crypto.randomUUID();
-        await db.insert(userSessions).values({
-          id: sessionId,
-          sessionKey,
-          sessionType,
-          title,
-          subtitle: subtitle || null,
-          channelId: channelId || null,
-          certificationId: certificationId || null,
-          progress,
-          totalItems,
-          completedItems,
-          sessionData: JSON.stringify(sessionData),
-          startedAt: new Date().toISOString(),
-          lastAccessedAt: new Date().toISOString(),
-          status: 'active',
+        await client.execute({
+          sql: `INSERT INTO user_sessions 
+                (id, session_key, session_type, title, subtitle, channel_id, certification_id, 
+                 progress, total_items, completed_items, session_data, started_at, last_accessed_at, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [
+            sessionId,
+            sessionKey,
+            sessionType,
+            title,
+            subtitle || null,
+            channelId || null,
+            certificationId || null,
+            progress,
+            totalItems,
+            completedItems,
+            JSON.stringify(sessionData),
+            new Date().toISOString(),
+            new Date().toISOString(),
+            'active'
+          ]
         });
         res.json({ id: sessionId, created: true });
       }
@@ -725,7 +1003,18 @@ export async function registerRoutes(
       const { sessionId } = req.params;
       const { progress, completedItems, sessionData } = req.body;
 
-      await db.update(userSessions).set({ progress, completedItems, sessionData: JSON.stringify(sessionData), lastAccessedAt: new Date().toISOString() }).where(eq(userSessions.id, sessionId));
+      await client.execute({
+        sql: `UPDATE user_sessions 
+              SET progress = ?, completed_items = ?, session_data = ?, last_accessed_at = ?
+              WHERE id = ?`,
+        args: [
+          progress,
+          completedItems,
+          JSON.stringify(sessionData),
+          new Date().toISOString(),
+          sessionId
+        ]
+      });
 
       res.json({ success: true });
     } catch (error) {
@@ -738,7 +1027,12 @@ export async function registerRoutes(
   app.delete("/api/user/sessions/:sessionId", async (req, res) => {
     try {
       const { sessionId } = req.params;
-      await db.update(userSessions).set({ status: 'abandoned' }).where(eq(userSessions.id, sessionId));
+      
+      await client.execute({
+        sql: "UPDATE user_sessions SET status = 'abandoned' WHERE id = ?",
+        args: [sessionId]
+      });
+
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting session:", error);
@@ -750,7 +1044,12 @@ export async function registerRoutes(
   app.post("/api/user/sessions/:sessionId/complete", async (req, res) => {
     try {
       const { sessionId } = req.params;
-      await db.update(userSessions).set({ status: 'completed', completedAt: new Date().toISOString() }).where(eq(userSessions.id, sessionId));
+      
+      await client.execute({
+        sql: "UPDATE user_sessions SET status = 'completed', completed_at = ? WHERE id = ?",
+        args: [new Date().toISOString(), sessionId]
+      });
+
       res.json({ success: true });
     } catch (error) {
       console.error("Error completing session:", error);
@@ -765,12 +1064,13 @@ export async function registerRoutes(
   app.get("/api/flashcards", async (req, res) => {
     try {
       const { channel, limit = "50", offset = "0" } = req.query as Record<string, string>;
-      const query = db.select().from(flashcards);
-      const rows = await (channel
-        ? query.where(eq(flashcards.channel, channel))
-        : query
-      ).orderBy(desc(flashcards.createdAt)).limit(parseInt(limit)).offset(parseInt(offset));
-      res.json(rows);
+      let sql = "SELECT * FROM flashcards WHERE 1=1";
+      const args: any[] = [];
+      if (channel) { sql += " AND channel = ?"; args.push(channel); }
+      sql += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+      args.push(parseInt(limit), parseInt(offset));
+      const result = await client.execute({ sql, args });
+      res.json(result.rows);
     } catch (error) {
       console.error("Error fetching flashcards:", error);
       res.status(500).json({ error: "Failed to fetch flashcards" });
@@ -779,9 +1079,12 @@ export async function registerRoutes(
 
   app.get("/api/flashcards/:id", async (req, res) => {
     try {
-      const rows = await db.select().from(flashcards).where(eq(flashcards.id, req.params.id)).limit(1);
-      if (rows.length === 0) return res.status(404).json({ error: "Flashcard not found" });
-      res.json(rows[0]);
+      const result = await client.execute({
+        sql: "SELECT * FROM flashcards WHERE id = ?",
+        args: [req.params.id]
+      });
+      if (result.rows.length === 0) return res.status(404).json({ error: "Flashcard not found" });
+      res.json(result.rows[0]);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch flashcard" });
     }
@@ -789,8 +1092,11 @@ export async function registerRoutes(
 
   app.get("/api/flashcards/question/:questionId", async (req, res) => {
     try {
-      const rows = await db.select().from(flashcards).where(eq(flashcards.questionId, req.params.questionId)).limit(1);
-      res.json(rows[0] || null);
+      const result = await client.execute({
+        sql: "SELECT * FROM flashcards WHERE question_id = ?",
+        args: [req.params.questionId]
+      });
+      res.json(result.rows[0] || null);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch flashcard" });
     }
@@ -803,14 +1109,16 @@ export async function registerRoutes(
   app.get("/api/voice-sessions", async (req, res) => {
     try {
       const { channel, difficulty } = req.query as Record<string, string>;
-      const conditions = [];
-      if (channel) conditions.push(eq(voiceSessions.channel, channel));
-      if (difficulty) conditions.push(eq(voiceSessions.difficulty, difficulty));
-      const rows = await (conditions.length
-        ? db.select().from(voiceSessions).where(and(...conditions))
-        : db.select().from(voiceSessions)
-      ).orderBy(desc(voiceSessions.lastUpdated));
-      res.json(rows.map(r => ({ ...r, questionIds: r.questionIds ? JSON.parse(r.questionIds as string) : [] })));
+      let sql = "SELECT * FROM voice_sessions WHERE 1=1";
+      const args: any[] = [];
+      if (channel) { sql += " AND channel = ?"; args.push(channel); }
+      if (difficulty) { sql += " AND difficulty = ?"; args.push(difficulty); }
+      sql += " ORDER BY last_updated DESC";
+      const result = await client.execute({ sql, args });
+      res.json(result.rows.map(r => ({
+        ...r,
+        questionIds: r.question_ids ? JSON.parse(r.question_ids as string) : []
+      })));
     } catch (error) {
       console.error("Error fetching voice sessions:", error);
       res.status(500).json({ error: "Failed to fetch voice sessions" });
@@ -819,10 +1127,13 @@ export async function registerRoutes(
 
   app.get("/api/voice-sessions/:id", async (req, res) => {
     try {
-      const rows = await db.select().from(voiceSessions).where(eq(voiceSessions.id, req.params.id)).limit(1);
-      if (rows.length === 0) return res.status(404).json({ error: "Voice session not found" });
-      const row = rows[0];
-      res.json({ ...row, questionIds: row.questionIds ? JSON.parse(row.questionIds as string) : [] });
+      const result = await client.execute({
+        sql: "SELECT * FROM voice_sessions WHERE id = ?",
+        args: [req.params.id]
+      });
+      if (result.rows.length === 0) return res.status(404).json({ error: "Voice session not found" });
+      const row = result.rows[0];
+      res.json({ ...row, questionIds: row.question_ids ? JSON.parse(row.question_ids as string) : [] });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch voice session" });
     }
@@ -835,12 +1146,12 @@ export async function registerRoutes(
   app.get("/api/tests", async (req, res) => {
     try {
       const { channelId } = req.query as Record<string, string>;
-      const query = db.select({ id: tests.id, channelId: tests.channelId, channelName: tests.channelName, title: tests.title, description: tests.description, passingScore: tests.passingScore, version: tests.version, createdAt: tests.createdAt, lastUpdated: tests.lastUpdated }).from(tests);
-      const rows = await (channelId
-        ? query.where(eq(tests.channelId, channelId))
-        : query
-      ).orderBy(asc(tests.channelName));
-      res.json(rows);
+      let sql = "SELECT id, channel_id, channel_name, title, description, passing_score, version, created_at, last_updated FROM tests WHERE 1=1";
+      const args: any[] = [];
+      if (channelId) { sql += " AND channel_id = ?"; args.push(channelId); }
+      sql += " ORDER BY channel_name";
+      const result = await client.execute({ sql, args });
+      res.json(result.rows);
     } catch (error) {
       console.error("Error fetching tests:", error);
       res.status(500).json({ error: "Failed to fetch tests" });
@@ -849,9 +1160,12 @@ export async function registerRoutes(
 
   app.get("/api/tests/:id", async (req, res) => {
     try {
-      const rows = await db.select().from(tests).where(eq(tests.id, req.params.id)).limit(1);
-      if (rows.length === 0) return res.status(404).json({ error: "Test not found" });
-      const row = rows[0];
+      const result = await client.execute({
+        sql: "SELECT * FROM tests WHERE id = ?",
+        args: [req.params.id]
+      });
+      if (result.rows.length === 0) return res.status(404).json({ error: "Test not found" });
+      const row = result.rows[0];
       res.json({ ...row, questions: row.questions ? JSON.parse(row.questions as string) : [] });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch test" });

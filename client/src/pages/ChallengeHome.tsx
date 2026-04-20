@@ -149,13 +149,6 @@ export default function ChallengeHome() {
               ))}
             </div>
           )}
-          {hasProgress && (
-            <div className="flex justify-center">
-              <Link href="/stats" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
-                View Full Stats →
-              </Link>
-            </div>
-          )}
         </section>
 
         {/* ── Recommended for You ── */}
@@ -299,21 +292,12 @@ export default function ChallengeHome() {
                     <tr>
                       <td colSpan={6} className="text-center py-16">
                         <p className="text-gray-500 mb-3">No challenges match.</p>
-                        <div className="flex justify-center gap-3 flex-wrap">
-                          <button
-                            onClick={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors duration-150 cursor-pointer"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            Clear Filters
-                          </button>
-                          <button
-                            onClick={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium border border-gray-700 transition-colors duration-150 cursor-pointer"
-                          >
-                            Browse All Challenges
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors duration-150 cursor-pointer"
+                        >
+                          Clear filters
+                        </button>
                       </td>
                     </tr>
                   ) : filtered.map((c, i) => {
@@ -353,18 +337,6 @@ export default function ChallengeHome() {
             </div>
           </>
         )}
-
-        {/* ── Cross-sell ── */}
-        <div className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-xl px-5 py-4">
-          <div>
-            <p className="font-semibold text-white text-sm">Want more practice?</p>
-            <p className="text-xs text-gray-400 mt-0.5">Try Q&amp;A interview questions across 40+ topics.</p>
-          </div>
-          <Link href="/channels" className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-colors duration-150 shrink-0 min-h-[44px]">
-            Practice Interview Questions <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-
       </div>
     </AppLayout>
   );

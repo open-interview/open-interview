@@ -139,16 +139,7 @@ export default function Bookmarks() {
             <PageHeader
               title="Bookmarks"
               subtitle={`${bookmarkedQuestions.length} saved question${bookmarkedQuestions.length !== 1 ? 's' : ''}`}
-            >
-              {bookmarkedQuestions.length > 0 && (
-                <div className="mt-4">
-                  <Button variant="primary" onClick={() => setLocation(`/channel/${bookmarkedQuestions[0].channelId}`)}>
-                    <Play className="w-4 h-4 mr-1.5" fill="currentColor" />
-                    Practice Bookmarked
-                  </Button>
-                </div>
-              )}
-            </PageHeader>
+            />
 
             <div className="max-w-3xl mx-auto">
               {/* Filter Bar */}
@@ -216,12 +207,7 @@ export default function Bookmarks() {
                   icon={<Bookmark className="w-10 h-10" />}
                   title="No bookmarks yet"
                   description="Tap the bookmark icon on any question to save it for later review"
-                  action={
-                    <div className="flex gap-3 flex-wrap justify-center">
-                      <Button variant="primary" onClick={() => setLocation('/channels')}>Browse Topics</Button>
-                      <Button variant="secondary" onClick={() => setLocation('/channels')}>Start Practicing</Button>
-                    </div>
-                  }
+                  action={<Button variant="primary" onClick={() => setLocation('/channels')}>Browse Questions</Button>}
                   size="lg"
                   animated={true}
                 />

@@ -13,25 +13,11 @@ export const pool = new Pool({
   password: process.env.PGPASSWORD,
   database: process.env.PGDATABASE,
   max: 20,
-  min: 2,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
-  allowExitOnIdle: true,
 });
-
-pool.on("error", (err) => {
-  console.error("Unexpected pool error", err);
-});
-
-if (process.env.NODE_ENV === "development") {
-  pool.on("connect", () => console.log("Pool: new client connected"));
-}
 
 export const db = drizzle(pool, { schema });
-
-export async function closePool(): Promise<void> {
-  await pool.end();
-}
 
 function convertPlaceholders(sql: string): string {
   let i = 0;

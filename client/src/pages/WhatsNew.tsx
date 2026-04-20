@@ -223,26 +223,11 @@ export default function WhatsNew() {
 
             {/* Changelog Entries */}
             {!isLoading && data.entries.length > 0 && (
-              <>
-                <div className="space-y-3">
-                  {data.entries.map((entry, index) => (
-                    <ChangelogEntryCard key={`${entry.date}-${index}`} entry={entry} index={index} />
-                  ))}
-                </div>
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-center pt-8"
-                >
-                  <button
-                    onClick={() => setLocation('/channels')}
-                    className="px-6 py-3 min-h-[44px] bg-primary text-primary-foreground rounded-lg font-bold hover:bg-primary/90 transition-all duration-150 ease-out cursor-pointer flex items-center gap-2 mx-auto"
-                  >
-                    <Sparkles className="w-4 h-4" /> Explore New Questions
-                  </button>
-                </motion.div>
-              </>
+              <div className="space-y-3">
+                {data.entries.map((entry, index) => (
+                  <ChangelogEntryCard key={`${entry.date}-${index}`} entry={entry} index={index} />
+                ))}
+              </div>
             )}
           </div>
         </div>

@@ -815,33 +815,6 @@ git push origin feature/awesome-feature`} />
             </AnimatePresence>
           </div>
 
-          {/* CTA Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="max-w-4xl mx-auto text-center py-10"
-          >
-            <div className="flex flex-wrap justify-center gap-3">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setLocation('/channels')}
-                className="px-6 py-3 bg-gradient-to-r from-primary to-cyan-500 text-foreground font-bold rounded-lg flex items-center gap-2 shadow-lg shadow-primary/30"
-              >
-                <Rocket className="w-4 h-4" /> Start Practicing
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setLocation('/certifications')}
-                className="px-6 py-3 bg-background/80 font-bold rounded-lg flex items-center gap-2 border border-border hover:border-primary transition-colors duration-150"
-              >
-                <Award className="w-4 h-4" /> View Certifications
-              </motion.button>
-            </div>
-          </motion.div>
-
           {/* Footer */}
           <footer className="border-t border-border py-8 mt-12">
             <div className="max-w-4xl mx-auto text-center">

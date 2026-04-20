@@ -91,29 +91,6 @@ export default function NotFound() {
           </div>
         </motion.div>
 
-        {/* Quick-action CTA cards */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.55 }}
-          className="grid grid-cols-2 gap-3 mb-6"
-        >
-          <button
-            onClick={() => setLocation('/channels')}
-            className="flex flex-col items-center gap-2 p-5 bg-card border border-border rounded-xl hover:border-primary hover:bg-muted transition-all duration-150 ease-out cursor-pointer text-center"
-          >
-            <Search className="w-6 h-6 text-primary" />
-            <span className="font-semibold text-sm">Browse Topics</span>
-          </button>
-          <button
-            onClick={() => setLocation('/tests')}
-            className="flex flex-col items-center gap-2 p-5 bg-card border border-border rounded-xl hover:border-primary hover:bg-muted transition-all duration-150 ease-out cursor-pointer text-center"
-          >
-            <Home className="w-6 h-6 text-primary" />
-            <span className="font-semibold text-sm">Take a Test</span>
-          </button>
-        </motion.div>
-
         {/* Action buttons */}
         <motion.div
           initial={{ opacity: 0 }}

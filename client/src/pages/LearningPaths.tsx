@@ -402,18 +402,6 @@ export default function LearningPaths() {
             <div className="space-y-6 mb-12">
               <h2 className="text-4xl font-bold">Curated Paths</h2>
               
-              {visibleCuratedPaths.length === 0 && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
-                  <p className="text-muted-foreground mb-4">No curated paths match your subscribed topics.</p>
-                  <button
-                    onClick={() => setLocation('/channels')}
-                    className="px-6 py-3 bg-gradient-to-r from-primary to-cyan-500 rounded-[var(--radius-xl)] font-bold text-white hover:scale-105 transition-all"
-                  >
-                    Subscribe to Topics
-                  </button>
-                </motion.div>
-              )}
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {visibleCuratedPaths.map((path, i) => {
                   const Icon = path.icon;
@@ -502,39 +490,12 @@ export default function LearningPaths() {
                           <div className="font-bold">{path.jobs[0]}</div>
                         </div>
 
-                        {/* Start This Path CTA */}
-                        {isSelected && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setLocation(path.channels?.[0] ? `/channels` : '/channels'); }}
-                            className="w-full py-3 bg-gradient-to-r from-primary to-cyan-500 rounded-[var(--radius-xl)] font-bold text-white hover:scale-105 transition-all"
-                          >
-                            Start This Path
-                          </button>
-                        )}
-
                       </div>
                     </motion.button>
                   );
                 })}
               </div>
             </div>
-
-            {/* Browse All Topics CTA */}
-            {visibleCuratedPaths.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7 }}
-                className="text-center mb-12"
-              >
-                <button
-                  onClick={() => setLocation('/channels')}
-                  className="px-8 py-3 border-2 border-primary/40 hover:border-primary rounded-[var(--radius-xl)] font-semibold text-primary hover:bg-primary/10 transition-all"
-                >
-                  Browse All Topics
-                </button>
-              </motion.div>
-            )}
 
             {/* Why Choose a Path */}
             <motion.div
