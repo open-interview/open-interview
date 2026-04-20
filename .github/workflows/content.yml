@@ -1,0 +1,659 @@
+name: 🤖 Content Pipeline
+
+on:
+  schedule:
+    - cron: '0 * * * *'    # Hourly: quick-generate
+    - cron: '0 2 * * *'    # Daily 2AM: full pipeline
+    - cron: '0 8 * * *'    # Daily 8AM: maintenance
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Generation mode'
+        required: true
+        default: 'full-pipeline'
+        type: choice
+        options: [quick, full-pipeline, intake, blog, specific-stage]
+      stage:
+        description: 'Specific stage (for specific-stage mode)'
+        required: false
+        type: choice
+        options: [creator, analysis, verifier, processor, blog-generator, voice-sessions, interview-intelligence, coding-challenges, flashcards, similar-questions, learning-paths, certification-questions, readme, rss-sitemap]
+      count:
+        description: 'Items to process'
+        required: false
+        default: '10'
+      channel:
+        description: 'Specific channel'
+        required: false
+        default: ''
+      aggressive:
+        description: 'Prioritize empty channels'
+        required: false
+        default: 'true'
+        type: boolean
+      topic:
+        description: 'Topic for blog generation (mode=blog)'
+        required: false
+      publish:
+        description: 'Deploy blog after generation (mode=blog)'
+        required: false
+        default: true
+        type: boolean
+      question:
+        description: 'Question to add (mode=intake)'
+        required: false
+
+jobs:
+
+  # ── Shared baseline: seed postgres from committed data/, dump for all jobs ──
+  seed-db:
+    name: 🌱 Seed DB
+    if: |
+      (github.event.schedule == '0 2 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.mode == 'full-pipeline' || inputs.mode == 'intake' || inputs.mode == 'blog' || inputs.mode == 'specific-stage'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openinterview
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-node-pnpm
+      - name: Init schema + seeds
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          psql $DATABASE_URL -v ON_ERROR_STOP=1 -f TURSO_SCHEMA.sql
+          pnpm run db:seed:certifications || true
+          pnpm run db:seed:channels || true
+      - name: Import committed question data
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          if [ -d data/questions ] && [ "$(ls -A data/questions 2>/dev/null)" ]; then
+            pnpm run data:import
+          else
+            echo "No committed data found — starting with seeds only"
+          fi
+      - name: Dump baseline snapshot
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          pg_dump $DATABASE_URL --data-only --no-owner --no-privileges \
+            -t questions -t certifications -t channel_mappings -t voice_sessions \
+            -t learning_paths -t flashcards -t bot_ledger -t bot_runs \
+            -t blog_posts -t tests -t bot_state \
+            > /tmp/db-baseline.sql
+      - name: Upload baseline snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-baseline
+          path: /tmp/db-baseline.sql
+          retention-days: 1
+
+  # ── Hourly quick-generate (no seed-db dependency, runs independently) ────────
+  quick-generate:
+    name: 🚀 Quick Generate (${{ matrix.task }})
+    if: |
+      (github.event.schedule == '0 * * * *') ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'quick')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      matrix:
+        task: [questions, flashcards, voice-sessions]
+      fail-fast: false
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openinterview
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-bot
+      - name: Init schema + seeds
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          psql $DATABASE_URL -v ON_ERROR_STOP=1 -f TURSO_SCHEMA.sql
+          pnpm run db:seed:certifications || true
+          pnpm run db:seed:channels || true
+      - name: Import committed question data
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          if [ -d data/questions ] && [ "$(ls -A data/questions 2>/dev/null)" ]; then
+            pnpm run data:import
+          fi
+      - name: Run ${{ matrix.task }}
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+          INPUT_LIMIT: ${{ inputs.channel && inputs.count || '25' }}
+          INPUT_CHANNEL: ${{ inputs.channel }}
+          BALANCE_CHANNELS: 'true'
+          AGGRESSIVE_MODE: 'true'
+          ENSURE_MINIMUM: 'true'
+        run: |
+          case "${{ matrix.task }}" in
+            questions)        pnpm run generate:question ;;
+            flashcards)       pnpm run bot:flashcard -- --limit=50 ;;
+            voice-sessions)   pnpm run generate:voice-sessions -- --use-vector-db --limit=20 ;;
+          esac
+        continue-on-error: true
+      - name: Sync to Vector DB
+        if: matrix.task == 'questions' && success()
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: pnpm run vector:sync -- --mode=incremental || true
+
+  # ── Daily 2AM: ingest bots (all start from same baseline) ───────────────────
+  ingest:
+    name: 📥 Ingest (${{ matrix.bot }})
+    needs: seed-db
+    if: |
+      always() &&
+      ((github.event.schedule == '0 2 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.mode == 'full-pipeline' || inputs.stage == 'creator' || inputs.stage == 'analysis' || inputs.stage == 'verifier' || inputs.stage == 'processor')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      matrix:
+        bot: [creator, analysis, verifier, processor]
+      fail-fast: false
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openinterview
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-bot
+      - name: Init schema
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: psql $DATABASE_URL -v ON_ERROR_STOP=1 -f TURSO_SCHEMA.sql
+      - name: Restore baseline
+        uses: actions/download-artifact@v4
+        with:
+          name: db-baseline
+          path: /tmp
+      - name: Load baseline into DB
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: psql $DATABASE_URL -f /tmp/db-baseline.sql
+      - name: Run ${{ matrix.bot }} bot
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+          COUNT: ${{ inputs.count || '5' }}
+          BALANCE_CHANNELS: 'true'
+          MODE: scan
+          LIMIT: ${{ inputs.count || '10' }}
+          MAX_ITEMS: ${{ inputs.count || '10' }}
+        run: |
+          case "${{ matrix.bot }}" in
+            creator)   pnpm run bot:creator ;;
+            analysis)  pnpm run bot:analysis -- --limit=${{ inputs.count || '100' }} ;;
+            verifier)  pnpm run bot:verifier ;;
+            processor) pnpm run bot:processor ;;
+          esac
+        continue-on-error: true
+      - name: Dump bot output
+        if: always()
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          pg_dump $DATABASE_URL --data-only --no-owner --no-privileges \
+            -t questions -t channel_mappings -t bot_ledger -t bot_runs \
+            > /tmp/ingest-${{ matrix.bot }}.sql
+      - name: Upload bot snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-ingest-${{ matrix.bot }}
+          path: /tmp/ingest-${{ matrix.bot }}.sql
+          retention-days: 1
+
+  # ── Merge all ingest snapshots into one combined artifact ───────────────────
+  merge-ingest:
+    name: 🔀 Merge Ingest Snapshots
+    needs: ingest
+    if: always() && needs.ingest.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openinterview
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Init schema
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: psql $DATABASE_URL -v ON_ERROR_STOP=1 -f TURSO_SCHEMA.sql
+      - name: Download baseline
+        uses: actions/download-artifact@v4
+        with:
+          name: db-baseline
+          path: /tmp/snapshots
+        continue-on-error: true
+      - name: Download all ingest snapshots
+        uses: actions/download-artifact@v4
+        with:
+          pattern: db-ingest-*
+          path: /tmp/snapshots
+          merge-multiple: true
+        continue-on-error: true
+      - name: Restore all snapshots (baseline first, then ingest)
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          [ -f /tmp/snapshots/db-baseline.sql ] && psql $DATABASE_URL -f /tmp/snapshots/db-baseline.sql || true
+          for f in /tmp/snapshots/ingest-*.sql; do
+            [ -f "$f" ] && psql $DATABASE_URL -f "$f" || true
+          done
+      - name: Dump merged snapshot
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          pg_dump $DATABASE_URL --data-only --no-owner --no-privileges \
+            -t questions -t certifications -t channel_mappings -t voice_sessions \
+            -t learning_paths -t flashcards -t bot_ledger -t bot_runs \
+            -t blog_posts -t tests -t bot_state \
+            > /tmp/db-post-ingest.sql
+      - name: Upload merged snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-post-ingest
+          path: /tmp/db-post-ingest.sql
+          retention-days: 1
+
+  # ── Enrich jobs: all start from merged post-ingest snapshot ─────────────────
+  enrich:
+    name: ✨ Enrich (${{ matrix.stage }})
+    needs: merge-ingest
+    if: |
+      always() &&
+      ((github.event.schedule == '0 2 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.mode == 'full-pipeline' || inputs.stage == 'blog-generator' || inputs.stage == 'voice-sessions' || inputs.stage == 'interview-intelligence' || inputs.stage == 'coding-challenges' || inputs.stage == 'flashcards' || inputs.stage == 'similar-questions' || inputs.stage == 'learning-paths' || inputs.stage == 'certification-questions' || inputs.stage == 'readme' || inputs.stage == 'rss-sitemap')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        stage: [blog-generator, voice-sessions, interview-intelligence, coding-challenges, flashcards, similar-questions, learning-paths, certification-questions, readme, rss-sitemap]
+      fail-fast: false
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openinterview
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-bot
+      - name: Init schema
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: psql $DATABASE_URL -v ON_ERROR_STOP=1 -f TURSO_SCHEMA.sql
+      - name: Restore post-ingest snapshot
+        uses: actions/download-artifact@v4
+        with:
+          name: db-post-ingest
+          path: /tmp
+      - name: Load snapshot into DB
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: psql $DATABASE_URL -f /tmp/db-post-ingest.sql
+      - name: Run ${{ matrix.stage }}
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+          INPUT_COUNT: ${{ inputs.count || '2' }}
+          INPUT_DIFFICULTY: 'random'
+          INPUT_CATEGORY: 'random'
+        run: |
+          case "${{ matrix.stage }}" in
+            blog-generator)           pnpm run blog:generate ;;
+            voice-sessions)           pnpm run generate:voice-sessions -- --use-vector-db --limit=50 ;;
+            interview-intelligence)   pnpm run rag:intelligence ;;
+            coding-challenges)        pnpm run bot:coding-challenge ;;
+            flashcards)               pnpm run bot:flashcard -- --limit=50 ;;
+            similar-questions)        pnpm run vector:similar ;;
+            learning-paths)           pnpm run generate:learning-paths ;;
+            certification-questions)  pnpm run generate:certification ;;
+            readme)                   pnpm run generate:readme ;;
+            rss-sitemap)              pnpm run generate:rss && pnpm run generate:sitemap ;;
+          esac
+        continue-on-error: true
+      - name: Dump enrich output
+        if: always()
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          pg_dump $DATABASE_URL --data-only --no-owner --no-privileges \
+            -t questions -t voice_sessions -t learning_paths -t flashcards \
+            -t blog_posts -t tests \
+            > /tmp/enrich-${{ matrix.stage }}.sql
+      - name: Upload enrich snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-enrich-${{ matrix.stage }}
+          path: /tmp/enrich-${{ matrix.stage }}.sql
+          retention-days: 1
+
+  # ── Finalize: merge everything, export data files, commit ───────────────────
+  finalize:
+    name: 📊 Finalize (monitor + summary)
+    needs: [ingest, merge-ingest, enrich]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openinterview
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-node-pnpm
+      - name: Init schema
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: psql $DATABASE_URL -v ON_ERROR_STOP=1 -f TURSO_SCHEMA.sql
+      - name: Download all snapshots
+        uses: actions/download-artifact@v4
+        with:
+          pattern: 'db-*'
+          path: /tmp/snapshots
+          merge-multiple: true
+        continue-on-error: true
+      - name: Restore all snapshots in order
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          # Restore in pipeline order: baseline → ingest → enrich
+          [ -f /tmp/snapshots/db-baseline.sql ]    && psql $DATABASE_URL -f /tmp/snapshots/db-baseline.sql    || true
+          [ -f /tmp/snapshots/db-post-ingest.sql ] && psql $DATABASE_URL -f /tmp/snapshots/db-post-ingest.sql || true
+          for f in /tmp/snapshots/enrich-*.sql; do
+            [ -f "$f" ] && psql $DATABASE_URL -f "$f" || true
+          done
+      - name: Generate static data files
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          pnpm run fetch:data || true
+          pnpm run fetch:history || true
+          pnpm run generate:paths || true
+          pnpm run generate:rss || true
+          pnpm run generate:sitemap || true
+          pnpm run fetch:bot-monitor || true
+      - name: Export question data for next run seed
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: pnpm run data:export || true
+      - name: Commit and push with retry
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          MAX_RETRIES=3
+          for attempt in $(seq 1 $MAX_RETRIES); do
+            git add -f client/public/data/ data/questions/ data/meta/ 2>/dev/null || true
+            if ! git diff --staged --quiet; then
+              git commit -m "chore: update static data files [skip ci]" && git fetch origin main --quiet
+              if git push origin main; then echo "✅ Push succeeded"; exit 0; fi
+            else
+              echo "No changes to commit"; exit 0
+            fi
+            sleep 5; git reset --hard origin/main
+          done
+          echo "❌ Failed to push after $MAX_RETRIES attempts"; exit 1
+      - name: Pipeline summary
+        if: always()
+        run: |
+          echo "## 🤖 Content Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🌱 Seed | ${{ needs.seed-db.result == 'success' && '✅' || needs.seed-db.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📥 Ingest | ${{ needs.ingest.result == 'success' && '✅' || needs.ingest.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔀 Merge | ${{ needs.merge-ingest.result == 'success' && '✅' || needs.merge-ingest.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ✨ Enrich | ${{ needs.enrich.result == 'success' && '✅' || needs.enrich.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+
+  # ── Daily 8AM maintenance ────────────────────────────────────────────────────
+  flashcards-and-maintenance:
+    name: 🔧 Maintenance
+    if: |
+      (github.event.schedule == '0 8 * * *') ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'full-pipeline')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openinterview
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-bot
+      - name: Init schema + seeds
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          psql $DATABASE_URL -v ON_ERROR_STOP=1 -f TURSO_SCHEMA.sql
+          pnpm run db:seed:certifications || true
+          pnpm run db:seed:channels || true
+      - name: Import committed question data
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          if [ -d data/questions ] && [ "$(ls -A data/questions 2>/dev/null)" ]; then
+            pnpm run data:import
+          fi
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: pnpm run db:migrate:is-new || echo "Migration skipped"
+      - name: Clear old new-flags
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: pnpm run db:maintenance:clear-new-flags
+
+  # ── Manual intake ────────────────────────────────────────────────────────────
+  manual-intake:
+    name: 📥 Manual Intake
+    needs: seed-db
+    if: |
+      always() &&
+      github.event_name == 'workflow_dispatch' && inputs.mode == 'intake'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openinterview
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-bot
+      - name: Init schema
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: psql $DATABASE_URL -v ON_ERROR_STOP=1 -f TURSO_SCHEMA.sql
+      - name: Restore baseline
+        uses: actions/download-artifact@v4
+        with:
+          name: db-baseline
+          path: /tmp
+      - name: Load baseline into DB
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: psql $DATABASE_URL -f /tmp/db-baseline.sql
+      - name: Process and add question
+        env:
+          INPUT_QUESTION: ${{ inputs.question }}
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          CI: 'true'
+        run: pnpm run generate:question:random
+      - name: Regenerate RSS feed
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: pnpm run generate:rss
+      - name: Trigger deploy
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GH_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({ owner: context.repo.owner, repo: context.repo.repo, workflow_id: 'ci-cd.yml', ref: 'main' });
+
+  # ── Manual blog ──────────────────────────────────────────────────────────────
+  manual-blog:
+    name: 📝 Manual Blog
+    needs: seed-db
+    if: |
+      always() &&
+      github.event_name == 'workflow_dispatch' && inputs.mode == 'blog'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openinterview
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-bot
+      - name: Init schema
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: psql $DATABASE_URL -v ON_ERROR_STOP=1 -f TURSO_SCHEMA.sql
+      - name: Restore baseline
+        uses: actions/download-artifact@v4
+        with:
+          name: db-baseline
+          path: /tmp
+      - name: Load baseline into DB
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: psql $DATABASE_URL -f /tmp/db-baseline.sql
+      - name: Generate blog post
+        id: generate
+        env:
+          INPUT_TOPIC: ${{ inputs.topic }}
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          if [ -n "$INPUT_TOPIC" ]; then
+            pnpm run blog:generate:from-input
+          else
+            pnpm run blog:generate
+          fi
+      - name: Export and commit blog posts
+        if: success() && inputs.publish
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          pnpm run data:export
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git fetch origin main
+          git reset --hard origin/main
+          git add -f data/blog-posts.json
+          git diff --staged --quiet || git commit -m "chore: update blog posts data [skip ci]" && git push origin main
+      - name: Trigger blog deploy
+        if: success() && inputs.publish
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GH_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({ owner: context.repo.owner, repo: context.repo.repo, workflow_id: 'deploy-blog.yml', ref: 'main' });

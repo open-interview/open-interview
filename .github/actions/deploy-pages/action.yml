@@ -1,0 +1,72 @@
+name: 'Deploy to GitHub Pages'
+description: 'Deploys content to a GitHub Pages repository'
+
+inputs:
+  source-dir:
+    description: 'Source directory to deploy'
+    required: true
+  repo:
+    description: 'Target repository (owner/repo)'
+    required: true
+  branch:
+    description: 'Target branch'
+    required: false
+    default: 'main'
+  token:
+    description: 'GitHub token with push access'
+    required: true
+  commit-message:
+    description: 'Commit message'
+    required: false
+    default: 'Deploy: ${{ github.sha }}'
+  preserve-cname:
+    description: 'Preserve CNAME file'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Configure Git
+      shell: bash
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Clone target repository
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+      run: |
+        git clone --depth 1 --branch ${{ inputs.branch }} \
+          "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ inputs.repo }}.git" _deploy \
+          || git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ inputs.repo }}.git" _deploy
+
+    - name: Prepare deployment
+      shell: bash
+      run: |
+        cd _deploy
+        git checkout ${{ inputs.branch }} 2>/dev/null || git checkout -b ${{ inputs.branch }}
+        
+        # Clear old files, optionally preserving CNAME
+        if [ "${{ inputs.preserve-cname }}" = "true" ]; then
+          find . -maxdepth 1 ! -name '.git' ! -name '.' ! -name 'CNAME' -exec rm -rf {} +
+        else
+          find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} +
+        fi
+
+    - name: Copy content
+      shell: bash
+      run: |
+        cp -r ${{ inputs.source-dir }}/* _deploy/
+        touch _deploy/.nojekyll
+
+    - name: Push changes
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+      run: |
+        cd _deploy
+        git add -A
+        git diff --staged --quiet || git commit -m "${{ inputs.commit-message }}"
+        git push --force origin ${{ inputs.branch }}

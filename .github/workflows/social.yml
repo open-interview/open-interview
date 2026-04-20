@@ -1,0 +1,255 @@
+name: 📣 Social & Analytics
+
+# Replaces: social-media.yml (minor restructure — merges 3 poll jobs into 1)
+
+on:
+  schedule:
+    - cron: '0 5 * * *'      # Daily 5AM: post + analytics
+    - cron: '0 15 * * 2'     # Weekly Tuesday 15:00 UTC: poll
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task to run'
+        required: true
+        default: 'all'
+        type: choice
+        options: [all, linkedin-post, poll, analytics, opencode-poll]
+      post_url:
+        description: 'Specific blog post URL (for linkedin-post)'
+        required: false
+      question_id:
+        description: 'Question ID for poll'
+        required: false
+        default: ''
+      channel:
+        description: 'Filter by channel'
+        required: false
+        default: ''
+      difficulty:
+        description: 'Filter by difficulty'
+        required: false
+        default: ''
+        type: choice
+        options: ['', beginner, intermediate, advanced]
+      poll_duration:
+        description: 'Poll duration in hours'
+        required: false
+        default: '360'
+      dry_run:
+        description: 'Dry run (test without posting)'
+        required: false
+        default: false
+        type: boolean
+      topic:
+        description: 'Topic for use-case poll'
+        required: false
+        default: ''
+      subtopic:
+        description: 'Subtopic for use-case poll'
+        required: false
+        default: ''
+      concept:
+        description: 'Concept for use-case poll'
+        required: false
+        default: ''
+      use_poll_usecase:
+        description: 'Use use-case workflow (searches web first)'
+        required: false
+        default: false
+        type: boolean
+      publish:
+        description: 'Deploy blog after poll generation'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  linkedin-post:
+    name: 📢 LinkedIn Post
+    if: |
+      (github.event.schedule == '0 5 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.task == 'all' || inputs.task == 'linkedin-post'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openinterview
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-bot
+      - name: Init database schema
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          psql $DATABASE_URL -v ON_ERROR_STOP=1 -f TURSO_SCHEMA.sql
+          pnpm run db:seed:certifications || true
+          pnpm run db:seed:channels || true
+      - name: Get latest blog post
+        id: get_post
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+          SPECIFIC_URL: ${{ inputs.post_url }}
+        run: pnpm run blog:latest
+      - name: Publish to LinkedIn
+        if: steps.get_post.outputs.has_post == 'true'
+        id: publish
+        env:
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          LINKEDIN_PERSON_URN: ${{ secrets.LINKEDIN_PERSON_URN }}
+          POST_TITLE: ${{ steps.get_post.outputs.title }}
+          POST_URL: ${{ steps.get_post.outputs.url }}
+          POST_EXCERPT: ${{ steps.get_post.outputs.excerpt }}
+          POST_TAGS: ${{ steps.get_post.outputs.tags }}
+          POST_CHANNEL: ${{ steps.get_post.outputs.channel }}
+          POST_QUICK_REFERENCE: ${{ steps.get_post.outputs.quick_reference }}
+          POST_SOCIAL_HOOK: ${{ steps.get_post.outputs.social_hook }}
+          POST_SOCIAL_BODY: ${{ steps.get_post.outputs.social_body }}
+          POST_REAL_WORLD_EXAMPLE: ${{ steps.get_post.outputs.real_world_example }}
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: pnpm run linkedin:publish
+      - name: Mark post as shared
+        if: steps.get_post.outputs.has_post == 'true' && steps.publish.outputs.posted == 'true'
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+          POST_ID: ${{ steps.get_post.outputs.post_id }}
+        run: pnpm run blog:mark-shared
+
+  poll:
+    name: 📊 LinkedIn Poll
+    if: |
+      (github.event.schedule == '0 15 * * 2') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.task == 'all' || inputs.task == 'poll'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    outputs:
+      blog_generated: ${{ steps.poll_standard.outputs.blog_generated }}
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openinterview
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-bot
+      - name: Init database schema
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          psql $DATABASE_URL -v ON_ERROR_STOP=1 -f TURSO_SCHEMA.sql
+          pnpm run db:seed:certifications || true
+          pnpm run db:seed:channels || true
+
+      - name: Post Standard Poll
+        id: poll_standard
+        if: inputs.use_poll_usecase != 'true'
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          LINKEDIN_PERSON_URN: ${{ secrets.LINKEDIN_PERSON_URN }}
+          QUESTION_ID: ${{ inputs.question_id }}
+          CHANNEL: ${{ inputs.channel }}
+          DIFFICULTY: ${{ inputs.difficulty }}
+          POLL_DURATION: ${{ inputs.poll_duration || '360' }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        run: pnpm run linkedin:poll
+
+      - name: Post Use-Case Poll
+        id: poll_usecase
+        if: inputs.use_poll_usecase == 'true'
+        env:
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          LINKEDIN_PERSON_URN: ${{ secrets.LINKEDIN_PERSON_URN }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          EXA_API_KEY: ${{ secrets.EXA_API_KEY }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          TOPIC: ${{ inputs.topic }}
+          SUBTOPIC: ${{ inputs.subtopic }}
+          CONCEPT: ${{ inputs.concept }}
+          CHANNEL: ${{ inputs.channel || inputs.topic }}
+        run: pnpm run linkedin:poll:usecase
+
+      - name: Trigger blog deploy (if new blog was generated)
+        if: steps.poll_standard.outputs.blog_generated == 'true' && inputs.publish != 'false'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GH_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({ owner: context.repo.owner, repo: context.repo.repo, workflow_id: 'deploy-blog.yml', ref: 'main' });
+
+  analytics:
+    name: 📈 GitHub Analytics
+    if: |
+      (github.event.schedule == '0 5 * * *') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.task == 'all' || inputs.task == 'analytics'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openinterview
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-node-pnpm
+      - name: Init database schema
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          psql $DATABASE_URL -v ON_ERROR_STOP=1 -f TURSO_SCHEMA.sql
+          pnpm run db:seed:certifications || true
+          pnpm run db:seed:channels || true
+      - name: Collect GitHub Analytics
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+          REPO_OWNER: satishkumar-dhule
+          REPO_NAME: code-reels
+          PAGES_REPO_OWNER: open-interview
+          PAGES_REPO_NAME: open-interview.github.io
+        run: pnpm run bot:github-analytics
+
+  summary:
+    name: 📋 Summary
+    needs: [linkedin-post, poll, analytics]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## 📣 Social & Analytics Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Task | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 📢 LinkedIn Post | ${{ needs.linkedin-post.result == 'success' && '✅' || needs.linkedin-post.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📊 Poll | ${{ needs.poll.result == 'success' && '✅' || needs.poll.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📈 Analytics | ${{ needs.analytics.result == 'success' && '✅' || needs.analytics.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY

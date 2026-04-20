@@ -1,0 +1,84 @@
+name: 🔧 Repo Maintenance
+
+# Replaces: update-readme.yml + generate-learning-paths.yml
+# Runs both jobs in parallel to prevent the double-commit race condition
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'client/src/lib/channels-config.ts'
+      - 'script/generate-readme.js'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-readme:
+    name: 📄 Update README
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-node-pnpm
+      - run: pnpm run generate:readme
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git diff --quiet README.md || (git add README.md && git commit -m "chore: auto-update README sections [skip ci]" && git push)
+
+  generate-learning-paths:
+    name: 🎓 Generate Learning Paths
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openinterview
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-node-pnpm
+      - name: Init database schema
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: |
+          psql $DATABASE_URL -v ON_ERROR_STOP=1 -f TURSO_SCHEMA.sql
+          pnpm run db:seed:certifications || true
+          pnpm run db:seed:channels || true
+      - name: Generate curated learning paths
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: pnpm run generate:learning-paths
+      - name: Commit and push if changed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name 'Curated Paths Bot'
+          git config --global user.email 'bot@github-actions'
+          git add -A
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🎓 Update curated learning paths [automated]" && git push)
+
+  summary:
+    name: 📋 Summary
+    needs: [update-readme, generate-learning-paths]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## 🔧 Repo Maintenance Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Task | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 📄 README | ${{ needs.update-readme.result == 'success' && '✅' || needs.update-readme.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🎓 Learning Paths | ${{ needs.generate-learning-paths.result == 'success' && '✅' || needs.generate-learning-paths.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY

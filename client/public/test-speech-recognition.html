@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speech Recognition Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #0d1117;
+      color: #e6edf3;
+    }
+    .status {
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid #30363d;
+      background: #161b22;
+    }
+    .success { border-color: #238636; background: #238636/20; }
+    .error { border-color: #f85149; background: #f85149/20; }
+    .warning { border-color: #d29922; background: #d29922/20; }
+    button {
+      padding: 12px 24px;
+      margin: 10px 5px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      background: #238636;
+      color: white;
+      font-weight: 600;
+    }
+    button:hover { background: #2ea043; }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .transcript {
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 8px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      min-height: 100px;
+      white-space: pre-wrap;
+    }
+    .log {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      padding: 10px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin: 10px 0;
+    }
+    .log-entry {
+      margin: 2px 0;
+      padding: 2px 0;
+    }
+    .log-info { color: #58a6ff; }
+    .log-success { color: #3fb950; }
+    .log-error { color: #f85149; }
+    .log-warning { color: #d29922; }
+    h1 { color: #58a6ff; }
+    h2 { color: #8b949e; font-size: 18px; margin-top: 30px; }
+  </style>
+</head>
+<body>
+  <h1>🎤 Speech Recognition Diagnostic Tool</h1>
+  <p>This tool will help diagnose speech recognition issues in your browser.</p>
+
+  <h2>1. Browser Compatibility Check</h2>
+  <div id="compatibility"></div>
+
+  <h2>2. Microphone Permission Check</h2>
+  <div id="permission"></div>
+  <button id="requestPermission">Request Microphone Permission</button>
+
+  <h2>3. Speech Recognition Test</h2>
+  <button id="startTest" disabled>Start Speech Recognition Test</button>
+  <button id="stopTest" disabled>Stop Test</button>
+  
+  <div class="transcript" id="transcript">
+    <em>Transcript will appear here when you speak...</em>
+  </div>
+
+  <h2>4. Diagnostic Log</h2>
+  <div class="log" id="log"></div>
+
+  <script>
+    const logDiv = document.getElementById('log');
+    const transcriptDiv = document.getElementById('transcript');
+    const startBtn = document.getElementById('startTest');
+    const stopBtn = document.getElementById('stopTest');
+    const permissionBtn = document.getElementById('requestPermission');
+    
+    let recognition = null;
+    let transcript = '';
+
+    function log(message, type = 'info') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+      console.log(message);
+    }
+
+    // 1. Check browser compatibility
+    function checkCompatibility() {
+      const compatDiv = document.getElementById('compatibility');
+      const checks = [];
+      
+      // Check protocol
+      const isHTTPS = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+      checks.push({
+        name: 'Protocol',
+        value: window.location.protocol,
+        pass: isHTTPS,
+        message: isHTTPS ? 'HTTPS or localhost ✓' : 'HTTPS required for microphone access'
+      });
+
+      // Check Speech Recognition API
+      const hasSpeechRecognition = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
+      checks.push({
+        name: 'Speech Recognition API',
+        value: hasSpeechRecognition ? 'Available' : 'Not Available',
+        pass: hasSpeechRecognition,
+        message: hasSpeechRecognition ? 'Web Speech API supported ✓' : 'Browser does not support Web Speech API'
+      });
+
+      // Check MediaDevices API
+      const hasMediaDevices = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+      checks.push({
+        name: 'MediaDevices API',
+        value: hasMediaDevices ? 'Available' : 'Not Available',
+        pass: hasMediaDevices,
+        message: hasMediaDevices ? 'Microphone access API available ✓' : 'MediaDevices API not supported'
+      });
+
+      // Browser info
+      checks.push({
+        name: 'Browser',
+        value: navigator.userAgent.match(/(Chrome|Safari|Firefox|Edge)\/[\d.]+/)?.[0] || 'Unknown',
+        pass: true,
+        message: 'Browser detected'
+      });
+
+      // Render results
+      checks.forEach(check => {
+        const div = document.createElement('div');
+        div.className = `status ${check.pass ? 'success' : 'error'}`;
+        div.innerHTML = `<strong>${check.name}:</strong> ${check.value}<br><small>${check.message}</small>`;
+        compatDiv.appendChild(div);
+        log(`${check.name}: ${check.value} - ${check.message}`, check.pass ? 'success' : 'error');
+      });
+
+      return checks.every(c => c.pass);
+    }
+
+    // 2. Request microphone permission
+    async function requestMicrophonePermission() {
+      const permDiv = document.getElementById('permission');
+      permDiv.innerHTML = '<div class="status warning">Requesting microphone permission...</div>';
+      log('Requesting microphone permission...', 'info');
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        log('✓ Microphone permission granted', 'success');
+        
+        // Test microphone
+        const audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        source.connect(analyser);
+        
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(dataArray);
+        
+        const hasAudio = dataArray.some(value => value > 0);
+        log(`Microphone test: ${hasAudio ? 'Audio detected' : 'No audio detected (try speaking)'}`, hasAudio ? 'success' : 'warning');
+        
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+        audioContext.close();
+        
+        permDiv.innerHTML = '<div class="status success">✓ Microphone permission granted and working</div>';
+        startBtn.disabled = false;
+        return true;
+      } catch (error) {
+        log(`✗ Microphone permission denied: ${error.message}`, 'error');
+        permDiv.innerHTML = `<div class="status error">✗ Microphone permission denied<br><small>${error.message}</small></div>`;
+        return false;
+      }
+    }
+
+    // 3. Test speech recognition
+    function startSpeechRecognition() {
+      try {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+        
+        log('Speech recognition configured', 'info');
+        log(`- continuous: ${recognition.continuous}`, 'info');
+        log(`- interimResults: ${recognition.interimResults}`, 'info');
+        log(`- lang: ${recognition.lang}`, 'info');
+
+        recognition.onstart = () => {
+          log('✓ Speech recognition started - SPEAK NOW!', 'success');
+          startBtn.disabled = true;
+          stopBtn.disabled = false;
+          transcriptDiv.innerHTML = '<em style="color: #d29922;">🎤 Listening... Start speaking!</em>';
+        };
+
+        recognition.onresult = (event) => {
+          log(`Result received (index: ${event.resultIndex}, total: ${event.results.length})`, 'info');
+          
+          let interim = '';
+          let final = '';
+          
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const result = event.results[i];
+            const text = result[0].transcript;
+            
+            if (result.isFinal) {
+              final += text + ' ';
+              log(`✓ Final: "${text}"`, 'success');
+            } else {
+              interim += text;
+              log(`⏳ Interim: "${text}"`, 'info');
+            }
+          }
+          
+          if (final) {
+            transcript += final;
+          }
+          
+          transcriptDiv.innerHTML = transcript + '<span style="color: #6e7681;">' + interim + '</span>';
+        };
+
+        recognition.onerror = (event) => {
+          log(`✗ ERROR: ${event.error} - ${event.message || 'No message'}`, 'error');
+          
+          if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+            transcriptDiv.innerHTML = '<em style="color: #f85149;">❌ Microphone access denied. Please allow microphone access and try again.</em>';
+          } else if (event.error === 'no-speech') {
+            log('No speech detected - this is normal if you haven\'t spoken yet', 'warning');
+          } else if (event.error === 'network') {
+            transcriptDiv.innerHTML = '<em style="color: #f85149;">❌ Network error. Speech recognition requires internet connection.</em>';
+          } else {
+            transcriptDiv.innerHTML = `<em style="color: #f85149;">❌ Error: ${event.error}</em>`;
+          }
+        };
+
+        recognition.onend = () => {
+          log('Speech recognition ended', 'warning');
+          startBtn.disabled = false;
+          stopBtn.disabled = true;
+        };
+
+        recognition.start();
+        log('Starting speech recognition...', 'info');
+        
+      } catch (error) {
+        log(`✗ Failed to start: ${error.message}`, 'error');
+        transcriptDiv.innerHTML = `<em style="color: #f85149;">❌ Failed to start: ${error.message}</em>`;
+      }
+    }
+
+    function stopSpeechRecognition() {
+      if (recognition) {
+        recognition.stop();
+        log('Stopping speech recognition...', 'info');
+      }
+    }
+
+    // Event listeners
+    permissionBtn.addEventListener('click', requestMicrophonePermission);
+    startBtn.addEventListener('click', startSpeechRecognition);
+    stopBtn.addEventListener('click', stopSpeechRecognition);
+
+    // Initialize
+    log('=== Speech Recognition Diagnostic Tool Started ===', 'info');
+    log(`URL: ${window.location.href}`, 'info');
+    log(`Protocol: ${window.location.protocol}`, 'info');
+    log(`Hostname: ${window.location.hostname}`, 'info');
+    
+    const isCompatible = checkCompatibility();
+    
+    if (!isCompatible) {
+      log('⚠ Browser compatibility issues detected', 'error');
+      permissionBtn.disabled = true;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+name: 🚀 Deploy Blog
+
+# Deploys the blog site to GitHub Pages
+# Only builds static HTML from existing content (no AI generation)
+# Schedule: Daily at 4:00 AM UTC
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["🤖 Content Pipeline"]
+    types: [completed]
+
+jobs:
+  deploy:
+    name: 📦 Build & Deploy
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      github.event.workflow_run.conclusion == 'success'
+    permissions:
+      contents: write
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openinterview
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup-node-pnpm
+
+      - name: Init schema
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: psql $DATABASE_URL -v ON_ERROR_STOP=1 -f TURSO_SCHEMA.sql
+
+      - name: Import blog data
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+        run: pnpm run data:import
+
+      - name: Build static site
+        run: pnpm run blog:generate -- --html-only
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
+          GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
+
+      - name: Check blog output exists
+        id: check-output
+        run: |
+          if [ -d blog-output ] && [ "$(ls -A blog-output)" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ No blog output generated, skipping deploy" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - uses: ./.github/actions/deploy-pages
+        if: steps.check-output.outputs.exists == 'true'
+        with:
+          source-dir: blog-output
+          repo: openstackdaily/openstackdaily.github.io
+          branch: main
+          token: ${{ secrets.GH_TOKEN }}
+          commit-message: 'Deploy: $(date -u +"%Y-%m-%d %H:%M UTC")'
+          preserve-cname: 'true'
+
+      - name: Summary
+        if: steps.check-output.outputs.exists == 'true'
+        run: |
+          echo "## 🚀 Blog Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** https://openstackdaily.github.io" >> $GITHUB_STEP_SUMMARY
+          echo "**Articles:** $(find blog-output/posts -type f -name 'index.html' 2>/dev/null | wc -l)" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
