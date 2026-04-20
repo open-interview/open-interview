@@ -6,7 +6,10 @@
 
 import 'dotenv/config';
 import fs from 'fs';
-import { dbClient as client } from './db/pg-client.js';
+import { dbClient as pgClient } from './db/pg-client.js';
+import { dbClient as tursoClient } from './db/turso-client.js';
+
+const client = process.env.TURSO_DATABASE_URL ? tursoClient : pgClient;
 
 const BLOG_BASE_URL = 'https://openstackdaily.github.io';
 
