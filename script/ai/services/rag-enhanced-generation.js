@@ -12,16 +12,6 @@
 import vectorDB from './vector-db.js';
 import { runWithRetries, parseJson } from '../../utils.js';
 
-async function tryVectorSearch(fn) {
-  try {
-    await vectorDB.init();
-    return await fn();
-  } catch (e) {
-    // Vector DB unavailable (e.g. SQLite bindings missing in CI) — degrade gracefully
-    return null;
-  }
-}
-
 // ============================================
 // RAG CONTEXT RETRIEVAL
 // ============================================
@@ -38,8 +28,9 @@ export async function getGenerationContext(topic, options = {}) {
     includeTags = true
   } = options;
 
-  const related = await tryVectorSearch(() => vectorDB.semanticSearch(topic, { limit, threshold: 0.1, channel }));
-  if (!related || related.length === 0) {
+  await vectorDB.init();
+  const related = await vectorDB.semanticSearch(topic, { limit, threshold: 0.1, channel });
+  if (related.length === 0) {
     return { hasContext: false, related: [], concepts: [], gaps: [] };
   }
 
@@ -138,9 +129,9 @@ Requirements:
   }
 
   // Step 3: Verify it's not too similar to existing
-  const duplicateCheck = await tryVectorSearch(() => vectorDB.findSimilar(result.question, { limit: 3, threshold: 0.7, channel }));
+  const duplicateCheck = await vectorDB.findSimilar(result.question, { limit: 3, threshold: 0.7, channel });
 
-  if (duplicateCheck && duplicateCheck.length > 0) {
+  if (duplicateCheck.length > 0) {
     return {
       success: false,
       error: 'Generated question too similar to existing',
@@ -237,8 +228,9 @@ Requirements:
 export async function findCoverageGaps(channel, options = {}) {
   const { minQuestions = 3 } = options;
 
-  const allQuestions = await tryVectorSearch(() => vectorDB.semanticSearch(channel, { limit: 100, threshold: 0.05, channel }));
-  if (!allQuestions || allQuestions.length < minQuestions) {
+  await vectorDB.init();
+  const allQuestions = await vectorDB.semanticSearch(channel, { limit: 100, threshold: 0.05, channel });
+  if (allQuestions.length < minQuestions) {
     return { gaps: [], coverage: 'insufficient_data' };
   }
 
@@ -324,8 +316,9 @@ function getExpectedConcepts(channel) {
  * Builds cross-channel knowledge connections
  */
 export async function findCrossChannelLinks(questionId, questionText, currentChannel) {
-  const crossChannel = await tryVectorSearch(() => vectorDB.semanticSearch(questionText, { limit: 20, threshold: 0.15 }));
-  if (!crossChannel) return { questionId, crossChannelLinks: {}, totalLinkedChannels: 0 };
+  await vectorDB.init();
+  const crossChannel = await vectorDB.semanticSearch(questionText, { limit: 20, threshold: 0.15 });
+  
 
   // Group by channel, excluding current
   const byChannel = {};
@@ -460,8 +453,8 @@ Return ONLY valid JSON:
 export async function buildKnowledgeGraph(options = {}) {
   const { minSimilarity = 0.3, maxConnections = 5 } = options;
 
-  const stats = await tryVectorSearch(() => vectorDB.getStats());
-  if (!stats) return { nodes: [], edges: [], clusters: {}, generated: new Date().toISOString() };
+  const stats = await vectorDB.getStats();
+  
   
   console.log(`Building knowledge graph from ${stats.pointsCount} questions...`);
 
