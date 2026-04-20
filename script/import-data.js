@@ -82,6 +82,9 @@ async function main() {
   const BP_FILE = 'data/blog-posts.json';
   if (fs.existsSync(BP_FILE)) {
     const posts = JSON.parse(fs.readFileSync(BP_FILE, 'utf8'));
+    // Ensure columns added after initial schema creation exist
+    await pool.query(`ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS published_at TEXT`).catch(() => {});
+    await pool.query(`ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS linkedin_shared_at TEXT`).catch(() => {});
     let bpInserted = 0;
     for (const p of posts) {
       await pool.query(
