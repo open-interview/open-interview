@@ -48,9 +48,9 @@ runs:
         # Bootstrap deployed-ids.txt
         touch _deploy/deployed-ids.txt
 
-        # Read slugs from source repo (workspace root) before cd
-        mapfile -t CURRENT_SLUGS < <(jq -r '.[].blogSlug' data/blog-posts.json 2>/dev/null || true)
-        mapfile -t DEPLOYED_SLUGS < <(cat _deploy/deployed-ids.txt)
+        # Read post IDs (not slugs) - the actual directory structure is posts/{id}/{slug}/
+        mapfile -t CURRENT_IDS < <(jq -r '.[].id' data/blog-posts.json 2>/dev/null || true)
+        mapfile -t DEPLOYED_IDS < <(cat _deploy/deployed-ids.txt)
 
         cd _deploy
         git checkout ${{ inputs.branch }} 2>/dev/null || git checkout -b ${{ inputs.branch }}
@@ -84,58 +84,62 @@ runs:
         fi
         touch _deploy/.nojekyll
 
-        # Compute new and orphaned slugs
+        # Read post IDs (not slugs) - the actual directory structure is posts/{id}/{slug}/
+        mapfile -t CURRENT_IDS < <(jq -r '.[].id' data/blog-posts.json 2>/dev/null || true)
+        mapfile -t DEPLOYED_IDS < <(cat _deploy/deployed-ids.txt)
+
+        # Build lookup maps
         declare -A CURRENT_MAP
-        for slug in "${CURRENT_SLUGS[@]}"; do
-          CURRENT_MAP["$slug"]=1
+        for id in "${CURRENT_IDS[@]}"; do
+          CURRENT_MAP["$id"]=1
         done
         declare -A DEPLOYED_MAP
-        for slug in "${DEPLOYED_SLUGS[@]}"; do
-          DEPLOYED_MAP["$slug"]=1
+        for id in "${DEPLOYED_IDS[@]}"; do
+          DEPLOYED_MAP["$id"]=1
         done
 
-        NEW_SLUGS=()
-        for slug in "${CURRENT_SLUGS[@]}"; do
-          # New if not in deployed manifest OR if post dir is missing from Pages repo
-          if [ -z "${DEPLOYED_MAP[$slug]+x}" ] || [ ! -d "_deploy/posts/$slug" ]; then
-            NEW_SLUGS+=("$slug")
+        # New: in current but missing from manifest OR missing from disk
+        NEW_IDS=()
+        for id in "${CURRENT_IDS[@]}"; do
+          if [ -z "${DEPLOYED_MAP[$id]+x}" ] || [ ! -d "_deploy/posts/$id" ]; then
+            NEW_IDS+=("$id")
           fi
         done
 
-        ORPHANED_SLUGS=()
-        for slug in "${DEPLOYED_SLUGS[@]}"; do
-          [ -z "${CURRENT_MAP[$slug]+x}" ] && ORPHANED_SLUGS+=("$slug")
+        # Orphaned: in manifest but not in current
+        ORPHANED_IDS=()
+        for id in "${DEPLOYED_IDS[@]}"; do
+          [ -z "${CURRENT_MAP[$id]+x}" ] && ORPHANED_IDS+=("$id")
         done
 
-        # Copy new post dirs
+        # Copy new post dirs (structure: posts/{id}/{slug}/)
         mkdir -p _deploy/posts
-        for slug in "${NEW_SLUGS[@]}"; do
-          src="${{ inputs.source-dir }}/posts/$slug"
+        for id in "${NEW_IDS[@]}"; do
+          src="${{ inputs.source-dir }}/posts/$id"
           if [ -d "$src" ]; then
-            cp -r "$src" "_deploy/posts/$slug"
+            cp -r "$src" "_deploy/posts/$id"
           fi
         done
 
         # Remove orphaned post dirs
-        for slug in "${ORPHANED_SLUGS[@]}"; do
-          dir="_deploy/posts/$slug"
+        for id in "${ORPHANED_IDS[@]}"; do
+          dir="_deploy/posts/$id"
           if [ -d "$dir" ]; then
-            git -C _deploy rm -rf "posts/$slug"
+            git -C _deploy rm -rf "posts/$id"
           fi
         done
 
-        # Update deployed-ids.txt
-        printf '%s\n' "${CURRENT_SLUGS[@]}" > _deploy/deployed-ids.txt
+        # Update deployed-ids.txt with current IDs
+        printf '%s\n' "${CURRENT_IDS[@]}" > _deploy/deployed-ids.txt
 
         # Selective git add
         cd _deploy
         # Add non-post files
         git add --all -- ':!posts/'
         # Add new post dirs
-        for slug in "${NEW_SLUGS[@]}"; do
-          [ -d "posts/$slug" ] && git add "posts/$slug"
+        for id in "${NEW_IDS[@]}"; do
+          [ -d "posts/$id" ] && git add "posts/$id"
         done
-        # deployed-ids.txt already covered by --all above
 
         # Commit only if staged diff is non-empty
         git diff --staged --quiet || git commit -m "${{ inputs.commit-message }}"
