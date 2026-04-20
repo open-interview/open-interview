@@ -143,7 +143,7 @@ const categoryMap = {
   'Frontend Development': ['frontend', 'react-native'],
   'Backend Development': ['backend', 'python'],
   'Database & Storage': ['database'],
-  'DevOps & Infrastructure': ['devops', 'terraform', 'kubernetes', 'aws'],
+  'DevOps & Infrastructure': ['devops', 'terraform', 'kubernetes', 'aws', 'aws-devops-pro'],
   'Site Reliability': ['sre'],
   'AI & Machine Learning': ['generative-ai', 'machine-learning', 'llm-ops', 'prompt-engineering', 'nlp', 'computer-vision'],
   'Security': ['security'],
