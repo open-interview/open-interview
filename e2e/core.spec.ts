@@ -115,7 +115,7 @@ test.describe('Onboarding', () => {
   test('shows welcome and role selection for new users', async ({ page }) => {
     await setupFreshUser(page);
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await waitForPageReady(page);
 
     // SubscriptionGate shows OnboardingFlow ("Personalize your feed" / "Choose your topics")
     // HomePage fallback shows "Ace Your Tech Interview" / "Start Practicing Now"
