@@ -1,0 +1,218 @@
+---
+id: q-15884
+title: In a GitOps setup with both ArgoCD and Flux, describe a practical workflow to promote changes from dev to prod, handle drift detection, and automate rollback, while keeping manifests declarative and secrets managed securely?
+slug: in-a-gitops-setup-with-both-argocd-and-flux-describe-a-pract
+channel: devops
+difficulty: intermediate
+tags: ["devops","intermediate"]
+createdAt: 2026-04-20T16:41:22.441Z
+readingTime: 10
+excerpt: In a GitOps setup with both ArgoCD and Flux, describe a practical workflow to promote changes from dev to prod, handle drift detection, and automate r
+---
+
+> **Understanding In a GitOps setup with both ArgoCD and Flux, describe a practical workflow to promote changes from dev to prod, handle drift detection, and automate rollback, while keeping manifests declarative and secrets managed securely?**
+
+## Overview
+
+Promote changes using environment-scoped Kustomize overlays within a single repository structured as `base/` (shared manifests) and `overlays/dev`, `overlays/staging`, `overlays/prod`. Gate all changes through pull requests for peer review and CI validation.
+
+**Repository Structure:**
+```
+├── base/
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   └── kustomization.yaml
+└── overlays/
+    ├── dev/
+    │   ├── kustomization.yaml    # replicaCount: 1, image: dev-tag
+    │   └── config.env            # ENV=development
+    ├── staging/
+    │   ├── kustomization.yaml    # replicaCount: 2, image: staging-tag
+    │   └── config.env            # ENV=staging
+    └── prod/
+        ├── kustomization.yaml    # replicaCount: 5, image: prod-tag
+        └── config.env            # ENV=production
+```
+
+**ArgoCD Application (per environment):**
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: myapp-prod
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/org/gitops-repo
+    targetRevision: main
+    path: overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: myapp-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+```
+
+**Flux Kustomization:**
+```yaml
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: myapp-prod
+  namespace: flux-system
+spec:
+  interval: 1m
+  path: ./overlays/prod
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: gitops-repo
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: myapp
+      namespace: myapp-prod
+```
+
+**Drift Detection:** ArgoCD continuously compares live cluster state against Git manifests using server-side diffing; when `selfHeal: true`, it auto-corrects drift by syncing to the desired state. Flux uses `spec.interval` (e.g., 1m) to periodically reconcile—drift is flagged when cluster state diverges from `spec.sourceRef`. ArgoCD additionally provides a web UI diff view showing exact field-level differences. For manual drift inspection, use `argocd app diff` or `flux reconcile kustomization <name> --with-source`.
+
+**Automated Rollback:** ArgoCD: `argocd app rollback <app-name> <revision>` reverts to a previous synced commit, triggering immediate reconciliation. Flux: revert the Git commit, optionally suspend the Kustomization (`flux suspend kustomization <name>`) during investigation, then `flux resume` once the corrected commit is applied. Pre-commit hooks or CI pipelines can automate rollback triggers based on Prometheus metrics (e.g., error rate threshold via `argocd notifications` or Flux alerts).
+
+**Secrets Management:** Use SOPS with Age or GCP KMS to encrypt secrets files committed to Git:
+```yaml
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: secrets
+spec:
+  interval: 5m
+  sourceRef:
+    kind: GitRepository
+  patches:
+    - path: encrypted-secrets.sops.yaml
+```
+Alternatively, Sealed Secrets (Bitnami) encrypts secrets into SealedSecret CRDs viewable in Git, decrypted only by the cluster-side controller. External Secrets Operator pulls from Vault, AWS Secrets Manager, or GCP Secret Manager at runtime, keeping no plaintext secrets in Git.
+
+## Technical Details
+
+## Implementation
+
+Promote changes using environment-scoped Kustomize overlays within a single repository structured as `base/` (shared manifests) and `overlays/dev`, `overlays/staging`, `overlays/prod`. Gate all changes through pull requests for peer review and CI validation.
+
+**Repository Structure:**
+```
+├── base/
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   └── kustomization.yaml
+└── overlays/
+    ├── dev/
+    │   ├── kustomization.yaml    # replicaCount: 1, image: dev-tag
+    │   └── config.env            # ENV=development
+    ├── staging/
+    │   ├── kustomization.yaml    # replicaCount: 2, image: staging-tag
+    │   └── config.env            # ENV=staging
+    └── prod/
+        ├── kustomization.yaml    # replicaCount: 5, image: prod-tag
+        └── config.env            # ENV=production
+```
+
+**ArgoCD Application (per environment):**
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: myapp-prod
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/org/gitops-repo
+    targetRevision: main
+    path: overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: myapp-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+```
+
+**Flux Kustomization:**
+```yaml
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: myapp-prod
+  namespace: flux-system
+spec:
+  interval: 1m
+  path: ./overlays/prod
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: gitops-repo
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: myapp
+      namespace: myapp-prod
+```
+
+**Drift Detection:** ArgoCD continuously compares live cluster state against Git manifests using server-side diffing; when `selfHeal: true`, it auto-corrects drift by syncing to the desired state. Flux uses `spec.interval` (e.g., 1m) to periodically reconcile—drift is flagged when cluster state diverges from `spec.sourceRef`. ArgoCD additionally provides a web UI diff view showing exact field-level differences. For manual drift inspection, use `argocd app diff` or `flux reconcile kustomization <name> --with-source`.
+
+**Automated Rollback:** ArgoCD: `argocd app rollback <app-name> <revision>` reverts to a previous synced commit, triggering immediate reconciliation. Flux: revert the Git commit, optionally suspend the Kustomization (`flux suspend kustomization <name>`) during investigation, then `flux resume` once the corrected commit is applied. Pre-commit hooks or CI pipelines can automate rollback triggers based on Prometheus metrics (e.g., error rate threshold via `argocd notifications` or Flux alerts).
+
+**Secrets Management:** Use SOPS with Age or GCP KMS to encrypt secrets files committed to Git:
+```yaml
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: secrets
+spec:
+  interval: 5m
+  sourceRef:
+    kind: GitRepository
+  patches:
+    - path: encrypted-secrets.sops.yaml
+```
+Alternatively, Sealed Secrets (Bitnami) encrypts secrets into SealedSecret CRDs viewable in Git, decrypted only by the cluster-side controller. External Secrets Operator pulls from Vault, AWS Secrets Manager, or GCP Secret Manager at runtime, keeping no plaintext secrets in Git.
+
+## Architecture
+
+Scalable design patterns and best practices.
+
+## Real-World Examples
+
+### Example: DEVOPS Implementation
+
+Leading companies implement this pattern for production systems.
+
+## Best Practices
+
+- Follow SOLID principles
+- Implement proper error handling
+- Optimize for performance
+- Ensure security
+
+## Conclusion
+
+Key insights and recommendations for implementation.
+
+## References
+
+- Official devops documentation
+- Engineering blogs
+- Technical case studies

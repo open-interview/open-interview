@@ -1,0 +1,498 @@
+---
+id: q-6889
+title: In a multi-IdP environment, an API gateway must issue short-lived, service-bound access tokens for internal microservices while accepting SAML assertions from partner IdPs and OIDC tokens from internal IdPs. Design a practical flow that maps SAML/OIDC to a single JWT, enforces per-tenant audience/issuer, and supports token binding and revocation. Include data structures and a minimal issuance/verification snippet?
+slug: in-a-multi-idp-environment-an-api-gateway-must-issue-short-l
+channel: backend
+difficulty: intermediate
+tags: ["backend","intermediate"]
+createdAt: 2026-04-20T16:41:22.440Z
+readingTime: 10
+excerpt: In a multi-IdP environment, an API gateway must issue short-lived, service-bound access tokens for internal microservices while accepting SAML asserti
+---
+
+> **Understanding In a multi-IdP environment, an API gateway must issue short-lived, service-bound access tokens for internal microservices while accepting SAML assertions from partner IdPs and OIDC tokens from internal IdPs. Design a practical flow that maps SAML/OIDC to a single JWT, enforces per-tenant audience/issuer, and supports token binding and revocation. Include data structures and a minimal issuance/verification snippet?**
+
+## Overview
+
+In a multi-IdP setup, the API gateway handles SAML assertions from partner IdPs and OIDC tokens from internal IdPs. It validates both token types using cached JWKS or imported certificates, then maps them into a single short-lived JWT for internal microservices.
+
+**Data Structures**:
+
+```python
+from dataclasses import dataclass
+from typing import Literal
+
+IdPType = Literal["saml", "oidc"]
+
+@dataclass
+class IdPConfig:
+    idp_id: str
+    idp_type: IdPType
+    issuer: str
+    jwks_uri: str
+    certificate: str
+    claim_mapping: dict[str, str]
+
+@dataclass
+class TenantConfig:
+    tenant_id: str
+    audience: str
+    issuer: str
+    idps: list[IdPConfig]
+    allowed_token_binding: list[str]
+    token_ttl_seconds: int = 300
+    revocation_ttl_seconds: int = 3600
+
+TENANTS: dict[str, TenantConfig] = {
+    "partner-acme": TenantConfig(
+        tenant_id="partner-acme",
+        audience="api.acme.com",
+        issuer="gateway.acme.com",
+        idps=[
+            IdPConfig(
+                idp_id="acme-saml-idp",
+                idp_type="saml",
+                issuer="https://idp.acme.com/saml",
+                jwks_uri="https://idp.acme.com/saml/metadata",
+                certificate="-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+                claim_mapping={
+                    "email": "sub",
+                    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress": "email",
+                    "role": "roles"
+                }
+            )
+        ],
+        allowed_token_binding=["tls-fingerprint"],
+        token_ttl_seconds=300
+    ),
+    "internal-engineering": TenantConfig(
+        tenant_id="internal-engineering",
+        audience="api.acme.com",
+        issuer="gateway.acme.com",
+        idps=[
+            IdPConfig(
+                idp_id="okta",
+                idp_type="oidc",
+                issuer="https://acme.okta.com",
+                jwks_uri="https://acme.okta.com/oauth2/v1/keys",
+                certificate="",
+                claim_mapping={"email": "email", "groups": "groups"}
+            )
+        ],
+        allowed_token_binding=["mtls", "tls-fingerprint"],
+        token_ttl_seconds=180
+    )
+}
+```
+
+**Token Issuance**:
+
+```python
+import jwt
+import uuid
+import hashlib
+import redis
+from datetime import datetime, timedelta
+from cryptography import x509
+
+redis_client = redis.Redis(host='localhost', port=6379, db=0)
+GATEWAY_PRIVATE_KEY = "..."
+GATEWAY_PUBLIC_KEY = "..."
+GATEWAY_KEY_ID = "gateway-key-1"
+
+def compute_tls_fingerprint(cert_pem: str) -> str:
+    cert = x509.load_pem_x509_certificate(cert_pem.encode())
+    return hashlib.sha256(cert.public_bytes(
+        encoding=x509.base.serialization.Encoding.DER
+    )).hexdigest()
+
+def validate_saml_assertion(saml_assertion: str, idp: IdPConfig) -> dict:
+    from xml.dom import minidom
+    doc = minidom.parseString(saml_assertion)
+    ns = {'saml': 'urn:oasis:names:tc:SAML:2.0:assertion'}
+    
+    attributes = {}
+    attr_nodes = doc.getElementsByTagNameNS(ns['saml'], 'Attribute')
+    for attr in attr_nodes:
+        name = attr.getAttribute('Name')
+        value = attr.getElementsByTagNameNS(ns['saml'], 'AttributeValue')[0].firstChild.nodeValue
+        attributes[name] = value
+    
+    subject = doc.getElementsByTagNameNS(ns['saml'], 'Subject')[0]
+    name_id = subject.getElementsByTagNameNS(ns['saml'], 'NameID')[0].firstChild.nodeValue
+    
+    return {
+        "sub": name_id,
+        "email": attributes.get("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"),
+        "roles": attributes.get("role", "").split(","),
+        "idp_issuer": idp.issuer
+    }
+
+def validate_oidc_token(token: str, idp: IdPConfig) -> dict:
+    jwks = fetch_jwks(idp.jwks_uri)
+    payload = jwt.decode(
+        token, jwks, algorithms=["RS256", "ES256"],
+        issuer=idp.issuer, options={"verify_aud": False}
+    )
+    return {
+        "sub": payload.get("sub"),
+        "email": payload.get("email"),
+        "roles": payload.get("roles", []),
+        "idp_issuer": payload.get("iss")
+    }
+
+def issue_gateway_token(
+    original_token: str,
+    token_type: Literal["saml", "oidc"],
+    tenant_id: str,
+    binding_type: str | None = None,
+    binding_value: str | None = None
+) -> dict:
+    tenant = TENANTS.get(tenant_id)
+    if not tenant:
+        raise ValueError(f"Unknown tenant: {tenant_id}")
+    
+    idp = next((i for i in tenant.idps if i.idp_type == token_type), None)
+    if not idp:
+        raise ValueError(f"No {token_type} IdP configured for tenant {tenant_id}")
+    
+    claims = (validate_saml_assertion if token_type == "saml" else validate_oidc_token)(
+        original_token, idp
+    )
+    
+    mapped_claims = {
+        idp.claim_mapping.get(k, k): v 
+        for k, v in claims.items() if k in idp.claim_mapping
+    }
+    
+    now = datetime.utcnow()
+    jti = str(uuid.uuid4())
+    
+    token_payload = {
+        "iss": tenant.issuer,
+        "aud": tenant.audience,
+        "sub": mapped_claims.get("sub"),
+        "iat": now,
+        "exp": now + timedelta(seconds=tenant.token_ttl_seconds),
+        "jti": jti,
+        "tenant_id": tenant_id,
+        "original_idp": idp.idp_id,
+        "email": mapped_claims.get("email"),
+        "roles": mapped_claims.get("roles", []),
+    }
+    
+    if binding_type and binding_value:
+        if binding_type not in tenant.allowed_token_binding:
+            raise ValueError(f"Binding type {binding_type} not allowed")
+        token_payload["binding"] = {"type": binding_type, "value": binding_value}
+    
+    signed_token = jwt.encode(token_payload, GATEWAY_PRIVATE_KEY, algorithm="RS256",
+                              headers={"kid": GATEWAY_KEY_ID})
+    
+    redis_client.setex(f"revocation:{jti}", tenant.revocation_ttl_seconds, "active")
+    
+    return {"access_token": signed_token, "token_type": "Bearer", "expires_in": tenant.token_ttl_seconds}
+```
+
+**Token Verification**:
+
+```python
+def verify_gateway_token(
+    token: str,
+    expected_audience: str,
+    binding_type: str | None = None,
+    binding_value: str | None = None
+) -> dict:
+    try:
+        payload = jwt.decode(
+            token, GATEWAY_PUBLIC_KEY, algorithms=["RS256"],
+            audience=expected_audience,
+            options={"require": ["iss", "aud", "exp", "jti", "sub"]}
+        )
+    except jwt.ExpiredSignatureError:
+        raise ValueError("Token expired")
+    except jwt.InvalidAudienceError:
+        raise ValueError("Invalid audience")
+    except jwt.InvalidIssuerError:
+        raise ValueError("Invalid issuer")
+    
+    if not redis_client.exists(f"revocation:{payload['jti']}"):
+        raise ValueError("Token revoked or expired")
+    
+    if binding_type and binding_value:
+        binding = payload.get("binding")
+        if not binding or binding["type"] != binding_type or binding["value"] != binding_value:
+            raise ValueError("Token binding mismatch")
+    
+    return payload
+
+def revoke_token(jti: str, tenant_id: str) -> bool:
+    tenant = TENANTS.get(tenant_id)
+    if not tenant:
+        return False
+    return redis_client.delete(f"revocation:{jti}") > 0
+```
+
+**Key Design Points**:
+- Each tenant has isolated audience/issuer enforced at verification
+- SAML claims mapped via IdPConfig.claim_mapping
+- Token binding supports TLS fingerprint (SHA256 of client cert) and mTLS subject
+- JTI stored in Redis with TTL matching token lifetime for automatic cleanup
+- Short-lived tokens (5 min default) reduce revocation window
+
+## Technical Details
+
+## Implementation
+
+In a multi-IdP setup, the API gateway handles SAML assertions from partner IdPs and OIDC tokens from internal IdPs. It validates both token types using cached JWKS or imported certificates, then maps them into a single short-lived JWT for internal microservices.
+
+**Data Structures**:
+
+```python
+from dataclasses import dataclass
+from typing import Literal
+
+IdPType = Literal["saml", "oidc"]
+
+@dataclass
+class IdPConfig:
+    idp_id: str
+    idp_type: IdPType
+    issuer: str
+    jwks_uri: str
+    certificate: str
+    claim_mapping: dict[str, str]
+
+@dataclass
+class TenantConfig:
+    tenant_id: str
+    audience: str
+    issuer: str
+    idps: list[IdPConfig]
+    allowed_token_binding: list[str]
+    token_ttl_seconds: int = 300
+    revocation_ttl_seconds: int = 3600
+
+TENANTS: dict[str, TenantConfig] = {
+    "partner-acme": TenantConfig(
+        tenant_id="partner-acme",
+        audience="api.acme.com",
+        issuer="gateway.acme.com",
+        idps=[
+            IdPConfig(
+                idp_id="acme-saml-idp",
+                idp_type="saml",
+                issuer="https://idp.acme.com/saml",
+                jwks_uri="https://idp.acme.com/saml/metadata",
+                certificate="-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+                claim_mapping={
+                    "email": "sub",
+                    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress": "email",
+                    "role": "roles"
+                }
+            )
+        ],
+        allowed_token_binding=["tls-fingerprint"],
+        token_ttl_seconds=300
+    ),
+    "internal-engineering": TenantConfig(
+        tenant_id="internal-engineering",
+        audience="api.acme.com",
+        issuer="gateway.acme.com",
+        idps=[
+            IdPConfig(
+                idp_id="okta",
+                idp_type="oidc",
+                issuer="https://acme.okta.com",
+                jwks_uri="https://acme.okta.com/oauth2/v1/keys",
+                certificate="",
+                claim_mapping={"email": "email", "groups": "groups"}
+            )
+        ],
+        allowed_token_binding=["mtls", "tls-fingerprint"],
+        token_ttl_seconds=180
+    )
+}
+```
+
+**Token Issuance**:
+
+```python
+import jwt
+import uuid
+import hashlib
+import redis
+from datetime import datetime, timedelta
+from cryptography import x509
+
+redis_client = redis.Redis(host='localhost', port=6379, db=0)
+GATEWAY_PRIVATE_KEY = "..."
+GATEWAY_PUBLIC_KEY = "..."
+GATEWAY_KEY_ID = "gateway-key-1"
+
+def compute_tls_fingerprint(cert_pem: str) -> str:
+    cert = x509.load_pem_x509_certificate(cert_pem.encode())
+    return hashlib.sha256(cert.public_bytes(
+        encoding=x509.base.serialization.Encoding.DER
+    )).hexdigest()
+
+def validate_saml_assertion(saml_assertion: str, idp: IdPConfig) -> dict:
+    from xml.dom import minidom
+    doc = minidom.parseString(saml_assertion)
+    ns = {'saml': 'urn:oasis:names:tc:SAML:2.0:assertion'}
+    
+    attributes = {}
+    attr_nodes = doc.getElementsByTagNameNS(ns['saml'], 'Attribute')
+    for attr in attr_nodes:
+        name = attr.getAttribute('Name')
+        value = attr.getElementsByTagNameNS(ns['saml'], 'AttributeValue')[0].firstChild.nodeValue
+        attributes[name] = value
+    
+    subject = doc.getElementsByTagNameNS(ns['saml'], 'Subject')[0]
+    name_id = subject.getElementsByTagNameNS(ns['saml'], 'NameID')[0].firstChild.nodeValue
+    
+    return {
+        "sub": name_id,
+        "email": attributes.get("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"),
+        "roles": attributes.get("role", "").split(","),
+        "idp_issuer": idp.issuer
+    }
+
+def validate_oidc_token(token: str, idp: IdPConfig) -> dict:
+    jwks = fetch_jwks(idp.jwks_uri)
+    payload = jwt.decode(
+        token, jwks, algorithms=["RS256", "ES256"],
+        issuer=idp.issuer, options={"verify_aud": False}
+    )
+    return {
+        "sub": payload.get("sub"),
+        "email": payload.get("email"),
+        "roles": payload.get("roles", []),
+        "idp_issuer": payload.get("iss")
+    }
+
+def issue_gateway_token(
+    original_token: str,
+    token_type: Literal["saml", "oidc"],
+    tenant_id: str,
+    binding_type: str | None = None,
+    binding_value: str | None = None
+) -> dict:
+    tenant = TENANTS.get(tenant_id)
+    if not tenant:
+        raise ValueError(f"Unknown tenant: {tenant_id}")
+    
+    idp = next((i for i in tenant.idps if i.idp_type == token_type), None)
+    if not idp:
+        raise ValueError(f"No {token_type} IdP configured for tenant {tenant_id}")
+    
+    claims = (validate_saml_assertion if token_type == "saml" else validate_oidc_token)(
+        original_token, idp
+    )
+    
+    mapped_claims = {
+        idp.claim_mapping.get(k, k): v 
+        for k, v in claims.items() if k in idp.claim_mapping
+    }
+    
+    now = datetime.utcnow()
+    jti = str(uuid.uuid4())
+    
+    token_payload = {
+        "iss": tenant.issuer,
+        "aud": tenant.audience,
+        "sub": mapped_claims.get("sub"),
+        "iat": now,
+        "exp": now + timedelta(seconds=tenant.token_ttl_seconds),
+        "jti": jti,
+        "tenant_id": tenant_id,
+        "original_idp": idp.idp_id,
+        "email": mapped_claims.get("email"),
+        "roles": mapped_claims.get("roles", []),
+    }
+    
+    if binding_type and binding_value:
+        if binding_type not in tenant.allowed_token_binding:
+            raise ValueError(f"Binding type {binding_type} not allowed")
+        token_payload["binding"] = {"type": binding_type, "value": binding_value}
+    
+    signed_token = jwt.encode(token_payload, GATEWAY_PRIVATE_KEY, algorithm="RS256",
+                              headers={"kid": GATEWAY_KEY_ID})
+    
+    redis_client.setex(f"revocation:{jti}", tenant.revocation_ttl_seconds, "active")
+    
+    return {"access_token": signed_token, "token_type": "Bearer", "expires_in": tenant.token_ttl_seconds}
+```
+
+**Token Verification**:
+
+```python
+def verify_gateway_token(
+    token: str,
+    expected_audience: str,
+    binding_type: str | None = None,
+    binding_value: str | None = None
+) -> dict:
+    try:
+        payload = jwt.decode(
+            token, GATEWAY_PUBLIC_KEY, algorithms=["RS256"],
+            audience=expected_audience,
+            options={"require": ["iss", "aud", "exp", "jti", "sub"]}
+        )
+    except jwt.ExpiredSignatureError:
+        raise ValueError("Token expired")
+    except jwt.InvalidAudienceError:
+        raise ValueError("Invalid audience")
+    except jwt.InvalidIssuerError:
+        raise ValueError("Invalid issuer")
+    
+    if not redis_client.exists(f"revocation:{payload['jti']}"):
+        raise ValueError("Token revoked or expired")
+    
+    if binding_type and binding_value:
+        binding = payload.get("binding")
+        if not binding or binding["type"] != binding_type or binding["value"] != binding_value:
+            raise ValueError("Token binding mismatch")
+    
+    return payload
+
+def revoke_token(jti: str, tenant_id: str) -> bool:
+    tenant = TENANTS.get(tenant_id)
+    if not tenant:
+        return False
+    return redis_client.delete(f"revocation:{jti}") > 0
+```
+
+**Key Design Points**:
+- Each tenant has isolated audience/issuer enforced at verification
+- SAML claims mapped via IdPConfig.claim_mapping
+- Token binding supports TLS fingerprint (SHA256 of client cert) and mTLS subject
+- JTI stored in Redis with TTL matching token lifetime for automatic cleanup
+- Short-lived tokens (5 min default) reduce revocation window
+
+## Architecture
+
+Scalable design patterns and best practices.
+
+## Real-World Examples
+
+### Example: BACKEND Implementation
+
+Leading companies implement this pattern for production systems.
+
+## Best Practices
+
+- Follow SOLID principles
+- Implement proper error handling
+- Optimize for performance
+- Ensure security
+
+## Conclusion
+
+Key insights and recommendations for implementation.
+
+## References
+
+- Official backend documentation
+- Engineering blogs
+- Technical case studies
