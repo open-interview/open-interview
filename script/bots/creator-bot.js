@@ -21,6 +21,7 @@ import { logAction } from './shared/ledger.js';
 import { addToQueue } from './shared/queue.js';
 import { startRun, completeRun, failRun, updateRunStats } from './shared/runs.js';
 import { runWithRetries, parseJson, generateUnifiedId, isDuplicateUnified, getChannelQuestionCounts, getAllChannelsFromDb } from '../utils.js';
+import { WorkerPool } from '../ai/graphs/parallel-bot-executor.js';
 import ragService from '../ai/services/rag-enhanced-generation.js';
 import { checkDuplicateBeforeCreate } from '../ai/services/duplicate-prevention.js';
 import { validateBeforeInsert, sanitizeQuestion } from './shared/validation.js';
@@ -807,25 +808,15 @@ async function main() {
       console.log('\n📊 Targeting least-populated channels:');
       targetChannels.forEach(ch => console.log(`   ${ch}: ${channelCounts[ch] || 0} questions`));
 
-      for (let i = 0; i < targetChannels.length; i++) {
-        const targetChannel = targetChannels[i];
-        const topic = targetChannel.replace(/-/g, ' ');
-        console.log(`\n--- Processing: "${topic}" (channel: ${targetChannel}) ---`);
-
-        const result = await runPipeline(topic, { type: inputType, channel: channel || targetChannel, dryRun });
-        stats.processed++;
-
-        if (result.success) {
-          stats.created++;
-          console.log(`✅ Created: ${result.savedId}`);
-        }
-
-        if (!dryRun) await updateRunStats(run.id, stats);
-
-        if (i < targetChannels.length - 1) {
-          await new Promise(r => setTimeout(r, 2000));
-        }
-      }
+      const pool = new WorkerPool({ maxConcurrency: 3, batchSize: 5, taskTimeout: 120_000, retryAttempts: 2, rateLimitDelay: 500 });
+      pool.addTasks(targetChannels.map(ch => ({
+        id: `creator-${ch}`,
+        fn: (ch) => runPipeline(ch.replace(/-/g, ' '), { type: inputType, channel: channel || ch, dryRun }),
+        args: [ch],
+      })));
+      const results = await pool.execute();
+      stats.processed = results.stats.total;
+      stats.created = results.stats.completed;
     } else {
       console.log(`Processing: "${input.substring(0, 50)}..."`);
 

@@ -24,6 +24,7 @@ import { getDb, initBotTables } from './shared/db.js';
 import { logAction } from './shared/ledger.js';
 import { addToQueue, addBatchToQueue } from './shared/queue.js';
 import { startRun, completeRun, failRun, updateRunStats } from './shared/runs.js';
+import { WorkerPool } from '../ai/graphs/parallel-bot-executor.js';
 
 const BOT_NAME = 'analysis';
 const db = getDb();
@@ -439,75 +440,38 @@ async function main() {
     let analyzed = 0;
     let issuesFound = 0;
     let workItemsCreated = 0;
-    
-    for (const question of questions) {
-      try {
-        // Normalize question data
+
+    const pool = new WorkerPool({ maxConcurrency: 5, batchSize: 10, taskTimeout: 60_000, retryAttempts: 1, rateLimitDelay: 100 });
+
+    pool.addTasks(questions.map(q => ({
+      id: `analysis-${q.id}`,
+      fn: async (question) => {
         const normalized = normalizeQuestion(question);
         const allIssues = await analyzeQuestion(normalized);
-        // Filter out issues already in the queue
         const issues = allIssues.filter(
           issue => !existingQueueKeys.has(`question|${normalized.id}|${issue.type}`)
         );
-        analyzed++;
-        
-        if (issues.length > 0) {
-          issuesFound += issues.length;
-          let created = 0;
-          if (!dryRun) {
-            created = await createWorkItems(normalized, issues);
-            workItemsCreated += created;
-            console.log(`   ✅ Created ${created} work items`);
-          } else {
-            console.log(`   💡 Would create ${issues.length} work items (dry-run)`);
-          }
-          
-          // Log analysis
-          if (!dryRun) {
-            try {
-              await logAction({
-                botName: BOT_NAME,
-                itemId: question.id,
-                action: 'analyze',
-                itemType: 'question',
-                reason: JSON.stringify({
-                  status: 'completed',
-                  issuesFound: issues.length,
-                  workItemsCreated: created,
-                  issues: issues.map(i => i.type)
-                })
-              });
-            } catch (logErr) {
-              console.log(`   ⚠️  Failed to log action: ${logErr.message}`);
-            }
-          }
-        } else {
-          console.log(`   ✓ No issues found`);
-        }
-        
-        // Small delay to avoid overwhelming the system
-        await new Promise(r => setTimeout(r, 100));
-        
-      } catch (e) {
-        if (e.isRefusal) {
-          console.log(`   ⚠️ AI refused for item ${question.id} — skipping`);
-          continue;
-        }
-        console.log(`   ❌ Analysis failed: ${e.message}`);
-        try {
+        let created = 0;
+        if (issues.length > 0 && !dryRun) {
+          created = await createWorkItems(normalized, issues);
           await logAction({
-            botName: BOT_NAME,
-            itemId: question.id,
-            action: 'analyze',
-            itemType: 'question',
-            reason: JSON.stringify({ status: 'failed', error: e.message })
-          });
-        } catch (logErr) {
-          console.log(`   ⚠️  Failed to log error: ${logErr.message}`);
+            botName: BOT_NAME, itemId: question.id, action: 'analyze', itemType: 'question',
+            reason: JSON.stringify({ status: 'completed', issuesFound: issues.length, workItemsCreated: created, issues: issues.map(i => i.type) })
+          }).catch(() => {});
         }
-      }
+        return { issuesFound: issues.length, workItemsCreated: created };
+      },
+      args: [q],
+    })));
+
+    const poolResults = await pool.execute();
+    for (const task of poolResults.completed) {
+      analyzed++;
+      issuesFound += task.result?.issuesFound || 0;
+      workItemsCreated += task.result?.workItemsCreated || 0;
     }
-    
+    analyzed += poolResults.failed.length;
+
     await updateRunStats(runId.id, {
       processed: analyzed,
       created: workItemsCreated,
