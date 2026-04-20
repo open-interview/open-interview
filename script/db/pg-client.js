@@ -27,8 +27,10 @@ export function getPool() {
       password: process.env.PGPASSWORD,
       database: process.env.PGDATABASE,
       max: 10,
+      min: 2,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
+      allowExitOnIdle: true,
     });
 
     _pool.on('error', (err) => {
@@ -81,6 +83,13 @@ async function batch(stmts) {
     results.push(await execute(stmt));
   }
   return results;
+}
+
+export async function closePool() {
+  if (_pool) {
+    await _pool.end();
+    _pool = null;
+  }
 }
 
 export const dbClient = { execute, batch };

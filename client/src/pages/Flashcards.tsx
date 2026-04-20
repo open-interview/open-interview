@@ -5,7 +5,7 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { SEOHead } from '../components/SEOHead';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { getRoleDefaultChannels } from '../lib/personalization';
-import { ChevronLeft, RotateCcw, Brain, Layers } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, Brain, Layers } from 'lucide-react';
 import { ProgressBar } from '../components/unified/ProgressBar';
 import { EmptyState } from '../components/unified/EmptyState';
 import { FlashcardService, type DbFlashcard } from '../services/api.service';
@@ -232,7 +232,15 @@ export default function Flashcards() {
           </div>
 
           {/* Card area */}
-          <div className="flex-1 flex flex-col items-center justify-center px-4 min-h-0" style={{ perspective: '1200px' }}>
+          <div className="relative flex-1 flex flex-col items-center justify-center px-4 min-h-0" style={{ perspective: '1200px' }}>
+            <button onClick={goPrev} disabled={index === 0}
+              className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full items-center justify-center bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-20 transition-all cursor-pointer">
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <button onClick={goNext} disabled={index >= filtered.length - 1}
+              className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full items-center justify-center bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-20 transition-all cursor-pointer">
+              <ChevronRight className="w-6 h-6" />
+            </button>
             <AnimatePresence mode="wait">
               {current ? (
                 <motion.div key={current.id}

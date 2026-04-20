@@ -177,6 +177,7 @@ export default function TestSessionPage() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [totalTime, setTotalTime] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [reviewIndex, setReviewIndex] = useState(0);
 
   const questionHeadingRef = useRef<HTMLHeadingElement>(null);
   const feedbackRef = useRef<HTMLDivElement>(null);
@@ -216,6 +217,7 @@ export default function TestSessionPage() {
     setResult(null);
     setTimeLeft(secs);
     setTotalTime(secs);
+    setReviewIndex(0);
     setSessionState('in-progress');
   }, [test]);
 
@@ -540,20 +542,29 @@ export default function TestSessionPage() {
                   {/* Question review list */}
                   <div className="mb-5">
                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Question Review</h3>
-                    <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                      {questions.map((q, idx) => {
-                        const userAns = answers[q.id] || [];
-                        const correctIds = q.options.filter(o => o.isCorrect).map(o => o.id);
-                        const isCorrect = correctIds.every(id => userAns.includes(id)) && userAns.every(id => correctIds.includes(id));
-                        return (
-                          <div key={q.id} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30 text-xs">
-                            {isCorrect
-                              ? <CheckCircle className="w-3.5 h-3.5 text-[var(--color-success)] flex-shrink-0 mt-0.5" />
-                              : <XCircle className="w-3.5 h-3.5 text-[var(--color-error)] flex-shrink-0 mt-0.5" />}
-                            <span className="text-muted-foreground line-clamp-2">{idx + 1}. {q.question}</span>
-                          </div>
-                        );
-                      })}
+                    {(() => {
+                      const q = questions[reviewIndex];
+                      if (!q) return null;
+                      const userAns = answers[q.id] || [];
+                      const correctIds = q.options.filter(o => o.isCorrect).map(o => o.id);
+                      const isCorrect = correctIds.every(id => userAns.includes(id)) && userAns.every(id => correctIds.includes(id));
+                      return (
+                        <div className="flex items-start gap-2 p-2 rounded-lg bg-muted/30 text-xs">
+                          {isCorrect
+                            ? <CheckCircle className="w-3.5 h-3.5 text-[var(--color-success)] flex-shrink-0 mt-0.5" />
+                            : <XCircle className="w-3.5 h-3.5 text-[var(--color-error)] flex-shrink-0 mt-0.5" />}
+                          <span className="text-muted-foreground">{reviewIndex + 1}. {q.question}</span>
+                        </div>
+                      );
+                    })()}
+                    <div className="flex items-center justify-between mt-2 gap-2">
+                      <Button size="sm" variant="secondary" onClick={() => setReviewIndex(i => i - 1)} disabled={reviewIndex === 0}>
+                        <ArrowLeft className="w-3.5 h-3.5 mr-1" />Previous
+                      </Button>
+                      <span className="text-xs text-muted-foreground">{reviewIndex + 1} / {questions.length}</span>
+                      <Button size="sm" variant="secondary" onClick={() => setReviewIndex(i => i + 1)} disabled={reviewIndex === questions.length - 1}>
+                        Next<ArrowRight className="w-3.5 h-3.5 ml-1" />
+                      </Button>
                     </div>
                   </div>
 

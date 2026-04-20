@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'wouter';
 import { 
   BookOpen, Code, Database, Cpu, Layers, GitBranch, 
-  Zap, Shield, BarChart3, Palette, ChevronRight, ChevronDown,
+  Zap, Shield, BarChart3, Palette, ChevronLeft, ChevronRight, ChevronDown,
   Terminal, Server, Globe, Brain, FileCode, Copy, Check,
   ExternalLink, Search, Menu, X, Home, Sparkles, Box
 } from 'lucide-react';
@@ -161,6 +161,34 @@ export default function Documentation() {
             {activeSection === 'illustrations' && <IllustrationSection />}
             {activeSection === 'api' && <APISection />}
             {activeSection === 'deployment' && <DeploymentSection />}
+
+            {(() => {
+              const sectionIdx = sections.findIndex(s => s.id === activeSection);
+              const prevSection = sections[sectionIdx - 1] ?? null;
+              const nextSection = sections[sectionIdx + 1] ?? null;
+              return (
+                <div className="flex justify-between mt-12 pt-6 border-t border-border">
+                  {prevSection ? (
+                    <button
+                      onClick={() => setActiveSection(prevSection.id)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-[#8b949e] hover:text-white hover:bg-[#21262d] rounded-lg transition-colors duration-150 ease-out cursor-pointer min-h-[44px]"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      {prevSection.title}
+                    </button>
+                  ) : <div />}
+                  {nextSection ? (
+                    <button
+                      onClick={() => setActiveSection(nextSection.id)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-[#8b949e] hover:text-white hover:bg-[#21262d] rounded-lg transition-colors duration-150 ease-out cursor-pointer min-h-[44px]"
+                    >
+                      {nextSection.title}
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  ) : <div />}
+                </div>
+              );
+            })()}
           </div>
         </main>
       </div>

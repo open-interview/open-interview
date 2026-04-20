@@ -7,7 +7,7 @@ import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Eye, EyeOff, Volume2, Trophy, RotateCcw,
-  ChevronRight, BookOpen, Mic
+  ChevronLeft, ChevronRight, BookOpen, Mic
 } from 'lucide-react';
 import { PageHeader, PageLoader } from '@/components/ui/page';
 import { SEOHead } from '../components/SEOHead';
@@ -525,6 +525,25 @@ export default function VoicePractice() {
                       <span className="text-muted-foreground">•</span>
                       <span className="text-muted-foreground truncate">{currentQuestion.channel}</span>
                     </div>
+                  </div>
+
+                  {/* Question Navigation */}
+                  <div className="flex items-center gap-2 mt-3">
+                    <button
+                      onClick={() => { setCurrentIndex(prev => prev - 1); resetForNewQuestion(); }}
+                      disabled={currentIndex === 0}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                    </button>
+                    <span className="text-xs text-muted-foreground flex-1 text-center">{currentIndex + 1} / {questions.length}</span>
+                    <button
+                      onClick={() => { setCurrentIndex(prev => prev + 1); resetForNewQuestion(); }}
+                      disabled={currentIndex === questions.length - 1}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      Next <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
                   </div>
 
                   {/* Reveal Answer Button */}

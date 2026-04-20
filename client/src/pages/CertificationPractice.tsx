@@ -849,8 +849,19 @@ export default function CertificationPractice() {
           <>
             {/* Desktop - Optimized split layout */}
             <div className="hidden lg:flex h-[calc(100vh-100px)]">
-              <div className="w-[40%] border-r border-border overflow-y-auto">
-                {currentQuestion && <QuestionPanel question={currentQuestion} questionNumber={currentIndex + 1} totalQuestions={totalQuestions} isMarked={isMarked} isCompleted={isCompleted} onToggleMark={toggleMark} timerEnabled={false} timeLeft={0} />}
+              <div className="w-[40%] border-r border-border flex flex-col">
+                <div className="flex-1 overflow-y-auto">
+                  {currentQuestion && <QuestionPanel question={currentQuestion} questionNumber={currentIndex + 1} totalQuestions={totalQuestions} isMarked={isMarked} isCompleted={isCompleted} onToggleMark={toggleMark} timerEnabled={false} timeLeft={0} />}
+                </div>
+                <div className="border-t border-border px-4 py-2 flex items-center justify-between shrink-0">
+                  <button onClick={goToPrev} disabled={currentIndex === 0} className="flex items-center gap-1 px-2.5 min-h-[44px] bg-muted rounded-md disabled:opacity-40 text-xs cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80 disabled:cursor-default">
+                    <ChevronLeft className="w-4 h-4" />Prev
+                  </button>
+                  <span className="text-xs text-muted-foreground tabular-nums">Question {currentIndex + 1} of {totalQuestions}</span>
+                  <button onClick={goToNext} disabled={currentIndex >= totalQuestions - 1} className="flex items-center gap-1 px-2.5 min-h-[44px] bg-muted rounded-md disabled:opacity-40 text-xs cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80 disabled:cursor-default">
+                    Next<ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
               <div className="w-[60%] overflow-y-auto">
                 {currentQuestion && <AnswerPanel question={currentQuestion} isCompleted={isCompleted} />}

@@ -737,6 +737,24 @@ export default function VoiceInterview() {
               {/* Question Controls */}
               <div className="flex items-center justify-between pt-4 border-t border-border/50">
                 <div className="flex items-center gap-2">
+                  {/* Prev / Counter / Next */}
+                  <button
+                    onClick={previousQuestion}
+                    disabled={currentIndex === 0}
+                    className="flex items-center gap-0.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    Prev
+                  </button>
+                  <span className="text-sm text-muted-foreground tabular-nums">{currentIndex + 1} / {questions.length}</span>
+                  <button
+                    onClick={nextQuestion}
+                    disabled={currentIndex >= questions.length - 1}
+                    className="flex items-center gap-0.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    Next
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                   {/* Actions Dropdown */}
                   <div className="relative">
                     <button

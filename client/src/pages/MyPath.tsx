@@ -11,7 +11,7 @@ import { SEOHead } from '../components/SEOHead';
 import { allChannelsConfig } from '../lib/channels-config';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import {
-  Plus, Trash2, Edit, ChevronRight, Brain, Check, Target, Clock, Award,
+  Plus, Trash2, Edit, ChevronLeft, ChevronRight, Brain, Check, Target, Clock, Award,
   Code, Rocket, Building2, X, Search
 } from 'lucide-react';
 
@@ -78,6 +78,8 @@ export default function MyPath() {
     certifications: [] as string[]
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCustomIdx, setSelectedCustomIdx] = useState(0);
+  const [selectedCuratedIdx, setSelectedCuratedIdx] = useState(0);
 
   // Load custom paths from localStorage
   useEffect(() => {

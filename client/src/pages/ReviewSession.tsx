@@ -17,7 +17,7 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
-  Brain, ChevronLeft, Eye, Flame, Sparkles, Zap, Check, CheckCircle, RotateCcw, Trash2
+  Brain, ChevronLeft, ChevronRight, Eye, Flame, Sparkles, Zap, Check, CheckCircle, RotateCcw, Trash2
 } from 'lucide-react';
 import { getDueCards, recordReview, removeFromSRS, type ReviewCard } from '../lib/spaced-repetition';
 import { getQuestionByIdAsync } from '../lib/questions-loader';
@@ -769,6 +769,27 @@ export default function ReviewSession() {
                     className="min-h-[44px] px-4 cursor-pointer text-sm text-muted-foreground hover:text-foreground transition duration-150 ease-out"
                   >
                     Skip this card
+                  </button>
+                </div>
+
+                {/* Prev / Counter / Next */}
+                <div className="mt-4 flex items-center justify-center gap-4">
+                  <button
+                    onClick={() => { setCurrentIndex(i => i - 1); setShowAnswer(false); }}
+                    disabled={currentIndex === 0}
+                    className="min-h-[44px] px-3 cursor-pointer flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition duration-150 ease-out disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Prev
+                  </button>
+                  <span className="text-sm text-muted-foreground">{currentIndex + 1} / {cards.length}</span>
+                  <button
+                    onClick={() => { setCurrentIndex(i => i + 1); setShowAnswer(false); }}
+                    disabled={currentIndex === cards.length - 1}
+                    className="min-h-[44px] px-3 cursor-pointer flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition duration-150 ease-out disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               </motion.div>

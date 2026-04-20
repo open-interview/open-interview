@@ -5,7 +5,7 @@ import { TableOfContents } from "@/components/blog/TableOfContents";
 import { ReadingProgressBar } from "@/components/blog/ReadingProgressBar";
 import { PostCard, CategoryBadge, TagPill, type PostCardData } from "@/components/blog/PostCard";
 import { MarkdownRenderer } from "@/components/blog/MarkdownRenderer";
-import { Calendar, Clock, Twitter, Linkedin, Link2, ArrowLeft } from "lucide-react";
+import { Calendar, Clock, Twitter, Linkedin, Link2, ArrowLeft, ArrowRight } from "lucide-react";
 
 interface PostDetailPageProps {
   slug: string;
@@ -26,6 +26,8 @@ function formatDate(dateStr: string) {
 export default function PostDetailPage({ slug }: PostDetailPageProps) {
   const [post, setPost] = useState<PostData | null>(null);
   const [related, setRelated] = useState<PostCardData[]>([]);
+  const [prevPost, setPrevPost] = useState<PostCardData | null>(null);
+  const [nextPost, setNextPost] = useState<PostCardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const articleRef = useRef<HTMLElement>(null);
@@ -41,6 +43,8 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
         if (!data) return;
         setPost(data.data);
         setRelated(data.related || []);
+        setPrevPost(data.prev || null);
+        setNextPost(data.next || null);
       })
       .finally(() => setLoading(false));
   }, [slug]);
@@ -195,6 +199,24 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
             </div>
           </div>
         </div>
+
+        {/* Prev/Next navigation */}
+        {(prevPost || nextPost) && (
+          <nav className="mt-10 flex gap-4" aria-label="Post navigation">
+            {prevPost ? (
+              <Link href={`/blog/${prevPost.slug}`} className="flex-1 flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-4 py-3 text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-border)] transition-colors">
+                <ArrowLeft size={14} strokeWidth={1.5} className="shrink-0" />
+                <span className="truncate">{prevPost.title}</span>
+              </Link>
+            ) : <div className="flex-1" />}
+            {nextPost ? (
+              <Link href={`/blog/${nextPost.slug}`} className="flex-1 flex items-center justify-end gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-4 py-3 text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-border)] transition-colors text-right">
+                <span className="truncate">{nextPost.title}</span>
+                <ArrowRight size={14} strokeWidth={1.5} className="shrink-0" />
+              </Link>
+            ) : <div className="flex-1" />}
+          </nav>
+        )}
 
         {/* Related posts */}
         {related.length > 0 && (

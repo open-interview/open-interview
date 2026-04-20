@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { closePool } from "./db";
 
 const app = express();
 const httpServer = createServer(app);
@@ -94,4 +95,13 @@ app.use((req, res, next) => {
       log(`serving on port ${port}`);
     },
   );
+
+  process.on('SIGTERM', async () => {
+    await closePool();
+    process.exit(0);
+  });
+  process.on('SIGINT', async () => {
+    await closePool();
+    process.exit(0);
+  });
 })();

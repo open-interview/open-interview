@@ -19,7 +19,7 @@ import {
   Bookmark, Trash2, Play, Filter,
   Zap, Target, Flame, Building2, CheckCircle,
   Cpu, Terminal, Layout, Database, Activity, GitBranch, Server,
-  Layers, X, ArrowUpDown, ChevronDown, ChevronUp
+  Layers, X, ArrowUpDown, ChevronDown, ChevronUp, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
 
@@ -232,6 +232,7 @@ export default function Bookmarks() {
                     const isCompleted = ProgressStorage.getCompleted(question.channelId).includes(question.id);
                     const isExpanded = expandedId === question.id;
                     const previewText = question.tldr ?? (question.answer ? question.answer.slice(0, 200) + '...' : '');
+                    const currentIdx = isExpanded ? filteredQuestions.findIndex(q => q.id === expandedId) : -1;
 
                     const cardContent = (
                       <motion.div
@@ -329,6 +330,27 @@ export default function Bookmarks() {
                             >
                               Go to question →
                             </button>
+                            <div className="flex items-center justify-between mt-3 pt-2 border-t border-border">
+                              <button
+                                disabled={currentIdx <= 0}
+                                onClick={() => setExpandedId(filteredQuestions[currentIdx - 1].id)}
+                                className="flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 cursor-pointer"
+                                style={{ color: 'var(--text-secondary)' }}
+                              >
+                                <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                              </button>
+                              <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                                {currentIdx + 1} / {filteredQuestions.length}
+                              </span>
+                              <button
+                                disabled={currentIdx >= filteredQuestions.length - 1}
+                                onClick={() => setExpandedId(filteredQuestions[currentIdx + 1].id)}
+                                className="flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 cursor-pointer"
+                                style={{ color: 'var(--text-secondary)' }}
+                              >
+                                Next <ChevronRight className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
                         )}
                       </motion.div>
