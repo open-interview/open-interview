@@ -35,7 +35,7 @@ async function validateUrl(url, timeout = 5000) {
     });
     
     clearTimeout(timeoutId);
-    return response.ok || response.status === 403 || response.status === 405;
+    return response.ok;
   } catch {
     // Try GET as fallback
     try {
@@ -80,7 +80,13 @@ const BlogState = Annotation.Root({
   // Case finding retry tracking
   caseAttempts: Annotation({ reducer: (_, b) => b, default: () => 0 }),
   maxCaseAttempts: Annotation({ reducer: (_, b) => b, default: () => 3 }),
-  failedCompanies: Annotation({ reducer: (a, b) => [...a, ...b], default: () => [] }),
+  failedCompanies: Annotation({ reducer: (a, b) => {
+    const newFailed = [...a];
+    b.forEach(c => {
+      if (!newFailed.includes(c)) newFailed.push(c);
+    });
+    return newFailed;
+  }, default: () => [] }),
   
   // Blog content
   blogContent: Annotation({ reducer: (_, b) => b, default: () => null }),
@@ -260,6 +266,10 @@ async function generateBlogNode(state) {
   } catch (error) {
     console.log(`   ⚠️ Vector DB search failed: ${error.message}`);
   }
+
+  if (relatedQuestions.length === 0) {
+    console.log(`   ℹ️ No related questions found (-vector DB unavailable)`);
+  }
   
   try {
     const result = await ai.run('blog', {
@@ -322,13 +332,15 @@ async function validateCitationsNode(state) {
   console.log(`   Inline citations: ${citationMatches.length}`);
   
   if (sources.length < 8) {
-    console.log(`   ⚠️ Need more sources (have ${sources.length}, need 8+)`);
+    console.log(`   ❌ Need more sources (have ${sources.length}, need 8+)`);
+    return { error: 'Insufficient sources', qualityPassed: false };
   }
-  
+
   if (citationMatches.length < 5) {
-    console.log(`   ⚠️ Need more inline citations (have ${citationMatches.length}, need 5+)`);
+    console.log(`   ❌ Need more inline citations (have ${citationMatches.length}, need 5+)`);
+    return { error: 'Insufficient inline citations', qualityPassed: false };
   }
-  
+
   return {}; // Pass through
 }
 
@@ -363,6 +375,14 @@ async function qualityGatesNode(state) {
     if (qualityResults.issues.length > 5) {
       console.log(`      ... and ${qualityResults.issues.length - 5} more issues`);
     }
+
+    if (state.caseAttempts < state.maxCaseAttempts) {
+      console.log(`   🔄 Quality failed, retrying with new case...`);
+      return {
+        shouldRetry: true,
+        retryCount: state.caseAttempts + 1
+      };
+    }
   }
   
   return {
@@ -387,7 +407,7 @@ async function validateImagesNode(state) {
   console.log(`   Found ${images.length} existing images`);
   
   // Filter to only keep local images (already generated SVGs)
-  let validImages = images.filter(img => img?.url?.startsWith('/images/'));
+  let validImages = images.filter(img => img?.url && (img.url.startsWith('/images/') || img.url.startsWith('http')));
   
   // Generate new pixel art SVG images
   console.log(`   🎮 Generating pixel art SVG illustrations...`);
@@ -407,6 +427,11 @@ async function validateImagesNode(state) {
       `pixel-${state.questionId || 'main'}`,
       { channel: state.channel }
     );
+    
+    if (!mainResult?.filename) {
+      console.log(`   ❌ No filename generated for main result`);
+      return { error: 'Failed to generate output filename', qualityPassed: false };
+    }
     
     if (mainResult && mainResult.filename) {
       validImages.push({

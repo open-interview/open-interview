@@ -1745,7 +1745,7 @@ function generateArticlePage(article, allArticles) {
     const hashtags = socialSnippet.hashtags || '';
     const snippetText = `${socialSnippet.hook}\n\n${socialSnippet.body}\n\n${socialSnippet.cta}${hashtags ? '\n\n' + hashtags : ''}`;
     const encodedText = encodeURIComponent(snippetText + `\n\n🔗 `);
-    const articleUrl = `https://openstackdaily.github.io/posts/${article.id}/${article.blogSlug}/`;
+    const articleUrl = `${process.env.BLOG_BASE_URL || 'https://openstackdaily.github.io'}/posts/${article.id}/${article.blogSlug}/`;
     const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(articleUrl)}`;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodeURIComponent(articleUrl)}`;
     

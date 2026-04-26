@@ -209,7 +209,10 @@ async function main() {
   try {
     const qr = JSON.parse(post.quick_reference || '[]');
     quickReference = Array.isArray(qr) ? qr.join(' | ') : '';
-  } catch {}
+  } catch (e) {
+    console.warn(`   ⚠️ Failed to parse quick_reference for post ${post.id}: ${e.message}`);
+    quickReference = '';
+  }
 
   let socialHook = '';
   let socialBody = '';
@@ -217,7 +220,9 @@ async function main() {
     const ss = JSON.parse(post.social_snippet || '{}');
     socialHook = ss.hook || '';
     socialBody = Array.isArray(ss.body) ? ss.body.join('\n') : (ss.body || '');
-  } catch {}
+  } catch (e) {
+    console.warn(`   ⚠️ Failed to parse social_snippet for post ${post.id}: ${e.message}`);
+  }
 
   let realWorldExample = '';
   try {
@@ -226,7 +231,9 @@ async function main() {
       const sourceNote = rwe.sourceUrl ? ` (source: ${rwe.sourceUrl})` : '';
       realWorldExample = `${rwe.company}: ${rwe.scenario}${sourceNote}`;
     }
-  } catch {}
+  } catch (e) {
+    console.warn(`   ⚠️ Failed to parse real_world_example for post ${post.id}: ${e.message}`);
+  }
 
   // Set GitHub Actions outputs — use heredoc for values that may contain newlines
   const outputFile = process.env.GITHUB_OUTPUT;

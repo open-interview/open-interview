@@ -864,9 +864,9 @@ export async function registerRoutes(
   app.get("/api/blog/posts", (req, res) => {
     try {
       const { category, tag, limit, offset, page } = req.query as Record<string, string>;
-      const pageSize = limit ? parseInt(limit) : 12;
-      const pageNum = page ? parseInt(page) : 1;
-      const off = offset ? parseInt(offset) : (pageNum - 1) * pageSize;
+      const pageSize = parseInt(limit) || 12;
+      const pageNum = parseInt(page) || 1;
+      const off = parseInt(offset) || (pageNum - 1) * pageSize;
       const all = blogStorage.getAllPosts({ category, tag });
       const data = all.slice(off, off + pageSize);
       res.json({ data, meta: { total: all.length, page: pageNum, pageSize, totalPages: Math.ceil(all.length / pageSize) } });

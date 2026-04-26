@@ -229,9 +229,9 @@ function routeAfterGeneration(state) {
   if (state.blogContent) {
     return 'validate_output';
   }
-  if (state.retryCount < state.maxRetries && !state.error) {
+  if (state.retryCount < state.maxRetries) {
     console.log(`\n🔀 [ROUTER] Retrying generation (attempt ${state.retryCount + 1})...`);
-    return 'generate_blog';
+    return 'retry';
   }
   return 'validate_output';
 }
@@ -260,7 +260,7 @@ export function createRCABlogGraph() {
   graph.addEdge('select_incident', 'generate_blog');
   
   graph.addConditionalEdges('generate_blog', routeAfterGeneration, {
-    'generate_blog': 'generate_blog',
+    'retry': 'generate_blog',
     'validate_output': 'validate_output'
   });
   

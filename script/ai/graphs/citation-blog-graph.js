@@ -55,7 +55,7 @@ async function validateUrl(url, timeout = 10000) {
     });
     
     clearTimeout(timeoutId);
-    return response.ok || response.status === 403 || response.status === 405;
+    return response.ok;
   } catch {
     try {
       const controller = new AbortController();

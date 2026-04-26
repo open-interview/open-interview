@@ -21,6 +21,15 @@ function setMeta(name: string, content: string, property = false) {
     document.head.appendChild(el);
   }
   el.content = content;
+  return el;
+}
+
+function resetMeta(name: string, property = false) {
+  const attr = property ? "property" : "name";
+  const el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
+  if (el) {
+    el.content = "";
+  }
 }
 
 function setLink(rel: string, href: string) {
@@ -46,10 +55,10 @@ export function useBlogSEO({ title, description, ogImage, ogType = "website", ca
 
     setMeta("og:title", fullTitle, true);
     setMeta("og:type", ogType, true);
-    setMeta("og:image", ogImage || DEFAULT_OG_IMAGE, true);
+    setMeta("og:image", ogImage ?? DEFAULT_OG_IMAGE, true);
     setMeta("twitter:card", "summary_large_image");
     setMeta("twitter:title", fullTitle);
-    setMeta("twitter:image", ogImage || DEFAULT_OG_IMAGE);
+    setMeta("twitter:image", ogImage ?? DEFAULT_OG_IMAGE);
 
     if (canonicalUrl) {
       setMeta("og:url", canonicalUrl, true);
@@ -59,5 +68,22 @@ export function useBlogSEO({ title, description, ogImage, ogType = "website", ca
     if (publishedAt) {
       setMeta("article:published_time", publishedAt, true);
     }
+
+    return () => {
+      document.title = SITE_NAME;
+      resetMeta("description");
+      resetMeta("og:description", true);
+      resetMeta("twitter:description");
+      resetMeta("og:title", true);
+      resetMeta("og:type", true);
+      resetMeta("og:image", true);
+      resetMeta("twitter:card");
+      resetMeta("twitter:title");
+      resetMeta("twitter:image");
+      resetMeta("og:url", true);
+      const canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+      if (canonical) canonical.href = "";
+      resetMeta("article:published_time", true);
+    };
   }, [title, description, ogImage, ogType, canonicalUrl, publishedAt]);
 }

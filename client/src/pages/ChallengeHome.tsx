@@ -4,6 +4,7 @@ import {
   Search, Zap, Flame, Trophy, ArrowRight, Bot,
   CheckCircle, Clock, RotateCcw, Layers, Type,
   GitBranch, Network, BarChart2, SortAsc, Star,
+  ChevronRight,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
@@ -275,7 +276,9 @@ export default function ChallengeHome() {
         ) : (
           <>
             <p className="text-sm text-gray-500">{solvedCount} / {challenges.length} solved · showing {filtered.length}</p>
-            <div className="rounded-xl border border-gray-800 overflow-x-auto">
+            
+            {/* Desktop table */}
+            <div className="hidden sm:block rounded-xl border border-gray-800 overflow-x-auto">
               <table className="w-full text-sm min-w-[480px]">
                 <thead>
                   <tr className="border-b border-gray-800 bg-gray-900/60 text-gray-400 text-left">
@@ -334,6 +337,57 @@ export default function ChallengeHome() {
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile cards */}
+            <div className="sm:hidden space-y-2">
+              {filtered.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-3">No challenges match.</p>
+                  <button
+                    onClick={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors duration-150 cursor-pointer"
+                  >
+                    Clear filters
+                  </button>
+                </div>
+              ) : filtered.map((c, i) => {
+                const status: ChallengeStatus = progress?.challenges[c.id]?.status ?? 'unsolved';
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => navigate(`/code/challenges/${c.id}`)}
+                    className="w-full text-left p-3 rounded-lg border border-gray-800 bg-gray-900/40 hover:bg-gray-800/60 cursor-pointer transition-colors duration-150"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs text-gray-500">#{i + 1}</span>
+                          <span className={`inline-flex px-1.5 py-0.5 rounded border text-xs font-medium ${DIFF_BADGE[c.difficulty]}`}>
+                            {c.difficulty.charAt(0).toUpperCase() + c.difficulty.slice(1)}
+                          </span>
+                        </div>
+                        <h3 className="font-medium text-white truncate">{c.title}</h3>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className={`inline-flex px-2 py-0.5 rounded border text-xs ${STATUS_STYLE[status]}`}>
+                            {STATUS_LABEL[status]}
+                          </span>
+                          <span className="text-xs text-gray-500">{c.estimatedMinutes}m</span>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-500 shrink-0 mt-1" />
+                    </div>
+                    {c.tags.length > 0 && (
+                      <div className="flex gap-1 flex-wrap mt-2">
+                        {c.tags.slice(0, 2).map(t => (
+                          <span key={t} className="px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 text-xs border border-gray-700">{t}</span>
+                        ))}
+                        {c.tags.length > 2 && <span className="text-gray-500 text-xs">+{c.tags.length - 2}</span>}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </>
         )}

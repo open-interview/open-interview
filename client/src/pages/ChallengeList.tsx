@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
-import { Search } from 'lucide-react';
+import { Search, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { getProgress } from '@/lib/challenge-progress';
@@ -144,7 +144,7 @@ export default function ChallengeList() {
         )}
       </div>
 
-      {/* Table */}
+      {/* List - Desktop table / Mobile cards */}
       {filtered.length === 0 ? (
         <div className="text-center py-16 space-y-3">
           <p className="text-zinc-500">No challenges match your filters.</p>
@@ -156,66 +156,122 @@ export default function ChallengeList() {
           </button>
         </div>
       ) : (
-        <div className="rounded-lg border border-zinc-800 overflow-x-auto">
-          <table className="w-full text-sm min-w-[480px]">
-            <thead>
-              <tr className="border-b border-zinc-800 bg-zinc-900/60 text-zinc-400 text-left">
-                <th className="px-4 py-3 w-12">#</th>
-                <th className="px-4 py-3">Title</th>
-                <th className="px-4 py-3 w-28">Difficulty</th>
-                <th className="px-4 py-3 hidden sm:table-cell">Tags</th>
-                <th className="px-4 py-3 w-32">Status</th>
-                <th className="px-4 py-3 w-24 hidden sm:table-cell">Est. Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((challenge, idx) => {
-                const status: ChallengeStatus =
-                  progress.challenges[challenge.id]?.status ?? 'unsolved';
-                return (
-                  <tr
-                    key={challenge.id}
-                    onClick={() => navigate(`/code/challenges/${challenge.id}`)}
-                    className="border-b border-zinc-800/60 last:border-0 hover:bg-zinc-800/40 cursor-pointer transition-colors duration-150"
-                  >
-                    <td className="px-4 py-3 text-zinc-500">{idx + 1}</td>
-                    <td className="px-4 py-3 font-medium text-white">{challenge.title}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex px-2 py-0.5 rounded border text-xs font-medium ${DIFFICULTY_STYLES[challenge.difficulty]}`}
-                      >
-                        {challenge.difficulty.charAt(0).toUpperCase() + challenge.difficulty.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 hidden sm:table-cell">
-                      <div className="flex gap-1 flex-wrap">
-                        {challenge.tags.slice(0, 3).map((tag) => (
-                          <span
-                            key={tag}
-                            className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 text-xs border border-zinc-700"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                        {challenge.tags.length > 3 && (
-                          <span className="text-zinc-500 text-xs">+{challenge.tags.length - 3}</span>
-                        )}
+        <>
+          {/* Desktop table */}
+          <div className="hidden sm:block rounded-lg border border-zinc-800 overflow-x-auto">
+            <table className="w-full text-sm min-w-[480px]">
+              <thead>
+                <tr className="border-b border-zinc-800 bg-zinc-900/60 text-zinc-400 text-left">
+                  <th className="px-4 py-3 w-12">#</th>
+                  <th className="px-4 py-3">Title</th>
+                  <th className="px-4 py-3 w-28">Difficulty</th>
+                  <th className="px-4 py-3 hidden sm:table-cell">Tags</th>
+                  <th className="px-4 py-3 w-32">Status</th>
+                  <th className="px-4 py-3 w-24 hidden sm:table-cell">Est. Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((challenge, idx) => {
+                  const status: ChallengeStatus =
+                    progress.challenges[challenge.id]?.status ?? 'unsolved';
+                  return (
+                    <tr
+                      key={challenge.id}
+                      onClick={() => navigate(`/code/challenges/${challenge.id}`)}
+                      className="border-b border-zinc-800/60 last:border-0 hover:bg-zinc-800/40 cursor-pointer transition-colors duration-150"
+                    >
+                      <td className="px-4 py-3 text-zinc-500">{idx + 1}</td>
+                      <td className="px-4 py-3 font-medium text-white">{challenge.title}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded border text-xs font-medium ${DIFFICULTY_STYLES[challenge.difficulty]}`}
+                        >
+                          {challenge.difficulty.charAt(0).toUpperCase() + challenge.difficulty.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 hidden sm:table-cell">
+                        <div className="flex gap-1 flex-wrap">
+                          {challenge.tags.slice(0, 3).map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 text-xs border border-zinc-700"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                          {challenge.tags.length > 3 && (
+                            <span className="text-zinc-500 text-xs">+{challenge.tags.length - 3}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded border text-xs ${STATUS_STYLES[status]}`}
+                        >
+                          {STATUS_LABEL[status]}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-zinc-400 hidden sm:table-cell">{challenge.estimatedMinutes}m</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="sm:hidden space-y-2">
+            {filtered.map((challenge, idx) => {
+              const status: ChallengeStatus =
+                progress.challenges[challenge.id]?.status ?? 'unsolved';
+              return (
+                <button
+                  key={challenge.id}
+                  onClick={() => navigate(`/code/challenges/${challenge.id}`)}
+                  className="w-full text-left p-3 rounded-lg border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-800/60 cursor-pointer transition-colors duration-150"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs text-zinc-500">#{idx + 1}</span>
+                        <span
+                          className={`inline-flex px-1.5 py-0.5 rounded border text-xs font-medium ${DIFFICULTY_STYLES[challenge.difficulty]}`}
+                        >
+                          {challenge.difficulty.charAt(0).toUpperCase() + challenge.difficulty.slice(1)}
+                        </span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex px-2 py-0.5 rounded border text-xs ${STATUS_STYLES[status]}`}
-                      >
-                        {STATUS_LABEL[status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-zinc-400 hidden sm:table-cell">{challenge.estimatedMinutes}m</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      <h3 className="font-medium text-white truncate">{challenge.title}</h3>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded border text-xs ${STATUS_STYLES[status]}`}
+                        >
+                          {STATUS_LABEL[status]}
+                        </span>
+                        <span className="text-xs text-zinc-500">{challenge.estimatedMinutes}m</span>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-zinc-500 shrink-0 mt-1" />
+                  </div>
+                  {challenge.tags.length > 0 && (
+                    <div className="flex gap-1 flex-wrap mt-2">
+                      {challenge.tags.slice(0, 2).map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 text-xs border border-zinc-700"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                      {challenge.tags.length > 2 && (
+                        <span className="text-zinc-500 text-xs">+{challenge.tags.length - 2}</span>
+                      )}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

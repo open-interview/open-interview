@@ -209,7 +209,7 @@ IMPORTANT:
 - Start the blog with this real-world case! Use it as the opening hook to draw readers in.
 - The introduction MUST reference ${realWorldCase.company}'s experience with this topic.
 - The introduction MUST include citation [1] linking to the source.
-- The FIRST item in your sources array MUST be: { title: "${realWorldCase.sourceTitle || realWorldCase.company + ' case study'}", url: "${realWorldCase.sourceUrl || ''}", type: "article" }
+- The FIRST item in your sources array MUST be: { title: "${realWorldCase?.sourceTitle || realWorldCase?.company || 'case study'}", url: "${realWorldCase?.sourceUrl || ''}", type: "article" }
 ` : '';
 
   return `${buildSystemContext('blog')}

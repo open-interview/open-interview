@@ -41,6 +41,7 @@ const QUALITY_THRESHOLDS = {
   
   // Quality scores
   minOverallScore: 70, // out of 100
+  minStructureScore: 60,
   minCoherenceScore: 60,
   minReadabilityScore: 60,
   minTechnicalScore: 70
@@ -217,7 +218,13 @@ async function validateSources(sources) {
       continue;
     }
     
-    const isValid = await validateUrl(source.url);
+    let isValid = false;
+    try {
+      isValid = await validateUrl(source.url);
+    } catch (urlError) {
+      console.log(`   ⚠️ URL validation failed: ${urlError.message}`);
+    }
+    
     if (isValid) {
       valid.push(source);
     } else {
@@ -354,6 +361,20 @@ function validateReadability(blogContent) {
  * Validate logical coherence
  */
 function validateCoherence(blogContent, question) {
+  const results = { warnings: [] };
+  
+  if (!question || typeof question !== 'object' || !question.question) {
+    results.warnings.push('Question not provided or invalid format');
+    return {
+      valid: false,
+      issues: [],
+      transitionCount: 0,
+      keywordDensity: 0,
+      score: 0,
+      warnings: results.warnings
+    };
+  }
+  
   const text = extractTextContent(blogContent);
   const issues = [];
   
@@ -365,7 +386,7 @@ function validateCoherence(blogContent, question) {
   
   // Keyword density
   const keywords = [
-    ...(blogContent.tags || []),
+    ...(Array.isArray(blogContent.tags) ? blogContent.tags : []),
     ...question.question.toLowerCase().split(/\s+/).filter(w => w.length > 4)
   ];
   const keywordDensity = calculateKeywordDensity(text, keywords);
@@ -396,7 +417,8 @@ function validateCoherence(blogContent, question) {
     issues,
     transitionCount,
     keywordDensity,
-    score: Math.max(0, 100 - (issues.length * 20))
+    score: Math.max(0, 100 - (issues.length * 20)),
+    warnings: results.warnings
   };
 }
 
@@ -544,7 +566,7 @@ export async function validateBlogQuality(blogContent, question) {
   // Determine if passed
   results.passed = 
     results.overallScore >= QUALITY_THRESHOLDS.minOverallScore &&
-    results.structure.score >= QUALITY_THRESHOLDS.minReadabilityScore &&
+    results.structure.score >= QUALITY_THRESHOLDS.minStructureScore &&
     results.readability.score >= QUALITY_THRESHOLDS.minReadabilityScore &&
     results.coherence.score >= QUALITY_THRESHOLDS.minCoherenceScore &&
     results.technical.score >= QUALITY_THRESHOLDS.minTechnicalScore &&

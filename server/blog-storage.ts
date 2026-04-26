@@ -14,6 +14,7 @@ export interface BlogPost {
   publishedAt: string;
   readingTimeMinutes: number;
   featured?: boolean;
+  status?: string;
 }
 
 export interface BlogCategory {
@@ -32,7 +33,12 @@ interface PostsData {
 function loadData(): PostsData {
   const dataPath = path.join(process.cwd(), "client/public/data/posts.json");
   if (!fs.existsSync(dataPath)) return { posts: [], categories: [], tags: [] };
-  return JSON.parse(fs.readFileSync(dataPath, "utf-8"));
+  try {
+    return JSON.parse(fs.readFileSync(dataPath, "utf-8"));
+  } catch (error) {
+    console.error("Failed to parse posts.json:", error);
+    return { posts: [], categories: [], tags: [] };
+  }
 }
 
 export interface GetPostsOptions {
@@ -45,6 +51,7 @@ export interface GetPostsOptions {
 export const blogStorage = {
   getAllPosts(options: GetPostsOptions = {}): BlogPost[] {
     let { posts } = loadData();
+    posts = posts.filter((p) => p.status === 'published' || !p.status);
     if (options.category)
       posts = posts.filter(
         (p) => p.category.toLowerCase() === options.category!.toLowerCase()
@@ -61,7 +68,7 @@ export const blogStorage = {
 
   getFeaturedPosts(limit = 3): BlogPost[] {
     return loadData()
-      .posts.filter((p) => p.featured)
+      .posts.filter((p) => p.featured && (p.status === 'published' || !p.status))
       .slice(0, limit);
   },
 

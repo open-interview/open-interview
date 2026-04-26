@@ -11,8 +11,10 @@
 
 import 'dotenv/config';
 import fs from 'fs';
+import path from 'path';
 import { generateCitationBlog } from './ai/graphs/citation-blog-graph.js';
 import { dbClient as client } from './db/pg-client.js';
+import { savePostAsMDX } from './generate-blog.js';
 
 const OUTPUT_DIR = 'blog-output';
 const MIN_VALID_SOURCES = 8;
@@ -485,7 +487,27 @@ async function main() {
   
   // Save to database
   console.log('\n💾 Saving to database...');
+  const now = new Date().toISOString();
+  const channel = detectChannel(topicData.topic);
   const { questionId, slug } = await saveBlogPost(blogContent, topicData.topic);
+  
+  // Save as MDX file
+  await savePostAsMDX({
+    id: questionId,
+    blogTitle: blogContent.title,
+    blogSlug: slug,
+    channel: channel,
+    difficulty: blogContent.difficulty || 'intermediate',
+    tags: blogContent.tags || [],
+    createdAt: now,
+    funFact: blogContent.funFact || null,
+    diagram: blogContent.diagram || null,
+    images: blogContent.images || [],
+    sources: blogContent.sources || [],
+    blogIntro: blogContent.introduction,
+    blogSections: blogContent.sections,
+    blogConclusion: blogContent.conclusion,
+  });
   
   console.log(`\n✅ Blog post created!`);
   console.log(`   ID: ${questionId}`);

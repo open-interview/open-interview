@@ -75,13 +75,14 @@ export const guidelines = [
 
 export function build(context) {
   const { topic } = context;
+  const sanitizedTopic = (topic || '').replace(/"/g, '\\"').replace(/\n/g, '\\n');
 
   return `You are a JSON generator. Output ONLY valid JSON, no explanations, no markdown, no text before or after.
 
 Create an engaging, comprehensive technical blog post about the following topic.
 AUTOMATICALLY determine the best channel and difficulty level based on the topic content.
 
-Topic/Question: "${topic}"
+Topic/Question: "${sanitizedTopic}"
 
 Available channels: ${CHANNELS.join(', ')}
 
