@@ -292,7 +292,8 @@ export function QuestionPanel({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className={`font-bold text-foreground leading-tight ${
+          style={{ fontFamily: 'var(--font-sans)' }}
+          className={`font-semibold text-foreground leading-snug tracking-normal ${
             question.question.length > 200 
               ? 'text-sm sm:text-base lg:text-lg' 
               : question.question.length > 100
