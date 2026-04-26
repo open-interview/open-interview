@@ -30,6 +30,9 @@ export default function Flashcards() {
   const [flash, setFlash] = useState<ConfidenceRating | null>(null);
   const [srsCard, setSrsCard] = useState<ReviewCard | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recallAttempt, setRecallAttempt] = useState('');
+  const [sessionStats, setSessionStats] = useState<Record<ConfidenceRating, number>>({ again: 0, hard: 0, good: 0, easy: 0 });
+  const [sessionRatings, setSessionRatings] = useState(0);
 
   // Load DB flashcards for subscribed channels
   useEffect(() => {
@@ -80,6 +83,7 @@ export default function Flashcards() {
     if (!current) { setSrsCard(null); return; }
     setSrsCard(getFcCard(current.id, current.channel ?? '', current.difficulty ?? 'intermediate'));
     setFlipped(false);
+    setRecallAttempt('');
   }, [current?.id]);
 
   const triggerFlash = (r: ConfidenceRating) => {
@@ -88,13 +92,16 @@ export default function Flashcards() {
   };
 
   const rate = useCallback((rating: ConfidenceRating) => {
-    if (!current) return;
+    if (!current || !flipped) return;
     triggerFlash(rating);
     const updated = recordFcReview(current.id, current.channel ?? '', current.difficulty ?? 'intermediate', rating);
     setSrsCard(updated);
     setFlipped(false);
+    setRecallAttempt('');
+    setSessionStats(prev => ({ ...prev, [rating]: prev[rating] + 1 }));
+    setSessionRatings(prev => prev + 1);
     setIndex(i => Math.max(0, Math.min(i, filtered.length - 2)));
-  }, [current, filtered.length]);
+  }, [current, filtered.length, flipped]);
 
   const flip = useCallback(() => setFlipped(f => !f), []);
 
@@ -121,6 +128,7 @@ export default function Flashcards() {
   }, [flip, goNext, goPrev, rate]);
 
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (!flipped) return;
     if (info.offset.x > 80) rate('good');
     else if (info.offset.x < -80) rate('again');
   };
@@ -273,16 +281,18 @@ export default function Flashcards() {
                         </div>
                       </div>
                       <p className="text-lg md:text-xl font-bold leading-snug text-center text-foreground overflow-hidden"
-                        style={{ display: '-webkit-box', WebkitLineClamp: 6, WebkitBoxOrient: 'vertical' }}>
+                        style={{ display: '-webkit-box', WebkitLineClamp: 5, WebkitBoxOrient: 'vertical' }}>
                         {current.front}
                       </p>
-                      <div className="text-center text-muted-foreground text-xs">← again · good →</div>
+                      <div className="text-center text-muted-foreground text-xs italic">
+                        Recall the answer mentally, then tap to reveal
+                      </div>
                     </div>
                     {/* Back */}
-                    <div className="absolute inset-0 rounded-3xl p-6 flex flex-col gap-3"
+                    <div className="absolute inset-0 rounded-3xl p-5 flex flex-col gap-2"
                       style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: 'rotateY(180deg)', background: 'color-mix(in srgb, var(--color-success, #10b981) 8%, var(--surface-2))', border: '1px solid color-mix(in srgb, var(--color-success, #10b981) 25%, transparent)' }}>
                       <span className="self-start px-2 py-0.5 rounded-full text-xs font-bold uppercase badge-success">Answer</span>
-                      <p className="text-sm md:text-base leading-relaxed text-foreground flex-1 overflow-y-auto">{current.back}</p>
+                      <p className="text-sm md:text-base leading-relaxed text-foreground overflow-y-auto" style={{ flex: '1 1 0', minHeight: 0 }}>{current.back}</p>
                       {current.hint && (
                         <div className="rounded-xl px-3 py-2 text-xs text-muted-foreground flex-shrink-0"
                           style={{ background: 'var(--surface-3)', border: '1px solid var(--color-border-subtle)' }}>
@@ -295,6 +305,16 @@ export default function Flashcards() {
                           <span className="text-purple-400 font-bold mr-1">🧠</span>{current.mnemonic}
                         </div>
                       )}
+                      <div className="flex-shrink-0" onClick={e => e.stopPropagation()}>
+                        <textarea
+                          rows={2}
+                          value={recallAttempt}
+                          onChange={e => setRecallAttempt(e.target.value)}
+                          placeholder="What did you actually recall? (reflection only)"
+                          className="w-full rounded-xl border border-border bg-background/80 text-xs p-2 resize-none focus:outline-none placeholder:text-muted-foreground/50 text-foreground"
+                          style={{ fontSize: '11px' }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -306,21 +326,26 @@ export default function Flashcards() {
             </AnimatePresence>
           </div>
 
-          {/* SRS rating buttons */}
-          <div className="flex items-center gap-2 px-4 pb-safe pb-24 pt-3 flex-shrink-0">
-            {([
-              { r: 'again' as ConfidenceRating, label: 'Again', key: '1', bg: 'color-mix(in srgb, var(--color-error, #f43f5e) 15%, transparent)', color: 'var(--color-error, #f43f5e)', border: 'color-mix(in srgb, var(--color-error, #f43f5e) 30%, transparent)' },
-              { r: 'hard'  as ConfidenceRating, label: 'Hard',  key: '2', bg: 'color-mix(in srgb, #f97316 15%, transparent)', color: '#f97316', border: 'color-mix(in srgb, #f97316 30%, transparent)' },
-              { r: 'good'  as ConfidenceRating, label: 'Good',  key: '3', bg: 'color-mix(in srgb, var(--color-success, #10b981) 15%, transparent)', color: 'var(--color-success, #10b981)', border: 'color-mix(in srgb, var(--color-success, #10b981) 30%, transparent)' },
-              { r: 'easy'  as ConfidenceRating, label: 'Easy',  key: '4', bg: 'color-mix(in srgb, #3b82f6 15%, transparent)', color: '#3b82f6', border: 'color-mix(in srgb, #3b82f6 30%, transparent)' },
-            ]).map(({ r, label, key, bg, color, border }) => (
-              <motion.button key={r} whileTap={{ scale: 0.93 }} onClick={() => rate(r)} disabled={!current}
-                className="cursor-pointer flex-1 flex flex-col items-center justify-center min-h-[52px] py-3 rounded-xl font-semibold text-xs disabled:opacity-30 transition-opacity duration-150"
-                style={{ background: bg, color, border: `1px solid ${border}` }}>
-                <span className="font-bold">{label}</span>
-                <span className="opacity-50 text-[10px]">{key}</span>
-              </motion.button>
-            ))}
+          {/* SRS rating buttons — only active after flip */}
+          <div className="px-4 pb-safe pb-24 pt-2 flex-shrink-0">
+            {!flipped && current && (
+              <p className="text-center text-xs text-muted-foreground mb-2 italic">Flip the card first, then rate your recall</p>
+            )}
+            <div className="flex items-center gap-2">
+              {([
+                { r: 'again' as ConfidenceRating, label: 'Again', key: '1', bg: 'color-mix(in srgb, var(--color-error, #f43f5e) 15%, transparent)', color: 'var(--color-error, #f43f5e)', border: 'color-mix(in srgb, var(--color-error, #f43f5e) 30%, transparent)' },
+                { r: 'hard'  as ConfidenceRating, label: 'Hard',  key: '2', bg: 'color-mix(in srgb, #f97316 15%, transparent)', color: '#f97316', border: 'color-mix(in srgb, #f97316 30%, transparent)' },
+                { r: 'good'  as ConfidenceRating, label: 'Good',  key: '3', bg: 'color-mix(in srgb, var(--color-success, #10b981) 15%, transparent)', color: 'var(--color-success, #10b981)', border: 'color-mix(in srgb, var(--color-success, #10b981) 30%, transparent)' },
+                { r: 'easy'  as ConfidenceRating, label: 'Easy',  key: '4', bg: 'color-mix(in srgb, #3b82f6 15%, transparent)', color: '#3b82f6', border: 'color-mix(in srgb, #3b82f6 30%, transparent)' },
+              ]).map(({ r, label, key, bg, color, border }) => (
+                <motion.button key={r} whileTap={{ scale: 0.93 }} onClick={() => rate(r)} disabled={!current || !flipped}
+                  className="cursor-pointer flex-1 flex flex-col items-center justify-center min-h-[52px] py-3 rounded-xl font-semibold text-xs disabled:opacity-25 disabled:cursor-not-allowed transition-opacity duration-150"
+                  style={{ background: bg, color, border: `1px solid ${border}` }}>
+                  <span className="font-bold">{label}</span>
+                  <span className="opacity-50 text-[10px]">{key}</span>
+                </motion.button>
+              ))}
+            </div>
           </div>
         </div>
       </AppLayout>

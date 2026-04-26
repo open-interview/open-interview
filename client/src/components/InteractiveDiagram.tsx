@@ -90,7 +90,7 @@ async function loadMermaid(): Promise<any> {
   if (mermaidInstance) return mermaidInstance;
   if (!mermaidLoadPromise) {
     // @ts-ignore
-    mermaidLoadPromise = import('mermaid/dist/mermaid.esm.mjs').then((m) => {
+    mermaidLoadPromise = import('mermaid').then((m) => {
       mermaidInstance = m.default;
       return mermaidInstance;
     });

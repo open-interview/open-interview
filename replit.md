@@ -1,5 +1,22 @@
 # code-reels — Interview Prep Platform
 
+## Active Recall System
+
+Active recall is embedded across all major learning surfaces. New files added:
+
+- `client/src/components/shared/RecallRatingBar.tsx` — Reusable 4-button (Again/Hard/Good/Easy) recall rating UI
+- `client/src/hooks/use-recall-session.ts` — Cross-surface session stat aggregation (sessionStorage)
+- `client/src/components/question/RecallGate.tsx` — Frosted gate that hides the answer until user clicks reveal
+- `client/src/components/blog/BlogKnowledgeCheck.tsx` — Post-article knowledge check with hints and recall tracking
+- `client/src/data/blog-quizzes.ts` — Quiz data (3 questions per post) for 8+ blog posts
+
+### Modified files
+- `QuestionViewer.tsx` — "Recall" toggle in toolbar (default ON); hides answer behind RecallGate per question
+- `AnswerPanel.tsx` — Self-assessment rating banner appears before TL;DR on every answer
+- `Flashcards.tsx` — Rating buttons disabled until card is flipped; recall textarea on back; instruction on front
+- `PostDetailPage.tsx` — Knowledge Check section injected after article body (when quiz data exists)
+- `VoiceInterview.tsx` — Keywords hidden by default with "Reveal" button; progressive nudge hints during recording
+
 ## Architecture
 
 Full-stack TypeScript application:

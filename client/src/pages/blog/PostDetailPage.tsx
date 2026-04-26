@@ -5,6 +5,8 @@ import { TableOfContents } from "@/components/blog/TableOfContents";
 import { ReadingProgressBar } from "@/components/blog/ReadingProgressBar";
 import { PostCard, CategoryBadge, TagPill, type PostCardData } from "@/components/blog/PostCard";
 import { MarkdownRenderer } from "@/components/blog/MarkdownRenderer";
+import { BlogKnowledgeCheck } from "@/components/blog/BlogKnowledgeCheck";
+import { blogQuizzes } from "@/data/blog-quizzes";
 import { Calendar, Clock, Twitter, Linkedin, Link2, ArrowLeft, ArrowRight } from "lucide-react";
 
 interface PostDetailPageProps {
@@ -145,6 +147,11 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
         >
           <MarkdownRenderer content={post.content} />
         </article>
+
+        {/* Knowledge Check */}
+        {blogQuizzes[post.slug] && (
+          <BlogKnowledgeCheck questions={blogQuizzes[post.slug].questions} />
+        )}
 
         {/* Tags */}
         {post.tags?.length > 0 && (

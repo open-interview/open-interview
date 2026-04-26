@@ -12,6 +12,7 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { UnifiedSearch } from '../components/UnifiedSearch';
 import { VoiceReminder } from '../components/VoiceReminder';
 import { AnswerPanel } from '../components/question/AnswerPanel';
+import { RecallGate } from '../components/question/RecallGate';
 import { QuestionFeedback } from '../components/QuestionFeedback';
 import { AICompanion } from '../components/AICompanion';
 import { SwipeHint } from '../components/mobile/SwipeHint';
@@ -61,6 +62,11 @@ export default function QuestionViewer() {
   const [showFilters, setShowFilters] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [recallMode, setRecallMode] = useState<boolean>(() => {
+    const stored = localStorage.getItem('open-interview-recall-mode');
+    return stored === null ? true : stored === 'true';
+  });
+  const [recallRevealed, setRecallRevealed] = useState(false);
   const [markedQuestions, setMarkedQuestions] = useState<string[]>(() => {
     const saved = localStorage.getItem(`marked-${channelId}`);
     return saved ? JSON.parse(saved) : [];
@@ -91,7 +97,12 @@ export default function QuestionViewer() {
     setShowRatingButtons(false);
     setHasRated(false);
     setShowAnswer(false);
+    setRecallRevealed(false);
   }, [currentQuestion]);
+
+  useEffect(() => {
+    localStorage.setItem('open-interview-recall-mode', String(recallMode));
+  }, [recallMode]);
 
   useEffect(() => {
     if (loading || questions.length === 0) return;
@@ -296,6 +307,15 @@ export default function QuestionViewer() {
               </div>
               {/* Right: actions */}
               <div className="flex items-center gap-1 flex-shrink-0">
+                {/* Recall Mode toggle */}
+                <button
+                  onClick={() => setRecallMode(v => !v)}
+                  aria-label={recallMode ? 'Recall mode on' : 'Recall mode off'}
+                  title={recallMode ? 'Recall Mode: ON — click to disable' : 'Recall Mode: OFF — click to enable'}
+                  className={`cursor-pointer flex items-center gap-1 px-2 min-h-[44px] rounded-md text-xs font-semibold transition-colors duration-150 ease-out ${recallMode ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:bg-muted'}`}>
+                  <Brain className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Recall</span>
+                </button>
                 <button onClick={() => setShowFilters(v => !v)} aria-label="Filters"
                   className={`cursor-pointer p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md transition-colors duration-150 ease-out ${hasFilters ? 'text-primary bg-primary/10' : 'hover:bg-muted'}`}>
                   <Filter className="w-4 h-4" />
@@ -424,29 +444,35 @@ export default function QuestionViewer() {
 
               {/* Answer section */}
               <div className="border-t border-border pt-8">
-                {/* Mobile: reveal toggle */}
-                <div className="lg:hidden mb-6">
-                  {!showAnswer ? (
-                    <button onClick={() => setShowAnswer(true)}
-                      data-testid="button-reveal-answer"
-                      className="cursor-pointer w-full flex items-center justify-center gap-2 min-h-[44px] bg-primary text-primary-foreground font-semibold rounded-xl text-sm transition-opacity duration-150 ease-out hover:opacity-90">
-                      <Eye className="w-4 h-4" /> Show Answer
-                    </button>
-                  ) : (
-                    <button onClick={() => setShowAnswer(false)}
-                      className="cursor-pointer flex items-center gap-1.5 min-h-[44px] text-sm text-muted-foreground hover:text-foreground transition-colors duration-150 ease-out">
-                      <ChevronDown className="w-4 h-4" /> Hide answer
-                    </button>
-                  )}
-                </div>
-
-                {/* Desktop: always visible. Mobile: conditional */}
-                <div className={`lg:block ${showAnswer ? 'block' : 'hidden'}`}>
-                  <AnswerPanel
-                    question={currentQuestion}
-                    isCompleted={isCompleted}
-                  />
-                </div>
+                {recallMode && !recallRevealed ? (
+                  <RecallGate onReveal={() => { setRecallRevealed(true); setShowAnswer(true); }} />
+                ) : (
+                  <>
+                    {/* Mobile: hide toggle (only when recall mode is off or already revealed) */}
+                    {!recallMode && (
+                      <div className="lg:hidden mb-6">
+                        {!showAnswer ? (
+                          <button onClick={() => setShowAnswer(true)}
+                            data-testid="button-reveal-answer"
+                            className="cursor-pointer w-full flex items-center justify-center gap-2 min-h-[44px] bg-primary text-primary-foreground font-semibold rounded-xl text-sm transition-opacity duration-150 ease-out hover:opacity-90">
+                            <Eye className="w-4 h-4" /> Show Answer
+                          </button>
+                        ) : (
+                          <button onClick={() => setShowAnswer(false)}
+                            className="cursor-pointer flex items-center gap-1.5 min-h-[44px] text-sm text-muted-foreground hover:text-foreground transition-colors duration-150 ease-out">
+                            <ChevronDown className="w-4 h-4" /> Hide answer
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    <div className={`lg:block ${showAnswer || recallRevealed ? 'block' : 'hidden'}`}>
+                      <AnswerPanel
+                        question={currentQuestion}
+                        isCompleted={isCompleted}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>

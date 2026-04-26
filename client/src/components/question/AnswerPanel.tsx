@@ -12,6 +12,9 @@ import { GiscusComments } from '../GiscusComments';
 import { SimilarQuestions } from '../SimilarQuestions';
 import { formatTag } from '../../lib/utils';
 import { BlogService } from '../../services/api.service';
+import { RecallRatingBar } from '../shared/RecallRatingBar';
+import { recordReview } from '../../lib/spaced-repetition';
+import type { ConfidenceRating } from '../../lib/spaced-repetition';
 
 
 function preprocessMarkdown(text: string): string {
@@ -58,8 +61,15 @@ export function AnswerPanel({ question, isCompleted }: {
 }) {
   const [blogPost, setBlogPost] = useState<{ title: string; slug: string; url: string } | null>(null);
   const [diagramOk, setDiagramOk] = useState<boolean | null>(null);
+  const [selfRating, setSelfRating] = useState<ConfidenceRating | null>(null);
 
   useEffect(() => { BlogService.getByQuestionId(question.id).then(setBlogPost); }, [question.id]);
+  useEffect(() => { setSelfRating(null); }, [question.id]);
+
+  const handleSelfRate = (rating: ConfidenceRating) => {
+    setSelfRating(rating);
+    recordReview(question.id, question.channel, question.difficulty, rating);
+  };
 
   const hasTldr = !!question.answer;
   const hasDiagram = isValidMermaid(question.diagram) && diagramOk !== false;
@@ -96,6 +106,19 @@ export function AnswerPanel({ question, isCompleted }: {
 
   return (
     <div className="space-y-8">
+      {/* Self-assessment recall banner */}
+      {!selfRating ? (
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+          <p className="text-xs font-semibold text-foreground mb-3">Before reading — how well did you recall this?</p>
+          <RecallRatingBar onRate={handleSelfRate} size="md" />
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Check className="w-3.5 h-3.5 text-emerald-500" />
+          <span>Self-assessment recorded — keep reading.</span>
+        </div>
+      )}
+
       {/* Quick answer / TL;DR */}
       {hasTldr && (
         <div className="flex gap-3">

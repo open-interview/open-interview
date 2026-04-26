@@ -199,10 +199,14 @@ export default function VoiceInterview() {
   const [sessionId, setSessionId] = useState<string>('voice-session-state');
   const [showAnswer, setShowAnswer] = useState(false); // Hide answer until after recording
   const [sessionScores, setSessionScores] = useState<Array<{ score: number; missed: string[] }>>([]);
+  const [revealedHintCount, setRevealedHintCount] = useState(0);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [keywordsRevealed, setKeywordsRevealed] = useState(false);
   
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const commentTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const { onVoiceInterview, config } = useCredits();
   const { trackEvent } = useAchievementContext();
@@ -360,9 +364,13 @@ export default function VoiceInterview() {
     setInterimTranscript('');
     setEvaluation(null);
     setError(null);
+    setRecordingSeconds(0);
     try {
       recognitionRef.current.start();
       setState('recording');
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds(s => s + 1);
+      }, 1000);
     } catch (err) {
       setError('Failed to start recording. Please check microphone permissions.');
     }
@@ -371,6 +379,7 @@ export default function VoiceInterview() {
   const stopRecording = useCallback(() => {
     if (!recognitionRef.current) return;
     recognitionRef.current.stop();
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
     setState('editing');
   }, []);
 
@@ -414,6 +423,9 @@ export default function VoiceInterview() {
       setEvaluation(null);
       setEarnedCredits(null);
       setShowAnswer(false); // Hide answer for next question
+      setRevealedHintCount(0);
+      setRecordingSeconds(0);
+      setKeywordsRevealed(false);
       setState('ready');
       saveSessionProgress();
     } else {
@@ -853,17 +865,33 @@ export default function VoiceInterview() {
               </div>
               {currentQuestion.voiceKeywords && currentQuestion.voiceKeywords.length > 0 && (
                 <div>
-                  <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
-                    <Brain className="w-3.5 h-3.5" />
-                    Key terms to mention:
+                  <div className="text-xs text-muted-foreground mb-2 flex items-center justify-between gap-1.5">
+                    <span className="flex items-center gap-1.5">
+                      <Brain className="w-3.5 h-3.5" />
+                      Key terms to mention:
+                    </span>
+                    {!keywordsRevealed && (
+                      <button
+                        onClick={() => setKeywordsRevealed(true)}
+                        className="cursor-pointer text-[11px] text-[#58a6ff] hover:underline"
+                      >
+                        Reveal ({currentQuestion.voiceKeywords.length})
+                      </button>
+                    )}
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {currentQuestion.voiceKeywords.map((kw: string) => (
-                      <span key={kw} className="px-2 py-0.5 bg-[#58a6ff]/10 border border-[#58a6ff]/20 rounded-full text-[11px] text-[#58a6ff]">
-                        {kw}
-                      </span>
-                    ))}
-                  </div>
+                  {keywordsRevealed ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {currentQuestion.voiceKeywords.map((kw: string) => (
+                        <span key={kw} className="px-2 py-0.5 bg-[#58a6ff]/10 border border-[#58a6ff]/20 rounded-full text-[11px] text-[#58a6ff]">
+                          {kw}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic">
+                      Try to recall key concepts on your own first. Reveal when you need guidance.
+                    </p>
+                  )}
                 </div>
               )}
             </motion.div>
@@ -954,6 +982,29 @@ export default function VoiceInterview() {
             {state !== 'evaluated' && (
               <div className="mb-5">
                 <WaveformVisualizer isActive={state === 'recording'} />
+              </div>
+            )}
+
+            {/* Progressive keyword hints during recording */}
+            {state === 'recording' && currentQuestion?.voiceKeywords && currentQuestion.voiceKeywords.length > 0 && (
+              <div className="mb-4">
+                {(recordingSeconds >= 30 || transcript.trim().split(/\s+/).filter(Boolean).length >= 50) && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => setRevealedHintCount(c => Math.min(c + 1, currentQuestion.voiceKeywords!.length))}
+                      disabled={revealedHintCount >= currentQuestion.voiceKeywords.length}
+                      className="cursor-pointer flex items-center gap-1.5 text-xs text-[#d29922] border border-[#d29922]/30 rounded-full px-3 py-1 hover:bg-[#d29922]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Lightbulb className="w-3 h-3" />
+                      {revealedHintCount < currentQuestion.voiceKeywords.length ? 'Need a nudge?' : 'All hints shown'}
+                    </button>
+                    {currentQuestion.voiceKeywords.slice(0, revealedHintCount).map((kw: string, i: number) => (
+                      <span key={i} className="px-2 py-0.5 bg-[#d29922]/10 border border-[#d29922]/20 rounded-full text-[11px] text-[#d29922]">
+                        Think about: {kw.split(' ')[0]}...
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
