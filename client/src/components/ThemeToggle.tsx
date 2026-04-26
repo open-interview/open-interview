@@ -21,7 +21,6 @@ export function ThemeToggle() {
       transition={{ duration: prefersReducedMotion ? 0.01 : 0.2 }}
       onClick={toggleTheme}
       className={cn(
-        // PROBLEM 6 FIXED: Moved to left side to separate from AI Companion (right side)
         "fixed bottom-6 left-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all group",
         isDark
           ? "bg-gradient-to-br from-[#00ff88] to-[#00d4ff] shadow-[#00ff88]/50"

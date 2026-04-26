@@ -19,7 +19,7 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
   Brain, ChevronLeft, ChevronRight, Eye, Flame, Sparkles, Zap, Check, CheckCircle, RotateCcw, Trash2
 } from 'lucide-react';
-import { getDueCards, recordReview, removeFromSRS, type ReviewCard } from '../lib/spaced-repetition';
+import { getDueCards, getDueCardsByChannel, getChannelsWithDueCards, recordReview, removeFromSRS, type ReviewCard } from '../lib/spaced-repetition';
 import { getQuestionByIdAsync } from '../lib/questions-loader';
 import { useUserPreferences } from '../hooks/use-user-preferences';
 import { isPersonalized } from '../lib/personalization';
@@ -267,8 +267,33 @@ export default function ReviewSession() {
 
   const [allCards, setAllCards] = useState<any[]>([]);
   const [loadingCards, setLoadingCards] = useState(true);
+  const [channelList, setChannelList] = useState<{ channel: string; count: number }[]>([]);
+  const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
+
+  // Get channel colors
+  const getChannelColor = (channel: string) => {
+    const colors: Record<string, string> = {
+      algorithms: 'from-blue-500/20 to-cyan-500/20 border-blue-500/30 text-blue-400',
+      system-design: 'from-purple-500/20 to-pink-500/20 border-purple-500/30 text-purple-400',
+      networking: 'from-green-500/20 to-emerald-500/20 border-green-500/30 text-green-400',
+      kubernetes: 'from-indigo-500/20 to-blue-500/20 border-indigo-500/30 text-indigo-400',
+      aws: 'from-orange-500/20 to-amber-500/20 border-orange-500/30 text-orange-400',
+      gcp: 'from-red-500/20 to-rose-500/20 border-red-500/30 text-red-400',
+      azure: 'from-cyan-500/20 to-blue-500/20 border-cyan-500/30 text-cyan-400',
+      database: 'from-yellow-500/20 to-orange-500/20 border-yellow-500/30 text-yellow-400',
+      linux: 'from-gray-500/20 to-slate-500/20 border-gray-500/30 text-gray-400',
+      security: 'from-red-500/20 to-pink-500/20 border-red-500/30 text-red-400',
+      devops: 'from-teal-500/20 to-cyan-500/20 border-teal-500/30 text-teal-400',
+      behavioral: 'from-pink-500/20 to-rose-500/20 border-pink-500/30 text-pink-400',
+      default: 'from-slate-500/20 to-zinc-500/20 border-slate-500/30 text-slate-400',
+    };
+    return colors[channel] || colors.default;
+  };
 
   useEffect(() => {
+    const channels = getChannelsWithDueCards();
+    setChannelList(channels);
+    
     const dueCards = getDueCards();
     if (dueCards.length === 0) { setLoadingCards(false); return; }
     Promise.all(
@@ -292,16 +317,29 @@ export default function ReviewSession() {
     });
   }, []);
 
-  const cards = focusMyTopics && subscribedChannels.length > 0
-    ? allCards.filter(c => subscribedChannels.includes(c.channel))
+  // Filter cards by selected channel
+  const filteredCards = selectedChannel 
+    ? allCards.filter(c => c.channel === selectedChannel)
     : allCards;
+  
+  // Further filter by subscribed channels if focusMyTopics is enabled
+  const cards = (focusMyTopics && subscribedChannels.length > 0)
+    ? filteredCards.filter(c => subscribedChannels.includes(c.channel))
+    : filteredCards;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [reviewedCount, setReviewedCount] = useState(0);
   const [streak, setStreak] = useState(0);
 
   const currentCard = cards[currentIndex];
-  const progress = ((reviewedCount / cards.length) * 100).toFixed(0);
+  const progress = cards.length > 0 ? ((reviewedCount / cards.length) * 100).toFixed(0) : '0';
+
+  const handleChannelSelect = (channel: string | null) => {
+    setSelectedChannel(channel);
+    setCurrentIndex(0);
+    setShowAnswer(false);
+    setReviewedCount(0);
+  };
 
   const handleConfidence = (level: string) => {
     // Award credits based on confidence using the unified system
@@ -321,8 +359,18 @@ export default function ReviewSession() {
     if (currentIndex < cards.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
-      // Session complete
-      setLocation('/profile');
+      // Session complete - check if there are more channels
+      if (selectedChannel) {
+        // Remove this channel from the list and select next
+        const remainingChannels = channelList.filter(c => c.channel !== selectedChannel);
+        if (remainingChannels.length > 0) {
+          handleChannelSelect(remainingChannels[0].channel);
+        } else {
+          setLocation('/profile');
+        }
+      } else {
+        setLocation('/profile');
+      }
     }
   };
 

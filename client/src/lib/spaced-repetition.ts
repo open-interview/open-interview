@@ -230,6 +230,34 @@ export function getDueCards(): ReviewCard[] {
 }
 
 /**
+ * Get cards due for review grouped by channel
+ */
+export function getDueCardsByChannel(): Map<string, ReviewCard[]> {
+  const cards = getDueCards();
+  const byChannel = new Map<string, ReviewCard[]>();
+  
+  for (const card of cards) {
+    const channel = card.channel || 'other';
+    if (!byChannel.has(channel)) {
+      byChannel.set(channel, []);
+    }
+    byChannel.get(channel)!.push(card);
+  }
+  
+  return byChannel;
+}
+
+/**
+ * Get list of channels that have cards due for review
+ */
+export function getChannelsWithDueCards(): { channel: string; count: number }[] {
+  const byChannel = getDueCardsByChannel();
+  return Array.from(byChannel.entries())
+    .map(([channel, cards]) => ({ channel, count: cards.length }))
+    .sort((a, b) => b.count - a.count);
+}
+
+/**
  * Get cards due within a date range
  */
 export function getCardsDueInRange(days: number): ReviewCard[] {

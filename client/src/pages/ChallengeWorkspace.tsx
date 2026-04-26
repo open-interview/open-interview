@@ -250,7 +250,7 @@ export default function ChallengeWorkspace() {
               </TabsContent>
             </Tabs>
 
-            {/* Rex AI Companion */}
+            {/* Rex Companion - coding assistant */}
             <div className="p-3 border-t border-border shrink-0 flex justify-center">
               <RexCompanion
                 challenge={challenge}

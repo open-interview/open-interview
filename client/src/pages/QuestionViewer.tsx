@@ -14,7 +14,6 @@ import { VoiceReminder } from '../components/VoiceReminder';
 import { AnswerPanel } from '../components/question/AnswerPanel';
 import { RecallGate } from '../components/question/RecallGate';
 import { QuestionFeedback } from '../components/QuestionFeedback';
-import { AICompanion } from '../components/AICompanion';
 import { SwipeHint } from '../components/mobile/SwipeHint';
 import { Haptics } from '../lib/haptics';
 import { trackQuestionView } from '../hooks/use-analytics';
@@ -512,24 +511,6 @@ export default function QuestionViewer() {
       <SwipeHint />
       <UnifiedSearch isOpen={showSearchModal} onClose={() => setShowSearchModal(false)} />
       <VoiceReminder />
-      <AICompanion
-        pageContent={{ type: 'question', title: channel.name, question: currentQuestion.question, answer: currentQuestion.answer, explanation: currentQuestion.explanation, tags: currentQuestion.tags, difficulty: currentQuestion.difficulty }}
-        onNavigate={setLocation}
-        onAction={(action, data) => {
-          if (action === 'nextQuestion') nextQuestion();
-          else if (action === 'previousQuestion') prevQuestion();
-          else if (action === 'showAnswer') setShowAnswer(true);
-          else if (action === 'hideAnswer') setShowAnswer(false);
-          else if (action === 'bookmark') toggleMark();
-          else if (action === 'addToSRS') handleAddToSRS();
-          else if (action === 'share') handleShare();
-          else if (action === 'showSearch') setShowSearchModal(true);
-          else if (action === 'filterByDifficulty' && data?.difficulty) setSelectedDifficulty(data.difficulty);
-          else if (action === 'filterBySubChannel' && data?.subChannel) setSelectedSubChannel(data.subChannel);
-          else if (action === 'clearFilters') { setSelectedDifficulty('all'); setSelectedSubChannel('all'); }
-        }}
-        availableActions={['nextQuestion','previousQuestion','showAnswer','hideAnswer','bookmark','addToSRS','share','showSearch','filterByDifficulty','filterBySubChannel','clearFilters']}
-      />
     </>
   );
 }
