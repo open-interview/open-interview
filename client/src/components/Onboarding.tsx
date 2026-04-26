@@ -53,24 +53,24 @@ function LeftPanel({ accentColor, step }: { accentColor: string; step: number })
         <div className="flex items-center gap-2.5 mb-16">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black text-white"
             style={{ background: `linear-gradient(135deg, ${accentColor}, #06b6d4)` }}>OI</div>
-          <span className="font-bold text-white text-sm">Open Interview</span>
+          <span className="font-bold text-white text-base tracking-tight">Open Interview</span>
         </div>
 
-        <h1 className="text-4xl font-black text-white leading-[1.1] mb-4">
+        <h1 className="text-4xl font-black text-white leading-[1.1] mb-4 tracking-tight">
           Land your<br />
           <motion.span animate={{ color: accentColor }} transition={{ duration: 0.5 }}>
             dream role.
           </motion.span>
         </h1>
-        <p className="text-white/45 text-sm leading-relaxed mb-10">
+        <p className="text-white/60 text-base leading-relaxed mb-10">
           Free, personalized interview prep. No paywalls, no fluff.
         </p>
 
         <div className="grid grid-cols-2 gap-4 mb-10">
           {STATS.map(s => (
             <div key={s.label} className="p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-              <div className="text-2xl font-black text-white mb-0.5">{s.n}</div>
-              <div className="text-xs text-white/35">{s.label}</div>
+              <div className="text-2xl font-black text-white mb-0.5 tracking-tight">{s.n}</div>
+              <div className="text-sm text-white/45">{s.label}</div>
             </div>
           ))}
         </div>
@@ -89,8 +89,8 @@ function LeftPanel({ accentColor, step }: { accentColor: string; step: number })
 
       <div className="relative z-10 p-5 rounded-2xl"
         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-        <p className="text-white/70 text-sm italic mb-2">"Passed my AWS SAA on the first try. This is the best free prep out there."</p>
-        <p className="text-white/30 text-xs">— Sarah K., Cloud Engineer</p>
+        <p className="text-white/80 text-base leading-relaxed italic mb-2">"Passed my AWS SAA on the first try. This is the best free prep out there."</p>
+        <p className="text-white/45 text-sm">— Sarah K., Cloud Engineer</p>
       </div>
     </div>
   );
@@ -144,15 +144,15 @@ export function Onboarding() {
           <div className="flex lg:hidden items-center gap-2">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black text-white"
               style={{ background: `linear-gradient(135deg, ${accentColor}, #06b6d4)` }}>OI</div>
-            <span className="font-bold text-white text-sm">Open Interview</span>
+            <span className="font-bold text-white text-base tracking-tight">Open Interview</span>
           </div>
           <div className="hidden lg:block" />
 
           {/* Steps */}
-          <div className="hidden sm:flex items-center gap-1.5 text-xs">
+          <div className="hidden sm:flex items-center gap-1.5 text-sm">
             {['Role', 'Channels'].map((label, i) => (
               <div key={label} className="flex items-center gap-1.5">
-                <span className={`flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold transition-all ${
+                <span className={`flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold tracking-tight transition-all ${
                   i < stepNum ? 'text-emerald-400' : i === stepNum ? 'text-white' : 'text-white/25'
                 }`}>
                   {i < stepNum ? <Check className="w-3 h-3" /> : <span className="w-3.5 h-3.5 rounded-full border flex items-center justify-center text-[9px]"
@@ -182,8 +182,8 @@ export function Onboarding() {
 
                 <div className="mb-8">
                   <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: accentColor }}>Step 1 of 2</p>
-                  <h2 className="text-3xl font-black text-white mb-2">What's your role?</h2>
-                  <p className="text-white/40 text-sm">We'll curate the perfect question set for you.</p>
+                  <h2 className="text-3xl font-black text-white mb-2 tracking-tight">What's your role?</h2>
+                  <p className="text-white/60 text-base leading-relaxed">We'll curate the perfect question set for you.</p>
                 </div>
 
                 {/* Quick start */}
@@ -203,13 +203,13 @@ export function Onboarding() {
                     <Rocket className="w-5 h-5 text-white" />
                   </div>
                   <div className="text-left flex-1">
-                    <div className="font-bold text-sm text-white">Quick Start</div>
-                    <div className="text-xs text-white/40">Jump in with popular topics — customize later</div>
+                    <div className="font-bold text-base text-white tracking-tight">Quick Start</div>
+                    <div className="text-sm text-white/55 leading-relaxed">Jump in with popular topics — customize later</div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-white/30" />
                 </motion.button>
 
-                <div className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-3">Or choose your role</div>
+                <div className="text-[11px] font-bold uppercase tracking-widest text-white/30 mb-3">Or choose your role</div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                   {rolesConfig.map((role, idx) => {
@@ -242,8 +242,8 @@ export function Onboarding() {
                             </motion.div>
                           )}
                         </div>
-                        <div className="text-sm font-bold text-white mb-0.5">{role.name}</div>
-                        <div className="text-[11px] text-white/30 line-clamp-2">{role.description}</div>
+                        <div className="text-base font-bold text-white mb-0.5 tracking-tight">{role.name}</div>
+                        <div className="text-sm text-white/50 leading-relaxed line-clamp-2">{role.description}</div>
                       </motion.button>
                     );
                   })}
@@ -259,8 +259,8 @@ export function Onboarding() {
 
                 <div className="mb-8">
                   <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: accentColor }}>Step 2 of 2</p>
-                  <h2 className="text-3xl font-black text-white mb-2">Your question feed</h2>
-                  <p className="text-white/40 text-sm">
+                  <h2 className="text-3xl font-black text-white mb-2 tracking-tight">Your question feed</h2>
+                  <p className="text-white/60 text-base leading-relaxed">
                     <span className="font-semibold" style={{ color: accentColor }}>{active.length} channels</span> selected.{' '}
                     Tap any to toggle.
                   </p>
@@ -290,8 +290,8 @@ export function Onboarding() {
                         <div className="mb-2" style={{ color: off ? 'rgba(255,255,255,0.2)' : (ch.color || accentColor) }}>
                           {iconMap[ch.icon] || <Target className="w-4 h-4" />}
                         </div>
-                        <div className="text-sm font-bold text-white">{ch.name}</div>
-                        <div className="text-[11px] text-white/30 line-clamp-2 mt-0.5">{ch.description}</div>
+                        <div className="text-base font-bold text-white tracking-tight">{ch.name}</div>
+                        <div className="text-sm text-white/50 leading-relaxed line-clamp-2 mt-0.5">{ch.description}</div>
                       </motion.button>
                     );
                   })}
@@ -308,7 +308,7 @@ export function Onboarding() {
           <div className="max-w-2xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             {step === 'preview' && (
               <button onClick={() => setStep('role')}
-                className="px-5 py-3 rounded-xl text-sm font-medium text-white/35 hover:text-white/65 transition-colors border"
+                className="px-5 py-3 rounded-xl text-sm font-medium text-white/45 hover:text-white/75 transition-colors border"
                 style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
                 ← Back
               </button>
@@ -318,7 +318,7 @@ export function Onboarding() {
               disabled={!selectedRole && step === 'role'}
               whileHover={selectedRole ? { scale: 1.01 } : {}}
               whileTap={selectedRole ? { scale: 0.98 } : {}}
-              className="flex-1 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all"
+              className="flex-1 py-3.5 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all tracking-tight"
               style={{
                 background: selectedRole ? `linear-gradient(135deg, ${accentColor}, #06b6d4)` : 'rgba(255,255,255,0.06)',
                 color: selectedRole ? 'white' : 'rgba(255,255,255,0.2)',
@@ -333,7 +333,7 @@ export function Onboarding() {
             </motion.button>
           </div>
           {step === 'role' && (
-            <p className="text-center text-[11px] text-white/20 mt-3">
+            <p className="text-center text-xs text-white/30 mt-3">
               <button onClick={() => { skipOnboarding(); window.location.href = '/'; }}
                 className="hover:text-white/40 transition-colors underline underline-offset-2">
                 Skip onboarding
