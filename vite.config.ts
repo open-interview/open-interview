@@ -30,6 +30,7 @@ export default defineConfig({
     swBuildStampPlugin(),
   ],
   resolve: {
+    conditions: ['import', 'require'],
     alias: {
       "@": path.resolve(__dirname, "client", "src"),
       "@shared": path.resolve(__dirname, "shared"),

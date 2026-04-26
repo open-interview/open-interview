@@ -126,9 +126,9 @@ export function Sidebar() {
                   {item.shortcut}
                 </kbd>
               )}
-            </>
-          )}
-        </button>
+</>
+            )}
+          </motion.button>
 
         {/* Tooltip */}
         <AnimatePresence>
@@ -170,12 +170,12 @@ export function Sidebar() {
           onClick={() => setLocation('/')}
           className={cn('flex items-center gap-2.5 min-w-0', isCollapsed && 'justify-center w-full')}
         >
-          <div
+          <motion.div
             className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center shrink-0"
             style={{ boxShadow: '0 0 16px rgba(124,58,237,0.3)' }}
           >
             <Mic className="w-4 h-4 text-white" />
-          </div>
+          </motion.div>
           {!isCollapsed && (
             <div className="text-left overflow-hidden">
               <div className="font-bold text-sm leading-tight whitespace-nowrap">Code Reels</div>
