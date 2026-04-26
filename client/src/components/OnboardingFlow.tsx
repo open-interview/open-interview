@@ -273,8 +273,8 @@ export function OnboardingFlow({ onComplete }: Props) {
 
                 <div className="mb-8">
                   <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: accentColor }}>Step 1 of 3</p>
-                  <h2 className="text-3xl font-black text-white mb-2">What's your role?</h2>
-                  <p className="text-white/45 text-sm">We'll pre-select the most relevant topics for you.</p>
+                  <h2 className="text-3xl font-black text-white mb-2 tracking-tight">What's your role?</h2>
+                  <p className="text-white/60 text-base leading-relaxed">We'll pre-select the most relevant topics for you.</p>
                 </div>
 
                 <motion.div
@@ -312,8 +312,8 @@ export function OnboardingFlow({ onComplete }: Props) {
                             </motion.div>
                           )}
                         </div>
-                        <div className="text-sm font-bold text-white mb-0.5">{r.label}</div>
-                        <div className="text-[11px] text-white/35 leading-snug">{r.desc}</div>
+                        <div className="text-base font-bold text-white mb-0.5 tracking-tight">{r.label}</div>
+                        <div className="text-sm text-white/50 leading-relaxed">{r.desc}</div>
                       </motion.button>
                     );
                   })}
@@ -329,8 +329,8 @@ export function OnboardingFlow({ onComplete }: Props) {
 
                 <div className="mb-8">
                   <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: accentColor }}>Step 2 of 3</p>
-                  <h2 className="text-3xl font-black text-white mb-2">Choose your topics</h2>
-                  <p className="text-white/45 text-sm">
+                  <h2 className="text-3xl font-black text-white mb-2 tracking-tight">Choose your topics</h2>
+                  <p className="text-white/60 text-base leading-relaxed">
                     {selectedTopics.size > 0
                       ? <><span className="font-semibold" style={{ color: accentColor }}>{selectedTopics.size} topics</span> selected — only these appear in your feed.</>
                       : 'Select at least one topic to continue.'}
@@ -355,7 +355,7 @@ export function OnboardingFlow({ onComplete }: Props) {
                   if (!chans.length) return null;
                   return (
                     <div key={cat.id} className="mb-7">
-                      <div className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">{cat.name}</div>
+                      <div className="text-[11px] font-bold uppercase tracking-widest text-white/35 mb-3">{cat.name}</div>
                       <div className="flex flex-wrap gap-2">
                         {chans.map(c => {
                           const on = selectedTopics.has(c.id);
@@ -365,7 +365,7 @@ export function OnboardingFlow({ onComplete }: Props) {
                                   initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
                                   whileHover={{ scale: 1.04 }}
                                   whileTap={{ scale: 0.95 }}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all"
                                   style={{
                                     background: on ? `${accentColor}18` : 'rgba(255,255,255,0.025)',
                                     border: `1px solid ${on ? accentColor + '55' : 'rgba(255,255,255,0.06)'}`,
@@ -396,8 +396,8 @@ export function OnboardingFlow({ onComplete }: Props) {
 
                 <div className="mb-8">
                   <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: accentColor }}>Step 3 of 3</p>
-                  <h2 className="text-3xl font-black text-white mb-2">Preparing for a cert?</h2>
-                  <p className="text-white/45 text-sm">
+                  <h2 className="text-3xl font-black text-white mb-2 tracking-tight">Preparing for a cert?</h2>
+                  <p className="text-white/60 text-base leading-relaxed">
                     Optional — adds cert-specific questions to your feed.{' '}
                     {selectedCerts.size > 0 && <span style={{ color: accentColor }}>{selectedCerts.size} selected.</span>}
                   </p>
@@ -405,7 +405,7 @@ export function OnboardingFlow({ onComplete }: Props) {
 
                 {Object.entries(certsByProvider).map(([provider, certs]) => (
                   <div key={provider} className="mb-7">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-white/25 mb-3">{provider}</div>
+                    <div className="text-[11px] font-bold uppercase tracking-widest text-white/35 mb-3">{provider}</div>
                     <div className="space-y-2">
                       {certs.map(cert => {
                         const on = selectedCerts.has(cert.id);
