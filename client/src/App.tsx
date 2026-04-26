@@ -24,7 +24,7 @@ const CodingChallenge = React.lazy(() => import("@/pages/CodingChallenge"));
 const Channels = React.lazy(() => import("@/pages/AllChannels"));
 const Notifications = React.lazy(() => import("@/pages/Notifications"));
 const Bookmarks = React.lazy(() => import("@/pages/Bookmarks"));
-const ReviewSession = React.lazy(() => import("@/pages/ReviewSession"));
+const ReviewSession = React.lazy(() => import("@/pages/ReviewSession").catch(() => import("@/pages/ReviewSessionOptimized")));
 const Flashcards = React.lazy(() => import("@/pages/Flashcards"));
 const VoicePractice = React.lazy(() => import("@/pages/VoicePractice"));
 const VoiceSession = React.lazy(() => import("@/pages/VoiceSession"));
