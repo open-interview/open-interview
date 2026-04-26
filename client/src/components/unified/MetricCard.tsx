@@ -11,6 +11,7 @@
 import { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import { useReducedMotion, springTransition, getSpringTransition } from '../../hooks/use-reduced-motion';
 
 export type MetricCardVariant = 'default' | 'success' | 'warning' | 'danger' | 'info';
 export type MetricCardSize = 'sm' | 'md' | 'lg';
@@ -91,6 +92,8 @@ export function MetricCard({
   className = '',
   onClick
 }: MetricCardProps) {
+  const prefersReducedMotion = useReducedMotion();
+  const spring = getSpringTransition(prefersReducedMotion);
   const variantConfig = variantClasses[variant];
   const sizeConfig = sizeClasses[size];
 
@@ -153,7 +156,9 @@ export function MetricCard({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.2 }}
+        transition={spring}
+        whileHover={onClick ? { scale: 1.02 } : undefined}
+        whileTap={onClick ? { scale: 0.98 } : undefined}
       >
         {content}
       </motion.div>

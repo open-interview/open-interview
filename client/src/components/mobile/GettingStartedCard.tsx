@@ -88,7 +88,7 @@ export function GettingStartedCard({
 
   return (
     <section className="mx-4 my-3 pb-4">
-      <div className="bg-gradient-to-br from-primary/10 via-card to-card rounded-xl border border-primary/20 overflow-hidden transition-shadow duration-150 ease-out hover:shadow-md">
+      <div className="bg-gradient-to-br from-primary/10 via-card to-card rounded-xl border border-primary/20 overflow-hidden transition-shadow duration-150 ease-out hover:shadow-md shadow-[8px_8px_16px_rgba(163,177,198,0.6),-8px_-8px_16px_rgba(255,255,255,1)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.5),-8px_-8px_16px_rgba(255,255,255,0.08)]">
         {/* Header */}
         <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -125,12 +125,12 @@ export function GettingStartedCard({
               onClick={() => setLocation(step.path)}
               className={`
                 w-full flex items-center gap-3 p-3 rounded-lg text-left min-h-[44px] cursor-pointer
-                transition-colors duration-150 ease-out
+                transition-all duration-150 ease-out active:scale-[0.98]
                 ${step.completed 
                   ? 'bg-primary/5 opacity-60' 
                   : step.id === nextStep.id 
-                    ? 'bg-primary/10 ring-1 ring-primary/30 hover:bg-primary/15' 
-                    : 'bg-muted/30 hover:bg-muted/50'
+                    ? 'bg-primary/10 ring-1 ring-primary/30 hover:bg-primary/15 shadow-[4px_4px_8px_rgba(163,177,198,0.4),-4px_-4px_8px_rgba(255,255,255,1)] dark:shadow-[4px_4px_8px_rgba(0,0,0,0.3),-4px_-4px_8px_rgba(255,255,255,0.06)]' 
+                    : 'bg-muted/30 hover:bg-muted/50 shadow-[2px_2px_4px_rgba(163,177,198,0.3),-2px_-2px_4px_rgba(255,255,255,1)] dark:shadow-[2px_2px_4px_rgba(0,0,0,0.2),-2px_-2px_4px_rgba(255,255,255,0.04)]'
                 }
               `}
             >

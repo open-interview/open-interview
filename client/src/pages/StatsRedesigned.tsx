@@ -381,17 +381,20 @@ function StatCard({ icon, label, value, subtext, color, bgColor }: {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-card border border-border rounded-xl p-5"
+      className="bg-[var(--surface-2)] rounded-[28px] p-5 border border-[var(--color-border)]"
+      style={{
+        boxShadow: '8px 8px 24px rgba(0,0,0,0.25), -4px -4px 16px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.08)'
+      }}
     >
-      <div className="flex items-center gap-3 mb-3">
-        <div className={`p-2 rounded-lg ${bgColor}`}>
+      <div className="flex items-center gap-3 mb-3" style={{ transform: 'translateZ(0)' }}>
+        <div className={`p-2.5 rounded-xl ${bgColor}`} style={{ boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.15)' }}>
           <div className={color}>{icon}</div>
         </div>
-        <span className="text-sm text-muted-foreground">{label}</span>
+        <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{label}</span>
       </div>
       <div className="flex items-baseline gap-2">
-        <span className={`text-3xl font-bold ${color}`}>{value}</span>
-        <span className="text-sm text-muted-foreground">{subtext}</span>
+        <span className={`text-4xl font-black tracking-tight ${color}`} style={{ textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>{value}</span>
+        <span className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>{subtext}</span>
       </div>
     </motion.div>
   );

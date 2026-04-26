@@ -1,4 +1,5 @@
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { useReducedMotion, springTransition, springTransitionBounce, getSpringTransition } from '../../hooks/use-reduced-motion';
 
 interface PageTransitionProps {
   children: React.ReactNode;
@@ -7,13 +8,15 @@ interface PageTransitionProps {
 
 export function PageTransition({ children, locationKey }: PageTransitionProps) {
   const reduced = useReducedMotion();
+  const spring = getSpringTransition(reduced);
+  const bounce = reduced ? { duration: 0.01 } : springTransitionBounce;
 
   const variants = reduced
     ? { initial: {}, animate: {}, exit: {} }
     : {
         initial: { opacity: 0, y: 8 },
-        animate: { opacity: 1, y: 0, transition: { duration: 0.2, ease: "easeOut" as const } },
-        exit: { opacity: 0, y: -8, transition: { duration: 0.15, ease: "easeIn" as const } },
+        animate: { opacity: 1, y: 0, transition: spring },
+        exit: { opacity: 0, y: -8, transition: bounce },
       };
 
   return (

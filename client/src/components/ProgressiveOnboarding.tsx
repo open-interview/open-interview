@@ -116,7 +116,12 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
         aria-modal="true"
         aria-labelledby="progressive-onboarding-heading"
       >
-        <div className="bg-card border border-border rounded-xl shadow-2xl overflow-hidden">
+        <div className="bg-card border border-border rounded-xl shadow-2xl overflow-hidden"
+          style={{
+            background: 'rgba(20,20,25,0.85)',
+            backdropFilter: 'blur(20px)',
+            boxShadow: '12px 12px 32px rgba(0,0,0,0.5), -4px -4px 16px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}>
           {/* Header */}
           <div className="bg-primary/10 px-4 py-3 flex items-center justify-between border-b border-border">
             <div className="flex items-center gap-2">
@@ -154,17 +159,26 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
                   
                   <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
                     {rolesConfig.slice(0, 8).map(role => (
-                      <button
+                      <motion.button
                         key={role.id}
                         onClick={() => handleRoleSelect(role.id)}
                         aria-pressed={selectedRole === role.id}
-                        className="p-3 border border-border rounded-lg text-left hover:border-primary hover:bg-primary/5 transition-all group"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="p-3 border rounded-lg text-left group"
+                        style={{
+                          background: selectedRole === role.id ? 'rgba(124,58,237,0.12)' : 'rgba(255,255,255,0.025)',
+                          border: `1px solid ${selectedRole === role.id ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.06)'}`,
+                          boxShadow: selectedRole === role.id 
+                            ? '0 4px 16px rgba(124,58,237,0.25), inset 0 1px 0 rgba(124,58,237,0.15)' 
+                            : '4px 4px 12px rgba(0,0,0,0.3), -2px -2px 8px rgba(255,255,255,0.02)',
+                        }}
                       >
                         <div className="text-muted-foreground group-hover:text-primary mb-1">
                           {iconMap[role.icon] || <Cpu className="w-5 h-5" />}
                         </div>
                         <div className="font-medium text-xs">{role.name}</div>
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
 
@@ -195,41 +209,66 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
                     {recommendedChannels.map(channel => {
                       const isSelected = selectedChannels.has(channel.id);
                       return (
-                        <button
+                        <motion.button
                           key={channel.id}
                           onClick={() => toggleChannel(channel.id)}
                           aria-pressed={isSelected}
-                          className={`
-                            px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5
-                            ${isSelected 
-                              ? 'bg-primary text-primary-foreground' 
-                              : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                            }
-                          `}
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5"
+                          style={{
+                            background: isSelected 
+                              ? 'rgba(124,58,237,0.2)' 
+                              : 'rgba(255,255,255,0.03)',
+                            border: `1px solid ${isSelected ? 'rgba(124,58,237,0.5)' : 'rgba(255,255,255,0.05)'}`,
+                            boxShadow: isSelected 
+                              ? '0 3px 12px rgba(124,58,237,0.25), inset 0 1px 0 rgba(124,58,237,0.15)' 
+                              : '3px 3px 8px rgba(0,0,0,0.25), -2px -2px 6px rgba(255,255,255,0.015)',
+                            color: '#e2d9f3',
+                          }}
                         >
                           {isSelected && <Check className="w-3 h-3" />}
                           {channel.name}
-                        </button>
+                        </motion.button>
                       );
                     })}
                   </div>
 
                   <div className="flex gap-2">
-                    <button
+                    <motion.button
                       onClick={() => setStep('role')}
                       aria-label="Go back to role selection"
-                      className="flex-1 px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="flex-1 px-4 py-2 text-sm text-muted-foreground hover:text-foreground rounded-lg transition-colors"
+                      style={{
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        boxShadow: '3px 3px 8px rgba(0,0,0,0.2), -2px -2px 6px rgba(255,255,255,0.015)',
+                      }}
                     >
                       Back
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
                       onClick={handleComplete}
                       disabled={isCompleteDisabled}
                       aria-disabled={isCompleteDisabled}
-                      className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium flex items-center justify-center gap-1 hover:bg-primary/90 transition-colors disabled:opacity-50"
+                      whileHover={isCompleteDisabled ? {} : { scale: 1.02 }}
+                      whileTap={isCompleteDisabled ? {} : { scale: 0.95 }}
+                      className="flex-1 px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
+                      style={{
+                        background: isCompleteDisabled 
+                          ? 'rgba(255,255,255,0.06)' 
+                          : 'linear-gradient(135deg, #7c3aed, #06b6d4)',
+                        color: 'white',
+                        boxShadow: isCompleteDisabled 
+                          ? 'none' 
+                          : '0 4px 16px rgba(124,58,237,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
+                        cursor: isCompleteDisabled ? 'not-allowed' : 'pointer',
+                      }}
                     >
                       Start Learning <ChevronRight className="w-4 h-4" />
-                    </button>
+                    </motion.button>
                   </div>
                 </motion.div>
               )}

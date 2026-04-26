@@ -15,6 +15,7 @@
 import { forwardRef, ButtonHTMLAttributes, ReactNode } from 'react';
 import { motion, HTMLMotionProps } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
+import { useReducedMotion, springTransition, springTransitionBounce, getSpringTransition } from '../../hooks/use-reduced-motion';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success';
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
@@ -138,16 +139,19 @@ export const MotionButton = forwardRef<HTMLButtonElement, MotionButtonProps>(
       className = '',
       disabled,
       children,
+      initial = { opacity: 0, scale: 0.95 },
+      animate = { opacity: 1, scale: 1 },
       whileHover = { scale: 1.02 },
       whileTap = { scale: 0.98 },
-      initial,
-      animate,
-      exit,
       transition,
       ...props
     },
     ref
   ) => {
+    const prefersReducedMotion = useReducedMotion();
+    const spring = getSpringTransition(prefersReducedMotion);
+    const bounce = prefersReducedMotion ? { duration: 0.01 } : springTransitionBounce;
+
     const baseClasses = 'inline-flex items-center justify-center gap-2 font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed';
     const variantClass = variantClasses[variant];
     const sizeClass = sizeClasses[size];
@@ -167,12 +171,11 @@ export const MotionButton = forwardRef<HTMLButtonElement, MotionButtonProps>(
       <motion.button
         ref={ref}
         disabled={disabled || loading}
-        whileHover={whileHover}
-        whileTap={whileTap}
         initial={initial}
         animate={animate}
-        exit={exit}
-        transition={transition}
+        whileHover={whileHover}
+        whileTap={whileTap}
+        transition={transition || { ...spring, whileHover: bounce, whileTap: spring }}
         className={`
           ${baseClasses}
           ${variantClass}

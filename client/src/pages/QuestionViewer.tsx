@@ -369,7 +369,7 @@ export default function QuestionViewer() {
           {/* Main scrollable content */}
           <motion.div drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.1} style={{ x, opacity }}
             onDragEnd={handleDragEnd} className="flex-1 overflow-y-auto">
-            <div className="max-w-4xl mx-auto px-4 py-8 lg:py-12" data-testid="question-card">
+            <div className="max-w-4xl mx-auto px-4 py-8 lg:py-12" data-testid="question-card" style={{ background: 'linear-gradient(145deg, var(--card), var(--card))', borderRadius: 24, boxShadow: '20px 20px 60px rgba(0,0,0,0.25), -10px -10px 40px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.06)' }}>
 
               {/* Meta row */}
               <div className="flex items-center gap-2 flex-wrap mb-6">
@@ -422,14 +422,23 @@ export default function QuestionViewer() {
                 ) : showRatingButtons && srsCard ? (
                   <div className="flex gap-2">
                     {(['again', 'hard', 'good', 'easy'] as ConfidenceRating[]).map(r => {
-                      const cfg = { again: 'text-red-500 border-red-500/40 hover:bg-red-500/8', hard: 'text-amber-500 border-amber-500/40 hover:bg-amber-500/8', good: 'text-emerald-600 border-emerald-500/40 hover:bg-emerald-500/8', easy: 'text-blue-500 border-blue-500/40 hover:bg-blue-500/8' };
+                      const cfg: Record<string, { bg: string; glow: string; text: string; border: string }> = {
+                        again: { bg: 'linear-gradient(145deg, #fee2e2, #fecaca)', glow: '0 4px 16px rgba(239,68,68,0.3)', text: '#dc2626', border: 'rgba(239,68,68,0.4)' },
+                        hard: { bg: 'linear-gradient(145deg, #fef3c7, #fde68a)', glow: '0 4px 16px rgba(245,158,11,0.3)', text: '#d97706', border: 'rgba(245,158,11,0.4)' },
+                        good: { bg: 'linear-gradient(145deg, #d1fae5, #a7f3d0)', glow: '0 4px 16px rgba(16,185,129,0.3)', text: '#059669', border: 'rgba(16,185,129,0.4)' },
+                        easy: { bg: 'linear-gradient(145deg, #dbeafe, #bfdbfe)', glow: '0 4px 16px rgba(59,130,246,0.3)', text: '#2563eb', border: 'rgba(59,130,246,0.4)' }
+                      };
                       const testIds: Record<string, string> = { hard: 'srs-button-hard', good: 'srs-button-good', easy: 'srs-button-easy' };
+                      const style = cfg[r];
                       return (
-                        <button key={r} onClick={() => handleSRSRating(r)}
+                        <motion.button key={r} onClick={() => handleSRSRating(r)}
+                          whileHover={{ scale: 1.05, y: -2 }}
+                          whileTap={{ scale: 0.95 }}
                           {...(testIds[r] ? { 'data-testid': testIds[r] } : {})}
-                          className={`cursor-pointer px-3 min-h-[44px] text-xs font-semibold border rounded-full transition-colors duration-150 ease-out capitalize ${cfg[r]}`}>
+                          className={`cursor-pointer px-3 min-h-[44px] text-xs font-semibold border rounded-full capitalize`}
+                          style={{ background: style.bg, color: style.text, borderColor: style.border, boxShadow: style.glow, transition: 'all 0.2s ease-out' }}>
                           {r}
-                        </button>
+                        </motion.button>
                       );
                     })}
                   </div>
@@ -454,7 +463,8 @@ export default function QuestionViewer() {
                         {!showAnswer ? (
                           <button onClick={() => setShowAnswer(true)}
                             data-testid="button-reveal-answer"
-                            className="cursor-pointer w-full flex items-center justify-center gap-2 min-h-[44px] bg-primary text-primary-foreground font-semibold rounded-xl text-sm transition-opacity duration-150 ease-out hover:opacity-90">
+                            className="cursor-pointer w-full flex items-center justify-center gap-2 min-h-[44px] font-semibold rounded-xl text-sm transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.98]"
+                            style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', color: '#fff', boxShadow: '0 4px 16px rgba(99,102,241,0.35), inset 0 1px 0 rgba(255,255,255,0.2)' }}>
                             <Eye className="w-4 h-4" /> Show Answer
                           </button>
                         ) : (

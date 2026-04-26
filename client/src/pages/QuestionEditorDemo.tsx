@@ -113,7 +113,8 @@ export default function QuestionEditorDemo() {
 
             <button
               onClick={handleCreateNew}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 font-semibold rounded-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+              style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', color: '#fff', boxShadow: '0 4px 16px rgba(99,102,241,0.35), inset 0 1px 0 rgba(255,255,255,0.2)' }}
             >
               <Plus className="w-4 h-4" />
               Create Question
@@ -143,7 +144,9 @@ export default function QuestionEditorDemo() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="bg-card border border-border rounded-lg p-4 hover:border-primary/50 transition-colors"
+                  whileHover={{ y: -4, scale: 1.01 }}
+                  className="p-4"
+                  style={{ background: 'linear-gradient(145deg, var(--card), var(--card))', borderRadius: 16, boxShadow: '12px 12px 24px rgba(0,0,0,0.2), -6px -6px 20px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.05)' }}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
@@ -213,7 +216,8 @@ export default function QuestionEditorDemo() {
                 </p>
                 <button
                   onClick={handleCreateNew}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                  className="px-5 py-2.5 font-semibold rounded-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                  style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', color: '#fff', boxShadow: '0 4px 16px rgba(99,102,241,0.35), inset 0 1px 0 rgba(255,255,255,0.2)' }}
                 >
                   Create Your First Question
                 </button>

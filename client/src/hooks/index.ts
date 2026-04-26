@@ -65,7 +65,7 @@ export type { UseFocusTrapOptions } from './use-focus-trap';
 export { useKeyboardNavigation } from './use-keyboard-navigation';
 export type { KeyboardShortcut } from './use-keyboard-navigation';
 
-export { useReducedMotion } from './use-reduced-motion';
+export { useReducedMotion, springTransition, springTransitionBounce, staggerConfig, getSpringTransition } from './use-reduced-motion';
 
 export { useAnnouncer } from './use-announcer';
 export type { AnnouncementPriority } from './use-announcer';

@@ -240,7 +240,7 @@ export default function Flashcards() {
           </div>
 
           {/* Card area */}
-          <div className="relative flex-1 flex flex-col items-center justify-center px-4 min-h-0" style={{ perspective: '1200px' }}>
+          <div className="relative flex-1 flex flex-col items-center justify-center px-4 min-h-0" style={{ perspective: '1400px' }}>
             <button onClick={goPrev} disabled={index === 0}
               className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full items-center justify-center bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-20 transition-all cursor-pointer">
               <ChevronLeft className="w-6 h-6" />
@@ -267,8 +267,14 @@ export default function Flashcards() {
                     }}
                     onClick={flip}>
                     {/* Front */}
-                    <div className="absolute inset-0 rounded-3xl p-6 flex flex-col justify-between"
-                      style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', background: 'var(--surface-2)', border: '1px solid var(--color-border-subtle)' }}>
+                    <div className="absolute inset-0 rounded-[28px] p-6 flex flex-col justify-between"
+                      style={{
+                        backfaceVisibility: 'hidden',
+                        WebkitBackfaceVisibility: 'hidden',
+                        background: 'linear-gradient(145deg, var(--color-surface-2, #1e293b), color-mix(in srgb, var(--color-surface-2, #1e293b) 80%, var(--color-surface-3, #334155)))',
+                        border: '1px solid var(--color-border-subtle, rgba(148,163,184,0.15))',
+                        boxShadow: '12px 12px 32px rgba(0,0,0,0.35), -6px -6px 24px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.06)'
+                      }}>
                       <div className="flex items-center justify-between">
                         <span className="px-2 py-0.5 rounded-full text-xs font-bold uppercase badge-success">{current.channel}</span>
                         <div className="flex items-center gap-2">
@@ -289,8 +295,15 @@ export default function Flashcards() {
                       </div>
                     </div>
                     {/* Back */}
-                    <div className="absolute inset-0 rounded-3xl p-5 flex flex-col gap-2"
-                      style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', transform: 'rotateY(180deg)', background: 'color-mix(in srgb, var(--color-success, #10b981) 8%, var(--surface-2))', border: '1px solid color-mix(in srgb, var(--color-success, #10b981) 25%, transparent)' }}>
+                    <div className="absolute inset-0 rounded-[28px] p-5 flex flex-col gap-2"
+                      style={{
+                        backfaceVisibility: 'hidden',
+                        WebkitBackfaceVisibility: 'hidden',
+                        transform: 'rotateY(180deg)',
+                        background: 'linear-gradient(145deg, color-mix(in srgb, var(--color-success, #10b981) 12%, var(--color-surface-2)), color-mix(in srgb, var(--color-surface-2) 85%, var(--color-surface-3)))',
+                        border: '1px solid color-mix(in srgb, var(--color-success, #10b981) 30%, transparent)',
+                        boxShadow: '12px 12px 32px rgba(0,0,0,0.35), -6px -6px 24px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.06)'
+                      }}>
                       <span className="self-start px-2 py-0.5 rounded-full text-xs font-bold uppercase badge-success">Answer</span>
                       <p className="text-sm md:text-base leading-relaxed text-foreground overflow-y-auto" style={{ flex: '1 1 0', minHeight: 0 }}>{current.back}</p>
                       {current.hint && (
@@ -338,9 +351,21 @@ export default function Flashcards() {
                 { r: 'good'  as ConfidenceRating, label: 'Good',  key: '3', bg: 'color-mix(in srgb, var(--color-success, #10b981) 15%, transparent)', color: 'var(--color-success, #10b981)', border: 'color-mix(in srgb, var(--color-success, #10b981) 30%, transparent)' },
                 { r: 'easy'  as ConfidenceRating, label: 'Easy',  key: '4', bg: 'color-mix(in srgb, #3b82f6 15%, transparent)', color: '#3b82f6', border: 'color-mix(in srgb, #3b82f6 30%, transparent)' },
               ]).map(({ r, label, key, bg, color, border }) => (
-                <motion.button key={r} whileTap={{ scale: 0.93 }} onClick={() => rate(r)} disabled={!current || !flipped}
-                  className="cursor-pointer flex-1 flex flex-col items-center justify-center min-h-[52px] py-3 rounded-xl font-semibold text-xs disabled:opacity-25 disabled:cursor-not-allowed transition-opacity duration-150"
-                  style={{ background: bg, color, border: `1px solid ${border}` }}>
+                <motion.button key={r} whileTap={{ scale: 0.92 }} onClick={() => rate(r)} disabled={!current || !flipped}
+                  className="cursor-pointer flex-1 flex flex-col items-center justify-center min-h-[52px] py-3 rounded-[16px] font-semibold text-xs disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-150"
+                  style={{
+                    background: flash === r
+                      ? r === 'again' ? 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)'
+                      : r === 'hard' ? 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)'
+                      : r === 'good' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                      : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                      : bg,
+                    color: flash === r ? '#fff' : color,
+                    border: `1px solid ${flash === r ? 'transparent' : border}`,
+                    boxShadow: flash === r
+                      ? `0 0 24px ${r === 'again' ? 'rgba(244,63,94,0.5)' : r === 'hard' ? 'rgba(249,115,22,0.5)' : r === 'good' ? 'rgba(16,185,129,0.5)' : 'rgba(59,130,246,0.5)'}`
+                      : 'none'
+                  }}>
                   <span className="font-bold">{label}</span>
                   <span className="opacity-50 text-[10px]">{key}</span>
                 </motion.button>

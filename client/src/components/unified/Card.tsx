@@ -10,6 +10,7 @@
 
 import { motion, HTMLMotionProps } from 'framer-motion';
 import { ReactNode } from 'react';
+import { useReducedMotion, springTransition, springTransitionBounce, getSpringTransition } from '../../hooks/use-reduced-motion';
 
 export type CardVariant = 'default' | 'elevated' | 'outline' | 'ghost';
 export type CardSize = 'sm' | 'md' | 'lg' | 'xl';
@@ -59,6 +60,9 @@ export function Card({
   className = '',
   ...motionProps
 }: CardProps) {
+  const prefersReducedMotion = useReducedMotion();
+  const spring = getSpringTransition(prefersReducedMotion);
+  const bounce = prefersReducedMotion ? { duration: 0.01 } : springTransitionBounce;
   const baseClasses = variantClasses[variant];
   const paddingClass = sizeClasses[size];
   const roundedClass = roundedClasses[rounded];
@@ -82,6 +86,9 @@ export function Card({
         ${hoverClass} ${clickableClass} ${gradientClass}
         ${className}
       `}
+      whileHover={hoverable ? { scale: 1.02 } : undefined}
+      whileTap={clickable ? { scale: 0.98 } : undefined}
+      transition={{ hover: spring, tap: bounce }}
       {...motionProps}
     >
       {children}
@@ -210,8 +217,6 @@ export function InteractiveCard({
       hoverable={hoverable}
       clickable={clickable}
       onClick={handleClick}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
       {...props}
     >
       {children}

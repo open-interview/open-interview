@@ -298,7 +298,11 @@ export default function ReviewSessionOptimized() {
                   </div>
 
                   {/* Question - COMPACT */}
-                  <h2 className="text-lg font-bold leading-tight">
+                  <h2 className="text-lg font-bold leading-tight p-6 rounded-[24px]" style={{
+                    background: 'linear-gradient(145deg, var(--color-surface-2, #1e293b), color-mix(in srgb, var(--color-surface-2) 80%, var(--color-surface-3)))',
+                    border: '1px solid var(--color-border-subtle, rgba(148,163,184,0.15))',
+                    boxShadow: '8px 8px 24px rgba(0,0,0,0.3), -4px -4px 16px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.05)'
+                  }}>
                     {currentQuestion.question}
                   </h2>
 
@@ -469,10 +473,10 @@ export default function ReviewSessionOptimized() {
                     </p>
                     <div className="grid grid-cols-4 gap-2">
                       {[
-                        { rating: 'again' as ConfidenceRating, label: 'Again', color: 'from-red-500 to-red-600', icon: X },
-                        { rating: 'hard' as ConfidenceRating, label: 'Hard', color: 'from-orange-500 to-orange-600', icon: Brain },
-                        { rating: 'good' as ConfidenceRating, label: 'Good', color: 'from-green-500 to-green-600', icon: Check },
-                        { rating: 'easy' as ConfidenceRating, label: 'Easy', color: 'from-blue-500 to-blue-600', icon: Zap },
+                        { rating: 'again' as ConfidenceRating, label: 'Again', color: 'from-red-500 to-red-600', icon: X, glow: '0 0 20px rgba(239,68,68,0.4)' },
+                        { rating: 'hard' as ConfidenceRating, label: 'Hard', color: 'from-orange-500 to-orange-600', icon: Brain, glow: '0 0 20px rgba(249,115,22,0.4)' },
+                        { rating: 'good' as ConfidenceRating, label: 'Good', color: 'from-green-500 to-green-600', icon: Check, glow: '0 0 20px rgba(34,197,94,0.4)' },
+                        { rating: 'easy' as ConfidenceRating, label: 'Easy', color: 'from-blue-500 to-blue-600', icon: Zap, glow: '0 0 20px rgba(59,130,246,0.4)' },
                       ].map((btn) => {
                         const Icon = btn.icon;
                         return (
@@ -480,11 +484,15 @@ export default function ReviewSessionOptimized() {
                             key={btn.rating}
                             onClick={() => handleRate(btn.rating)}
                             whileTap={{ scale: 0.92 }}
+                            whileHover={{ scale: 1.03 }}
                             className={cn(
-                              'flex flex-col items-center gap-1 py-2.5 rounded-xl text-white',
-                              'bg-gradient-to-br shadow-lg hover:shadow-xl min-h-[44px]',
+                              'flex flex-col items-center gap-1 py-2.5 rounded-[16px] text-white',
+                              'min-h-[44px] transition-all duration-150',
                               btn.color
                             )}
+                            style={{
+                              boxShadow: '6px 6px 16px rgba(0,0,0,0.3), -3px -3px 12px rgba(255,255,255,0.04)'
+                            }}
                           >
                             <Icon className="w-4 h-4" />
                             <span className="text-xs font-semibold">{btn.label}</span>

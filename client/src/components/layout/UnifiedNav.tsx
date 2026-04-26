@@ -128,7 +128,7 @@ export function MobileBottomNav() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed inset-x-0 bottom-0 z-50 bg-background border-t border-border rounded-t-[28px] shadow-2xl max-h-[80vh] flex flex-col lg:hidden"
+            className="fixed inset-x-0 bottom-0 z-50 bg-background/90 backdrop-blur-2xl border-t border-white/20 shadow-[0_-8px_32px_rgba(0,0,0,0.2)] rounded-t-[28px] max-h-[80vh] flex flex-col lg:hidden"
           >
             <div className="flex justify-center pt-3 pb-1">
               <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
@@ -159,10 +159,10 @@ export function MobileBottomNav() {
                     transition={{ delay: i * 0.04 }}
                     onClick={() => { setLocation(item.path); setShowMenu(null); }}
                     className={cn(
-                      'w-full flex items-center gap-3 p-3.5 rounded-2xl transition-all border-2',
+                      'w-full flex items-center gap-3 p-3.5 rounded-[24px] transition-all border-2',
                       isActive
-                        ? 'bg-primary/10 border-primary/40 text-primary'
-                        : 'bg-muted/40 border-transparent hover:bg-muted'
+                        ? 'bg-gradient-to-r from-violet-500/15 via-primary/10 to-cyan-400/15 border-primary/40 text-primary shadow-[0_4px_16px_rgba(124,58,237,0.15)]'
+                        : 'bg-muted/40 border-transparent hover:bg-muted hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
                     )}
                   >
                     <div className={cn(
@@ -198,7 +198,7 @@ export function MobileBottomNav() {
 
       {/* Bottom bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-        <div className="bg-background/95 backdrop-blur-xl border-t border-border">
+        <div className="bg-background/80 backdrop-blur-2xl border-t border-white/20 shadow-[0_-4px_24px_rgba(0,0,0,0.15)]">
           <div className="flex items-end justify-around h-14 px-1 max-w-md mx-auto">
             {mainNavItems.map((item) => {
               const isActive = activeSection === item.id;
@@ -207,9 +207,11 @@ export function MobileBottomNav() {
               const Icon = item.icon;
 
               return (
-                <button
+                <motion.button
                   key={item.id}
                   onClick={() => handleNavClick(item)}
+                  whileTap={{ scale: 0.96 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                   className={cn(
                     'relative flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-colors',
                     isHighlighted ? 'text-primary' : 'text-muted-foreground'
@@ -217,35 +219,41 @@ export function MobileBottomNav() {
                   aria-label={item.label}
                   aria-current={isActive ? 'page' : undefined}
                 >
-                  {/* Active indicator: violet line at top */}
+                  {/* Active indicator: gradient line at top */}
                   {isHighlighted && !item.highlight && (
                     <motion.div
                       layoutId="mobile-active-line"
-                      className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-primary"
+                      className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-gradient-to-r from-violet-500 via-primary to-cyan-400"
                       transition={{ type: 'spring', bounce: 0.3, duration: 0.4 }}
                     />
                   )}
 
-                  {/* Practice CTA: elevated with glow */}
+                  {/* Practice CTA: elevated with claymorphism glow */}
                   {item.highlight ? (
                     <motion.div
-                      whileTap={{ scale: 0.9 }}
+                      whileTap={{ scale: 0.96 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                       className={cn(
-                        'w-12 h-12 rounded-2xl flex items-center justify-center -mt-3 shadow-lg transition-all',
+                        'w-12 h-12 rounded-2xl flex items-center justify-center -mt-3 transition-all',
                         isHighlighted
-                          ? 'bg-primary shadow-primary/50'
-                          : 'bg-primary/90 shadow-primary/30'
+                          ? 'bg-gradient-to-br from-violet-500 to-primary shadow-[0_8px_24px_rgba(124,58,237,0.5),inset_0_1px_0_rgba(255,255,255,0.3)]'
+                          : 'bg-gradient-to-br from-violet-500 to-primary/90 shadow-[0_4px_16px_rgba(124,58,237,0.35),inset_0_1px_0_rgba(255,255,255,0.2)]'
                       )}
-                      style={{ boxShadow: isHighlighted ? '0 0 20px rgba(124,58,237,0.55)' : '0 0 12px rgba(124,58,237,0.3)' }}
+                      style={{
+                        boxShadow: isHighlighted
+                          ? '0 8px 24px rgba(124,58,237,0.5), inset 0 1px 0 rgba(255,255,255,0.3)'
+                          : '0 4px 16px rgba(124,58,237,0.35), inset 0 1px 0 rgba(255,255,255,0.2)',
+                      }}
                     >
                       <Icon className="w-5 h-5 text-white" strokeWidth={2.5} />
                     </motion.div>
                   ) : (
                     <motion.div
-                      whileTap={{ scale: 0.88 }}
                       className={cn(
-                        'w-10 h-10 rounded-xl flex items-center justify-center transition-colors',
-                        isHighlighted ? 'bg-primary/15' : 'bg-transparent'
+                        'w-10 h-10 rounded-[20px] flex items-center justify-center transition-all',
+                        isHighlighted
+                          ? 'bg-gradient-to-br from-violet-500/20 via-primary/15 to-cyan-400/20 shadow-[0_4px_16px_rgba(124,58,237,0.2),inset_0_1px_0_rgba(255,255,255,0.15)]'
+                          : 'hover:bg-muted/50 hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
                       )}
                     >
                       <Icon className="w-5 h-5" strokeWidth={isHighlighted ? 2.5 : 2} />
@@ -258,7 +266,7 @@ export function MobileBottomNav() {
                   )}>
                     {item.label}
                   </span>
-                </button>
+                </motion.button>
               );
             })}
           </div>

@@ -107,15 +107,29 @@ function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSub
       layout
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.98 }}
       onClick={onSelect}
-      className="group relative p-4 bg-card border border-border rounded-xl cursor-pointer hover:border-[var(--color-accent-violet)]/40 transition-all duration-150 ease-out overflow-hidden"
+      className="group relative p-5 bg-card border border-border rounded-3xl cursor-pointer hover:border-[var(--color-accent-violet)]/40 transition-all duration-200 ease-out overflow-hidden"
+      style={{
+        boxShadow: '8px 8px 24px rgba(0,0,0,0.15), -4px -4px 16px rgba(255,255,255,0.05)',
+      }}
+      whileHover={{ 
+        y: -4,
+        boxShadow: '12px 12px 32px rgba(0,0,0,0.2), -6px -6px 20px rgba(255,255,255,0.08)',
+      }}
     >
       {/* Top accent line */}
       <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(90deg, ${accent}, transparent)` }} />
 
       {/* Hover gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-accent-violet)]/5 to-[var(--color-accent-cyan)]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-accent-violet)]/10 to-[var(--color-accent-cyan)]/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl" />
+
+      {/* Clay border for featured/subscribed */}
+      {subscribed && (
+        <div className="absolute inset-0 rounded-3xl pointer-events-none border-2"
+          style={{ borderColor: `${accent}40`, background: `linear-gradient(135deg, ${accent}08, transparent)` }}
+        />
+      )}
 
       {/* NEW badge */}
       {isNew && (
@@ -180,29 +194,32 @@ function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSub
         <div className="flex gap-2">
           {subscribed ? (
             <>
-              <button
+              <motion.button
+                whileTap={{ scale: 0.96 }}
                 onClick={e => { e.stopPropagation(); navigate(`/channel/${channel.id}`); }}
-                className="flex-1 min-h-[44px] rounded-xl text-xs font-bold transition-all duration-150 ease-out flex items-center justify-center gap-1.5 text-white cursor-pointer"
+                className="flex-1 min-h-[44px] rounded-2xl text-xs font-bold transition-all duration-150 ease-out flex items-center justify-center gap-1.5 text-white cursor-pointer"
                 style={{ background: `linear-gradient(135deg, ${accent}, var(--color-accent-cyan))` }}
               >
                 Continue <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
                 onClick={e => { e.stopPropagation(); toggleSubscription(channel.id); }}
-                className="px-3 min-h-[44px] rounded-xl transition-all duration-150 ease-out hover:bg-muted/80 border border-border text-muted-foreground cursor-pointer"
+                className="px-3 min-h-[44px] rounded-2xl transition-all duration-150 ease-out hover:bg-muted/80 border border-border text-muted-foreground cursor-pointer"
                 title="Unsubscribe"
               >
                 <X className="w-3.5 h-3.5" />
-              </button>
+              </motion.button>
             </>
           ) : (
-            <button
+            <motion.button
+              whileTap={{ scale: 0.96 }}
               onClick={e => { e.stopPropagation(); toggleSubscription(channel.id); }}
-              className="flex-1 min-h-[44px] rounded-xl text-xs font-bold transition-all duration-150 ease-out flex items-center justify-center gap-1.5 text-white cursor-pointer"
+              className="flex-1 min-h-[44px] rounded-2xl text-xs font-bold transition-all duration-150 ease-out flex items-center justify-center gap-1.5 text-white cursor-pointer"
               style={{ background: `linear-gradient(135deg, ${accent}, var(--color-accent-cyan))` }}
             >
               <Plus className="w-3.5 h-3.5" />Subscribe
-            </button>
+            </motion.button>
           )}
         </div>
       </div>

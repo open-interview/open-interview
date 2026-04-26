@@ -86,18 +86,21 @@ function BadgeCard({
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: Math.min(index * 0.04, 0.4), type: 'spring', stiffness: 200, damping: 20 }}
       whileHover={isUnlocked ? { scale: 1.05 } : { scale: 1.02 }}
-      whileTap={{ scale: 0.97 }}
+      whileTap={{ scale: 0.94 }}
       onClick={() => onClick(bp)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}
       onBlur={() => setHovered(false)}
-      className={`relative flex flex-col items-center p-4 rounded-xl border text-left w-full transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-violet)] cursor-pointer min-h-[44px] ${
+      className={`relative flex flex-col items-center p-4 rounded-2xl border text-left w-full transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-violet)] cursor-pointer min-h-[44px] ${
         isUnlocked
           ? 'bg-[var(--surface-2)] border-[var(--color-border)]'
           : 'bg-[var(--surface-1)] border-[var(--color-border-subtle)] opacity-60'
       }`}
-      style={isUnlocked ? { boxShadow: TIER_GLOW[tier] } : undefined}
+      style={isUnlocked ? { 
+        boxShadow: TIER_GLOW[tier],
+        transform: 'translateZ(0)'
+      } : undefined}
     >
       {/* Hover tooltip */}
       <AnimatePresence>

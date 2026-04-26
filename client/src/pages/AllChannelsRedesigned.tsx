@@ -279,17 +279,28 @@ function ChannelCard({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
+      whileTap={{ scale: 0.98 }}
       transition={{ delay: index * 0.03 }}
       className={`
-        relative bg-card border rounded-xl p-5 transition-all cursor-pointer group
+        relative bg-card border rounded-3xl p-5 transition-all cursor-pointer group
         ${isSubscribed 
           ? 'border-primary/50 bg-primary/5'
-          : 'border-border hover:border-primary/30 hover:shadow-md'
+          : 'border-border hover:border-primary/30'
         }
       `}
+      style={{
+        boxShadow: '6px 6px 20px rgba(0,0,0,0.12), -3px -3px 12px rgba(255,255,255,0.04)',
+      }}
       onClick={onNavigate}
+    whileHover={{ 
+        y: -4,
+        boxShadow: '10px 10px 28px rgba(0,0,0,0.16), -4px -4px 16px rgba(255,255,255,0.06)',
+      }}
     >
-      {/* New badge - disabled for now as all questions show as new after migration */}
+      {/* Gradient border for subscribed channels */}
+      {isSubscribed && (
+        <div className="absolute inset-0 rounded-3xl pointer-events-none border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-transparent" />
+      )}
       {/* {newThisWeek && newThisWeek > 0 && (
         <div className="absolute -top-2 -right-2 flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
           <Sparkles className="w-3 h-3" />
@@ -306,6 +317,7 @@ function ChannelCard({
           {iconMap[channel.icon] || <Cpu className="w-5 h-5" />}
         </div>
         <button
+          whileTap={{ scale: 0.9 }}
           onClick={(e) => {
             e.stopPropagation();
             onToggle();

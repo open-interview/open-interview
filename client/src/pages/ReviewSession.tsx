@@ -475,7 +475,12 @@ export default function ReviewSession() {
                 className="relative w-full overflow-hidden"
               >
                 {/* Question Card */}
-                <div className="p-8 bg-muted/50 backdrop-blur-xl rounded-xl border border-border min-h-[400px] flex flex-col w-full overflow-hidden">
+                <div className="p-8 rounded-[28px] border min-h-[400px] flex flex-col w-full overflow-hidden"
+                  style={{
+                    background: 'color-mix(in srgb, var(--color-surface-2, #1e293b) 60%, transparent)',
+                    borderColor: 'var(--color-border-subtle, rgba(148,163,184,0.15))',
+                    boxShadow: '8px 8px 24px rgba(0,0,0,0.3), -4px -4px 16px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.05)'
+                  }}>
                   {/* Tags */}
                   <div className="flex items-center justify-between gap-2 mb-6">
                     <div className="flex items-center gap-2">
@@ -748,9 +753,17 @@ export default function ReviewSession() {
                           <motion.button
                             key={level.id}
                             whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
+                            whileTap={{ scale: 0.92 }}
                             onClick={() => handleConfidence(level.id)}
-                            className={`min-h-[44px] px-3 py-2 border rounded-lg text-sm font-bold cursor-pointer transition duration-150 ease-out flex items-center gap-1.5 ${level.cls}`}
+                            className={`min-h-[44px] px-3 py-2 rounded-xl text-sm font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5 ${level.cls}`}
+                            style={{
+                              background: level.id === 'again' ? 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)' :
+                                         level.id === 'hard' ? 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)' :
+                                         level.id === 'good' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' :
+                                         'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                              border: 'none'
+                            }}
                           >
                             {level.icon}
                             <span className="capitalize">{level.label}</span>

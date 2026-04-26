@@ -116,7 +116,12 @@ function LeftPanel({ step, activeRole }: { step: number; activeRole: typeof ROLE
               animate={{ width: i === step ? 24 : 8, opacity: i <= step ? 1 : 0.25 }}
               transition={{ duration: 0.3 }}
               className="h-1.5 rounded-full"
-              style={{ background: i <= step ? accentColor : 'rgba(255,255,255,0.2)' }}
+              style={{ 
+                background: i <= step 
+                  ? `linear-gradient(90deg, ${accentColor}dd, #06b6d4)` 
+                  : 'rgba(255,255,255,0.15)',
+                boxShadow: i <= step ? `0 0 8px ${accentColor}50` : 'none',
+              }}
             />
           ))}
         </div>
@@ -263,8 +268,8 @@ export function OnboardingFlow({ onComplete }: Props) {
             {/* ── Step 0: Role ── */}
             {step === 0 && (
               <motion.div key="role"
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.22 }}>
+                initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
 
                 <div className="mb-8">
                   <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: accentColor }}>Step 1 of 3</p>
@@ -286,13 +291,15 @@ export function OnboardingFlow({ onComplete }: Props) {
                         transition={{ delay: idx * 0.035 }}
                         onClick={() => handleRoleSelect(r.id)}
                         aria-pressed={sel}
-                        whileHover={{ y: -2 }}
-                        whileTap={{ scale: 0.97 }}
+                        whileHover={{ scale: 1.02, y: -3 }}
+                        whileTap={{ scale: 0.95 }}
                         className="relative group p-4 rounded-xl text-left transition-all"
                         style={{
-                          background: sel ? `${r.color}14` : 'rgba(255,255,255,0.03)',
-                          border: `1.5px solid ${sel ? r.color + '50' : 'rgba(255,255,255,0.08)'}`,
-                          boxShadow: sel ? `0 0 20px ${r.color}18` : 'none',
+                          background: sel ? `${r.color}16` : 'rgba(255,255,255,0.025)',
+                          border: `1.5px solid ${sel ? r.color + '60' : 'rgba(255,255,255,0.05)'}`,
+                          boxShadow: sel 
+                            ? `0 8px 24px ${r.color}22, 0 2px 8px ${r.color}12, inset 0 1px 0 ${r.color}20` 
+                            : `6px 6px 16px rgba(0,0,0,0.35), -3px -3px 12px rgba(255,255,255,0.02)`,
                         }}
                       >
                         <div className="flex items-start justify-between mb-3">
@@ -317,8 +324,8 @@ export function OnboardingFlow({ onComplete }: Props) {
             {/* ── Step 1: Topics ── */}
             {step === 1 && (
               <motion.div key="topics"
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.22 }}>
+                initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
 
                 <div className="mb-8">
                   <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: accentColor }}>Step 2 of 3</p>
@@ -333,7 +340,11 @@ export function OnboardingFlow({ onComplete }: Props) {
                 {selectedTopics.size === 0 && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                     className="flex items-center gap-2 p-3 rounded-xl mb-6 text-xs"
-                    style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24' }}>
+                    style={{ 
+                      background: 'rgba(245,158,11,0.06)', 
+                      border: '1px solid rgba(245,158,11,0.15)',
+                      boxShadow: '4px 4px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(245,158,11,0.1)',
+                      color: '#fbbf24' }}>
                     <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                     Select at least one topic to continue
                   </motion.div>
@@ -350,17 +361,20 @@ export function OnboardingFlow({ onComplete }: Props) {
                           const on = selectedTopics.has(c.id);
                           const rec = recommendedTopics.has(c.id);
                           return (
-                            <motion.button key={c.id}
-                              onClick={() => toggleTopic(c.id)}
-                              aria-pressed={on}
-                              whileTap={{ scale: 0.93 }}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-                              style={{
-                                background: on ? `${accentColor}20` : 'rgba(255,255,255,0.04)',
-                                border: `1px solid ${on ? accentColor + '50' : 'rgba(255,255,255,0.1)'}`,
-                                color: on ? '#e2d9f3' : 'rgba(255,255,255,0.45)',
-                              }}
-                            >
+<motion.button key={c.id}
+                                  initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                                  whileHover={{ scale: 1.04 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                                  style={{
+                                    background: on ? `${accentColor}18` : 'rgba(255,255,255,0.025)',
+                                    border: `1px solid ${on ? accentColor + '55' : 'rgba(255,255,255,0.06)'}`,
+                                    boxShadow: on 
+                                      ? `0 4px 12px ${accentColor}20, inset 0 1px 0 ${accentColor}25` 
+                                      : `3px 3px 8px rgba(0,0,0,0.25), -2px -2px 6px rgba(255,255,255,0.02)`,
+                                    color: on ? '#e2d9f3' : 'rgba(255,255,255,0.45)',
+                                  }}
+                                >
                               {on && <Check className="w-3 h-3" />}
                               {c.name}
                               {rec && !on && <span className="text-[9px] opacity-60">★</span>}
@@ -377,8 +391,8 @@ export function OnboardingFlow({ onComplete }: Props) {
             {/* ── Step 2: Certs ── */}
             {step === 2 && (
               <motion.div key="certs"
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.22 }}>
+                initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
 
                 <div className="mb-8">
                   <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: accentColor }}>Step 3 of 3</p>
@@ -440,13 +454,13 @@ export function OnboardingFlow({ onComplete }: Props) {
             <motion.button
               onClick={next}
               disabled={ctaDisabled}
-              whileHover={ctaDisabled ? {} : { scale: 1.01 }}
-              whileTap={ctaDisabled ? {} : { scale: 0.98 }}
+              whileHover={ctaDisabled ? {} : { scale: 1.015 }}
+              whileTap={ctaDisabled ? {} : { scale: 0.94 }}
               className="flex-1 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all"
               style={{
                 background: ctaDisabled ? 'rgba(255,255,255,0.06)' : `linear-gradient(135deg, ${accentColor}, #06b6d4)`,
                 color: ctaDisabled ? 'rgba(255,255,255,0.2)' : 'white',
-                boxShadow: ctaDisabled ? 'none' : `0 0 28px ${accentColor}35`,
+                boxShadow: ctaDisabled ? 'none' : `0 8px 32px ${accentColor}30, inset 0 1px 0 rgba(255,255,255,0.15)`,
                 cursor: ctaDisabled ? 'not-allowed' : 'pointer',
               }}
             >

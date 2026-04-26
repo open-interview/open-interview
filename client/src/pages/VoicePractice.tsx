@@ -409,11 +409,16 @@ export default function VoicePractice() {
                   <button
                     key={value}
                     onClick={() => { setMode(value); setStarted(true); }}
-                    className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 text-center transition-all cursor-pointer ${
+                    className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 text-center transition-all cursor-pointer active:scale-95 ${
                       mode === value
                         ? 'border-violet-500 bg-violet-500/10'
-                        : 'border-border bg-muted/30 hover:border-violet-500/50'
+                        : 'border-white/10 bg-white/5 hover:border-violet-500/50'
                     }`}
+                    style={{ 
+                      boxShadow: mode === value 
+                        ? '0 4px 20px rgba(124,58,237,0.3), inset 0 1px 0 rgba(255,255,255,0.1)' 
+                        : '0 2px 8px rgba(0,0,0,0.15)' 
+                    }}
                   >
                     <Icon className="w-6 h-6 text-violet-400" />
                     <div>
@@ -427,8 +432,11 @@ export default function VoicePractice() {
               {/* Start button */}
               <button
                 onClick={() => setStarted(true)}
-                className="w-full min-h-[52px] rounded-xl font-semibold text-white text-base cursor-pointer transition-opacity hover:opacity-90"
-                style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)' }}
+                className="w-full min-h-[52px] rounded-xl font-semibold text-white text-base cursor-pointer transition-all active:scale-95"
+                style={{ 
+                  background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #db2777 100%)',
+                  boxShadow: '0 4px 20px rgba(124,58,237,0.4), inset 0 1px 0 rgba(255,255,255,0.2)' 
+                }}
               >
                 Start Practicing
               </button>

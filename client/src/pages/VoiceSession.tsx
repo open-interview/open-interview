@@ -66,12 +66,15 @@ function WordCountBar({ text, target = 150 }: { text: string; target?: number })
   const color = pct >= 1 ? '#00ff88' : pct >= 0.5 ? '#ffd700' : '#00d4ff';
   return (
     <div className="flex items-center gap-2 mt-2">
-      <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)' }}>
         <motion.div
           animate={{ width: `${pct * 100}%` }}
-          transition={{ duration: 0.2 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           className="h-full rounded-full"
-          style={{ background: color }}
+          style={{ 
+            background: color,
+            boxShadow: pct >= 1 ? '0 0 8px rgba(0,255,136,0.5)' : 'none'
+          }}
         />
       </div>
       <span className="text-xs tabular-nums text-muted-foreground">{count} / {target}w</span>
@@ -465,9 +468,10 @@ export default function VoiceSession() {
                         <motion.button
                           key={session.id}
                           onClick={() => startNewSession(session)}
-                          whileHover={{ scale: 1.01 }}
-                          whileTap={{ scale: 0.99 }}
-                          className="p-5 bg-muted/50 border border-border rounded-2xl text-left hover:border-[#00d4ff]/50 transition-colors duration-150 ease-out cursor-pointer group"
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.96 }}
+                          className="p-5 bg-white/5 border border-white/10 rounded-2xl text-left hover:border-[#00d4ff]/50 transition-all duration-150 cursor-pointer group"
+                          style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)' }}
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">

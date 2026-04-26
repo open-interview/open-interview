@@ -99,14 +99,18 @@ function HighlightedTranscript({ text, keywords }: { text: string; keywords: str
 function WordCountBar({ text, target = 150 }: { text: string; target?: number }) {
   const count = text.trim() ? text.trim().split(/\s+/).length : 0;
   const pct = Math.min(count / target, 1);
-  const barClass = pct >= 1 ? 'bg-[#3fb950]' : pct >= 0.5 ? 'bg-[#d29922]' : 'bg-primary';
+  const color = pct >= 1 ? '#3fb950' : pct >= 0.5 ? '#d29922' : '#58a6ff';
   return (
     <div className="flex items-center gap-2 mt-2">
-      <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)' }}>
         <motion.div
           animate={{ width: `${pct * 100}%` }}
-          transition={{ duration: 0.2 }}
-          className={`h-full rounded-full ${barClass}`}
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          className="h-full rounded-full"
+          style={{ 
+            background: color,
+            boxShadow: pct >= 1 ? '0 0 8px rgba(63,185,80,0.5)' : 'none'
+          }}
         />
       </div>
       <span className="text-xs tabular-nums text-muted-foreground">{count} / {target}w</span>
@@ -589,28 +593,28 @@ export default function VoiceInterview() {
         <div className="lg:hidden"><MobileHeader title="Voice Interview" showBack={true} /></div>
         <div className="min-h-screen bg-background flex items-center justify-center p-4 pb-[calc(56px+env(safe-area-inset-bottom,0px))] lg:pb-4">
           <motion.div
-            initial={{ opacity: 0, scale: 0.93, y: 24 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
+            initial={{ opacity: 0, scale: 0.93 }}
+            animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="max-w-lg w-full"
+            className="rounded-[32px] border border-white/10 bg-surface-1/80 backdrop-blur-xl p-8 overflow-hidden"
+            style={{ boxShadow: '0 12px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.1)', maxWidth: '100vw' }}
           >
-            <div className="rounded-2xl border border-border bg-surface-1 p-8">
-              <div className="flex flex-col items-center mb-8">
-                <ScoreRing score={avg} />
-                <h2 className="text-xl font-bold text-foreground mt-4">Session Complete!</h2>
-                <p className="text-sm text-muted-foreground mt-1">{questions.length} questions answered</p>
-              </div>
+            <div className="flex flex-col items-center mb-8">
+              <ScoreRing score={avg} />
+              <h2 className="text-xl font-bold text-foreground mt-4">Session Complete!</h2>
+              <p className="text-sm text-muted-foreground mt-1">{questions.length} questions answered</p>
+            </div>
 
               <div className="grid grid-cols-3 gap-3 mb-8">
-                <div className="bg-surface-0 rounded-xl p-4 text-center border border-border">
+                <div className="rounded-2xl bg-surface-0/60 backdrop-blur-sm p-4 text-center border border-white/5" style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
                   <div className="text-2xl font-bold text-foreground">{questions.length}</div>
                   <div className="text-xs text-muted-foreground mt-1">Questions</div>
                 </div>
-                <div className="bg-surface-0 rounded-xl p-4 text-center border border-border">
+                <div className="rounded-2xl bg-surface-0/60 backdrop-blur-sm p-4 text-center border border-white/5" style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
                   <div className="text-2xl font-bold text-[#3fb950]">{sessionScores.filter(s => s.score >= 60).length}</div>
                   <div className="text-xs text-muted-foreground mt-1">Passed</div>
                 </div>
-                <div className="bg-surface-0 rounded-xl p-4 text-center border border-border">
+                <div className="rounded-2xl bg-surface-0/60 backdrop-blur-sm p-4 text-center border border-white/5" style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
                   <div className="text-2xl font-bold text-[#f85149]">{sessionScores.filter(s => s.score < 60).length}</div>
                   <div className="text-xs text-muted-foreground mt-1">Missed</div>
                 </div>
@@ -630,23 +634,22 @@ export default function VoiceInterview() {
               )}
 
               <div className="flex gap-3">
-                <button onClick={handleShare} className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground rounded-xl transition-colors text-sm">
+                <button onClick={handleShare} className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-white/10 text-muted-foreground hover:text-foreground hover:border-white/20 rounded-xl transition-colors text-sm" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
                   <ExternalLink className="w-4 h-4" /> Share
                 </button>
                 <button onClick={() => { setSessionScores([]); setCurrentIndex(0); setTranscript(''); setEvaluation(null); setState('ready'); }}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground rounded-xl transition-colors text-sm">
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-white/10 text-muted-foreground hover:text-foreground hover:border-white/20 rounded-xl transition-colors text-sm" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
                   <RotateCcw className="w-4 h-4" /> Again
                 </button>
                 <button onClick={() => setLocation('/')}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#238636] text-white font-medium rounded-xl hover:bg-[#2ea043] transition-colors text-sm">
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-white font-medium rounded-xl transition-all text-sm active:scale-95" style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)', boxShadow: '0 4px 16px rgba(124, 58, 237, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)' }}>
                   <Home className="w-4 h-4" /> Home
                 </button>
               </div>
-            </div>
-          </motion.div>
-        </div>
-        <MobileBottomNav />
-      </DesktopSidebarWrapper>
+            </motion.div>
+          </div>
+          <MobileBottomNav />
+        </DesktopSidebarWrapper>
     );
   }
 
@@ -709,11 +712,16 @@ export default function VoiceInterview() {
           
           {/* Progress Bar */}
           <div className="max-w-4xl mx-auto px-3 pb-2 w-full" style={{ maxWidth: '100vw' }}>
-            <div className="h-1 bg-muted rounded-full overflow-hidden">
+            <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden" style={{ boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)' }}>
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
-                className="h-full bg-gradient-to-r from-[#58a6ff] to-[#a371f7] rounded-full"
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                className="h-full rounded-full"
+                style={{ 
+                  background: 'linear-gradient(90deg, #58a6ff 0%, #a371f7 50%, #f778ba 100%)',
+                  boxShadow: '0 0 12px rgba(88,166,255,0.5), 0 0 24px rgba(163,113,247,0.3)' 
+                }}
               />
             </div>
           </div>
@@ -723,11 +731,11 @@ export default function VoiceInterview() {
         <main className="max-w-4xl mx-auto px-4 py-6 w-full overflow-x-hidden" style={{ maxWidth: '100vw' }}>
 
           {/* Question Card */}
-          <motion.div
+<motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border border-border bg-surface-1 overflow-hidden mb-6 w-full"
-            style={{ maxWidth: '100%' }}
+            className="rounded-[28px] border border-white/5 bg-surface-1/70 backdrop-blur-lg overflow-hidden mb-6 w-full"
+            style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)' }}
           >
             <div className="p-6">
               <div className="flex items-start justify-between gap-4 mb-4">
@@ -844,7 +852,8 @@ export default function VoiceInterview() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl border border-border bg-surface-1 p-5 mb-6 w-full"
+              className="rounded-[28px] border border-white/5 bg-surface-1/70 backdrop-blur-lg p-5 mb-6 w-full"
+              style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)' }}
             >
               <div className="flex items-center gap-2 mb-4">
                 <Lightbulb className="w-4 h-4 text-[#d29922]" />
@@ -919,11 +928,13 @@ export default function VoiceInterview() {
 
           {/* Recording Interface */}
           <div
-            className="rounded-2xl border bg-surface-1 p-6 mb-6 w-full overflow-hidden transition-colors duration-300"
+            className="rounded-[28px] border bg-surface-1/80 backdrop-blur-xl p-6 mb-6 w-full overflow-hidden transition-all duration-300"
             style={{
               maxWidth: '100%',
-              borderColor: state === 'recording' ? 'rgba(248,81,73,0.5)' : state === 'evaluated' ? 'rgba(63,185,80,0.4)' : 'var(--color-border)',
-              boxShadow: state === 'recording' ? '0 0 0 1px rgba(248,81,73,0.2)' : 'none',
+              borderColor: state === 'recording' ? 'rgba(248,81,73,0.5)' : state === 'evaluated' ? 'rgba(63,185,80,0.4)' : 'rgba(255,255,255,0.08)',
+              boxShadow: state === 'recording' 
+                ? '0 0 0 1px rgba(248,81,73,0.2), 0 8px 32px rgba(248,81,73,0.15), inset 0 1px 0 rgba(255,255,255,0.1)' 
+                : '0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)',
             }}
           >
 
@@ -1055,11 +1066,15 @@ export default function VoiceInterview() {
               <div className="flex items-center justify-center gap-4">
               {state === 'ready' && (
                 <motion.button
-                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.92 }}
                   onClick={startRecording}
-                  className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-[#f85149] to-[#ff7b72] text-white font-semibold rounded-2xl shadow-lg shadow-[#f85149]/20 transition-opacity hover:opacity-90"
+                  className="flex items-center gap-3 px-10 py-5 text-white font-semibold rounded-2xl transition-all"
+                  style={{ 
+                    background: 'linear-gradient(135deg, #f85149 0%, #ff6b6b 50%, #f472b6 100%)', 
+                    boxShadow: '0 8px 24px rgba(248,81,73,0.4), 0 0 40px rgba(248,81,73,0.2), inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -2px 0 rgba(0,0,0,0.1)' 
+                  }}
                 >
-                  <Mic className="w-5 h-5" />
+                  <Mic className="w-6 h-6" />
                   Start Recording
                 </motion.button>
               )}
@@ -1067,11 +1082,15 @@ export default function VoiceInterview() {
               {state === 'recording' && (
                 <div className="flex items-center gap-3">
                   <motion.button
-                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                    whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.92 }}
                     onClick={stopRecording}
-                    className="flex items-center gap-3 px-8 py-4 bg-[#f85149] text-white font-semibold rounded-2xl hover:bg-[#da3633] transition-colors"
+                    className="flex items-center gap-3 px-10 py-5 text-white font-semibold rounded-2xl transition-all"
+                    style={{ 
+                      background: 'linear-gradient(135deg, #dc2626 0%, #f97316 100%)', 
+                      boxShadow: '0 8px 24px rgba(220,38,38,0.4), inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -2px 0 rgba(0,0,0,0.1)' 
+                    }}
                   >
-                    <Square className="w-5 h-5" />
+                    <Square className="w-6 h-6" />
                     Stop
                   </motion.button>
                 </div>
@@ -1081,16 +1100,21 @@ export default function VoiceInterview() {
                 <div className="flex gap-3">
                   <button
                     onClick={retryQuestion}
-                    className="flex items-center gap-2 px-5 py-3 border border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground rounded-xl transition-colors"
+                    className="flex items-center gap-2 px-5 py-3 border border-white/10 text-muted-foreground hover:text-foreground hover:border-white/20 rounded-xl transition-colors"
+                    style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
                   >
                     <RotateCcw className="w-4 h-4" />
                     Re-record
                   </button>
                   <motion.button
-                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                     onClick={submitAnswer}
                     disabled={!transcript.trim()}
-                    className="flex items-center gap-3 px-8 py-3 bg-[#238636] text-white font-semibold rounded-xl hover:bg-[#2ea043] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-3 px-8 py-3 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ 
+                      background: !transcript.trim() ? 'linear-gradient(135deg, #4b5563 0%, #6b7280 100%)' : 'linear-gradient(135deg, #238636 0%, #3fb950 100%)', 
+                      boxShadow: !transcript.trim() ? 'none' : '0 4px 16px rgba(35,134,54,0.3), inset 0 1px 0 rgba(255,255,255,0.2)' 
+                    }}
                   >
                     <CheckCircle className="w-5 h-5" />
                     Submit Answer
@@ -1102,15 +1126,20 @@ export default function VoiceInterview() {
                 <div className="flex gap-3">
                   <button
                     onClick={retryQuestion}
-                    className="flex items-center gap-2 px-5 py-3 border border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground rounded-xl transition-colors"
+                    className="flex items-center gap-2 px-5 py-3 border border-white/10 text-muted-foreground hover:text-foreground hover:border-white/20 rounded-xl transition-colors"
+                    style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
                   >
                     <RotateCcw className="w-4 h-4" />
                     Try Again
                   </button>
                   <motion.button
-                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                     onClick={nextQuestion}
-                    className="flex items-center gap-2 px-6 py-3 bg-[#238636] text-white font-semibold rounded-xl hover:bg-[#2ea043] transition-colors"
+                    className="flex items-center gap-2 px-6 py-3 text-white font-semibold rounded-xl transition-all"
+                    style={{ 
+                      background: 'linear-gradient(135deg, #238636 0%, #3fb950 100%)', 
+                      boxShadow: '0 4px 16px rgba(35,134,54,0.3), inset 0 1px 0 rgba(255,255,255,0.2)' 
+                    }}
                   >
                     {currentIndex < questions.length - 1 ? 'Next Question' : 'View Results'}
                     <ChevronRight className="w-4 h-4" />

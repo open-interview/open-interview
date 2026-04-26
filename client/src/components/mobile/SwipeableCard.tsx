@@ -152,8 +152,16 @@ export function SwipeableCard({
         dragElastic={0.2}
         style={{ x }}
         onDragEnd={handleDragEnd}
-        className={cn("relative bg-white dark:bg-gray-900", className)}
+        className={cn(
+          "relative bg-white dark:bg-gray-900",
+          "before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/60 before:dark:bg-white/10",
+          "after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-black/5 dark:after:bg-white/5",
+          "shadow-[8px_8px_16px_rgba(163,177,198,0.6),-8px_-8px_16px_rgba(255,255,255,1)]",
+          "dark:shadow-[8px_8px_16px_rgba(0,0,0,0.5),-8px_-8px_16px_rgba(255,255,255,0.05)]",
+          className
+        )}
         role="article"
+        whileTap={{ scale: 0.98 }}
       >
         {children}
       </motion.div>

@@ -84,27 +84,28 @@ export function Sidebar() {
 
     return (
       <div className="relative">
-        <button
+        <motion.button
           onClick={() => setLocation(item.path)}
           onMouseEnter={() => setHovered(item.id)}
           onMouseLeave={() => setHovered(null)}
-          style={active ? { boxShadow: '0 0 12px rgba(124,58,237,0.12)' } : undefined}
+          whileTap={{ scale: 0.96 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
           className={cn(
-            'w-full flex items-center gap-3 rounded-lg transition-all duration-150 group relative overflow-hidden',
+            'w-full flex items-center gap-3 rounded-[24px] transition-all duration-150 group relative overflow-hidden',
             isCollapsed ? 'justify-center p-2' : 'px-3 py-2',
             active
-              ? 'bg-primary/10 text-primary'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+              ? 'bg-gradient-to-r from-violet-500/20 via-primary/15 to-cyan-400/20 text-primary shadow-[0_4px_16px_rgba(124,58,237,0.15),inset_0_1px_0_rgba(255,255,255,0.1)]'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/70 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
           )}
         >
-          {/* Violet left border */}
+          {/* Gradient left border */}
           {active && !isCollapsed && (
-            <div className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-primary" />
+            <div className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-gradient-to-b from-violet-500 via-primary to-cyan-400" />
           )}
 
           <div className={cn(
-            'flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-colors',
-            active ? 'bg-primary/20' : 'bg-transparent group-hover:bg-muted/80'
+            'flex items-center justify-center w-8 h-8 rounded-xl shrink-0 transition-colors',
+            active ? 'bg-primary/25' : 'bg-transparent group-hover:bg-muted/80'
           )}>
             <Icon className="w-4 h-4" />
           </div>
@@ -161,7 +162,7 @@ export function Sidebar() {
     <motion.aside
       animate={{ width: isCollapsed ? 72 : 280 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="fixed left-0 top-0 bottom-0 bg-card/95 backdrop-blur-xl border-r border-border z-40 flex flex-col overflow-hidden hidden lg:flex"
+      className="fixed left-0 top-0 bottom-0 bg-background/80 backdrop-blur-2xl border-r border-white/15 shadow-[4px_0_24px_rgba(0,0,0,0.1)] z-40 flex flex-col overflow-hidden hidden lg:flex"
     >
       {/* Logo + wordmark */}
       <div className="h-14 flex items-center justify-between px-3 border-b border-border shrink-0">

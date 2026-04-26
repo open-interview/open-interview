@@ -75,8 +75,8 @@ function ProgressRing({ pct, size = 56, stroke = 4, color = '#7c3aed' }: { pct: 
 // ─── Stat Pill ────────────────────────────────────────────────────────────────
 function StatPill({ icon: Icon, value, label, color, onClick }: { icon: React.ElementType; value: string | number; label: string; color: string; onClick?: () => void }) {
   return (
-    <motion.button variants={fadeUp} onClick={onClick} className="flex-shrink-0 flex flex-col items-center gap-1.5 px-4 py-3 rounded-2xl bg-muted border border-border min-w-[80px] min-h-[44px] hover:border-border/60 hover:bg-muted/80 transition-colors duration-150 ease-out cursor-pointer active:scale-95">
-      <Icon className={`w-4 h-4 ${color}`} />
+    <motion.button variants={fadeUp} onClick={onClick} className="flex-shrink-0 flex flex-col items-center gap-1.5 px-4 py-3 rounded-3xl bg-muted/80 border border-border/40 min-w-[80px] min-h-[44px] clay-press cursor-pointer shadow-clay-sm hover:shadow-clay-md transition-shadow duration-200">
+      <Icon className={`w-4 h-4 ${color} animate-float`} />
       <span className="text-lg font-bold leading-none">{value}</span>
       <span className="text-[10px] text-muted-foreground leading-none text-center">{label}</span>
     </motion.button>
@@ -93,17 +93,16 @@ function ActionCard({
   return (
     <motion.button
       variants={fadeUp}
-      whileHover={{ y: -3, boxShadow: `0 8px 32px rgba(0,0,0,0.4)` }}
       whileTap={{ scale: 0.96 }}
       onClick={onClick}
-      className={`group relative flex flex-col gap-3 p-4 rounded-2xl border text-left overflow-hidden transition-colors duration-150 ease-out cursor-pointer
+      className={`group relative flex flex-col gap-3 p-4 rounded-3xl border text-left overflow-hidden transition-colors duration-150 ease-out cursor-pointer clay-press shadow-clay-sm
         ${primary
           ? 'bg-gradient-to-br from-violet-600/30 to-cyan-500/20 border-violet-500/40 col-span-2 sm:col-span-1'
-          : 'bg-muted border-border hover:border-border'
+          : 'bg-muted/80 border-border/40 hover:shadow-clay-md'
         }`}
     >
       <div className={`absolute inset-0 bg-gradient-to-br ${color} opacity-0 group-hover:opacity-10 transition-opacity`} />
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br ${color} flex-shrink-0`}>
+      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center bg-gradient-to-br ${color} flex-shrink-0 shadow-clay-sm`}>
         {icon}
       </div>
       <div className="relative flex-1">
@@ -132,8 +131,10 @@ function OnboardingScreen({ onStart }: { onStart: () => void }) {
         className="relative z-10 w-full max-w-sm text-center space-y-10">
         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
           transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
-          className="w-24 h-24 mx-auto bg-gradient-to-br from-violet-600 to-cyan-500 rounded-[28px] flex items-center justify-center relative">
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-600 to-cyan-500 rounded-[28px] blur-2xl opacity-50" />
+          className="w-24 h-24 mx-auto rounded-[28px] flex items-center justify-center relative shadow-clay-lg animate-float"
+          style={{ background: 'linear-gradient(135deg, #A78BFA 0%, #7C3AED 50%, #06b6d4 100%)', boxShadow: '16px 16px 32px rgba(0, 0, 0, 0.45), -8px -8px 18px rgba(255, 255, 255, 0.07), 0 0 60px rgba(124, 58, 237, 0.4)' }}>
+          <div className="absolute inset-0 rounded-[28px] blur-2xl opacity-50"
+            style={{ background: 'linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%)' }} />
           <Brain className="w-12 h-12 text-white relative z-10" strokeWidth={2.5} />
         </motion.div>
 
@@ -154,7 +155,8 @@ function OnboardingScreen({ onStart }: { onStart: () => void }) {
           className="space-y-3">
           <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
             onClick={onStart}
-            className="w-full py-4 bg-gradient-to-r from-violet-600 to-cyan-500 rounded-2xl font-bold text-lg text-white shadow-2xl shadow-violet-500/40 flex items-center justify-center gap-2">
+            className="w-full py-4 bg-gradient-to-r from-violet-600 to-cyan-500 rounded-2xl font-bold text-lg text-white shadow-clay-lg flex items-center justify-center gap-2 clay-press"
+            style={{ background: 'linear-gradient(135deg, #A78BFA 0%, #7C3AED 50%, #06b6d4 100%)' }}>
             Start Practicing Now <ChevronRight className="w-5 h-5" />
           </motion.button>
           <p className="text-xs text-muted-foreground">Choose your path → Practice daily → Land your dream job</p>
@@ -209,8 +211,8 @@ function DailyChallengeCard({ onNavigate }: { onNavigate: (path: string) => void
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-      className={`relative p-[1px] rounded-2xl overflow-hidden ${done ? '' : 'bg-gradient-to-br from-violet-500/50 via-cyan-500/30 to-transparent'}`}>
-      <div className={`relative p-4 rounded-2xl overflow-hidden ${done ? 'bg-green-500/8 border border-green-500/25' : 'bg-card border border-border'}`}>
+      className={`relative p-[1px] rounded-3xl overflow-hidden shadow-clay-md ${done ? '' : 'bg-gradient-to-br from-violet-500/50 via-cyan-500/30 to-transparent'}`}>
+      <div className={`relative p-4 rounded-3xl overflow-hidden ${done ? 'bg-green-500/8 border border-green-500/25 shadow-clay-sm' : 'bg-card border border-border/40 shadow-clay-sm'}`}>
       <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-15"
         style={{ background: done ? '#10b981' : 'radial-gradient(circle, #ff0080, #ff8c00)' }} />
       <div className="relative space-y-3">
@@ -235,15 +237,15 @@ function DailyChallengeCard({ onNavigate }: { onNavigate: (path: string) => void
           <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1"><Award className="w-3 h-3 text-amber-400" />+50 XP</span>
         </div>
         {!done ? (
-          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+          <motion.button whileTap={{ scale: 0.96 }}
             onClick={() => { localStorage.setItem(doneKey, 'true'); setDone(true); onNavigate('/training'); }}
-            className="w-full py-2.5 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2 min-h-[44px] cursor-pointer"
-            style={{ background: 'linear-gradient(135deg, #ff0080, #ff8c00)' }}>
+            className="w-full py-2.5 rounded-2xl font-semibold text-sm text-white flex items-center justify-center gap-2 min-h-[44px] cursor-pointer clay-press shadow-clay-sm"
+            style={{ background: 'linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%)' }}>
             Start Challenge <ChevronRight className="w-4 h-4" />
           </motion.button>
         ) : (
           <button onClick={() => onNavigate('/training')}
-            className="w-full py-2.5 rounded-xl font-semibold text-sm text-green-400 border border-green-500/25 hover:bg-green-500/10 transition-colors duration-150 ease-out min-h-[44px] cursor-pointer">
+            className="w-full py-2.5 rounded-2xl font-semibold text-sm text-green-400 border border-green-500/25 hover:bg-green-500/10 transition-colors duration-150 ease-out min-h-[44px] cursor-pointer">
             Practice More →
           </button>
         )}
@@ -269,7 +271,7 @@ function MyTopicsFeed({ onNavigate }: { onNavigate: (path: string) => void }) {
       <motion.button
         variants={fadeUp}
         onClick={() => onNavigate('/channels')}
-        className="w-full py-4 rounded-2xl border border-dashed border-violet-500/30 hover:border-violet-500/60 hover:bg-violet-500/5 transition-all duration-150 ease-out flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground min-h-[44px] cursor-pointer"
+        className="w-full py-4 rounded-3xl border border-dashed border-violet-500/30 hover:border-violet-500/60 hover:bg-violet-500/5 transition-all duration-150 ease-out flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground min-h-[44px] cursor-pointer shadow-clay-sm"
       >
         <Plus className="w-4 h-4 text-violet-400" />
         Add topics to personalize your feed
@@ -294,9 +296,9 @@ function MyTopicsFeed({ onNavigate }: { onNavigate: (path: string) => void }) {
             key={ch.id}
             whileTap={{ scale: 0.96 }}
             onClick={() => onNavigate(`/channel/${ch.id}`)}
-            className="flex-shrink-0 flex flex-col items-center gap-1.5 px-4 py-3 rounded-2xl bg-card border border-border hover:border-[var(--color-accent-violet)]/40 transition-all duration-150 ease-out min-w-[80px] min-h-[44px] cursor-pointer"
+            className="flex-shrink-0 flex flex-col items-center gap-1.5 px-4 py-3 rounded-3xl bg-card/80 border border-border/40 hover:shadow-clay-md transition-shadow duration-200 min-w-[80px] min-h-[44px] cursor-pointer clay-press shadow-clay-sm"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[var(--color-accent-violet)]/20 to-[var(--color-accent-cyan)]/20 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-2xl bg-gradient-to-br from-[var(--color-accent-violet)]/20 to-[var(--color-accent-cyan)]/20 flex items-center justify-center shadow-clay-sm">
               <BookOpen className="w-4 h-4 text-[var(--color-accent-violet-light)]" />
             </div>
             <span className="text-[10px] font-semibold text-center leading-tight line-clamp-2">{ch.name}</span>
@@ -474,29 +476,30 @@ export function HomePage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ── Sticky top bar ── */}
-      <div className="sticky top-[calc(56px+env(safe-area-inset-top,0px))] lg:top-0 z-40 backdrop-blur-xl bg-background/80 border-b border-border">
+      <div className="sticky top-[calc(56px+env(safe-area-inset-top,0px))] lg:top-0 z-40 backdrop-blur-xl bg-background/80 border-b border-border/40">
         <div className="max-w-2xl mx-auto px-4 py-2.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/15 border border-orange-500/25">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/15 border border-orange-500/25 shadow-clay-sm">
               <Flame className="w-4 h-4 text-orange-500" />
               <span className="font-bold text-sm">{streak}</span>
               <span className="text-[10px] text-muted-foreground">day</span>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-500/15 border border-violet-500/25">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-500/15 border border-violet-500/25 shadow-clay-sm">
               <Sparkles className="w-4 h-4 text-violet-400" />
               <span className="font-bold text-sm">{balance}</span>
               <span className="text-[10px] text-muted-foreground">XP</span>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/25">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/25 shadow-clay-sm">
               <Trophy className="w-4 h-4 text-amber-400" />
               <span className="font-bold text-sm">Lv {level}</span>
             </div>
           </div>
           {/* XP progress bar */}
           <div className="hidden sm:flex items-center gap-2 flex-1 max-w-[140px]">
-            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-              <motion.div className="h-full bg-gradient-to-r from-violet-500 to-cyan-500 rounded-full"
-                initial={{ width: 0 }} animate={{ width: `${xpInLevel}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} />
+            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden shadow-clay-sm">
+              <motion.div className="h-full rounded-full"
+                initial={{ width: 0 }} animate={{ width: `${xpInLevel}%` }} transition={{ duration: 0.8, ease: 'easeOut' }}
+                style={{ background: 'linear-gradient(90deg, #A78BFA 0%, #7C3AED 100%)' }} />
             </div>
             <span className="text-[10px] text-muted-foreground whitespace-nowrap">{xpInLevel}/100</span>
           </div>
@@ -508,23 +511,24 @@ export function HomePage() {
 
           {/* ══ HERO ══════════════════════════════════════════════════════════ */}
           <motion.div variants={stagger} initial="hidden" animate="show"
-            className="relative rounded-3xl overflow-hidden p-6 border border-border"
-            style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.18) 0%, rgba(99,102,241,0.10) 50%, rgba(6,182,212,0.12) 100%)' }}>
+            className="relative rounded-3xl overflow-hidden p-6 border border-border/40 shadow-clay-lg animate-float-slow"
+            style={{ background: 'linear-gradient(135deg, rgba(167,139,250,0.15) 0%, rgba(124,58,237,0.12) 50%, rgba(6,182,212,0.10) 100%)' }}>
             {!prefersReducedMotion && (
               <motion.div className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl opacity-30"
-                style={{ background: 'radial-gradient(circle, #7c3aed, #06b6d4)' }}
+                style={{ background: 'radial-gradient(circle, #A78BFA, #06b6d4)' }}
                 animate={{ scale: [1, 1.15, 1], opacity: [0.25, 0.4, 0.25] }}
                 transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }} />
             )}
             <div className="relative space-y-4">
               <motion.div variants={fadeUp}>
-                <h1 className="text-2xl font-bold">{getGreeting()}, Dev!</h1>
+                <h1 className="text-2xl font-bold">Welcome Back!</h1>
                 <p className="text-sm text-muted-foreground mt-0.5">{getStreakMotivation(streak)}</p>
               </motion.div>
-              <motion.button variants={fadeUp} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+              <motion.button whileTap={{ scale: 0.96 }}
                 onClick={() => setLocation('/training')}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 text-white text-sm font-semibold shadow-lg shadow-violet-500/25">
-                <Zap className="w-4 h-4" /> Start Practicing <ChevronRight className="w-4 h-4" />
+                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-white text-sm font-semibold clay-press shadow-clay-sm"
+                style={{ background: 'linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%)' }}>
+                <Zap className="w-4 h-4 animate-float-fast" /> Start Practicing <ChevronRight className="w-4 h-4" />
               </motion.button>
             </div>
           </motion.div>
@@ -533,11 +537,13 @@ export function HomePage() {
           {resumeState && (
             <motion.button
               variants={fadeUp}
+              whileTap={{ scale: 0.96 }}
               onClick={() => setLocation(`/channel/${resumeState.channelId}?q=${resumeState.questionId}`)}
-              className="w-full flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-violet-600/20 to-cyan-500/10 border border-violet-500/30 text-left min-h-[44px] cursor-pointer"
+              className="w-full flex items-center gap-4 p-4 rounded-3xl text-left min-h-[44px] cursor-pointer shadow-clay-sm clay-press border border-border/40"
+              style={{ background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(6, 182, 212, 0.08) 100%)' }}
               data-testid="button-continue-learning"
             >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center shrink-0 shadow-clay-sm">
                 <RotateCcw className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1 min-w-0">
@@ -593,7 +599,7 @@ export function HomePage() {
           {isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-28 w-full rounded-2xl" />
+              <Skeleton className="h-28 w-full rounded-3xl" />
             </div>
           ) : activePaths.length > 0 && (
             <div>
@@ -614,9 +620,9 @@ export function HomePage() {
                       leftAction={{ icon: <Check className="w-5 h-5" />, label: 'Continue', color: 'bg-green-500', onAction: () => setLocation(`/channel/${path.channels[0]}`) }}
                       rightAction={{ icon: <X className="w-5 h-5" />, label: 'Remove', color: 'bg-red-500', onAction: () => removeActivePath(path.id) }}>
                       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                        className="relative flex items-center gap-4 p-4 rounded-2xl bg-card border border-border overflow-hidden">
+                        className="relative flex items-center gap-4 p-4 rounded-3xl bg-card border border-border/40 overflow-hidden shadow-clay-sm">
                         <div className={`absolute inset-0 bg-gradient-to-r ${path.color} opacity-5`} />
-                        <div className="relative flex-shrink-0">
+                        <div className="relative flex-shrink-0 shadow-clay-sm rounded-full">
                           <ProgressRing pct={pct} size={52} stroke={4} color="#7c3aed" />
                           <div className="absolute inset-0 flex items-center justify-center">
                             <Icon className="w-5 h-5 text-foreground" />
@@ -632,9 +638,10 @@ export function HomePage() {
                             ))}
                           </div>
                         </div>
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                        <motion.button whileTap={{ scale: 0.96 }}
                           onClick={() => setLocation(`/channel/${path.channels[0]}`)}
-                          className={`relative flex-shrink-0 px-3 py-2 bg-gradient-to-r ${path.color} rounded-xl text-xs font-bold text-white`}>
+                          className={`relative flex-shrink-0 px-3 py-2 rounded-2xl text-xs font-bold text-white shadow-clay-sm clay-press`}
+                          style={{ background: `linear-gradient(135deg, ${path.color.includes('from-green') ? '#10b981' : path.color.includes('from-purple') ? '#A78BFA' : '#6366f1'}, ${path.color.includes('to-pink') ? '#ec4899' : path.color.includes('to-emerald') ? '#10b981' : '#06b6d4'})` }}>
                           Resume
                         </motion.button>
                       </motion.div>
@@ -654,9 +661,9 @@ export function HomePage() {
           {/* ══ RESUME SESSION ════════════════════════════════════════════════ */}
           {resumePath && (
             <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
-              className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-3">
+              className="p-4 rounded-3xl bg-amber-500/10 border border-amber-500/25 space-y-3 shadow-clay-sm">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center flex-shrink-0">
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center flex-shrink-0 shadow-clay-sm">
                   <RotateCcw className="w-4 h-4 text-white" />
                 </div>
                 <div>
@@ -668,9 +675,10 @@ export function HomePage() {
                 <motion.div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full"
                   initial={{ width: 0 }} animate={{ width: `${(resumePath.progress || 0) * 100}%` }} transition={{ duration: 0.8 }} />
               </div>
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              <motion.button whileTap={{ scale: 0.96 }}
                 onClick={() => setLocation(`/channel/${resumePath.channelId}?question=${resumePath.questionId}`)}
-                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2">
+                className="w-full py-2.5 rounded-2xl font-semibold text-sm text-white flex items-center justify-center gap-2 shadow-clay-sm clay-press"
+                style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)' }}>
                 Resume Learning <ChevronRight className="w-4 h-4" />
               </motion.button>
             </motion.div>
@@ -685,8 +693,8 @@ export function HomePage() {
                   <motion.button key={`${item.questionId}-${i}`}
                     initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.07 }}
                     onClick={() => setLocation(`/channel/${item.channelId}`)}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-muted border border-border hover:border-border/60 hover:bg-muted/80 transition-colors duration-150 ease-out text-left active:scale-[0.98] min-h-[44px] cursor-pointer">
-                    <div className="w-8 h-8 rounded-lg bg-green-500/20 border border-green-500/25 flex items-center justify-center flex-shrink-0">
+                    className="w-full flex items-center gap-3 p-3 rounded-2xl bg-muted/80 border border-border/40 hover:shadow-clay-sm hover:border-border/60 transition-all duration-200 text-left active:scale-[0.98] min-h-[44px] cursor-pointer clay-press">
+                    <div className="w-8 h-8 rounded-2xl bg-green-500/20 border border-green-500/25 flex items-center justify-center flex-shrink-0 shadow-clay-sm">
                       <Check className="w-4 h-4 text-green-400" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -705,9 +713,9 @@ export function HomePage() {
 
           {/* ══ ADD PATH CTA (if < 3 paths) ══════════════════════════════════ */}
           {activePaths.length < 3 && (
-            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+            <motion.button whileTap={{ scale: 0.96 }}
               onClick={() => setLocation('/learning-paths')}
-              className="w-full py-4 rounded-2xl border border-dashed border-border hover:border-violet-500/40 hover:bg-violet-500/5 transition-all duration-150 ease-out flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground min-h-[44px] cursor-pointer">
+              className="w-full py-4 rounded-3xl border border-dashed border-border/40 hover:border-violet-500/40 hover:bg-violet-500/5 transition-all duration-200 flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground min-h-[44px] cursor-pointer clay-press shadow-clay-sm">
               <Plus className="w-4 h-4" /> Add a learning path
             </motion.button>
           )}

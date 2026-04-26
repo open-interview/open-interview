@@ -27,9 +27,9 @@ const pageVariants = {
 };
 
 const pageTransition = {
-  type: 'tween' as const,
-  ease: 'easeOut' as const,
-  duration: 0.22,
+  type: 'spring' as const,
+  stiffness: 300,
+  damping: 25,
 };
 
 export function AppLayout({
@@ -58,8 +58,8 @@ export function AppLayout({
 
   // Scroll restoration on route change
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0, behavior: 'instant' });
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [location]);
 
   if (hideNav) {
@@ -71,7 +71,7 @@ export function AppLayout({
 
   return (
     <div
-      className="min-h-screen min-h-dvh bg-background overflow-x-hidden w-full"
+      className="min-h-screen min-h-dvh bg-background/80 backdrop-blur-md overflow-x-hidden w-full"
       style={{
         '--safe-top': 'env(safe-area-inset-top, 0px)',
         '--safe-bottom': 'env(safe-area-inset-bottom, 0px)',

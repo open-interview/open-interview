@@ -181,7 +181,7 @@ export function PullToRefresh({
         <button
           onClick={handleRefreshClick}
           disabled={disabled || isRefreshing}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary bg-primary/10 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 min-h-[44px] text-sm font-medium text-primary bg-primary/10 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-all duration-150 active:scale-95 shadow-[4px_4px_8px_rgba(163,177,198,0.5),-4px_-4px_8px_rgba(255,255,255,1)] dark:shadow-[4px_4px_8px_rgba(0,0,0,0.4),-4px_-4px_8px_rgba(255,255,255,0.08)]"
           aria-label="Refresh content"
         >
           <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -200,7 +200,7 @@ export function PullToRefresh({
       >
         <motion.div
           style={{ rotate: rotation }}
-          className="w-8 h-8 flex items-center justify-center"
+          className="w-12 h-12 flex items-center justify-center rounded-full bg-white dark:bg-gray-800 shadow-[6px_6px_12px_rgba(163,177,198,0.6),-6px_-6px_12px_rgba(255,255,255,1)] dark:shadow-[6px_6px_12px_rgba(0,0,0,0.5),-6px_-6px_12px_rgba(255,255,255,0.08)]"
         >
           <RefreshCw 
             className={`w-6 h-6 text-primary ${isRefreshing ? 'animate-spin' : ''}`}
@@ -209,7 +209,10 @@ export function PullToRefresh({
       </motion.div>
       
       {/* Content */}
-      <motion.div style={{ y: pullDistance }}>
+      <motion.div 
+        style={{ y: pullDistance }}
+        className="bg-background/50 backdrop-blur-sm rounded-xl shadow-[8px_8px_16px_rgba(163,177,198,0.4),-8px_-8px_16px_rgba(255,255,255,1)] dark:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-8px_-8px_16px_rgba(255,255,255,0.06)]"
+      >
         {children}
       </motion.div>
     </div>

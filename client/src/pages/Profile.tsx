@@ -160,7 +160,16 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
   return (
     <div className="space-y-6">
       {/* Profile Card */}
-      <motion.div {...fadeUp(0)} className="glass-card rounded-[var(--radius-2xl)] p-6">
+      <motion.div {...fadeUp(0)} 
+        className="rounded-[28px] p-6"
+        style={{
+          background: 'rgba(15, 22, 41, 0.75)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          border: '1px solid rgba(99, 102, 241, 0.2)',
+          boxShadow: '12px 12px 40px rgba(0,0,0,0.35), -6px -6px 24px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.1)'
+        }}
+      >
         <div className="flex flex-col items-center gap-4">
           <div className="p-0.5 rounded-full" style={{ background: 'var(--gradient-primary)' }}>
             <div className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold text-white" style={{ background: 'var(--surface-2)' }}>

@@ -1,31 +1,32 @@
 import { useState, useEffect } from 'react';
+import type { Transition } from 'framer-motion';
 
-/**
- * Hook that detects and tracks the user's reduced motion preference.
- * 
- * This hook monitors the `prefers-reduced-motion` media query and returns
- * a boolean indicating whether the user has requested reduced motion.
- * 
- * @returns {boolean} true if the user prefers reduced motion, false otherwise
- * 
- * @example
- * ```tsx
- * function AnimatedComponent() {
- *   const prefersReducedMotion = useReducedMotion();
- *   
- *   return (
- *     <motion.div
- *       animate={{ opacity: 1 }}
- *       transition={{ duration: prefersReducedMotion ? 0.01 : 0.3 }}
- *     >
- *       Content
- *     </motion.div>
- *   );
- * }
- * ```
- * 
- * Requirements validated: 6.1, 6.2, 6.4, 11.3
- */
+export const springTransition = {
+  type: 'spring',
+  stiffness: 300,
+  damping: 25,
+  mass: 1,
+} as const;
+
+export const springTransitionBounce = {
+  type: 'spring',
+  stiffness: 400,
+  damping: 15,
+  mass: 1,
+} as const;
+
+export const staggerConfig = {
+  staggerChildren: 0.08,
+  delayChildren: 0,
+} as const;
+
+export const getSpringTransition = (reduced: boolean): Transition => {
+  if (reduced) {
+    return { duration: 0.01 };
+  }
+  return springTransition;
+};
+
 export function useReducedMotion(): boolean {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   

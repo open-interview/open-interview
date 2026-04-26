@@ -10,6 +10,7 @@
 
 import { ReactNode } from 'react';
 import { motion } from 'framer-motion';
+import { useReducedMotion, springTransition, staggerConfig, getSpringTransition } from '../../hooks/use-reduced-motion';
 
 export type EmptyStateVariant = 'default' | 'info' | 'warning' | 'error' | 'success';
 export type EmptyStateSize = 'sm' | 'md' | 'lg';
@@ -86,6 +87,8 @@ export function EmptyState({
   animated = true,
   className = ''
 }: EmptyStateProps) {
+  const prefersReducedMotion = useReducedMotion();
+  const spring = getSpringTransition(prefersReducedMotion);
   const variantConfig = variantClasses[variant];
   const sizeConfig = sizeClasses[size];
 
@@ -131,7 +134,7 @@ export function EmptyState({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
+        transition={spring}
       >
         {content}
       </motion.div>

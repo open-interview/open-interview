@@ -68,7 +68,11 @@ function LeftPanel({ accentColor, step }: { accentColor: string; step: number })
 
         <div className="grid grid-cols-2 gap-4 mb-10">
           {STATS.map(s => (
-            <div key={s.label} className="p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div key={s.label} className="p-4 rounded-xl" style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              boxShadow: '8px 8px 16px rgba(0,0,0,0.3), -4px -4px 12px rgba(255,255,255,0.03)',
+            }}>
               <div className="text-2xl font-black text-white mb-0.5 tracking-tight">{s.n}</div>
               <div className="text-sm text-white/45">{s.label}</div>
             </div>
@@ -177,8 +181,8 @@ export function Onboarding() {
             {/* ── Role step ── */}
             {step === 'role' && (
               <motion.div key="role"
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.22 }}>
+                initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
 
                 <div className="mb-8">
                   <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: accentColor }}>Step 1 of 2</p>
@@ -221,13 +225,15 @@ export function Onboarding() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: idx * 0.03 }}
                         onClick={() => { setSelectedRole(role.id); setExcluded(new Set()); }}
-                        whileHover={{ y: -2 }}
-                        whileTap={{ scale: 0.97 }}
+                        whileHover={{ scale: 1.02, y: -3 }}
+                        whileTap={{ scale: 0.96 }}
                         className="relative p-4 rounded-xl text-left transition-all"
                         style={{
-                          background: sel ? `${color}12` : 'rgba(255,255,255,0.03)',
-                          border: `1.5px solid ${sel ? color + '45' : 'rgba(255,255,255,0.07)'}`,
-                          boxShadow: sel ? `0 0 18px ${color}15` : 'none',
+                          background: sel ? `${color}15` : 'rgba(255,255,255,0.025)',
+                          border: `1.5px solid ${sel ? color + '55' : 'rgba(255,255,255,0.05)'}`,
+                          boxShadow: sel 
+                            ? `0 8px 24px ${color}20, 0 2px 8px ${color}10, inset 0 1px 0 ${color}15` 
+                            : `6px 6px 16px rgba(0,0,0,0.35), -3px -3px 12px rgba(255,255,255,0.025)`,
                         }}
                       >
                         <div className="flex items-start justify-between mb-2">
@@ -254,8 +260,8 @@ export function Onboarding() {
             {/* ── Preview step ── */}
             {step === 'preview' && (
               <motion.div key="preview"
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.22 }}>
+                initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
 
                 <div className="mb-8">
                   <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: accentColor }}>Step 2 of 2</p>
@@ -275,12 +281,16 @@ export function Onboarding() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: idx * 0.025 }}
                         onClick={() => toggleExclude(ch.id)}
-                        whileTap={{ scale: 0.96 }}
+                        whileHover={{ scale: 1.02, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
                         className="relative p-4 rounded-xl text-left transition-all"
                         style={{
-                          background: off ? 'rgba(255,255,255,0.02)' : `${accentColor}10`,
-                          border: `1.5px solid ${off ? 'rgba(255,255,255,0.06)' : accentColor + '35'}`,
-                          opacity: off ? 0.45 : 1,
+                          background: off ? 'rgba(255,255,255,0.015)' : `${accentColor}12`,
+                          border: `1.5px solid ${off ? 'rgba(255,255,255,0.04)' : accentColor + '40'}`,
+                          opacity: off ? 0.5 : 1,
+                          boxShadow: off 
+                            ? 'none' 
+                            : `0 6px 20px ${accentColor}15, inset 0 1px 0 ${accentColor}20`,
                         }}
                       >
                         <div className="absolute top-2.5 right-2.5 w-4 h-4 rounded-full flex items-center justify-center"
@@ -316,13 +326,17 @@ export function Onboarding() {
             <motion.button
               onClick={handleContinue}
               disabled={!selectedRole && step === 'role'}
-              whileHover={selectedRole ? { scale: 1.01 } : {}}
-              whileTap={selectedRole ? { scale: 0.98 } : {}}
+              whileHover={selectedRole ? { scale: 1.015 } : {}}
+              whileTap={selectedRole ? { scale: 0.94 } : {}}
               className="flex-1 py-3.5 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all tracking-tight"
               style={{
-                background: selectedRole ? `linear-gradient(135deg, ${accentColor}, #06b6d4)` : 'rgba(255,255,255,0.06)',
+                background: selectedRole 
+                  ? `linear-gradient(135deg, ${accentColor}, #06b6d4)` 
+                  : 'rgba(255,255,255,0.06)',
                 color: selectedRole ? 'white' : 'rgba(255,255,255,0.2)',
-                boxShadow: selectedRole ? `0 0 28px ${accentColor}30` : 'none',
+                boxShadow: selectedRole 
+                  ? `0 8px 32px ${accentColor}30, inset 0 1px 0 rgba(255,255,255,0.15)` 
+                  : 'none',
                 cursor: selectedRole ? 'pointer' : 'not-allowed',
               }}
             >
