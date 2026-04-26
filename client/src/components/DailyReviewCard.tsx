@@ -12,7 +12,7 @@ import {
   Trophy, Zap, Coins
 } from 'lucide-react';
 import { 
-  getSRSStats, getDueCards, getMasteryColor, getMasteryEmoji, getUserXP,
+  getSRSStats, getDueCards, getChannelsWithDueCards, getMasteryColor, getMasteryEmoji, getUserXP,
   type SRSStats, type ReviewCard 
 } from '../lib/spaced-repetition';
 import { ProgressRing } from './ProgressRing';
@@ -36,8 +36,31 @@ export function DailyReviewCard() {
     setUserXP(getUserXP());
   };
 
+  // Get channel colors
+  const getChannelColor = (channel: string) => {
+    const colors: Record<string, string> = {
+      algorithms: 'bg-blue-500/20 text-blue-400',
+      'system-design': 'bg-purple-500/20 text-purple-400',
+      networking: 'bg-green-500/20 text-green-400',
+      kubernetes: 'bg-indigo-500/20 text-indigo-400',
+      aws: 'bg-orange-500/20 text-orange-400',
+      gcp: 'bg-red-500/20 text-red-400',
+      azure: 'bg-cyan-500/20 text-cyan-400',
+      database: 'bg-yellow-500/20 text-yellow-400',
+      linux: 'bg-gray-500/20 text-gray-400',
+      security: 'bg-red-500/20 text-red-400',
+      devops: 'bg-teal-500/20 text-teal-400',
+      behavioral: 'bg-pink-500/20 text-pink-400',
+    };
+    return colors[channel] || 'bg-slate-500/20 text-slate-400';
+  };
+
+  // Get channels with due cards for quick access
+  const [channelList, setChannelList] = useState<{ channel: string; count: number }[]>([]);
+
   useEffect(() => {
     loadData();
+    setChannelList(getChannelsWithDueCards());
     
     // Subscribe to SRS updates
     srsUpdateListeners.add(loadData);
@@ -121,18 +144,25 @@ export function DailyReviewCard() {
               
               {hasDueCards ? (
                 <div className="flex flex-wrap gap-1">
-                  {dueCards.slice(0, 3).map((card) => (
+                  {channelList.slice(0, 4).map(({ channel, count }) => (
                     <span
-                      key={card.questionId}
-                      className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-medium ${getMasteryColor(card.masteryLevel)} bg-muted/50`}
+                      key={channel}
+                      className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium cursor-pointer hover:opacity-80 transition-opacity ${getChannelColor(channel)}`}
+                      title={`Review ${channel} (${count} cards)`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // Store selected channel and navigate to review
+                        sessionStorage.setItem('review_channel', channel);
+                        setLocation('/review');
+                      }}
                     >
-                      <span>{getMasteryEmoji(card.masteryLevel)}</span>
-                      {card.channel.slice(0, 6)}
+                      {channel.slice(0, 6)}({count})
                     </span>
                   ))}
-                  {dueCards.length > 3 && (
+                  {channelList.length > 4 && (
                     <span className="px-1 py-0.5 text-[9px] text-muted-foreground">
-                      +{dueCards.length - 3}
+                      +{channelList.length - 4}
                     </span>
                   )}
                 </div>

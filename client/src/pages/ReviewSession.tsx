@@ -268,13 +268,23 @@ export default function ReviewSession() {
   const [allCards, setAllCards] = useState<any[]>([]);
   const [loadingCards, setLoadingCards] = useState(true);
   const [channelList, setChannelList] = useState<{ channel: string; count: number }[]>([]);
-  const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
+  const [selectedChannel, setSelectedChannel] = useState<string | null>(() => {
+    // Check for stored channel from DailyReviewCard click
+    return sessionStorage.getItem('review_channel');
+  });
+
+  // Clear stored channel after reading
+  useEffect(() => {
+    if (selectedChannel) {
+      sessionStorage.removeItem('review_channel');
+    }
+  }, [selectedChannel]);
 
   // Get channel colors
   const getChannelColor = (channel: string) => {
     const colors: Record<string, string> = {
       algorithms: 'from-blue-500/20 to-cyan-500/20 border-blue-500/30 text-blue-400',
-      system-design: 'from-purple-500/20 to-pink-500/20 border-purple-500/30 text-purple-400',
+      'system-design': 'from-purple-500/20 to-pink-500/20 border-purple-500/30 text-purple-400',
       networking: 'from-green-500/20 to-emerald-500/20 border-green-500/30 text-green-400',
       kubernetes: 'from-indigo-500/20 to-blue-500/20 border-indigo-500/30 text-indigo-400',
       aws: 'from-orange-500/20 to-amber-500/20 border-orange-500/30 text-orange-400',
@@ -461,6 +471,46 @@ export default function ReviewSession() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 w-full overflow-x-hidden">
             {/* Page Header */}
             <PageHeader title="SRS Review" subtitle="Spaced repetition to lock in what you've learned" />
+
+            {/* Channel Selector - Show channels with due cards */}
+            {channelList.length > 0 && (
+              <div className="mb-6">
+                <div className="text-xs font-medium text-muted-foreground mb-2">
+                  {selectedChannel ? 'Reviewing:' : 'Channels with cards due:'}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {!selectedChannel && (
+                    <button
+                      onClick={() => handleChannelSelect(null)}
+                      className="min-h-[44px] px-4 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-primary to-cyan-500 text-black"
+                    >
+                      All ({allCards.length})
+                    </button>
+                  )}
+                  {channelList.map(({ channel, count }) => (
+                    <button
+                      key={channel}
+                      onClick={() => handleChannelSelect(channel)}
+                      className={`min-h-[44px] px-4 py-2 rounded-full text-sm font-bold border transition-all ${
+                        selectedChannel === channel
+                          ? 'bg-primary text-black border-primary'
+                          : `bg-gradient-to-br ${getChannelColor(channel)} border-transparent hover:opacity-80`
+                      }`}
+                    >
+                      {channel} ({count})
+                    </button>
+                  ))}
+                  {selectedChannel && (
+                    <button
+                      onClick={() => handleChannelSelect(null)}
+                      className="min-h-[44px] px-4 py-2 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground"
+                    >
+                      Show all
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Focus toggle */}
             {isPersonalized(onboardingComplete, subscribedChannels) && (

@@ -44,20 +44,28 @@ function mapPathFromJson(path: any) {
   const channels = typeof path.channels === 'string' ? JSON.parse(path.channels) : (path.channels || []);
   const tags = typeof path.tags === 'string' ? JSON.parse(path.tags) : (path.tags || []);
   const learningObjectives = typeof path.learningObjectives === 'string' ? JSON.parse(path.learningObjectives) : (path.learningObjectives || []);
+  const pathType = path.pathType || getPathTypeFromId(path.id);
   return {
     id: path.id,
     name: path.title,
-    icon: PATH_ICON_MAP[path.pathType] || Rocket,
-    color: PATH_COLOR_MAP[path.pathType] || 'from-indigo-500 to-purple-500',
+    icon: PATH_ICON_MAP[pathType] || Rocket,
+    color: PATH_COLOR_MAP[pathType] || 'from-indigo-500 to-purple-500',
     description: path.description,
     channels,
     difficulty: path.difficulty ? path.difficulty.charAt(0).toUpperCase() + path.difficulty.slice(1) : 'Intermediate',
-    duration: `${path.estimatedHours}h`,
-    totalQuestions: questionIds.length,
+    duration: path.estimatedHours ? `${path.estimatedHours}h` : '10h',
+    totalQuestions: questionIds.length || 0,
     jobs: learningObjectives.slice(0, 4),
     skills: tags.slice(0, 5),
     salary: '',
+    pathType,
   };
+}
+function getPathTypeFromId(id: string) {
+  if (id.startsWith('company-')) return 'company';
+  if (id.startsWith('job-')) return 'job-title';
+  if (id.startsWith('cert-')) return 'certification';
+  return 'skill';
 }
 
 export default function LearningPaths() {
