@@ -332,8 +332,9 @@ export default function UnifiedLearningPaths() {
           const data = await response.json();
           const mappedPaths = data.map((path: any) => {
             const questionIds = typeof path.questionIds === 'string' ? JSON.parse(path.questionIds) : path.questionIds;
-            const channels = typeof path.channels === 'string' ? JSON.parse(path.channels) : path.channels;
+            const rawChannels = typeof path.channels === 'string' ? JSON.parse(path.channels) : path.channels;
             const tags = typeof path.tags === 'string' ? JSON.parse(path.tags) : path.tags;
+            const channels = (rawChannels && rawChannels.length) ? rawChannels : (tags || []);
             const learningObjectives = typeof path.learningObjectives === 'string' ? JSON.parse(path.learningObjectives) : path.learningObjectives;
             const milestones = typeof path.milestones === 'string' ? JSON.parse(path.milestones) : path.milestones;
             return {
@@ -343,11 +344,11 @@ export default function UnifiedLearningPaths() {
               color: getColorForPath(path.pathType),
               gradient: roleGradients[path.pathType] || roleGradients['skill'],
               description: path.description,
-              channels: channels || [],
-              difficulty: path.difficulty.charAt(0).toUpperCase() + path.difficulty.slice(1),
-              duration: `${path.estimatedHours}h`,
+              channels,
+              difficulty: path.difficulty ? path.difficulty.charAt(0).toUpperCase() + path.difficulty.slice(1) : 'Intermediate',
+              duration: `${path.estimatedHours || 10}h`,
               totalQuestions: questionIds?.length || 0,
-              jobs: learningObjectives?.slice(0, 3) || [],
+              jobs: learningObjectives?.slice(0, 3) || [path.title],
               skills: tags?.slice(0, 5) || [],
               salary: getSalaryRange(path.targetJobTitle),
               pathType: path.pathType,
@@ -648,8 +649,8 @@ export default function UnifiedLearningPaths() {
                               <Icon className="w-5 h-5" style={{ color: 'var(--btn-primary-text)' }} strokeWidth={2.5} />
                             </div>
                             <div className="min-w-0">
-                              <p className="font-bold text-sm truncate">{path.name}</p>
-                              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{path.duration || 'Custom path'}</p>
+                              <p className="font-bold text-sm leading-tight line-clamp-2 break-words">{path.name}</p>
+                              <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{path.duration || 'Custom path'}</p>
                             </div>
                           </div>
                           <div className="relative flex-shrink-0">
