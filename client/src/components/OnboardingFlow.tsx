@@ -293,7 +293,7 @@ export function OnboardingFlow({ onComplete }: Props) {
                         aria-pressed={sel}
                         whileHover={{ scale: 1.02, y: -3 }}
                         whileTap={{ scale: 0.95 }}
-                        className="relative group p-4 rounded-xl text-left transition-all"
+                        className="relative group p-4 rounded-xl text-left transition-all min-h-[148px] flex flex-col"
                         style={{
                           background: sel ? `${r.color}16` : 'rgba(255,255,255,0.025)',
                           border: `1.5px solid ${sel ? r.color + '60' : 'rgba(255,255,255,0.05)'}`,
@@ -303,7 +303,7 @@ export function OnboardingFlow({ onComplete }: Props) {
                         }}
                       >
                         <div className="flex items-start justify-between mb-3">
-                          <span className="text-xl">{r.emoji}</span>
+                          <span className="inline-flex items-center justify-center w-8 h-8 text-2xl leading-none">{r.emoji}</span>
                           {sel && (
                             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
                               className="w-5 h-5 rounded-full flex items-center justify-center"
@@ -312,8 +312,8 @@ export function OnboardingFlow({ onComplete }: Props) {
                             </motion.div>
                           )}
                         </div>
-                        <div className="text-base font-bold text-white mb-0.5 tracking-tight">{r.label}</div>
-                        <div className="text-sm text-white/50 leading-relaxed">{r.desc}</div>
+                        <div className="text-base font-bold text-white mb-1 tracking-tight">{r.label}</div>
+                        <div className="text-xs text-white/55 leading-snug">{r.desc}</div>
                       </motion.button>
                     );
                   })}

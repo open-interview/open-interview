@@ -359,8 +359,16 @@ export function HomePage() {
         }
         const cp2 = curatedPaths.find((p: any) => p.id === pathId);
         if (cp2) {
-          const channelIds = Array.isArray(cp2.channels) ? cp2.channels : JSON.parse(cp2.channels || '[]');
-          return { id: cp2.id, name: cp2.title, icon: Brain, color: 'from-green-500 to-emerald-500', description: cp2.description, channels: channelIds, difficulty: cp2.difficulty.charAt(0).toUpperCase() + cp2.difficulty.slice(1), duration: `${cp2.estimatedHours}h`, totalQuestions: Array.isArray(cp2.questionIds) ? cp2.questionIds.length : JSON.parse(cp2.questionIds || '[]').length, jobs: Array.isArray(cp2.learningObjectives) ? cp2.learningObjectives.slice(0, 3) : JSON.parse(cp2.learningObjectives || '[]').slice(0, 3), skills: Array.isArray(cp2.tags) ? cp2.tags.slice(0, 5) : JSON.parse(cp2.tags || '[]').slice(0, 5), salary: 'Varies' };
+          const tags = Array.isArray(cp2.tags) ? cp2.tags : JSON.parse(cp2.tags || '[]');
+          const rawChannels = Array.isArray(cp2.channels) ? cp2.channels : JSON.parse(cp2.channels || '[]');
+          const channelIds = (rawChannels && rawChannels.length) ? rawChannels : tags;
+          const difficulty = cp2.difficulty
+            ? cp2.difficulty.charAt(0).toUpperCase() + cp2.difficulty.slice(1)
+            : 'Intermediate';
+          const learningObjectives = Array.isArray(cp2.learningObjectives)
+            ? cp2.learningObjectives
+            : JSON.parse(cp2.learningObjectives || '[]');
+          return { id: cp2.id, name: cp2.title, icon: Brain, color: 'from-green-500 to-emerald-500', description: cp2.description, channels: channelIds, difficulty, duration: `${cp2.estimatedHours || 10}h`, totalQuestions: Array.isArray(cp2.questionIds) ? cp2.questionIds.length : JSON.parse(cp2.questionIds || '[]').length, jobs: learningObjectives.length ? learningObjectives.slice(0, 3) : [cp2.title], skills: tags.slice(0, 5), salary: 'Varies' };
         }
         return null;
       }).filter(Boolean);

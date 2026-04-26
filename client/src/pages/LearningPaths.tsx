@@ -41,8 +41,11 @@ const PATH_COLOR_MAP: Record<string, string> = {
 
 function mapPathFromJson(path: any) {
   const questionIds = typeof path.questionIds === 'string' ? JSON.parse(path.questionIds) : (path.questionIds || []);
-  const channels = typeof path.channels === 'string' ? JSON.parse(path.channels) : (path.channels || []);
   const tags = typeof path.tags === 'string' ? JSON.parse(path.tags) : (path.tags || []);
+  // Channels can come from either an explicit `channels` field or from `tags`
+  // (the bundled learning-paths.json uses `tags` as the channel list).
+  const rawChannels = typeof path.channels === 'string' ? JSON.parse(path.channels) : (path.channels || []);
+  const channels = (rawChannels && rawChannels.length) ? rawChannels : tags;
   const learningObjectives = typeof path.learningObjectives === 'string' ? JSON.parse(path.learningObjectives) : (path.learningObjectives || []);
   const pathType = path.pathType || getPathTypeFromId(path.id);
   return {
@@ -55,7 +58,7 @@ function mapPathFromJson(path: any) {
     difficulty: path.difficulty ? path.difficulty.charAt(0).toUpperCase() + path.difficulty.slice(1) : 'Intermediate',
     duration: path.estimatedHours ? `${path.estimatedHours}h` : '10h',
     totalQuestions: questionIds.length || 0,
-    jobs: learningObjectives.slice(0, 4),
+    jobs: learningObjectives.length ? learningObjectives.slice(0, 4) : [path.title],
     skills: tags.slice(0, 5),
     salary: '',
     pathType,
