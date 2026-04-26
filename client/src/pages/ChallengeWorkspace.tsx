@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'wouter';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import Editor from '@monaco-editor/react';
-import { Play, Send, Loader2, ChevronLeft } from 'lucide-react';
+import { Play, Send, Loader2, ChevronLeft, Code2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { Challenge, Language, RunResult } from '@/types/challenges';
 import { loadChallenge } from '@/lib/challenges-loader';
 import { runCode } from '@/lib/code-runner';
@@ -46,6 +47,8 @@ interface CelebrationState {
 
 export default function ChallengeWorkspace() {
   const { id } = useParams<{ id: string }>();
+  const isMobile = useIsMobile();
+  const [showEditor, setShowEditor] = useState(false);
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -166,198 +169,368 @@ export default function ChallengeWorkspace() {
         />
       )}
 
-      {/* Header */}
-      <header className="flex items-center gap-3 px-4 py-2 border-b border-border shrink-0">
+      {/* Header - compact on mobile */}
+      <header className={`flex items-center gap-2 px-2 py-2 border-b border-border shrink-0 ${isMobile ? 'flex-wrap' : ''}`}>
         <Link href="/code">
           <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground cursor-pointer min-h-[44px] transition-colors duration-150 ease-out">
-            <ChevronLeft className="w-4 h-4" /> Challenges
+            <ChevronLeft className="w-4 h-4" /> 
+            <span className="hidden sm:inline">Challenges</span>
           </Button>
         </Link>
-        <span className="text-muted-foreground">/</span>
-        <h1 className="font-semibold text-sm truncate">{challenge.title}</h1>
+        <h1 className="font-semibold text-sm truncate flex-1 min-w-0">{challenge.title}</h1>
         <Badge className={`text-xs border ${DIFFICULTY_COLORS[challenge.difficulty]}`} variant="outline">
           {challenge.difficulty}
         </Badge>
-        <span className="text-xs text-muted-foreground ml-auto">{challenge.estimatedMinutes} min</span>
+        <span className="text-xs text-muted-foreground hidden sm:inline">{challenge.estimatedMinutes} min</span>
+        {isMobile && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowEditor(!showEditor)}
+            className="min-h-[44px] gap-1"
+          >
+            <Code2 className="w-4 h-4" />
+            {showEditor ? 'Problem' : 'Code'}
+          </Button>
+        )}
       </header>
 
-      {/* Main split */}
-      <PanelGroup direction="horizontal" className="flex-1 overflow-hidden">
-        {/* Left: Problem */}
-        <Panel defaultSize={40} minSize={25}>
-          <div className="flex flex-col h-full">
-            <Tabs defaultValue="description" className="flex flex-col flex-1 overflow-hidden">
-              <TabsList className="mx-3 mt-2 shrink-0 w-fit">
-                <TabsTrigger value="description" className="cursor-pointer min-h-[44px]">Description</TabsTrigger>
-                <TabsTrigger value="testcases" className="cursor-pointer min-h-[44px]">Test Cases</TabsTrigger>
-                <TabsTrigger value="editorial" className="cursor-pointer min-h-[44px]">Editorial</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="description" className="flex-1 overflow-hidden mt-0">
-                <ScrollArea className="h-full">
-                  <div className="p-4 space-y-4 text-sm">
-                    <p className="leading-relaxed whitespace-pre-wrap">{challenge.description}</p>
-                    {challenge.examples.length > 0 && (
-                      <div className="space-y-3">
-                        <h3 className="font-semibold">Examples</h3>
-                        {challenge.examples.map((ex, i) => (
-                          <div key={i} className="rounded-lg border border-border bg-muted/20 p-3 space-y-1 font-mono text-xs">
-                            <div><span className="text-muted-foreground">Input: </span>{ex.input}</div>
-                            <div><span className="text-muted-foreground">Output: </span>{ex.output}</div>
-                            {ex.explanation && (
-                              <div className="font-sans text-muted-foreground">{ex.explanation}</div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {challenge.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-2">
-                        {challenge.tags.map(tag => (
-                          <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-
-              <TabsContent value="testcases" className="flex-1 overflow-hidden mt-0">
-                <ScrollArea className="h-full">
-                  <div className="p-4 space-y-3">
-                    <p className="text-xs text-muted-foreground">Visible test cases ({challenge.testCases.visible.length})</p>
-                    {challenge.testCases.visible.map((tc, i) => (
-                      <div key={i} className="rounded-lg border border-border bg-muted/20 p-3 font-mono text-xs space-y-1">
-                        <div><span className="text-muted-foreground">Input: </span>{JSON.stringify(tc.input)}</div>
-                        <div><span className="text-muted-foreground">Expected: </span>{JSON.stringify(tc.expected)}</div>
-                      </div>
-                    ))}
-                    {challenge.testCases.hidden.length > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        + {challenge.testCases.hidden.length} hidden test case{challenge.testCases.hidden.length > 1 ? 's' : ''}
-                      </p>
-                    )}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-
-              <TabsContent value="editorial" className="flex-1 overflow-hidden mt-0">
-                <ScrollArea className="h-full">
-                  <div className="p-4 text-sm leading-relaxed whitespace-pre-wrap">
-                    {challenge.editorial}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-            </Tabs>
-
-            {/* Rex Companion - coding assistant */}
-            <div className="p-3 border-t border-border shrink-0 flex justify-center">
-              <RexCompanion
-                challenge={challenge}
-                currentCode={code}
-                failingTests={failingTests}
-              />
-            </div>
-          </div>
-        </Panel>
-
-        <PanelResizeHandle className="w-1 bg-border hover:bg-primary/50 transition-colors duration-150 ease-out cursor-col-resize" />
-
-        {/* Right: Editor + Output */}
-        <Panel defaultSize={60} minSize={30}>
-          <PanelGroup direction="vertical" className="h-full">
-            {/* Editor panel */}
-            <Panel defaultSize={65} minSize={30}>
-              <div className="flex flex-col h-full">
-                {/* Editor toolbar */}
-                <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0">
-                  <select
-                    value={language}
-                    onChange={e => setLanguage(e.target.value as Language)}
-                    className="text-xs bg-muted border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer min-h-[44px] transition-colors duration-150 ease-out"
-                  >
-                    <option value="javascript">JavaScript</option>
-                    {challenge.starterCode.python && <option value="python">Python</option>}
-                  </select>
-                  <div className="ml-auto flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleRun}
-                      disabled={running || submitting}
-                      className="gap-1 text-xs min-h-[44px] cursor-pointer transition-colors duration-150 ease-out"
-                    >
-                      {running ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-                      {running ? 'Running…' : 'Run Code'}
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleSubmit}
-                      disabled={running || submitting}
-                      className="gap-1 text-xs min-h-[44px] cursor-pointer transition-colors duration-150 ease-out bg-violet-600 hover:bg-violet-700"
-                    >
-                      {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                      {submitting ? 'Submitting…' : 'Submit'}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Monaco editor */}
-                <div className="flex-1 overflow-hidden">
-                  <Editor
-                    height="100%"
-                    language={language}
-                    value={code}
-                    onChange={v => setCode(v ?? '')}
-                    theme="vs-dark"
-                    options={{
-                      fontSize: 13,
-                      fontFamily: 'JetBrains Mono, Fira Code, monospace',
-                      minimap: { enabled: false },
-                      scrollBeyondLastLine: false,
-                      lineNumbers: 'on',
-                      tabSize: language === 'python' ? 4 : 2,
-                      wordWrap: 'off',
-                      padding: { top: 8 },
-                    }}
-                  />
-                </div>
+      {/* Mobile: Tab-based view */}
+      {isMobile ? (
+        <div className="flex-1 overflow-hidden">
+          {showEditor ? (
+            <div className="flex flex-col h-full">
+              {/* Editor toolbar */}
+              <div className="flex items-center gap-2 px-2 py-2 border-b border-border shrink-0">
+                <select
+                  value={language}
+                  onChange={e => setLanguage(e.target.value as Language)}
+                  className="text-xs bg-muted border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer min-h-[44px] transition-colors duration-150 ease-out flex-1"
+                >
+                  <option value="javascript">JavaScript</option>
+                  {challenge.starterCode.python && <option value="python">Python</option>}
+                </select>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleRun}
+                  disabled={running || submitting}
+                  className="gap-1 text-xs min-h-[44px] cursor-pointer transition-colors duration-150 ease-out"
+                >
+                  {running ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSubmit}
+                  disabled={running || submitting}
+                  className="gap-1 text-xs min-h-[44px] cursor-pointer transition-colors duration-150 ease-out bg-violet-600 hover:bg-violet-700"
+                >
+                  {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                </Button>
               </div>
-            </Panel>
 
-            <PanelResizeHandle className="h-1 bg-border hover:bg-primary/50 transition-colors duration-150 ease-out cursor-row-resize" />
+              {/* Monaco editor - mobile optimized */}
+              <div className="flex-1 overflow-hidden">
+                <Editor
+                  height="100%"
+                  language={language}
+                  value={code}
+                  onChange={v => setCode(v ?? '')}
+                  theme="vs-dark"
+                  options={{
+                    fontSize: 14,
+                    fontFamily: 'JetBrains Mono, Fira Code, monospace',
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    lineNumbers: 'on',
+                    tabSize: language === 'python' ? 4 : 2,
+                    wordWrap: 'on',
+                    padding: { top: 8 },
+                    automaticLayout: true,
+                  }}
+                />
+              </div>
 
-            {/* Output panel */}
-            <Panel defaultSize={35} minSize={15}>
-              <div className="flex flex-col h-full">
-                <div className="px-3 py-2 border-b border-border shrink-0">
+              {/* Mobile output panel - collapsible */}
+              <div className="border-t border-border">
+                <div className="px-2 py-2 border-b border-border shrink-0 flex items-center justify-between">
                   <span className="text-xs font-medium text-muted-foreground">Output</span>
                   {runResult && (
-                    <span className={`ml-2 text-xs font-semibold ${runResult.allPassed ? 'text-green-400' : 'text-red-400'}`}>
+                    <span className={`text-xs font-semibold ${runResult.allPassed ? 'text-green-400' : 'text-red-400'}`}>
                       {runResult.passCount}/{runResult.totalCount} passed
                     </span>
                   )}
                 </div>
-                <div className="flex-1 overflow-hidden">
+                <ScrollArea className="h-32">
+                  <TestResultsPanel
+                    results={runResult?.results ?? []}
+                    stdout={runResult?.stdout}
+                    error={runResult?.error}
+                    executionTimeMs={runResult?.executionTimeMs}
+                    verdict={verdict}
+                    score={score ?? undefined}
+                    isRunning={running || submitting}
+                  />
+                </ScrollArea>
+              </div>
+            </div>
+          ) : (
+            /* Mobile: Problem description view */
+            <div className="flex flex-col h-full">
+              <Tabs defaultValue="description" className="flex flex-col flex-1 overflow-hidden">
+                <TabsList className="mx-2 mt-2 shrink-0 w-fit">
+                  <TabsTrigger value="description" className="cursor-pointer min-h-[44px] text-xs">Description</TabsTrigger>
+                  <TabsTrigger value="testcases" className="cursor-pointer min-h-[44px] text-xs">Test Cases</TabsTrigger>
+                  <TabsTrigger value="editorial" className="cursor-pointer min-h-[44px] text-xs">Editorial</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="description" className="flex-1 overflow-hidden mt-0">
                   <ScrollArea className="h-full">
-                    <div className="pb-24">
-                    <TestResultsPanel
-                      results={runResult?.results ?? []}
-                      stdout={runResult?.stdout}
-                      error={runResult?.error}
-                      executionTimeMs={runResult?.executionTimeMs}
-                      verdict={verdict}
-                      score={score ?? undefined}
-                      isRunning={running || submitting}
-                    />
+                    <div className="p-3 space-y-3 text-sm">
+                      <p className="leading-relaxed whitespace-pre-wrap">{challenge.description}</p>
+                      {challenge.examples.length > 0 && (
+                        <div className="space-y-2">
+                          <h3 className="font-semibold">Examples</h3>
+                          {challenge.examples.map((ex, i) => (
+                            <div key={i} className="rounded-lg border border-border bg-muted/20 p-3 space-y-1 font-mono text-xs">
+                              <div><span className="text-muted-foreground">Input: </span>{ex.input}</div>
+                              <div><span className="text-muted-foreground">Output: </span>{ex.output}</div>
+                              {ex.explanation && (
+                                <div className="font-sans text-muted-foreground">{ex.explanation}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {challenge.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-2">
+                          {challenge.tags.map(tag => (
+                            <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </ScrollArea>
-                </div>
+                </TabsContent>
+
+                <TabsContent value="testcases" className="flex-1 overflow-hidden mt-0">
+                  <ScrollArea className="h-full">
+                    <div className="p-3 space-y-3">
+                      <p className="text-xs text-muted-foreground">Visible test cases ({challenge.testCases.visible.length})</p>
+                      {challenge.testCases.visible.map((tc, i) => (
+                        <div key={i} className="rounded-lg border border-border bg-muted/20 p-3 font-mono text-xs space-y-1">
+                          <div><span className="text-muted-foreground">Input: </span>{JSON.stringify(tc.input)}</div>
+                          <div><span className="text-muted-foreground">Expected: </span>{JSON.stringify(tc.expected)}</div>
+                        </div>
+                      ))}
+                      {challenge.testCases.hidden.length > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          + {challenge.testCases.hidden.length} hidden test case{challenge.testCases.hidden.length > 1 ? 's' : ''}
+                        </p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="editorial" className="flex-1 overflow-hidden mt-0">
+                  <ScrollArea className="h-full">
+                    <div className="p-3 text-sm leading-relaxed whitespace-pre-wrap">
+                      {challenge.editorial}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+              </Tabs>
+
+              {/* Rex Companion - coding assistant */}
+              <div className="p-2 border-t border-border shrink-0 flex justify-center">
+                <RexCompanion
+                  challenge={challenge}
+                  currentCode={code}
+                  failingTests={failingTests}
+                />
               </div>
-            </Panel>
-          </PanelGroup>
-        </Panel>
-      </PanelGroup>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Desktop: Split panel view */
+        <PanelGroup direction="horizontal" className="flex-1 overflow-hidden">
+          {/* Left: Problem */}
+          <Panel defaultSize={40} minSize={25}>
+            <div className="flex flex-col h-full">
+              <Tabs defaultValue="description" className="flex flex-col flex-1 overflow-hidden">
+                <TabsList className="mx-3 mt-2 shrink-0 w-fit">
+                  <TabsTrigger value="description" className="cursor-pointer min-h-[44px]">Description</TabsTrigger>
+                  <TabsTrigger value="testcases" className="cursor-pointer min-h-[44px]">Test Cases</TabsTrigger>
+                  <TabsTrigger value="editorial" className="cursor-pointer min-h-[44px]">Editorial</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="description" className="flex-1 overflow-hidden mt-0">
+                  <ScrollArea className="h-full">
+                    <div className="p-4 space-y-4 text-sm">
+                      <p className="leading-relaxed whitespace-pre-wrap">{challenge.description}</p>
+                      {challenge.examples.length > 0 && (
+                        <div className="space-y-3">
+                          <h3 className="font-semibold">Examples</h3>
+                          {challenge.examples.map((ex, i) => (
+                            <div key={i} className="rounded-lg border border-border bg-muted/20 p-3 space-y-1 font-mono text-xs">
+                              <div><span className="text-muted-foreground">Input: </span>{ex.input}</div>
+                              <div><span className="text-muted-foreground">Output: </span>{ex.output}</div>
+                              {ex.explanation && (
+                                <div className="font-sans text-muted-foreground">{ex.explanation}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {challenge.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-2">
+                          {challenge.tags.map(tag => (
+                            <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="testcases" className="flex-1 overflow-hidden mt-0">
+                  <ScrollArea className="h-full">
+                    <div className="p-4 space-y-3">
+                      <p className="text-xs text-muted-foreground">Visible test cases ({challenge.testCases.visible.length})</p>
+                      {challenge.testCases.visible.map((tc, i) => (
+                        <div key={i} className="rounded-lg border border-border bg-muted/20 p-3 font-mono text-xs space-y-1">
+                          <div><span className="text-muted-foreground">Input: </span>{JSON.stringify(tc.input)}</div>
+                          <div><span className="text-muted-foreground">Expected: </span>{JSON.stringify(tc.expected)}</div>
+                        </div>
+                      ))}
+                      {challenge.testCases.hidden.length > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          + {challenge.testCases.hidden.length} hidden test case{challenge.testCases.hidden.length > 1 ? 's' : ''}
+                        </p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="editorial" className="flex-1 overflow-hidden mt-0">
+                  <ScrollArea className="h-full">
+                    <div className="p-4 text-sm leading-relaxed whitespace-pre-wrap">
+                      {challenge.editorial}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+              </Tabs>
+
+              {/* Rex Companion - coding assistant */}
+              <div className="p-3 border-t border-border shrink-0 flex justify-center">
+                <RexCompanion
+                  challenge={challenge}
+                  currentCode={code}
+                  failingTests={failingTests}
+                />
+              </div>
+            </div>
+          </Panel>
+
+          <PanelResizeHandle className="w-1 bg-border hover:bg-primary/50 transition-colors duration-150 ease-out cursor-col-resize" />
+
+          {/* Right: Editor + Output */}
+          <Panel defaultSize={60} minSize={30}>
+            <PanelGroup direction="vertical" className="h-full">
+              {/* Editor panel */}
+              <Panel defaultSize={65} minSize={30}>
+                <div className="flex flex-col h-full">
+                  {/* Editor toolbar */}
+                  <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0">
+                    <select
+                      value={language}
+                      onChange={e => setLanguage(e.target.value as Language)}
+                      className="text-xs bg-muted border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer min-h-[44px] transition-colors duration-150 ease-out"
+                    >
+                      <option value="javascript">JavaScript</option>
+                      {challenge.starterCode.python && <option value="python">Python</option>}
+                    </select>
+                    <div className="ml-auto flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleRun}
+                        disabled={running || submitting}
+                        className="gap-1 text-xs min-h-[44px] cursor-pointer transition-colors duration-150 ease-out"
+                      >
+                        {running ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
+                        {running ? 'Running…' : 'Run Code'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleSubmit}
+                        disabled={running || submitting}
+                        className="gap-1 text-xs min-h-[44px] cursor-pointer transition-colors duration-150 ease-out bg-violet-600 hover:bg-violet-700"
+                      >
+                        {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                        {submitting ? 'Submitting…' : 'Submit'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Monaco editor */}
+                  <div className="flex-1 overflow-hidden">
+                    <Editor
+                      height="100%"
+                      language={language}
+                      value={code}
+                      onChange={v => setCode(v ?? '')}
+                      theme="vs-dark"
+                      options={{
+                        fontSize: 13,
+                        fontFamily: 'JetBrains Mono, Fira Code, monospace',
+                        minimap: { enabled: false },
+                        scrollBeyondLastLine: false,
+                        lineNumbers: 'on',
+                        tabSize: language === 'python' ? 4 : 2,
+                        wordWrap: 'off',
+                        padding: { top: 8 },
+                      }}
+                    />
+                  </div>
+                </div>
+              </Panel>
+
+              <PanelResizeHandle className="h-1 bg-border hover:bg-primary/50 transition-colors duration-150 ease-out cursor-row-resize" />
+
+              {/* Output panel */}
+              <Panel defaultSize={35} minSize={15}>
+                <div className="flex flex-col h-full">
+                  <div className="px-3 py-2 border-b border-border shrink-0">
+                    <span className="text-xs font-medium text-muted-foreground">Output</span>
+                    {runResult && (
+                      <span className={`ml-2 text-xs font-semibold ${runResult.allPassed ? 'text-green-400' : 'text-red-400'}`}>
+                        {runResult.passCount}/{runResult.totalCount} passed
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <ScrollArea className="h-full">
+                      <div className="pb-24">
+                      <TestResultsPanel
+                        results={runResult?.results ?? []}
+                        stdout={runResult?.stdout}
+                        error={runResult?.error}
+                        executionTimeMs={runResult?.executionTimeMs}
+                        verdict={verdict}
+                        score={score ?? undefined}
+                        isRunning={running || submitting}
+                      />
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </div>
+              </Panel>
+            </PanelGroup>
+          </Panel>
+        </PanelGroup>
+      )}
     </div>
     </AppLayout>
   );
