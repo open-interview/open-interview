@@ -127,18 +127,18 @@ export function Onboarding() {
   const stepNum = step === 'role' ? 0 : 1;
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#09090f', color: 'white', fontFamily: 'system-ui, sans-serif' }}>
+    <div className="min-h-screen flex flex-col lg:flex-row" style={{ background: '#09090f', color: 'white', fontFamily: 'var(--font-sans)' }}>
 
       {/* Left panel */}
-      <div className="w-[420px] flex-shrink-0 border-r" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+      <div className="w-full lg:w-[420px] flex-shrink-0 border-r border-b lg:border-b-0" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
         <LeftPanel accentColor={accentColor} step={stepNum} />
       </div>
 
       {/* Right panel */}
-      <div className="flex-1 flex flex-col overflow-y-auto">
+      <div className="flex-1 flex flex-col overflow-y-auto min-h-0">
 
         {/* Top bar */}
-        <div className="flex items-center justify-between px-8 py-5 border-b flex-shrink-0"
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-8 py-4 sm:py-5 border-b flex-shrink-0"
           style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-2">
@@ -149,7 +149,7 @@ export function Onboarding() {
           <div className="hidden lg:block" />
 
           {/* Steps */}
-          <div className="flex items-center gap-1.5 text-xs">
+          <div className="hidden sm:flex items-center gap-1.5 text-xs">
             {['Role', 'Channels'].map((label, i) => (
               <div key={label} className="flex items-center gap-1.5">
                 <span className={`flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold transition-all ${
@@ -171,7 +171,7 @@ export function Onboarding() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 px-8 py-10 max-w-2xl w-full mx-auto">
+        <div className="flex-1 px-4 sm:px-8 py-6 sm:py-10 max-w-2xl w-full mx-auto">
           <AnimatePresence mode="wait">
 
             {/* ── Role step ── */}
@@ -266,7 +266,7 @@ export function Onboarding() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                   {recommended.map((ch, idx) => {
                     const off = excluded.has(ch.id);
                     return (
@@ -303,9 +303,9 @@ export function Onboarding() {
         </div>
 
         {/* Footer CTA */}
-        <div className="flex-shrink-0 px-8 py-6 border-t"
+        <div className="flex-shrink-0 px-4 sm:px-8 py-4 sm:py-6 border-t"
           style={{ borderColor: 'rgba(255,255,255,0.07)', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
-          <div className="max-w-2xl mx-auto flex items-center gap-3">
+          <div className="max-w-2xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             {step === 'preview' && (
               <button onClick={() => setStep('role')}
                 className="px-5 py-3 rounded-xl text-sm font-medium text-white/35 hover:text-white/65 transition-colors border"

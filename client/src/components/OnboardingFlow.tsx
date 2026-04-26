@@ -213,18 +213,18 @@ export function OnboardingFlow({ onComplete }: Props) {
   const ctaDisabled = step === 1 && selectedTopics.size === 0;
 
   return (
-    <div className="fixed inset-0 z-[var(--z-modal)] flex" style={{ background: '#09090f' }}>
+    <div className="fixed inset-0 z-[var(--z-modal)] flex flex-col lg:flex-row" style={{ background: '#09090f' }}>
 
       {/* Left panel — desktop only */}
-      <div className="w-[420px] flex-shrink-0 border-r" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+      <div className="w-full lg:w-[420px] flex-shrink-0 border-r border-b lg:border-b-0" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
         <LeftPanel step={step} activeRole={activeRole} />
       </div>
 
       {/* Right panel */}
-      <div ref={topRef} className="flex-1 flex flex-col overflow-y-auto">
+      <div ref={topRef} className="flex-1 flex flex-col overflow-y-auto min-h-0">
 
         {/* Top bar */}
-        <div className="flex items-center justify-between px-8 py-5 border-b flex-shrink-0"
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-8 py-4 sm:py-5 border-b flex-shrink-0"
           style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-2">
@@ -235,7 +235,7 @@ export function OnboardingFlow({ onComplete }: Props) {
           <div className="hidden lg:block" />
 
           {/* Step counter */}
-          <div className="flex items-center gap-1.5">
+          <div className="hidden sm:flex items-center gap-1.5">
             {['Role', 'Topics', 'Certs'].map((label, i) => (
               <div key={label} className="flex items-center gap-1.5">
                 <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all ${
@@ -257,7 +257,7 @@ export function OnboardingFlow({ onComplete }: Props) {
         </div>
 
         {/* Step content */}
-        <div className="flex-1 px-8 py-10 max-w-2xl w-full mx-auto">
+        <div className="flex-1 px-4 sm:px-8 py-6 sm:py-10 max-w-2xl w-full mx-auto">
           <AnimatePresence mode="wait">
 
             {/* ── Step 0: Role ── */}
@@ -427,9 +427,9 @@ export function OnboardingFlow({ onComplete }: Props) {
         </div>
 
         {/* Footer CTA */}
-        <div className="flex-shrink-0 px-8 py-6 border-t"
+        <div className="flex-shrink-0 px-4 sm:px-8 py-4 sm:py-6 border-t"
           style={{ borderColor: 'rgba(255,255,255,0.07)', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
-          <div className="max-w-2xl mx-auto flex items-center gap-3">
+          <div className="max-w-2xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             {step > 0 && (
               <button onClick={() => setStep(s => s - 1)}
                 className="px-5 py-3 rounded-xl text-sm font-medium text-white/40 hover:text-white/70 transition-colors border"
