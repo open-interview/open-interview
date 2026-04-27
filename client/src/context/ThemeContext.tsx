@@ -30,7 +30,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // migrate legacy theme values
     if (saved === 'genz-dark') return 'dark';
     if (saved === 'genz-light') return 'light';
-    return (saved === 'dark' || saved === 'light') ? saved : 'dark';
+    return (saved === 'dark' || saved === 'light') ? saved : 'light';
   });
 
   const [autoRotate, setAutoRotate] = useState(false);
