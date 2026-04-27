@@ -1,0 +1,190 @@
+---
+id: e53aeeb5-fa34-4125-97a4-c7c9a96a9fb4
+title: "A NUMA Tale: Unraveling Tail Latency with Linux Memory Reclaim"
+slug: a-numa-tale-unraveling-tail-latency-with-linux-memory-reclaim
+channel: linux
+difficulty: intermediate
+tags: ["linux"]
+createdAt: 2026-04-27T05:37:33.379Z
+funFact: Many developers discover that the smallest knob—vm.vfs_cache_pressure—can have outsized effects on tail latency when memory pressure decouples from CPU contention.
+diagram: |
+  flowchart TD
+  A[Start: Tail latency spike] --> B{Is there memory reclaim pressure?}
+  B -- Yes --> C[Check vmstat si/so and /proc/vmstat pgsteal]
+  B -- No --> D[Investigate other causes]
+  C --> E[Map NUMA topology with numactl --hardware]
+  E --> F[Identify memory-heavy processes with ps -aux --sort=-rss]
+  F --> G[Apply safe mitigations: min_free_kbytes, vfs_cache_pressure, NUMA pinning]
+  G --> H[Re-measure observability: vmstat, pgsteal, numactl outputs]
+  H --> I[If improved, standardize monitoring; else rollback]
+  I --> J[End]
+images:
+  - url: https://illustrations.popsy.co/amber/engineer.svg
+    alt: Engineer analyzing memory pressure on a server
+  - url: https://illustrations.popsy.co/amber/team-work.svg
+    alt: Team collaborating on performance tuning
+  - url: /images/pixel-q-11447.svg
+    alt: "A NUMA Tale: Unraveling Tail Latency with Linux Memory Reclaim - Pixel Art Illustration"
+  - url: /images/pixel-q-11447-3.svg
+    alt: "A NUMA Tale: Unraveling Tail Latency with Linux Memory Reclaim - Illustration"
+sources:
+  - title: Optimizing Linux Memory Management for Low-latency / High-throughput Databases
+    url: http://web.archive.org/web/20131007000000/http://engineering.linkedin.com/performance/optimizing-linux-memory-management-low-latency-high-throughput-databases
+    type: article
+  - title: Non-Uniform Memory Access (NUMA)
+    url: https://en.wikipedia.org/wiki/NUMA
+    type: article
+  - title: Virtual memory
+    url: https://en.wikipedia.org/wiki/Virtual_memory
+    type: article
+  - title: Page cache
+    url: https://en.wikipedia.org/wiki/Page_cache
+    type: article
+  - title: The Linux Kernel source on GitHub
+    url: https://github.com/torvalds/linux
+    type: repository
+  - title: numactl (NUMA policy tool) on GitHub
+    url: https://github.com/numactl/numactl
+    type: repository
+  - title: Swapping
+    url: https://en.wikipedia.org/wiki/Swapping
+    type: article
+  - title: Swappiness
+    url: https://en.wikipedia.org/wiki/Swappiness
+    type: article
+---
+
+> **Picture this:** In 2013, LinkedIn faced intermittent tail latency spikes on NUMA servers during peak ingestion for an online-graph workload. Standard metrics looked healthy, yet tail latency persisted, traced to how Linux memory reclaim interacts with NUMA locality [1]. This journey walks through a concrete, real-world diagnostic workflow using only default Linux tools to confirm reclaim pressure, identify the NUMA node(s) and processes responsible, and apply safe mitigations that don’t disturb other tenants.
+
+## Context: The problem that refuses to quit
+
+Many developers confront the paradox: a system appears healthy in aggregate, but tail latency stubbornly lingers. Building on LinkedIn's experience that zone reclaim on NUMA systems can dominate tail latency [1], the goal is to verify whether kernel memory reclaim is pulling the tail, and if so, where the pressure is originating. The first step is to observe memory activity in real time and spot signs that reclaim is competing with app memory. The following command sequences establish baseline visibility and hint at reclamation pressure.
+
+```
+vmstat 1 20
+```
+
+Interpretation: look for si/so (swap in/out) spikes and cross-check with pgsteal trends in /proc/vmstat. If si/so spike while free memory remains seemingly adequate, reclamation pressure may be at fault. Example observation (abbreviated):
+
+```
+procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
+r  b   swpd   free   cache   buff  si so    bi  bo   in   cs us sy id wa st
+ 1  0      0  1024M  200M   50M  120  95  2  46   420  380  3  1 96  0  0
+```
+
+Additionally, inspect kernel memory reclaim indicators directly:
+
+```
+cat /proc/vmstat | grep -E 'pgsteal|pgfault|pgmajfault|pginod|pgscan'
+```
+
+If pgsteal increments align with si/so bursts, reclaim pressure is real rather than a transient anomaly. Inline citation [1] anchors this reasoning to the LinkedIn case study. 
+
+
+## Journey: Mapping memory and NUMA locality
+
+Building on the initial signal, the next discovery path maps memory across NUMA nodes and surfaces where reclamation pressure concentrates. Start with a top-down view of NUMA topology and per-node memory distribution. This reveals constrained nodes and potential hotspots that reclamation may be exploiting.
+
+```
+numactl --hardware
+```
+
+And inspect per-node memory statistics directly:
+
+```
+for n in /sys/devices/system/node/node*/meminfo; do echo "=== $n ==="; cat $n; done
+```
+
+These outputs identify how memory is allocated across nodes and whether some nodes are under memory pressure. Understanding current NUMA binding policies helps predict how memory pressure may cascade across tenants. Verify the current NUMA binding policy:
+
+```
+numactl --show
+```
+
+Finally, list memory-heavy processes to understand who might be driving demand:
+
+```
+ps aux --sort=-rss | head -20
+```
+
+Together, these steps reveal whether tail latency correlates with NUMA node pressure and which processes are the loudest memory consumers, setting up targeted mitigations. Transition: with the NUMA map in hand, the next move is to tailor mitigation without broad disruption. 
+
+
+## Twist: The art of safe tuning without collateral damage
+
+A surprising twist often emerges: the urge to blunt memory pressure with aggressive defaults can swing the balance against other tenants, especially in multi-tenant environments. The counterintuitive insight is that safety comes from targeted, conservative changes rather than sweeping rewrites. The story shifts to three precise mitigations that address reclaim pressure while preserving fairness and predictability.
+
+1) Increase vm.min_free_kbytes conservatively (roughly 1% of total RAM). This helps keep pages readily reclaimable without triggering excessive paging under peak load.
+
+```
+TOTAL_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+MIN_FREE_KB=$((TOTAL_KB / 100))
+sudo sysctl -w vm.min_free_kbytes=${MIN_FREE_KB}
+```
+
+2) Tune vm.vfs_cache_pressure to 200 to favor reclaim of inode/dentry caches when memory is tight, reducing cache-related stalls:
+
+```
+sudo sysctl -w vm.vfs_cache_pressure=200
+```
+
+3) Pin critical ingestion/processing processes to isolated NUMA nodes using either numactl or taskset, so that important workloads don’t compete with less critical tenants for memory.
+
+```
+# Example: bind a critical PID 1234 to NUMA node 0
+sudo numactl --cpunodebind=0 --membind=0 -p 1234
+# Or launch a critical process on a specific node
+sudo numactl --cpunodebind=0 --membind=0 /path/to/critical-service --args
+```
+
+These steps are deliberately cautious, designed to avoid regressing other workloads. After applying changes, verify observability to ensure performance improves without regressions. 
+
+
+## Verification: Observability after changes
+
+Post-mitigation, the same observability surfaces should be monitored to confirm the intended effect. Re-run the baseline checks and compare:
+
+```
+vmstat 1 20
+```
+
+```
+cat /proc/vmstat | grep -E 'pgsteal|pgfault|pgmajfault'
+```
+
+```
+numactl --hardware
+```
+```
+ps aux --sort=-rss | head -20
+```
+
+If the tail latency improved while aggregate metrics remained healthy, the mitigations achieved their goal without destabilizing other tenants. If performance did not improve or worsened for other workloads, revert the changes or re-balance pinning to less aggressive bindings. The discipline here is incremental change and close observation. The LinkedIn case study reinforces this approach: careful VM tuning and NUMA-aware process affinity can yield latency improvements without broad disruption [1]. 
+
+
+## Real-world proof: LinkedIn’s war story
+
+The opening hook isn’t fiction. LinkedIn’s production environment faced intermittent latency bursts during peak ingestion on NUMA servers, driven by how Linux memory reclamation interacts with NUMA locality. The lesson: zone reclaim can dominate tail latency in latency-sensitive, multi-tenant workloads, and observability with native tools can illuminate a path to meaningful improvements without sweeping changes [1]. This war story anchors the practical workflow described above, highlighting the delicate balance between reclaim behavior and NUMA locality. The actionable takeaway is a disciplined, data-first approach that starts with visibility and ends with targeted, safe tuning rather than broad sweeps. Inline citation [1] anchors this narrative to the source material. 
+
+
+## Conclusion: What to do tomorrow
+
+ tail latency in NUMA-heavy, multi-tenant environments often hides in plain sight—behind kernel memory reclamation and node topology. The three-part workflow—confirm reclaim pressure, identify NUMA nodes and processes, and apply conservative, targeted mitigations—offers a pragmatic path forward. Start by verifying reclaim indicators with vmstat and /proc/vmstat, map NUMA topology, and then apply minimal, reversible tunings to vm.min_free_kbytes and vm.vfs_cache_pressure, while isolating critical processes. The discipline of observability remains the strongest ally: continuous monitoring should be the default, not an afterthought. A memorable takeaway to share with the team: small, deliberate VM tuning guided by NUMA awareness can unlock dramatic latency improvements without destabilizing multi-tenant workloads. 
+
+
+> 💡 **Did you know?** Many developers discover that the smallest knob—vm.vfs_cache_pressure—can have outsized effects on tail latency when memory pressure decouples from CPU contention.
+
+## References
+
+1. [Optimizing Linux Memory Management for Low-latency / High-throughput Databases](http://web.archive.org/web/20131007000000/http://engineering.linkedin.com/performance/optimizing-linux-memory-management-low-latency-high-throughput-databases)
+2. [Non-Uniform Memory Access (NUMA)](https://en.wikipedia.org/wiki/NUMA)
+3. [Virtual memory](https://en.wikipedia.org/wiki/Virtual_memory)
+4. [Page cache](https://en.wikipedia.org/wiki/Page_cache)
+5. [The Linux Kernel source on GitHub](https://github.com/torvalds/linux)
+6. [numactl (NUMA policy tool) on GitHub](https://github.com/numactl/numactl)
+7. [Swapping](https://en.wikipedia.org/wiki/Swapping)
+8. [Swappiness](https://en.wikipedia.org/wiki/Swappiness)
+
+## Wrapping Up
+
+The real-world LinkedIn case demonstrates that deep observability and careful, minimal VM tuning can yield meaningful latency improvements without wide-reaching disruption. Tomorrow, teams should adopt a disciplined, NUMA-aware monitoring rhythm and be ready to roll back any aggressive changes that ripple through multi-tenant workloads.
