@@ -432,7 +432,7 @@ export default function CertificationPractice() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <div className="text-center mb-10">
               <h1 className="text-5xl md:text-6xl font-black mb-3">
-                <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">Certification Practice</span>
+                <span className="bg-gradient-to-r from-primary to-primary bg-clip-text text-transparent">Certification Practice</span>
               </h1>
             </div>
             <div className="flex items-center justify-center py-20">
@@ -493,7 +493,7 @@ export default function CertificationPractice() {
                     <div key={i} className={`w-2.5 h-2.5 rounded-full ${
                       i < testAnswers.length
                         ? testAnswers[i]?.isCorrect ? 'bg-green-500' : 'bg-red-500'
-                        : i === currentTestIndex ? 'bg-gradient-to-r from-primary to-cyan-500' : 'bg-muted'
+                        : i === currentTestIndex ? 'bg-gradient-to-r from-primary to-primary' : 'bg-muted'
                     }`} />
                   ))}
                 </div>
@@ -645,7 +645,7 @@ export default function CertificationPractice() {
                   </button>
                 ) : (
                   <>
-                    <button onClick={retryTest} className="flex-1 min-h-[44px] py-3 bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground rounded-xl font-medium flex items-center justify-center gap-2 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90">
+                    <button onClick={retryTest} className="flex-1 min-h-[44px] py-3 bg-gradient-to-r from-primary to-primary text-primary-foreground rounded-xl font-medium flex items-center justify-center gap-2 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90">
                       <RefreshCw className="w-4 h-4" /> Retry
                     </button>
                     <button onClick={() => setShowSkipConfirm(true)} className="flex-1 min-h-[44px] py-3 bg-muted rounded-xl font-medium flex items-center justify-center gap-2 text-muted-foreground cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80">
@@ -753,7 +753,7 @@ export default function CertificationPractice() {
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-[10px] text-muted-foreground tabular-nums">Q{currentIndex + 1}/{totalQuestions}</span>
                   <div className="relative flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-[200px]">
-                    <div className="h-full bg-gradient-to-r from-primary to-cyan-500 rounded-full transition-all" style={{ width: `${((currentIndex + 1) / totalQuestions) * 100}%` }} />
+                    <div className="h-full bg-gradient-to-r from-primary to-primary rounded-full transition-all" style={{ width: `${((currentIndex + 1) / totalQuestions) * 100}%` }} />
                     {Array.from({ length: Math.floor(totalQuestions / QUESTIONS_PER_TEST) }).map((_, i) => {
                       const idx = (i + 1) * QUESTIONS_PER_TEST;
                       const pos = (idx / totalQuestions) * 100;
@@ -777,7 +777,7 @@ export default function CertificationPractice() {
                         ? diff === 'beginner' ? 'bg-green-500/20 text-green-500' 
                           : diff === 'intermediate' ? 'bg-yellow-500/20 text-yellow-500'
                           : diff === 'advanced' ? 'bg-red-500/20 text-red-500'
-                          : 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground'
+                          : 'bg-gradient-to-r from-primary to-primary text-primary-foreground'
                         : 'bg-muted/50 text-muted-foreground hover:bg-muted'
                     }`}>
                     {diff === 'all' ? 'All' : diff === 'beginner' ? 'Easy' : diff === 'intermediate' ? 'Med' : 'Hard'}
@@ -802,7 +802,7 @@ export default function CertificationPractice() {
                       ? diff === 'beginner' ? 'bg-green-500/20 text-green-500' 
                         : diff === 'intermediate' ? 'bg-yellow-500/20 text-yellow-500'
                         : diff === 'advanced' ? 'bg-red-500/20 text-red-500'
-                        : 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground'
+                        : 'bg-gradient-to-r from-primary to-primary text-primary-foreground'
                       : 'bg-muted/50 text-muted-foreground'
                   }`}>
                   {diff === 'all' ? 'All' : diff === 'beginner' ? 'Easy' : diff === 'intermediate' ? 'Medium' : 'Hard'}
@@ -889,7 +889,7 @@ export default function CertificationPractice() {
                 <button onClick={goToPrev} disabled={currentIndex === 0} className="flex items-center gap-1 px-2.5 min-h-[44px] bg-muted rounded-md disabled:opacity-40 text-xs cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80 disabled:cursor-default">
                   <ChevronLeft className="w-4 h-4" />Prev
                 </button>
-                <button onClick={markCompleted} disabled={isCompleted} className={`flex items-center gap-1 px-3 min-h-[44px] rounded-md text-xs font-medium cursor-pointer transition-all duration-150 ease-out ${isCompleted ? 'bg-green-500/10 text-green-500 cursor-default' : 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground hover:opacity-90'}`}>
+                <button onClick={markCompleted} disabled={isCompleted} className={`flex items-center gap-1 px-3 min-h-[44px] rounded-md text-xs font-medium cursor-pointer transition-all duration-150 ease-out ${isCompleted ? 'bg-green-500/10 text-green-500 cursor-default' : 'bg-gradient-to-r from-primary to-primary text-primary-foreground hover:opacity-90'}`}>
                   <Check className="w-3.5 h-3.5" />{isCompleted ? 'Done' : 'Mark Done'}
                 </button>
                 <button onClick={goToNext} disabled={currentIndex === totalQuestions - 1} className="flex items-center gap-1 px-2.5 min-h-[44px] bg-muted rounded-md disabled:opacity-40 text-xs cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80 disabled:cursor-default">

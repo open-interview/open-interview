@@ -411,16 +411,16 @@ export default function VoicePractice() {
                     onClick={() => { setMode(value); setStarted(true); }}
                     className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 text-center transition-all cursor-pointer active:scale-95 ${
                       mode === value
-                        ? 'border-violet-500 bg-violet-500/10'
-                        : 'border-white/10 bg-white/5 hover:border-violet-500/50'
+                        ? 'border-primary bg-primary/10'
+                        : 'border-white/10 bg-white/5 hover:border-primary/50'
                     }`}
                     style={{ 
                       boxShadow: mode === value 
-                        ? '0 4px 20px rgba(124,58,237,0.3), inset 0 1px 0 rgba(255,255,255,0.1)' 
+                        ? '0 4px 20px rgba(60,64,67,0.15), inset 0 1px 0 rgba(255,255,255,0.1)' 
                         : '0 2px 8px rgba(0,0,0,0.15)' 
                     }}
                   >
-                    <Icon className="w-6 h-6 text-violet-400" />
+                    <Icon className="w-6 h-6 text-primary" />
                     <div>
                       <p className="font-semibold text-foreground text-sm">{label}</p>
                       <p className="text-xs text-muted-foreground mt-1">{desc}</p>
@@ -435,7 +435,7 @@ export default function VoicePractice() {
                 className="w-full min-h-[52px] rounded-xl font-semibold text-white text-base cursor-pointer transition-all active:scale-95"
                 style={{ 
                   background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #db2777 100%)',
-                  boxShadow: '0 4px 20px rgba(124,58,237,0.4), inset 0 1px 0 rgba(255,255,255,0.2)' 
+                  boxShadow: '0 4px 20px rgba(60,64,67,0.15), inset 0 1px 0 rgba(255,255,255,0.2)' 
                 }}
               >
                 Start Practicing
@@ -480,7 +480,7 @@ export default function VoicePractice() {
               {/* Thicker violet gradient progress bar */}
               <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-violet-500 to-violet-400 transition-all duration-300"
+                  className="h-full rounded-full bg-gradient-to-r from-primary to-primary transition-all duration-300"
                   style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
                 />
               </div>
@@ -492,9 +492,9 @@ export default function VoicePractice() {
                     key={i}
                     className={`rounded-full transition-all duration-300 ${
                       i < currentIndex
-                        ? 'w-1.5 h-1.5 bg-violet-500'
+                        ? 'w-1.5 h-1.5 bg-primary'
                         : i === currentIndex
-                        ? 'w-2 h-2 bg-violet-400 animate-pulse'
+                        ? 'w-2 h-2 bg-primary animate-pulse'
                         : 'w-1.5 h-1.5 bg-muted-foreground/30'
                     }`}
                   />
@@ -516,7 +516,7 @@ export default function VoicePractice() {
               >
                 {/* Question Card */}
                 <div className="rounded-2xl border border-border bg-card p-6 relative overflow-hidden pl-8">
-                  <div className="w-1 h-full rounded-full bg-gradient-to-b from-violet-500 to-cyan-500 absolute left-0 top-0" />
+                  <div className="w-1 h-full rounded-full bg-gradient-to-b from-primary to-primary absolute left-0 top-0" />
                   <div className="mb-4">
                     <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                       Question {currentIndex + 1} of {questions.length}
@@ -558,7 +558,7 @@ export default function VoicePractice() {
                   {showRevealButton && !showAnswer && (
                     <button
                       onClick={() => setShowAnswer(true)}
-                      className="w-full border border-violet-500/40 bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 rounded-xl py-3 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                      className="w-full border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl py-3 flex items-center justify-center gap-2 transition-all cursor-pointer"
                     >
                       <Eye className="w-4 h-4" />
                       Reveal Answer
@@ -577,7 +577,7 @@ export default function VoicePractice() {
                     >
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
-                          <Eye className="w-4 h-4 text-violet-400" />
+                          <Eye className="w-4 h-4 text-primary" />
                           <span className="text-sm font-semibold text-foreground">
                             {mode === 'training' ? 'Answer to Read' : 'Ideal Answer'}
                           </span>
@@ -601,8 +601,8 @@ export default function VoicePractice() {
                   <div className="flex flex-col items-center gap-6">
                     <div className="relative flex items-center justify-center">
                       {recordingState === 'recording' && <>
-                        <div className="absolute rounded-full bg-violet-500 animate-ping" style={{ width: '150%', height: '150%', opacity: 0.3 }} />
-                        <div className="absolute rounded-full bg-violet-500 animate-ping" style={{ width: '200%', height: '200%', opacity: 0.15, animationDelay: '0.3s' }} />
+                        <div className="absolute rounded-full bg-primary animate-ping" style={{ width: '150%', height: '150%', opacity: 0.3 }} />
+                        <div className="absolute rounded-full bg-primary animate-ping" style={{ width: '200%', height: '200%', opacity: 0.15, animationDelay: '0.3s' }} />
                       </>}
                       <Microphone
                         isRecording={recordingState === 'recording'}
@@ -613,14 +613,14 @@ export default function VoicePractice() {
                     </div>
 
                     {recordingState === 'recording' && (
-                      <p className="text-violet-400 font-mono text-xl font-semibold tabular-nums">
+                      <p className="text-primary font-mono text-xl font-semibold tabular-nums">
                         {`${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')}`}
                       </p>
                     )}
 
                     {/* Transcript */}
                     <div className="w-full">
-                      <div className={`bg-background/50 rounded-xl p-4 min-h-[100px] border transition-all duration-300 ${recordingState === 'recording' ? 'border-violet-500/50 shadow-violet-500/20 shadow-lg' : 'border-border'}`}>
+                      <div className={`bg-background/50 rounded-xl p-4 min-h-[100px] border transition-all duration-300 ${recordingState === 'recording' ? 'border-primary/50 shadow-violet-500/20 shadow-lg' : 'border-border'}`}>
                         {transcript || interimTranscript ? (
                           <p className="text-foreground text-sm whitespace-pre-wrap">
                             {transcript}

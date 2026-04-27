@@ -200,7 +200,7 @@ export function Onboarding() {
                     window.location.href = '/';
                   }}
                   className="w-full flex items-center gap-4 p-4 rounded-xl mb-6 transition-all"
-                  style={{ background: 'rgba(124,58,237,0.1)', border: '1.5px solid rgba(124,58,237,0.25)' }}
+                  style={{ background: 'rgba(60,64,67,0.15)', border: '1.5px solid rgba(60,64,67,0.15)' }}
                 >
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: 'linear-gradient(135deg, #7c3aed, #06b6d4)' }}>

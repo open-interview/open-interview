@@ -87,7 +87,7 @@ const STREAK_ACHIEVEMENTS: Achievement[] = [
     tier: 'diamond',
     icon: 'crown',
     color: '#b9f2ff',
-    gradient: 'from-cyan-300 to-blue-500',
+    gradient: 'from-primary to-blue-500',
     requirements: [{ type: 'streak', metric: 'current_streak', target: 100 }],
     rewards: [
       { type: 'xp', amount: 2000 },
@@ -178,7 +178,7 @@ const COMPLETION_ACHIEVEMENTS: Achievement[] = [
     tier: 'diamond',
     icon: 'trophy',
     color: '#b9f2ff',
-    gradient: 'from-cyan-300 to-blue-500',
+    gradient: 'from-primary to-blue-500',
     requirements: [{ type: 'count', metric: 'total_completed', target: 500 }],
     rewards: [
       { type: 'xp', amount: 1000 },
@@ -195,7 +195,7 @@ const COMPLETION_ACHIEVEMENTS: Achievement[] = [
     tier: 'diamond',
     icon: 'crown',
     color: '#b9f2ff',
-    gradient: 'from-cyan-300 to-blue-500',
+    gradient: 'from-primary to-blue-500',
     requirements: [{ type: 'count', metric: 'total_completed', target: 1000 }],
     rewards: [
       { type: 'xp', amount: 5000 },
@@ -268,7 +268,7 @@ const MASTERY_ACHIEVEMENTS: Achievement[] = [
     tier: 'diamond',
     icon: 'star',
     color: '#b9f2ff',
-    gradient: 'from-cyan-300 to-blue-500',
+    gradient: 'from-primary to-blue-500',
     requirements: [{ type: 'count', metric: 'advanced_completed', target: 100 }],
     rewards: [
       { type: 'xp', amount: 1000 },
@@ -384,7 +384,7 @@ const SPECIAL_ACHIEVEMENTS: Achievement[] = [
     tier: 'bronze',
     icon: 'moon',
     color: '#6366f1',
-    gradient: 'from-indigo-400 to-indigo-600',
+    gradient: 'from-primary to-primary',
     requirements: [{ type: 'time', metric: 'study_hour', target: 23, operator: 'gte' }],
     rewards: [
       { type: 'xp', amount: 25 },
@@ -524,7 +524,7 @@ const WEEKLY_CHALLENGES: Achievement[] = [
     tier: 'silver',
     icon: 'trophy',
     color: '#8b5cf6',
-    gradient: 'from-purple-400 to-purple-600',
+    gradient: 'from-primary to-primary',
     requirements: [{ type: 'count', metric: 'questions_this_week', target: 50 }],
     rewards: [
       { type: 'xp', amount: 500 },
@@ -542,7 +542,7 @@ const WEEKLY_CHALLENGES: Achievement[] = [
     tier: 'silver',
     icon: 'compass',
     color: '#8b5cf6',
-    gradient: 'from-purple-400 to-purple-600',
+    gradient: 'from-primary to-primary',
     requirements: [{ type: 'count', metric: 'channels_this_week', target: 5 }],
     rewards: [
       { type: 'xp', amount: 300 },
@@ -560,7 +560,7 @@ const WEEKLY_CHALLENGES: Achievement[] = [
     tier: 'gold',
     icon: 'mic',
     color: '#8b5cf6',
-    gradient: 'from-purple-400 to-purple-600',
+    gradient: 'from-primary to-primary',
     requirements: [{ type: 'count', metric: 'voice_interviews_this_week', target: 3 }],
     rewards: [
       { type: 'xp', amount: 500 },
@@ -651,7 +651,7 @@ const VOICE_ACHIEVEMENTS: Achievement[] = [
     tier: 'diamond',
     icon: 'star',
     color: '#b9f2ff',
-    gradient: 'from-cyan-300 to-blue-500',
+    gradient: 'from-primary to-blue-500',
     requirements: [{ type: 'count', metric: 'voice_successes', target: 10 }],
     rewards: [
       { type: 'xp', amount: 1000 },
@@ -709,7 +709,7 @@ const CERTIFICATION_ACHIEVEMENTS: Achievement[] = [
     tier: 'diamond',
     icon: 'crown',
     color: '#b9f2ff',
-    gradient: 'from-cyan-300 to-blue-500',
+    gradient: 'from-primary to-blue-500',
     requirements: [{ type: 'count', metric: 'certifications_passed', target: 5 }],
     rewards: [
       { type: 'xp', amount: 3000 },

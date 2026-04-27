@@ -81,7 +81,7 @@ export function FloatingButton({
           aria-label={label || 'Floating action button'}
           className={cn(
             "fixed z-40 flex items-center gap-2",
-            "bg-gradient-to-r from-primary to-cyan-500",
+            "bg-gradient-to-r from-primary to-primary",
             "text-primary-foreground font-bold",
             "rounded-full shadow-lg shadow-primary/50",
             "transition-all duration-200",

@@ -162,7 +162,7 @@ export default function Flashcards() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <div className="text-center mb-10">
               <h1 className="text-5xl md:text-6xl font-black mb-3">
-                <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">Flashcards</span>
+                <span className="bg-gradient-to-r from-primary to-primary bg-clip-text text-transparent">Flashcards</span>
               </h1>
             </div>
             <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
@@ -315,7 +315,7 @@ export default function Flashcards() {
                       {current.mnemonic && (
                         <div className="rounded-xl px-3 py-2 text-xs text-muted-foreground flex-shrink-0"
                           style={{ background: 'var(--surface-3)', border: '1px solid var(--color-border-subtle)' }}>
-                          <span className="text-purple-400 font-bold mr-1">🧠</span>{current.mnemonic}
+                          <span className="text-primary font-bold mr-1">🧠</span>{current.mnemonic}
                         </div>
                       )}
                       <div className="flex-shrink-0" onClick={e => e.stopPropagation()}>

@@ -23,7 +23,7 @@ export function PageHeader({ title, subtitle, children }: PageHeaderProps) {
       className="text-center mb-10"
     >
       <h1 className="text-5xl md:text-6xl font-black mb-3">
-        <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">
+        <span className="bg-gradient-to-r from-primary to-primary bg-clip-text text-transparent">
           {title}
         </span>
       </h1>
@@ -91,7 +91,7 @@ export function FilterPill({ label, active, onClick, badge }: FilterPillProps) {
       className={cn(
         'cursor-pointer px-4 min-h-[44px] rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-150',
         active
-          ? 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground'
+          ? 'bg-gradient-to-r from-primary to-primary text-primary-foreground'
           : 'bg-muted/50 border border-border text-muted-foreground hover:bg-muted'
       )}
     >

@@ -296,7 +296,7 @@ export default function TestSessionPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <div className="text-center mb-10">
               <h1 className="text-5xl md:text-6xl font-black mb-3">
-                <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">Test Session</span>
+                <span className="bg-gradient-to-r from-primary to-primary bg-clip-text text-transparent">Test Session</span>
               </h1>
             </div>
             <div className="flex items-center justify-center py-20">

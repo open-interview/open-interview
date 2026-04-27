@@ -69,10 +69,10 @@ const historyDataCache = new Map<string, QuestionHistoryData>();
 const eventConfig: Record<EventType, { icon: typeof Plus; text: string; bg: string; border: string; label: string }> = {
   created: { icon: Plus, text: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/30', label: 'Created' },
   updated: { icon: Edit, text: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30', label: 'Updated' },
-  improved: { icon: Sparkles, text: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/30', label: 'Improved' },
+  improved: { icon: Sparkles, text: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/30', label: 'Improved' },
   flagged: { icon: AlertTriangle, text: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', label: 'Flagged' },
   verified: { icon: CheckCircle, text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', label: 'Verified' },
-  enriched: { icon: RefreshCw, text: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/30', label: 'Enriched' },
+  enriched: { icon: RefreshCw, text: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/30', label: 'Enriched' },
   deleted: { icon: Trash2, text: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30', label: 'Deleted' },
   restored: { icon: RefreshCw, text: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/30', label: 'Restored' },
 };

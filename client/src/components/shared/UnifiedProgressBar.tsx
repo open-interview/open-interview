@@ -14,10 +14,10 @@ interface UnifiedProgressBarProps {
 }
 
 const modeColors = {
-  browse: 'from-primary to-cyan-400',
+  browse: 'from-primary to-primary',
   test: 'from-amber-400 to-orange-400',
-  interview: 'from-purple-400 to-pink-400',
-  certification: 'from-blue-400 to-indigo-400',
+  interview: 'from-primary to-pink-400',
+  certification: 'from-blue-400 to-primary',
   review: 'from-green-400 to-emerald-400'
 };
 

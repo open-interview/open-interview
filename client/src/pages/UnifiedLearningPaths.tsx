@@ -369,10 +369,10 @@ export default function UnifiedLearningPaths() {
   };
   const getColorForPath = (pathType: string) => {
     const map: Record<string, string> = {
-      'job-title': 'from-blue-500 to-cyan-500', 'company': 'from-green-500 to-emerald-500',
-      'skill': 'from-purple-500 to-pink-500', 'certification': 'from-orange-500 to-red-500',
+      'job-title': 'from-blue-500 to-primary', 'company': 'from-green-500 to-emerald-500',
+      'skill': 'from-primary to-pink-500', 'certification': 'from-orange-500 to-red-500',
     };
-    return map[pathType] || 'from-indigo-500 to-purple-500';
+    return map[pathType] || 'from-primary to-primary';
   };
   const getSalaryRange = (jobTitle: string | null) => {
     const map: Record<string, string> = {

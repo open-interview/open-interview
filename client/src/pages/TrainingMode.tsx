@@ -385,7 +385,7 @@ export default function TrainingMode() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <div className="text-center mb-10">
               <h1 className="text-5xl md:text-6xl font-black mb-3">
-                <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">Training Mode</span>
+                <span className="bg-gradient-to-r from-primary to-primary bg-clip-text text-transparent">Training Mode</span>
               </h1>
             </div>
             <div className="flex items-center justify-center py-20">
@@ -409,7 +409,7 @@ export default function TrainingMode() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <div className="text-center mb-10">
               <h1 className="text-5xl md:text-6xl font-black mb-3">
-                <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">Training Mode</span>
+                <span className="bg-gradient-to-r from-primary to-primary bg-clip-text text-transparent">Training Mode</span>
               </h1>
             </div>
             <div className="flex items-center justify-center py-20">
@@ -486,7 +486,7 @@ export default function TrainingMode() {
           {/* Progress bar */}
           <div className="h-1.5 bg-muted">
             <motion.div 
-              className="h-full bg-gradient-to-r from-primary to-purple-500"
+              className="h-full bg-gradient-to-r from-primary to-primary"
               initial={{ width: 0 }}
               animate={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
               transition={{ duration: 0.3 }}
@@ -507,7 +507,7 @@ export default function TrainingMode() {
               {/* Question Card */}
               <div className="rounded-2xl border border-border bg-card p-6">
                 <div className="flex items-start gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary flex items-center justify-center flex-shrink-0">
                     <Sparkles className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
@@ -598,7 +598,7 @@ export default function TrainingMode() {
                     {/* Score Header */}
                     <div className={`p-6 ${
                       currentFeedback.score >= 85 ? 'bg-gradient-to-r from-green-500/20 to-green-500/10' :
-                      currentFeedback.score >= 60 ? 'bg-gradient-to-r from-primary/20 to-purple-500/10' :
+                      currentFeedback.score >= 60 ? 'bg-gradient-to-r from-primary/20 to-primary/10' :
                       'bg-gradient-to-r from-yellow-500/20 to-orange-500/10'
                     }`}>
                       <div className="flex items-center justify-between">
@@ -672,7 +672,7 @@ export default function TrainingMode() {
                       {currentFeedback.keyPhrases.length > 0 && (
                         <div className="mb-6">
                           <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-                            <Sparkles className="w-4 h-4 text-purple-500" />
+                            <Sparkles className="w-4 h-4 text-primary" />
                             Key Terms from Answer
                           </h4>
                           <div className="flex flex-wrap gap-2">

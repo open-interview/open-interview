@@ -221,10 +221,10 @@ function DiagramSection({ diagram }: { diagram: string }) {
   return (
     <div className="p-6 bg-muted/50 backdrop-blur-xl rounded-xl border border-border">
       <div className="flex items-center gap-2 mb-4">
-        <div className="p-2 bg-purple-500/20 rounded-lg">
-          <Eye className="w-5 h-5 text-purple-400" />
+        <div className="p-2 bg-primary/20 rounded-lg">
+          <Eye className="w-5 h-5 text-primary" />
         </div>
-        <span className="text-sm font-bold text-purple-400 uppercase tracking-wider">Diagram</span>
+        <span className="text-sm font-bold text-primary uppercase tracking-wider">Diagram</span>
       </div>
       <div className="bg-background/30 rounded-xl p-4 overflow-x-auto">
         <EnhancedMermaid 
@@ -283,17 +283,17 @@ export default function ReviewSession() {
   // Get channel colors
   const getChannelColor = (channel: string) => {
     const colors: Record<string, string> = {
-      algorithms: 'from-blue-500/20 to-cyan-500/20 border-blue-500/30 text-blue-400',
-      'system-design': 'from-purple-500/20 to-pink-500/20 border-purple-500/30 text-purple-400',
+      algorithms: 'from-blue-500/20 to-primary/20 border-blue-500/30 text-blue-400',
+      'system-design': 'from-primary/20 to-pink-500/20 border-primary/30 text-primary',
       networking: 'from-green-500/20 to-emerald-500/20 border-green-500/30 text-green-400',
-      kubernetes: 'from-indigo-500/20 to-blue-500/20 border-indigo-500/30 text-indigo-400',
+      kubernetes: 'from-primary/20 to-blue-500/20 border-primary/30 text-primary',
       aws: 'from-orange-500/20 to-amber-500/20 border-orange-500/30 text-orange-400',
       gcp: 'from-red-500/20 to-rose-500/20 border-red-500/30 text-red-400',
-      azure: 'from-cyan-500/20 to-blue-500/20 border-cyan-500/30 text-cyan-400',
+      azure: 'from-primary/20 to-blue-500/20 border-primary/30 text-primary',
       database: 'from-yellow-500/20 to-orange-500/20 border-yellow-500/30 text-yellow-400',
       linux: 'from-gray-500/20 to-slate-500/20 border-gray-500/30 text-gray-400',
       security: 'from-red-500/20 to-pink-500/20 border-red-500/30 text-red-400',
-      devops: 'from-teal-500/20 to-cyan-500/20 border-teal-500/30 text-teal-400',
+      devops: 'from-teal-500/20 to-primary/20 border-teal-500/30 text-teal-400',
       behavioral: 'from-pink-500/20 to-rose-500/20 border-pink-500/30 text-pink-400',
       default: 'from-slate-500/20 to-zinc-500/20 border-slate-500/30 text-slate-400',
     };
@@ -447,7 +447,7 @@ export default function ReviewSession() {
             <p className="text-muted-foreground mb-6">You've reviewed all cards for today</p>
             <button
               onClick={() => setLocation('/')}
-              className="min-h-[44px] cursor-pointer px-8 py-4 bg-gradient-to-r from-primary to-cyan-500 rounded-[16px] font-bold text-black"
+              className="min-h-[44px] cursor-pointer px-8 py-4 bg-gradient-to-r from-primary to-primary rounded-[16px] font-bold text-black"
             >
               Back to Home
             </button>
@@ -482,7 +482,7 @@ export default function ReviewSession() {
                   {!selectedChannel && (
                     <button
                       onClick={() => handleChannelSelect(null)}
-                      className="min-h-[44px] px-4 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-primary to-cyan-500 text-black"
+                      className="min-h-[44px] px-4 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-primary to-primary text-black"
                     >
                       All ({allCards.length})
                     </button>
@@ -557,7 +557,7 @@ export default function ReviewSession() {
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${progress}%` }}
-                  className="h-full bg-gradient-to-r from-primary to-cyan-500"
+                  className="h-full bg-gradient-to-r from-primary to-primary"
                 />
               </div>
             </div>
@@ -624,11 +624,11 @@ export default function ReviewSession() {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.1 }}
-                            className="p-4 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-[20px] backdrop-blur-sm"
+                            className="p-4 bg-gradient-to-br from-primary/10 to-blue-500/10 border border-primary/30 rounded-[20px] backdrop-blur-sm"
                           >
                             <div className="flex items-center gap-2 mb-2">
-                              <Zap className="w-4 h-4 text-cyan-400" />
-                              <span className="text-xs font-bold text-cyan-400 uppercase">TL;DR</span>
+                              <Zap className="w-4 h-4 text-primary" />
+                              <span className="text-xs font-bold text-primary uppercase">TL;DR</span>
                             </div>
                             <p className="text-sm text-foreground">{currentCard.tldr}</p>
                           </motion.div>
@@ -663,7 +663,7 @@ export default function ReviewSession() {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.18 }}
-                            className="p-6 bg-gradient-to-br from-pink-500/10 to-purple-500/10 border border-pink-500/30 rounded-xl backdrop-blur-sm"
+                            className="p-6 bg-gradient-to-br from-pink-500/10 to-primary/10 border border-pink-500/30 rounded-xl backdrop-blur-sm"
                           >
                             <div className="flex items-center gap-2 mb-4">
                               <Check className="w-5 h-5 text-pink-400" />
@@ -679,7 +679,7 @@ export default function ReviewSession() {
                                     
                                     if (isInline) {
                                       return (
-                                        <code className="px-2 py-1 bg-cyan-500/20 text-cyan-300 rounded text-sm font-mono">
+                                        <code className="px-2 py-1 bg-primary/20 text-primary rounded text-sm font-mono">
                                           {children}
                                         </code>
                                       );
@@ -769,7 +769,7 @@ export default function ReviewSession() {
                                     
                                     if (isInline) {
                                       return (
-                                        <code className="px-2 py-1 bg-cyan-500/20 text-cyan-300 rounded text-sm font-mono">
+                                        <code className="px-2 py-1 bg-primary/20 text-primary rounded text-sm font-mono">
                                           {children}
                                         </code>
                                       );
@@ -835,7 +835,7 @@ export default function ReviewSession() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={handleRevealAnswer}
-                      className="w-full min-h-[44px] py-6 cursor-pointer bg-gradient-to-r from-primary to-cyan-500 rounded-[20px] font-bold text-xl text-black flex items-center justify-center gap-3"
+                      className="w-full min-h-[44px] py-6 cursor-pointer bg-gradient-to-r from-primary to-primary rounded-[20px] font-bold text-xl text-black flex items-center justify-center gap-3"
                     >
                       <Eye className="w-6 h-6" />
                       Tap to reveal answer

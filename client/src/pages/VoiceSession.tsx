@@ -52,7 +52,7 @@ function HighlightedTranscript({ text, keywords }: { text: string; keywords: str
     <>
       {parts.map((part, i) =>
         keywords.some(k => k.toLowerCase() === part.toLowerCase())
-          ? <mark key={i} className="bg-violet-500/25 text-violet-300 rounded px-0.5 not-italic">{part}</mark>
+          ? <mark key={i} className="bg-primary/25 text-primary rounded px-0.5 not-italic">{part}</mark>
           : <span key={i}>{part}</span>
       )}
     </>
@@ -402,7 +402,7 @@ export default function VoiceSession() {
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center">
             <div className="w-16 h-16 rounded-2xl bg-[#00d4ff]/20 flex items-center justify-center mx-auto mb-4">
-              <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
             <p className="text-muted-foreground">Loading sessions...</p>
           </div>
@@ -430,7 +430,7 @@ export default function VoiceSession() {
                   <Home className="w-5 h-5 text-muted-foreground" />
                 </button>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary flex items-center justify-center">
                     <Target className="w-5 h-5 text-black" />
                   </div>
                   <div>
@@ -475,7 +475,7 @@ export default function VoiceSession() {
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
-                              <h3 className="font-semibold text-foreground group-hover:text-cyan-500 transition-colors mb-1">
+                              <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-1">
                                 {session.topic}
                               </h3>
                               <p className="text-sm text-muted-foreground mb-3">{session.description}</p>
@@ -522,7 +522,7 @@ export default function VoiceSession() {
             className="max-w-lg w-full"
           >
             <Card className="p-8 text-center">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center mx-auto mb-6">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary flex items-center justify-center mx-auto mb-6">
                 <Target className="w-10 h-10 text-black" />
               </div>
               <h1 className="text-2xl font-bold text-foreground mb-2">{sessionState.session.topic}</h1>
@@ -647,7 +647,7 @@ export default function VoiceSession() {
                           <p className="text-sm text-foreground whitespace-pre-wrap">
                             <HighlightedTranscript text={transcript} keywords={(currentQuestion?.criticalPoints || []).map(p => p.phrase)} />
                             <span className="text-muted-foreground">{interimTranscript}</span>
-                            <span className="animate-pulse text-cyan-400">|</span>
+                            <span className="animate-pulse text-primary">|</span>
                           </p>
                         ) : (
                           <p className="text-sm text-muted-foreground italic">

@@ -88,7 +88,7 @@ function HighlightedTranscript({ text, keywords }: { text: string; keywords: str
     <>
       {parts.map((part, i) =>
         keywords.some(k => k.toLowerCase() === part.toLowerCase())
-          ? <mark key={i} className="bg-violet-500/25 text-violet-300 rounded px-0.5 not-italic">{part}</mark>
+          ? <mark key={i} className="bg-primary/25 text-primary rounded px-0.5 not-italic">{part}</mark>
           : <span key={i}>{part}</span>
       )}
     </>
@@ -642,7 +642,7 @@ export default function VoiceInterview() {
                   <RotateCcw className="w-4 h-4" /> Again
                 </button>
                 <button onClick={() => setLocation('/')}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-white font-medium rounded-xl transition-all text-sm active:scale-95" style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)', boxShadow: '0 4px 16px rgba(124, 58, 237, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)' }}>
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-white font-medium rounded-xl transition-all text-sm active:scale-95" style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)', boxShadow: '0 4px 16px rgba(60,64,67,0.15), inset 0 1px 0 rgba(255,255,255,0.2)' }}>
                   <Home className="w-4 h-4" /> Home
                 </button>
               </div>

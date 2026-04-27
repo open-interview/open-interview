@@ -72,7 +72,7 @@ export function StreakDisplay({
         <span className="text-lg leading-none">{isBroken ? '😔' : '🔥'}</span>
         <span className={`font-black tabular-nums ${isBroken ? 'text-[var(--text-tertiary)]' : 'text-[var(--color-streak)]'}`}>{streak}</span>
         <span className="text-xs text-[var(--text-tertiary)]">day streak</span>
-        {hasFreezeActive && <Snowflake className="w-3.5 h-3.5 text-cyan-400" />}
+        {hasFreezeActive && <Snowflake className="w-3.5 h-3.5 text-primary" />}
       </div>
     );
   }
@@ -102,9 +102,9 @@ export function StreakDisplay({
           </div>
         </div>
         {hasFreezeActive && (
-          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30">
-            <Snowflake className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-xs text-cyan-400 font-semibold">Freeze active</span>
+          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 border border-primary/30">
+            <Snowflake className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs text-primary font-semibold">Freeze active</span>
           </div>
         )}
       </div>

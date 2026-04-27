@@ -165,7 +165,7 @@ function OrbCanvas() {
 
       // ── Ambient background glow ──
       const bg = ctx!.createRadialGradient(cx, cy, 0, cx, cy, 72);
-      bg.addColorStop(0,   'rgba(124,58,237,0.12)');
+      bg.addColorStop(0,   'rgba(60,64,67,0.15)');
       bg.addColorStop(0.5, 'rgba(6,182,212,0.05)');
       bg.addColorStop(1,   'rgba(0,0,0,0)');
       ctx!.fillStyle = bg;
@@ -177,7 +177,7 @@ function OrbCanvas() {
         ctx!.arc(cx, cy, r, 0, Math.PI * 2);
         ctx!.strokeStyle = i === 1
           ? `rgba(6,182,212,0.08)`
-          : `rgba(124,58,237,0.08)`;
+          : `rgba(60,64,67,0.15)`;
         ctx!.lineWidth = 0.5;
         ctx!.stroke();
       });
@@ -244,7 +244,7 @@ function OrbCanvas() {
 
       // outer glow
       const outerGlow = ctx!.createRadialGradient(cx, cy, 0, cx, cy, coreR * 2.5);
-      outerGlow.addColorStop(0,   `rgba(124,58,237,0.4)`);
+      outerGlow.addColorStop(0,   `rgba(60,64,67,0.15)`);
       outerGlow.addColorStop(0.5, `rgba(6,182,212,0.15)`);
       outerGlow.addColorStop(1,   `rgba(0,0,0,0)`);
       ctx!.beginPath();
@@ -255,7 +255,7 @@ function OrbCanvas() {
       // core fill
       const coreGrad = ctx!.createRadialGradient(cx - 3, cy - 3, 0, cx, cy, coreR);
       coreGrad.addColorStop(0,   'rgba(167,139,250,0.95)');  // violet-light
-      coreGrad.addColorStop(0.6, 'rgba(124,58,237,0.9)');
+      coreGrad.addColorStop(0.6, 'rgba(60,64,67,0.15)');
       coreGrad.addColorStop(1,   'rgba(6,182,212,0.7)');
       ctx!.beginPath();
       ctx!.arc(cx, cy, coreR, 0, Math.PI * 2);

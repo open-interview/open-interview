@@ -1,136 +1,154 @@
 /**
- * Desktop Sidebar — Collapsible, 280px / 72px
- * Spring animation, violet active state, tooltip on collapse
+ * Desktop Sidebar — Material 3 Navigation Drawer
+ * 280px expanded / 80px collapsed (rail), pill-shaped selected items,
+ * Material Symbols Rounded icons, Google Sans Display labels.
  */
 
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
 import { useCredits } from '../../context/CreditsContext';
 import { useSidebar } from '../../context/SidebarContext';
 import { useUserPreferences } from '../../context/UserPreferencesContext';
 import { cn } from '../../lib/utils';
-import { useState } from 'react';
-import {
-  Home, BookOpen, Award, Mic, Code, Target, Flame,
-  Trophy, Bookmark, Brain, Coins, Layers,
-  GraduationCap, BarChart3, ChevronLeft, ChevronRight,
-  Search, User, Info, Settings, Zap
-} from 'lucide-react';
 
 interface NavItem {
   id: string;
   label: string;
-  icon: React.ElementType;
+  icon: string;     // Material Symbols Rounded ligature
   path: string;
   badge?: string;
   shortcut?: string;
 }
 
-const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] = [
+const sections: { label: string; icon: string; items: NavItem[] }[] = [
   {
     label: 'Learn',
-    icon: GraduationCap,
+    icon: 'school',
     items: [
-      { id: 'channels',       label: 'Channels',       icon: BookOpen, path: '/channels',       shortcut: 'C' },
-      { id: 'certifications', label: 'Certifications', icon: Award,    path: '/certifications', shortcut: 'E' },
-      { id: 'my-path',        label: 'My Path',        icon: Brain,    path: '/my-path',        badge: 'NEW' },
+      { id: 'channels',       label: 'Channels',       icon: 'view_module',     path: '/channels',       shortcut: 'C' },
+      { id: 'certifications', label: 'Certifications', icon: 'workspace_premium', path: '/certifications', shortcut: 'E' },
+      { id: 'my-path',        label: 'My Path',        icon: 'route',           path: '/my-path',        badge: 'NEW' },
     ],
   },
   {
     label: 'Practice',
-    icon: Mic,
+    icon: 'fitness_center',
     items: [
-      { id: 'voice',      label: 'Voice Interview', icon: Mic,    path: '/voice-interview', badge: '+10', shortcut: 'V' },
-      { id: 'tests',      label: 'Quick Tests',     icon: Target, path: '/tests',           shortcut: 'T' },
-      { id: 'coding',     label: 'Code Challenges', icon: Code,   path: '/code',           shortcut: 'X', badge: 'NEW' },
-      { id: 'review',     label: 'SRS Review',      icon: Flame,  path: '/review',          shortcut: 'R' },
-      { id: 'flashcards', label: 'Flashcards',      icon: Layers, path: '/flashcards',      badge: 'NEW' },
+      { id: 'voice',      label: 'Voice Interview', icon: 'mic',           path: '/voice-interview', badge: '+10', shortcut: 'V' },
+      { id: 'tests',      label: 'Quick Tests',     icon: 'task_alt',      path: '/tests',           shortcut: 'T' },
+      { id: 'coding',     label: 'Code Challenges', icon: 'code',          path: '/code',            shortcut: 'X', badge: 'NEW' },
+      { id: 'review',     label: 'SRS Review',      icon: 'event_repeat',  path: '/review',          shortcut: 'R' },
+      { id: 'flashcards', label: 'Flashcards',      icon: 'style',         path: '/flashcards',      badge: 'NEW' },
     ],
   },
   {
     label: 'Progress',
-    icon: BarChart3,
+    icon: 'insights',
     items: [
-      { id: 'badges',    label: 'Badges',     icon: Trophy,    path: '/badges' },
-      { id: 'bookmarks', label: 'Bookmarks',  icon: Bookmark,  path: '/bookmarks' },
-      { id: 'profile',   label: 'Profile',    icon: User,      path: '/profile' },
-      { id: 'manage-subscriptions', label: 'My Subscriptions', icon: Settings, path: '/manage-subscriptions' },
-      { id: 'about',     label: 'About',      icon: Info,      path: '/about' },
+      { id: 'badges',    label: 'Badges',           icon: 'military_tech', path: '/badges' },
+      { id: 'bookmarks', label: 'Bookmarks',        icon: 'bookmark',      path: '/bookmarks' },
+      { id: 'profile',   label: 'Profile',          icon: 'person',        path: '/profile' },
+      { id: 'manage-subscriptions', label: 'My Subscriptions', icon: 'tune', path: '/manage-subscriptions' },
+      { id: 'about',     label: 'About',            icon: 'info',          path: '/about' },
     ],
   },
 ];
 
+const HOME_ITEM: NavItem = { id: 'home', label: 'Home', icon: 'home', path: '/', shortcut: 'H' };
+
+const GOOGLE_SANS = "'Google Sans Display', 'Roboto Flex', sans-serif";
+
+function MIcon({ name, size = 20, filled = false, className = '' }: { name: string; size?: number; filled?: boolean; className?: string }) {
+  return (
+    <span
+      className={`material-symbols-rounded${filled ? ' filled' : ''} ${className}`}
+      style={{ fontSize: size }}
+      aria-hidden="true"
+    >
+      {name}
+    </span>
+  );
+}
+
 export function Sidebar() {
   const [location, setLocation] = useLocation();
   const { balance, formatCredits, level } = useCredits();
-  const totalXP = balance;
   const { isCollapsed, toggleSidebar } = useSidebar();
   const { preferences } = useUserPreferences();
   const [hovered, setHovered] = useState<string | null>(null);
 
-  const isActive = (path: string) =>
-    location === path || location.startsWith(path.replace(/\/$/, '') + '/');
+  const totalXP = balance;
 
-  const filteredSections = sections.map(s =>
+  const isActive = (path: string) =>
+    path === '/'
+      ? location === '/'
+      : location === path || location.startsWith(path.replace(/\/$/, '') + '/');
+
+  const filteredSections = sections.map((s) =>
     s.label === 'Learn' && preferences.hideCertifications
-      ? { ...s, items: s.items.filter(i => i.id !== 'certifications') }
+      ? { ...s, items: s.items.filter((i) => i.id !== 'certifications') }
       : s
   );
 
   const NavItemEl = ({ item }: { item: NavItem }) => {
-    const Icon = item.icon;
     const active = isActive(item.path);
     const showTip = isCollapsed && hovered === item.id;
 
     return (
       <div className="relative">
-        <motion.button
+        <button
           onClick={() => setLocation(item.path)}
           onMouseEnter={() => setHovered(item.id)}
           onMouseLeave={() => setHovered(null)}
-          whileTap={{ scale: 0.96 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+          aria-current={active ? 'page' : undefined}
+          data-testid={`nav-${item.id}`}
           className={cn(
-            'w-full flex items-center gap-3 rounded-[24px] transition-all duration-150 group relative overflow-hidden',
-            isCollapsed ? 'justify-center p-2' : 'px-3 py-2',
-            active
-              ? 'bg-gradient-to-r from-violet-500/20 via-primary/15 to-cyan-400/20 text-primary shadow-[0_4px_16px_rgba(124,58,237,0.15),inset_0_1px_0_rgba(255,255,255,0.1)]'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/70 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+            'w-full flex items-center transition-colors duration-150 relative',
+            isCollapsed
+              ? 'justify-center h-12 mx-auto rounded-2xl'
+              : 'gap-3 h-14 px-4 rounded-full'
           )}
+          style={{
+            background: active ? 'var(--secondary)' : 'transparent',
+            color: active ? 'var(--secondary-foreground)' : 'var(--muted-foreground)',
+            width: isCollapsed ? 56 : '100%',
+            fontFamily: GOOGLE_SANS,
+          }}
+          onMouseOver={(e) => {
+            if (!active) e.currentTarget.style.background = 'var(--muted)';
+          }}
+          onMouseOut={(e) => {
+            if (!active) e.currentTarget.style.background = 'transparent';
+          }}
         >
-          {/* Gradient left border */}
-          {active && !isCollapsed && (
-            <div className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-gradient-to-b from-violet-500 via-primary to-cyan-400" />
-          )}
-
-          <div className={cn(
-            'flex items-center justify-center w-8 h-8 rounded-xl shrink-0 transition-colors',
-            active ? 'bg-primary/25' : 'bg-transparent group-hover:bg-muted/80'
-          )}>
-            <Icon className="w-4 h-4" />
-          </div>
-
+          <MIcon name={item.icon} size={22} filled={active} />
           {!isCollapsed && (
             <>
-              <span className="text-sm font-medium flex-1 text-left">{item.label}</span>
+              <span
+                className="text-sm flex-1 text-left truncate"
+                style={{ fontWeight: active ? 500 : 400, color: active ? 'var(--secondary-foreground)' : 'var(--foreground)' }}
+              >
+                {item.label}
+              </span>
               {item.badge && (
-                <span className={cn(
-                  'text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0',
-                  item.badge === 'NEW'
-                    ? 'bg-emerald-500/20 text-emerald-400'
-                    : 'bg-amber-500/20 text-amber-400'
-                )}>{item.badge}</span>
+                <span
+                  className="text-[10px] px-2 py-0.5 rounded-full shrink-0"
+                  style={{
+                    background: item.badge === 'NEW'
+                      ? 'color-mix(in srgb, var(--primary) 15%, transparent)'
+                      : 'color-mix(in srgb, #f9ab00 18%, transparent)',
+                    color: item.badge === 'NEW' ? 'var(--primary)' : '#f9ab00',
+                    fontWeight: 500,
+                  }}
+                >
+                  {item.badge}
+                </span>
               )}
-              {item.shortcut && (
-                <kbd className="opacity-0 group-hover:opacity-50 text-[10px] px-1 py-0.5 bg-muted rounded border border-border font-mono shrink-0 transition-opacity">
-                  {item.shortcut}
-                </kbd>
-              )}
-</>
-            )}
-          </motion.button>
+            </>
+          )}
+        </button>
 
-        {/* Tooltip */}
         <AnimatePresence>
           {showTip && (
             <motion.div
@@ -138,18 +156,20 @@ export function Sidebar() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -6 }}
               transition={{ duration: 0.12 }}
-              className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 pointer-events-none"
+              className="absolute left-full top-1/2 -translate-y-1/2 ml-3 z-50 pointer-events-none"
             >
-              <div className="bg-popover border border-border rounded-lg shadow-xl px-3 py-1.5 whitespace-nowrap flex items-center gap-2">
-                <span className="text-sm font-medium">{item.label}</span>
-                {item.badge && (
-                  <span className={cn(
-                    'text-[10px] px-1.5 py-0.5 rounded font-medium',
-                    item.badge === 'NEW'
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-amber-500/20 text-amber-400'
-                  )}>{item.badge}</span>
-                )}
+              <div
+                className="px-3 py-1.5 rounded-md whitespace-nowrap text-sm"
+                style={{
+                  background: 'var(--popover)',
+                  color: 'var(--popover-foreground)',
+                  boxShadow: 'var(--shadow-md)',
+                  border: '1px solid var(--border)',
+                  fontFamily: GOOGLE_SANS,
+                  fontWeight: 500,
+                }}
+              >
+                {item.label}
               </div>
             </motion.div>
           )}
@@ -160,26 +180,50 @@ export function Sidebar() {
 
   return (
     <motion.aside
-      animate={{ width: isCollapsed ? 72 : 280 }}
+      animate={{ width: isCollapsed ? 80 : 280 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="fixed left-0 top-0 bottom-0 bg-background/80 backdrop-blur-2xl border-r border-white/15 shadow-[4px_0_24px_rgba(0,0,0,0.1)] z-40 flex flex-col overflow-hidden hidden lg:flex"
+      className="fixed left-0 top-0 bottom-0 z-40 hidden lg:flex flex-col overflow-hidden"
+      style={{
+        background: 'var(--background)',
+        borderRight: '1px solid var(--border)',
+      }}
     >
-      {/* Logo + wordmark */}
-      <div className="h-14 flex items-center justify-between px-3 border-b border-border shrink-0">
+      {/* Brand row + collapse */}
+      <div
+        className={cn(
+          'h-16 flex items-center shrink-0',
+          isCollapsed ? 'justify-center px-3' : 'justify-between px-5'
+        )}
+      >
         <button
           onClick={() => setLocation('/')}
-          className={cn('flex items-center gap-2.5 min-w-0', isCollapsed && 'justify-center w-full')}
+          className="flex items-center gap-3 min-w-0"
+          data-testid="nav-brand"
         >
-          <motion.div
-            className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center shrink-0"
-            style={{ boxShadow: '0 0 16px rgba(124,58,237,0.3)' }}
+          <div
+            className="flex items-center justify-center shrink-0 w-9 h-9 rounded-full"
+            style={{
+              background: 'var(--primary)',
+              color: 'var(--primary-foreground)',
+              fontFamily: GOOGLE_SANS,
+              fontWeight: 500,
+              fontSize: 13,
+              letterSpacing: '-0.01em',
+            }}
           >
-            <Mic className="w-4 h-4 text-white" />
-          </motion.div>
+            OI
+          </div>
           {!isCollapsed && (
-            <div className="text-left overflow-hidden">
-              <div className="font-bold text-sm leading-tight whitespace-nowrap">Code Reels</div>
-              <div className="text-[10px] text-muted-foreground whitespace-nowrap">Interview Prep</div>
+            <div
+              className="text-base truncate"
+              style={{
+                color: 'var(--foreground)',
+                fontFamily: GOOGLE_SANS,
+                fontWeight: 500,
+                letterSpacing: '-0.005em',
+              }}
+            >
+              Open Interview
             </div>
           )}
         </button>
@@ -187,110 +231,150 @@ export function Sidebar() {
         {!isCollapsed && (
           <button
             onClick={toggleSidebar}
-            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            className="w-10 h-10 flex items-center justify-center rounded-full transition-colors"
+            style={{ color: 'var(--muted-foreground)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--muted)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
             title="Collapse"
+            data-testid="button-sidebar-collapse"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <MIcon name="menu_open" size={20} />
           </button>
         )}
       </div>
 
-      {/* Expand toggle when collapsed */}
       {isCollapsed && (
-        <div className="px-1.5 py-2 shrink-0">
-          <button
-            onClick={toggleSidebar}
-            className="w-full p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
-            title="Expand"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
+        <button
+          onClick={toggleSidebar}
+          className="mx-auto mb-2 w-12 h-12 flex items-center justify-center rounded-2xl transition-colors"
+          style={{ color: 'var(--muted-foreground)' }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--muted)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          title="Expand"
+          data-testid="button-sidebar-expand"
+        >
+          <MIcon name="menu" size={20} />
+        </button>
       )}
 
-      {/* Nav */}
-      <nav className={cn('flex-1 overflow-y-auto overflow-x-hidden py-2 custom-scrollbar', isCollapsed ? 'px-1.5' : 'px-2')}>
-        {/* Home */}
-        <NavItemEl item={{ id: 'home', label: 'Home', icon: Home, path: '/', shortcut: 'H' }} />
+      {/* Nav list */}
+      <nav
+        className={cn(
+          'flex-1 overflow-y-auto overflow-x-hidden py-2 space-y-0.5',
+          isCollapsed ? 'px-3' : 'px-3'
+        )}
+      >
+        <NavItemEl item={HOME_ITEM} />
 
-        {filteredSections.map(section => (
-          <div key={section.label} className="mt-1">
-            {isCollapsed
-              ? <div className="h-px bg-border/50 my-2 mx-1" />
-              : (
-                <div className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
-                  <section.icon className="w-3 h-3" />
-                  <span>{section.label}</span>
-                </div>
-              )
-            }
-            {section.items.map(item => <NavItemEl key={item.id} item={item} />)}
+        {filteredSections.map((section) => (
+          <div key={section.label} className="mt-3">
+            {!isCollapsed ? (
+              <div
+                className="px-4 pt-2 pb-1.5 text-[11px] uppercase tracking-[0.08em]"
+                style={{
+                  color: 'var(--muted-foreground)',
+                  fontFamily: GOOGLE_SANS,
+                  fontWeight: 500,
+                }}
+              >
+                {section.label}
+              </div>
+            ) : (
+              <div className="my-2 mx-auto h-px w-8" style={{ background: 'var(--border)' }} />
+            )}
+            <div className="space-y-0.5">
+              {section.items.map((item) => (
+                <NavItemEl key={item.id} item={item} />
+              ))}
+            </div>
           </div>
         ))}
       </nav>
 
-      {/* Bottom: credits + XP + settings */}
-      <div className={cn('border-t border-border shrink-0 p-2', isCollapsed && 'p-1.5')}>
-        {/* XP / Level row */}
-        {!isCollapsed && (
+      {/* Bottom: profile / credits */}
+      <div
+        className={cn('shrink-0 p-3 space-y-1.5', isCollapsed && 'px-2')}
+        style={{ borderTop: '1px solid var(--border)' }}
+      >
+        {!isCollapsed ? (
           <button
             onClick={() => setLocation('/profile')}
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 mb-1.5 rounded-lg bg-primary/8 hover:bg-primary/12 border border-primary/15 transition-colors overflow-hidden"
+            data-testid="button-profile-xp"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-colors"
+            style={{ background: 'var(--muted)', fontFamily: GOOGLE_SANS }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--secondary)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--muted)')}
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-violet-400 flex items-center justify-center shrink-0">
-              <Zap className="w-4 h-4 text-white" />
-            </div>
+            <span
+              className="flex items-center justify-center w-9 h-9 rounded-full shrink-0"
+              style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}
+            >
+              <MIcon name="bolt" size={18} filled />
+            </span>
             <div className="flex-1 text-left min-w-0">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground">Level {level}</span>
-                <span className="text-[10px] text-primary font-semibold">{totalXP.toLocaleString()} XP</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                  Level {level}
+                </span>
+                <span className="text-xs" style={{ color: 'var(--primary)', fontWeight: 500 }}>
+                  {totalXP.toLocaleString()} XP
+                </span>
               </div>
-              <div className="mt-1 h-1 rounded-full bg-primary/20 overflow-hidden">
+              <div
+                className="mt-1.5 h-1 rounded-full overflow-hidden"
+                style={{ background: 'color-mix(in srgb, var(--primary) 18%, transparent)' }}
+              >
                 <div
-                  className="h-full rounded-full bg-primary transition-all duration-500"
-                  style={{ width: `${((totalXP % 1000) / 1000) * 100}%` }}
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${((totalXP % 1000) / 1000) * 100}%`,
+                    background: 'var(--primary)',
+                    transition: 'width 500ms ease',
+                  }}
                 />
               </div>
             </div>
           </button>
-        )}
-        {isCollapsed && (
+        ) : (
           <button
             onClick={() => setLocation('/profile')}
-            className="w-full flex items-center justify-center p-2 mb-1 rounded-lg bg-primary/8 hover:bg-primary/12 transition-colors"
+            data-testid="button-profile-xp-collapsed"
+            className="w-12 h-12 mx-auto flex items-center justify-center rounded-2xl transition-colors"
+            style={{ background: 'var(--muted)', color: 'var(--primary)' }}
             title={`Level ${level} · ${totalXP} XP`}
           >
-            <Zap className="w-4 h-4 text-primary" />
+            <MIcon name="bolt" size={20} filled />
           </button>
         )}
 
         <button
           onClick={() => setLocation('/profile')}
+          data-testid="button-credits"
           className={cn(
-            'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 transition-colors overflow-hidden',
-            isCollapsed && 'justify-center px-1.5'
+            'w-full flex items-center rounded-2xl transition-colors',
+            isCollapsed ? 'justify-center w-12 h-12 mx-auto' : 'gap-3 px-3 py-2.5'
           )}
+          style={{ background: 'transparent', fontFamily: GOOGLE_SANS, color: 'var(--foreground)' }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--muted)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
         >
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shrink-0">
-            <Coins className="w-4 h-4 text-white" />
-          </div>
+          <span
+            className="flex items-center justify-center w-9 h-9 rounded-full shrink-0"
+            style={{ background: 'color-mix(in srgb, #f9ab00 18%, transparent)', color: '#f9ab00' }}
+          >
+            <MIcon name="paid" size={18} filled />
+          </span>
           {!isCollapsed && (
             <div className="flex-1 text-left min-w-0">
-              <div className="text-[10px] text-muted-foreground">Credits</div>
-              <div className="text-sm font-bold text-amber-500 truncate">{formatCredits(balance)}</div>
+              <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                Credits
+              </div>
+              <div className="text-sm truncate" style={{ color: '#f9ab00', fontWeight: 500 }}>
+                {formatCredits(balance)}
+              </div>
             </div>
           )}
         </button>
-
-        {!isCollapsed && (
-          <button
-            onClick={() => setLocation('/profile')}
-            className="w-full flex items-center gap-2 px-2.5 py-1.5 mt-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs"
-          >
-            <Settings className="w-3.5 h-3.5" />
-            <span>Settings</span>
-          </button>
-        )}
       </div>
     </motion.aside>
   );

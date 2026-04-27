@@ -114,7 +114,7 @@ export default function QuestionEditorDemo() {
             <button
               onClick={handleCreateNew}
               className="flex items-center gap-2 px-5 py-2.5 font-semibold rounded-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-              style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', color: '#fff', boxShadow: '0 4px 16px rgba(99,102,241,0.35), inset 0 1px 0 rgba(255,255,255,0.2)' }}
+              style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', color: '#fff', boxShadow: '0 4px 16px rgba(60,64,67,0.12), inset 0 1px 0 rgba(255,255,255,0.2)' }}
             >
               <Plus className="w-4 h-4" />
               Create Question
@@ -217,7 +217,7 @@ export default function QuestionEditorDemo() {
                 <button
                   onClick={handleCreateNew}
                   className="px-5 py-2.5 font-semibold rounded-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-                  style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', color: '#fff', boxShadow: '0 4px 16px rgba(99,102,241,0.35), inset 0 1px 0 rgba(255,255,255,0.2)' }}
+                  style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', color: '#fff', boxShadow: '0 4px 16px rgba(60,64,67,0.12), inset 0 1px 0 rgba(255,255,255,0.2)' }}
                 >
                   Create Your First Question
                 </button>

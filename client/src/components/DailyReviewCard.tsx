@@ -40,12 +40,12 @@ export function DailyReviewCard() {
   const getChannelColor = (channel: string) => {
     const colors: Record<string, string> = {
       algorithms: 'bg-blue-500/20 text-blue-400',
-      'system-design': 'bg-purple-500/20 text-purple-400',
+      'system-design': 'bg-primary/20 text-primary',
       networking: 'bg-green-500/20 text-green-400',
-      kubernetes: 'bg-indigo-500/20 text-indigo-400',
+      kubernetes: 'bg-primary/20 text-primary',
       aws: 'bg-orange-500/20 text-orange-400',
       gcp: 'bg-red-500/20 text-red-400',
-      azure: 'bg-cyan-500/20 text-cyan-400',
+      azure: 'bg-primary/20 text-primary',
       database: 'bg-yellow-500/20 text-yellow-400',
       linux: 'bg-gray-500/20 text-gray-400',
       security: 'bg-red-500/20 text-red-400',
@@ -84,16 +84,16 @@ export function DailyReviewCard() {
         animate={{ opacity: 1, y: 0 }}
         className={`rounded-xl border overflow-hidden ${
           hasDueCards 
-            ? 'bg-gradient-to-br from-purple-500/10 via-blue-500/5 to-cyan-500/10 border-purple-500/20' 
+            ? 'bg-gradient-to-br from-primary/10 via-blue-500/5 to-primary/10 border-primary/20' 
             : 'bg-gradient-to-br from-green-500/10 to-emerald-500/5 border-green-500/20'
         }`}
       >
         {/* Header with Level & Streak - Compact */}
         <div className="px-3 py-2 flex items-center justify-between border-b border-border/30">
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-500/20 rounded-full">
-              <Zap className="w-2.5 h-2.5 text-purple-400" />
-              <span className="text-[10px] font-bold text-purple-400">Lv.{userXP.level}</span>
+            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-primary/20 rounded-full">
+              <Zap className="w-2.5 h-2.5 text-primary" />
+              <span className="text-[10px] font-bold text-primary">Lv.{userXP.level}</span>
             </div>
             <span className="text-[10px] text-muted-foreground">{userXP.totalXP} XP</span>
           </div>
@@ -121,11 +121,11 @@ export function DailyReviewCard() {
               size={56}
               strokeWidth={5}
               color={hasDueCards ? '#a855f7' : '#22c55e'}
-              bgColor={hasDueCards ? 'rgba(168, 85, 247, 0.15)' : 'rgba(34, 197, 94, 0.15)'}
+              bgColor={hasDueCards ? 'rgba(60,64,67,0.12)' : 'rgba(34, 197, 94, 0.15)'}
             >
               {hasDueCards ? (
                 <div className="text-center">
-                  <div className="text-lg font-bold text-purple-500">{stats.dueToday}</div>
+                  <div className="text-lg font-bold text-primary">{stats.dueToday}</div>
                   <div className="text-[8px] text-muted-foreground">due</div>
                 </div>
               ) : (
@@ -136,8 +136,8 @@ export function DailyReviewCard() {
             {/* Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <Brain className={`w-3.5 h-3.5 ${hasDueCards ? 'text-purple-500' : 'text-green-500'}`} />
-                <span className={`text-xs font-semibold ${hasDueCards ? 'text-purple-500' : 'text-green-500'}`}>
+                <Brain className={`w-3.5 h-3.5 ${hasDueCards ? 'text-primary' : 'text-green-500'}`} />
+                <span className={`text-xs font-semibold ${hasDueCards ? 'text-primary' : 'text-green-500'}`}>
                   {hasDueCards ? 'Ready to Review' : 'All Caught Up!'}
                 </span>
               </div>
@@ -175,7 +175,7 @@ export function DailyReviewCard() {
               )}
             </div>
 
-            <ChevronRight className={`w-4 h-4 ${hasDueCards ? 'text-purple-500' : 'text-green-500'}`} />
+            <ChevronRight className={`w-4 h-4 ${hasDueCards ? 'text-primary' : 'text-green-500'}`} />
           </div>
         </button>
 

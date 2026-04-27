@@ -398,7 +398,7 @@ function LevelUpCard({
   onDismiss: () => void;
 }) {
   return (
-    <div className="relative w-[300px] rounded-xl shadow-2xl overflow-hidden bg-gradient-to-br from-amber-500 via-orange-500 to-violet-600">
+    <div className="relative w-[300px] rounded-xl shadow-2xl overflow-hidden bg-gradient-to-br from-amber-500 via-orange-500 to-primary">
       <LevelUpConfetti />
 
       <div className="relative p-5 text-center">
@@ -553,7 +553,7 @@ function BadgeCard({
     <div className={cn(
       "w-[340px] rounded-xl shadow-2xl overflow-hidden",
       "bg-gradient-to-br",
-      badge.gradient || "from-purple-500 to-indigo-600"
+      badge.gradient || "from-primary to-primary"
     )}>
       <div className="p-4">
         <div className="flex items-start gap-3">

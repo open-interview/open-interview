@@ -131,7 +131,7 @@ export default function ChallengeHome() {
 
         {/* ── Hero ── */}
         <section className="text-center space-y-4">
-          <h1 className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+          <h1 className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-primary to-primary bg-clip-text text-transparent">
             Code. Learn. Level Up.
           </h1>
           <p className="text-gray-400 text-lg">Practice coding challenges in your browser. No login required.</p>
@@ -141,7 +141,7 @@ export default function ChallengeHome() {
                 { icon: <CheckCircle className="w-4 h-4 text-emerald-400" />, val: progress.totalSolved, label: 'Solved' },
                 { icon: <Flame className="w-4 h-4 text-orange-400" />,        val: `${progress.streak}🔥`, label: 'Streak' },
                 { icon: <Zap className="w-4 h-4 text-yellow-400" />,          val: progress.xp,           label: 'XP' },
-                { icon: <Trophy className="w-4 h-4 text-violet-400" />,       val: `Lv ${progress.level}`, label: LEVEL_NAMES[Math.min(progress.level, 7)] },
+                { icon: <Trophy className="w-4 h-4 text-primary" />,       val: `Lv ${progress.level}`, label: LEVEL_NAMES[Math.min(progress.level, 7)] },
               ].map(({ icon, val, label }) => (
                 <div key={label} className="flex flex-col items-center gap-0.5">
                   <div className="flex items-center gap-1 text-sm font-bold">{icon}{val}</div>
@@ -183,8 +183,8 @@ export default function ChallengeHome() {
         {/* ── Featured + Rex side-by-side ── */}
         <div className="grid sm:grid-cols-2 gap-4">
           {featured && (
-            <div className="bg-gray-900 border border-indigo-800/50 rounded-2xl p-5 space-y-3">
-              <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold uppercase tracking-wide">
+            <div className="bg-gray-900 border border-primary/50 rounded-2xl p-5 space-y-3">
+              <div className="flex items-center gap-2 text-primary text-xs font-semibold uppercase tracking-wide">
                 <Zap className="w-3.5 h-3.5" /> Challenge of the Day
               </div>
               <p className="font-bold text-lg leading-snug">{featured.title}</p>
@@ -198,7 +198,7 @@ export default function ChallengeHome() {
               </div>
               <button
                 onClick={() => navigate(`/code/challenges/${featured.id}`)}
-                className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors duration-150 cursor-pointer min-h-[44px]"
+                className="inline-flex items-center gap-2 bg-primary hover:bg-primary text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors duration-150 cursor-pointer min-h-[44px]"
               >
                 Solve Now <ArrowRight className="w-3.5 h-3.5" />
               </button>
@@ -223,8 +223,8 @@ export default function ChallengeHome() {
               onClick={() => setActiveTag(activeTag === tag ? null : tag)}
               className={`flex items-center gap-1.5 px-3 py-2.5 rounded-full text-xs font-medium border transition-colors duration-150 cursor-pointer min-h-[44px] ${
                 activeTag === tag
-                  ? 'bg-indigo-600 text-white border-indigo-500'
-                  : 'bg-gray-900 text-gray-400 border-gray-700 hover:border-indigo-600'
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-gray-900 text-gray-400 border-gray-700 hover:border-primary'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />{label}
@@ -233,7 +233,7 @@ export default function ChallengeHome() {
           {activeTag && !CATEGORIES.find(c => c.tag === activeTag) && (
             <button
               onClick={() => setActiveTag(null)}
-              className="px-3 py-2.5 rounded-full text-xs font-medium border bg-indigo-600 text-white border-indigo-500 cursor-pointer min-h-[44px]"
+              className="px-3 py-2.5 rounded-full text-xs font-medium border bg-primary text-white border-primary cursor-pointer min-h-[44px]"
             >
               {activeTag} ×
             </button>
@@ -297,7 +297,7 @@ export default function ChallengeHome() {
                         <p className="text-gray-500 mb-3">No challenges match.</p>
                         <button
                           onClick={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
-                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors duration-150 cursor-pointer"
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary hover:bg-primary text-white text-sm font-medium transition-colors duration-150 cursor-pointer"
                         >
                           Clear filters
                         </button>
@@ -346,7 +346,7 @@ export default function ChallengeHome() {
                   <p className="text-gray-500 mb-3">No challenges match.</p>
                   <button
                     onClick={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors duration-150 cursor-pointer"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary hover:bg-primary text-white text-sm font-medium transition-colors duration-150 cursor-pointer"
                   >
                     Clear filters
                   </button>

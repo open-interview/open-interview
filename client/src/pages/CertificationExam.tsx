@@ -268,7 +268,7 @@ export default function CertificationExam() {
           </p>
           <button 
             onClick={() => setLocation(`/certification/${certificationId}`)}
-            className="min-h-[44px] px-6 py-2 bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground rounded-lg font-medium cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90"
+            className="min-h-[44px] px-6 py-2 bg-gradient-to-r from-primary to-primary text-primary-foreground rounded-lg font-medium cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90"
           >
             Go to Practice Mode
           </button>
@@ -434,13 +434,13 @@ function SetupScreen({
             onClick={() => setExamMode('practice')}
             className={`w-full p-4 rounded-xl border-2 text-left transition-all duration-150 ease-out cursor-pointer min-h-[44px] ${
               examMode === 'practice' 
-                ? 'border-primary bg-gradient-to-r from-primary/5 to-cyan-500/5' 
+                ? 'border-primary bg-gradient-to-r from-primary/5 to-primary/5' 
                 : 'border-border hover:border-primary/50'
             }`}
           >
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                examMode === 'practice' ? 'bg-gradient-to-r from-primary to-cyan-500 text-foreground' : 'bg-muted'
+                examMode === 'practice' ? 'bg-gradient-to-r from-primary to-primary text-foreground' : 'bg-muted'
               }`}>
                 <Lightbulb className="w-5 h-5" />
               </div>
@@ -455,13 +455,13 @@ function SetupScreen({
             onClick={() => setExamMode('timed')}
             className={`w-full p-4 rounded-xl border-2 text-left transition-all duration-150 ease-out cursor-pointer min-h-[44px] ${
               examMode === 'timed' 
-                ? 'border-primary bg-gradient-to-r from-primary/5 to-cyan-500/5' 
+                ? 'border-primary bg-gradient-to-r from-primary/5 to-primary/5' 
                 : 'border-border hover:border-primary/50'
             }`}
           >
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                examMode === 'timed' ? 'bg-gradient-to-r from-primary to-cyan-500 text-foreground' : 'bg-muted'
+                examMode === 'timed' ? 'bg-gradient-to-r from-primary to-primary text-foreground' : 'bg-muted'
               }`}>
                 <Clock className="w-5 h-5" />
               </div>
@@ -483,7 +483,7 @@ function SetupScreen({
                 onClick={() => setQuestionCount(count)}
                 className={`flex-1 py-2 rounded-lg font-medium transition-all duration-150 ease-out cursor-pointer min-h-[44px] ${
                   questionCount === count
-                    ? 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground'
+                    ? 'bg-gradient-to-r from-primary to-primary text-primary-foreground'
                     : 'bg-muted hover:bg-muted/80'
                 }`}
               >
@@ -631,7 +631,7 @@ function ActiveExam({
           {/* Progress bar */}
           <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
             <div 
-              className="h-full bg-gradient-to-r from-primary to-cyan-500 transition-all"
+              className="h-full bg-gradient-to-r from-primary to-primary transition-all"
               style={{ width: `${((currentIndex + 1) / totalQuestions) * 100}%` }}
             />
           </div>
@@ -675,7 +675,7 @@ function ActiveExam({
                       }}
                       className={`relative aspect-square rounded-lg font-medium text-sm transition-all duration-150 ease-out cursor-pointer min-h-[44px] ${
                         isCurrent
-                          ? 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground'
+                          ? 'bg-gradient-to-r from-primary to-primary text-primary-foreground'
                           : answer
                           ? answer.isCorrect
                             ? 'bg-green-500/20 text-green-500'
@@ -712,7 +712,7 @@ function ActiveExam({
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-6">
         {/* Domain & Difficulty */}
         <div className="flex items-center gap-2 mb-4">
-          <span className="px-2 py-1 bg-gradient-to-r from-primary/10 to-cyan-500/10 text-primary text-xs rounded-full font-medium">
+          <span className="px-2 py-1 bg-gradient-to-r from-primary/10 to-primary/10 text-primary text-xs rounded-full font-medium">
             {currentQuestion.domain.replace(/-/g, ' ')}
           </span>
           <span className={`px-2 py-1 text-xs rounded-full font-medium ${
@@ -757,7 +757,7 @@ function ActiveExam({
                       ? 'border-red-500 bg-red-500/10'
                       : 'border-border'
                     : isSelected
-                    ? 'border-primary bg-gradient-to-r from-primary/5 to-cyan-500/5'
+                    ? 'border-primary bg-gradient-to-r from-primary/5 to-primary/5'
                     : 'border-border hover:border-primary/50'
                 } ${isAnswered && examMode !== 'review' ? 'cursor-default' : 'cursor-pointer'}`}
               >
@@ -765,7 +765,7 @@ function ActiveExam({
                   <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
                     showResult && isCorrect ? 'border-green-500 bg-green-500' :
                     showResult && isSelected && !isCorrect ? 'border-red-500 bg-red-500' :
-                    isSelected ? 'border-primary bg-gradient-to-r from-primary to-cyan-500' :
+                    isSelected ? 'border-primary bg-gradient-to-r from-primary to-primary' :
                     'border-muted-foreground/30'
                   }`}>
                     {showResult && isCorrect && <CheckCircle className="w-4 h-4 text-foreground" />}
@@ -819,7 +819,7 @@ function ActiveExam({
           {currentIndex === totalQuestions - 1 ? (
             <button
               onClick={onFinish}
-              className="flex items-center gap-2 px-6 min-h-[44px] bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground rounded-lg font-medium cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90"
+              className="flex items-center gap-2 px-6 min-h-[44px] bg-gradient-to-r from-primary to-primary text-primary-foreground rounded-lg font-medium cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90"
             >
               <Trophy className="w-5 h-5" />
               Finish
@@ -828,7 +828,7 @@ function ActiveExam({
             <button
               onClick={onNext}
               disabled={!isAnswered && examMode === 'practice'}
-              className="flex items-center gap-2 px-4 min-h-[44px] bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground rounded-lg disabled:opacity-50 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90 disabled:cursor-default"
+              className="flex items-center gap-2 px-4 min-h-[44px] bg-gradient-to-r from-primary to-primary text-primary-foreground rounded-lg disabled:opacity-50 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90 disabled:cursor-default"
             >
               <span className="hidden sm:inline">Next</span>
               <ChevronRight className="w-5 h-5" />
@@ -998,7 +998,7 @@ function ResultsScreen({
         <div className="space-y-3 pb-24">
           <button
             onClick={onReview}
-            className="w-full min-h-[44px] py-3 bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground rounded-xl font-medium flex items-center justify-center gap-2 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90"
+            className="w-full min-h-[44px] py-3 bg-gradient-to-r from-primary to-primary text-primary-foreground rounded-xl font-medium flex items-center justify-center gap-2 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90"
           >
             <BookOpen className="w-5 h-5" />
             Review Answers

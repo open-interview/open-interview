@@ -85,7 +85,7 @@ export const BADGES: Badge[] = [
     requirement: 100,
     unit: 'days',
     color: '#b9f2ff',
-    gradient: 'from-cyan-300 to-blue-500'
+    gradient: 'from-primary to-blue-500'
   },
 
   // === COMPLETION BADGES ===
@@ -147,7 +147,7 @@ export const BADGES: Badge[] = [
     requirement: 500,
     unit: 'questions',
     color: '#b9f2ff',
-    gradient: 'from-cyan-300 to-blue-500'
+    gradient: 'from-primary to-blue-500'
   },
 
   // === MASTERY BADGES (Difficulty-based) ===
@@ -197,7 +197,7 @@ export const BADGES: Badge[] = [
     requirement: 100,
     unit: 'advanced',
     color: '#b9f2ff',
-    gradient: 'from-cyan-300 to-blue-500'
+    gradient: 'from-primary to-blue-500'
   },
 
   // === EXPLORER BADGES (Channel-based) ===
@@ -273,7 +273,7 @@ export const BADGES: Badge[] = [
     requirement: 1,
     unit: 'sessions',
     color: '#6366f1',
-    gradient: 'from-indigo-400 to-indigo-600'
+    gradient: 'from-primary to-primary'
   },
   {
     id: 'weekend-warrior',

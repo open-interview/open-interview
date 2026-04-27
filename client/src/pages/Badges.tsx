@@ -17,7 +17,7 @@ const TIER_GRADIENT: Record<string, string> = {
   silver:   'from-[#c0c0c0] to-[#808080]',
   gold:     'from-[#ffd700] to-[#ff8c00]',
   platinum: 'from-[#e5e4e2] to-[#b0b0b0]',
-  diamond:  'from-[#b9f2ff] to-cyan-500',
+  diamond:  'from-[#b9f2ff] to-primary',
 };
 
 const TIER_GLOW: Record<string, string> = {

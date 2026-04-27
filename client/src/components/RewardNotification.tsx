@@ -60,7 +60,7 @@ function RewardToast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: str
 
       {/* Header */}
       <div className="px-4 py-2.5 flex items-center gap-2 border-b border-[var(--color-border-subtle)]"
-        style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(124,58,237,0.10))' }}
+        style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(60,64,67,0.15))' }}
       >
         <span className="text-sm font-bold flex-1">{headerText}</span>
         <button
@@ -77,12 +77,12 @@ function RewardToast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: str
         {result.xpEarned > 0 && (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-purple-500/15 flex items-center justify-center">
-                <Zap className="w-3.5 h-3.5 text-purple-400" />
+              <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center">
+                <Zap className="w-3.5 h-3.5 text-primary" />
               </div>
               <span className="text-sm text-[var(--text-secondary)]">XP Earned</span>
             </div>
-            <span className="text-sm font-bold text-purple-400">+{result.xpEarned}</span>
+            <span className="text-sm font-bold text-primary">+{result.xpEarned}</span>
           </div>
         )}
 
@@ -155,7 +155,7 @@ const TIER_GRADIENT: Record<string, string> = {
   silver: 'from-slate-300 to-slate-500',
   gold: 'from-yellow-400 to-amber-600',
   platinum: 'from-slate-200 to-slate-400',
-  diamond: 'from-cyan-300 to-blue-500',
+  diamond: 'from-primary to-blue-500',
 };
 
 function AchievementRow({ achievement }: { achievement: UnlockedAchievement }) {
@@ -260,7 +260,7 @@ export function RewardInline({ result }: { result: RewardResult | null }) {
       className="inline-flex items-center gap-2 px-3 py-1.5 bg-[var(--surface-2)] rounded-full text-sm border border-[var(--color-border)]"
     >
       {result.xpEarned > 0 && (
-        <span className="flex items-center gap-1 text-purple-400">
+        <span className="flex items-center gap-1 text-primary">
           <Zap className="w-3 h-3" /> +{result.xpEarned}
         </span>
       )}

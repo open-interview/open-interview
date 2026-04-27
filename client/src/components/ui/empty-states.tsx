@@ -13,7 +13,7 @@ interface EmptyStateProps {
 export function EmptyGeneric({ icon, title, description, action, className }: EmptyStateProps) {
   return (
     <div className={cn("flex flex-col items-center justify-center py-16 px-4 text-center animate-fade-in-up", className)}>
-      <div className="mb-4 p-4 rounded-full bg-[rgba(124,58,237,0.1)] text-[var(--color-accent-violet)] pulse-glow">
+      <div className="mb-4 p-4 rounded-full bg-[rgba(60,64,67,0.15)] text-[var(--color-accent-violet)] pulse-glow">
         {icon}
       </div>
       <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-1">{title}</h3>

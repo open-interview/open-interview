@@ -38,7 +38,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Dynamic Programming',
     description: 'Recursion, memoization, tabulation & optimization',
     icon: 'git-branch',
-    color: 'text-violet-500',
+    color: 'text-primary',
     category: 'fundamentals',
     roles: ['backend', 'fullstack', 'frontend', 'mobile', 'data-engineer', 'ml-engineer']
   },
@@ -47,7 +47,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Bit Manipulation',
     description: 'Bitwise operations, binary math & bit tricks',
     icon: 'binary',
-    color: 'text-cyan-500',
+    color: 'text-primary',
     category: 'fundamentals',
     roles: ['backend', 'fullstack', 'mobile', 'security']
   },
@@ -74,7 +74,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Math & Logic',
     description: 'Combinatorics, probability, number theory & discrete math',
     icon: 'calculator',
-    color: 'text-indigo-500',
+    color: 'text-primary',
     category: 'fundamentals',
     roles: ['backend', 'data-scientist', 'ml-engineer', 'data-engineer']
   },
@@ -96,7 +96,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'System Design',
     description: 'Scalable architecture patterns & distributed systems',
     icon: 'cpu',
-    color: 'text-cyan-500',
+    color: 'text-primary',
     category: 'engineering',
     roles: ['backend', 'fullstack', 'architect', 'sre', 'devops']
   },
@@ -114,7 +114,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Frontend',
     description: 'React, Vue, CSS, Performance & Web APIs',
     icon: 'layout',
-    color: 'text-purple-500',
+    color: 'text-primary',
     category: 'engineering',
     roles: ['frontend', 'fullstack', 'mobile']
   },
@@ -179,7 +179,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Terraform',
     description: 'Infrastructure as Code, modules & state management',
     icon: 'layers',
-    color: 'text-purple-400',
+    color: 'text-primary',
     category: 'cloud',
     roles: ['devops', 'sre', 'platform']
   },
@@ -208,7 +208,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Generative AI',
     description: 'LLMs, RAG, fine-tuning, agents & prompt engineering',
     icon: 'sparkles',
-    color: 'text-violet-500',
+    color: 'text-primary',
     category: 'ai',
     roles: ['ai-engineer', 'ml-engineer', 'fullstack', 'backend']
   },
@@ -217,7 +217,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Prompt Engineering',
     description: 'Prompt design, optimization, safety & structured outputs',
     icon: 'message-circle',
-    color: 'text-cyan-400',
+    color: 'text-primary',
     category: 'ai',
     roles: ['ai-engineer', 'ml-engineer', 'fullstack', 'product']
   },
@@ -273,7 +273,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Networking',
     description: 'TCP/IP, DNS, load balancing & CDN',
     icon: 'network',
-    color: 'text-indigo-500',
+    color: 'text-primary',
     category: 'engineering',
     roles: ['sre', 'devops', 'security', 'backend']
   },
@@ -329,7 +329,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'React Native',
     description: 'Cross-platform mobile development with React',
     icon: 'smartphone',
-    color: 'text-cyan-400',
+    color: 'text-primary',
     category: 'mobile',
     roles: ['mobile', 'frontend', 'fullstack']
   },
@@ -349,7 +349,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'E2E Testing',
     description: 'Playwright, Cypress, Selenium & browser automation',
     icon: 'monitor',
-    color: 'text-purple-500',
+    color: 'text-primary',
     category: 'testing',
     roles: ['frontend', 'fullstack', 'qa', 'sdet']
   },
@@ -624,7 +624,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'OpenTelemetry Certified Associate',
     description: 'OTCA exam prep: implementing and maintaining OpenTelemetry-based observability',
     icon: 'activity',
-    color: 'text-purple-400',
+    color: 'text-primary',
     category: 'certification',
     roles: ['sre', 'devops', 'backend'],
     isCertification: true
@@ -654,7 +654,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Cloud Native Platform Engineering Associate',
     description: 'CNPA exam prep: modern platform engineering and developer experience',
     icon: 'layers',
-    color: 'text-cyan-500',
+    color: 'text-primary',
     category: 'certification',
     roles: ['platform', 'devops', 'sre'],
     isCertification: true
@@ -664,7 +664,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Cloud Native Network Functions Certification',
     description: 'CNF exam prep: cloud native network functions for telecommunications',
     icon: 'network',
-    color: 'text-indigo-500',
+    color: 'text-primary',
     category: 'certification',
     roles: ['devops', 'sre', 'platform'],
     isCertification: true
@@ -678,7 +678,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Terraform Associate',
     description: 'HashiCorp exam prep: IaC concepts, state management, modules & Terraform Cloud',
     icon: 'layers',
-    color: 'text-purple-500',
+    color: 'text-primary',
     category: 'certification',
     roles: ['devops', 'sre', 'platform'],
     isCertification: true
@@ -688,7 +688,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Vault Associate',
     description: 'HashiCorp exam prep: secrets management, auth methods, policies & encryption',
     icon: 'lock',
-    color: 'text-purple-500',
+    color: 'text-primary',
     category: 'certification',
     roles: ['security', 'devops', 'sre'],
     isCertification: true
@@ -698,7 +698,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Consul Associate',
     description: 'HashiCorp exam prep: service discovery, service mesh & Consul operations',
     icon: 'network',
-    color: 'text-purple-500',
+    color: 'text-primary',
     category: 'certification',
     roles: ['devops', 'sre', 'platform'],
     isCertification: true
@@ -776,7 +776,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Azure Fundamentals (AZ-900)',
     description: 'Azure exam prep: cloud concepts, architecture, management & pricing',
     icon: 'cloud',
-    color: 'text-cyan-500',
+    color: 'text-primary',
     category: 'certification',
     roles: ['backend', 'fullstack', 'devops'],
     isCertification: true
@@ -786,7 +786,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Azure Administrator (AZ-104)',
     description: 'Azure exam prep: identities, storage, compute, networking & monitoring',
     icon: 'cloud',
-    color: 'text-cyan-500',
+    color: 'text-primary',
     category: 'certification',
     roles: ['devops', 'sre', 'platform'],
     isCertification: true
@@ -796,7 +796,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Azure Developer (AZ-204)',
     description: 'Azure exam prep: compute, storage, security & API management',
     icon: 'cloud',
-    color: 'text-cyan-500',
+    color: 'text-primary',
     category: 'certification',
     roles: ['backend', 'fullstack'],
     isCertification: true
@@ -806,7 +806,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Azure Solutions Architect (AZ-305)',
     description: 'Azure exam prep: identity, data storage, business continuity & infrastructure',
     icon: 'cloud',
-    color: 'text-cyan-600',
+    color: 'text-primary',
     category: 'certification',
     roles: ['architect', 'backend', 'devops'],
     isCertification: true
@@ -816,7 +816,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Azure DevOps Engineer (AZ-400)',
     description: 'Azure exam prep: source control, CI/CD pipelines, security & instrumentation',
     icon: 'cloud',
-    color: 'text-cyan-500',
+    color: 'text-primary',
     category: 'certification',
     roles: ['devops', 'sre', 'platform'],
     isCertification: true
@@ -826,7 +826,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Azure Data Engineer (DP-203)',
     description: 'Azure exam prep: data storage, processing, security & integration',
     icon: 'cloud',
-    color: 'text-cyan-500',
+    color: 'text-primary',
     category: 'certification',
     roles: ['data-engineer', 'backend'],
     isCertification: true
@@ -836,7 +836,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Azure AI Engineer (AI-102)',
     description: 'Azure exam prep: computer vision, NLP, knowledge mining & generative AI',
     icon: 'cloud',
-    color: 'text-cyan-600',
+    color: 'text-primary',
     category: 'certification',
     roles: ['ai-engineer', 'ml-engineer'],
     isCertification: true
@@ -846,7 +846,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Azure Security Engineer (AZ-500)',
     description: 'Azure exam prep: identity, networking, compute & security operations',
     icon: 'cloud',
-    color: 'text-cyan-600',
+    color: 'text-primary',
     category: 'certification',
     roles: ['security', 'devops', 'sre'],
     isCertification: true
@@ -904,7 +904,7 @@ export const allChannelsConfig: ChannelConfig[] = [
     name: 'Snowflake SnowPro Core',
     description: 'Snowflake exam prep: security, performance, data loading & transformation',
     icon: 'database',
-    color: 'text-cyan-400',
+    color: 'text-primary',
     category: 'certification',
     roles: ['data-engineer', 'backend'],
     isCertification: true

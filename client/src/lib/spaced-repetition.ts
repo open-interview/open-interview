@@ -389,9 +389,9 @@ export function getMasteryColor(level: number): string {
   const colors = [
     'text-muted-foreground', // New
     'text-blue-500',         // Learning
-    'text-cyan-500',         // Familiar
+    'text-primary',         // Familiar
     'text-green-500',        // Proficient
-    'text-purple-500',       // Expert
+    'text-primary',       // Expert
     'text-yellow-500'        // Mastered
   ];
   return colors[Math.min(level, 5)];

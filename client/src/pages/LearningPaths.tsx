@@ -35,8 +35,8 @@ const PATH_ICON_MAP: Record<string, React.ElementType> = {
   'job-title': Code, 'company': Building2, 'skill': Brain, 'certification': Award,
 };
 const PATH_COLOR_MAP: Record<string, string> = {
-  'job-title': 'from-blue-500 to-cyan-500', 'company': 'from-green-500 to-emerald-500',
-  'skill': 'from-purple-500 to-pink-500', 'certification': 'from-orange-500 to-red-500',
+  'job-title': 'from-blue-500 to-primary', 'company': 'from-green-500 to-emerald-500',
+  'skill': 'from-primary to-pink-500', 'certification': 'from-orange-500 to-red-500',
 };
 
 function mapPathFromJson(path: any) {
@@ -52,7 +52,7 @@ function mapPathFromJson(path: any) {
     id: path.id,
     name: path.title,
     icon: PATH_ICON_MAP[pathType] || Rocket,
-    color: PATH_COLOR_MAP[pathType] || 'from-indigo-500 to-purple-500',
+    color: PATH_COLOR_MAP[pathType] || 'from-primary to-primary',
     description: path.description,
     channels,
     difficulty: path.difficulty ? path.difficulty.charAt(0).toUpperCase() + path.difficulty.slice(1) : 'Intermediate',
@@ -304,7 +304,7 @@ export default function LearningPaths() {
                             onClick={() => toggleChannel(channel.id)}
                             className={`p-4 rounded-[var(--radius-lg)] border transition-all text-left ${
                               isSelected
-                                ? 'bg-gradient-to-r from-primary/20 to-cyan-500/20 border-primary'
+                                ? 'bg-gradient-to-r from-primary/20 to-primary/20 border-primary'
                                 : 'bg-muted/50 border-border hover:border-border'
                             }`}
                           >
@@ -330,7 +330,7 @@ export default function LearningPaths() {
                             onClick={() => toggleCertification(cert.id)}
                             className={`p-4 rounded-[var(--radius-lg)] border transition-all text-left ${
                               isSelected
-                                ? 'bg-gradient-to-r from-primary/20 to-cyan-500/20 border-primary'
+                                ? 'bg-gradient-to-r from-primary/20 to-primary/20 border-primary'
                                 : 'bg-muted/50 border-border hover:border-border'
                             }`}
                           >
@@ -353,7 +353,7 @@ export default function LearningPaths() {
                   <button
                     onClick={handleCreateCustomPath}
                     disabled={!customPath.name || (customPath.channels.length === 0 && customPath.certifications.length === 0)}
-                    className="w-full py-4 bg-gradient-to-r from-primary to-cyan-500 rounded-[var(--radius-xl)] font-bold text-xl text-white disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-all"
+                    className="w-full py-4 bg-gradient-to-r from-primary to-primary rounded-[var(--radius-xl)] font-bold text-xl text-white disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-all"
                   >
                     Create Path
                   </button>
@@ -374,7 +374,7 @@ export default function LearningPaths() {
               <h1 className="text-5xl md:text-7xl font-bold">
                 Choose your
                 <br />
-                <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-primary to-primary bg-clip-text text-transparent">
                   career path
                 </span>
               </h1>
@@ -392,11 +392,11 @@ export default function LearningPaths() {
             >
               <button
                 onClick={() => setShowCustom(!showCustom)}
-                className="w-full p-8 bg-gradient-to-r from-primary/20 to-cyan-500/20 backdrop-blur-xl rounded-[var(--radius-3xl)] border-2 border-dashed border-primary/30 hover:border-primary/60 transition-all group"
+                className="w-full p-8 bg-gradient-to-r from-primary/20 to-primary/20 backdrop-blur-xl rounded-[var(--radius-3xl)] border-2 border-dashed border-primary/30 hover:border-primary/60 transition-all group"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-primary to-cyan-500 rounded-full flex items-center justify-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary rounded-full flex items-center justify-center">
                       <Plus className="w-8 h-8 text-primary-foreground" strokeWidth={3} />
                     </div>
                     <div className="text-left">
@@ -429,7 +429,7 @@ export default function LearningPaths() {
                       onClick={() => handleSelectPath(path.id)}
                       className={`group relative p-8 backdrop-blur-xl rounded-[var(--radius-3xl)] border-2 transition-all text-left overflow-hidden ${
                         isSelected
-                          ? 'bg-gradient-to-br from-primary/20 to-cyan-500/20 border-primary'
+                          ? 'bg-gradient-to-br from-primary/20 to-primary/20 border-primary'
                           : 'bg-muted/50 border-border hover:border-[var(--color-border-strong)]'
                       }`}
                     >

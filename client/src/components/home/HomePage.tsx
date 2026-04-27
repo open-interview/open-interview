@@ -97,7 +97,7 @@ function ActionCard({
       onClick={onClick}
       className={`group relative flex flex-col gap-3 p-4 rounded-3xl border text-left overflow-hidden transition-colors duration-150 ease-out cursor-pointer clay-press shadow-clay-sm
         ${primary
-          ? 'bg-gradient-to-br from-violet-600/30 to-cyan-500/20 border-violet-500/40 col-span-2 sm:col-span-1'
+          ? 'bg-gradient-to-br from-primary/30 to-primary/20 border-primary/40 col-span-2 sm:col-span-1'
           : 'bg-muted/80 border-border/40 hover:shadow-clay-md'
         }`}
     >
@@ -119,55 +119,63 @@ function OnboardingScreen({ onStart }: { onStart: () => void }) {
   const prefersReducedMotion = useReducedMotion();
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden pt-safe pb-safe">
-      <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 via-transparent to-cyan-500/10 animate-gradient-shift" />
-      {!prefersReducedMotion && [...Array(16)].map((_, i) => (
-        <motion.div key={i} className="absolute w-1 h-1 bg-white/40 rounded-full"
-          style={{ left: `${(i * 6.25) % 100}%`, top: `${(i * 13) % 100}%` }}
-          animate={{ opacity: [0, 1, 0], scale: [0, 1, 0] }}
-          transition={{ duration: 3, repeat: Infinity, delay: i * 0.2 }} />
-      ))}
-
-      <motion.div initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}
-        className="relative z-10 w-full max-w-sm text-center space-y-10">
+      <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
+        className="relative z-10 w-full max-w-md text-center space-y-10"
+        style={{ fontFamily: "'Google Sans Display', 'Roboto Flex', sans-serif" }}>
         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-          transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
-          className="w-24 h-24 mx-auto rounded-[28px] flex items-center justify-center relative shadow-clay-lg animate-float"
-          style={{ background: 'linear-gradient(135deg, #A78BFA 0%, #7C3AED 50%, #06b6d4 100%)', boxShadow: '16px 16px 32px rgba(0, 0, 0, 0.45), -8px -8px 18px rgba(255, 255, 255, 0.07), 0 0 60px rgba(124, 58, 237, 0.4)' }}>
-          <div className="absolute inset-0 rounded-[28px] blur-2xl opacity-50"
-            style={{ background: 'linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%)' }} />
-          <Brain className="w-12 h-12 text-white relative z-10" strokeWidth={2.5} />
+          transition={{ type: 'spring', stiffness: 200, delay: 0.15 }}
+          className="w-24 h-24 mx-auto rounded-full flex items-center justify-center"
+          style={{
+            background: 'var(--primary)',
+            color: 'var(--primary-foreground)',
+            boxShadow: 'var(--shadow-md)',
+          }}>
+          <span className="material-symbols-rounded filled" style={{ fontSize: 44 }} aria-hidden="true">psychology</span>
         </motion.div>
 
         <div className="space-y-4">
-          <motion.h1 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-            className="text-4xl font-bold leading-tight">
-            Ace Your Tech Interview
+          <motion.h1 initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+            className="text-[40px] leading-tight tracking-tight"
+            style={{ fontWeight: 500, color: 'var(--foreground)', letterSpacing: '-0.015em' }}>
+            Ace your tech interview.
             <br />
-            <span className="gradient-text">Get Hired Faster</span>
+            <span style={{ color: 'var(--primary)' }}>Get hired faster.</span>
           </motion.h1>
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }}
-            className="text-muted-foreground text-base leading-relaxed">
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
+            className="text-base leading-relaxed"
+            style={{ color: 'var(--muted-foreground)', fontFamily: "'Roboto', 'Roboto Flex', sans-serif" }}>
             1000+ questions · AI voice interviews · Spaced repetition
           </motion.p>
         </div>
 
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
           className="space-y-3">
-          <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+          <motion.button whileTap={{ scale: 0.98 }}
             onClick={onStart}
-            className="w-full py-4 bg-gradient-to-r from-violet-600 to-cyan-500 rounded-2xl font-bold text-lg text-white shadow-clay-lg flex items-center justify-center gap-2 clay-press"
-            style={{ background: 'linear-gradient(135deg, #A78BFA 0%, #7C3AED 50%, #06b6d4 100%)' }}>
-            Start Practicing Now <ChevronRight className="w-5 h-5" />
+            data-testid="button-start-practicing"
+            className="inline-flex items-center justify-center gap-2 px-7 h-12 rounded-full text-sm transition-shadow"
+            style={{
+              background: 'var(--primary)',
+              color: 'var(--primary-foreground)',
+              fontFamily: "'Google Sans Display', 'Roboto Flex', sans-serif",
+              fontWeight: 500,
+              letterSpacing: '0.01em',
+              boxShadow: 'var(--shadow-sm)',
+            }}>
+            Start Practicing
+            <span className="material-symbols-rounded" style={{ fontSize: 18 }}>arrow_forward</span>
           </motion.button>
-          <p className="text-xs text-muted-foreground">Choose your path → Practice daily → Land your dream job</p>
+          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+            Choose your path · Practice daily · Land your dream job
+          </p>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}
-          className="flex items-center justify-center gap-6 text-sm">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
+          className="flex items-center justify-center gap-8 text-sm">
           {[['12K+', 'Learners'], ['500K+', 'Solved'], ['85%', 'Success']].map(([n, l]) => (
             <div key={l} className="text-center">
-              <div className="font-bold text-base">{n}</div>
-              <div className="text-muted-foreground text-xs">{l}</div>
+              <div className="text-base" style={{ fontWeight: 500, color: 'var(--foreground)' }}>{n}</div>
+              <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{l}</div>
             </div>
           ))}
         </motion.div>
@@ -211,10 +219,16 @@ function DailyChallengeCard({ onNavigate }: { onNavigate: (path: string) => void
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-      className={`relative p-[1px] rounded-3xl overflow-hidden shadow-clay-md ${done ? '' : 'bg-gradient-to-br from-violet-500/50 via-cyan-500/30 to-transparent'}`}>
-      <div className={`relative p-4 rounded-3xl overflow-hidden ${done ? 'bg-green-500/8 border border-green-500/25 shadow-clay-sm' : 'bg-card border border-border/40 shadow-clay-sm'}`}>
-      <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-15"
-        style={{ background: done ? '#10b981' : 'radial-gradient(circle, #ff0080, #ff8c00)' }} />
+      className="relative rounded-3xl overflow-hidden">
+      <div
+        className="relative p-4 rounded-3xl overflow-hidden"
+        style={{
+          background: done ? 'color-mix(in srgb, #34a853 10%, var(--card))' : 'var(--card)',
+          border: `1px solid ${done ? 'color-mix(in srgb, #34a853 32%, transparent)' : 'var(--border)'}`,
+          boxShadow: 'var(--shadow-sm)',
+        }}>
+      <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-10"
+        style={{ background: done ? '#34a853' : 'var(--primary)' }} />
       <div className="relative space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -237,11 +251,19 @@ function DailyChallengeCard({ onNavigate }: { onNavigate: (path: string) => void
           <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1"><Award className="w-3 h-3 text-amber-400" />+50 XP</span>
         </div>
         {!done ? (
-          <motion.button whileTap={{ scale: 0.96 }}
+          <motion.button whileTap={{ scale: 0.98 }}
             onClick={() => { localStorage.setItem(doneKey, 'true'); setDone(true); onNavigate('/training'); }}
-            className="w-full py-2.5 rounded-2xl font-semibold text-sm text-white flex items-center justify-center gap-2 min-h-[44px] cursor-pointer clay-press shadow-clay-sm"
-            style={{ background: 'linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%)' }}>
-            Start Challenge <ChevronRight className="w-4 h-4" />
+            data-testid="button-start-daily-challenge"
+            className="w-full h-11 rounded-full text-sm flex items-center justify-center gap-2 min-h-[44px] cursor-pointer transition-shadow"
+            style={{
+              background: 'var(--primary)',
+              color: 'var(--primary-foreground)',
+              fontFamily: "'Google Sans Display', 'Roboto Flex', sans-serif",
+              fontWeight: 500,
+              boxShadow: 'var(--shadow-sm)',
+            }}>
+            Start challenge
+            <span className="material-symbols-rounded" style={{ fontSize: 18 }}>arrow_forward</span>
           </motion.button>
         ) : (
           <button onClick={() => onNavigate('/training')}
@@ -271,9 +293,9 @@ function MyTopicsFeed({ onNavigate }: { onNavigate: (path: string) => void }) {
       <motion.button
         variants={fadeUp}
         onClick={() => onNavigate('/channels')}
-        className="w-full py-4 rounded-3xl border border-dashed border-violet-500/30 hover:border-violet-500/60 hover:bg-violet-500/5 transition-all duration-150 ease-out flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground min-h-[44px] cursor-pointer shadow-clay-sm"
+        className="w-full py-4 rounded-3xl border border-dashed border-primary/30 hover:border-primary/60 hover:bg-primary/5 transition-all duration-150 ease-out flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground min-h-[44px] cursor-pointer shadow-clay-sm"
       >
-        <Plus className="w-4 h-4 text-violet-400" />
+        <Plus className="w-4 h-4 text-primary" />
         Add topics to personalize your feed
       </motion.button>
     );
@@ -285,7 +307,7 @@ function MyTopicsFeed({ onNavigate }: { onNavigate: (path: string) => void }) {
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">My Topics</h2>
         <button
           onClick={() => onNavigate('/manage-subscriptions')}
-          className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 transition-colors duration-150 ease-out cursor-pointer min-h-[44px] px-2"
+          className="flex items-center gap-1 text-xs text-primary hover:text-primary transition-colors duration-150 ease-out cursor-pointer min-h-[44px] px-2"
         >
           <Settings2 className="w-3 h-3" /> Manage
         </button>
@@ -355,7 +377,7 @@ export function HomePage() {
       const paths = pathIds.map((pathId: string) => {
         if (pathId.startsWith?.('custom-')) {
           const cp = customPaths.find((p: any) => p.id === pathId);
-          if (cp) return { id: cp.id, name: cp.name, icon: Brain, color: 'from-purple-500 to-pink-500', description: 'Your custom learning journey', channels: cp.channels || [], certifications: cp.certifications || [], difficulty: 'Custom', duration: 'Self-paced', totalQuestions: 0, jobs: ['Custom Path'], skills: [], salary: 'Varies' };
+          if (cp) return { id: cp.id, name: cp.name, icon: Brain, color: 'from-primary to-pink-500', description: 'Your custom learning journey', channels: cp.channels || [], certifications: cp.certifications || [], difficulty: 'Custom', duration: 'Self-paced', totalQuestions: 0, jobs: ['Custom Path'], skills: [], salary: 'Varies' };
         }
         const cp2 = curatedPaths.find((p: any) => p.id === pathId);
         if (cp2) {
@@ -492,8 +514,8 @@ export function HomePage() {
               <span className="font-bold text-sm">{streak}</span>
               <span className="text-[10px] text-muted-foreground">day</span>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-500/15 border border-violet-500/25 shadow-clay-sm">
-              <Sparkles className="w-4 h-4 text-violet-400" />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/15 border border-primary/25 shadow-clay-sm">
+              <Sparkles className="w-4 h-4 text-primary" />
               <span className="font-bold text-sm">{balance}</span>
               <span className="text-[10px] text-muted-foreground">XP</span>
             </div>
@@ -520,7 +542,7 @@ export function HomePage() {
           {/* ══ HERO ══════════════════════════════════════════════════════════ */}
           <motion.div variants={stagger} initial="hidden" animate="show"
             className="relative rounded-3xl overflow-hidden p-6 border border-border/40 shadow-clay-lg animate-float-slow"
-            style={{ background: 'linear-gradient(135deg, rgba(167,139,250,0.15) 0%, rgba(124,58,237,0.12) 50%, rgba(6,182,212,0.10) 100%)' }}>
+            style={{ background: 'linear-gradient(135deg, rgba(167,139,250,0.15) 0%, rgba(60,64,67,0.15) 50%, rgba(6,182,212,0.10) 100%)' }}>
             {!prefersReducedMotion && (
               <motion.div className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl opacity-30"
                 style={{ background: 'radial-gradient(circle, #A78BFA, #06b6d4)' }}
@@ -548,14 +570,14 @@ export function HomePage() {
               whileTap={{ scale: 0.96 }}
               onClick={() => setLocation(`/channel/${resumeState.channelId}?q=${resumeState.questionId}`)}
               className="w-full flex items-center gap-4 p-4 rounded-3xl text-left min-h-[44px] cursor-pointer shadow-clay-sm clay-press border border-border/40"
-              style={{ background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(6, 182, 212, 0.08) 100%)' }}
+              style={{ background: 'linear-gradient(135deg, rgba(60,64,67,0.15) 0%, rgba(6, 182, 212, 0.08) 100%)' }}
               data-testid="button-continue-learning"
             >
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center shrink-0 shadow-clay-sm">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-primary flex items-center justify-center shrink-0 shadow-clay-sm">
                 <RotateCcw className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[10px] uppercase tracking-widest text-violet-400 font-bold">Continue</div>
+                <div className="text-[10px] uppercase tracking-widest text-primary font-bold">Continue</div>
                 <div className="font-semibold text-sm truncate">{resumeState.channelName}</div>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -568,7 +590,7 @@ export function HomePage() {
             <motion.div variants={stagger} initial="hidden" animate="show"
               className="flex gap-3 overflow-x-auto pb-1 custom-scrollbar -mx-4 px-4">
               <StatPill icon={Zap} value={questionsToday} label="Answered Today" color="text-yellow-400" onClick={() => setLocation('/training')} />
-              <StatPill icon={BookOpen} value={topicsMastered} label="Topics Mastered" color="text-cyan-400" onClick={() => setLocation('/channels')} />
+              <StatPill icon={BookOpen} value={topicsMastered} label="Topics Mastered" color="text-primary" onClick={() => setLocation('/channels')} />
               <StatPill icon={Trophy} value={totalCompleted} label="Solved" color="text-amber-400" onClick={() => setLocation('/progress')} />
             </motion.div>
           </div>
@@ -583,11 +605,11 @@ export function HomePage() {
               className="grid grid-cols-2 gap-3">
               <ActionCard primary icon={<BookOpen className="w-5 h-5 text-white" />}
                 title="Swipe Learn" subtitle="Browse questions like reels"
-                color="from-violet-600 to-indigo-500"
+                color="from-primary to-primary"
                 onClick={() => activePaths[0] ? setLocation(`/channel/${activePaths[0].channels[0]}`) : setLocation('/learning-paths')} />
               <ActionCard icon={<Mic className="w-5 h-5 text-white" />}
                 title="Voice Interview" subtitle="AI mock interview"
-                color="from-blue-500 to-cyan-500"
+                color="from-blue-500 to-primary"
                 onClick={() => setLocation('/voice-interview')} />
               <ActionCard icon={<Target className="w-5 h-5 text-white" />}
                 title="Daily Test" subtitle="20-question quiz"
@@ -595,7 +617,7 @@ export function HomePage() {
                 onClick={() => setLocation('/tests')} />
               <ActionCard icon={<Code className="w-5 h-5 text-white" />}
                 title="Code Challenges" subtitle="Rex AI hints · 30 problems"
-                color="from-teal-500 to-cyan-500"
+                color="from-teal-500 to-primary"
                 onClick={() => setLocation('/code')} />
             </motion.div>
           </div>
@@ -614,7 +636,7 @@ export function HomePage() {
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Continue Learning</h2>
                 <button onClick={() => setLocation('/learning-paths')}
-                  className="text-xs text-violet-400 hover:text-violet-300 transition-colors duration-150 ease-out cursor-pointer">Browse All →</button>
+                  className="text-xs text-primary hover:text-primary transition-colors duration-150 ease-out cursor-pointer">Browse All →</button>
               </div>
               <div className="space-y-3">
                 {activePaths.slice(0, 2).map((path, i) => {
@@ -723,7 +745,7 @@ export function HomePage() {
           {activePaths.length < 3 && (
             <motion.button whileTap={{ scale: 0.96 }}
               onClick={() => setLocation('/learning-paths')}
-              className="w-full py-4 rounded-3xl border border-dashed border-border/40 hover:border-violet-500/40 hover:bg-violet-500/5 transition-all duration-200 flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground min-h-[44px] cursor-pointer clay-press shadow-clay-sm">
+              className="w-full py-4 rounded-3xl border border-dashed border-border/40 hover:border-primary/40 hover:bg-primary/5 transition-all duration-200 flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground min-h-[44px] cursor-pointer clay-press shadow-clay-sm">
               <Plus className="w-4 h-4" /> Add a learning path
             </motion.button>
           )}

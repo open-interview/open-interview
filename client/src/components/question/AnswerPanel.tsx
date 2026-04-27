@@ -41,8 +41,8 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
   return (
     <div className="rounded-xl overflow-hidden my-4" style={{ background: 'linear-gradient(145deg, #1e1e2e, #151520)', boxShadow: '8px 8px 16px rgba(0,0,0,0.4), -2px -2px 8px rgba(255,255,255,0.02), inset 0 1px 0 rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
       <div className="flex items-center justify-between px-4 py-2" style={{ background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <span className="text-xs font-mono text-violet-400 uppercase">{language || 'code'}</span>
-        <button onClick={copy} className="flex items-center gap-1.5 text-xs text-violet-400/70 hover:text-violet-400 transition-colors">
+        <span className="text-xs font-mono text-primary uppercase">{language || 'code'}</span>
+        <button onClick={copy} className="flex items-center gap-1.5 text-xs text-primary/70 hover:text-primary transition-colors">
           {copied ? <><Check className="w-3.5 h-3.5 text-emerald-400" /><span className="text-emerald-400">Copied</span></> : <><Copy className="w-3.5 h-3.5" />Copy</>}
         </button>
       </div>
@@ -112,7 +112,7 @@ export function AnswerPanel({ question, isCompleted }: {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="rounded-xl p-4"
-          style={{ background: 'linear-gradient(145deg, rgba(139,92,246,0.08), rgba(99,102,241,0.05))', border: '1px solid rgba(139,92,246,0.2)', boxShadow: '0 4px 20px rgba(139,92,246,0.1)' }}
+          style={{ background: 'linear-gradient(145deg, rgba(139,92,246,0.08), rgba(60,64,67,0.12))', border: '1px solid rgba(139,92,246,0.2)', boxShadow: '0 4px 20px rgba(139,92,246,0.1)' }}
         >
           <p className="text-xs font-semibold text-foreground mb-3">Before reading — how well did you recall this?</p>
           <RecallRatingBar onRate={handleSelfRate} size="md" />

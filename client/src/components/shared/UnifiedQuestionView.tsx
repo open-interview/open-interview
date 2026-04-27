@@ -144,9 +144,9 @@ export function UnifiedQuestionView({
     browse: {
       bg: 'bg-gradient-to-br from-background via-background to-primary/5',
       accent: 'cyan',
-      accentClass: 'from-cyan-500 to-cyan-600',
-      accentBg: 'bg-cyan-500/20',
-      accentText: 'text-cyan-400',
+      accentClass: 'from-primary to-primary',
+      accentBg: 'bg-primary/20',
+      accentText: 'text-primary',
       glow: 'shadow-cyan-500/20'
     },
     test: {
@@ -158,11 +158,11 @@ export function UnifiedQuestionView({
       glow: 'shadow-amber-500/20'
     },
     interview: {
-      bg: 'bg-gradient-to-br from-background via-background to-purple-500/5',
+      bg: 'bg-gradient-to-br from-background via-background to-primary/5',
       accent: 'purple',
-      accentClass: 'from-purple-500 to-purple-600',
-      accentBg: 'bg-purple-500/20',
-      accentText: 'text-purple-400',
+      accentClass: 'from-primary to-primary',
+      accentBg: 'bg-primary/20',
+      accentText: 'text-primary',
       glow: 'shadow-purple-500/20'
     },
     certification: {

@@ -47,15 +47,15 @@ export function AICompanionMessages({
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
       {messages.length === 0 ? (
         <div className="text-center py-8">
-          <Sparkles className="w-12 h-12 mx-auto mb-3 text-purple-500" />
+          <Sparkles className="w-12 h-12 mx-auto mb-3 text-primary" />
           <h3 className="font-bold mb-2">Hi! I'm your AI companion</h3>
           <p className="text-sm text-muted-foreground mb-4">
             I can explain, debate, and chat about anything on this page!
           </p>
           {recognitionAvailable && (
-            <div className="mb-4 p-3 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg">
+            <div className="mb-4 p-3 bg-gradient-to-r from-primary/10 to-pink-500/10 border border-primary/20 rounded-lg">
               <div className="flex items-center justify-center gap-2 mb-2">
-                <Mic className="w-4 h-4 text-purple-500" />
+                <Mic className="w-4 h-4 text-primary" />
                 <p className="text-sm font-semibold">Push-to-Talk Voice Mode Available!</p>
               </div>
               <p className="text-xs text-muted-foreground mb-2">
@@ -70,7 +70,7 @@ export function AICompanionMessages({
             </div>
           )}
           {agentMode && (onNavigate || availableActions.length > 0) && (
-            <div className="mb-4 p-3 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg">
+            <div className="mb-4 p-3 bg-gradient-to-r from-blue-500/10 to-primary/10 border border-blue-500/20 rounded-lg">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Sparkles className="w-4 h-4 text-blue-500" />
                 <p className="text-sm font-semibold">Intelligent Agent Mode Active!</p>
@@ -106,14 +106,14 @@ export function AICompanionMessages({
               className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {message.role === 'assistant' && (
-                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 bg-gradient-to-r from-primary to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
                   <Sparkles className="w-4 h-4 text-white" />
                 </div>
               )}
               <div
                 className={`max-w-[80%] rounded-2xl px-4 py-2 ${
                   message.role === 'user'
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                    ? 'bg-gradient-to-r from-primary to-pink-500 text-white'
                     : 'bg-muted'
                 }`}
               >
@@ -141,7 +141,7 @@ export function AICompanionMessages({
           ))}
           {isGenerating && (
             <div className="flex gap-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-r from-primary to-pink-500 rounded-full flex items-center justify-center">
                 <Loader2 className="w-4 h-4 text-white animate-spin" />
               </div>
               <div className="bg-muted rounded-2xl px-4 py-2">

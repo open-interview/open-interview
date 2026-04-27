@@ -128,7 +128,7 @@ export default function TestsPage() {
               <StatCard icon={CheckCircle} bgColor="from-green-500/20 to-green-600/10" borderColor="border-green-500/30" color="text-green-500" value={passedCount} label="Passed" />
               <StatCard icon={XCircle} bgColor="from-red-500/20 to-red-600/10" borderColor="border-red-500/30" color="text-red-500" value={failedCount} label="Failed" />
               <StatCard icon={Target} bgColor="from-blue-500/20 to-blue-600/10" borderColor="border-blue-500/30" color="text-blue-500" value={notStartedCount} label="Not Started" />
-              <StatCard icon={Star} bgColor="from-purple-500/20 to-purple-600/10" borderColor="border-purple-500/30" color="text-purple-500" value={`${stats.averageScore}%`} label="Avg Score" />
+              <StatCard icon={Star} bgColor="from-primary/20 to-primary/10" borderColor="border-primary/30" color="text-primary" value={`${stats.averageScore}%`} label="Avg Score" />
             </div>
 
             {/* Search + Sort */}
@@ -243,7 +243,7 @@ export default function TestsPage() {
                         }`}
                       >
                         {/* Hover bg */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
 
                         <div className="relative space-y-3">
                           {/* Top row */}

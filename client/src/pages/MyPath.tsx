@@ -36,8 +36,8 @@ const PATH_ICON_MAP: Record<string, React.ElementType> = {
   'job-title': Code, 'company': Building2, 'skill': Brain, 'certification': Award,
 };
 const PATH_COLOR_MAP: Record<string, string> = {
-  'job-title': 'from-blue-500 to-cyan-500', 'company': 'from-green-500 to-emerald-500',
-  'skill': 'from-purple-500 to-pink-500', 'certification': 'from-orange-500 to-red-500',
+  'job-title': 'from-blue-500 to-primary', 'company': 'from-green-500 to-emerald-500',
+  'skill': 'from-primary to-pink-500', 'certification': 'from-orange-500 to-red-500',
 };
 
 function mapPathFromJson(path: any) {
@@ -50,7 +50,7 @@ function mapPathFromJson(path: any) {
     id: path.id,
     name: path.title,
     icon: PATH_ICON_MAP[pathType] || Rocket,
-    color: PATH_COLOR_MAP[pathType] || 'from-indigo-500 to-purple-500',
+    color: PATH_COLOR_MAP[pathType] || 'from-primary to-primary',
     description: path.description,
     channels,
     difficulty: path.difficulty ? path.difficulty.charAt(0).toUpperCase() + path.difficulty.slice(1) : 'Intermediate',
@@ -356,7 +356,7 @@ export default function MyPath() {
 
                   {/* Selected Summary */}
                   {(editForm.channels.length > 0 || editForm.certifications.length > 0) && (
-                    <div className="p-4 bg-gradient-to-r from-primary/10 to-cyan-500/10 border border-primary/30 rounded-[16px]">
+                    <div className="p-4 bg-gradient-to-r from-primary/10 to-primary/10 border border-primary/30 rounded-[16px]">
                       <div className="text-sm text-muted-foreground mb-2">Selected:</div>
                       <div className="flex items-center gap-4 text-sm font-semibold">
                         <span>{editForm.channels.length} channels</span>
@@ -378,7 +378,7 @@ export default function MyPath() {
                             onClick={() => toggleEditChannel(channel.id)}
                             className={`p-4 rounded-[12px] border transition-all text-left ${
                               isSelected
-                                ? 'bg-gradient-to-r from-primary/20 to-cyan-500/20 border-primary'
+                                ? 'bg-gradient-to-r from-primary/20 to-primary/20 border-primary'
                                 : 'bg-muted/50 border-border hover:border-border'
                             }`}
                           >
@@ -404,7 +404,7 @@ export default function MyPath() {
                             onClick={() => toggleEditCertification(cert.id)}
                             className={`p-4 rounded-[12px] border transition-all text-left ${
                               isSelected
-                                ? 'bg-gradient-to-r from-primary/20 to-cyan-500/20 border-primary'
+                                ? 'bg-gradient-to-r from-primary/20 to-primary/20 border-primary'
                                 : 'bg-muted/50 border-border hover:border-border'
                             }`}
                           >
@@ -427,7 +427,7 @@ export default function MyPath() {
                   <button
                     onClick={saveEditedPath}
                     disabled={!editForm.name || (editForm.channels.length === 0 && editForm.certifications.length === 0)}
-                    className="w-full py-4 bg-gradient-to-r from-primary to-cyan-500 rounded-[16px] font-bold text-xl text-black disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-all"
+                    className="w-full py-4 bg-gradient-to-r from-primary to-primary rounded-[16px] font-bold text-xl text-black disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-all"
                   >
                     Save Changes
                   </button>
@@ -448,7 +448,7 @@ export default function MyPath() {
               <h1 className="text-6xl md:text-7xl font-bold mb-4">
                 My
                 <br />
-                <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-primary to-primary bg-clip-text text-transparent">
                   custom paths
                 </span>
               </h1>
@@ -465,11 +465,11 @@ export default function MyPath() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setLocation('/learning-paths')}
-              className="w-full p-8 bg-gradient-to-r from-primary/20 to-cyan-500/20 backdrop-blur-xl rounded-[24px] border-2 border-dashed border-primary/30 hover:border-primary/60 transition-all group mb-8"
+              className="w-full p-8 bg-gradient-to-r from-primary/20 to-primary/20 backdrop-blur-xl rounded-[24px] border-2 border-dashed border-primary/30 hover:border-primary/60 transition-all group mb-8"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-primary to-cyan-500 rounded-full flex items-center justify-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary rounded-full flex items-center justify-center">
                     <Plus className="w-8 h-8 text-primary-foreground" strokeWidth={3} />
                   </div>
                   <div className="text-left">
@@ -495,7 +495,7 @@ export default function MyPath() {
                       animate={{ opacity: 1, scale: 1 }}
                       className={`group relative p-6 backdrop-blur-xl rounded-[24px] border-2 transition-all overflow-hidden ${
                         isActive
-                          ? 'bg-gradient-to-br from-primary/20 to-cyan-500/20 border-primary'
+                          ? 'bg-gradient-to-br from-primary/20 to-primary/20 border-primary'
                           : 'bg-muted/50 border-border hover:border-border'
                       }`}
                     >
@@ -507,7 +507,7 @@ export default function MyPath() {
                       )}
                       <div className="space-y-4">
                         <div className="flex items-start gap-4">
-                          <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-[16px] flex items-center justify-center flex-shrink-0">
+                          <div className="w-16 h-16 bg-gradient-to-br from-primary to-pink-500 rounded-[16px] flex items-center justify-center flex-shrink-0">
                             <Brain className="w-8 h-8 text-foreground" strokeWidth={2.5} />
                           </div>
                           <div className="flex-1">
@@ -552,7 +552,7 @@ export default function MyPath() {
                             className={`flex-1 px-6 py-3 rounded-[16px] font-bold transition-all ${
                               isActive
                                 ? 'bg-muted border border-border hover:bg-white/20'
-                                : 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground hover:scale-105'
+                                : 'bg-gradient-to-r from-primary to-primary text-primary-foreground hover:scale-105'
                             }`}
                           >
                             {isActive ? 'Deactivate' : 'Activate'}
@@ -595,14 +595,14 @@ export default function MyPath() {
                 transition={{ delay: 0.2 }}
                 className="text-center py-20"
               >
-                <div className="w-24 h-24 bg-gradient-to-br from-primary/20 to-cyan-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <div className="w-24 h-24 bg-gradient-to-br from-primary/20 to-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Brain className="w-12 h-12 text-primary" />
                 </div>
                 <h3 className="text-2xl font-bold mb-2">No custom paths yet</h3>
                 <p className="text-muted-foreground mb-6">Create your first custom learning path to get started</p>
                 <button
                   onClick={() => setLocation('/learning-paths')}
-                  className="px-8 py-4 bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground rounded-[16px] font-bold hover:scale-105 transition-all"
+                  className="px-8 py-4 bg-gradient-to-r from-primary to-primary text-primary-foreground rounded-[16px] font-bold hover:scale-105 transition-all"
                 >
                   Create Your First Path
                 </button>
@@ -634,7 +634,7 @@ export default function MyPath() {
                       animate={{ opacity: 1, scale: 1 }}
                       className={`group relative p-6 backdrop-blur-xl rounded-[24px] border-2 transition-all overflow-hidden ${
                         isActive
-                          ? 'bg-gradient-to-br from-primary/20 to-cyan-500/20 border-primary'
+                          ? 'bg-gradient-to-br from-primary/20 to-primary/20 border-primary'
                           : 'bg-muted/50 border-border hover:border-border'
                       }`}
                     >
@@ -692,7 +692,7 @@ export default function MyPath() {
                             className={`w-full px-6 py-3 rounded-[16px] font-bold transition-all ${
                               isActive
                                 ? 'bg-muted border border-border hover:bg-white/20'
-                                : 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground hover:scale-105'
+                                : 'bg-gradient-to-r from-primary to-primary text-primary-foreground hover:scale-105'
                             }`}
                           >
                             {isActive ? 'Deactivate' : 'Activate Path'}

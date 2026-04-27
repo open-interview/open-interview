@@ -463,7 +463,7 @@ export default function QuestionViewer() {
                           <button onClick={() => setShowAnswer(true)}
                             data-testid="button-reveal-answer"
                             className="cursor-pointer w-full flex items-center justify-center gap-2 min-h-[44px] font-semibold rounded-xl text-sm transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.98]"
-                            style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', color: '#fff', boxShadow: '0 4px 16px rgba(99,102,241,0.35), inset 0 1px 0 rgba(255,255,255,0.2)' }}>
+                            style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', color: '#fff', boxShadow: '0 4px 16px rgba(60,64,67,0.12), inset 0 1px 0 rgba(255,255,255,0.2)' }}>
                             <Eye className="w-4 h-4" /> Show Answer
                           </button>
                         ) : (

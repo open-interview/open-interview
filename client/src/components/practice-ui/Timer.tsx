@@ -77,7 +77,7 @@ export function Timer({ duration, onComplete, showProgress = true }: TimerProps)
                 ? 'bg-gradient-to-r from-red-500 to-pink-500'
                 : isLowTime
                 ? 'bg-gradient-to-r from-orange-500 to-yellow-500'
-                : 'bg-gradient-to-r from-primary to-cyan-500'
+                : 'bg-gradient-to-r from-primary to-primary'
             }`}
           />
         </div>

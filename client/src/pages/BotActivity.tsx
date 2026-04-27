@@ -80,8 +80,8 @@ const BOT_CONFIG: Record<string, {
   'creator': { 
     name: 'Creator Bot', 
     icon: Sparkles, 
-    color: 'text-cyan-500 bg-cyan-500/10 border-cyan-500/30',
-    gradient: 'from-cyan-500 to-blue-500',
+    color: 'text-primary bg-primary/10 border-primary/30',
+    gradient: 'from-primary to-blue-500',
     description: 'Creates questions, challenges, voice keywords'
   },
   'verifier': { 
@@ -94,8 +94,8 @@ const BOT_CONFIG: Record<string, {
   'processor': { 
     name: 'Processor Bot', 
     icon: Wrench, 
-    color: 'text-purple-500 bg-purple-500/10 border-purple-500/30',
-    gradient: 'from-purple-500 to-pink-500',
+    color: 'text-primary bg-primary/10 border-primary/30',
+    gradient: 'from-primary to-pink-500',
     description: 'Improves or deletes flagged content'
   }
 };
@@ -540,7 +540,7 @@ export default function BotActivity() {
                             <div className={cn(
                               "w-8 h-8 rounded-lg flex items-center justify-center",
                               item.action === 'delete' ? "bg-red-500/10 text-red-500" :
-                              item.action === 'improve' ? "bg-purple-500/10 text-purple-500" :
+                              item.action === 'improve' ? "bg-primary/10 text-primary" :
                               "bg-amber-500/10 text-amber-500"
                             )}>
                               {item.action === 'delete' ? <Trash2 className="w-4 h-4" /> :
@@ -615,8 +615,8 @@ export default function BotActivity() {
                                 <span className="font-medium text-sm">{config.name}</span>
                                 <span className={cn(
                                   "text-xs px-2 py-0.5 rounded-full",
-                                  entry.action === 'create' ? "bg-cyan-500/20 text-cyan-500" :
-                                  entry.action === 'update' ? "bg-purple-500/20 text-purple-500" :
+                                  entry.action === 'create' ? "bg-primary/20 text-primary" :
+                                  entry.action === 'update' ? "bg-primary/20 text-primary" :
                                   entry.action === 'delete' ? "bg-red-500/20 text-red-500" :
                                   entry.action === 'verify' ? "bg-green-500/20 text-green-500" :
                                   "bg-amber-500/20 text-amber-500"
@@ -656,7 +656,7 @@ export default function BotActivity() {
             </h4>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-cyan-500" /> Creator
+                <Sparkles className="w-3 h-3 text-primary" /> Creator
               </span>
               <span>→</span>
               <span className="flex items-center gap-1">
@@ -664,7 +664,7 @@ export default function BotActivity() {
               </span>
               <span>→</span>
               <span className="flex items-center gap-1">
-                <Wrench className="w-3 h-3 text-purple-500" /> Processor
+                <Wrench className="w-3 h-3 text-primary" /> Processor
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-2">

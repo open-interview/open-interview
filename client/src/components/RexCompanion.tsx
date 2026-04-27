@@ -58,7 +58,7 @@ export default function RexCompanion({ challenge, failingTests, onClose }: RexCo
     return (
       <button
         onClick={() => setExpanded(true)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium transition-colors shadow-md"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary hover:bg-primary text-white text-xs font-medium transition-colors shadow-md"
         aria-label="Open Rex AI companion"
       >
         <Sparkles className="w-3.5 h-3.5" /> Ask Rex
@@ -70,10 +70,10 @@ export default function RexCompanion({ challenge, failingTests, onClose }: RexCo
   return (
     <div className="flex flex-col w-72 rounded-xl border border-border bg-card shadow-xl overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-violet-600 text-white">
+      <div className="flex items-center gap-2 px-3 py-2 bg-primary text-white">
         <Sparkles className="w-4 h-4 shrink-0" />
         <span className="font-semibold text-sm flex-1">Rex</span>
-        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-violet-500 text-violet-100 border-0">AI</Badge>
+        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-primary text-primary border-0">AI</Badge>
         <button onClick={() => setExpanded(false)} className="opacity-70 hover:opacity-100 ml-1" aria-label="Collapse">
           <ChevronUp className="w-4 h-4" />
         </button>
@@ -89,8 +89,8 @@ export default function RexCompanion({ challenge, failingTests, onClose }: RexCo
         <div className="flex flex-col gap-2 p-3">
           {messages.map(m => (
             <div key={m.id} className="flex gap-2 items-start">
-              <div className="w-6 h-6 rounded-full bg-violet-600/20 border border-violet-500/30 flex items-center justify-center shrink-0 mt-0.5">
-                <Sparkles className="w-3 h-3 text-violet-400" />
+              <div className="w-6 h-6 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0 mt-0.5">
+                <Sparkles className="w-3 h-3 text-primary" />
               </div>
               <p className="bg-muted text-foreground text-xs rounded-2xl rounded-tl-none px-3 py-2 leading-relaxed border border-border">
                 {m.text}
@@ -119,7 +119,7 @@ export default function RexCompanion({ challenge, failingTests, onClose }: RexCo
                   ? 'opacity-40 cursor-default border-border text-muted-foreground bg-muted'
                   : locked
                   ? 'opacity-40 cursor-not-allowed border-border text-muted-foreground bg-muted'
-                  : 'border-violet-500/40 text-violet-300 bg-violet-500/10 hover:bg-violet-500/20'
+                  : 'border-primary/40 text-primary bg-primary/10 hover:bg-primary/20'
               }`}
             >
               <span className="flex items-center gap-1.5">

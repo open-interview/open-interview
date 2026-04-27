@@ -102,7 +102,7 @@ export function UnifiedAnswerPanel({
               className={cn(
                 'flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm whitespace-nowrap transition-all flex-shrink-0',
                 isActive
-                  ? 'bg-gradient-to-r from-primary to-purple-500 text-white shadow-lg'
+                  ? 'bg-gradient-to-r from-primary to-primary text-white shadow-lg'
                   : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
               )}
             >
@@ -203,7 +203,7 @@ export function UnifiedAnswerPanel({
                   className="w-full flex items-center justify-between p-4 hover:bg-secondary/30 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-primary/20 flex items-center justify-center">
                       <Lightbulb className="w-5 h-5 text-blue-400" />
                     </div>
                     <h3 className="text-lg font-semibold text-foreground">Explanation</h3>
@@ -238,13 +238,13 @@ export function UnifiedAnswerPanel({
 
         {/* ELI5 tab */}
         {activeTab === 'eli5' && question.eli5 && (
-          <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-2xl p-6">
+          <div className="bg-gradient-to-br from-primary/10 to-pink-500/10 border border-primary/20 rounded-2xl p-6">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center flex-shrink-0">
-                <Baby className="w-6 h-6 text-purple-400" />
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-pink-500/20 flex items-center justify-center flex-shrink-0">
+                <Baby className="w-6 h-6 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-semibold text-purple-300 mb-3">Explain Like I'm 5</h3>
+                <h3 className="text-lg font-semibold text-primary mb-3">Explain Like I'm 5</h3>
                 <p className="text-foreground/90 leading-relaxed">{question.eli5}</p>
               </div>
             </div>

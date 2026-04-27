@@ -82,27 +82,27 @@ export const CHANNEL_THEMES: Record<string, ChannelTheme> = {
     icon: '☁️'
   },
   algorithms: {
-    primary: 'text-purple-500',
-    secondary: 'bg-purple-500/20',
-    gradient: 'from-purple-500/20 via-violet-500/10 to-indigo-500/20',
+    primary: 'text-primary',
+    secondary: 'bg-primary/20',
+    gradient: 'from-primary/20 via-primary/10 to-primary/20',
     glow: 'shadow-purple-500/30',
-    badge: 'bg-purple-500',
+    badge: 'bg-primary',
     icon: '🧮'
   },
   'system-design': {
     primary: 'text-blue-500',
     secondary: 'bg-blue-500/20',
-    gradient: 'from-blue-500/20 via-cyan-500/10 to-teal-500/20',
+    gradient: 'from-blue-500/20 via-primary/10 to-teal-500/20',
     glow: 'shadow-blue-500/30',
     badge: 'bg-blue-500',
     icon: '🏗️'
   },
   frontend: {
-    primary: 'text-cyan-500',
-    secondary: 'bg-cyan-500/20',
-    gradient: 'from-cyan-500/20 via-sky-500/10 to-blue-500/20',
+    primary: 'text-primary',
+    secondary: 'bg-primary/20',
+    gradient: 'from-primary/20 via-sky-500/10 to-blue-500/20',
     glow: 'shadow-cyan-500/30',
-    badge: 'bg-cyan-500',
+    badge: 'bg-primary',
     icon: '🎨'
   },
   backend: {
@@ -114,17 +114,17 @@ export const CHANNEL_THEMES: Record<string, ChannelTheme> = {
     icon: '⚙️'
   },
   devops: {
-    primary: 'text-indigo-500',
-    secondary: 'bg-indigo-500/20',
-    gradient: 'from-indigo-500/20 via-blue-500/10 to-violet-500/20',
+    primary: 'text-primary',
+    secondary: 'bg-primary/20',
+    gradient: 'from-primary/20 via-blue-500/10 to-primary/20',
     glow: 'shadow-indigo-500/30',
-    badge: 'bg-indigo-500',
+    badge: 'bg-primary',
     icon: '🔄'
   },
   kubernetes: {
     primary: 'text-sky-500',
     secondary: 'bg-sky-500/20',
-    gradient: 'from-sky-500/20 via-blue-500/10 to-indigo-500/20',
+    gradient: 'from-sky-500/20 via-blue-500/10 to-primary/20',
     glow: 'shadow-sky-500/30',
     badge: 'bg-sky-500',
     icon: '☸️'
@@ -162,11 +162,11 @@ export const CHANNEL_THEMES: Record<string, ChannelTheme> = {
     icon: '🧪'
   },
   behavioral: {
-    primary: 'text-violet-500',
-    secondary: 'bg-violet-500/20',
-    gradient: 'from-violet-500/20 via-purple-500/10 to-indigo-500/20',
+    primary: 'text-primary',
+    secondary: 'bg-primary/20',
+    gradient: 'from-primary/20 via-primary/10 to-primary/20',
     glow: 'shadow-violet-500/30',
-    badge: 'bg-violet-500',
+    badge: 'bg-primary',
     icon: '💬'
   },
   sre: {
@@ -178,17 +178,17 @@ export const CHANNEL_THEMES: Record<string, ChannelTheme> = {
     icon: '🔧'
   },
   terraform: {
-    primary: 'text-violet-600',
-    secondary: 'bg-violet-600/20',
-    gradient: 'from-violet-600/20 via-purple-500/10 to-indigo-500/20',
+    primary: 'text-primary',
+    secondary: 'bg-primary/20',
+    gradient: 'from-primary/20 via-primary/10 to-primary/20',
     glow: 'shadow-violet-600/30',
-    badge: 'bg-violet-600',
+    badge: 'bg-primary',
     icon: '🏔️'
   },
   networking: {
     primary: 'text-teal-500',
     secondary: 'bg-teal-500/20',
-    gradient: 'from-teal-500/20 via-cyan-500/10 to-blue-500/20',
+    gradient: 'from-teal-500/20 via-primary/10 to-blue-500/20',
     glow: 'shadow-teal-500/30',
     badge: 'bg-teal-500',
     icon: '🌐'
@@ -210,11 +210,11 @@ export const CHANNEL_THEMES: Record<string, ChannelTheme> = {
     icon: '🐍'
   },
   'generative-ai': {
-    primary: 'text-fuchsia-500',
-    secondary: 'bg-fuchsia-500/20',
-    gradient: 'from-fuchsia-500/20 via-pink-500/10 to-purple-500/20',
+    primary: 'text-primary',
+    secondary: 'bg-primary/20',
+    gradient: 'from-primary/20 via-pink-500/10 to-primary/20',
     glow: 'shadow-fuchsia-500/30',
-    badge: 'bg-fuchsia-500',
+    badge: 'bg-primary',
     icon: '✨'
   },
   default: {

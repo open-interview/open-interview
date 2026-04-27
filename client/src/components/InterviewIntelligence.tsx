@@ -67,15 +67,15 @@ export function InterviewIntelligence() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Brain className="w-4 h-4 text-purple-500" />
+            <Brain className="w-4 h-4 text-primary" />
             Your Cognitive Profile
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {primaryPattern && (
-            <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
               <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="w-4 h-4 text-purple-500" />
+                <Sparkles className="w-4 h-4 text-primary" />
                 <span className="font-medium text-sm">{primaryPattern[1].name}</span>
               </div>
               <p className="text-xs text-muted-foreground">{primaryPattern[1].description}</p>
@@ -192,7 +192,7 @@ export function InterviewIntelligence() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <Dna className="w-4 h-4 text-cyan-500" />
+              <Dna className="w-4 h-4 text-primary" />
               Knowledge DNA
             </CardTitle>
           </CardHeader>

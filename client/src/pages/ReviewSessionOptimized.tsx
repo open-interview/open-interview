@@ -224,10 +224,10 @@ export default function ReviewSessionOptimized() {
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="flex items-center gap-1 px-2 py-0.5 bg-purple-500/20 rounded-lg"
+              className="flex items-center gap-1 px-2 py-0.5 bg-primary/20 rounded-lg"
             >
-              <Zap className="w-3 h-3 text-purple-400" />
-              <span className="text-xs font-bold text-purple-400">{sessionXP}</span>
+              <Zap className="w-3 h-3 text-primary" />
+              <span className="text-xs font-bold text-primary">{sessionXP}</span>
             </motion.div>
           )}
         </motion.header>
@@ -269,7 +269,7 @@ export default function ReviewSessionOptimized() {
                     <motion.button
                       onClick={() => handleTagClick(currentCard.channel)}
                       whileTap={{ scale: 0.95 }}
-                      className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-xs font-semibold rounded-full border border-cyan-500/30 hover:bg-cyan-500/30 transition-colors cursor-pointer"
+                      className="px-2 py-0.5 bg-primary/20 text-primary text-xs font-semibold rounded-full border border-primary/30 hover:bg-primary/30 transition-colors cursor-pointer"
                     >
                       {currentCard.channel}
                     </motion.button>
@@ -290,7 +290,7 @@ export default function ReviewSessionOptimized() {
                         key={idx}
                         onClick={() => handleTagClick(tag)}
                         whileTap={{ scale: 0.95 }}
-                        className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs font-semibold rounded-full border border-purple-500/30 hover:bg-purple-500/30 transition-colors cursor-pointer"
+                        className="px-2 py-0.5 bg-primary/20 text-primary text-xs font-semibold rounded-full border border-primary/30 hover:bg-primary/30 transition-colors cursor-pointer"
                       >
                         {tag}
                       </motion.button>
@@ -315,10 +315,10 @@ export default function ReviewSessionOptimized() {
                     >
                       {/* TLDR - COMPACT */}
                       {currentQuestion.tldr && (
-                        <div className="p-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+                        <div className="p-2 bg-primary/10 border border-primary/30 rounded-lg">
                           <div className="flex items-center gap-1.5 mb-1">
-                            <Zap className="w-3 h-3 text-cyan-400" />
-                            <span className="text-xs font-bold text-cyan-400">TL;DR</span>
+                            <Zap className="w-3 h-3 text-primary" />
+                            <span className="text-xs font-bold text-primary">TL;DR</span>
                           </div>
                           <p className="text-sm text-foreground/90">{currentQuestion.tldr}</p>
                         </div>
@@ -629,7 +629,7 @@ function CheckpointTest({
               className="bg-card/90 border border-border/50 rounded-xl p-3 mb-3"
             >
               <div className="flex items-center gap-2 mb-2">
-                <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-xs font-semibold rounded-full">
+                <span className="px-2 py-0.5 bg-primary/20 text-primary text-xs font-semibold rounded-full">
                   {currentCard.channel}
                 </span>
               </div>
@@ -815,9 +815,9 @@ function CompletedScreen({
         </p>
 
         {sessionXP > 0 && (
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 rounded-full mb-4">
-            <Zap className="w-5 h-5 text-purple-400" />
-            <span className="text-lg font-bold text-purple-400">+{sessionXP} XP</span>
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 rounded-full mb-4">
+            <Zap className="w-5 h-5 text-primary" />
+            <span className="text-lg font-bold text-primary">+{sessionXP} XP</span>
           </div>
         )}
 

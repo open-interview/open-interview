@@ -241,14 +241,14 @@ export default function Bookmarks() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.03 }}
                         onClick={() => goToQuestion(question)}
-                        className="rounded-[var(--radius-xl)] p-4 cursor-pointer transition-all duration-200 ease-out hover:border-violet-500/40 hover:scale-[1.01] hover:shadow-lg"
+                        className="rounded-[var(--radius-xl)] p-4 cursor-pointer transition-all duration-200 ease-out hover:border-primary/40 hover:scale-[1.01] hover:shadow-lg"
                         style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)' }}
                       >
                         <div className="flex items-start gap-3">
                           {/* Channel icon */}
                           <div
                             className="p-2 rounded-lg flex-shrink-0 hidden sm:flex"
-                            style={{ background: 'rgba(99,102,241,0.12)', color: 'var(--color-accent-violet-light)' }}
+                            style={{ background: 'rgba(60,64,67,0.12)', color: 'var(--color-accent-violet-light)' }}
                           >
                             {channelIcons[question.channelId] || channelIcons.default}
                           </div>
@@ -311,7 +311,7 @@ export default function Bookmarks() {
                             <button
                               onClick={e => { e.stopPropagation(); goToQuestion(question); }}
                               className="w-11 h-11 flex items-center justify-center rounded-lg transition-colors duration-150 hover:opacity-80 cursor-pointer"
-                              style={{ background: 'rgba(99,102,241,0.15)', color: 'var(--color-accent-violet-light)' }}
+                              style={{ background: 'rgba(60,64,67,0.12)', color: 'var(--color-accent-violet-light)' }}
                               title="Review question"
                               aria-label="Review question"
                             >
@@ -326,7 +326,7 @@ export default function Bookmarks() {
                             <p className="text-xs leading-relaxed mb-2" style={{ color: 'var(--text-secondary)' }}>{previewText}</p>
                             <button
                               onClick={() => goToQuestion(question)}
-                              className="text-xs text-violet-400 hover:text-violet-300 transition-colors duration-150 cursor-pointer"
+                              className="text-xs text-primary hover:text-primary transition-colors duration-150 cursor-pointer"
                             >
                               Go to question →
                             </button>
@@ -374,7 +374,7 @@ export default function Bookmarks() {
                               </span>
                               <button
                                 onClick={() => goToQuestion(question)}
-                                className="text-xs text-violet-400 hover:text-violet-300 transition-colors duration-150 cursor-pointer"
+                                className="text-xs text-primary hover:text-primary transition-colors duration-150 cursor-pointer"
                               >
                                 Go to question →
                               </button>

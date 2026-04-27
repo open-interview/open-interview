@@ -78,7 +78,7 @@ function SettingRow({ icon, label, description, children }: {
   );
 }
 
-const HEATMAP_LEVELS = ['bg-white/5','bg-violet-500/30','bg-violet-500/55','bg-violet-500/80','bg-violet-400'];
+const HEATMAP_LEVELS = ['bg-white/5','bg-primary/30','bg-primary/55','bg-primary/80','bg-primary'];
 const CHART_COLORS = ['#7c3aed','#6366f1','#06b6d4','#10b981','#f59e0b','#f43f5e','#8b5cf6','#0891b2'];
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAY_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -166,7 +166,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
           background: 'rgba(15, 22, 41, 0.75)',
           backdropFilter: 'blur(20px) saturate(180%)',
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-          border: '1px solid rgba(99, 102, 241, 0.2)',
+          border: '1px solid rgba(60,64,67,0.12)',
           boxShadow: '12px 12px 40px rgba(0,0,0,0.35), -6px -6px 24px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.1)'
         }}
       >
@@ -263,7 +263,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
                         strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 32}`} strokeDashoffset={0} />
                     </svg>
                     {/* Inner medal face */}
-                    <div className={`absolute rounded-full flex items-center justify-center bg-gradient-to-br ${achievement.gradient || 'from-violet-500 to-purple-700'} shadow-lg`}
+                    <div className={`absolute rounded-full flex items-center justify-center bg-gradient-to-br ${achievement.gradient || 'from-primary to-primary'} shadow-lg`}
                       style={{ inset: 6 }}>
                       <IconComp className="text-white drop-shadow" style={{ width: 28, height: 28 }} />
                     </div>
@@ -316,7 +316,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
         <SectionHeader title="Learning Summary" icon={<BookOpen className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />} />
         <div className="grid grid-cols-3 gap-3">
           {[
-            { icon: Target, label: 'Topics Studied', value: learningSummary.topicsStudied, color: 'var(--color-accent-violet-light)', bg: 'rgba(124,58,237,0.1)' },
+            { icon: Target, label: 'Topics Studied', value: learningSummary.topicsStudied, color: 'var(--color-accent-violet-light)', bg: 'rgba(60,64,67,0.15)' },
             { icon: GraduationCap, label: 'Certs Practiced', value: learningSummary.certsPracticed, color: 'var(--color-xp)', bg: 'rgba(245,158,11,0.1)' },
             { icon: Code2, label: 'Coding Done', value: learningSummary.codingDone, color: 'var(--color-accent-cyan)', bg: 'rgba(6,182,212,0.1)' },
           ].map(({ icon: Icon, label, value, color, bg }) => (
@@ -440,7 +440,7 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
       {/* 4 stat chips */}
       {[
         { icon: Target,    label: 'Questions',  value: totalCompleted, sub: `+${todayCount}`, color: '#06b6d4', bg: 'rgba(6,182,212,0.08)'  },
-        { icon: BarChart2, label: 'Mastered',   value: topicsMastered, sub: undefined,        color: '#7c3aed', bg: 'rgba(124,58,237,0.08)' },
+        { icon: BarChart2, label: 'Mastered',   value: topicsMastered, sub: undefined,        color: '#7c3aed', bg: 'rgba(60,64,67,0.15)' },
         { icon: Trophy,    label: 'Certs',      value: certCount,      sub: undefined,        color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
         { icon: Mic,       label: 'Voice',      value: voiceSessions,  sub: undefined,        color: '#10b981', bg: 'rgba(16,185,129,0.08)' },
       ].map(({ icon: Icon, label, value, sub, color, bg }, i) => (
@@ -586,10 +586,10 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
         <div className="grid grid-cols-7 gap-0.5">
           {Array.from({ length: new Date(new Date().getFullYear(), new Date().getMonth(), 1).getDay() }, (_, i) => <div key={`e-${i}`} />)}
           {calendarDays.map(({ day, active, isToday }) => (
-            <div key={day} className={`flex items-center justify-center rounded text-[9px] font-medium ${isToday ? 'ring-1 ring-violet-500' : ''}`}
+            <div key={day} className={`flex items-center justify-center rounded text-[9px] font-medium ${isToday ? 'ring-1 ring-primary' : ''}`}
               style={{
                 aspectRatio: '1',
-                background: active ? (isToday ? '#7c3aed' : 'rgba(124,58,237,0.5)') : isToday ? 'rgba(124,58,237,0.12)' : 'var(--surface-2)',
+                background: active ? (isToday ? '#7c3aed' : 'rgba(60,64,67,0.15)') : isToday ? 'rgba(60,64,67,0.15)' : 'var(--surface-2)',
                 color: active ? '#fff' : isToday ? '#a78bfa' : 'var(--text-tertiary)',
               }}>
               {day}

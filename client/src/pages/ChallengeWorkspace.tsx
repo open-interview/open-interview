@@ -223,7 +223,7 @@ export default function ChallengeWorkspace() {
                   size="sm"
                   onClick={handleSubmit}
                   disabled={running || submitting}
-                  className="gap-1 text-xs min-h-[44px] cursor-pointer transition-colors duration-150 ease-out bg-violet-600 hover:bg-violet-700"
+                  className="gap-1 text-xs min-h-[44px] cursor-pointer transition-colors duration-150 ease-out bg-primary hover:bg-primary"
                 >
                   {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
                 </Button>
@@ -466,7 +466,7 @@ export default function ChallengeWorkspace() {
                         size="sm"
                         onClick={handleSubmit}
                         disabled={running || submitting}
-                        className="gap-1 text-xs min-h-[44px] cursor-pointer transition-colors duration-150 ease-out bg-violet-600 hover:bg-violet-700"
+                        className="gap-1 text-xs min-h-[44px] cursor-pointer transition-colors duration-150 ease-out bg-primary hover:bg-primary"
                       >
                         {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
                         {submitting ? 'Submitting…' : 'Submit'}

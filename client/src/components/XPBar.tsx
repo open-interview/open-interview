@@ -59,7 +59,7 @@ export function XPBar({ currentXP, className = '', compact = false }: XPBarProps
           />
         </div>
         <motion.span
-          className="text-xs font-bold text-violet-400 tabular-nums"
+          className="text-xs font-bold text-primary tabular-nums"
           animate={leveledUp ? { scale: [1, 1.4, 1], color: ['#a78bfa', '#ffd700', '#a78bfa'] } : {}}
           transition={{ duration: 0.6 }}
         >
@@ -165,7 +165,7 @@ export function XPBar({ currentXP, className = '', compact = false }: XPBarProps
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8 }}
             className="flex items-center justify-center gap-2 py-1.5 rounded-lg text-sm font-bold text-amber-400"
-            style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(124,58,237,0.10))', border: '1px solid rgba(245,158,11,0.3)' }}
+            style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(60,64,67,0.15))', border: '1px solid rgba(245,158,11,0.3)' }}
             role="status"
             aria-live="polite"
           >

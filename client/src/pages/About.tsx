@@ -138,7 +138,7 @@ function GlitchText({ children, className }: { children: string; className?: str
       <span className={cn(isGlitching && "animate-pulse")}>{children}</span>
       {isGlitching && (
         <>
-          <span className="absolute top-0 left-0.5 text-cyan-500 opacity-70 clip-glitch-1">{children}</span>
+          <span className="absolute top-0 left-0.5 text-primary opacity-70 clip-glitch-1">{children}</span>
           <span className="absolute top-0 -left-0.5 text-red-500 opacity-70 clip-glitch-2">{children}</span>
         </>
       )}
@@ -279,12 +279,12 @@ export default function About() {
   };
 
   const features = [
-    { icon: <Brain className="w-6 h-6" />, title: 'AI-Powered Generation', desc: 'Fresh questions generated daily by advanced AI models', color: 'from-purple-500 to-pink-500' },
-    { icon: <Code className="w-6 h-6" />, title: 'Real Code Examples', desc: 'Production-ready snippets and system design diagrams', color: 'from-cyan-500 to-blue-500' },
+    { icon: <Brain className="w-6 h-6" />, title: 'AI-Powered Generation', desc: 'Fresh questions generated daily by advanced AI models', color: 'from-primary to-pink-500' },
+    { icon: <Code className="w-6 h-6" />, title: 'Real Code Examples', desc: 'Production-ready snippets and system design diagrams', color: 'from-primary to-blue-500' },
     { icon: <Target className="w-6 h-6" />, title: 'FAANG-Ready', desc: 'Questions modeled after top tech company interviews', color: 'from-orange-500 to-red-500' },
     { icon: <Flame className="w-6 h-6" />, title: 'Streak System', desc: 'Gamified learning with daily streaks and rewards', color: 'from-yellow-500 to-orange-500' },
     { icon: <Sparkles className="w-6 h-6" />, title: 'Voice Practice', desc: 'Practice speaking your answers out loud with AI feedback', color: 'from-green-500 to-emerald-500' },
-    { icon: <Zap className="w-6 h-6" />, title: 'Instant Feedback', desc: 'Get immediate insights on your interview responses', color: 'from-indigo-500 to-purple-500' },
+    { icon: <Zap className="w-6 h-6" />, title: 'Instant Feedback', desc: 'Get immediate insights on your interview responses', color: 'from-primary to-primary' },
   ];
 
   const techStack = [
@@ -323,7 +323,7 @@ export default function About() {
             animate={{ opacity: 1 }}
             className="relative mb-8 overflow-hidden"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-cyan-500/10 rounded-2xl" />
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-primary/10 rounded-2xl" />
             <MatrixRain />
             
             <div className="relative z-10 p-6 sm:p-10">
@@ -383,7 +383,7 @@ export default function About() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setLocation('/voice-interview')}
-                    className="px-6 py-3 bg-gradient-to-r from-primary to-cyan-500 text-foreground font-bold rounded-lg flex items-center gap-2 shadow-lg shadow-primary/30"
+                    className="px-6 py-3 bg-gradient-to-r from-primary to-primary text-foreground font-bold rounded-lg flex items-center gap-2 shadow-lg shadow-primary/30"
                   >
                     <Play className="w-4 h-4" /> Start Practicing
                   </motion.button>
@@ -417,12 +417,12 @@ export default function About() {
                   <div className="p-4 font-mono text-sm max-h-64 overflow-y-auto">
                     <div className="text-green-400 mb-2">Welcome to Code Reels Terminal! Type 'help' for commands.</div>
                     {commandHistory.map((line, i) => (
-                      <div key={i} className={cn("mb-1", line.startsWith('$') ? 'text-cyan-400' : 'text-green-400/80')}>
+                      <div key={i} className={cn("mb-1", line.startsWith('$') ? 'text-primary' : 'text-green-400/80')}>
                         {line}
                       </div>
                     ))}
                     <div className="flex items-center gap-2">
-                      <span className="text-cyan-400">$</span>
+                      <span className="text-primary">$</span>
                       <input
                         type="text"
                         value={currentCommand}
@@ -481,7 +481,7 @@ export default function About() {
                       <div className="flex flex-wrap gap-3">
                         <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">Free Forever</span>
                         <span className="px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-sm font-medium">Open Source</span>
-                        <span className="px-3 py-1 bg-purple-500/10 text-purple-500 rounded-full text-sm font-medium">Community Driven</span>
+                        <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">Community Driven</span>
                       </div>
                     </div>
 
@@ -661,7 +661,7 @@ pnpm dev
                       onClick={(e) => { e.preventDefault(); setLocation('/whats-new'); }}
                       className="flex items-center gap-4 p-5 border border-border rounded-xl bg-card hover:border-primary/50 transition-colors group"
                     >
-                      <div className="w-12 h-12 bg-gradient-to-br from-primary to-cyan-500 rounded-xl flex items-center justify-center">
+                      <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary rounded-xl flex items-center justify-center">
                         <Sparkles className="w-6 h-6 text-foreground" />
                       </div>
                       <div className="flex-1">
@@ -675,7 +675,7 @@ pnpm dev
                       onClick={(e) => { e.preventDefault(); setLocation('/bot-activity'); }}
                       className="flex items-center gap-4 p-5 border border-border rounded-xl bg-card hover:border-primary/50 transition-colors group"
                     >
-                      <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                      <div className="w-12 h-12 bg-gradient-to-br from-primary to-pink-500 rounded-xl flex items-center justify-center">
                         <Bot className="w-6 h-6 text-foreground" />
                       </div>
                       <div className="flex-1">
@@ -711,7 +711,7 @@ git push origin feature/awesome-feature`} />
                     {/* Gradient Banner - Full height visible */}
                     <div 
                       data-testid="developer-banner"
-                      className="h-32 sm:h-40 bg-gradient-to-r from-primary via-purple-500 to-cyan-500 rounded-t-2xl relative flex items-end justify-center pb-4"
+                      className="h-32 sm:h-40 bg-gradient-to-r from-primary via-primary to-primary rounded-t-2xl relative flex items-end justify-center pb-4"
                     >
                       <div className="absolute inset-0 opacity-20 rounded-t-2xl" style={{
                         backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.1) 39px, rgba(255,255,255,0.1) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.1) 39px, rgba(255,255,255,0.1) 40px)`
@@ -722,7 +722,7 @@ git push origin feature/awesome-feature`} />
                         data-testid="developer-avatar"
                         className="absolute -bottom-12 sm:-bottom-14 w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-card border-4 border-card flex items-center justify-center shadow-xl z-10"
                       >
-                        <div className="w-full h-full rounded-xl bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center">
+                        <div className="w-full h-full rounded-xl bg-gradient-to-br from-primary to-primary flex items-center justify-center">
                           <User className="w-12 h-12 sm:w-14 sm:h-14 text-foreground" />
                         </div>
                       </motion.div>
@@ -738,7 +738,7 @@ git push origin feature/awesome-feature`} />
                         href="https://satishkumar-dhule.github.io/"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-5 min-h-[44px] bg-gradient-to-r from-primary to-cyan-500 text-foreground rounded-lg font-bold text-sm hover:opacity-90 transition-opacity duration-150 shadow-lg"
+                        className="inline-flex items-center gap-2 px-5 min-h-[44px] bg-gradient-to-r from-primary to-primary text-foreground rounded-lg font-bold text-sm hover:opacity-90 transition-opacity duration-150 shadow-lg"
                       >
                         <Globe className="w-4 h-4" /> Portfolio
                       </a>

@@ -167,10 +167,10 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
                         whileTap={{ scale: 0.95 }}
                         className="p-3 border rounded-lg text-left group"
                         style={{
-                          background: selectedRole === role.id ? 'rgba(124,58,237,0.12)' : 'rgba(255,255,255,0.025)',
-                          border: `1px solid ${selectedRole === role.id ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.06)'}`,
+                          background: selectedRole === role.id ? 'rgba(60,64,67,0.15)' : 'rgba(255,255,255,0.025)',
+                          border: `1px solid ${selectedRole === role.id ? 'rgba(60,64,67,0.15)' : 'rgba(255,255,255,0.06)'}`,
                           boxShadow: selectedRole === role.id 
-                            ? '0 4px 16px rgba(124,58,237,0.25), inset 0 1px 0 rgba(124,58,237,0.15)' 
+                            ? '0 4px 16px rgba(60,64,67,0.15), inset 0 1px 0 rgba(60,64,67,0.15)' 
                             : '4px 4px 12px rgba(0,0,0,0.3), -2px -2px 8px rgba(255,255,255,0.02)',
                         }}
                       >
@@ -218,11 +218,11 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
                           className="px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5"
                           style={{
                             background: isSelected 
-                              ? 'rgba(124,58,237,0.2)' 
+                              ? 'rgba(60,64,67,0.15)' 
                               : 'rgba(255,255,255,0.03)',
-                            border: `1px solid ${isSelected ? 'rgba(124,58,237,0.5)' : 'rgba(255,255,255,0.05)'}`,
+                            border: `1px solid ${isSelected ? 'rgba(60,64,67,0.15)' : 'rgba(255,255,255,0.05)'}`,
                             boxShadow: isSelected 
-                              ? '0 3px 12px rgba(124,58,237,0.25), inset 0 1px 0 rgba(124,58,237,0.15)' 
+                              ? '0 3px 12px rgba(60,64,67,0.15), inset 0 1px 0 rgba(60,64,67,0.15)' 
                               : '3px 3px 8px rgba(0,0,0,0.25), -2px -2px 6px rgba(255,255,255,0.015)',
                             color: '#e2d9f3',
                           }}
@@ -263,7 +263,7 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
                         color: 'white',
                         boxShadow: isCompleteDisabled 
                           ? 'none' 
-                          : '0 4px 16px rgba(124,58,237,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
+                          : '0 4px 16px rgba(60,64,67,0.15), inset 0 1px 0 rgba(255,255,255,0.15)',
                         cursor: isCompleteDisabled ? 'not-allowed' : 'pointer',
                       }}
                     >

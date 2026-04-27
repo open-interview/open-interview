@@ -141,7 +141,7 @@ export function MobileHomeFocused() {
             {/* Mini Profile Header - Premium gradient */}
             <button
               onClick={() => setLocation('/profile')}
-              className="w-full bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 p-3 hover:from-violet-500 hover:via-purple-500 hover:to-indigo-600 transition-all"
+              className="w-full bg-gradient-to-br from-primary via-primary to-primary p-3 hover:from-primary hover:via-primary hover:to-primary transition-all"
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
@@ -174,8 +174,8 @@ export function MobileHomeFocused() {
                 className="w-full p-3 flex items-center justify-around hover:bg-muted/30 transition-colors border-t border-border/50"
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
-                    <Target className="w-4 h-4 text-violet-500" />
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Target className="w-4 h-4 text-primary" />
                   </div>
                   <div className="text-left">
                     <div className="font-bold text-sm">{totalCompleted > 0 ? totalCompleted : '—'}</div>
@@ -194,8 +194,8 @@ export function MobileHomeFocused() {
                 </div>
                 <div className="w-px h-8 bg-border" />
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-                    <Layers className="w-4 h-4 text-indigo-500" />
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Layers className="w-4 h-4 text-primary" />
                   </div>
                   <div className="text-left">
                     <div className="font-bold text-sm">{subscribedChannels.length}</div>
@@ -246,13 +246,13 @@ export function MobileHomeFocused() {
             
             {/* Pro Tips Card */}
             {hasChannels && (
-              <div className="bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-indigo-500/10 rounded-xl border border-violet-500/20 p-3 h-fit">
+              <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-primary/10 rounded-xl border border-primary/20 p-3 h-fit">
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="w-4 h-4 text-violet-400" />
+                  <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-4 h-4 text-primary" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-violet-300 mb-1">Pro Tip</div>
+                    <div className="text-xs font-semibold text-primary mb-1">Pro Tip</div>
                     <p className="text-[11px] text-muted-foreground leading-relaxed">
                       Use Voice Interview mode to practice speaking your answers out loud. 
                       It's the best way to prepare for real interviews!
@@ -569,7 +569,7 @@ function QuickQuizCard({
                 </span>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded ${
                   currentQuestion.type === 'multiple' 
-                    ? 'bg-purple-500/10 text-purple-500' 
+                    ? 'bg-primary/10 text-primary' 
                     : 'bg-blue-500/10 text-blue-500'
                 }`}>
                   {currentQuestion.type === 'multiple' ? 'Multi' : 'Single'}
@@ -1011,10 +1011,10 @@ function CodingChallengeCardCompact({ onStart }: { onStart: () => void }) {
   return (
     <button
       onClick={onStart}
-      className="bg-gradient-to-br from-purple-500/10 to-blue-500/10 rounded-xl border border-purple-500/20 p-3 flex flex-col items-center gap-2 hover:from-purple-500/15 hover:to-blue-500/15 transition-colors text-center"
+      className="bg-gradient-to-br from-primary/10 to-blue-500/10 rounded-xl border border-primary/20 p-3 flex flex-col items-center gap-2 hover:from-primary/15 hover:to-blue-500/15 transition-colors text-center"
     >
-      <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-        <Code className="w-5 h-5 text-purple-500" />
+      <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+        <Code className="w-5 h-5 text-primary" />
       </div>
       <div>
         <h3 className="font-semibold text-xs sm:text-sm">Coding</h3>
@@ -1047,7 +1047,7 @@ function TrainingModeCardCompact({ onStart }: { onStart: () => void }) {
   return (
     <button
       onClick={onStart}
-      className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-xl border border-blue-500/20 p-3 flex flex-col items-center gap-2 hover:from-blue-500/15 hover:to-purple-500/15 transition-colors text-center"
+      className="bg-gradient-to-br from-blue-500/10 to-primary/10 rounded-xl border border-blue-500/20 p-3 flex flex-col items-center gap-2 hover:from-blue-500/15 hover:to-primary/15 transition-colors text-center"
     >
       <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
         <BookOpen className="w-5 h-5 text-blue-500" />
@@ -1090,7 +1090,7 @@ function QuickLinksCompact({ onNavigate }: { onNavigate: (path: string) => void 
         className="p-3 rounded-lg hover:bg-muted/50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
         aria-label="Stats"
       >
-        <Activity className="w-4 h-4 text-purple-500" />
+        <Activity className="w-4 h-4 text-primary" />
       </button>
     </div>
   );
@@ -1155,7 +1155,7 @@ function VoiceInterviewCard({ onStart }: { onStart: () => void }) {
 function TrainingModeCard({ onStart }: { onStart: () => void }) {
   return (
     <section className="mb-3">
-      <div className="bg-gradient-to-r from-blue-500/20 via-blue-500/15 to-purple-500/20 rounded-xl border border-blue-500/30 p-3">
+      <div className="bg-gradient-to-r from-blue-500/20 via-blue-500/15 to-primary/20 rounded-xl border border-blue-500/30 p-3">
         <button
           onClick={onStart}
           className="w-full flex items-center gap-3 hover:opacity-90 transition-all group"

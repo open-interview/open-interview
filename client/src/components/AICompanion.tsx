@@ -1614,30 +1614,30 @@ Assistant (in ${languageName}):`;
       <style>{`
         @keyframes ai-agent-pulse {
           0%, 100% { 
-            box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7);
-            outline: 3px solid rgba(168, 85, 247, 0.5);
+            box-shadow: 0 0 0 0 rgba(60,64,67,0.12);
+            outline: 3px solid rgba(60,64,67,0.12);
           }
           50% { 
-            box-shadow: 0 0 0 15px rgba(168, 85, 247, 0);
-            outline: 3px solid rgba(168, 85, 247, 1);
+            box-shadow: 0 0 0 15px rgba(60,64,67,0.12);
+            outline: 3px solid rgba(60,64,67,0.12);
           }
         }
         
         @keyframes ai-agent-highlight-bg {
           0%, 100% { 
-            background-color: rgba(168, 85, 247, 0.15);
+            background-color: rgba(60,64,67,0.12);
           }
           50% { 
-            background-color: rgba(168, 85, 247, 0.35);
+            background-color: rgba(60,64,67,0.12);
           }
         }
         
         @keyframes ai-agent-glow {
           0%, 100% {
-            box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+            box-shadow: 0 0 20px rgba(60,64,67,0.12);
           }
           50% {
-            box-shadow: 0 0 30px rgba(168, 85, 247, 0.8);
+            box-shadow: 0 0 30px rgba(60,64,67,0.12);
           }
         }
         
@@ -1650,7 +1650,7 @@ Assistant (in ${languageName}):`;
         
         .ai-agent-highlight {
           animation: ai-agent-highlight-bg 1s ease-in-out 3, ai-agent-glow 1s ease-in-out 3;
-          outline: 3px solid rgba(168, 85, 247, 0.9) !important;
+          outline: 3px solid rgba(60,64,67,0.12) !important;
           outline-offset: 4px;
           border-radius: 8px;
           transition: all 0.3s ease;
@@ -1671,7 +1671,7 @@ Assistant (in ${languageName}):`;
           font-size: 12px;
           font-weight: 600;
           white-space: nowrap;
-          box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4);
+          box-shadow: 0 4px 12px rgba(60,64,67,0.12);
           z-index: 1000;
           animation: fadeIn 0.3s ease-in;
         }
@@ -1688,7 +1688,7 @@ Assistant (in ${languageName}):`;
           onClick={() => setIsOpen(true)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="fixed bottom-28 right-6 z-40 w-14 h-14 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow lg:bottom-6"
+          className="fixed bottom-28 right-6 z-40 w-14 h-14 bg-gradient-to-r from-primary to-pink-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow lg:bottom-6"
           title="AI Companion"
         >
           <MessageSquare className="w-6 h-6 text-white" />
@@ -1709,10 +1709,10 @@ Assistant (in ${languageName}):`;
             }`}
           >
             {/* Header */}
-            <div className="p-4 border-b border-border bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-t-2xl">
+            <div className="p-4 border-b border-border bg-gradient-to-r from-primary/10 to-pink-500/10 rounded-t-2xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                  <div className="w-10 h-10 bg-gradient-to-r from-primary to-pink-500 rounded-full flex items-center justify-center">
                     <Sparkles className="w-5 h-5 text-white" />
                   </div>
                   <div>
@@ -1727,7 +1727,7 @@ Assistant (in ${languageName}):`;
                       </p>
                     )}
                     {currentModel && !isLoadingModel && (
-                      <p className="text-xs text-purple-500 font-mono">
+                      <p className="text-xs text-primary font-mono">
                         🤖 {currentModel} | 🔊 {currentTTSModel}
                       </p>
                     )}
@@ -1755,7 +1755,7 @@ Assistant (in ${languageName}):`;
                     onClick={toggleVoiceMode}
                     className={`p-2 rounded-lg transition-colors ${
                       voiceMode
-                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                        ? 'bg-gradient-to-r from-primary to-pink-500 text-white'
                         : 'hover:bg-muted'
                     }`}
                     title={voiceMode ? 'Exit Voice Mode' : 'Enter Voice Mode'}
@@ -1806,7 +1806,7 @@ Assistant (in ${languageName}):`;
                                 onClick={() => setProvider(p)}
                                 className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
                                   provider === p
-                                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                                    ? 'bg-gradient-to-r from-primary to-pink-500 text-white'
                                     : 'bg-muted hover:bg-muted/80'
                                 }`}
                               >
@@ -1872,7 +1872,7 @@ Assistant (in ${languageName}):`;
                                 onClick={() => setTTSProvider(p)}
                                 className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
                                   ttsProvider === p
-                                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                                    ? 'bg-gradient-to-r from-blue-500 to-primary text-white'
                                     : 'bg-muted hover:bg-muted/80'
                                 }`}
                               >
@@ -1968,7 +1968,7 @@ Assistant (in ${languageName}):`;
 
                         <button
                           onClick={saveSettings}
-                          className="w-full px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                          className="w-full px-3 py-1.5 bg-gradient-to-r from-primary to-pink-500 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
                         >
                           Save Settings
                         </button>
