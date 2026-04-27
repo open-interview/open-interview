@@ -12,15 +12,15 @@ import { useUserPreferences } from '../context/UserPreferencesContext';
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const ROLES = [
-  { id: 'frontend',      label: 'Frontend Dev',    emoji: '🎨', desc: 'React · CSS · TypeScript',        color: '#f97316' },
-  { id: 'backend',       label: 'Backend Dev',     emoji: '⚙️',  desc: 'APIs · Databases · Microservices', color: '#3b82f6' },
-  { id: 'fullstack',     label: 'Full Stack',      emoji: '🚀', desc: 'End-to-end development',           color: '#8b5cf6' },
-  { id: 'mobile',        label: 'Mobile Dev',      emoji: '📱', desc: 'iOS · Android · React Native',     color: '#10b981' },
-  { id: 'devops',        label: 'DevOps / SRE',    emoji: '🔧', desc: 'CI/CD · Kubernetes · Cloud',       color: '#f59e0b' },
-  { id: 'data-engineer', label: 'Data Engineer',   emoji: '📊', desc: 'Pipelines · SQL · Spark',          color: '#06b6d4' },
-  { id: 'ml-engineer',   label: 'ML Engineer',     emoji: '🤖', desc: 'Models · MLOps · Python',          color: '#ec4899' },
-  { id: 'security',      label: 'Security Eng',    emoji: '🔒', desc: 'AppSec · Cloud Security',          color: '#ef4444' },
-  { id: 'architect',     label: 'Architect',       emoji: '🏗️', desc: 'System Design · Scalability',      color: '#a78bfa' },
+  { id: 'frontend',      label: 'Frontend Dev',    emoji: '🎨', desc: 'React · CSS · TypeScript',        color: '#f9ab00' },
+  { id: 'backend',       label: 'Backend Dev',     emoji: '⚙️',  desc: 'APIs · Databases · Microservices', color: '#1a73e8' },
+  { id: 'fullstack',     label: 'Full Stack',      emoji: '🚀', desc: 'End-to-end development',           color: '#a8c7fa' },
+  { id: 'mobile',        label: 'Mobile Dev',      emoji: '📱', desc: 'iOS · Android · React Native',     color: '#1e8e3e' },
+  { id: 'devops',        label: 'DevOps / SRE',    emoji: '🔧', desc: 'CI/CD · Kubernetes · Cloud',       color: '#e8710a' },
+  { id: 'data-engineer', label: 'Data Engineer',   emoji: '📊', desc: 'Pipelines · SQL · Spark',          color: '#00897b' },
+  { id: 'ml-engineer',   label: 'ML Engineer',     emoji: '🤖', desc: 'Models · MLOps · Python',          color: '#c2185b' },
+  { id: 'security',      label: 'Security Eng',    emoji: '🔒', desc: 'AppSec · Cloud Security',          color: '#d93025' },
+  { id: 'architect',     label: 'Architect',       emoji: '🏗️', desc: 'System Design · Scalability',      color: '#5e35b1' },
 ];
 
 const CERT_PROVIDERS = ['Amazon Web Services', 'Kubernetes', 'HashiCorp', 'Google Cloud', 'Microsoft Azure'];

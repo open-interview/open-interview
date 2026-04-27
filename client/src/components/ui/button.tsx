@@ -6,34 +6,33 @@ import { Loader2, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium" +
-  " focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" +
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium tracking-[0.0089em]" +
+  " focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background" +
   " disabled:pointer-events-none disabled:opacity-40" +
   " [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0" +
-  " transition-all duration-150 ease-out" +
-  " hover:scale-[1.02] hover:brightness-110 active:scale-[0.98]",
+  " transition-colors duration-150 ease-out" +
+  " active:scale-[0.98]",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground border border-primary-border",
+          "bg-primary text-primary-foreground hover:brightness-110",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-sm border-destructive-border",
+          "bg-destructive text-destructive-foreground hover:brightness-110",
         outline:
-          "border border-border shadow-xs active:shadow-none",
+          "border border-border bg-transparent text-foreground hover:bg-[color-mix(in_srgb,var(--primary)_8%,transparent)]",
         secondary:
-          "border bg-secondary text-secondary-foreground border border-secondary-border",
-        ghost: "border border-transparent hover:bg-muted",
-        link: "text-primary underline-offset-4 hover:underline hover:scale-100 hover:brightness-100",
+          "bg-secondary text-secondary-foreground hover:brightness-110",
+        ghost: "border border-transparent text-foreground hover:bg-[color-mix(in_srgb,var(--foreground)_8%,transparent)]",
+        link: "text-primary underline-offset-4 hover:underline",
         glow:
-          "bg-primary text-primary-foreground border border-primary-border" +
-          " hover:shadow-[0_0_16px_rgba(124,58,237,0.5)] hover:border-[var(--color-accent-violet)]",
+          "bg-primary text-primary-foreground hover:brightness-110",
       },
       size: {
-        default: "min-h-9 px-4 py-2",
-        sm: "min-h-8 rounded-md px-3 text-xs",
-        lg: "min-h-10 rounded-md px-8",
-        icon: "h-9 w-9",
+        default: "min-h-10 px-6 py-2",
+        sm: "min-h-8 rounded-full px-4 text-xs",
+        lg: "min-h-12 rounded-full px-8",
+        icon: "h-10 w-10 rounded-full",
       },
     },
     defaultVariants: {
