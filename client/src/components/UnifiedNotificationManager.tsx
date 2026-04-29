@@ -293,9 +293,9 @@ function AchievementCard({
 }) {
   const { achievement, rewards } = notification;
   
-  return (
+    return (
     <div className={cn(
-      "w-[340px] rounded-xl shadow-2xl overflow-hidden",
+      "w-[340px] rounded-xl shadow-sm overflow-hidden",
       "bg-gradient-to-br",
       achievement.gradient || "from-amber-500 to-orange-600"
     )}>
@@ -398,7 +398,7 @@ function LevelUpCard({
   onDismiss: () => void;
 }) {
   return (
-    <div className="relative w-[300px] rounded-xl shadow-2xl overflow-hidden bg-gradient-to-br from-amber-500 via-orange-500 to-primary">
+    <div className="relative w-[300px] rounded-xl shadow-sm overflow-hidden bg-gradient-to-br from-amber-500 via-orange-500 to-primary">
       <LevelUpConfetti />
 
       <div className="relative p-5 text-center">
@@ -549,9 +549,9 @@ function BadgeCard({
 }) {
   const { badge } = notification;
   
-  return (
+    return (
     <div className={cn(
-      "w-[340px] rounded-xl shadow-2xl overflow-hidden",
+      "w-[340px] rounded-xl shadow-sm overflow-hidden",
       "bg-gradient-to-br",
       badge.gradient || "from-primary to-primary"
     )}>

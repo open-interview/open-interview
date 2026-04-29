@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { BlogLayout } from "@/components/blog/BlogLayout";
 import { PostCard, PostCardSkeleton, TagPill, type PostCardData } from "@/components/blog/PostCard";
 import { SearchInput } from "@/components/blog/SearchInput";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Filter, TrendingUp } from "lucide-react";
 
 interface Category {
   id: string;
@@ -56,21 +56,28 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
   return (
     <BlogLayout>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-        {/* Page header */}
+        {/* Enhanced header */}
         <div className="mb-8">
           {(categorySlug || tag) && (
-            <nav aria-label="Breadcrumb" className="mb-3 text-sm text-[var(--color-ink-muted)]">
-              <ol className="flex items-center gap-1">
-                <li><a href="/blog" className="hover:text-[var(--color-accent)]">Blog</a></li>
+<nav aria-label="Breadcrumb" className="mb-3 text-sm text-[var(--color-ink-muted)]">
+               <ol className="flex items-center gap-1">
+                 <li><a href="/blog" className="hover:text-[var(--color-accent)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 rounded-sm">Blog</a></li>
                 <li aria-hidden>/</li>
                 <li className="text-[var(--color-ink)]">{pageTitle}</li>
               </ol>
             </nav>
           )}
-          <h1 className="text-3xl font-bold text-[var(--color-ink)]">{pageTitle}</h1>
-          {total > 0 && (
-            <p className="mt-1 text-sm text-[var(--color-ink-muted)]">{total} post{total !== 1 ? "s" : ""}</p>
-          )}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-[var(--color-ink)]">{pageTitle}</h1>
+              {total > 0 && (
+                <p className="mt-1 text-sm text-[var(--color-ink-muted)]">{total} post{total !== 1 ? "s" : ""}</p>
+              )}
+            </div>
+            <div className="w-full sm:w-80">
+              <SearchInput placeholder="Filter articles..." />
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-10">
@@ -81,11 +88,12 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
                 {Array.from({ length: 6 }).map((_, i) => <PostCardSkeleton key={i} />)}
               </div>
             ) : posts.length === 0 ? (
-              <div className="text-center py-16">
+              <div className="text-center py-16 rounded-xl border border-dashed border-[var(--color-border)]">
+                <Filter size={32} strokeWidth={1} className="mx-auto text-[var(--color-ink-muted)] mb-3" />
                 <p className="text-[var(--color-ink-muted)]">No posts found.</p>
-                <a href="/blog" className="mt-4 inline-block text-sm text-[var(--color-accent)] hover:underline">
-                  Browse all posts
-                </a>
+<a href="/blog" className="mt-4 inline-block text-sm text-[var(--color-accent)] hover:underline focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 rounded-sm">
+                   Browse all posts
+                 </a>
               </div>
             ) : (
               <>
@@ -97,21 +105,21 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
                     <button
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page === 1}
-                      className="rounded-md border border-[var(--color-border)] p-2 disabled:opacity-40 hover:bg-[var(--color-surface-raised)] transition-colors"
+                      className="rounded-lg border border-[var(--color-border)] p-2.5 disabled:opacity-40 hover:bg-[var(--color-surface-raised)] hover:border-[var(--color-accent)]/30 transition-all focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
                       aria-label="Previous page"
                     >
-                      <ChevronLeft size={16} strokeWidth={1.5} />
+                      <ChevronLeft size={18} strokeWidth={1.5} />
                     </button>
-                    <span className="text-sm text-[var(--color-ink-muted)]">
+                    <span className="text-sm text-[var(--color-ink-muted)] px-4">
                       Page {page} of {totalPages}
                     </span>
                     <button
                       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                       disabled={page === totalPages}
-                      className="rounded-md border border-[var(--color-border)] p-2 disabled:opacity-40 hover:bg-[var(--color-surface-raised)] transition-colors"
+                      className="rounded-lg border border-[var(--color-border)] p-2.5 disabled:opacity-40 hover:bg-[var(--color-surface-raised)] hover:border-[var(--color-accent)]/30 transition-all focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
                       aria-label="Next page"
                     >
-                      <ChevronRight size={16} strokeWidth={1.5} />
+                      <ChevronRight size={18} strokeWidth={1.5} />
                     </button>
                   </div>
                 )}
@@ -119,23 +127,22 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
             )}
           </div>
 
-          {/* Sidebar */}
+          {/* Enhanced Sidebar */}
           <aside className="hidden lg:block space-y-8">
-            <div>
-              <h2 className="text-sm font-semibold text-[var(--color-ink)] mb-3">Search</h2>
-              <SearchInput />
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold text-[var(--color-ink)] mb-3">Categories</h2>
+            <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-raised)]">
+              <h2 className="text-sm font-semibold text-[var(--color-ink)] mb-3 flex items-center gap-2">
+                <TrendingUp size={14} strokeWidth={1.5} className="text-[var(--color-accent)]" />
+                Categories
+              </h2>
               <ul className="space-y-1.5">
                 {categories.map((cat) => (
                   <li key={cat.id}>
                     <a
                       href={`/blog/category/${cat.slug}`}
-                      className={`text-sm transition-colors hover:text-[var(--color-accent)] ${
+                      className={`text-sm block py-1.5 px-2 rounded-md transition-all ${
                         categorySlug === cat.slug
-                          ? "font-semibold text-[var(--color-accent)]"
-                          : "text-[var(--color-ink-muted)]"
+                          ? "font-semibold text-[var(--color-accent)] bg-[var(--color-accent)]/10"
+                          : "text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-surface)]"
                       }`}
                     >
                       {cat.name}
@@ -145,8 +152,11 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
               </ul>
             </div>
             {tags.length > 0 && (
-              <div>
-                <h2 className="text-sm font-semibold text-[var(--color-ink)] mb-3">Tags</h2>
+              <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-raised)]">
+                <h2 className="text-sm font-semibold text-[var(--color-ink)] mb-3 flex items-center gap-2">
+                  <Filter size={14} strokeWidth={1.5} className="text-[var(--color-accent)]" />
+                  Popular Tags
+                </h2>
                 <div className="flex flex-wrap gap-2">
                   {tags.map((t) => <TagPill key={t} tag={t} />)}
                 </div>

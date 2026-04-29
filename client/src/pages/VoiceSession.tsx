@@ -63,21 +63,18 @@ function HighlightedTranscript({ text, keywords }: { text: string; keywords: str
 function WordCountBar({ text, target = 150 }: { text: string; target?: number }) {
   const count = text.trim() ? text.trim().split(/\s+/).length : 0;
   const pct = Math.min(count / target, 1);
-  const color = pct >= 1 ? '#00ff88' : pct >= 0.5 ? '#ffd700' : '#00d4ff';
+  const color = pct >= 1 ? 'hsl(var(--primary))' : pct >= 0.5 ? 'hsl(var(--warning))' : 'hsl(var(--info))';
   return (
     <div className="flex items-center gap-2 mt-2">
-      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)' }}>
+      <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-muted">
         <motion.div
           animate={{ width: `${pct * 100}%` }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           className="h-full rounded-full"
-          style={{ 
-            background: color,
-            boxShadow: pct >= 1 ? '0 0 8px rgba(0,255,136,0.5)' : 'none'
-          }}
+          style={{ background: color }}
         />
       </div>
-      <span className="text-xs tabular-nums text-muted-foreground">{count} / {target}w</span>
+      <span className="text-xs tabular-nums text-foreground/70">{count} / {target}w</span>
     </div>
   );
 }
@@ -110,7 +107,7 @@ function WaveformVisualizer({ isActive }: { isActive: boolean }) {
       {heights.map((h, i) => (
         <div key={i} style={{
           height: `${h}px`,
-          background: 'linear-gradient(to top, #7c3aed, #06b6d4)',
+          background: 'linear-gradient(to top, hsl(var(--primary)), hsl(var(--info)))',
           opacity: isActive ? 0.8 : 0.25,
           transition: 'height 80ms ease, opacity 300ms ease',
           borderRadius: '2px',
@@ -145,11 +142,11 @@ function ScoreRing({ score, size = 96 }: { score: number; size?: number }) {
   const r = (size / 2) - 8;
   const circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ;
-  const color = score >= 70 ? '#00ff88' : score >= 50 ? '#ffd700' : '#ff0080';
+  const color = score >= 70 ? 'hsl(var(--primary))' : score >= 50 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))';
   return (
     <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
       <svg className="absolute inset-0 -rotate-90" width={size} height={size}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="7" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="hsl(var(--border))" strokeWidth="7" />
         <motion.circle
           cx={size / 2} cy={size / 2} r={r} fill="none"
           stroke={color} strokeWidth="7" strokeLinecap="round"
@@ -161,7 +158,7 @@ function ScoreRing({ score, size = 96 }: { score: number; size?: number }) {
       </svg>
       <div className="text-center">
         <div className="text-2xl font-bold text-foreground">{score}</div>
-        <div className="text-[10px] text-muted-foreground">score</div>
+        <div className="text-xs text-foreground/70">score</div>
       </div>
     </div>
   );
@@ -384,11 +381,11 @@ export default function VoiceSession() {
       <AppLayout fullWidth hideNav >
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
           <div className="max-w-md text-center">
-            <div className="w-20 h-20 rounded-2xl bg-[#ffd700]/20 flex items-center justify-center mx-auto mb-6">
-              <AlertCircle className="w-10 h-10 text-[#ffd700]" />
+            <div className="w-20 h-20 rounded-2xl bg-warning/20 flex items-center justify-center mx-auto mb-6">
+              <AlertCircle className="w-10 h-10 text-warning" />
             </div>
             <h1 className="text-2xl font-bold text-foreground mb-3">Browser Not Supported</h1>
-            <p className="text-muted-foreground mb-6">Voice sessions require the Web Speech API. Use Chrome, Edge, or Safari.</p>
+            <p className="text-foreground/70 mb-6">Voice sessions require the Web Speech API. Use Chrome, Edge, or Safari.</p>
             <Button onClick={() => setLocation('/')}>Go Home</Button>
           </div>
         </div>
@@ -401,10 +398,10 @@ export default function VoiceSession() {
       <AppLayout fullWidth hideNav >
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center">
-            <div className="w-16 h-16 rounded-2xl bg-[#00d4ff]/20 flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 rounded-2xl bg-info/20 flex items-center justify-center mx-auto mb-4">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
-            <p className="text-muted-foreground">Loading sessions...</p>
+            <p className="text-foreground/70">Loading sessions...</p>
           </div>
         </div>
       </AppLayout>
@@ -427,7 +424,7 @@ export default function VoiceSession() {
             <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <button onClick={() => setLocation('/')} className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-muted rounded-lg transition-colors duration-150 ease-out cursor-pointer">
-                  <Home className="w-5 h-5 text-muted-foreground" />
+                  <Home className="w-5 h-5 text-foreground/70" />
                 </button>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary flex items-center justify-center">
@@ -435,7 +432,7 @@ export default function VoiceSession() {
                   </div>
                   <div>
                     <h1 className="font-semibold text-foreground">Voice Sessions</h1>
-                    <p className="text-xs text-muted-foreground">{availableSessions.length} sessions available</p>
+                    <p className="text-xs text-foreground/70">{availableSessions.length} sessions available</p>
                   </div>
                 </div>
               </div>
@@ -447,10 +444,10 @@ export default function VoiceSession() {
             {availableSessions.length === 0 ? (
               <div className="text-center py-16">
                 <div className="w-20 h-20 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-6">
-                  <AlertCircle className="w-10 h-10 text-muted-foreground" />
+                  <AlertCircle className="w-10 h-10 text-foreground/70" />
                 </div>
                 <h2 className="text-xl font-semibold text-foreground mb-2">No Sessions Available</h2>
-                <p className="text-muted-foreground mb-6">Subscribe to channels to unlock voice sessions.</p>
+                <p className="text-foreground/70 mb-6">Subscribe to channels to unlock voice sessions.</p>
                 <Button onClick={() => setLocation('/channels')}>
                   Subscribe to Channels
                 </Button>
@@ -459,38 +456,37 @@ export default function VoiceSession() {
               <div className="space-y-8">
                 {Object.entries(byChannel).map(([channel, sessions]) => (
                   <div key={channel}>
-                    <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-[#00d4ff]" />
-                      {channel.replace(/-/g, ' ')}
-                    </h2>
-                    <div className="grid gap-3">
-                      {sessions.map((session) => (
-                        <motion.button
-                          key={session.id}
-                          onClick={() => startNewSession(session)}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.96 }}
-                          className="p-5 bg-white/5 border border-white/10 rounded-2xl text-left hover:border-[#00d4ff]/50 transition-all duration-150 cursor-pointer group"
-                          style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)' }}
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-1">
-                                {session.topic}
-                              </h3>
-                              <p className="text-sm text-muted-foreground mb-3">{session.description}</p>
-                              <div className="flex items-center gap-3">
-                                <span className={`px-2.5 py-1 text-xs font-medium rounded-lg ${
-                                  session.difficulty === 'beginner' ? 'bg-[#00ff88]/20 text-primary' :
-                                  session.difficulty === 'intermediate' ? 'bg-[#ffd700]/20 text-[#ffd700]' :
-                                  'bg-[#ff0080]/20 text-[#ff0080]'
-                                }`}>
+                     <h2 className="text-xs font-semibold text-foreground/70 uppercase tracking-wider mb-4 flex items-center gap-2">
+                       <span className="w-2 h-2 rounded-full bg-info" />
+                       {channel.replace(/-/g, ' ')}
+                     </h2>
+                     <div className="grid gap-3">
+                       {sessions.map((session) => (
+                         <motion.button
+                           key={session.id}
+                           onClick={() => startNewSession(session)}
+                           whileHover={{ scale: 1.02 }}
+                           whileTap={{ scale: 0.96 }}
+                             className="p-5 bg-white/5 rounded-xl text-left hover:border-primary/50 transition-all duration-150 cursor-pointer group shadow-sm"
+                         >
+                           <div className="flex items-start justify-between gap-4">
+                             <div className="flex-1">
+                               <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-1">
+                                 {session.topic}
+                               </h3>
+                                <p className="text-base text-foreground/70 mb-3">{session.description}</p>
+                               <div className="flex items-center gap-3">
+                                 <span className={`px-3 py-1.5 text-xs font-medium rounded-lg ${
+                                   session.difficulty === 'beginner' ? 'bg-primary/20 text-primary' :
+                                   session.difficulty === 'intermediate' ? 'bg-warning/20 text-warning' :
+                                   'bg-destructive/20 text-destructive'
+                                 }`}>
                                   {session.difficulty}
                                 </span>
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-xs text-foreground/70">
                                   {session.totalQuestions} questions
                                 </span>
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-xs text-foreground/70">
                                   ~{session.estimatedMinutes} min
                                 </span>
                               </div>
@@ -521,17 +517,17 @@ export default function VoiceSession() {
             animate={{ opacity: 1, y: 0 }}
             className="max-w-lg w-full"
           >
-            <Card className="p-8 text-center">
+            <Card className="p-6 text-center">
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary flex items-center justify-center mx-auto mb-6">
                 <Target className="w-10 h-10 text-black" />
               </div>
               <h1 className="text-2xl font-bold text-foreground mb-2">{sessionState.session.topic}</h1>
-              <p className="text-muted-foreground mb-6">
+              <p className="text-foreground/70 mb-6">
                 {sessionState.questions.length} questions • ~{sessionState.session.estimatedMinutes} min
               </p>
               
-              <div className="bg-background/50 rounded-xl p-4 mb-6 text-left">
-                <p className="text-sm text-muted-foreground">{sessionState.session.description}</p>
+               <div className="bg-background/50 rounded-xl p-4 mb-6 text-left">
+                 <p className="text-base text-foreground/70">{sessionState.session.description}</p>
               </div>
 
               <div className="flex gap-3">
@@ -564,11 +560,11 @@ export default function VoiceSession() {
               <div className="h-16 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <button onClick={exitSession} className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-muted rounded-lg transition-colors duration-150 ease-out cursor-pointer">
-                    <Home className="w-5 h-5 text-muted-foreground" />
+                    <Home className="w-5 h-5 text-foreground/70" />
                   </button>
                   <div>
-                    <h1 className="font-semibold text-foreground text-sm">{sessionState.session.topic}</h1>
-                    <p className="text-xs text-muted-foreground">Question {sessionState.currentQuestionIndex + 1} of {sessionState.questions.length}</p>
+                    <h1 className="font-semibold text-foreground text-base">{sessionState.session.topic}</h1>
+                    <p className="text-xs text-foreground/70">Question {sessionState.currentQuestionIndex + 1} of {sessionState.questions.length}</p>
                   </div>
                 </div>
               </div>
@@ -581,11 +577,11 @@ export default function VoiceSession() {
           <main className="max-w-4xl mx-auto px-4 py-6 pb-24">
             <Card className="p-6 mb-6" neonBorder>
               <h2 className="text-lg font-medium text-foreground leading-relaxed">{currentQuestion.question}</h2>
-              {error && (
-                <div className="mt-4 p-4 bg-[#ff0080]/10 border border-[#ff0080]/30 rounded-xl text-[#ff0080] text-sm">
-                  {error}
-                </div>
-              )}
+                 {error && (
+                   <div className="mt-4 p-4 bg-destructive/10 border border-destructive/30 rounded-2xl text-destructive text-base">
+                   {error}
+                 </div>
+               )}
             </Card>
 
             {/* Recording card */}
@@ -598,15 +594,15 @@ export default function VoiceSession() {
                     {pageState === 'recording' && (
                       <motion.div key="rec" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 bg-[#ff0080] rounded-full animate-pulse shadow-[0_0_6px_#ff0080]" />
-                        <span className="text-sm font-semibold text-[#ff0080]">Listening...</span>
+                          <span className="w-2.5 h-2.5 bg-destructive rounded-full animate-pulse" />
+                         <span className="text-sm font-semibold text-destructive">Listening...</span>
                         <RecordingTimer isRunning={pageState === 'recording'} />
                       </motion.div>
                     )}
-                    {pageState === 'editing' && (
-                      <motion.div key="edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="flex items-center gap-2 text-[#ffd700]">
-                        <span className="text-sm font-medium">Review & Edit</span>
+                     {pageState === 'editing' && (
+                       <motion.div key="edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                         className="flex items-center gap-2 text-warning">
+                         <span className="text-sm font-medium">Review & Edit</span>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -622,35 +618,35 @@ export default function VoiceSession() {
                   onStart={() => {}}
                   onStop={stopRecording}
                 />
-                {pageState === 'recording' && (
-                  <p className="text-[10px] text-muted-foreground">
-                    Press <kbd className="px-1.5 py-0.5 bg-muted border border-border rounded text-[10px] font-mono">Space</kbd> to stop
-                  </p>
-                )}
+                     {pageState === 'recording' && (
+                       <p className="text-xs text-foreground/70">
+                         Press <kbd className="px-1.5 py-0.5 bg-muted border border-border rounded text-xs font-mono">Space</kbd> to stop
+                       </p>
+                     )}
 
                 {/* Transcript */}
                 <div className="w-full">
                   {pageState === 'editing' ? (
                     <>
-                      <textarea
-                        value={transcript}
-                        onChange={(e) => setTranscript(e.target.value)}
-                        className="w-full p-4 bg-background/50 border border-border rounded-xl min-h-[100px] text-sm text-foreground resize-y focus:outline-none focus:ring-2 focus:ring-[#00d4ff]/50"
-                        placeholder="Edit your answer..."
-                      />
+                       <textarea
+                         value={transcript}
+                         onChange={(e) => setTranscript(e.target.value)}
+                          className="w-full p-4 bg-background/50 border border-border rounded-2xl min-h-[100px] text-base text-foreground resize-y focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                         placeholder="Edit your answer..."
+                       />
                       <WordCountBar text={transcript} />
                     </>
                   ) : (
                     <>
-                      <div className="p-4 bg-background/50 rounded-xl min-h-[80px] border border-border">
-                        {transcript || interimTranscript ? (
-                          <p className="text-sm text-foreground whitespace-pre-wrap">
+                       <div className="p-4 bg-background/50 rounded-2xl min-h-[80px] border border-border">
+                         {transcript || interimTranscript ? (
+                           <p className="text-base text-foreground whitespace-pre-wrap">
                             <HighlightedTranscript text={transcript} keywords={(currentQuestion?.criticalPoints || []).map(p => p.phrase)} />
-                            <span className="text-muted-foreground">{interimTranscript}</span>
+                            <span className="text-foreground/70">{interimTranscript}</span>
                             <span className="animate-pulse text-primary">|</span>
                           </p>
                         ) : (
-                          <p className="text-sm text-muted-foreground italic">
+                           <p className="text-base text-foreground/70 italic">
                             Start speaking... Your words will appear here.
                           </p>
                         )}
@@ -659,7 +655,7 @@ export default function VoiceSession() {
                     </>
                   )}
                   {transcript && pageState === 'recording' && (
-                    <p className="text-xs text-muted-foreground mt-1.5 text-right tabular-nums">
+                    <p className="text-xs text-foreground/70 mt-1.5 text-right tabular-nums">
                       {transcript.trim().split(/\s+/).filter(Boolean).length} words
                     </p>
                   )}
@@ -701,31 +697,31 @@ export default function VoiceSession() {
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
             className="max-w-lg w-full"
           >
-            <Card className="p-8">
+            <Card className="p-6">
               {/* Score + verdict */}
               <div className="flex flex-col items-center gap-3 mb-6">
                 <ScoreRing score={lastAnswer.score} size={112} />
-                <p className={`text-sm font-semibold ${lastAnswer.isCorrect ? 'text-primary' : 'text-[#ff0080]'}`}>
+                <p className={`text-sm font-semibold ${lastAnswer.isCorrect ? 'text-primary' : 'text-destructive'}`}>
                   {lastAnswer.isCorrect ? '✓ Good answer!' : '✗ Needs improvement'}
                 </p>
               </div>
 
               {/* Feedback text */}
-              <div className="bg-background/50 rounded-xl p-4 mb-5">
-                <p className="text-sm text-muted-foreground">{lastAnswer.feedback}</p>
+                <div className="bg-background/50 rounded-xl p-4 mb-5">
+                 <p className="text-base text-foreground/70">{lastAnswer.feedback}</p>
               </div>
 
               {/* Key points checklist */}
               {(lastAnswer.pointsCovered.length > 0 || lastAnswer.pointsMissed.length > 0) && (
                 <div className="grid grid-cols-2 gap-3 mb-6">
                   {lastAnswer.pointsCovered.length > 0 && (
-                    <div className="p-4 rounded-xl bg-[#00ff88]/10 border border-[#00ff88]/20">
+                     <div className="p-4 rounded-xl bg-primary/10">
                       <p className="text-xs font-semibold text-primary mb-2 flex items-center gap-1.5">
                         <CheckCircle className="w-3.5 h-3.5" /> Covered ({lastAnswer.pointsCovered.length})
                       </p>
                       <ul className="space-y-1.5">
                         {lastAnswer.pointsCovered.map((p, i) => (
-                          <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                          <li key={i} className="text-xs text-foreground/70 flex items-start gap-1.5">
                             <span className="text-primary flex-shrink-0">✓</span>
                             <span>{p.phrase}</span>
                           </li>
@@ -734,14 +730,14 @@ export default function VoiceSession() {
                     </div>
                   )}
                   {lastAnswer.pointsMissed.length > 0 && (
-                    <div className="p-4 rounded-xl bg-[#ff0080]/10 border border-[#ff0080]/20">
-                      <p className="text-xs font-semibold text-[#ff0080] mb-2 flex items-center gap-1.5">
+                     <div className="p-4 rounded-xl bg-destructive/10">
+                      <p className="text-xs font-semibold text-destructive mb-2 flex items-center gap-1.5">
                         <XCircle className="w-3.5 h-3.5" /> Missed ({lastAnswer.pointsMissed.length})
                       </p>
                       <ul className="space-y-1.5">
                         {lastAnswer.pointsMissed.map((p, i) => (
-                          <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                            <span className="text-[#ff0080] flex-shrink-0">✗</span>
+                          <li key={i} className="text-xs text-foreground/70 flex items-start gap-1.5">
+                            <span className="text-destructive flex-shrink-0">✗</span>
                             <span>{p.phrase}</span>
                           </li>
                         ))}
@@ -802,50 +798,50 @@ export default function VoiceSession() {
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             className="max-w-lg w-full"
           >
-            <Card className="p-8">
+            <Card className="p-6">
               {/* Overall score ring */}
               <div className="flex flex-col items-center mb-8">
                 <ScoreRing score={avgScore} size={128} />
                 <h2 className="text-xl font-bold text-foreground mt-4">Session Complete!</h2>
-                <p className="text-sm text-muted-foreground mt-1">{sessionResult.topic}</p>
+                <p className="text-sm text-foreground/70 mt-1">{sessionResult.topic}</p>
               </div>
 
               {/* Stats grid */}
-              <div className="grid grid-cols-3 gap-3 mb-8">
-                <div className="bg-background/50 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-foreground">{total}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Questions</div>
-                </div>
-                <div className="bg-background/50 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-primary">{correct}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Correct</div>
-                </div>
-                <div className="bg-background/50 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-[#ff0080]">{incorrect}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Missed</div>
-                </div>
-              </div>
+               <div className="grid grid-cols-3 gap-3 mb-8">
+                  <div className="bg-background/50 rounded-xl p-4 text-center">
+                   <div className="text-2xl font-bold text-foreground">{total}</div>
+                   <div className="text-xs text-foreground/70 mt-1">Questions</div>
+                 </div>
+                  <div className="bg-background/50 rounded-xl p-4 text-center">
+                   <div className="text-2xl font-bold text-primary">{correct}</div>
+                   <div className="text-xs text-foreground/70 mt-1">Correct</div>
+                 </div>
+                  <div className="bg-background/50 rounded-xl p-4 text-center">
+                   <div className="text-2xl font-bold text-destructive">{incorrect}</div>
+                   <div className="text-xs text-foreground/70 mt-1">Missed</div>
+                 </div>
+               </div>
 
               {/* Per-question breakdown */}
               {sessionResult.answers.length > 0 && (
                 <div className="mb-8 space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Per Question</p>
+                  <p className="text-xs font-semibold text-foreground/70 uppercase tracking-wider mb-3">Per Question</p>
                   {sessionResult.answers.map((a, i) => (
                     <div key={i} className="flex items-center gap-3">
-                      <span className="text-xs text-muted-foreground w-5 text-right">{i + 1}</span>
+                      <span className="text-xs text-foreground/70 w-5 text-right">{i + 1}</span>
                       <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ scaleX: 0 }}
-                          animate={{ scaleX: a.score / 100 }}
-                          transition={{ duration: 0.5, delay: i * 0.05, ease: 'easeOut' }}
-                          className="h-full rounded-full"
-                          style={{
-                            background: a.score >= 70 ? '#00ff88' : a.score >= 50 ? '#ffd700' : '#ff0080',
-                            transformOrigin: 'left',
-                          }}
-                        />
+                       <motion.div
+                           initial={{ scaleX: 0 }}
+                           animate={{ scaleX: a.score / 100 }}
+                           transition={{ duration: 0.5, delay: i * 0.05, ease: 'easeOut' }}
+                           className="h-full rounded-full"
+                           style={{
+                             background: a.score >= 70 ? 'hsl(var(--primary))' : a.score >= 50 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))',
+                             transformOrigin: 'left',
+                           }}
+                         />
                       </div>
-                      <span className="text-xs font-mono text-muted-foreground w-8 text-right">{a.score}%</span>
+                      <span className="text-xs font-mono text-foreground/70 w-8 text-right">{a.score}%</span>
                     </div>
                   ))}
                 </div>
@@ -853,14 +849,14 @@ export default function VoiceSession() {
 
               {/* Top missed concepts */}
               {topMissed.length > 0 && (
-                <div className="mb-8">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Top missed concepts</p>
-                  <div className="flex flex-wrap gap-2">
-                    {topMissed.map(m => (
-                      <span key={m} className="px-2.5 py-1 bg-[#ff0080]/10 border border-[#ff0080]/20 rounded-full text-xs text-[#ff0080]">{m}</span>
-                    ))}
-                  </div>
-                </div>
+                 <div className="mb-8">
+                   <p className="text-xs font-semold text-foreground/70 uppercase tracking-wider mb-3">Top missed concepts</p>
+                   <div className="flex flex-wrap gap-2">
+                     {topMissed.map(m => (
+                       <span key={m} className="px-3 py-1.5 bg-destructive/10 border border-destructive/20 rounded-full text-xs text-destructive">{m}</span>
+                     ))}
+                   </div>
+                 </div>
               )}
 
               {/* CTAs */}

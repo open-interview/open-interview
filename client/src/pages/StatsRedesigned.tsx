@@ -129,7 +129,7 @@ export default function StatsRedesigned() {
     };
   }, [stats, days]);
 
-  const diffColors = { beginner: '#22c55e', intermediate: '#eab308', advanced: '#ef4444' };
+  const diffColors = { beginner: '#34A853', intermediate: '#FBBC05', advanced: '#EA4335' };
 
   return (
     <>
@@ -381,7 +381,7 @@ function StatCard({ icon, label, value, subtext, color, bgColor }: {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-[var(--surface-2)] rounded-[28px] p-5 border border-[var(--color-border)]"
+      className="bg-[var(--surface-2)] rounded-2xl p-5 border border-[var(--color-border)]"
       style={{
         boxShadow: '8px 8px 24px rgba(0,0,0,0.25), -4px -4px 16px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.08)'
       }}

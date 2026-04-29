@@ -53,7 +53,7 @@ export default function NotFound() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="text-3xl font-bold text-foreground mb-3"
+            className="text-2xl font-bold text-foreground mb-3"
           >
             Page Not Found
           </motion.h2>
@@ -62,7 +62,7 @@ export default function NotFound() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="text-lg text-muted-foreground mb-8"
+            className="text-lg text-foreground/70 mb-8"
           >
             Oops! The page you're looking for doesn't exist or has been moved.
           </motion.p>
@@ -73,11 +73,11 @@ export default function NotFound() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="bg-card border border-border rounded-xl p-6 mb-6 text-center"
+          className="bg-card border border-border rounded-2xl p-6 mb-6 text-center"
         >
           <div className="flex items-center justify-center gap-3 mb-3">
             <Compass className="w-5 h-5 text-primary animate-spin" style={{ animationDuration: '3s' }} />
-            <p className="text-sm text-muted-foreground">
+            <p className="text-base text-foreground/70">
               Redirecting to home page in <span className="font-bold text-primary text-lg mx-1">{countdown}</span> seconds...
             </p>
           </div>
@@ -100,7 +100,7 @@ export default function NotFound() {
         >
           <button
             onClick={() => setLocation('/')}
-            className="flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-all duration-150 ease-out cursor-pointer"
+            className="flex items-center justify-center gap-2 px-4 py-2 min-h-[40px] h-10 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all duration-150 ease-out cursor-pointer text-sm"
           >
             <Home className="w-5 h-5" />
             Go Home Now
@@ -108,15 +108,15 @@ export default function NotFound() {
 
           <button
             onClick={() => window.history.back()}
-            className="flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] bg-card border border-border text-foreground rounded-lg font-semibold hover:bg-muted transition-all duration-150 ease-out cursor-pointer"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Go Back
-          </button>
+              className="flex items-center justify-center gap-2 px-4 py-2 min-h-[40px] h-10 bg-card border border-border text-foreground rounded-lg font-medium hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all duration-150 ease-out cursor-pointer text-sm"
+           >
+             <ArrowLeft className="w-5 h-5" />
+             Go Back
+           </button>
 
-          <button
-            onClick={() => setLocation('/channels')}
-            className="flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] bg-card border border-border text-foreground rounded-lg font-semibold hover:bg-muted transition-all duration-150 ease-out cursor-pointer"
+           <button
+             onClick={() => setLocation('/channels')}
+             className="flex items-center justify-center gap-2 px-4 py-2 min-h-[40px] h-10 bg-card border border-border text-foreground rounded-lg font-medium hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all duration-150 ease-out cursor-pointer text-sm"
           >
             <Search className="w-5 h-5" />
             Browse Channels
@@ -130,7 +130,7 @@ export default function NotFound() {
           transition={{ delay: 0.7 }}
           className="mt-8 text-center"
         >
-          <p className="text-sm text-muted-foreground mb-3">Popular pages:</p>
+          <p className="text-base text-foreground/70 mb-3">Popular pages:</p>
           <div className="flex flex-wrap justify-center gap-2">
             {[
               { label: 'Home', path: '/' },
@@ -143,7 +143,7 @@ export default function NotFound() {
               <button
                 key={link.path}
                 onClick={() => setLocation(link.path)}
-                className="px-4 py-2.5 min-h-[44px] text-sm bg-muted hover:bg-muted/80 text-foreground rounded-full transition-all duration-150 ease-out cursor-pointer"
+                 className="px-4 py-2 min-h-[40px] h-10 text-sm bg-muted hover:bg-muted/80 text-foreground rounded-full focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all duration-150 ease-out cursor-pointer"
               >
                 {link.label}
               </button>

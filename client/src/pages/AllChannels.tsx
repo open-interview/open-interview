@@ -34,13 +34,13 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 const categoryColors: Record<string, string> = {
-  engineering:   'var(--color-accent-violet)',
-  cloud:         'var(--color-accent-cyan)',
-  security:      'var(--color-error)',
-  ai:            'var(--color-accent-pink)',
-  testing:       'var(--color-success)',
-  soft:          'var(--accent-gold)',
-  certification: 'var(--accent-gold)',
+  engineering:   'hsl(var(--primary))',
+  cloud:         'hsl(var(--primary))',
+  security:      'hsl(var(--destructive))',
+  ai:            'hsl(var(--primary))',
+  testing:       'hsl(142 76% 36%)',
+  soft:          'hsl(38 92% 50%)',
+  certification: 'hsl(38 92% 50%)',
 };
 
 const CERT_PROVIDER_META: Record<string, { label: string; emoji: string; order: number }> = {
@@ -79,10 +79,10 @@ function ProgressRing({ progress, size = 44, stroke = 3 }: { progress: number; s
   const offset = circ - (progress / 100) * circ;
   return (
     <svg width={size} height={size} className="rotate-[-90deg]">
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--surface-4)" strokeWidth={stroke} />
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--color-accent-violet)" strokeWidth={stroke}
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="hsl(var(--muted))" strokeWidth={stroke} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="hsl(var(--primary))" strokeWidth={stroke}
         strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-        style={{ transition: 'stroke-dashoffset 0.8s var(--ease-spring)' }} />
+        style={{ transition: 'stroke-dashoffset 0.8s ease-out' }} />
     </svg>
   );
 }
@@ -99,7 +99,7 @@ function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSub
   const { completed } = useProgress(channel.id);
   const progress = questionCount > 0 ? Math.round((completed.length / questionCount) * 100) : 0;
   const Icon = iconMap[channel.icon] || Box;
-  const accent = categoryColors[channel.category] || 'var(--color-accent-violet)';
+  const accent = categoryColors[channel.category] || 'hsl(var(--primary))';
   const isNew = Boolean(channel.addedAt && new Date(channel.addedAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
 
   return (
@@ -109,39 +109,34 @@ function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSub
       animate={{ opacity: 1, scale: 1 }}
       whileTap={{ scale: 0.98 }}
       onClick={onSelect}
-      className="group relative p-5 bg-card border border-border rounded-3xl cursor-pointer hover:border-[var(--color-accent-violet)]/40 transition-all duration-200 ease-out overflow-hidden"
-      style={{
-        boxShadow: '8px 8px 24px rgba(0,0,0,0.15), -4px -4px 16px rgba(255,255,255,0.05)',
-      }}
+      className="group relative p-5 bg-card border border-border rounded-2xl cursor-pointer hover:border-primary/40 transition-all duration-200 ease-out overflow-hidden shadow-xl focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
       whileHover={{ 
         y: -4,
-        boxShadow: '12px 12px 32px rgba(0,0,0,0.2), -6px -6px 20px rgba(255,255,255,0.08)',
       }}
     >
       {/* Top accent line */}
       <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(90deg, ${accent}, transparent)` }} />
 
       {/* Hover gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-accent-violet)]/10 to-[var(--color-accent-cyan)]/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl" />
+      <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
 
       {/* Clay border for featured/subscribed */}
       {subscribed && (
-        <div className="absolute inset-0 rounded-3xl pointer-events-none border-2"
-          style={{ borderColor: `${accent}40`, background: `linear-gradient(135deg, ${accent}08, transparent)` }}
+        <div className="absolute inset-0 rounded-2xl pointer-events-none border-2"
+          style={{ borderColor: `hsl(var(--primary) / 0.4)`, background: `linear-gradient(135deg, hsl(var(--primary) / 0.08), transparent)` }}
         />
       )}
 
       {/* NEW badge */}
       {isNew && (
-        <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold z-10 bg-[var(--color-accent-cyan)] text-black">
+        <div className="absolute top-3 right-3 px-3 py-1.5 rounded-full text-xs font-bold z-10 bg-primary text-primary-foreground">
           NEW
         </div>
       )}
 
       {/* Subscribed badge */}
       {subscribed && !isNew && (
-        <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold z-10"
-          style={{ background: `${accent}22`, border: `1px solid ${accent}66`, color: accent }}>
+        <div className="absolute top-3 right-3 px-3 py-1.5 rounded-full text-xs font-bold z-10 bg-primary/20 border border-primary/30 text-primary">
           ★ Subscribed
         </div>
       )}
@@ -157,22 +152,22 @@ function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSub
               </div>
             )}
             <div className="absolute inset-0 rounded-xl flex items-center justify-center"
-              style={{ background: `${accent}18`, border: `1px solid ${accent}33` }}>
-              <Icon className="w-4 h-4" style={{ color: accent }} />
+              style={{ background: `hsl(var(--primary) / 0.18)`, border: `1px solid hsl(var(--primary) / 0.33)` }}>
+              <Icon className="w-4 h-4" style={{ color: `hsl(var(--primary))` }} />
             </div>
           </div>
           {/* Text */}
           <div className="flex-1 min-w-0">
-            <div className="text-[10px] text-muted-foreground capitalize">{channel.category}</div>
-            <h3 className="text-sm font-bold leading-tight line-clamp-2">{channel.name}</h3>
+            <div className="text-xs text-foreground/70 capitalize">{channel.category}</div>
+            <h3 className="text-base font-bold leading-tight line-clamp-2">{channel.name}</h3>
           </div>
         </div>
 
         {/* Description */}
-        <p className="text-xs text-muted-foreground line-clamp-2">{channel.description}</p>
+        <p className="text-base text-foreground/70 line-clamp-2">{channel.description}</p>
 
         {/* Stats row */}
-        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+        <div className="flex items-center gap-3 text-xs text-foreground/70">
           <span className="flex items-center gap-1"><Sparkles className="w-3 h-3" />{questionCount}q</span>
           {subscribed && <span className="flex items-center gap-1"><BarChart2 className="w-3 h-3" />{progress}%</span>}
         </div>
@@ -183,9 +178,8 @@ function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSub
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="h-full rounded-full"
-              style={{ background: `linear-gradient(90deg, ${accent}, var(--color-accent-cyan))` }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              className="h-full rounded-full bg-primary"
             />
           </div>
         )}
@@ -197,15 +191,14 @@ function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSub
               <motion.button
                 whileTap={{ scale: 0.96 }}
                 onClick={e => { e.stopPropagation(); navigate(`/channel/${channel.id}`); }}
-                className="flex-1 min-h-[44px] rounded-2xl text-xs font-bold transition-all duration-150 ease-out flex items-center justify-center gap-1.5 text-white cursor-pointer"
-                style={{ background: `linear-gradient(135deg, ${accent}, var(--color-accent-cyan))` }}
+                className="flex-1 min-h-[44px] rounded-2xl text-base font-bold transition-all duration-150 ease-out flex items-center justify-center gap-1.5 text-primary-foreground bg-primary cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
               >
                 Continue <ChevronRight className="w-3.5 h-3.5" />
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={e => { e.stopPropagation(); toggleSubscription(channel.id); }}
-                className="px-3 min-h-[44px] rounded-2xl transition-all duration-150 ease-out hover:bg-muted/80 border border-border text-muted-foreground cursor-pointer"
+                className="px-3 min-h-[44px] rounded-2xl transition-all duration-150 ease-out hover:bg-muted/80 border border-border text-foreground/70 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
                 title="Unsubscribe"
               >
                 <X className="w-3.5 h-3.5" />
@@ -215,8 +208,7 @@ function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSub
             <motion.button
               whileTap={{ scale: 0.96 }}
               onClick={e => { e.stopPropagation(); toggleSubscription(channel.id); }}
-              className="flex-1 min-h-[44px] rounded-2xl text-xs font-bold transition-all duration-150 ease-out flex items-center justify-center gap-1.5 text-white cursor-pointer"
-              style={{ background: `linear-gradient(135deg, ${accent}, var(--color-accent-cyan))` }}
+              className="flex-1 min-h-[44px] rounded-2xl text-base font-bold transition-all duration-150 ease-out flex items-center justify-center gap-1.5 text-primary-foreground bg-primary cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
             >
               <Plus className="w-3.5 h-3.5" />Subscribe
             </motion.button>
@@ -240,22 +232,22 @@ function CategorySection({ categoryKey, channels, questionCounts, navigate, isSu
   const meta = CERT_PROVIDER_META[categoryKey] ?? { label: categoryKey, emoji: '📋', order: 99 };
   const subscribedCount = channels.filter(c => isSubscribed(c.id)).length;
 
-  return (
-    <div className="mb-6">
-      <button onClick={() => setOpen(o => !o)} className="w-full min-h-[44px] flex items-center justify-between px-1 py-2 mb-3 group cursor-pointer">
-        <div className="flex items-center gap-2.5">
-          <span className="text-xl">{meta.emoji}</span>
-          <div className="text-left">
-            <div className="text-sm font-bold">{meta.label}</div>
-            <div className="text-[10px] text-muted-foreground">
-              {channels.length} channels{subscribedCount > 0 ? ` · ${subscribedCount} subscribed` : ''}
+    return (
+      <div className="mb-6">
+        <button onClick={() => setOpen(o => !o)} className="w-full min-h-[44px] flex items-center justify-between px-1 py-2 mb-3 group cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl">{meta.emoji}</span>
+            <div className="text-left">
+              <div className="text-base font-bold">{meta.label}</div>
+              <div className="text-xs text-foreground/70">
+                {channels.length} channels{subscribedCount > 0 ? ` · ${subscribedCount} subscribed` : ''}
+              </div>
             </div>
           </div>
-        </div>
-        <motion.div animate={{ rotate: open ? 0 : -90 }} transition={{ duration: 0.2 }}>
-          <ChevronDown className="w-4 h-4 text-muted-foreground" />
-        </motion.div>
-      </button>
+          <motion.div animate={{ rotate: open ? 0 : -90 }} transition={{ duration: 0.2 }}>
+            <ChevronDown className="w-4 h-4 text-foreground/70" />
+          </motion.div>
+        </button>
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
@@ -289,7 +281,7 @@ function ChannelDetail({ channel, questionCount, isSubscribed: subscribed, onTog
   onClose: () => void;
 }) {
   const Icon = iconMap[channel.icon] || Award;
-  const accent = categoryColors[channel.category] || 'var(--color-accent-violet)';
+  const accent = categoryColors[channel.category] || 'hsl(var(--primary))';
   const { completed } = useProgress(channel.id);
   const progress = questionCount > 0 ? Math.round((completed.length / Math.max(questionCount, 1)) * 100) : 0;
 
@@ -306,23 +298,23 @@ function ChannelDetail({ channel, questionCount, isSubscribed: subscribed, onTog
         onClick={e => e.stopPropagation()}
         className="relative w-full sm:max-w-lg bg-card border border-border rounded-t-2xl sm:rounded-2xl p-6 max-h-[85vh] overflow-y-auto custom-scrollbar"
       >
-        <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-muted/50 text-muted-foreground transition-colors duration-150 ease-out cursor-pointer">
+        <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-muted/50 text-foreground/70 transition-colors duration-150 ease-out cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none">
           <X className="w-4 h-4" />
         </button>
 
         {/* Header */}
         <div className="flex items-start gap-4 mb-5">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
-            style={{ background: `${accent}20`, border: `1px solid ${accent}30` }}>
-            <Icon className="w-7 h-7" style={{ color: accent }} />
+            style={{ background: `hsl(var(--primary) / 0.2)`, border: `1px solid hsl(var(--primary) / 0.3)` }}>
+            <Icon className="w-7 h-7" style={{ color: `hsl(var(--primary))` }} />
           </div>
           <div>
-            <div className="text-xs text-muted-foreground mb-0.5 capitalize">{channel.category}</div>
+            <div className="text-xs text-foreground/70 mb-0.5 capitalize">{channel.category}</div>
             <h2 className="text-lg font-bold leading-tight">{channel.name}</h2>
           </div>
         </div>
 
-        <p className="text-sm text-muted-foreground mb-5 leading-relaxed">{channel.description}</p>
+        <p className="text-base text-foreground/70 mb-5 leading-relaxed">{channel.description}</p>
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-3 mb-5">
@@ -331,24 +323,24 @@ function ChannelDetail({ channel, questionCount, isSubscribed: subscribed, onTog
             { icon: BarChart2, label: 'Progress',  value: `${progress}%` },
           ] as { icon: React.ElementType; label: string; value: string | number }[]).map(({ icon: I, label, value }) => (
             <div key={label} className="p-3 rounded-xl bg-muted/40 flex items-center gap-2.5">
-              <I className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              <div>
-                <div className="text-[10px] text-muted-foreground">{label}</div>
-                <div className="text-sm font-semibold">{value}</div>
-              </div>
+              <I className="w-4 h-4 text-foreground/70 flex-shrink-0" />
+                <div>
+                    <div className="text-xs text-foreground/70">{label}</div>
+                    <div className="text-base font-semibold">{value}</div>
+                  </div>
             </div>
           ))}
         </div>
 
         {/* Progress bar */}
         {subscribed && (
-          <div className="mb-5 p-3 rounded-xl border" style={{ background: `${accent}10`, borderColor: `${accent}20` }}>
+          <div className="mb-5 p-3 rounded-xl border" style={{ background: `hsl(var(--primary) / 0.1)`, borderColor: `hsl(var(--primary) / 0.2)` }}>
             <div className="flex justify-between text-xs mb-1.5">
-              <span className="text-muted-foreground">Progress</span>
-              <span className="font-semibold" style={{ color: accent }}>{progress}%</span>
+              <span className="text-foreground/70">Progress</span>
+              <span className="font-semibold text-primary">{progress}%</span>
             </div>
             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-              <div className="h-full rounded-full" style={{ width: `${progress}%`, background: `linear-gradient(90deg, ${accent}, var(--color-accent-cyan))` }} />
+              <div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} />
             </div>
           </div>
         )}
@@ -357,18 +349,16 @@ function ChannelDetail({ channel, questionCount, isSubscribed: subscribed, onTog
         <div className="flex gap-2">
           <button
             onClick={onToggle}
-            className={`flex-1 min-h-[44px] rounded-xl text-sm font-bold transition-all duration-150 ease-out flex items-center justify-center gap-2 cursor-pointer ${
-              subscribed ? 'bg-muted border border-border hover:bg-muted/80 text-foreground' : 'text-white hover:opacity-90'
+            className={`flex-1 min-h-[44px] rounded-xl text-base font-bold transition-all duration-150 ease-out flex items-center justify-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none ${
+              subscribed ? 'bg-muted border border-border hover:bg-muted/80 text-foreground' : 'text-primary-foreground bg-primary hover:opacity-90'
             }`}
-            style={subscribed ? {} : { background: `linear-gradient(135deg, ${accent}, var(--color-accent-cyan))` }}
           >
             {subscribed ? <><Check className="w-4 h-4" />Subscribed</> : <><Plus className="w-4 h-4" />Subscribe</>}
           </button>
           {subscribed && (
             <button
               onClick={onNavigate}
-              className="flex-1 min-h-[44px] rounded-xl text-sm font-bold text-white hover:opacity-90 transition-all duration-150 ease-out flex items-center justify-center gap-2 cursor-pointer"
-              style={{ background: `linear-gradient(135deg, ${accent}, var(--color-accent-cyan))` }}
+              className="flex-1 min-h-[44px] rounded-xl text-base font-bold text-primary-foreground bg-primary hover:opacity-90 transition-all duration-150 ease-out flex items-center justify-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
             >
               Go to Channel <ChevronRight className="w-4 h-4" />
             </button>
@@ -444,33 +434,33 @@ export default function AllChannels() {
   }
 
   const categoryMeta: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-    engineering:   { label: 'Engineering',  icon: Code,        color: 'var(--color-accent-violet)' },
-    cloud:         { label: 'Cloud',        icon: Cloud,       color: 'var(--color-accent-cyan)' },
-    security:      { label: 'Security',     icon: Shield,      color: 'var(--color-error)' },
-    ai:            { label: 'AI / ML',      icon: Brain,       color: 'var(--color-accent-pink)' },
-    testing:       { label: 'Testing',      icon: CheckCircle, color: 'var(--color-success)' },
-    soft:          { label: 'Soft Skills',  icon: Users,       color: 'var(--accent-gold)' },
-    data:          { label: 'Data',         icon: Database,    color: 'var(--color-accent-cyan)' },
-    mobile:        { label: 'Mobile',       icon: Smartphone,  color: 'var(--color-accent-violet)' },
-    fundamentals:  { label: 'Fundamentals', icon: Layers,      color: 'var(--text-secondary)' },
-    management:    { label: 'Management',   icon: Users,       color: 'var(--accent-gold)' },
-    certification: { label: 'Certification',icon: Award,       color: 'var(--accent-gold)' },
+    engineering:   { label: 'Engineering',  icon: Code,        color: 'hsl(var(--primary))' },
+    cloud:         { label: 'Cloud',        icon: Cloud,       color: 'hsl(var(--primary))' },
+    security:      { label: 'Security',     icon: Shield,      color: 'hsl(var(--destructive))' },
+    ai:            { label: 'AI / ML',      icon: Brain,       color: 'hsl(var(--primary))' },
+    testing:       { label: 'Testing',      icon: CheckCircle, color: 'hsl(142 76% 36%)' },
+    soft:          { label: 'Soft Skills',  icon: Users,       color: 'hsl(38 92% 50%)' },
+    data:          { label: 'Data',         icon: Database,    color: 'hsl(var(--primary))' },
+    mobile:        { label: 'Mobile',       icon: Smartphone,  color: 'hsl(var(--primary))' },
+    fundamentals:  { label: 'Fundamentals', icon: Layers,      color: 'hsl(var(--muted-foreground))' },
+    management:    { label: 'Management',   icon: Users,       color: 'hsl(38 92% 50%)' },
+    certification: { label: 'Certification',icon: Award,       color: 'hsl(38 92% 50%)' },
   };
 
   const renderContent = () => {
     if (channels.length === 0) {
       return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
-          <Search className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+          <Search className="w-5 h-5 mx-auto mb-4 text-[#9AA0A6]" />
           <h3 className="text-xl font-bold mb-2">
             {subscribedOnly && hasSubscriptions ? 'No subscribed channels match' : 'No channels found'}
           </h3>
-          <p className="text-sm text-muted-foreground mb-4">
+          <p className="text-base text-foreground/70 mb-4">
             {subscribedOnly && hasSubscriptions ? 'Try clearing filters or browse all topics' : 'Try a different search or category'}
           </p>
           {subscribedOnly && hasSubscriptions && (
             <button onClick={() => setSubscribedOnly(false)}
-              className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] text-white">
+              className="px-4 py-2 rounded-xl text-base font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity">
               Browse All Channels
             </button>
           )}
@@ -534,16 +524,16 @@ export default function AllChannels() {
               {idx === firstUnsubscribedIdx && firstUnsubscribedIdx > 0 && (
                 <div className="flex items-center gap-3 mb-6">
                   <div className="flex-1 h-px bg-border" />
-                  <span className="text-xs font-semibold px-3 py-1 rounded-full bg-muted text-muted-foreground border border-border">
-                    Explore More Topics
-                  </span>
+                <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-muted text-foreground/70 border border-border">
+                  Explore More Topics
+                </span>
                   <div className="flex-1 h-px bg-border" />
                 </div>
               )}
               <div className="flex items-center gap-2 mb-4">
                 <CatIcon className="w-5 h-5" style={{ color: meta.color }} />
                 <h2 className="text-lg font-bold">{meta.label}</h2>
-                <span className="text-xs px-2 py-0.5 rounded-full ml-1" style={{ background: `${meta.color}18`, color: meta.color }}>
+                <span className="text-xs font-semibold px-3 py-1.5 rounded-full ml-1" style={{ background: `${meta.color} / 0.18`, color: meta.color }}>
                   {catChannels.length}
                 </span>
               </div>
@@ -578,10 +568,10 @@ export default function AllChannels() {
               {hasSubscriptions && (
                 <button
                   onClick={() => setSubscribedOnly(s => !s)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none ${
                     subscribedOnly
-                      ? 'bg-[var(--color-accent-violet)]/15 border-[var(--color-accent-violet)] text-[var(--color-accent-violet-light)]'
-                      : 'bg-muted/50 border-border text-muted-foreground'
+                      ? 'bg-primary/15 border-primary text-primary'
+                      : 'bg-muted/50 border-border text-foreground/70'
                   }`}
                 >
                   {subscribedOnly ? '★ My Topics' : 'All Topics'}
@@ -594,17 +584,17 @@ export default function AllChannels() {
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                 className="grid grid-cols-3 gap-3 mb-6 max-w-lg mx-auto">
                 {[
-                  { label: 'Subscribed', value: subscribedCount,  colorClass: 'text-[var(--color-accent-violet-light)]' },
-                  { label: 'Total',      value: totalCount,        colorClass: 'text-[var(--color-accent-cyan)]' },
+                  { label: 'Subscribed', value: subscribedCount,  colorClass: 'text-primary' },
+                  { label: 'Total',      value: totalCount,        colorClass: 'text-primary' },
                   { label: 'Avg Progress', value: `${Math.round(preferences.subscribedChannels.reduce((acc, id) => {
                       const total = questionCounts[id] || 0;
                       if (!total) return acc;
                       try { const raw = localStorage.getItem(`progress-${id}`); return acc + (raw ? (JSON.parse(raw) as string[]).length / total * 100 : 0); } catch { return acc; }
-                    }, 0) / Math.max(subscribedCount, 1))}%`, colorClass: 'text-[var(--color-success)]' },
+                    }, 0) / Math.max(subscribedCount, 1))}%`, colorClass: 'text-[hsl(142_76%_36%)]' },
                 ].map(({ label, value, colorClass }) => (
                   <div key={label} className="p-3 rounded-xl bg-muted/40 border border-border text-center">
                     <div className={`text-xl font-bold ${colorClass}`}>{value}</div>
-                    <div className="text-[10px] text-muted-foreground">{label}</div>
+                    <div className="text-xs text-foreground/70">{label}</div>
                   </div>
                 ))}
               </motion.div>
@@ -615,14 +605,14 @@ export default function AllChannels() {
               <div className="flex gap-3 flex-wrap">
                 <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search channels…" />
                 <select value={progressFilter} onChange={e => setProgressFilter(e.target.value as typeof progressFilter)}
-                  className="min-h-[44px] px-3 py-2.5 rounded-xl text-sm focus:outline-none bg-muted border border-border text-foreground cursor-pointer">
+                  className="min-h-[44px] px-3 py-2.5 rounded-xl text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 bg-muted border border-border text-foreground cursor-pointer">
                   <option value="all">All Progress</option>
                   <option value="not-started">Not Started</option>
                   <option value="in-progress">In Progress</option>
                   <option value="completed">Completed</option>
                 </select>
                 <select value={sortKey} onChange={e => setSortKey(e.target.value as SortKey)}
-                  className="min-h-[44px] px-3 py-2.5 rounded-xl text-sm focus:outline-none bg-muted border border-border text-foreground cursor-pointer">
+                  className="min-h-[44px] px-3 py-2.5 rounded-xl text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 bg-muted border border-border text-foreground cursor-pointer">
                   <option value="az">A–Z</option>
                   <option value="count">Most Questions</option>
                   <option value="progress">Progress</option>

@@ -26,8 +26,70 @@ import {
 } from '../lib/spaced-repetition';
 import {
   ChevronLeft, ChevronRight, Search, X, Bookmark, Share2,
-  Filter, Brain, RotateCcw, Check, Zap, Eye, BookOpen, ChevronDown
+  Filter, Brain, RotateCcw, Check, Zap, Eye, BookOpen, ChevronDown,
+  Lightbulb
 } from 'lucide-react';
+import {
+  QuestionNumberBadge, CircularTimer, ConfidenceCircles, ProgressBarSVG,
+  ResultIcon, StreakFlameSVG, PointsBadgeSVG, RevealOverlay
+} from '../components/question/SvgComponents';
+
+  const cardStyle: React.CSSProperties = {
+    background: 'var(--surface-2)',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)',
+    border: 'none',
+    borderRadius: 12,
+  };
+
+  const chipStyle = (active: boolean): React.CSSProperties => ({
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '6px 12px',
+    borderRadius: 16,
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    background: active ? '#1a73e8' : 'rgba(26,115,232,0.08)',
+    color: active ? '#fff' : '#1a73e8',
+    border: active ? 'none' : '1px solid rgba(26,115,232,0.2)',
+    boxShadow: 'none',
+  });
+
+  const buttonStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: '10px 24px',
+    borderRadius: 8,
+    fontSize: 14,
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    background: '#1a73e8',
+    color: '#fff',
+    border: 'none',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+  };
+
+  const outlinedButtonStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: '9px 20px',
+    borderRadius: 20,
+    fontSize: 14,
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    background: 'transparent',
+    color: '#1a73e8',
+    border: '1px solid #dadce0',
+    boxShadow: 'none',
+  };
 
 export default function QuestionViewer() {
   const [location, setLocation] = useLocation();
@@ -73,6 +135,7 @@ export default function QuestionViewer() {
   const [srsCard, setSrsCard] = useState<ReviewCard | null>(null);
   const [showRatingButtons, setShowRatingButtons] = useState(false);
   const [hasRated, setHasRated] = useState(false);
+  const [timer, setTimer] = useState(60);
 
   const x = useMotionValue(0);
   const opacity = useTransform(x, [-200, 0, 200], [0.6, 1, 0.6]);
@@ -98,6 +161,15 @@ export default function QuestionViewer() {
     setShowAnswer(false);
     setRecallRevealed(false);
   }, [currentQuestion]);
+
+  useEffect(() => {
+    if (!currentQuestion) return;
+    setTimer(60);
+    const interval = setInterval(() => {
+      setTimer(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [currentQuestion?.id]);
 
   useEffect(() => {
     localStorage.setItem('open-interview-recall-mode', String(recallMode));
@@ -224,10 +296,16 @@ export default function QuestionViewer() {
     return (
       <AppLayout fullWidth>
         <div className="min-h-screen bg-background flex flex-col gap-6 p-6 max-w-3xl mx-auto w-full pt-16">
-          <div className="h-5 w-32 bg-muted rounded animate-pulse" />
-          <div className="h-40 bg-muted/50 rounded-2xl animate-pulse" />
-          <div className="h-4 w-2/3 bg-muted/40 rounded animate-pulse" />
-          <div className="h-4 w-1/2 bg-muted/40 rounded animate-pulse" />
+          <div style={{ ...cardStyle, padding: 24 }}>
+             <div style={{ width: '40%', height: 12, background: 'rgba(255,255,255,0.06)', borderRadius: 4, marginBottom: 16 }} />
+             <div style={{ width: '80%', height: 20, background: 'rgba(255,255,255,0.06)', borderRadius: 4, marginBottom: 16 }} />
+             <div style={{ width: '60%', height: 14, background: 'rgba(255,255,255,0.06)', borderRadius: 4 }} />
+           </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+             {[1,2,3,4].map(i => (
+               <div key={i} style={{ width: 80, height: 32, background: 'rgba(255,255,255,0.06)', borderRadius: 16 }} />
+             ))}
+           </div>
         </div>
       </AppLayout>
     );
@@ -237,12 +315,12 @@ export default function QuestionViewer() {
     return (
       <AppLayout fullWidth>
         <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4 text-center">
-          <X className="w-10 h-10 text-muted-foreground" />
-          <h2 className="text-xl font-bold">Channel not found</h2>
-          <button onClick={() => setLocation('/channels')} className="cursor-pointer flex items-center gap-2 px-5 min-h-[44px] bg-primary text-primary-foreground font-semibold rounded-full text-sm transition-opacity duration-150 ease-out hover:opacity-90">
-            <ChevronLeft className="w-4 h-4" /> Back to Channels
-          </button>
-        </div>
+             <X className="w-10 h-10" style={{ color: '#5f6368' }} />
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Channel not found</h2>
+           <button onClick={() => setLocation('/channels')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 24px', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', background: '#1a73e8', color: '#fff', border: 'none', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
+              <ChevronLeft className="w-4 h-4" /> Back to Channels
+            </button>
+         </div>
       </AppLayout>
     );
   }
@@ -252,21 +330,21 @@ export default function QuestionViewer() {
     return (
       <AppLayout fullWidth>
         <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4 text-center">
-          <BookOpen className="w-10 h-10 text-muted-foreground/50" />
-          <h2 className="text-xl font-bold">No questions found</h2>
-          <p className="text-sm text-muted-foreground">{hasFilters ? 'Try adjusting your filters.' : 'Check back soon!'}</p>
-          <div className="flex gap-2">
-            {hasFilters && (
+             <BookOpen className="w-10 h-10" style={{ color: '#5f6368' }} />
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>No questions found</h2>
+            <p className="text-base" style={{ color: '#5f6368' }}>{hasFilters ? 'Try adjusting your filters.' : 'Check back soon!'}</p>
+           <div className="flex gap-2">
+             {hasFilters && (
               <button onClick={() => { setSelectedSubChannel('all'); setSelectedDifficulty('all'); setSelectedCompany('all'); }}
-                className="cursor-pointer flex items-center gap-2 px-5 min-h-[44px] bg-primary text-primary-foreground font-semibold rounded-full text-sm transition-opacity duration-150 ease-out hover:opacity-90">
-                <X className="w-4 h-4" /> Clear filters
-              </button>
-            )}
-            <button onClick={() => setLocation('/channels')} className="cursor-pointer flex items-center gap-2 px-5 min-h-[44px] bg-muted font-semibold rounded-full text-sm transition-colors duration-150 ease-out hover:bg-muted/80">
-              <ChevronLeft className="w-4 h-4" /> Back
-            </button>
-          </div>
-        </div>
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 24px', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', background: '#1a73e8', color: '#fff', border: 'none', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
+                  <X className="w-4 h-4" /> Clear filters
+                </button>
+              )}
+              <button onClick={() => setLocation('/channels')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 20px', borderRadius: 20, fontSize: 14, fontWeight: 500, cursor: 'pointer', background: 'transparent', color: '#1a73e8', border: '1px solid #dadce0' }}>
+               <ChevronLeft className="w-4 h-4" /> Back
+             </button>
+           </div>
+         </div>
       </AppLayout>
     );
   }
@@ -288,223 +366,228 @@ export default function QuestionViewer() {
         />
         <div className="min-h-screen bg-background text-foreground flex flex-col">
 
-          {/* Top progress bar */}
-          <div className="h-0.5 bg-border w-full flex-shrink-0">
-            <motion.div className="h-full bg-primary" animate={{ width: `${progress}%` }} transition={{ duration: 0.3 }} />
-          </div>
+          {/* Top progress bar - SVG gradient version */}
+           <div style={{ height: 4, width: '100%', flexShrink: 0 }}>
+             <ProgressBarSVG progress={progress} height={4} />
+           </div>
 
-          {/* Toolbar */}
-          <div className="border-b border-border bg-background flex-shrink-0">
-            <div className="max-w-4xl mx-auto px-4 h-12 flex items-center justify-between gap-3">
-              {/* Left: back + channel name */}
-              <div className="flex items-center gap-2 min-w-0">
-                <button onClick={() => setLocation('/channels')} className="cursor-pointer p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-muted transition-colors duration-150 ease-out flex-shrink-0" aria-label="Back">
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="font-semibold text-sm truncate">{channel.name}</span>
-                <span className="text-xs text-muted-foreground tabular-nums flex-shrink-0">{currentIndex + 1}/{totalQuestions}</span>
-              </div>
-              {/* Right: actions */}
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {/* Recall Mode toggle */}
-                <button
-                  onClick={() => setRecallMode(v => !v)}
-                  aria-label={recallMode ? 'Recall mode on' : 'Recall mode off'}
-                  title={recallMode ? 'Recall Mode: ON — click to disable' : 'Recall Mode: OFF — click to enable'}
-                  className={`cursor-pointer flex items-center gap-1 px-2 min-h-[44px] rounded-md text-xs font-semibold transition-colors duration-150 ease-out ${recallMode ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:bg-muted'}`}>
-                  <Brain className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Recall</span>
-                </button>
-                <button onClick={() => setShowFilters(v => !v)} aria-label="Filters"
-                  className={`cursor-pointer p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md transition-colors duration-150 ease-out ${hasFilters ? 'text-primary bg-primary/10' : 'hover:bg-muted'}`}>
-                  <Filter className="w-4 h-4" />
-                </button>
-                <button onClick={() => setShowSearchModal(true)} aria-label="Search" className="cursor-pointer p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-muted transition-colors duration-150 ease-out">
-                  <Search className="w-4 h-4" />
-                </button>
-                <button onClick={toggleMark} aria-label="Bookmark"
-                  data-testid="button-bookmark"
-                  className={`cursor-pointer p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md transition-colors duration-150 ease-out ${isMarked ? 'text-amber-500' : 'hover:bg-muted'}`}>
-                  <Bookmark className="w-4 h-4" fill={isMarked ? 'currentColor' : 'none'} />
-                </button>
-                <button onClick={handleShare} aria-label="Share" data-testid="button-share" className="cursor-pointer p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-muted transition-colors duration-150 ease-out hidden sm:flex">
-                  <Share2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Filters drawer */}
-          <AnimatePresence>
-            {showFilters && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                className="border-b border-border bg-muted/30 overflow-hidden flex-shrink-0">
-                <div className="max-w-4xl mx-auto px-4 py-3 flex flex-wrap gap-3 items-end">
-                  {channel.subChannels && channel.subChannels.length > 1 && (
-                    <FilterSelect label="Topic" value={selectedSubChannel} onChange={v => { setSelectedSubChannel(v); setCurrentIndex(0); }}>
-                      {channel.subChannels.map((sc: any) => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
-                    </FilterSelect>
-                  )}
-                  <FilterSelect label="Difficulty" value={selectedDifficulty} onChange={v => { setSelectedDifficulty(v); setCurrentIndex(0); }}>
-                    <option value="all">All levels</option>
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
-                  </FilterSelect>
-                  {companiesWithCounts.length > 0 && (
-                    <FilterSelect label="Company" value={selectedCompany} onChange={v => { setSelectedCompany(v); setCurrentIndex(0); }}>
-                      <option value="all">All companies</option>
-                      {companiesWithCounts.map((c: any) => <option key={c.company} value={c.company}>{c.company} ({c.count})</option>)}
-                    </FilterSelect>
-                  )}
-                  <button onClick={() => setShowFilters(false)} className="cursor-pointer p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-muted transition-colors duration-150 ease-out ml-auto">
-                    <X className="w-4 h-4" />
+           {/* Toolbar */}
+            <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'var(--surface-1)', flexShrink: 0 }}>
+             <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
+               {/* Left: back + channel name */}
+                <div className="flex items-center gap-3 min-w-0">
+                   <button onClick={() => setLocation('/channels')} className="cursor-pointer p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-2 transition-all duration-150" aria-label="Back">
+                     <ChevronLeft className="w-5 h-5" style={{ color: '#5f6368' }} />
+                  </button>
+                  <QuestionNumberBadge number={currentIndex} total={totalQuestions} />
+                   <span style={{ fontWeight: 500, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-primary)' }}>{channel.name}</span>
+                  <CircularTimer seconds={timer} totalSeconds={60} />
+                   <span style={{ fontSize: 13, color: '#5f6368', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{currentIndex + 1}/{totalQuestions}</span>
+                </div>
+               {/* Right: actions */}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {/* Recall Mode toggle */}
+                   <button
+                     onClick={() => setRecallMode(v => !v)}
+                     aria-label={recallMode ? 'Recall mode on' : 'Recall mode off'}
+                     title={recallMode ? 'Recall Mode: ON — click to disable' : 'Recall Mode: OFF — click to enable'}
+                     style={chipStyle(recallMode)}
+                     className="focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-2">
+                    <Brain className="w-4 h-4" />
+                    <span className="hidden sm:inline">Recall</span>
+                  </button>
+                  <StreakFlameSVG streak={completed.length} />
+                   <button onClick={() => setShowFilters(v => !v)} aria-label="Filters"
+                     style={chipStyle(hasFilters)}
+                     className="focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-2">
+                    <Filter className="w-4 h-4" />
+                  </button>
+                   <button onClick={() => setShowSearchModal(true)} aria-label="Search" className="cursor-pointer p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-2 transition-all duration-150">
+                    <Search className="w-5 h-5" style={{ color: '#9AA0A6' }} />
+                  </button>
+                   <button onClick={toggleMark} aria-label="Bookmark"
+                     data-testid="button-bookmark"
+                     style={chipStyle(isMarked)}
+                     className="focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-2">
+                    <Bookmark className="w-4 h-4" fill={isMarked ? 'currentColor' : 'none'} />
+                  </button>
+                   <button onClick={handleShare} aria-label="Share" data-testid="button-share" className="cursor-pointer p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-2 transition-all duration-150 hidden sm:flex">
+                    <Share2 className="w-4 h-4" style={{ color: '#5f6368' }} />
                   </button>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+             </div>
+           </div>
+
+           {/* Filters drawer */}
+           <AnimatePresence>
+             {showFilters && (
+               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                 style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'var(--surface-1)', overflow: 'hidden', flexShrink: 0 }}>
+                 <div className="max-w-4xl mx-auto px-4 py-4 flex flex-wrap gap-3 items-end">
+                   {channel.subChannels && channel.subChannels.length > 1 && (
+                     <FilterSelect label="Topic" value={selectedSubChannel} onChange={v => { setSelectedSubChannel(v); setCurrentIndex(0); }}>
+                       {channel.subChannels.map((sc: any) => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
+                     </FilterSelect>
+                   )}
+                   <FilterSelect label="Difficulty" value={selectedDifficulty} onChange={v => { setSelectedDifficulty(v); setCurrentIndex(0); }}>
+                     <option value="all">All levels</option>
+                     <option value="beginner">Beginner</option>
+                     <option value="intermediate">Intermediate</option>
+                     <option value="advanced">Advanced</option>
+                   </FilterSelect>
+                   {companiesWithCounts.length > 0 && (
+                     <FilterSelect label="Company" value={selectedCompany} onChange={v => { setSelectedCompany(v); setCurrentIndex(0); }}>
+                       <option value="all">All companies</option>
+                       {companiesWithCounts.map((c: any) => <option key={c.company} value={c.company}>{c.company} ({c.count})</option>)}
+                     </FilterSelect>
+                   )}
+                   <button onClick={() => setShowFilters(false)} className="cursor-pointer p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-2 transition-all duration-150 ml-auto">
+                     <X className="w-4 h-4" style={{ color: '#5f6368' }} />
+                   </button>
+                 </div>
+               </motion.div>
+             )}
+           </AnimatePresence>
 
           {/* Main scrollable content */}
           <motion.div drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.1} style={{ x, opacity }}
             onDragEnd={handleDragEnd} className="flex-1 overflow-y-auto">
-            <div className="max-w-4xl mx-auto px-4 py-8 lg:py-12" data-testid="question-card" style={{ background: 'linear-gradient(145deg, var(--card), var(--card))', borderRadius: 24, boxShadow: '20px 20px 60px rgba(0,0,0,0.25), -10px -10px 40px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.06)' }}>
+             <div className="max-w-3xl mx-auto px-4 py-8 lg:py-10 rounded-2xl" data-testid="question-card" style={cardStyle}>
 
-              {/* Meta row */}
-              <div className="flex items-center gap-2 flex-wrap mb-6">
-                {currentQuestion.difficulty && (
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
-                    currentQuestion.difficulty === 'advanced' ? 'border-red-500/40 text-red-500 bg-red-500/8'
-                    : currentQuestion.difficulty === 'intermediate' ? 'border-amber-500/40 text-amber-500 bg-amber-500/8'
-                    : 'border-emerald-500/40 text-emerald-600 bg-emerald-500/8'
-                  }`}>
-                    {currentQuestion.difficulty.charAt(0).toUpperCase() + currentQuestion.difficulty.slice(1)}
-                  </span>
-                )}
-                {currentQuestion.subChannel && (
-                  <span className="text-xs font-medium px-2.5 py-1 rounded-full border border-border text-muted-foreground">
-                    {currentQuestion.subChannel.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                  </span>
-                )}
-                {currentQuestion.companies?.[0] && (
-                  <span className="text-xs font-medium px-2.5 py-1 rounded-full border border-border text-muted-foreground">
-                    {currentQuestion.companies[0]}
-                  </span>
-                )}
-                {isCompleted && (
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-500/40 text-emerald-600 bg-emerald-500/8 flex items-center gap-1">
-                    <Check className="w-3 h-3" /> Done
-                  </span>
-                )}
-              </div>
+               {/* Meta row - Google chips */}
+               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+                 {currentQuestion.difficulty && (
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 16, fontSize: 13, fontWeight: 500,
+                      background: currentQuestion.difficulty === 'advanced' ? 'rgba(217,48,37,0.12)' : currentQuestion.difficulty === 'intermediate' ? 'rgba(249,171,0,0.12)' : 'rgba(52,168,83,0.12)',
+                      color: currentQuestion.difficulty === 'advanced' ? '#d93025' : currentQuestion.difficulty === 'intermediate' ? '#f9ab00' : '#34a853',
+                      border: `1px solid ${currentQuestion.difficulty === 'advanced' ? 'rgba(217,48,37,0.25)' : currentQuestion.difficulty === 'intermediate' ? 'rgba(249,171,0,0.25)' : 'rgba(52,168,83,0.25)'}`,
+                    }}>
+                      {currentQuestion.difficulty.charAt(0).toUpperCase() + currentQuestion.difficulty.slice(1)}
+                    </span>
+                  )}
+                 {currentQuestion.subChannel && (
+                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 16, fontSize: 13, fontWeight: 500, background: 'rgba(26,115,232,0.08)', border: '1px solid rgba(26,115,232,0.2)', color: '#1a73e8' }}>
+                     {currentQuestion.subChannel.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                   </span>
+                 )}
+                 {currentQuestion.companies?.[0] && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 16, fontSize: 13, fontWeight: 500, background: 'rgba(26,115,232,0.08)', border: '1px solid rgba(26,115,232,0.2)', color: '#1a73e8' }}>
+                      {currentQuestion.companies[0]}
+                    </span>
+                  )}
+                 {isCompleted && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 16, fontSize: 13, fontWeight: 500, background: 'rgba(52,168,83,0.12)', border: '1px solid rgba(52,168,83,0.25)', color: '#34a853' }}>
+                      <Check className="w-3.5 h-3.5" /> Done
+                    </span>
+                  )}
+               </div>
 
-              {/* Question */}
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight tracking-tight text-foreground mb-8">
-                {currentQuestion.question}
-              </h1>
+               {/* Question */}
+               <h1 style={{ fontSize: 'clamp(1.25rem, 4vw, 1.5rem)', fontWeight: 500, lineHeight: 1.4, letterSpacing: '0', marginBottom: 16, fontFamily: "'Google Sans Display', 'Roboto Flex', sans-serif" }}>
+                 {currentQuestion.question}
+               </h1>
 
-              {/* Tags */}
-              {currentQuestion.tags && currentQuestion.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-8">
-                  {currentQuestion.tags.slice(0, 6).map((tag: string) => (
-                    <span key={tag} className="text-xs text-muted-foreground/60 font-mono">#{tag}</span>
-                  ))}
-                </div>
-              )}
-
-              {/* SRS / feedback row */}
-              <div className="flex items-center gap-3 mb-10 flex-wrap">
-                {hasRated ? (
-                  <span className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
-                    <Check className="w-4 h-4" /> Review recorded
-                  </span>
-                ) : showRatingButtons && srsCard ? (
-                  <div className="flex gap-2">
-                    {(['again', 'hard', 'good', 'easy'] as ConfidenceRating[]).map(r => {
-                      const cfg: Record<string, { bg: string; glow: string; text: string; border: string }> = {
-                        again: { bg: 'linear-gradient(145deg, #fee2e2, #fecaca)', glow: '0 4px 16px rgba(239,68,68,0.3)', text: '#dc2626', border: 'rgba(239,68,68,0.4)' },
-                        hard: { bg: 'linear-gradient(145deg, #fef3c7, #fde68a)', glow: '0 4px 16px rgba(245,158,11,0.3)', text: '#d97706', border: 'rgba(245,158,11,0.4)' },
-                        good: { bg: 'linear-gradient(145deg, #d1fae5, #a7f3d0)', glow: '0 4px 16px rgba(16,185,129,0.3)', text: '#059669', border: 'rgba(16,185,129,0.4)' },
-                        easy: { bg: 'linear-gradient(145deg, #dbeafe, #bfdbfe)', glow: '0 4px 16px rgba(59,130,246,0.3)', text: '#2563eb', border: 'rgba(59,130,246,0.4)' }
-                      };
-                      const testIds: Record<string, string> = { hard: 'srs-button-hard', good: 'srs-button-good', easy: 'srs-button-easy' };
-                      const style = cfg[r];
-                      return (
-                        <motion.button key={r} onClick={() => handleSRSRating(r)}
-                          whileHover={{ scale: 1.05, y: -2 }}
-                          whileTap={{ scale: 0.95 }}
-                          {...(testIds[r] ? { 'data-testid': testIds[r] } : {})}
-                          className={`cursor-pointer px-3 min-h-[44px] text-xs font-semibold border rounded-full capitalize`}
-                          style={{ background: style.bg, color: style.text, borderColor: style.border, boxShadow: style.glow, transition: 'all 0.2s ease-out' }}>
-                          {r}
-                        </motion.button>
-                      );
-                    })}
+                {/* Tags */}
+                {currentQuestion.tags && currentQuestion.tags.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 24 }}>
+                    {currentQuestion.tags.slice(0, 6).map((tag: string) => (
+                      <span key={tag} style={{ fontSize: 12, color: '#5f6368', fontWeight: 500 }}>#{tag}</span>
+                    ))}
                   </div>
-                ) : (
-                  <button onClick={handleAddToSRS}
-                    className="cursor-pointer flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-full px-3 min-h-[44px] transition-colors duration-150 ease-out">
-                    <Brain className="w-3.5 h-3.5" /> Add to SRS
-                  </button>
                 )}
-                <QuestionFeedback questionId={currentQuestion.id} />
-              </div>
 
-              {/* Answer section */}
-              <div className="border-t border-border pt-8">
-                {recallMode && !recallRevealed ? (
-                  <RecallGate onReveal={() => { setRecallRevealed(true); setShowAnswer(true); }} />
-                ) : (
-                  <>
-                    {/* Mobile: hide toggle (only when recall mode is off or already revealed) */}
-                    {!recallMode && (
-                      <div className="lg:hidden mb-6">
-                        {!showAnswer ? (
-                          <button onClick={() => setShowAnswer(true)}
-                            data-testid="button-reveal-answer"
-                            className="cursor-pointer w-full flex items-center justify-center gap-2 min-h-[44px] font-semibold rounded-xl text-sm transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.98]"
-                            style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', color: '#fff', boxShadow: '0 4px 16px rgba(60,64,67,0.12), inset 0 1px 0 rgba(255,255,255,0.2)' }}>
-                            <Eye className="w-4 h-4" /> Show Answer
-                          </button>
-                        ) : (
-                          <button onClick={() => setShowAnswer(false)}
-                            className="cursor-pointer flex items-center gap-1.5 min-h-[44px] text-sm text-muted-foreground hover:text-foreground transition-colors duration-150 ease-out">
-                            <ChevronDown className="w-4 h-4" /> Hide answer
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    <div className={`lg:block ${showAnswer || recallRevealed ? 'block' : 'hidden'}`}>
-                      <AnswerPanel
-                        question={currentQuestion}
-                        isCompleted={isCompleted}
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
+               {/* SRS / feedback row */}
+               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
+                  {hasRated ? (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'hsl(var(--success))', fontWeight: 500 }}>
+                      <Check className="w-4 h-4" /> Review recorded
+                     {srsCard && (
+                       <ResultIcon correct={srsCard.masteryLevel > 0} size={28} />
+                     )}
+                   </span>
+                 ) : showRatingButtons && srsCard ? (
+                   <ConfidenceCircles
+                     onSelect={handleSRSRating}
+                   />
+                 ) : (
+                    <button onClick={handleAddToSRS}
+                      style={chipStyle(false)}
+                      className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                     <Brain className="w-3.5 h-3.5" /> Add to SRS
+                   </button>
+                 )}
+                 <QuestionFeedback questionId={currentQuestion.id} />
+                 {hasRated && srsCard && (
+                   <PointsBadgeSVG points={srsCard.masteryLevel * 10} />
+                 )}
+               </div>
+
+                {/* Answer section */}
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 24, marginTop: 8 }}>
+                 {recallMode && !recallRevealed ? (
+                   <RecallGate onReveal={() => { setRecallRevealed(true); setShowAnswer(true); }} />
+                 ) : (
+                   <>
+                     {/* Mobile: hide toggle */}
+                      {!recallMode && (
+                        <div className="lg:hidden mb-6">
+                          {!showAnswer ? (
+                            <button onClick={() => setShowAnswer(true)}
+                              data-testid="button-reveal-answer"
+                              style={buttonStyle}
+                              className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                              <Eye className="w-4 h-4" /> Show Answer
+                            </button>
+                          ) : (
+                            <button onClick={() => setShowAnswer(false)}
+                              style={outlinedButtonStyle}
+                              className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                              <ChevronDown className="w-4 h-4" style={{ transform: 'rotate(180deg)' }} /> Hide answer
+                            </button>
+                          )}
+                        </div>
+                      )}
+                     <RevealOverlay show={showAnswer || recallRevealed}>
+                       <AnswerPanel
+                         question={currentQuestion}
+                         isCompleted={isCompleted}
+                       />
+                     </RevealOverlay>
+                   </>
+                 )}
+               </div>
             </div>
           </motion.div>
 
-          {/* Bottom nav bar */}
-          <div className="border-t border-border bg-background flex-shrink-0 pb-24">
-            <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
-              <button onClick={prevQuestion} disabled={currentIndex === 0}
-                className="cursor-pointer flex items-center gap-1.5 min-h-[44px] px-2 text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-150 ease-out">
-                <ChevronLeft className="w-4 h-4" /> Prev
-              </button>
-              <div className="flex items-center gap-2">
-                <div className="w-32 h-1 bg-border rounded-full overflow-hidden">
-                  <motion.div className="h-full bg-primary rounded-full" animate={{ width: `${progress}%` }} transition={{ duration: 0.3 }} />
+           {/* Bottom nav bar */}
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', background: 'var(--surface-1)', paddingBottom: 'env(safe-area-inset-bottom, 20px)', flexShrink: 0 }}>
+             <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+                <button onClick={prevQuestion} disabled={currentIndex === 0}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 20, fontSize: 14, fontWeight: 500,
+                    background: 'transparent', color: currentIndex === 0 ? '#5f6368' : '#1a73e8', border: '1px solid #dadce0',
+                    opacity: currentIndex === 0 ? 0.4 : 1, cursor: currentIndex === 0 ? 'not-allowed' : 'pointer',
+                  }}
+                  className="focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-2">
+                  <ChevronLeft className="w-4 h-4" /> Prev
+                </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, maxWidth: 300, margin: '0 16px' }}>
+                  <ProgressBarSVG progress={progress} height={6} />
+                   <span style={{ fontSize: 13, color: '#5f6368', fontVariantNumeric: 'tabular-nums', minWidth: 40, textAlign: 'right' }}>{progress}%</span>
                 </div>
-                <span className="text-xs text-muted-foreground tabular-nums">{progress}%</span>
-              </div>
-              <button onClick={nextQuestion} disabled={currentIndex === totalQuestions - 1}
-                className="cursor-pointer flex items-center gap-1.5 min-h-[44px] px-2 text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-150 ease-out">
-                Next <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+                <button onClick={nextQuestion} disabled={currentIndex === totalQuestions - 1}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 20px', borderRadius: 8, fontSize: 14, fontWeight: 500,
+                    background: currentIndex === totalQuestions - 1 ? '#e8eaed' : '#1a73e8', color: currentIndex === totalQuestions - 1 ? '#5f6368' : '#fff',
+                    border: 'none', boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                    opacity: currentIndex === totalQuestions - 1 ? 0.4 : 1, cursor: currentIndex === totalQuestions - 1 ? 'not-allowed' : 'pointer',
+                  }}
+                  className="focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-2">
+                  Next <ChevronRight className="w-4 h-4" />
+                </button>
+             </div>
+           </div>
         </div>
       </AppLayout>
 
@@ -517,15 +600,27 @@ export default function QuestionViewer() {
 
 function FilterSelect({ label, value, onChange, children }: { label: string; value: string; onChange: (v: string) => void; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-muted-foreground">{label}</label>
-      <div className="relative">
-        <select value={value} onChange={e => onChange(e.target.value)}
-          className="appearance-none bg-background border border-border rounded-lg px-3 py-1.5 pr-7 min-h-[44px] text-sm focus:outline-none focus:border-primary transition-colors duration-150 ease-out cursor-pointer">
-          {children}
-        </select>
-        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-      </div>
-    </div>
-  );
-}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+       <label style={{ fontSize: 12, fontWeight: 500, color: '#5f6368', letterSpacing: '0.5px', textTransform: 'uppercase' }}>{label}</label>
+      <div style={{ position: 'relative' }}>
+         <select value={value} onChange={e => onChange(e.target.value)}
+           style={{
+             appearance: 'none',
+             background: 'var(--surface-2)',
+             border: '1px solid rgba(255,255,255,0.12)',
+             borderRadius: 8,
+             padding: '8px 32px 8px 12px',
+             minHeight: 40,
+             fontSize: 14,
+             color: 'var(--text-primary)',
+             cursor: 'pointer',
+             transition: 'all 0.15s ease',
+           }}
+           className="focus-visible:ring-2 focus-visible:ring-[#1a73e8] focus-visible:ring-offset-2">
+           {children}
+         </select>
+         <ChevronDown style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: '#5f6368', pointerEvents: 'none' }} />
+       </div>
+     </div>
+   );
+ }

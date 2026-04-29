@@ -101,8 +101,8 @@ const themes = {
     name: 'Midnight',
     bg: '#0a0a0a', bgSecondary: '#111', bgCard: '#1a1a1a',
     text: '#fff', textSecondary: '#a0a0a0',
-    accent: '#22c55e', accentHover: '#16a34a',
-    border: '#2a2a2a', gradient: 'linear-gradient(135deg, #22c55e, #4ade80)'
+    accent: '#34A853', accentHover: '#1a73e8',
+    border: '#2a2a2a',     gradient: 'linear-gradient(135deg, #34A853, #8ab4f8)'
   },
   ocean: {
     name: 'Ocean',
@@ -122,14 +122,14 @@ const themes = {
     name: 'Forest',
     bg: '#0f1a0f', bgSecondary: '#142014', bgCard: '#1a2a1a',
     text: '#ecfdf5', textSecondary: '#86efac',
-    accent: '#4ade80', accentHover: '#22c55e',
+    accent: '#8ab4f8', accentHover: '#4285F4',
     border: '#2d4a2d', gradient: 'linear-gradient(135deg, #4ade80, #a3e635)'
   },
   lavender: {
     name: 'Lavender',
     bg: '#13111c', bgSecondary: '#1a1625', bgCard: '#221d2e',
     text: '#f5f3ff', textSecondary: '#c4b5fd',
-    accent: '#a78bfa', accentHover: '#8b5cf6',
+    accent: '#4285F4', accentHover: '#1a73e8',
     border: '#3b2d5c', gradient: 'linear-gradient(135deg, #a78bfa, #f472b6)'
   }
 };

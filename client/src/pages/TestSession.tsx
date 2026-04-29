@@ -27,7 +27,7 @@ function Confetti() {
   const pieces = Array.from({ length: 32 }, (_, i) => ({
     id: i,
     x: Math.random() * 100,
-    color: ['#7c3aed', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'][i % 5],
+    color: ['var(--color-accent-violet)', 'var(--color-accent-cyan)', 'var(--color-success)', 'var(--color-warning)', 'var(--color-error)'][i % 5],
     delay: Math.random() * 0.5,
     duration: 1.2 + Math.random() * 0.8,
   }));
@@ -95,12 +95,12 @@ function OptionButton({
 }) {
   return (
     <motion.button
-      whileTap={disabled ? {} : { scale: 0.98 }}
-      onClick={onClick}
-      disabled={disabled}
-      data-testid={testId}
-      className={`w-full p-4 text-left rounded-xl border-2 transition duration-150 ease-out ${
-        showCorrect
+        whileTap={disabled ? {} : { scale: 0.98 }}
+        onClick={onClick}
+        disabled={disabled}
+        data-testid={testId}
+        className={`w-full p-4 text-left rounded-xl border-2 transition duration-150 ease-out focus-visible:ring-2 focus-visible:ring-primary/50 ${
+          showCorrect
           ? 'border-[var(--color-success)] bg-[var(--color-success)]/15'
           : showWrong
           ? 'border-[var(--color-error)] bg-[var(--color-error)]/15'
@@ -110,15 +110,15 @@ function OptionButton({
       } ${disabled ? 'cursor-default' : 'cursor-pointer'}`}
     >
       <div className="flex items-center gap-3">
-        <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 border-2 ${
+        <span className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0 border-2 ${
           showCorrect ? 'border-[var(--color-success)] bg-[var(--color-success)] text-white'
           : showWrong ? 'border-[var(--color-error)] bg-[var(--color-error)] text-white'
           : selected ? 'border-[var(--color-accent-violet)] bg-[var(--color-accent-violet)] text-white'
-          : 'border-[var(--color-border)] text-muted-foreground'
+          : 'border-[var(--color-border)] text-foreground/70'
         }`}>
           {showCorrect ? <Check className="w-3.5 h-3.5" /> : showWrong ? <X className="w-3.5 h-3.5" /> : label}
         </span>
-        <span className="text-sm leading-snug">{text}</span>
+        <span className="text-base leading-snug">{text}</span>
       </div>
     </motion.button>
   );
@@ -302,7 +302,7 @@ export default function TestSessionPage() {
             <div className="flex items-center justify-center py-20">
               <div className="text-center">
                 <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-                <p className="text-muted-foreground text-sm">{!test ? 'No test available for this channel yet' : 'Loading...'}</p>
+                <p className="text-foreground/70 text-sm">{!test ? 'No test available for this channel yet' : 'Loading...'}</p>
                 <Button onClick={() => setLocation('/')} className="mt-4">Go home</Button>
               </div>
             </div>
@@ -326,28 +326,28 @@ export default function TestSessionPage() {
           {sessionState === 'ready' && (
             <div className="min-h-screen flex items-center justify-center p-4">
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-md w-full">
-                <Card className="p-6">
-                  <div className="text-center mb-6">
+                 <Card className="p-6 rounded-2xl">
+                   <div className="text-center mb-6">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] flex items-center justify-center mx-auto mb-4">
                       <span className="text-3xl">{theme.icon}</span>
                     </div>
                     <h1 className="text-xl font-bold mb-1">{test.title}</h1>
-                    <p className="text-sm text-muted-foreground">{test.description}</p>
+                    <p className="text-foreground/70 text-sm">{test.description}</p>
                   </div>
                   <div className="space-y-2 mb-6 text-sm">
-                    {[
-                      ['Questions', `15 (from ${test.questions.length})`],
-                      ['Time Limit', `${test.timeLimit ?? 20} minutes`],
-                      ['Passing Score', `${test.passingScore}%`],
-                    ].map(([k, v]) => (
-                      <div key={k} className="flex justify-between p-2.5 rounded-lg bg-muted/40">
-                        <span className="text-muted-foreground">{k}</span>
+                  {[
+                       ['Questions', `15 (from ${test.questions.length})`],
+                       ['Time Limit', `${test.timeLimit ?? 20} minutes`],
+                       ['Passing Score', `${test.passingScore}%`],
+                     ].map(([k, v]) => (
+                       <div key={k} className="flex justify-between p-2.5 rounded-xl bg-muted/40">
+                        <span className="text-foreground/70">{k}</span>
                         <span className="font-semibold">{v}</span>
                       </div>
                     ))}
                     {progress && !isExpired && (
-                      <div className="flex justify-between p-2.5 rounded-lg bg-[var(--color-success)]/10 border border-[var(--color-success)]/20">
-                        <span className="text-muted-foreground">Your Best</span>
+                      <div className="flex justify-between p-2.5 rounded-xl bg-[var(--color-success)]/10 border border-[var(--color-success)]/20">
+                        <span className="text-foreground/70">Your Best</span>
                         <span className="font-bold text-[var(--color-success)]">{progress.bestScore}%</span>
                       </div>
                     )}
@@ -366,13 +366,13 @@ export default function TestSessionPage() {
             <div className="min-h-screen flex flex-col">
               {/* Header */}
               <header className="border-b border-border px-4 py-2 flex items-center justify-between gap-3">
-                <button onClick={() => setLocation('/')} className="min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer text-muted-foreground hover:text-foreground transition duration-150 ease-out">
+                <button onClick={() => setLocation('/')} className="min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer text-foreground/70 hover:text-foreground transition duration-150 ease-out focus-visible:ring-2 focus-visible:ring-primary/50 rounded-xl">
                   <Home className="w-4 h-4" />
                 </button>
 
                 {/* Progress bar + counter */}
                 <div className="flex-1 flex items-center gap-2">
-                  <span className="text-xs font-semibold tabular-nums text-muted-foreground">{currentIndex + 1} / {questions.length}</span>
+                  <span className="text-xs font-semibold tabular-nums text-foreground/70">{currentIndex + 1} / {questions.length}</span>
                   <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                     <motion.div
                       className="h-full rounded-full bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)]"
@@ -398,16 +398,16 @@ export default function TestSessionPage() {
                     >
                       {/* Badges */}
                       <div className="flex items-center gap-2 mb-4">
-                        <span className={`px-2 py-0.5 text-[10px] uppercase font-semibold rounded-md ${
-                          currentQuestion.type === 'multiple' ? 'bg-[var(--color-accent-violet)]/20 text-[var(--color-accent-violet-light)]' : 'bg-[var(--color-accent-cyan)]/20 text-[var(--color-accent-cyan)]'
-                        }`}>
+                         <span className={`px-3 py-1.5 text-xs uppercase font-semibold rounded-md ${
+                           currentQuestion.type === 'multiple' ? 'bg-[var(--color-accent-violet)]/20 text-[var(--color-accent-violet-light)]' : 'bg-[var(--color-accent-cyan)]/20 text-[var(--color-accent-cyan)]'
+                         }`}>
                           {currentQuestion.type === 'multiple' ? 'Select all' : 'Single choice'}
                         </span>
-                        <span className={`px-2 py-0.5 text-[10px] uppercase font-semibold rounded-md ${
-                          currentQuestion.difficulty === 'beginner' ? 'bg-[var(--color-success)]/20 text-[var(--color-success)]'
-                          : currentQuestion.difficulty === 'intermediate' ? 'bg-[var(--color-warning)]/20 text-[var(--color-warning)]'
-                          : 'bg-[var(--color-error)]/20 text-[var(--color-error)]'
-                        }`}>
+                         <span className={`px-3 py-1.5 text-xs uppercase font-semibold rounded-md ${
+                           currentQuestion.difficulty === 'beginner' ? 'bg-[var(--color-success)]/20 text-[var(--color-success)]'
+                           : currentQuestion.difficulty === 'intermediate' ? 'bg-[var(--color-warning)]/20 text-[var(--color-warning)]'
+                           : 'bg-[var(--color-error)]/20 text-[var(--color-error)]'
+                         }`}>
                           {currentQuestion.difficulty}
                         </span>
                       </div>
@@ -435,9 +435,9 @@ export default function TestSessionPage() {
                         })}
                       </div>
 
-                      {currentQuestion.type === 'multiple' && !showFeedback && (
-                        <p className="mt-3 text-xs text-muted-foreground text-center">Select all correct answers, then confirm</p>
-                      )}
+                       {currentQuestion.type === 'multiple' && !showFeedback && (
+                         <p className="mt-3 text-sm text-foreground/70 text-center">Select all correct answers, then confirm</p>
+                       )}
 
                       {/* Explanation on reveal */}
                       <AnimatePresence>
@@ -448,11 +448,11 @@ export default function TestSessionPage() {
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0 }}
-                            className={`mt-3 p-3 rounded-xl text-xs leading-relaxed border ${
-                              showFeedback === 'correct'
-                                ? 'bg-[var(--color-success)]/10 border-[var(--color-success)]/25 text-[var(--color-success)]'
-                                : 'bg-[var(--color-error)]/10 border-[var(--color-error)]/25 text-[var(--color-error)]'
-                            }`}
+                             className={`mt-3 p-3 rounded-xl text-sm leading-relaxed border ${
+                               showFeedback === 'correct'
+                                 ? 'bg-[var(--color-success)]/10 border-[var(--color-success)]/25 text-[var(--color-success)]'
+                                 : 'bg-[var(--color-error)]/10 border-[var(--color-error)]/25 text-[var(--color-error)]'
+                             }`}
                           >
                             <span className="font-semibold">{showFeedback === 'correct' ? '✓ ' : '✗ '}</span>
                             <span className="text-foreground/80">{currentQuestion.explanation}</span>
@@ -471,7 +471,7 @@ export default function TestSessionPage() {
                     <ArrowLeft className="w-3.5 h-3.5 mr-1" />Prev
                   </Button>
 
-                  <span className="text-xs text-muted-foreground">{Object.keys(answers).length}/{questions.length} answered</span>
+                  <span className="text-xs text-foreground/70">{Object.keys(answers).length}/{questions.length} answered</span>
 
                   {currentIndex === questions.length - 1 ? (
                     currentQuestion.type === 'multiple' ? (
@@ -502,8 +502,8 @@ export default function TestSessionPage() {
             <div data-testid="test-results-screen" className="min-h-screen flex items-center justify-center p-4">
               {result.passed && <Confetti />}
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-md w-full space-y-4">
-                <Card className="p-6">
-                  {/* Score ring */}
+                 <Card className="p-6 rounded-2xl">
+                   {/* Score ring */}
                   <div className="text-center mb-6">
                     <ScoreRing score={result.score} passed={result.passed} />
                     <motion.div
@@ -515,7 +515,7 @@ export default function TestSessionPage() {
                       <span
                         ref={resultsHeadingRef}
                         tabIndex={-1}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold border ${
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold border ${
                         result.passed
                           ? 'bg-[var(--color-success)]/15 text-[var(--color-success)] border-[var(--color-success)]/30'
                           : 'bg-[var(--color-error)]/15 text-[var(--color-error)] border-[var(--color-error)]/30'
@@ -532,16 +532,16 @@ export default function TestSessionPage() {
                       { label: 'Wrong', value: result.total - result.correct, color: 'var(--color-error)' },
                       { label: 'Total', value: result.total, color: 'var(--color-accent-violet-light)' },
                     ].map(({ label, value, color }) => (
-                      <div key={label} className="text-center p-3 rounded-xl bg-muted/40">
+                      <div key={label} className="text-center p-3 rounded-2xl bg-muted/40">
                         <div className="text-2xl font-bold" style={{ color }}>{value}</div>
-                        <div className="text-xs text-muted-foreground">{label}</div>
+                        <div className="text-xs text-foreground/70">{label}</div>
                       </div>
                     ))}
                   </div>
 
                   {/* Question review list */}
                   <div className="mb-5">
-                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Question Review</h3>
+                     <h3 className="text-xs font-semibold text-foreground/70 uppercase tracking-wider mb-2">Question Review</h3>
                     {(() => {
                       const q = questions[reviewIndex];
                       if (!q) return null;
@@ -549,11 +549,11 @@ export default function TestSessionPage() {
                       const correctIds = q.options.filter(o => o.isCorrect).map(o => o.id);
                       const isCorrect = correctIds.every(id => userAns.includes(id)) && userAns.every(id => correctIds.includes(id));
                       return (
-                        <div className="flex items-start gap-2 p-2 rounded-lg bg-muted/30 text-xs">
+                         <div className="flex items-start gap-2 p-2 rounded-xl bg-muted/30 text-sm">
                           {isCorrect
                             ? <CheckCircle className="w-3.5 h-3.5 text-[var(--color-success)] flex-shrink-0 mt-0.5" />
                             : <XCircle className="w-3.5 h-3.5 text-[var(--color-error)] flex-shrink-0 mt-0.5" />}
-                          <span className="text-muted-foreground">{reviewIndex + 1}. {q.question}</span>
+                           <span className="text-foreground/70">{reviewIndex + 1}. {q.question}</span>
                         </div>
                       );
                     })()}
@@ -561,7 +561,7 @@ export default function TestSessionPage() {
                       <Button size="sm" variant="secondary" onClick={() => setReviewIndex(i => i - 1)} disabled={reviewIndex === 0}>
                         <ArrowLeft className="w-3.5 h-3.5 mr-1" />Previous
                       </Button>
-                      <span className="text-xs text-muted-foreground">{reviewIndex + 1} / {questions.length}</span>
+                       <span className="text-xs text-foreground/70">{reviewIndex + 1} / {questions.length}</span>
                       <Button size="sm" variant="secondary" onClick={() => setReviewIndex(i => i + 1)} disabled={reviewIndex === questions.length - 1}>
                         Next<ArrowRight className="w-3.5 h-3.5 ml-1" />
                       </Button>

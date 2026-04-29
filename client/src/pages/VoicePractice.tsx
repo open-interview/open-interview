@@ -1,5 +1,6 @@
 /**
- * Voice Practice
+ * Voice Practice - Google-style Material Design
+ * Clean interface with waveform visualization, microphone controls
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -15,8 +16,13 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { getRoleDefaultChannels } from '../lib/personalization';
 import { ChannelService } from '../services/api.service';
-import { Card, Button, Microphone, Progress } from '../components/practice-ui';
+import { Progress } from '../components/practice-ui';
 import type { Question } from '../types';
+
+const GOOGLE_BLUE = '#1a73e8';
+const GOOGLE_RED = '#ea4335';
+const GOOGLE_GREEN = '#34a853';
+const GOOGLE_YELLOW = '#fbbc04';
 
 const isSpeechSupported = typeof window !== 'undefined' &&
   ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
@@ -39,20 +45,17 @@ function countWords(text: string): number {
 function calculateFeedback(transcript: string, targetAnswer: string, duration: number): FeedbackResult {
   const wordsSpoken = countWords(transcript);
   const targetWords = countWords(targetAnswer);
-
   let message: string;
   const ratio = wordsSpoken / targetWords;
-
   if (ratio >= 0.8 && ratio <= 1.2) {
-    message = "Great job! Your answer length is perfect! 🌟";
+    message = "Great job! Your answer length is perfect!";
   } else if (ratio >= 0.5) {
-    message = `Good effort! Try to cover more details. 💪`;
+    message = `Good effort! Try to cover more details.`;
   } else if (wordsSpoken > 0) {
-    message = "Keep practicing! Try to elaborate more. 📚";
+    message = "Keep practicing! Try to elaborate more.";
   } else {
-    message = "Start speaking to practice! 🎤";
+    message = "Start speaking to practice!";
   }
-
   const score = Math.min(100, Math.round((wordsSpoken / targetWords) * 100));
   return { wordsSpoken, targetWords, duration, message, score };
 }
@@ -63,6 +66,138 @@ const roleQuestionWeights: Record<string, { primary: string[]; multiplier: numbe
   devops:       { primary: ['devops', 'kubernetes', 'linux'], multiplier: 2 },
   'ml-engineer':{ primary: ['machine-learning', 'python', 'data-engineering'], multiplier: 2 },
 };
+
+// ── Google-style Microphone Button ───────────────────────────────────────
+function GoogleMicrophoneButton({
+  isRecording,
+  onStart,
+  onStop,
+  disabled = false,
+}: {
+  isRecording: boolean;
+  onStart: () => void;
+  onStop: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="relative flex items-center justify-center">
+      {isRecording && (
+        <>
+          <motion.div
+            animate={{ scale: [1, 1.4, 1], opacity: [0.4, 0, 0.4] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute rounded-full"
+            style={{ width: 120, height: 120, backgroundColor: GOOGLE_RED }}
+          />
+          <motion.div
+            animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
+            className="absolute rounded-full"
+            style={{ width: 100, height: 100, backgroundColor: GOOGLE_RED }}
+          />
+        </>
+      )}
+      <motion.button
+        onClick={isRecording ? onStop : onStart}
+        disabled={disabled}
+        aria-label={isRecording ? 'Stop recording' : 'Start recording'}
+        whileHover={{ scale: disabled ? 1 : 1.05 }}
+        whileTap={{ scale: disabled ? 1 : 0.95 }}
+        animate={isRecording ? { scale: [1, 1.02, 1] } : {}}
+        transition={{ duration: 1, repeat: isRecording ? Infinity : 0 }}
+        style={{ touchAction: 'manipulation' }}
+         className={`
+           relative z-10 w-24 h-24 rounded-full flex items-center justify-center
+           transition-all duration-200 cursor-pointer
+           ${isRecording ? 'bg-red-500' : 'bg-[#1a73e8]'}
+           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+         `}
+      >
+        {isRecording ? (
+          <div className="w-8 h-8 bg-white rounded-sm" />
+        ) : (
+          <Mic className="w-10 h-10 text-white" strokeWidth={2} />
+        )}
+      </motion.button>
+      {isRecording && (
+        <motion.div
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute -bottom-10 flex items-center gap-2"
+        >
+          <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+          <span className="text-sm font-medium text-red-500">Recording</span>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+// ── Google-style Waveform Visualizer ─────────────────────────────────────
+function GoogleWaveformVisualizer({ isActive, intensity = 1 }: { isActive: boolean; intensity?: number }) {
+  const [bars, setBars] = useState<number[]>(Array(24).fill(4));
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!isActive) {
+      setBars(Array(24).fill(4));
+      return;
+    }
+    const animate = () => {
+      setBars(prev => prev.map(() => 4 + Math.random() * 36 * intensity));
+      rafRef.current = requestAnimationFrame(animate);
+    };
+    rafRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [isActive, intensity]);
+
+  return (
+    <div className="flex items-center justify-center gap-[3px] h-12" aria-hidden>
+      {bars.map((height, i) => (
+        <div
+          key={i}
+          style={{
+            height: `${height}px`,
+            width: '3px',
+            backgroundColor: isActive ? GOOGLE_BLUE : '#ddd',
+            opacity: isActive ? 0.7 + Math.random() * 0.3 : 0.4,
+            borderRadius: '2px',
+            transition: 'height 100ms ease-out',
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Session Timer ────────────────────────────────────────────────
+function SessionTimer({ seconds }: { seconds: number }) {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return (
+    <span className="font-google-mono text-xl font-medium text-gray-700 tabular-nums">
+      {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
+    </span>
+  );
+}
+
+// ── Progress Bar ────────────────────────────────────────────
+function GoogleProgress({ value, max }: { value: number; max: number }) {
+  const pct = Math.min((value / max) * 100, 100);
+  return (
+    <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+      <motion.div
+        initial={{ width: 0 }}
+        animate={{ width: `${pct}%` }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        className="h-full rounded-full"
+        style={{ backgroundColor: GOOGLE_BLUE }}
+      />
+    </div>
+  );
+}
 
 export default function VoicePractice() {
   const [, setLocation] = useLocation();
@@ -96,20 +231,16 @@ export default function VoicePractice() {
     recordingStateRef.current = recordingState;
   }, [recordingState]);
 
-  // Load questions
   useEffect(() => {
     async function loadQuestions() {
       setLoading(true);
       const subscribedChannels = getSubscribedChannels();
-
       if (subscribedChannels.length === 0) {
         setLoading(false);
         return;
       }
-
       try {
         const allQuestions: Question[] = [];
-
         for (const channel of subscribedChannels) {
           try {
             const data = await ChannelService.getData(channel.id);
@@ -121,7 +252,6 @@ export default function VoicePractice() {
             console.error(`Failed to load ${channel.id}`, e);
           }
         }
-
         if (allQuestions.length > 0) {
           const role = preferences.role ?? '';
           const weights = roleQuestionWeights[role];
@@ -129,7 +259,6 @@ export default function VoicePractice() {
             ? new Set(weights.primary)
             : new Set(getRoleDefaultChannels(role).slice(0, Math.ceil(getRoleDefaultChannels(role).length * 0.6)));
           const multiplier = weights ? weights.multiplier : 2;
-
           const weighted: Question[] = [];
           for (const q of allQuestions) {
             weighted.push(q);
@@ -137,30 +266,24 @@ export default function VoicePractice() {
               for (let i = 1; i < multiplier; i++) weighted.push(q);
             }
           }
-
           const shuffled = weighted.sort(() => Math.random() - 0.5);
           setQuestions(shuffled.slice(0, 15));
         }
       } catch (e) {
         console.error('Failed to load questions', e);
       }
-
       setLoading(false);
     }
-
     loadQuestions();
   }, [getSubscribedChannels]);
 
-  // Initialize speech recognition
   useEffect(() => {
     if (!isSpeechSupported) return;
-
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
-
     recognition.onresult = (event: any) => {
       let interim = '';
       let final = '';
@@ -177,24 +300,19 @@ export default function VoicePractice() {
       }
       setInterimTranscript(interim);
     };
-
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
     };
-
     recognition.onend = () => {
       if (recordingStateRef.current === 'recording') {
         try { recognition.start(); } catch (e) { }
       }
     };
-
     recognitionRef.current = recognition;
     setRecognitionReady(true);
-
     return () => { try { recognition.stop(); } catch (e) { } };
   }, []);
 
-  // Timer
   useEffect(() => {
     if (recordingState === 'recording') {
       timerRef.current = setInterval(() => {
@@ -206,7 +324,6 @@ export default function VoicePractice() {
         timerRef.current = null;
       }
     }
-
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
@@ -214,13 +331,11 @@ export default function VoicePractice() {
 
   const startRecording = useCallback(() => {
     if (!recognitionRef.current) return;
-
     setTranscript('');
     setInterimTranscript('');
     setFeedback(null);
     setDuration(0);
     startTimeRef.current = Date.now();
-
     try {
       recognitionRef.current.start();
       setRecordingState('recording');
@@ -232,17 +347,13 @@ export default function VoicePractice() {
   const stopRecording = useCallback(() => {
     if (!recognitionRef.current) return;
     if (navigator.vibrate) navigator.vibrate([10, 50, 10]);
-
     try {
       recognitionRef.current.stop();
     } catch (e) { }
-
     setRecordingState('recorded');
-
     if (currentQuestion) {
       const result = calculateFeedback(transcript, currentQuestion.answer, duration);
       setFeedback(result);
-
       if (mode === 'interview') {
         setShowRevealButton(true);
       }
@@ -279,8 +390,8 @@ export default function VoicePractice() {
   if (loading) {
     return (
       <AppLayout fullWidth>
-        <div className="min-h-screen bg-background text-foreground">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-24">
+        <div className="min-h-screen bg-white text-gray-900">
+          <div className="max-w-4xl mx-auto px-4 py-12">
             <PageHeader title="Voice Practice" subtitle="Speak your answers out loud and get instant feedback" />
             <PageLoader message="Loading questions..." />
           </div>
@@ -292,19 +403,22 @@ export default function VoicePractice() {
   if (questions.length === 0) {
     return (
       <AppLayout fullWidth>
-        <div className="min-h-screen bg-background text-foreground">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-24">
+        <div className="min-h-screen bg-white text-gray-900">
+          <div className="max-w-4xl mx-auto px-4 py-12 pb-24">
             <PageHeader title="Voice Practice" subtitle="Speak your answers out loud and get instant feedback" />
             <div className="flex items-center justify-center py-20">
               <div className="text-center max-w-md">
-                <h2 className="text-xl font-bold mb-2">No Questions Available</h2>
-                <p className="text-muted-foreground mb-4">Subscribe to channels to access voice practice questions</p>
-                <ul className="text-sm text-muted-foreground text-left space-y-1 mb-6">
-                  <li>• Subscribe to at least one channel</li>
-                  <li>• Channels with voice-suitable questions will appear here</li>
-                  <li>• Try AWS, System Design, or Behavioral channels</li>
-                </ul>
-                <Button onClick={() => setLocation('/channels')} className="cursor-pointer">Browse Channels</Button>
+                <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-6">
+                  <Mic className="w-10 h-10 text-gray-400" />
+                </div>
+                <h2 className="text-xl font-semibold mb-2">No Questions Available</h2>
+                <p className="text-gray-500 mb-4">Subscribe to channels to access voice practice questions</p>
+                 <button
+                   onClick={() => setLocation('/channels')}
+                   className="px-6 py-2 bg-[#1a73e8] text-white rounded-md font-medium hover:bg-[#1557b0] transition-colors cursor-pointer"
+                 >
+                   Browse Channels
+                </button>
               </div>
             </div>
           </div>
@@ -316,29 +430,24 @@ export default function VoicePractice() {
   if (!isSpeechSupported) {
     return (
       <AppLayout fullWidth>
-        <div className="min-h-screen bg-background text-foreground">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-24">
+        <div className="min-h-screen bg-white text-gray-900">
+          <div className="max-w-4xl mx-auto px-4 py-12 pb-24">
             <PageHeader title="Voice Practice" subtitle="Speak your answers out loud and get instant feedback" />
             <div className="flex items-center justify-center py-20">
               <div className="max-w-md text-center">
-                <div className="w-20 h-20 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-6">
-                  <Mic className="w-10 h-10 text-muted-foreground" />
+                <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-6">
+                  <Mic className="w-10 h-10 text-gray-400" />
                 </div>
-                <h1 className="text-2xl font-bold text-foreground mb-3">Browser Not Supported</h1>
-                <p className="text-muted-foreground mb-4">
-                  Voice practice requires the Web Speech API. Please use a supported browser:
+                <h1 className="text-2xl font-semibold mb-3">Browser Not Supported</h1>
+                <p className="text-gray-500 mb-4">
+                  Voice practice requires the Web Speech API.
                 </p>
-                <ul className="text-sm text-left space-y-1 mb-6 inline-block">
-                  <li>Chrome <span className="text-green-500">✓</span></li>
-                  <li>Edge <span className="text-green-500">✓</span></li>
-                  <li>Safari <span className="text-green-500">✓</span></li>
-                  <li>Firefox <span className="text-red-500">✗</span></li>
-                </ul>
-                <div>
-                  <Button onClick={() => setLocation('/')} className="cursor-pointer">
-                    Go Home
-                  </Button>
-                </div>
+                <button
+                  onClick={() => setLocation('/')}
+                   className="px-6 py-2 bg-[#1a73e8] text-white rounded-md font-medium hover:bg-[#1557b0] transition-colors cursor-pointer"
+                 >
+                   Go Home
+                </button>
               </div>
             </div>
           </div>
@@ -350,26 +459,33 @@ export default function VoicePractice() {
   if (completed) {
     return (
       <AppLayout fullWidth hideNav>
-        <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center">
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
             className="text-center space-y-6 px-4"
           >
-            <Trophy className="w-20 h-20 text-amber-400 mx-auto" />
+            <div className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+              <Trophy className="w-12 h-12 text-green-600" />
+            </div>
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Session Complete!</h1>
-              <p className="text-muted-foreground mt-2">{questions.length} questions practiced</p>
+              <h1 className="text-2xl font-semibold">Session Complete!</h1>
+              <p className="text-gray-500 mt-1">{questions.length} questions practiced</p>
             </div>
             <div className="flex gap-3 justify-center">
-              <Button variant="secondary" onClick={() => { setCurrentIndex(0); setCompleted(false); resetForNewQuestion(); }} className="cursor-pointer min-h-[44px]">
-                <RotateCcw className="w-4 h-4 mr-2" />
+              <button
+                onClick={() => { setCurrentIndex(0); setCompleted(false); resetForNewQuestion(); }}
+                 className="px-5 py-2 border border-gray-300 rounded-md font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                <RotateCcw className="w-4 h-4 inline mr-2" />
                 Practice Again
-              </Button>
-              <Button variant="primary" onClick={() => setLocation('/')} className="cursor-pointer min-h-[44px]">
+              </button>
+              <button
+                onClick={() => setLocation('/')}
+                 className="px-5 py-2 bg-[#1a73e8] text-white rounded-md font-medium hover:bg-[#1557b0] transition-colors cursor-pointer"
+              >
                 Go Home
-              </Button>
+              </button>
             </div>
           </motion.div>
         </div>
@@ -386,21 +502,15 @@ export default function VoicePractice() {
           canonical="https://open-interview.github.io/voice-practice"
         />
         <AppLayout fullWidth hideNav>
-          <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-4">
+          <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center px-4">
             <div className="w-full max-w-md flex flex-col items-center gap-8">
-              {/* Icon */}
-              <div className="w-24 h-24 rounded-full flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)' }}>
-                <Mic className="w-12 h-12 text-white" />
+              <div className="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center">
+                <Mic className="w-12 h-12 text-[#1a73e8]" />
               </div>
-
-              {/* Title */}
               <div className="text-center">
-                <h1 className="text-3xl font-bold text-foreground mb-2">Voice Practice</h1>
-                <p className="text-muted-foreground">Speak your answers aloud. Get instant feedback on length and delivery.</p>
+                <h1 className="text-2xl font-semibold mb-2">Voice Practice</h1>
+                <p className="text-gray-500">Speak your answers aloud. Get instant feedback on length and delivery.</p>
               </div>
-
-              {/* Mode selector */}
               <div className="grid grid-cols-2 gap-4 w-full">
                 {([
                   { value: 'interview' as PracticeMode, icon: EyeOff, label: 'Interview Mode', desc: 'Answer first, then see the ideal response' },
@@ -409,34 +519,23 @@ export default function VoicePractice() {
                   <button
                     key={value}
                     onClick={() => { setMode(value); setStarted(true); }}
-                    className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 text-center transition-all cursor-pointer active:scale-95 ${
+                    className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 text-center transition-all cursor-pointer ${
                       mode === value
-                        ? 'border-primary bg-primary/10'
-                        : 'border-white/10 bg-white/5 hover:border-primary/50'
+                        ? 'border-[#1a73e8] bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
                     }`}
-                    style={{ 
-                      boxShadow: mode === value 
-                        ? '0 4px 20px rgba(60,64,67,0.15), inset 0 1px 0 rgba(255,255,255,0.1)' 
-                        : '0 2px 8px rgba(0,0,0,0.15)' 
-                    }}
                   >
-                    <Icon className="w-6 h-6 text-primary" />
+                    <Icon className="w-6 h-6 text-[#1a73e8]" />
                     <div>
-                      <p className="font-semibold text-foreground text-sm">{label}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{desc}</p>
+                      <p className="font-medium text-gray-900 text-sm">{label}</p>
+                      <p className="text-xs text-gray-500 mt-1">{desc}</p>
                     </div>
                   </button>
                 ))}
               </div>
-
-              {/* Start button */}
               <button
                 onClick={() => setStarted(true)}
-                className="w-full min-h-[52px] rounded-xl font-semibold text-white text-base cursor-pointer transition-all active:scale-95"
-                style={{ 
-                  background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #db2777 100%)',
-                  boxShadow: '0 4px 20px rgba(60,64,67,0.15), inset 0 1px 0 rgba(255,255,255,0.2)' 
-                }}
+                  className="w-full py-2.5 h-10 rounded-lg font-medium text-sm text-white bg-[#1a73e8] hover:bg-[#1557b0] transition-colors cursor-pointer shadow-none"
               >
                 Start Practicing
               </button>
@@ -454,157 +553,114 @@ export default function VoicePractice() {
         description="Practice answering interview questions with voice recording and feedback"
         canonical="https://open-interview.github.io/voice-practice"
       />
-
       <AppLayout fullWidth hideNav>
-        <div className="min-h-screen bg-background text-foreground">
-          {/* Header */}
-          <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
+        <div className="min-h-screen bg-white text-gray-900">
+           <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
             <div className="max-w-4xl mx-auto px-4 h-14 flex items-center gap-3">
               <button
                 onClick={() => setLocation('/')}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-muted rounded-lg transition-colors duration-150 ease-out cursor-pointer"
+                className="min-h-[40px] min-w-[40px] flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
                 aria-label="Go back"
-                style={{ touchAction: 'manipulation' }}
               >
-                <ArrowLeft className="w-4 h-4 text-muted-foreground" />
+                <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
               <div>
-                <h1 className="font-semibold text-foreground text-sm">Voice Practice</h1>
+                <h1 className="font-medium text-gray-900 text-sm">Voice Practice</h1>
                 {currentQuestion?.channel && (
-                  <p className="text-[10px] text-muted-foreground capitalize">{currentQuestion.channel}</p>
+                  <p className="text-xs text-gray-500 capitalize">{currentQuestion.channel}</p>
                 )}
               </div>
+              <div className="flex-1" />
+              <span className="text-sm text-gray-500">
+                {currentIndex + 1} / {questions.length}
+              </span>
             </div>
-
-            <div className="max-w-4xl mx-auto px-4 pb-2 space-y-1.5">
-              {/* Thicker violet gradient progress bar */}
-              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-primary to-primary transition-all duration-300"
-                  style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
-                />
-              </div>
-
-              {/* Dot indicator row */}
-              <div className="flex items-center gap-1.5">
-                {questions.slice(0, Math.min(10, questions.length)).map((_, i) => (
-                  <span
-                    key={i}
-                    className={`rounded-full transition-all duration-300 ${
-                      i < currentIndex
-                        ? 'w-1.5 h-1.5 bg-primary'
-                        : i === currentIndex
-                        ? 'w-2 h-2 bg-primary animate-pulse'
-                        : 'w-1.5 h-1.5 bg-muted-foreground/30'
-                    }`}
-                  />
-                ))}
-              </div>
+            <div className="max-w-4xl mx-auto px-4 pb-3">
+              <GoogleProgress value={currentIndex + 1} max={questions.length} />
             </div>
           </header>
 
-          {/* Main Content */}
-          <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 pb-24 space-y-6" style={{ overscrollBehavior: 'contain' }}>
+          <main className="max-w-4xl mx-auto px-4 py-6 pb-32 space-y-6">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentQuestion.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.15, ease: 'easeOut' }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.15 }}
                 className="space-y-6"
               >
-                {/* Question Card */}
-                <div className="rounded-2xl border border-border bg-card p-6 relative overflow-hidden pl-8">
-                  <div className="w-1 h-full rounded-full bg-gradient-to-b from-primary to-primary absolute left-0 top-0" />
-                  <div className="mb-4">
-                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                      Question {currentIndex + 1} of {questions.length}
+                 <div className="bg-white rounded-xl p-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                      Question {currentIndex + 1}
                     </span>
-                    <h2 className="text-xl font-semibold leading-relaxed text-foreground mt-2 mb-3">{currentQuestion.question}</h2>
-                    <div className="flex items-center gap-2 text-sm flex-wrap">
-                      <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
-                        currentQuestion.difficulty === 'beginner' ? 'bg-emerald-500/20 text-emerald-400' :
-                        currentQuestion.difficulty === 'intermediate' ? 'bg-yellow-500/20 text-yellow-400' :
-                        'bg-rose-500/20 text-rose-400'
-                      }`}>
-                        {currentQuestion.difficulty}
-                      </span>
-                      <span className="text-muted-foreground">•</span>
-                      <span className="text-muted-foreground truncate">{currentQuestion.channel}</span>
-                    </div>
+                    <span className="text-gray-300">•</span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      currentQuestion.difficulty === 'beginner' ? 'bg-green-100 text-green-700' :
+                      currentQuestion.difficulty === 'intermediate' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {currentQuestion.difficulty}
+                    </span>
                   </div>
-
-                  {/* Question Navigation */}
-                  <div className="flex items-center gap-2 mt-3">
+                  <h2 className="text-lg font-medium text-gray-900 leading-relaxed">{currentQuestion.question}</h2>
+                  <div className="flex items-center gap-2 mt-3 text-sm text-gray-500">
+                    <span>{currentQuestion.channel}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
                     <button
                       onClick={() => { setCurrentIndex(prev => prev - 1); resetForNewQuestion(); }}
                       disabled={currentIndex === 0}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
-                      <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                      <ChevronLeft className="w-4 h-4" /> Prev
                     </button>
-                    <span className="text-xs text-muted-foreground flex-1 text-center">{currentIndex + 1} / {questions.length}</span>
                     <button
                       onClick={() => { setCurrentIndex(prev => prev + 1); resetForNewQuestion(); }}
                       disabled={currentIndex === questions.length - 1}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
-                      Next <ChevronRight className="w-3.5 h-3.5" />
+                      Next <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
-
-                  {/* Reveal Answer Button */}
                   {showRevealButton && !showAnswer && (
                     <button
                       onClick={() => setShowAnswer(true)}
-                      className="w-full border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl py-3 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                       className="w-full mt-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
                     >
-                      <Eye className="w-4 h-4" />
+                      <Eye className="w-4 h-4 inline mr-2" />
                       Reveal Answer
                     </button>
                   )}
-
-                  {/* Answer Display */}
                   <AnimatePresence>
-                  {showAnswer && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="bg-background/50 rounded-xl p-5 border border-border"
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          <Eye className="w-4 h-4 text-primary" />
-                          <span className="text-sm font-semibold text-foreground">
+                    {showAnswer && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm font-medium text-gray-700">
                             {mode === 'training' ? 'Answer to Read' : 'Ideal Answer'}
                           </span>
+                          <span className="text-xs text-gray-500 px-2 py-1 bg-gray-200 rounded">
+                            {targetWords} words
+                          </span>
                         </div>
-                        <span className="text-xs text-muted-foreground px-2 py-1 bg-muted/50 rounded-lg">
-                          {targetWords} words
-                        </span>
-                      </div>
-                      <div className="max-h-[500px] overflow-y-auto">
-                        <p className="text-foreground text-[15px] leading-[1.7] whitespace-pre-wrap">
+                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                           {currentQuestion.answer}
                         </p>
-                      </div>
-                    </motion.div>
-                  )}
+                      </motion.div>
+                    )}
                   </AnimatePresence>
                 </div>
 
-                {/* Recording Interface */}
-                <Card className="p-8">
+                 <div className="bg-white rounded-xl p-6">
                   <div className="flex flex-col items-center gap-6">
-                    <div className="relative flex items-center justify-center">
-                      {recordingState === 'recording' && <>
-                        <div className="absolute rounded-full bg-primary animate-ping" style={{ width: '150%', height: '150%', opacity: 0.3 }} />
-                        <div className="absolute rounded-full bg-primary animate-ping" style={{ width: '200%', height: '200%', opacity: 0.15, animationDelay: '0.3s' }} />
-                      </>}
-                      <Microphone
+                    <div className="relative flex items-center justify-center py-4">
+                      <GoogleMicrophoneButton
                         isRecording={recordingState === 'recording'}
                         onStart={startRecording}
                         onStop={stopRecording}
@@ -613,85 +669,92 @@ export default function VoicePractice() {
                     </div>
 
                     {recordingState === 'recording' && (
-                      <p className="text-primary font-mono text-xl font-semibold tabular-nums">
-                        {`${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')}`}
-                      </p>
+                      <SessionTimer seconds={duration} />
                     )}
 
-                    {/* Transcript */}
+                    <GoogleWaveformVisualizer isActive={recordingState === 'recording'} />
+
                     <div className="w-full">
-                      <div className={`bg-background/50 rounded-xl p-4 min-h-[100px] border transition-all duration-300 ${recordingState === 'recording' ? 'border-primary/50 shadow-violet-500/20 shadow-lg' : 'border-border'}`}>
+                      <div className={`p-4 rounded-xl border transition-all min-h-[100px] ${
+                        recordingState === 'recording'
+                          ? 'border-blue-300 bg-blue-50'
+                          : 'border-gray-200 bg-gray-50'
+                      }`}>
                         {transcript || interimTranscript ? (
-                          <p className="text-foreground text-sm whitespace-pre-wrap">
+                          <p className="text-gray-800 text-sm whitespace-pre-wrap leading-relaxed">
                             {transcript}
-                            <span className="text-muted-foreground">{interimTranscript}</span>
+                            <span className="text-gray-400">{interimTranscript}</span>
                           </p>
                         ) : (
-                          <p className="text-muted-foreground text-sm italic">
+                          <p className="text-gray-400 text-sm italic">
                             {recordingState === 'recording'
                               ? 'Listening... Start speaking'
-                              : 'Click the microphone to start'}
+                              : 'Tap the microphone to start'}
                           </p>
                         )}
                       </div>
 
-                      {transcript && (
-                        <div className="mt-3">
-                          <Progress
-                            value={countWords(transcript)}
-                            max={targetWords}
-                            color="blue"
-                            showLabel
-                          />
+                      {transcript && recordingState === 'recorded' && (
+                        <div className="mt-3 flex items-center justify-between text-sm">
+                          <span className="text-gray-600">
+                            {countWords(transcript)} / {targetWords} words
+                          </span>
+                          <div className="flex-1 mx-3">
+                            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{
+                                  width: `${Math.min((countWords(transcript) / targetWords) * 100, 100)}%`,
+                                  backgroundColor: countWords(transcript) >= targetWords * 0.8 ? GOOGLE_GREEN : GOOGLE_BLUE,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {feedback && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="mt-5 p-5 bg-gray-50 rounded-xl border border-gray-200"
+                        >
+                          <div className="flex items-center gap-4 mb-4">
+                            <div className={`text-3xl font-bold ${
+                              feedback.score >= 80 ? 'text-green-600' :
+                              feedback.score >= 50 ? 'text-yellow-600' :
+                              'text-red-500'
+                            }`}>{feedback.score}</div>
+                            <div className="text-sm text-gray-600">
+                              <div>Words: {feedback.wordsSpoken} / {feedback.targetWords}</div>
+                              <div>Duration: {feedback.duration}s</div>
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600">{feedback.message}</p>
+                        </motion.div>
+                      )}
+
+                      {recordingState === 'recorded' && (
+                        <div className="flex gap-3 mt-5">
+                          <button
+                            onClick={tryAgain}
+                             className="flex-1 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                          >
+                            <RotateCcw className="w-4 h-4 inline mr-2" />
+                            Try Again
+                          </button>
+                          <button
+                            onClick={goToNext}
+                             className="flex-1 py-2 bg-[#1a73e8] text-white rounded-lg font-medium hover:bg-[#1557b0] transition-colors cursor-pointer"
+                          >
+                            Next Question
+                            <ChevronRight className="w-4 h-4 inline ml-2" />
+                          </button>
                         </div>
                       )}
                     </div>
-
-                    {/* Feedback */}
-                    {feedback && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.15, ease: 'easeOut' }}
-                        className="w-full bg-background/60 border border-border rounded-2xl p-5"
-                      >
-                        <div className={`text-4xl font-black mb-3 ${
-                          feedback.score >= 80 ? 'text-green-400' :
-                          feedback.score >= 50 ? 'text-yellow-400' :
-                          'text-red-400'
-                        }`}>{feedback.score}</div>
-                        <div className="flex gap-2 mb-3">
-                          <span className="px-3 py-1 rounded-full bg-muted text-xs font-medium text-foreground">Words Spoken: {feedback.wordsSpoken}</span>
-                          <span className="px-3 py-1 rounded-full bg-muted text-xs font-medium text-foreground">Target: {feedback.targetWords}</span>
-                          <span className="px-3 py-1 rounded-full bg-muted text-xs font-medium text-foreground">Duration: {feedback.duration}s</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{feedback.message}</p>
-                      </motion.div>
-                    )}
-
-                    {/* Actions */}
-                    {recordingState === 'recorded' && (
-                      <div className="flex gap-3">
-                        <Button
-                          variant="secondary"
-                          onClick={tryAgain}
-                          className="cursor-pointer min-h-[44px]"
-                        >
-                          <RotateCcw className="w-4 h-4 mr-2" />
-                          Try Again
-                        </Button>
-                        <Button
-                          variant="primary"
-                          onClick={goToNext}
-                          className="cursor-pointer min-h-[44px]"
-                        >
-                          Next Question
-                          <ChevronRight className="w-4 h-4 ml-2" />
-                        </Button>
-                      </div>
-                    )}
                   </div>
-                </Card>
+                </div>
               </motion.div>
             </AnimatePresence>
           </main>

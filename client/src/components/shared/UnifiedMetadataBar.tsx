@@ -39,12 +39,12 @@ export function UnifiedMetadataBar({
   const diffColor = difficultyColors[difficulty as keyof typeof difficultyColors] || 'text-amber-400';
 
   return (
-    <div className="bg-card/60 backdrop-blur-xl border-b border-border/30">
-      <div className="px-3 sm:px-4 py-2.5 sm:py-3">
+    <div className="bg-card/60 backdrop-blur-xl border-b border-border/50">
+       <div className="px-3 sm:px-4 py-2 sm:py-3">
         <div className="flex items-center justify-between gap-3">
           {/* Left: Question counter */}
           <div className="flex items-center gap-2 min-w-0">
-            <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
+               <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
               <span className="text-sm font-bold text-primary">{questionNumber}</span>
               <span className="text-xs text-muted-foreground">/</span>
               <span className="text-sm text-muted-foreground">{totalQuestions}</span>

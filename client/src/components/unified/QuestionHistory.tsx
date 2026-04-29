@@ -262,7 +262,7 @@ export function QuestionHistoryIcon({
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
               className="relative w-full max-w-md max-h-[80vh] overflow-hidden
-                         bg-[#161b22] border border-[#30363d] rounded-2xl shadow-2xl"
+                         bg-[#161b22] rounded-xl shadow-sm"
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"

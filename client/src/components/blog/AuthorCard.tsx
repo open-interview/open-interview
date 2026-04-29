@@ -1,4 +1,5 @@
-import { Twitter, Github, Linkedin } from "lucide-react";
+import { Link } from "wouter";
+import { Twitter, Github, Linkedin, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Author {
@@ -24,8 +25,8 @@ export function AuthorCard({ author, variant = "full", className }: AuthorCardPr
 
   if (variant === "compact") {
     return (
-      <div className={cn("flex items-center gap-2", className)}>
-        <div className="w-6 h-6 rounded-full bg-[var(--color-accent)]/20 flex items-center justify-center text-[var(--color-accent)] text-xs font-bold shrink-0">
+      <div className={cn("flex items-center gap-3", className)}>
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--color-accent)]/20 to-[var(--color-accent)]/5 flex items-center justify-center text-[var(--color-accent)] font-bold text-xs shrink-0">
           {author.avatarUrl ? (
             <img src={author.avatarUrl} alt={author.name} className="w-full h-full rounded-full object-cover" loading="lazy" decoding="async" />
           ) : (
@@ -38,22 +39,22 @@ export function AuthorCard({ author, variant = "full", className }: AuthorCardPr
   }
 
   return (
-    <div className={cn("rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] p-6", className)}>
-      <div className="flex items-start gap-4">
-        <div className="w-16 h-16 rounded-full bg-[var(--color-accent)]/20 flex items-center justify-center text-[var(--color-accent)] font-bold text-xl shrink-0 overflow-hidden">
+    <div className={cn("rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6", className)}>
+      <div className="flex items-start gap-5">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--color-accent)]/20 to-[var(--color-accent)]/5 flex items-center justify-center text-[var(--color-accent)] font-bold text-2xl shrink-0 overflow-hidden shadow-sm">
           {author.avatarUrl ? (
             <img src={author.avatarUrl} alt={author.name} className="w-full h-full object-cover" loading="lazy" decoding="async" width={64} height={64} />
           ) : (
-            initials
+            <User size={28} strokeWidth={1.5} />
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-[var(--color-ink)]">{author.name}</p>
+          <p className="font-bold text-lg text-[var(--color-ink)]">{author.name}</p>
           {author.bio && (
-            <p className="mt-1 text-sm text-[var(--color-ink-muted)] leading-relaxed">{author.bio}</p>
+            <p className="mt-1.5 text-sm text-[var(--color-ink-muted)] leading-relaxed">{author.bio}</p>
           )}
           {author.twitterHandle && (
-            <div className="mt-3 flex gap-3">
+            <div className="mt-4 flex gap-4">
               <a
                 href={`https://twitter.com/${author.twitterHandle}`}
                 target="_blank"

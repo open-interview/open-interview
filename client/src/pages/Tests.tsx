@@ -125,9 +125,9 @@ export default function TestsPage() {
 
             {/* Stats */}
             <div className="grid grid-cols-3 md:grid-cols-4 gap-3 mb-8">
-              <StatCard icon={CheckCircle} bgColor="from-green-500/20 to-green-600/10" borderColor="border-green-500/30" color="text-green-500" value={passedCount} label="Passed" />
-              <StatCard icon={XCircle} bgColor="from-red-500/20 to-red-600/10" borderColor="border-red-500/30" color="text-red-500" value={failedCount} label="Failed" />
-              <StatCard icon={Target} bgColor="from-blue-500/20 to-blue-600/10" borderColor="border-blue-500/30" color="text-blue-500" value={notStartedCount} label="Not Started" />
+              <StatCard icon={CheckCircle} bgColor="from-[var(--color-success)]/20 to-[var(--color-success)]/10" borderColor="border-[var(--color-success)]/30" color="text-[var(--color-success)]" value={passedCount} label="Passed" />
+              <StatCard icon={XCircle} bgColor="from-[var(--color-error)]/20 to-[var(--color-error)]/10" borderColor="border-[var(--color-error)]/30" color="text-[var(--color-error)]" value={failedCount} label="Failed" />
+              <StatCard icon={Target} bgColor="from-[var(--color-accent-cyan)]/20 to-[var(--color-accent-cyan)]/10" borderColor="border-[var(--color-accent-cyan)]/30" color="text-[var(--color-accent-cyan)]" value={notStartedCount} label="Not Started" />
               <StatCard icon={Star} bgColor="from-primary/20 to-primary/10" borderColor="border-primary/30" color="text-primary" value={`${stats.averageScore}%`} label="Avg Score" />
             </div>
 
@@ -137,10 +137,10 @@ export default function TestsPage() {
               {/* Subscribed toggle */}
               <button
                 onClick={() => setSubscribedOnly(s => !s)}
-                className={`cursor-pointer px-3 min-h-[44px] rounded-lg text-xs font-semibold border transition-all duration-150 whitespace-nowrap ${
+                className={`cursor-pointer px-3 min-h-[44px] rounded-xl text-xs font-semibold border transition-all duration-150 whitespace-nowrap focus-visible:ring-2 focus-visible:ring-primary/50 ${
                   subscribedOnly
                     ? 'bg-[var(--color-accent-violet)]/15 border-[var(--color-accent-violet)] text-[var(--color-accent-violet-light)]'
-                    : 'bg-muted/50 border-border text-muted-foreground hover:border-primary/50'
+                    : 'bg-muted/50 border-border text-foreground/70 hover:border-primary/50'
                 }`}
               >
                 {subscribedOnly ? '★ My Topics' : 'All Topics'}
@@ -148,7 +148,7 @@ export default function TestsPage() {
               <div className="relative">
                 <button
                   onClick={() => setShowSort(s => !s)}
-                  className="cursor-pointer flex items-center gap-1.5 px-3 min-h-[44px] bg-muted/50 border border-border rounded-lg text-sm hover:border-primary/50 transition-colors duration-150"
+                  className="cursor-pointer flex items-center gap-1.5 px-3 min-h-[44px] bg-muted/50 border border-border rounded-xl text-sm hover:border-primary/50 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary/50"
                 >
                   <SlidersHorizontal className="w-4 h-4" />
                   <span className="hidden sm:inline">Sort</span>
@@ -159,13 +159,13 @@ export default function TestsPage() {
                       initial={{ opacity: 0, y: -8, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                      className="absolute right-0 top-full mt-1 w-44 bg-card border border-border rounded-lg shadow-lg z-10 overflow-hidden"
+                      className="absolute right-0 top-full mt-1 w-44 bg-card border border-border rounded-xl shadow-xl z-10 overflow-hidden"
                     >
                       {([['name', 'Name'], ['last-attempt', 'Last Attempt'], ['score', 'Score']] as [SortKey, string][]).map(([key, label]) => (
                         <button
                           key={key}
                           onClick={() => { setSort(key); setShowSort(false); }}
-                          className={`cursor-pointer w-full text-left flex items-center px-4 min-h-[44px] text-sm transition-colors duration-150 hover:bg-muted/50 ${sort === key ? 'text-primary font-semibold' : 'text-muted-foreground'}`}
+                          className={`cursor-pointer w-full text-left flex items-center px-4 min-h-[44px] text-sm transition-colors duration-150 hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-primary/50 rounded-xl ${sort === key ? 'text-primary font-semibold' : 'text-foreground/70'}`}
                         >
                           {label}
                         </button>
@@ -200,13 +200,13 @@ export default function TestsPage() {
               </div>
             ) : filtered.length === 0 ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
-                <Search className="w-12 h-12 mx-auto mb-3 text-muted-foreground/40" />
+                <Search className="w-5 h-5 mx-auto mb-3 text-[#9AA0A6]" />
                 <h3 className="text-xl font-bold mb-1">No tests found</h3>
-                <p className="text-sm text-muted-foreground mb-4">Try a different filter or search term</p>
-                <button
-                  onClick={() => { setSearchQuery(''); setFilter('all'); setSubscribedOnly(false); }}
-                  className="cursor-pointer min-h-[44px] px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-95 transition-all duration-150"
-                >
+                <p className="text-sm text-foreground/70 mb-4">Try a different filter or search term</p>
+                 <button
+                   onClick={() => { setSearchQuery(''); setFilter('all'); setSubscribedOnly(false); }}
+                    className="cursor-pointer min-h-[44px] px-6 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-95 transition-all duration-150 focus-visible:ring-2 focus-visible:ring-primary/50"
+                 >
                   Clear filters
                 </button>
               </motion.div>
@@ -236,8 +236,8 @@ export default function TestsPage() {
                         whileHover={{ scale: 1.02, y: -3 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setLocation(`/test/${test.channelId}`)}
-                        className={`group relative p-5 bg-card border rounded-xl text-left overflow-hidden transition-all ${
-                          isPassed ? 'border-[var(--color-success)]/40 hover:border-[var(--color-success)]/70'
+                       className={`group relative p-5 bg-card border rounded-2xl text-left overflow-hidden transition-all ${
+                         isPassed ? 'border-[var(--color-success)]/40 hover:border-[var(--color-success)]/70'
                           : isFailed ? 'border-[var(--color-error)]/40 hover:border-[var(--color-error)]/70'
                           : 'border-[var(--color-border)] hover:border-primary/50'
                         }`}
@@ -249,7 +249,7 @@ export default function TestsPage() {
                           {/* Top row */}
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <div className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-0.5">{test.channelName}</div>
+                               <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-0.5">{test.channelName}</div>
                               <h3 className="text-base font-bold leading-tight">{test.title}</h3>
                             </div>
                             {/* Score ring + status */}
@@ -270,33 +270,33 @@ export default function TestsPage() {
                                       transition={{ duration: 0.8, ease: 'easeOut' }}
                                     />
                                   </svg>
-                                  <span className="absolute text-[10px] font-bold" style={{ color: isPassed ? 'var(--color-success)' : 'var(--color-error)' }}>{p.bestScore}%</span>
+                                  <span className="absolute text-xs font-bold" style={{ color: isPassed ? 'var(--color-success)' : 'var(--color-error)' }}>{p.bestScore}%</span>
                                 </div>
                               ) : (
                                 <div className="w-12 h-12 rounded-full border-2 border-dashed border-border flex items-center justify-center">
-                                  <span className="text-[9px] text-muted-foreground text-center leading-tight">No<br/>score</span>
+                                  <span className="text-xs text-foreground/70 text-center leading-tight">No<br/>score</span>
                                 </div>
                               )}
-                              {isPassed && (
-                                <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[var(--color-success)]/15 text-[var(--color-success)] border border-[var(--color-success)]/30">
-                                  <CheckCircle className="w-2.5 h-2.5" /> Pass
-                                </span>
-                              )}
-                              {isFailed && (
-                                <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[var(--color-error)]/15 text-[var(--color-error)] border border-[var(--color-error)]/30">
-                                  <XCircle className="w-2.5 h-2.5" /> Fail
-                                </span>
-                              )}
-                              {isExpired && (
-                                <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                                  <AlertTriangle className="w-2.5 h-2.5" /> Exp
-                                </span>
-                              )}
+                               {isPassed && (
+                                 <span className="flex items-center gap-0.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[var(--color-success)]/15 text-[var(--color-success)] border border-[var(--color-success)]/30">
+                                   <CheckCircle className="w-2.5 h-2.5" /> Pass
+                                 </span>
+                               )}
+                               {isFailed && (
+                                 <span className="flex items-center gap-0.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[var(--color-error)]/15 text-[var(--color-error)] border border-[var(--color-error)]/30">
+                                   <XCircle className="w-2.5 h-2.5" /> Fail
+                                 </span>
+                               )}
+                               {isExpired && (
+                                 <span className="flex items-center gap-0.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[var(--color-warning)]/15 text-[var(--color-warning)] border border-[var(--color-warning)]/30">
+                                   <AlertTriangle className="w-2.5 h-2.5" /> Exp
+                                 </span>
+                               )}
                             </div>
                           </div>
 
                           {/* Meta row */}
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                           <div className="flex items-center gap-3 text-sm text-foreground/70">
                             <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{sessionCount}q · ~{mins}m</span>
                             <span className={`font-semibold ${DIFFICULTY_COLOR[difficulty]}`}>{DIFFICULTY_LABEL[difficulty]}</span>
                             {lastDate && <span>Last: {lastDate}</span>}
@@ -304,10 +304,10 @@ export default function TestsPage() {
 
                           {/* CTA */}
                           <div className="flex items-center justify-between pt-1">
-                            <span className="text-xs font-semibold text-primary">
+                             <span className="text-sm font-semibold text-primary">
                               {isPassed ? 'Retake Test' : isExpired ? 'Retake (Expired)' : p ? 'Try Again' : 'Start Test'}
                             </span>
-                            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
+                            <ChevronRight className="w-4 h-4 text-foreground/70 group-hover:text-foreground group-hover:translate-x-1 transition-all" />
                           </div>
                         </div>
                       </motion.button>

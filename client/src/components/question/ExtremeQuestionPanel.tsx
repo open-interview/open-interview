@@ -138,9 +138,9 @@ export function ExtremeQuestionPanel({
         };
       default:
         return { 
-          icon: Target, 
-          color: 'text-muted-foreground', 
-          bg: 'bg-muted', 
+          icon: Target,
+          color: 'text-foreground/70',
+          bg: 'bg-muted',
           border: 'border-border',
           glow: 'shadow-muted/20',
           label: 'Unknown',
@@ -199,7 +199,7 @@ export function ExtremeQuestionPanel({
             {/* Difficulty */}
             <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg ${difficultyConfig.bg} border ${difficultyConfig.border}`}>
               <DifficultyIcon className={`w-3.5 h-3.5 ${difficultyConfig.color}`} />
-              <span className={`text-xs font-bold ${difficultyConfig.color}`}>{difficultyConfig.label}</span>
+              <span className="text-xs font-bold text-foreground/70">{difficultyConfig.label}</span>
             </div>
 
             {/* Status Badges */}
@@ -226,7 +226,7 @@ export function ExtremeQuestionPanel({
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-card border border-border rounded-lg">
               <Brain className="w-3.5 h-3.5 text-primary" />
               {srsCard && (
-                <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${getMasteryColor(srsCard.masteryLevel)} font-medium`}>
+                <span className="text-xs px-1.5 py-0.5 rounded-full text-foreground/70 font-medium">
                   {getMasteryLabel(srsCard.masteryLevel).slice(0, 3)}
                 </span>
               )}
@@ -296,7 +296,7 @@ export function ExtremeQuestionPanel({
               {question.companies.map((company, idx) => (
                 <span 
                   key={idx} 
-                  className="px-2.5 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full border border-primary/20"
+                  className="px-3 py-1.5 bg-primary/10 text-primary text-xs font-semibold rounded-full border border-primary/20"
                 >
                   {company}
                 </span>

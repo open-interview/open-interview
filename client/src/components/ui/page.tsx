@@ -55,14 +55,14 @@ interface SearchBarProps {
 export function SearchBar({ value, onChange, placeholder = 'Search...', className }: SearchBarProps) {
   return (
     <div className={cn('relative', className)}>
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-      <input
-        type="text"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full pl-9 pr-8 min-h-[44px] rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground"
-      />
+       <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9AA0A6] pointer-events-none" />
+       <input
+         type="text"
+         value={value}
+         onChange={e => onChange(e.target.value)}
+         placeholder={placeholder}
+         className="w-full pl-11 pr-8 h-[46px] rounded-full text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-all bg-[#F1F3F4] dark:bg-[#303134] text-foreground placeholder:text-[#9AA0A6]"
+       />
       {value && (
         <button
           onClick={() => onChange('')}

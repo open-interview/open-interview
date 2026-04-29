@@ -122,7 +122,7 @@ export function YouTubePlayer({ shortVideo, longVideo }: YouTubePlayerProps) {
                 </button>
 
                 {/* Video Container - proper aspect ratio */}
-                <div className={`relative bg-background rounded-lg overflow-hidden border border-white/20 shadow-2xl ${
+                <div className={`relative bg-background rounded-lg overflow-hidden shadow-sm ${
                   activeVideo === 'short' && isYouTubeShort(shortVideo || '')
                     ? 'max-w-sm mx-auto aspect-[9/16]'
                     : 'w-full aspect-video'

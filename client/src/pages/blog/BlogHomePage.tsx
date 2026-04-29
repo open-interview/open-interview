@@ -3,7 +3,8 @@ import { Link } from "wouter";
 import { BlogLayout } from "@/components/blog/BlogLayout";
 import { PostCard, PostCardSkeleton, type PostCardData } from "@/components/blog/PostCard";
 import { NewsletterForm } from "@/components/blog/NewsletterForm";
-import { ArrowRight } from "lucide-react";
+import { SearchInput } from "@/components/blog/SearchInput";
+import { ArrowRight, TrendingUp } from "lucide-react";
 
 interface Category {
   id: string;
@@ -33,9 +34,9 @@ export default function BlogHomePage() {
 
   return (
     <BlogLayout>
-      {/* Hero */}
-      <section className="border-b border-[var(--color-border)] bg-[var(--color-surface-raised)]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 text-center">
+      {/* Hero with Search */}
+      <section className="border-b border-[var(--color-border)] bg-gradient-to-b from-[var(--color-surface-raised)] to-[var(--color-surface)]">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-16 text-center">
           <h1 className="text-4xl sm:text-5xl font-bold text-[var(--color-ink)] leading-tight" style={{ fontFamily: "var(--font-blog-heading)" }}>
             Engineering Insights &<br />
             <span className="text-[var(--color-accent)]">Interview Prep</span>
@@ -43,19 +44,8 @@ export default function BlogHomePage() {
           <p className="mt-4 text-lg text-[var(--color-ink-muted)] max-w-2xl mx-auto">
             Practical guides, deep dives, and career advice for software engineers preparing for top tech interviews.
           </p>
-          <div className="mt-8 flex gap-4 justify-center">
-            <Link
-              href="/blog"
-              className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-accent)] px-6 py-3 font-medium text-white hover:bg-[var(--color-accent-hover)] transition-colors"
-            >
-              Browse All Posts <ArrowRight size={16} strokeWidth={1.5} />
-            </Link>
-            <Link
-              href="/blog/search"
-              className="inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] px-6 py-3 font-medium text-[var(--color-ink)] hover:bg-[var(--color-surface-raised)] transition-colors"
-            >
-              Search
-            </Link>
+          <div className="mt-8 max-w-lg mx-auto">
+            <SearchInput placeholder="Search articles, topics, or authors..." />
           </div>
         </div>
       </section>
@@ -64,9 +54,12 @@ export default function BlogHomePage() {
         {/* Featured Post */}
         {(loading || featured.length > 0) && (
           <section aria-labelledby="featured-heading">
-            <h2 id="featured-heading" className="text-xl font-bold text-[var(--color-ink)] mb-6">
-              Featured
-            </h2>
+            <div className="flex items-center gap-2 mb-6">
+              <TrendingUp size={20} strokeWidth={1.5} className="text-[var(--color-accent)]" />
+              <h2 id="featured-heading" className="text-xl font-bold text-[var(--color-ink)]">
+                Featured
+              </h2>
+            </div>
             {loading ? (
               <PostCardSkeleton />
             ) : (
@@ -81,7 +74,7 @@ export default function BlogHomePage() {
             <h2 id="recent-heading" className="text-xl font-bold text-[var(--color-ink)]">
               Recent Posts
             </h2>
-            <Link href="/blog" className="text-sm text-[var(--color-accent)] hover:underline flex items-center gap-1">
+            <Link href="/blog" className="text-sm text-[var(--color-accent)] hover:underline flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 rounded-sm">
               View all <ArrowRight size={14} strokeWidth={1.5} />
             </Link>
           </div>
@@ -103,7 +96,7 @@ export default function BlogHomePage() {
                 <Link
                   key={cat.id}
                   href={`/blog/category/${cat.slug}`}
-                  className="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-ink-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
+                  className="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-ink-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/5 transition-all focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
                 >
                   {cat.name}
                 </Link>
@@ -113,9 +106,9 @@ export default function BlogHomePage() {
         )}
 
         {/* Newsletter CTA */}
-        <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] p-8 text-center">
+        <section className="rounded-xl bg-gradient-to-br from-[var(--color-surface-raised)] to-[var(--color-surface)] p-6 text-center shadow-sm">
           <h2 className="text-xl font-bold text-[var(--color-ink)] mb-2">Stay in the loop</h2>
-          <p className="text-[var(--color-ink-muted)] mb-6 text-sm">
+          <p className="text-[var(--color-ink-muted)] mb-6 text-base">
             Get the latest posts delivered to your inbox. No spam, ever.
           </p>
           <div className="max-w-sm mx-auto">

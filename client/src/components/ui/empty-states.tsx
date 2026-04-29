@@ -63,7 +63,7 @@ export function EmptyBadges({ onAction }: { onAction?: () => void }) {
 export function EmptySearch({ query }: { query?: string }) {
   return (
     <EmptyGeneric
-      icon={<Search className="w-8 h-8" />}
+      icon={<Search className="w-5 h-5" style={{ color: '#9AA0A6' }} />}
       title="No results found"
       description={query ? `No matches for "${query}". Try different keywords.` : "Try a different search term."}
     />

@@ -748,13 +748,13 @@ Explanation in ${languageName}:`;
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-card border border-border rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
+              className="bg-card rounded-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-sm"
               role="dialog"
               aria-modal="true"
               aria-label="AI Explainer"
             >
               {/* Header */}
-              <div className="p-6 border-b border-border bg-gradient-to-r from-purple-500/10 to-pink-500/10">
+                <div className="p-6 border-b border-border bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-t-xl">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">

@@ -41,9 +41,9 @@ export function Button({
   };
 
   const sizes = {
-    sm: 'px-4 py-2.5 text-sm rounded-[12px] min-h-[44px]', // Increased padding to meet 44px minimum
-    md: 'px-6 py-3 text-base rounded-[16px] min-h-[44px]',
-    lg: 'px-8 py-4 text-lg rounded-[20px] min-h-[52px]',
+    sm: 'px-4 py-2.5 text-sm rounded-lg min-h-[40px] h-10',
+    md: 'px-4 py-2.5 text-sm rounded-lg min-h-[40px] h-10',
+    lg: 'px-4 py-2.5 text-base rounded-lg min-h-[40px] h-10',
   };
 
   return (
@@ -55,7 +55,7 @@ export function Button({
       whileTap={prefersReducedMotion || disabled ? {} : { scale: 0.95 }}
       transition={{ duration: prefersReducedMotion ? 0.01 : 0.2 }}
       className={cn(
-        'transition-all font-semibold',
+        'transition-all font-medium text-sm',
         variants[variant],
         sizes[size],
         disabled && 'opacity-50 cursor-not-allowed',

@@ -34,7 +34,7 @@ export function InterviewIntelligence() {
   
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
+      <div className="flex items-center justify-center p-6">
         <div className="animate-pulse text-muted-foreground">Loading intelligence...</div>
       </div>
     );

@@ -10,7 +10,7 @@ import NotFound from "@/pages/not-found";
 import { InterviewLoader } from "@/components/ui/InterviewLoader";
 
 // Lazy loaded pages with React.lazy for code splitting
-const Home = React.lazy(() => import("@/pages/HomeRedesigned"));
+const Home = React.lazy(() => import("@/pages/HomeGoogle"));
 const AnswerHistory = React.lazy(() => import("@/pages/AnswerHistory"));
 const About = React.lazy(() => import("@/pages/About"));
 const WhatsNew = React.lazy(() => import("@/pages/WhatsNew"));
@@ -21,6 +21,7 @@ const Badges = React.lazy(() => import("@/pages/Badges"));
 const TestSession = React.lazy(() => import("@/pages/TestSession"));
 const Tests = React.lazy(() => import("@/pages/Tests"));
 const CodingChallenge = React.lazy(() => import("@/pages/CodingChallenge"));
+const CodeChallengesIndex = React.lazy(() => import("@/pages/CodeChallengesIndex"));
 const Channels = React.lazy(() => import("@/pages/AllChannels"));
 const Notifications = React.lazy(() => import("@/pages/Notifications"));
 const Bookmarks = React.lazy(() => import("@/pages/Bookmarks"));
@@ -115,6 +116,7 @@ function useSearchParamRedirect() {
 }
 
 const StatsRedirect = React.lazy(() => import('@/pages/StatsRedirect'));
+const GoogleStats = React.lazy(() => import('@/pages/GoogleStats'));
 const ChallengeHome = React.lazy(() => import('@/pages/ChallengeHome'));
 const ChallengeWorkspace = React.lazy(() => import('@/pages/ChallengeWorkspace'));
 
@@ -133,15 +135,15 @@ function Router() {
         <Route path="/history" component={AnswerHistory} />
         <Route path="/about" component={About} />
         <Route path="/whats-new" component={WhatsNew} />
-        <Route path="/stats" component={StatsRedirect} />
+        <Route path="/stats" component={GoogleStats} />
         <Route path="/badges" component={Badges} />
         <Route path="/tests" component={Tests} />
         <Route path="/test/:channelId" component={TestSession} />
-        <Route path="/coding" component={CodingChallenge} />
+        <Route path="/coding" component={CodeChallengesIndex} />
         <Route path="/coding/:id" component={CodingChallenge} />
-        <Route path="/code" component={ChallengeHome} />
+        <Route path="/code" component={CodeChallengesIndex} />
         <Route path="/code/challenges">{() => { window.location.replace('/code'); return null; }}</Route>
-        <Route path="/code/challenges/:id" component={ChallengeWorkspace} />
+        <Route path="/code/challenges/:id" component={CodingChallenge} />
         <Route path="/bot-activity" component={BotActivity} />
         <Route path="/channels" component={Channels} />
         <Route path="/learning-paths" component={LearningPaths} />

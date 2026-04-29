@@ -13,7 +13,7 @@ import { useLocation } from "wouter";
 import { 
   Bot, Sparkles, CheckCircle, RefreshCw,
   Activity, Clock, Trash2, FileText, ListTodo, History, Zap, Eye, Wrench,
-  ExternalLink, Code, HelpCircle, Mic
+  ExternalLink, Code, HelpCircle, Mic, Filter, Check
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SEOHead } from "../components/SEOHead";
@@ -87,8 +87,8 @@ const BOT_CONFIG: Record<string, {
   'verifier': { 
     name: 'Verifier Bot', 
     icon: Eye, 
-    color: 'text-amber-500 bg-amber-500/10 border-amber-500/30',
-    gradient: 'from-amber-500 to-orange-500',
+    color: 'text-orange-500 bg-orange-500/10 border-orange-500/30',
+    gradient: 'from-orange-500 to-orange-600',
     description: 'Quality checks, detects issues, flags content'
   },
   'processor': { 
@@ -178,7 +178,7 @@ function ItemLink({ itemType, itemId, className }: { itemType: string; itemId: s
     <button
       onClick={() => setLocation(link)}
       className={cn(
-        "inline-flex items-center gap-1 px-1.5 py-0.5 bg-primary/10 hover:bg-primary/20 text-primary rounded text-xs font-mono transition-colors",
+        "inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-xs font-mono transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         className
       )}
       title={`View ${itemType}: ${itemId}`}
@@ -190,25 +190,241 @@ function ItemLink({ itemType, itemId, className }: { itemType: string; itemId: s
   );
 }
 
+const statusColorClasses: Record<string, string> = {
+  completed: 'bg-green-500',
+  running: 'bg-blue-500',
+  failed: 'bg-red-500',
+  pending: 'bg-yellow-500',
+  processing: 'bg-blue-500',
+  delete: 'bg-red-500',
+  improve: 'bg-blue-500',
+  verify: 'bg-green-500',
+  create: 'bg-blue-500',
+  update: 'bg-blue-500',
+};
+
+function StatusDot({ status }: { status: string }) {
+  const colorClass = statusColorClasses[status] || 'bg-yellow-500';
+  return (
+    <span className={cn("w-2 h-2 rounded-full", colorClass)} />
+  );
+}
+
+function TimelineItem({ children, last = false }: { children: React.ReactNode; last?: boolean }) {
+  return (
+    <div className="flex gap-4">
+      <div className="flex flex-col items-center">
+        <div className="w-8 h-8 rounded-full bg-card border-2 border-border flex items-center justify-center z-10">
+          {children}
+        </div>
+        {!last && <div className="w-0.5 flex-1 bg-border/50" />}
+      </div>
+    </div>
+  );
+}
+
+function ActivityCard({ 
+  icon: Icon, 
+  title, 
+  subtitle, 
+  status, 
+  time,
+  action,
+  itemLink,
+  details 
+}: { 
+  icon: React.ElementType; 
+  title: string; 
+  subtitle?: string; 
+  status?: string; 
+  time: string;
+  action?: React.ReactNode;
+  itemLink?: React.ReactNode;
+  details?: React.ReactNode;
+}) {
+  return (
+    <div className="flex gap-3 py-3">
+      <div className="flex flex-col items-center">
+        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+          <Icon className="w-4 h-4 text-primary" />
+        </div>
+      </div>
+      <div className="flex-1 pb-4 border-b border-border/50">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium text-sm text-foreground">{title}</span>
+              {status && (
+                <span className="flex items-center gap-1.5 text-xs">
+                  <StatusDot status={status} />
+                  <span className="text-foreground/70 capitalize">{status}</span>
+                </span>
+              )}
+            </div>
+            {subtitle && (
+              <p className="text-xs text-foreground/70 mt-1 line-clamp-1">{subtitle}</p>
+            )}
+            {details && <div className="mt-2">{details}</div>}
+          </div>
+          <div className="text-right flex-shrink-0">
+            <span className="text-xs text-foreground/70 font-medium">{time}</span>
+          </div>
+        </div>
+        {itemLink && <div className="mt-2">{itemLink}</div>}
+        {action && <div className="mt-2">{action}</div>}
+      </div>
+    </div>
+  );
+}
+
+function FilterChip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "text-xs px-3 py-1.5 rounded-full transition-all duration-150 cursor-pointer flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        active 
+          ? "bg-primary text-primary-foreground" 
+          : "bg-muted/50 text-foreground/70 hover:bg-muted hover:text-foreground"
+      )}
+    >
+      {active && <Check className="w-3 h-3" />}
+      {label}
+    </button>
+  );
+}
+
+function renderQueueItem(item: WorkItem, i: number, filter: string) {
+  const filtered = workQueue.filter(w => filter === 'all' || w.status === filter).slice(0, 20);
+  const isLast = i === filtered.length - 1;
+  
+  const getActionIcon = () => {
+    if (item.action === 'delete') return <Trash2 className="w-4 h-4" />;
+    if (item.action === 'improve') return <Zap className="w-4 h-4" />;
+    return <Eye className="w-4 h-4" />;
+  };
+  const actionColors: Record<string, string> = {
+    delete: 'bg-rose-500/10 text-rose-500',
+    improve: 'bg-blue-500/10 text-blue-500',
+    verify: 'bg-emerald-500/10 text-emerald-500',
+  };
+  
+  return (
+    <div key={item.id || i} className="flex gap-3">
+      <div className="flex flex-col items-center">
+        <div className={cn(
+          "w-9 h-9 rounded-full flex items-center justify-center",
+          actionColors[item.action] || 'bg-muted text-foreground/70'
+        )}>
+          {getActionIcon()}
+        </div>
+        {!isLast && <div className="w-0.5 flex-1 bg-border/30 min-h-[60px]" />}
+      </div>
+      <div className="flex-1 pb-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium text-sm text-foreground capitalize">{item.action}</span>
+              <span className="text-xs text-foreground/70">{item.itemType}</span>
+              <ItemLink itemType={item.itemType} itemId={item.itemId} />
+              <span className="flex items-center gap-1.5 text-xs">
+                <StatusDot status={item.status} />
+                <span className="text-foreground/70 capitalize">{item.status}</span>
+              </span>
+            </div>
+            {(item.reason || item.priority) && (
+              <div className="flex items-center gap-3 mt-2">
+                {item.reason && (
+                  <p className="text-xs text-foreground/70 truncate max-w-[300px]">
+                    {item.reason}
+                  </p>
+                )}
+                {item.priority && (
+                  <span className="text-xs px-3 py-1.5 bg-muted rounded-full text-foreground/70">
+                    P{item.priority}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          <span className="text-xs text-foreground/70 font-medium whitespace-nowrap">
+            {formatTimeAgo(item.createdAt)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function renderLedgerItem(entry: LedgerEntry, i: number, items: LedgerEntry[]) {
+  const config = getBotConfig(entry.botName);
+  const Icon = config.icon;
+  const isLast = i === items.length - 1;
+  
+  return (
+    <div key={entry.id || i} className="flex gap-3">
+      <div className="flex flex-col items-center">
+        <div className={cn(
+          "w-9 h-9 rounded-full flex items-center justify-center",
+          config.color
+        )}>
+          <Icon className="w-4 h-4" />
+        </div>
+        {!isLast && <div className="w-0.5 flex-1 bg-border/30 min-h-[60px]" />}
+      </div>
+      <div className="flex-1 pb-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium text-sm text-foreground">{config.name}</span>
+              <span className="flex items-center gap-1.5 text-xs">
+                <StatusDot status={entry.action} />
+                <span className="text-foreground/70 capitalize">{entry.action}</span>
+              </span>
+              <span className="text-xs text-foreground/70">{entry.itemType}</span>
+              <ItemLink itemType={entry.itemType} itemId={entry.itemId} />
+            </div>
+            <div className="text-xs text-foreground/70 mt-1 truncate max-w-[300px]">
+              {entry.reason || `${entry.action} ${entry.itemId}`}
+            </div>
+          </div>
+          <span className="text-xs text-foreground/70 font-medium whitespace-nowrap">
+            {formatTimeAgo(entry.createdAt)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Tab component
-function Tab({ active, onClick, children, icon: Icon }: { 
+function Tab({ active, onClick, children, icon: Icon, count }: { 
   active: boolean; 
   onClick: () => void; 
   children: React.ReactNode;
   icon: typeof Bot;
+  count?: number;
 }) {
   return (
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 px-4 min-h-[44px] text-sm font-medium rounded-lg transition-all duration-150 cursor-pointer whitespace-nowrap",
+        "flex items-center gap-2 px-4 min-h-[40px] text-sm font-medium rounded-full transition-all duration-150 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         active 
-          ? "bg-primary text-primary-foreground" 
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          ? "bg-primary text-primary-foreground shadow-sm" 
+          : "text-foreground/70 hover:bg-muted hover:text-foreground"
       )}
     >
       <Icon className="w-4 h-4" />
       {children}
+        {typeof count === 'number' && count > 0 && (
+          <span className={cn(
+            "text-xs px-1.5 py-0.5 rounded-full",
+            active ? "bg-primary-foreground/20" : "bg-muted text-foreground/70"
+          )}>
+            {count}
+          </span>
+        )}
     </button>
   );
 }
@@ -280,7 +496,7 @@ export default function BotActivity() {
             <button 
               onClick={handleRefresh}
               disabled={refreshing}
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-muted rounded-lg disabled:opacity-50 transition-colors duration-150 cursor-pointer"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-muted rounded-lg disabled:opacity-50 transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
             </button>
@@ -291,7 +507,7 @@ export default function BotActivity() {
             <button 
               onClick={handleRefresh}
               disabled={refreshing}
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-muted rounded-lg disabled:opacity-50 transition-colors duration-150 cursor-pointer"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-muted rounded-lg disabled:opacity-50 transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
             </button>
@@ -309,7 +525,7 @@ export default function BotActivity() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
                   className={cn(
-                    "relative overflow-hidden rounded-xl border p-4",
+                    "relative overflow-hidden rounded-2xl border p-4",
                     config.color
                   )}
                 >
@@ -320,26 +536,26 @@ export default function BotActivity() {
                   <div className="relative">
                     <div className="flex items-center gap-3 mb-3">
                       <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br",
+                        "w-10 h-10 rounded-2xl flex items-center justify-center bg-gradient-to-br",
                         config.gradient
                       )}>
                         <Icon className="w-5 h-5 text-white" />
                       </div>
                       <div>
                         <h3 className="font-semibold">{config.name}</h3>
-                        <p className="text-xs text-muted-foreground">{config.description}</p>
+                        <p className="text-xs text-foreground/70">{config.description}</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div>
                         <div className="text-lg font-bold">{stats?.totalRuns || 0}</div>
-                        <div className="text-[10px] text-muted-foreground uppercase">Runs</div>
+                        <div className="text-xs text-foreground/70 uppercase">Runs</div>
                       </div>
                       <div>
-                        <div className="text-lg font-bold text-green-500">
+                        <div className="text-lg font-bold text-emerald-500">
                           {stats?.successfulRuns || 0}
                         </div>
-                        <div className="text-[10px] text-muted-foreground uppercase">Success</div>
+                        <div className="text-xs text-foreground/70 uppercase">Success</div>
                       </div>
                       <div>
                         <div className="text-lg font-bold">
@@ -347,12 +563,12 @@ export default function BotActivity() {
                            key === 'verifier' ? workQueue.filter(w => w.createdBy === 'verifier').length :
                            stats?.totalUpdated || 0}
                         </div>
-                        <div className="text-[10px] text-muted-foreground uppercase">
+                        <div className="text-xs text-foreground/70 uppercase">
                           {key === 'creator' ? 'Created' : key === 'verifier' ? 'Flagged' : 'Fixed'}
                         </div>
                       </div>
                     </div>
-                    <div className="mt-3 pt-3 border-t border-current/10 text-xs text-muted-foreground">
+                    <div className="mt-3 pt-3 border-t border-current/10 text-xs text-foreground/70">
                       Last run: {formatTimeAgo(stats?.lastRun || '')}
                     </div>
                   </div>
@@ -401,16 +617,18 @@ export default function BotActivity() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide">
-            <Tab active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={Activity}>
-              Recent Runs
-            </Tab>
-            <Tab active={activeTab === 'queue'} onClick={() => setActiveTab('queue')} icon={ListTodo}>
-              Work Queue ({pendingQueue})
-            </Tab>
-            <Tab active={activeTab === 'ledger'} onClick={() => setActiveTab('ledger')} icon={History}>
-              Audit Ledger
-            </Tab>
+          <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide">
+            <div className="flex gap-1.5">
+              <Tab active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={Activity} count={recentRuns.length}>
+                Recent Runs
+              </Tab>
+              <Tab active={activeTab === 'queue'} onClick={() => setActiveTab('queue')} icon={ListTodo} count={pendingQueue}>
+                Work Queue
+              </Tab>
+              <Tab active={activeTab === 'ledger'} onClick={() => setActiveTab('ledger')} icon={History} count={ledger.length}>
+                Audit Ledger
+              </Tab>
+            </div>
           </div>
 
           {/* Tab Content */}
@@ -421,76 +639,99 @@ export default function BotActivity() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="bg-card border border-border rounded-xl overflow-hidden"
+                className="bg-card border border-border rounded-2xl overflow-hidden"
               >
-                <div className="p-4 border-b border-border">
-                  <h3 className="font-semibold flex items-center gap-2">
+                <div className="p-4 border-b border-border/50 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-primary" />
-                    Recent Bot Runs
-                  </h3>
-                </div>
-                {loading ? (
-                  <div className="p-8 text-center">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto text-primary mb-2" />
-                    <p className="text-sm text-muted-foreground">Loading...</p>
+                    <span className="font-medium text-sm">Recent Bot Runs</span>
                   </div>
-                ) : fetchError ? (
-                  <EmptyState
-                    variant="error"
-                    icon={<Bot className="w-6 h-6" />}
-                    title="Failed to load activity"
-                    description="Could not fetch bot run data."
-                    action={
-                      <button
-                        onClick={handleRefresh}
-                        className="px-4 min-h-[44px] text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity duration-150 cursor-pointer"
-                      >
-                        Try again
-                      </button>
-                    }
-                  />
-                ) : recentRuns.length === 0 ? (
-                  <EmptyState
-                    icon={<Bot className="w-6 h-6" />}
-                    title="No activity yet"
-                    description="Bot activity will appear here once bots run."
-                  />
-                ) : (
-                  <div className="divide-y divide-border">
-                    {recentRuns.slice(0, 10).map((run, i) => {
-                      const config = getBotConfig(run.botName);
-                      const Icon = config.icon;
-                      return (
-                        <div key={run.id || i} className="p-4 hover:bg-muted/30 transition-colors duration-150">
-                          <div className="flex items-center gap-3">
-                            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", config.color)}>
-                              <Icon className="w-4 h-4" />
+                  <Filter className="w-4 h-4 text-foreground/70" />
+                </div>
+                <div className="p-4">
+                  {loading ? (
+                    <div className="p-6 text-center">
+                      <RefreshCw className="w-6 h-6 animate-spin mx-auto text-primary mb-2" />
+                      <p className="text-sm text-foreground/70">Loading...</p>
+                    </div>
+                  ) : fetchError ? (
+                    <EmptyState
+                      variant="error"
+                      icon={<Bot className="w-6 h-6" />}
+                      title="Failed to load activity"
+                      description="Could not fetch bot run data."
+                      action={
+                        <button
+                          onClick={handleRefresh}
+                          className="px-4 min-h-[44px] text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          Try again
+                        </button>
+                      }
+                    />
+                  ) : recentRuns.length === 0 ? (
+                    <EmptyState
+                      icon={<Bot className="w-6 h-6" />}
+                      title="No activity yet"
+                      description="Bot activity will appear here once bots run."
+                    />
+                  ) : (
+                    <div className="relative">
+                      {recentRuns.slice(0, 10).map((run, i) => {
+                        const config = getBotConfig(run.botName);
+                        const Icon = config.icon;
+                        const isLast = i === recentRuns.slice(0, 10).length - 1;
+                        return (
+                          <div key={run.id || i} className="flex gap-3">
+                            <div className="flex flex-col items-center">
+                              <div className={cn(
+                                "w-9 h-9 rounded-full flex items-center justify-center",
+                                config.color
+                              )}>
+                                <Icon className="w-4 h-4" />
+                              </div>
+                              {!isLast && <div className="w-0.5 flex-1 bg-border/30 min-h-[60px]" />}
                             </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-sm">{config.name}</span>
-                                <span className={cn(
-                                  "text-xs px-2 py-0.5 rounded-full",
-                                  run.status === 'completed' ? "bg-green-500/20 text-green-500" :
-                                  run.status === 'running' ? "bg-blue-500/20 text-blue-500" :
-                                  "bg-red-500/20 text-red-500"
-                                )}>
-                                  {run.status}
+                             <div className="flex-1 pb-4">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-sm text-foreground">{config.name}</span>
+                                    <span className="flex items-center gap-1.5 text-xs">
+                                      <StatusDot status={run.status} />
+                                      <span className="text-foreground/70 capitalize">{run.status}</span>
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-3 mt-2 text-xs text-foreground/70">
+                                    <span className="flex items-center gap-1">
+                                      <span className="font-medium text-foreground">{run.itemsProcessed}</span>
+                                      <span>processed</span>
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <span className="font-medium text-emerald-500">{run.itemsCreated}</span>
+                                      <span>created</span>
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <span className="font-medium text-blue-500">{run.itemsUpdated}</span>
+                                      <span>updated</span>
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <span className="font-medium text-rose-500">{run.itemsDeleted}</span>
+                                      <span>deleted</span>
+                                    </span>
+                                  </div>
+                                </div>
+                                <span className="text-xs text-foreground/70 font-medium whitespace-nowrap">
+                                  {formatTimeAgo(run.startedAt)}
                                 </span>
                               </div>
-                              <div className="text-xs text-muted-foreground mt-1">
-                                Processed: {run.itemsProcessed} | Created: {run.itemsCreated} | Updated: {run.itemsUpdated} | Deleted: {run.itemsDeleted}
-                              </div>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {formatTimeAgo(run.startedAt)}
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </motion.div>
             )}
 
@@ -500,83 +741,36 @@ export default function BotActivity() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="bg-card border border-border rounded-xl overflow-hidden"
+                className="bg-card border border-border rounded-2xl overflow-hidden"
               >
-                <div className="p-4 border-b border-border flex items-center justify-between">
-                  <h3 className="font-semibold flex items-center gap-2">
+                <div className="p-4 border-b border-border/50 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
                     <ListTodo className="w-4 h-4 text-primary" />
-                    Work Queue
-                  </h3>
-                  <div className="flex gap-2 flex-wrap">
-                    {['all', 'pending', 'processing', 'completed'].map(status => (
-                      <button
-                        key={status}
-                        onClick={() => setSelectedBot(status)}
-                        className={cn(
-                          "text-xs px-3 min-h-[44px] rounded-full transition-colors duration-150 cursor-pointer",
-                          selectedBot === status 
-                            ? "bg-primary text-primary-foreground" 
-                            : "bg-muted text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        {status}
-                      </button>
-                    ))}
+                    <span className="font-medium text-sm">Work Queue</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <FilterChip active={selectedBot === 'all'} onClick={() => setSelectedBot('all')} label="All" />
+                    <FilterChip active={selectedBot === 'pending'} onClick={() => setSelectedBot('pending')} label="Pending" />
+                    <FilterChip active={selectedBot === 'processing'} onClick={() => setSelectedBot('processing')} label="Processing" />
+                    <FilterChip active={selectedBot === 'completed'} onClick={() => setSelectedBot('completed')} label="Done" />
                   </div>
                 </div>
-                {workQueue.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <CheckCircle className="w-8 h-8 mx-auto text-green-500 mb-2" />
-                    <p className="text-sm text-muted-foreground">Queue is empty</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-border">
-                    {workQueue
-                      .filter(w => selectedBot === 'all' || w.status === selectedBot)
-                      .slice(0, 20)
-                      .map((item, i) => (
-                        <div key={item.id || i} className="p-4 hover:bg-muted/30 transition-colors duration-150">
-                          <div className="flex items-center gap-3">
-                            <div className={cn(
-                              "w-8 h-8 rounded-lg flex items-center justify-center",
-                              item.action === 'delete' ? "bg-red-500/10 text-red-500" :
-                              item.action === 'improve' ? "bg-primary/10 text-primary" :
-                              "bg-amber-500/10 text-amber-500"
-                            )}>
-                              {item.action === 'delete' ? <Trash2 className="w-4 h-4" /> :
-                               item.action === 'improve' ? <Zap className="w-4 h-4" /> :
-                               <Eye className="w-4 h-4" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-medium text-sm">{item.action}</span>
-                                <span className="text-xs text-muted-foreground">{item.itemType}</span>
-                                <ItemLink itemType={item.itemType} itemId={item.itemId} />
-                                <span className={cn(
-                                  "text-xs px-2 py-0.5 rounded-full",
-                                  item.status === 'pending' ? "bg-amber-500/20 text-amber-500" :
-                                  item.status === 'processing' ? "bg-blue-500/20 text-blue-500" :
-                                  item.status === 'completed' ? "bg-green-500/20 text-green-500" :
-                                  "bg-red-500/20 text-red-500"
-                                )}>
-                                  {item.status}
-                                </span>
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-1 truncate">
-                                {item.reason || 'No reason specified'}
-                              </div>
-                            </div>
-                            <div className="text-right flex-shrink-0">
-                              <div className="text-xs font-medium">P{item.priority}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {formatTimeAgo(item.createdAt)}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
+                <div className="p-4">
+                  {workQueue.length === 0 ? (
+                    <div className="p-6 text-center">
+                      <CheckCircle className="w-8 h-8 mx-auto text-emerald-500 mb-2" />
+                      <p className="text-sm text-foreground/70 font-medium">Queue is empty</p>
+                      <p className="text-xs text-foreground/70 mt-1">All tasks completed</p>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      {workQueue
+                        .filter(w => selectedBot === 'all' || w.status === selectedBot)
+                        .slice(0, 20)
+                        .map((item, i) => renderQueueItem(item, i, selectedBot))}
+                    </div>
+                  )}
+                </div>
               </motion.div>
             )}
 
@@ -586,59 +780,32 @@ export default function BotActivity() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="bg-card border border-border rounded-xl overflow-hidden"
+                className="bg-card border border-border rounded-2xl overflow-hidden"
               >
-                <div className="p-4 border-b border-border">
-                  <h3 className="font-semibold flex items-center gap-2">
+                <div className="p-4 border-b border-border/50 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
                     <History className="w-4 h-4 text-primary" />
-                    Audit Ledger
-                  </h3>
+                    <span className="font-medium text-sm">Audit Ledger</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <FilterChip active={selectedBot === 'all'} onClick={() => setSelectedBot('all')} label="All" />
+                    <FilterChip active={selectedBot === 'completed'} onClick={() => setSelectedBot('completed')} label="Completed" />
+                    <FilterChip active={selectedBot === 'failed'} onClick={() => setSelectedBot('failed')} label="Failed" />
+                  </div>
                 </div>
-                {ledger.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <FileText className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">No ledger entries yet</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-border">
-                    {ledger.slice(0, 30).map((entry, i) => {
-                      const config = getBotConfig(entry.botName);
-                      const Icon = config.icon;
-                      return (
-                        <div key={entry.id || i} className="p-4 hover:bg-muted/30 transition-colors duration-150">
-                          <div className="flex items-center gap-3">
-                            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", config.color)}>
-                              <Icon className="w-4 h-4" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-medium text-sm">{config.name}</span>
-                                <span className={cn(
-                                  "text-xs px-2 py-0.5 rounded-full",
-                                  entry.action === 'create' ? "bg-primary/20 text-primary" :
-                                  entry.action === 'update' ? "bg-primary/20 text-primary" :
-                                  entry.action === 'delete' ? "bg-red-500/20 text-red-500" :
-                                  entry.action === 'verify' ? "bg-green-500/20 text-green-500" :
-                                  "bg-amber-500/20 text-amber-500"
-                                )}>
-                                  {entry.action}
-                                </span>
-                                <span className="text-xs text-muted-foreground">{entry.itemType}</span>
-                                <ItemLink itemType={entry.itemType} itemId={entry.itemId} />
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-1 truncate">
-                                {entry.reason || `${entry.action} ${entry.itemId}`}
-                              </div>
-                            </div>
-                            <div className="text-xs text-muted-foreground flex-shrink-0">
-                              {formatTimeAgo(entry.createdAt)}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                <div className="p-4">
+                  {ledger.length === 0 ? (
+                    <div className="p-6 text-center">
+                      <FileText className="w-8 h-8 mx-auto text-foreground/70 mb-2" />
+                      <p className="text-sm text-foreground/70 font-medium">No ledger entries yet</p>
+                      <p className="text-xs text-foreground/70 mt-1">Activity will appear here once bots run</p>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      {ledger.slice(0, 30).map((entry, i) => renderLedgerItem(entry, i, ledger.slice(0, 30)))}
+                    </div>
+                  )}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -648,26 +815,35 @@ export default function BotActivity() {
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="mt-6 p-4 border border-border rounded-xl bg-muted/20"
+            className="mt-6 p-4 bg-card border border-border/50 rounded-2xl"
           >
-            <h4 className="font-semibold mb-2 flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-3">
               <Activity className="w-4 h-4 text-primary" />
-              3-Bot Pipeline
-            </h4>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-primary" /> Creator
+              <span className="font-medium text-sm">3-Bot Pipeline</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-foreground/70 mb-3">
+              <span className="flex items-center gap-1.5">
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Sparkles className="w-3 h-3 text-primary" />
+                </div>
+                <span>Creator</span>
               </span>
-              <span>→</span>
-              <span className="flex items-center gap-1">
-                <Eye className="w-3 h-3 text-amber-500" /> Verifier
+              <span className="text-foreground/40">→</span>
+              <span className="flex items-center gap-1.5">
+                <div className="w-6 h-6 rounded-full bg-orange-500/10 flex items-center justify-center">
+                  <Eye className="w-3 h-3 text-orange-500" />
+                </div>
+                <span>Verifier</span>
               </span>
-              <span>→</span>
-              <span className="flex items-center gap-1">
-                <Wrench className="w-3 h-3 text-primary" /> Processor
+              <span className="text-foreground/40">→</span>
+              <span className="flex items-center gap-1.5">
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Wrench className="w-3 h-3 text-primary" />
+                </div>
+                <span>Processor</span>
               </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="text-xs text-foreground/70">
               Creator generates content → Verifier checks quality and flags issues → Processor improves or removes flagged content
             </p>
           </motion.div>

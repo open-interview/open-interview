@@ -150,10 +150,10 @@ export function MobileHomeFocused() {
                   </div>
                   <div className="text-left">
                     <div className="text-xl font-bold text-white">{formatCredits(balance)}</div>
-                    <div className="text-[10px] text-white/80">Level {Math.floor(balance / 100)} · {balance % 100}/100 XP</div>
+                    <div className="text-xs text-white/80">Level {Math.floor(balance / 100)} · {balance % 100}/100 XP</div>
                   </div>
                 </div>
-                <div className="text-right text-[10px]">
+                <div className="text-right text-xs">
                   <div className="text-green-200">+{config.VOICE_ATTEMPT} voice</div>
                   <div className="text-red-200">-{config.QUESTION_VIEW_COST}/q</div>
                 </div>
@@ -179,7 +179,7 @@ export function MobileHomeFocused() {
                   </div>
                   <div className="text-left">
                     <div className="font-bold text-sm">{totalCompleted > 0 ? totalCompleted : '—'}</div>
-                    <div className="text-[9px] text-muted-foreground">{totalCompleted > 0 ? 'Done' : 'Start!'}</div>
+                    <div className="text-xs text-foreground/70">{totalCompleted > 0 ? 'Done' : 'Start!'}</div>
                   </div>
                 </div>
                 <div className="w-px h-8 bg-border" />
@@ -189,7 +189,7 @@ export function MobileHomeFocused() {
                   </div>
                   <div className="text-left">
                     <div className="font-bold text-sm">{streak > 0 ? streak : '—'}</div>
-                    <div className="text-[9px] text-muted-foreground">{streak > 0 ? 'Streak' : 'No streak'}</div>
+                    <div className="text-xs text-foreground/70">{streak > 0 ? 'Streak' : 'No streak'}</div>
                   </div>
                 </div>
                 <div className="w-px h-8 bg-border" />
@@ -199,10 +199,10 @@ export function MobileHomeFocused() {
                   </div>
                   <div className="text-left">
                     <div className="font-bold text-sm">{subscribedChannels.length}</div>
-                    <div className="text-[9px] text-muted-foreground">Topics</div>
+                    <div className="text-xs text-foreground/70">Topics</div>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                <ChevronRight className="w-4 h-4 text-foreground/70" />
               </button>
             )}
           </div>
@@ -253,7 +253,7 @@ export function MobileHomeFocused() {
                   </div>
                   <div>
                     <div className="text-xs font-semibold text-primary mb-1">Pro Tip</div>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    <p className="text-[11px] text-foreground/70 leading-relaxed">
                       Use Voice Interview mode to practice speaking your answers out loud. 
                       It's the best way to prepare for real interviews!
                     </p>
@@ -457,7 +457,7 @@ function QuickQuizCard({
             </div>
             <div>
               <h2 className="font-semibold sm:text-lg">Loading quiz...</h2>
-              <p className="text-xs sm:text-sm text-muted-foreground">Preparing questions</p>
+              <p className="text-xs sm:text-sm text-foreground/70">Preparing questions</p>
             </div>
           </div>
         </div>
@@ -475,7 +475,7 @@ function QuickQuizCard({
             </div>
             <div>
               <h2 className="font-semibold sm:text-lg">No quiz available</h2>
-              <p className="text-xs sm:text-sm text-muted-foreground">Tests coming soon for your channels</p>
+              <p className="text-xs sm:text-sm text-foreground/70">Tests coming soon for your channels</p>
             </div>
           </div>
         </div>
@@ -487,18 +487,18 @@ function QuickQuizCard({
     <section className="mb-3">
       <div className="bg-gradient-to-br from-primary/15 to-card rounded-xl overflow-hidden border border-primary/20">
         {/* Header */}
-        <div className="px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between border-b border-border/30 bg-primary/5">
+        <div className="px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between border-b border-border/50 bg-primary/5">
           <div className="flex items-center gap-2">
             <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
             <span className="text-[11px] sm:text-xs font-semibold text-primary uppercase tracking-wide">
               Quick Quiz
             </span>
-            <span className="text-[10px] sm:text-xs text-muted-foreground">
+            <span className="text-xs sm:text-xs text-foreground/70">
               {currentIndex + 1}/{questions.length}
             </span>
             {/* Difficulty indicator */}
             {totalAnswered > 0 && (
-              <span className={`text-[9px] px-1.5 py-0.5 rounded ${
+              <span className={`text-xs px-1.5 py-0.5 rounded ${
                 quizSession.difficultyLevel === 'beginner' ? 'bg-green-500/10 text-green-600' :
                 quizSession.difficultyLevel === 'intermediate' ? 'bg-yellow-500/10 text-yellow-600' :
                 'bg-red-500/10 text-red-600'
@@ -506,10 +506,10 @@ function QuickQuizCard({
                 {quizSession.difficultyLevel}
               </span>
             )}
-            <span className="text-[9px] flex items-center gap-0.5 ml-1">
+            <span className="text-xs flex items-center gap-0.5 ml-1">
               <Coins className="w-2.5 h-2.5 text-amber-400" />
               <span className="text-green-400">+{config.QUIZ_CORRECT}</span>
-              <span className="text-muted-foreground">/</span>
+              <span className="text-foreground/70">/</span>
               <span className="text-red-400">{config.QUIZ_WRONG}</span>
             </span>
           </div>
@@ -528,7 +528,7 @@ function QuickQuizCard({
               )}
             </AnimatePresence>
             {totalAnswered > 0 && (
-              <span className="text-[10px] sm:text-xs text-muted-foreground">
+              <span className="text-xs sm:text-xs text-foreground/70">
                 {correctCount}/{totalAnswered} correct
               </span>
             )}
@@ -536,7 +536,7 @@ function QuickQuizCard({
               onClick={handleRefresh}
               className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-muted rounded transition-colors"
             >
-              <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+              <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground/70" />
             </button>
           </div>
         </div>
@@ -560,14 +560,14 @@ function QuickQuizCard({
                   <span className="text-primary">{channelConfig && iconMap[channelConfig.icon]}</span>
                   <span className="text-[11px] sm:text-xs font-medium">{channelConfig?.name || currentTest?.channelName}</span>
                 </button>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                <span className={`text-xs px-1.5 py-0.5 rounded ${
                   currentQuestion.difficulty === 'beginner' ? 'bg-green-500/10 text-green-600' :
                   currentQuestion.difficulty === 'intermediate' ? 'bg-yellow-500/10 text-yellow-600' :
                   'bg-red-500/10 text-red-600'
                 }`}>
                   {currentQuestion.difficulty}
                 </span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                <span className={`text-xs px-1.5 py-0.5 rounded ${
                   currentQuestion.type === 'multiple' 
                     ? 'bg-primary/10 text-primary' 
                     : 'bg-blue-500/10 text-blue-500'
@@ -641,7 +641,7 @@ function QuickQuizCard({
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-3 p-3 bg-muted/30 rounded-lg text-xs sm:text-sm text-muted-foreground"
+                  className="mt-3 p-3 bg-muted/30 rounded-lg text-xs sm:text-sm text-foreground/70"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
@@ -825,7 +825,7 @@ function ChannelCard({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">{channel.name}</p>
-              <p className="text-xs text-muted-foreground">Will be removed from your feed</p>
+              <p className="text-xs text-foreground/70">Will be removed from your feed</p>
             </div>
           </div>
           
@@ -863,14 +863,14 @@ function ChannelCard({
           </div>
           <div className="text-right">
             <span className="text-lg font-bold text-primary">{progress}%</span>
-            <div className="text-[9px] text-red-400 flex items-center justify-end gap-0.5">
+            <div className="text-xs text-red-400 flex items-center justify-end gap-0.5">
               <Coins className="w-2.5 h-2.5" />-2/q
             </div>
           </div>
         </div>
         
         <h4 className="font-semibold text-sm mb-1 truncate">{channel.name}</h4>
-        <p className="text-xs text-muted-foreground mb-3 line-clamp-1">{channel.description}</p>
+        <p className="text-xs text-foreground/70 mb-3 line-clamp-1">{channel.description}</p>
         
         <div className="h-1.5 bg-muted rounded-full overflow-hidden">
           <div 
@@ -878,7 +878,7 @@ function ChannelCard({
             style={{ width: `${progress}%` }}
           />
         </div>
-        <div className="mt-1 text-[10px] text-muted-foreground">
+        <div className="mt-1 text-xs text-foreground/70">
           {validCompleted}/{questionCount} completed
         </div>
       </button>
@@ -935,7 +935,7 @@ function ChannelRow({
           
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{channel.name}</p>
-            <p className="text-[11px] text-muted-foreground">Remove from your channels?</p>
+            <p className="text-[11px] text-foreground/70">Remove from your channels?</p>
           </div>
           
           <div className="flex gap-2 flex-shrink-0">
@@ -961,7 +961,7 @@ function ChannelRow({
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2.5 sm:px-4 sm:py-3 hover:bg-muted/50 transition-colors">
+    <div className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 hover:bg-muted/50 transition-colors">
       <button
         onClick={onClick}
         className="flex-1 flex items-center gap-3 text-left min-h-[44px]"
@@ -974,10 +974,10 @@ function ChannelRow({
           <div className="flex items-center justify-between mb-1">
             <h4 className="font-medium text-sm sm:text-base truncate">{channel.name}</h4>
             <div className="flex items-center gap-2 ml-2">
-              <span className="text-[9px] text-red-400 flex items-center gap-0.5">
+              <span className="text-xs text-red-400 flex items-center gap-0.5">
                 <Coins className="w-2.5 h-2.5" />-2
               </span>
-              <span className="text-xs sm:text-sm text-muted-foreground">{progress}%</span>
+              <span className="text-xs sm:text-sm text-foreground/70">{progress}%</span>
             </div>
           </div>
           <div className="h-1 sm:h-1.5 bg-muted rounded-full overflow-hidden">
@@ -1018,7 +1018,7 @@ function CodingChallengeCardCompact({ onStart }: { onStart: () => void }) {
       </div>
       <div>
         <h3 className="font-semibold text-xs sm:text-sm">Coding</h3>
-        <p className="text-[10px] text-muted-foreground">Practice</p>
+        <p className="text-xs text-foreground/70">Practice</p>
       </div>
     </button>
   );
@@ -1036,7 +1036,7 @@ function CertificationCardCompact({ onStart }: { onStart: () => void }) {
       </div>
       <div>
         <h3 className="font-semibold text-xs sm:text-sm">Certs</h3>
-        <p className="text-[10px] text-muted-foreground">AWS, K8s</p>
+        <p className="text-xs text-foreground/70">AWS, K8s</p>
       </div>
     </button>
   );
@@ -1054,7 +1054,7 @@ function TrainingModeCardCompact({ onStart }: { onStart: () => void }) {
       </div>
       <div>
         <h3 className="font-semibold text-xs sm:text-sm">Training</h3>
-        <p className="text-[10px] text-muted-foreground">Read & speak</p>
+        <p className="text-xs text-foreground/70">Read & speak</p>
       </div>
     </button>
   );
@@ -1118,11 +1118,11 @@ function VoiceInterviewCard({ onStart }: { onStart: () => void }) {
           <div className="flex-1 text-left min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
               <h3 className="font-bold text-sm">Voice Interview</h3>
-              <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[9px] font-bold rounded-full">
+              <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-xs font-bold rounded-full">
                 EARN
               </span>
             </div>
-            <div className="flex items-center gap-2 text-[10px]">
+            <div className="flex items-center gap-2 text-xs">
               <span className="flex items-center gap-0.5 text-amber-400 font-semibold">
                 <Coins className="w-3 h-3" />+5
               </span>
@@ -1137,10 +1137,10 @@ function VoiceInterviewCard({ onStart }: { onStart: () => void }) {
         
         {/* Session mode link */}
         <div className="mt-2 pt-2 border-t border-primary/20 flex items-center justify-between">
-          <span className="text-[10px] text-muted-foreground">Focused practice?</span>
+          <span className="text-xs text-foreground/70">Focused practice?</span>
           <button
             onClick={() => setLocation('/voice-session')}
-            className="text-[10px] text-primary hover:underline flex items-center gap-1 min-h-[44px] px-2"
+            className="text-xs text-primary hover:underline flex items-center gap-1 min-h-[44px] px-2"
           >
             <Target className="w-2.5 h-2.5" />
             Micro Sessions
@@ -1171,11 +1171,11 @@ function TrainingModeCard({ onStart }: { onStart: () => void }) {
           <div className="flex-1 text-left min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
               <h3 className="font-bold text-sm">Training Mode</h3>
-              <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[9px] font-bold rounded-full">
+              <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-full">
                 NEW
               </span>
             </div>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-foreground/70">
               Read answers & record yourself speaking
             </p>
           </div>
@@ -1184,13 +1184,13 @@ function TrainingModeCard({ onStart }: { onStart: () => void }) {
         </button>
         
         {/* Features */}
-        <div className="mt-2 pt-2 border-t border-blue-500/20 flex items-center justify-between text-[10px]">
+        <div className="mt-2 pt-2 border-t border-blue-500/20 flex items-center justify-between text-xs">
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1 text-muted-foreground">
+            <span className="flex items-center gap-1 text-foreground/70">
               <Eye className="w-3 h-3" />
               Full answers
             </span>
-            <span className="flex items-center gap-1 text-muted-foreground">
+            <span className="flex items-center gap-1 text-foreground/70">
               <Volume2 className="w-3 h-3" />
               Live transcript
             </span>
@@ -1205,21 +1205,21 @@ function TrainingModeCard({ onStart }: { onStart: () => void }) {
 function WelcomeCard({ onGetStarted }: { onGetStarted: () => void }) {
   return (
     <section className="mb-3">
-      <div className="bg-gradient-to-br from-primary/15 to-card rounded-xl p-5 sm:p-8 border border-primary/20">
+      <div className="bg-gradient-to-br from-primary/15 to-card rounded-xl p-5 sm:p-6">
         <div className="text-center">
           <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-3 sm:mb-4">
             <Code className="w-7 h-7 sm:w-10 sm:h-10 text-primary" />
           </div>
           
           <h1 className="font-bold text-lg sm:text-2xl lg:text-3xl mb-1 sm:mb-2">Welcome to Learn Reels</h1>
-          <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6 max-w-md mx-auto">
+          <p className="text-sm sm:text-base text-foreground/70 mb-4 sm:mb-6 max-w-md mx-auto">
             Master technical interviews with bite-sized questions
           </p>
 
-          <button
-            onClick={onGetStarted}
-            className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-primary text-primary-foreground rounded-lg sm:rounded-xl font-semibold flex items-center justify-center gap-2 text-sm sm:text-base mx-auto"
-          >
+            <button
+              onClick={onGetStarted}
+              className="w-full sm:w-auto px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold flex items-center justify-center gap-2 text-sm mx-auto"
+            >
             <Compass className="w-4 h-4 sm:w-5 sm:h-5" />
             Choose Your Topics
           </button>
@@ -1256,7 +1256,7 @@ function QuickStartTopics({ onSelect }: { onSelect: (id: string) => void }) {
             </div>
             <div className="min-w-0">
               <h4 className="font-medium text-sm sm:text-base truncate">{topic.name}</h4>
-              <p className="text-[10px] sm:text-xs text-muted-foreground">{topic.desc}</p>
+              <p className="text-xs sm:text-xs text-foreground/70">{topic.desc}</p>
             </div>
           </button>
         ))}

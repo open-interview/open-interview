@@ -321,7 +321,7 @@ export function UnifiedQuestionView({
           transition={{ duration: 0.3, delay: 0.2 }}
         >
           <div className="bg-card/90 backdrop-blur-xl border-t border-border/50 shadow-lg">
-            <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 gap-2 sm:gap-3 max-w-2xl mx-auto">
+             <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 gap-2 sm:gap-3 max-w-2xl mx-auto">
               {/* Previous button - OPTIMIZED */}
               <motion.button
                 onClick={handlePrevious}

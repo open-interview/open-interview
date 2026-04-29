@@ -16,7 +16,7 @@ export function UnifiedSearch({ isOpen, onClose, initialQuery }: UnifiedSearchPr
   const { provider } = useSearchProvider();
 
   if (provider === 'pagefind') {
-    return <PagefindSearch isOpen={isOpen} onClose={onClose} />;
+    return <PagefindSearch isOpen={isOpen} onClose={onClose} initialQuery={initialQuery} />;
   }
 
   return <SearchModal isOpen={isOpen} onClose={onClose} initialQuery={initialQuery} />;

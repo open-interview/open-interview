@@ -126,7 +126,7 @@ export default function AllChannelsRedesigned() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold">Browse Channels</h1>
-                <p className="text-muted-foreground">
+                <p className="text-foreground/70">
                   {preferences.subscribedChannels.length} of {allChannelsConfig.length} channels subscribed
                 </p>
               </div>
@@ -134,13 +134,13 @@ export default function AllChannelsRedesigned() {
 
             {/* Search - directly below title */}
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9AA0A6]" />
               <input
                 type="text"
                 placeholder="Search channels..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-muted/50 border border-border rounded-xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                className="w-full pl-12 pr-4 h-[46px] bg-[#F1F3F4] dark:bg-[#303134] rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 transition-all placeholder:text-[#9AA0A6] text-foreground"
               />
             </div>
           </div>
@@ -149,30 +149,30 @@ export default function AllChannelsRedesigned() {
           <div className="space-y-4">
             {/* Category Pills */}
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className={`
-                  px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-all flex-shrink-0
-                  ${!selectedCategory 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }
-                `}
-              >
+                  <button
+                    onClick={() => setSelectedCategory(null)}
+                    className={`
+                      px-4 py-2 text-base font-medium rounded-full whitespace-nowrap transition-all flex-shrink-0
+                      ${!selectedCategory 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'bg-muted/50 text-foreground/70 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none'
+                      }
+                    `}
+                  >
                 All Channels
               </button>
-              {categories.map(cat => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`
-                    px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-all flex items-center gap-2 flex-shrink-0
-                    ${selectedCategory === cat.id 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
-                    }
-                  `}
-                >
+                  {categories.map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategory(cat.id)}
+                      className={`
+                        px-4 py-2 text-base font-medium rounded-full whitespace-nowrap transition-all flex items-center gap-2 flex-shrink-0
+                        ${selectedCategory === cat.id 
+                          ? 'bg-primary text-primary-foreground' 
+                          : 'bg-muted/50 text-foreground/70 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none'
+                        }
+                      `}
+                    >
                   {iconMap[cat.icon]}
                   {cat.name}
                 </button>
@@ -209,7 +209,7 @@ export default function AllChannelsRedesigned() {
                     </div>
                     <div>
                       <h2 className="text-lg font-semibold">{group.name}</h2>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-base text-foreground/70">
                         {group.channels.length} channels
                       </p>
                     </div>
@@ -239,9 +239,9 @@ export default function AllChannelsRedesigned() {
           {/* Empty State */}
           {filteredChannels.length === 0 && (
             <div className="text-center py-12">
-              <Search className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />
+              <Search className="w-5 h-5 mx-auto mb-4 text-[#9AA0A6]/30" />
               <h3 className="text-lg font-medium mb-2">No channels found</h3>
-              <p className="text-muted-foreground">
+              <p className="text-foreground/70">
                 Try adjusting your search or filter criteria
               </p>
             </div>
@@ -282,27 +282,24 @@ function ChannelCard({
       whileTap={{ scale: 0.98 }}
       transition={{ delay: index * 0.03 }}
       className={`
-        relative bg-card border rounded-3xl p-5 transition-all cursor-pointer group
+        relative bg-card border rounded-2xl p-5 transition-all cursor-pointer group shadow-xl
         ${isSubscribed 
           ? 'border-primary/50 bg-primary/5'
           : 'border-border hover:border-primary/30'
         }
+        focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none
       `}
-      style={{
-        boxShadow: '6px 6px 20px rgba(0,0,0,0.12), -3px -3px 12px rgba(255,255,255,0.04)',
-      }}
       onClick={onNavigate}
-    whileHover={{ 
+      whileHover={{ 
         y: -4,
-        boxShadow: '10px 10px 28px rgba(0,0,0,0.16), -4px -4px 16px rgba(255,255,255,0.06)',
       }}
     >
       {/* Gradient border for subscribed channels */}
       {isSubscribed && (
-        <div className="absolute inset-0 rounded-3xl pointer-events-none border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-transparent" />
+        <div className="absolute inset-0 rounded-2xl pointer-events-none border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-transparent" />
       )}
       {/* {newThisWeek && newThisWeek > 0 && (
-        <div className="absolute -top-2 -right-2 flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
+        <div className="absolute -top-2 -right-2 flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
           <Sparkles className="w-3 h-3" />
           +{newThisWeek} new
         </div>
@@ -312,7 +309,7 @@ function ChannelCard({
         <div className={`p-3 rounded-lg transition-colors ${
           isSubscribed 
             ? 'bg-primary text-primary-foreground' 
-            : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'
+            : 'bg-muted text-foreground/70 group-hover:bg-primary/10 group-hover:text-primary'
         }`}>
           {iconMap[channel.icon] || <Cpu className="w-5 h-5" />}
         </div>
@@ -323,10 +320,10 @@ function ChannelCard({
             onToggle();
           }}
           className={`
-            p-2 rounded-full transition-all
+            p-2 rounded-full transition-all focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none
             ${isSubscribed 
               ? 'bg-primary text-primary-foreground' 
-              : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary'
+              : 'bg-muted text-foreground/70 hover:bg-primary/10 hover:text-primary'
             }
           `}
         >
@@ -334,17 +331,17 @@ function ChannelCard({
         </button>
       </div>
 
-      <h3 className="font-semibold mb-1 group-hover:text-primary transition-colors">
+      <h3 className="text-base font-semibold mb-1 group-hover:text-primary transition-colors">
         {channel.name}
       </h3>
-      <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+      <p className="text-base text-foreground/70 line-clamp-2 mb-4">
         {channel.description}
       </p>
 
       <div className="space-y-2">
         {/* Interview Questions */}
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground flex items-center gap-1">
+        <div className="flex items-center justify-between text-base">
+          <span className="text-foreground/70 flex items-center gap-1">
             <Eye className="w-3 h-3" />
             Interview
           </span>
@@ -353,8 +350,8 @@ function ChannelCard({
 
         {/* Test Questions */}
         {testCount > 0 && (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground flex items-center gap-1">
+          <div className="flex items-center justify-between text-base">
+            <span className="text-foreground/70 flex items-center gap-1">
               <Target className="w-3 h-3" />
               Micro Quiz
             </span>
@@ -364,8 +361,8 @@ function ChannelCard({
 
         {/* Progress */}
         {isSubscribed && progress > 0 && (
-          <div className="flex items-center justify-between text-xs pt-1 border-t border-border/50">
-            <span className="text-muted-foreground">Progress</span>
+          <div className="flex items-center justify-between text-base pt-1 border-t border-border/50">
+            <span className="text-foreground/70">Progress</span>
             <span className="text-primary font-semibold">{progress}%</span>
           </div>
         )}

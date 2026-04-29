@@ -8,7 +8,7 @@ import {
   BookOpen, Code, Database, Cpu, Layers, GitBranch, 
   Zap, Shield, BarChart3, Palette, ChevronLeft, ChevronRight, ChevronDown,
   Terminal, Server, Globe, Brain, FileCode, Copy, Check,
-  ExternalLink, Search, Menu, X, Home, Sparkles, Box
+  ExternalLink, Search, Menu, X, Home, Sparkles, Box, ArrowRight, Keyboard
 } from 'lucide-react';
 import { EnhancedMermaid } from '@/components/EnhancedMermaid';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -29,55 +29,92 @@ export default function Documentation() {
   const [activeSection, setActiveSection] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
 
-  // Close sidebar on section change (mobile)
+  const filteredSections = searchQuery.trim() === '' ? sections : sections.filter(s => 
+    s.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchFocused(true);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   useEffect(() => {
     setSidebarOpen(false);
   }, [activeSection]);
 
   return (
-    <AppLayout fullWidth>
+    <AppLayout>
       <SEOHead title="Documentation | Code Reels" description="Technical documentation, architecture overview, AI pipeline, API reference, and deployment guides for Code Reels." />
-    <div className="min-h-screen bg-background text-foreground pt-14 lg:pt-0 overflow-x-hidden">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
+    <div className="min-h-screen bg-white text-foreground pt-14 lg:pt-0 overflow-x-hidden">
+      {/* Breadcrumb overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/30 z-30 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+       <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <button 
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="lg:hidden p-2 hover:bg-[#21262d] rounded-lg transition-colors duration-150 ease-out cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="lg:hidden p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             >
-              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {sidebarOpen ? <X className="w-5 h-5 text-foreground/70" /> : <Menu className="w-5 h-5 text-foreground/70" />}
             </button>
             <Link href="/">
-              <a className="flex items-center gap-3 hover:opacity-80 transition-opacity duration-150 ease-out cursor-pointer">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#58a6ff] to-[#a371f7] flex items-center justify-center">
-                  <BookOpen className="w-5 h-5 text-white" />
+              <a className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+                 <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#4285f4] to-[#34a853] flex items-center justify-center">
+                  <BookOpen className="w-5 h-5 text-foreground" />
                 </div>
                 <div className="hidden sm:block">
-                  <div className="font-semibold text-foreground">Documentation</div>
-                  <div className="text-xs text-muted-foreground">Reel-LearnHub</div>
+                  <div className="font-medium text-foreground">Documentation</div>
+                  <div className="text-xs text-foreground/70 -mt-0.5">Reel-LearnHub</div>
                 </div>
               </a>
             </Link>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-[#21262d] rounded-lg border border-[#30363d]">
-              <Search className="w-4 h-4 text-[#8b949e]" />
+          <div className={
+            "relative flex items-center gap-2 px-4 h-[46px] bg-[#F1F3F4] dark:bg-[#303134] rounded-full transition-all duration-200 " +
+            (searchFocused ? "w-64 ring-2 ring-blue-500" : "w-48")
+          }>
+              <Search className="w-5 h-5 text-[#9AA0A6]" />
               <input
                 type="text"
-                placeholder="Search docs..."
+                placeholder="Search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-transparent text-sm w-40 focus:w-56 transition-all outline-none placeholder:text-[#6e7681]"
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                className="bg-transparent text-sm w-full focus-visible:outline-none placeholder:text-[#9AA0A6] text-foreground"
               />
-              <kbd className="text-[10px] text-[#6e7681] bg-[#161b22] px-1.5 py-0.5 rounded border border-[#30363d]">⌘K</kbd>
+              <div className="flex items-center gap-1">
+                <kbd className="text-xs text-foreground/60 bg-gray-200 px-1.5 py-0.5 rounded font-medium">⌘</kbd>
+                <kbd className="text-xs text-foreground/60 bg-gray-200 px-1.5 py-0.5 rounded font-medium">K</kbd>
+              </div>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 p-1 hover:bg-gray-200 rounded-full transition-colors"
+                >
+                  <X className="w-3 h-3 text-foreground/60" />
+                </button>
+              )}
             </div>
             <Link href="/">
-              <a className="flex items-center gap-2 px-3 py-1.5 text-sm text-[#8b949e] hover:text-white hover:bg-[#21262d] rounded-lg transition-colors duration-150 ease-out cursor-pointer min-h-[44px]">
+              <a className="flex items-center gap-2 px-3 py-2 text-sm text-foreground/70 hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
                 <Home className="w-4 h-4" />
-                <span className="hidden sm:inline">Back to App</span>
+                <span className="hidden sm:inline">Home</span>
               </a>
             </Link>
           </div>
@@ -87,55 +124,54 @@ export default function Documentation() {
       <div className="max-w-7xl mx-auto flex">
         {/* Sidebar */}
         <aside className={`
-          fixed lg:sticky top-16 left-0 z-40 h-[calc(100vh-4rem)] w-72 
-          bg-background lg:bg-transparent border-r border-border lg:border-0
-          transform transition-transform duration-300 ease-in-out
+          fixed lg:sticky top-16 left-0 z-40 h-[calc(100vh-4rem)] w-64 
+          bg-white lg:bg-transparent border-r border-gray-200 lg:border-0
+          transform transition-transform duration-200 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}>
-          <nav className="p-4 space-y-1 overflow-y-auto h-full">
-            <div className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider px-3 mb-3">
-              Documentation
+          <nav className="p-3 space-y-0.5 overflow-y-auto h-full">
+            <div className="text-xs font-medium text-foreground/60 uppercase tracking-wider px-3 mb-2">
+              Navigate
             </div>
-            {sections.map((section) => {
+            {filteredSections.map((section) => {
               const Icon = section.icon;
               const isActive = activeSection === section.id;
               return (
                 <button
                   key={section.id}
                   onClick={() => setActiveSection(section.id)}
-                  className={`
-                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 ease-out cursor-pointer min-h-[44px]
-                    ${isActive 
-                      ? 'bg-[#7c3aed]/20 text-white border border-[#7c3aed]/40' 
-                      : 'text-[#8b949e] hover:text-white hover:bg-[#161b22] border border-transparent'
-                    }
-                  `}
+                    className={`
+                      w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
+                      ${isActive 
+                        ? 'bg-blue-50 text-blue-700' 
+                        : 'text-foreground/70 hover:text-foreground hover:bg-gray-50'
+                      }
+                    `}
                 >
                   <div 
-                    className={`p-1.5 rounded-md transition-colors duration-150 ease-out ${isActive ? 'bg-[#7c3aed]/30' : ''}`}
-                    style={{ color: isActive ? '#7c3aed' : undefined }}
+                    className={`p-1.5 rounded-md transition-colors ${isActive ? 'bg-blue-100' : ''}`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-4 h-4" style={{ color: isActive ? '#1a73e8' : section.color }} />
                   </div>
-                  <span className="text-sm font-medium">{section.title}</span>
-                  {isActive && <ChevronRight className="w-4 h-4 ml-auto text-[#6e7681]" />}
+                  <span className="text-sm font-medium text-foreground">{section.title}</span>
+                  {isActive && <ArrowRight className="w-4 h-4 ml-auto text-foreground/60" />}
                 </button>
               );
             })}
             
             {/* Quick Links */}
-            <div className="pt-6 mt-6 border-t border-[#21262d]">
-              <div className="text-xs font-semibold text-[#8b949e] uppercase tracking-wider px-3 mb-3">
-                Quick Links
+            <div className="pt-4 mt-4 border-t border-gray-200">
+              <div className="text-xs font-medium text-foreground/60 uppercase tracking-wider px-3 mb-2">
+                Resources
               </div>
               <a href="https://github.com" target="_blank" rel="noopener" 
-                className="flex items-center gap-3 px-3 py-2 text-sm text-[#8b949e] hover:text-white rounded-lg hover:bg-[#161b22] transition-colors duration-150 ease-out cursor-pointer min-h-[44px]">
+                className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground/70 hover:text-foreground hover:bg-gray-50 rounded-lg transition-colors cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
                 <GitBranch className="w-4 h-4" />
-                <span>GitHub Repository</span>
-                <ExternalLink className="w-3 h-3 ml-auto" />
+                <span>GitHub</span>
+                <ExternalLink className="w-3 h-3 ml-auto text-foreground/60" />
               </a>
               <a href="/whats-new"
-                className="flex items-center gap-3 px-3 py-2 text-sm text-[#8b949e] hover:text-white rounded-lg hover:bg-[#161b22] transition-colors duration-150 ease-out cursor-pointer min-h-[44px]">
+                className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground/70 hover:text-foreground hover:bg-gray-50 rounded-lg transition-colors cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
                 <Sparkles className="w-4 h-4" />
                 <span>What's New</span>
               </a>
@@ -152,8 +188,42 @@ export default function Documentation() {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 min-w-0 px-4 lg:px-8 py-8 lg:py-12 pb-24">
+        <main className="flex-1 min-w-0 px-6 lg:px-10 py-6 lg:py-8 pb-24">
           <div className="max-w-4xl">
+            {/* Breadcrumbs */}
+            <nav className="flex items-center gap-2 text-sm mb-6 text-foreground/70">
+              <Link href="/" className="text-foreground/70 hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded p-0.5">
+                <Home className="w-4 h-4" />
+              </Link>
+              <ChevronRight className="w-4 h-4 text-foreground/60" />
+              <span className="text-foreground/70">Documentation</span>
+              <ChevronRight className="w-4 h-4 text-foreground/60" />
+              <span className="text-foreground font-medium">
+                {sections.find(s => s.id === activeSection)?.title}
+              </span>
+            </nav>
+
+            {/* Search Results Dropdown */}
+            {searchQuery && filteredSections.length > 0 && (
+               <div className="mb-6 p-3 bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="text-xs font-medium text-foreground/60 uppercase tracking-wider px-2 mb-2">
+                  Search Results
+                </div>
+                {filteredSections.map((section) => (
+                  <button
+                    key={section.id}
+                    onClick={() => {
+                      setActiveSection(section.id);
+                      setSearchQuery('');
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded text-left hover:bg-gray-50 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 text-foreground"
+                  >
+                    <section.icon className="w-4 h-4" style={{ color: section.color }} />
+                    <span className="text-sm text-foreground">{section.title}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             {activeSection === 'overview' && <OverviewSection />}
             {activeSection === 'ai-pipeline' && <AIPipelineSection />}
             {activeSection === 'database' && <DatabaseSection />}
@@ -171,7 +241,7 @@ export default function Documentation() {
                   {prevSection ? (
                     <button
                       onClick={() => setActiveSection(prevSection.id)}
-                      className="flex items-center gap-2 px-4 py-2 text-sm text-[#8b949e] hover:text-white hover:bg-[#21262d] rounded-lg transition-colors duration-150 ease-out cursor-pointer min-h-[44px]"
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground/70 hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors cursor-pointer min-h-[44px] font-medium focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                     >
                       <ChevronLeft className="w-4 h-4" />
                       {prevSection.title}
@@ -180,7 +250,7 @@ export default function Documentation() {
                   {nextSection ? (
                     <button
                       onClick={() => setActiveSection(nextSection.id)}
-                      className="flex items-center gap-2 px-4 py-2 text-sm text-[#8b949e] hover:text-white hover:bg-[#21262d] rounded-lg transition-colors duration-150 ease-out cursor-pointer min-h-[44px]"
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground/70 hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors cursor-pointer min-h-[44px] font-medium focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                     >
                       {nextSection.title}
                       <ChevronRight className="w-4 h-4" />
@@ -199,20 +269,20 @@ export default function Documentation() {
 
 // ============== SHARED COMPONENTS ==============
 
-function SectionHeader({ icon: Icon, title, description, color = '#58a6ff' }: { 
+function SectionHeader({ icon: Icon, title, description, color = '#4285f4' }: { 
   icon: any; title: string; description: string; color?: string 
 }) {
   return (
-    <div className="mb-10">
-      <div className="flex items-center gap-4 mb-3">
-        <div className="p-3 rounded-xl" style={{ backgroundColor: `${color}15` }}>
-          <Icon className="w-7 h-7" style={{ color }} />
+    <div className="mb-8">
+      <div className="flex items-center gap-5 mb-4">
+         <div className="p-3 rounded-xl" style={{ backgroundColor: `${color}15` }}>
+          <Icon className="w-7 h-7" style={{ color: color }} />
         </div>
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-white">{title}</h1>
+          <h1 className="text-2xl lg:text-3xl font-semibold text-foreground">{title}</h1>
         </div>
       </div>
-      <p className="text-lg text-[#8b949e] leading-relaxed max-w-prose">{description}</p>
+      <p className="text-base text-foreground/70 leading-relaxed max-w-prose">{description}</p>
     </div>
   );
 }
@@ -229,26 +299,26 @@ function CodeBlock({ code, language = 'typescript', title, copyable = true }: {
   };
 
   return (
-    <div className="rounded-xl overflow-hidden border border-[#30363d] my-6 group">
+     <div className="rounded-xl overflow-hidden border border-gray-200 my-6">
       {title && (
-        <div className="bg-[#161b22] px-4 py-2.5 border-b border-[#30363d] flex items-center justify-between">
+        <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FileCode className="w-4 h-4 text-[#8b949e]" />
-            <span className="text-sm text-[#8b949e] font-mono">{title}</span>
+            <Terminal className="w-4 h-4 text-foreground/60" />
+            <span className="text-sm text-foreground/70 font-medium font-mono">{title}</span>
           </div>
           {copyable && (
             <button 
               onClick={handleCopy}
-              className="p-1.5 hover:bg-[#30363d] rounded transition-colors duration-150 ease-out cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="p-1.5 hover:bg-gray-200 rounded transition-colors cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               title="Copy code"
             >
-              {copied ? <Check className="w-4 h-4 text-[#3fb950]" /> : <Copy className="w-4 h-4 text-[#6e7681]" />}
+              {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4 text-foreground/60" />}
             </button>
           )}
         </div>
       )}
-      <pre className="bg-[#0d1117] p-4 overflow-x-auto">
-        <code className={`language-${language} text-sm text-[#e6edf3] font-mono leading-relaxed`}>
+      <pre className="bg-[#1e1e1e] p-4 overflow-x-auto rounded-b-xl">
+        <code className={`language-${language} text-sm text-foreground/10 font-mono leading-relaxed`}>
           {code.trim()}
         </code>
       </pre>
@@ -260,70 +330,29 @@ function DiagramCard({ title, description, diagram }: { title: string; descripti
   const [expanded, setExpanded] = useState(true);
   
   return (
-    <div className="rounded-xl border border-[#30363d] bg-[#161b22]/50 overflow-hidden my-8">
+     <div className="rounded-xl border border-gray-200 bg-gray-50/50 overflow-hidden my-8">
       <button 
         onClick={() => setExpanded(!expanded)}
-        className="w-full p-4 flex items-center justify-between hover:bg-[#21262d]/50 transition-colors duration-150 ease-out cursor-pointer min-h-[44px]"
+        className="w-full p-4 flex items-center justify-between hover:bg-gray-100 transition-colors cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
       >
         <div className="text-left">
-          <h3 className="font-semibold text-white flex items-center gap-2">
-            <Box className="w-4 h-4 text-[#58a6ff]" />
+          <h3 className="font-semibold text-foreground flex items-center gap-2">
+            <Box className="w-4 h-4 text-blue-600" />
             {title}
           </h3>
-          <p className="text-sm text-[#8b949e] mt-1">{description}</p>
+          <p className="text-sm text-foreground/70 mt-1">{description}</p>
         </div>
-        <ChevronDown className={`w-5 h-5 text-[#6e7681] transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-5 h-5 text-foreground/60 transition-transform ${expanded ? 'rotate-180' : ''}`} />
       </button>
       {expanded && (
-        <div className="p-4 pt-0 border-t border-[#30363d]/50">
-          <div className="bg-[#0d1117] rounded-lg p-4 overflow-x-auto">
+        <div className="p-4 pt-0 border-t border-gray-200">
+          <div className="bg-gray-50 rounded-lg p-4 overflow-x-auto">
             <EnhancedMermaid chart={diagram} />
           </div>
         </div>
       )}
     </div>
   );
-}
-
-function FeatureGrid({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 my-6">{children}</div>;
-}
-
-function FeatureCard({ icon: Icon, title, description, color = '#58a6ff' }: { 
-  icon: any; title: string; description: string; color?: string 
-}) {
-  return (
-    <div className="p-4 rounded-xl border border-[#30363d] bg-[#161b22]/30 hover:bg-[#161b22] hover:border-[#58a6ff]/30 transition-all duration-150 ease-out group">
-      <div className="p-2 rounded-lg w-fit mb-3" style={{ backgroundColor: `${color}15` }}>
-        <Icon className="w-5 h-5" style={{ color }} />
-      </div>
-      <h4 className="font-semibold text-white mb-1 group-hover:text-[#58a6ff] transition-colors duration-150 ease-out">{title}</h4>
-      <p className="text-sm text-[#8b949e] leading-relaxed">{description}</p>
-    </div>
-  );
-}
-
-function InfoBox({ type = 'info', title, children }: { type?: 'info' | 'warning' | 'success' | 'tip'; title: string; children: React.ReactNode }) {
-  const styles = {
-    info: { bg: 'bg-[#58a6ff]/10', border: 'border-[#58a6ff]/30', icon: '💡', color: 'text-[#58a6ff]' },
-    warning: { bg: 'bg-[#d29922]/10', border: 'border-[#d29922]/30', icon: '⚠️', color: 'text-[#d29922]' },
-    success: { bg: 'bg-[#3fb950]/10', border: 'border-[#3fb950]/30', icon: '✅', color: 'text-[#3fb950]' },
-    tip: { bg: 'bg-[#a371f7]/10', border: 'border-[#a371f7]/30', icon: '🎯', color: 'text-[#a371f7]' },
-  };
-  const s = styles[type];
-  
-  return (
-    <div className={`${s.bg} ${s.border} border rounded-xl p-4 my-6`}>
-      <div className={`font-semibold ${s.color} mb-2 flex items-center gap-2`}>
-        <span>{s.icon}</span> {title}
-      </div>
-      <div className="text-sm text-[#8b949e] leading-relaxed max-w-prose">{children}</div>
-    </div>
-  );
-}
-
-function SectionDivider() {
-  return <hr className="border-[#21262d] my-10" />;
 }
 
 // ============== OVERVIEW SECTION ==============
@@ -379,8 +408,8 @@ graph TB
         diagram={architectureDiagram}
       />
       
-      <h2 className="text-xl font-semibold text-white mt-10 mb-4 flex items-center gap-2">
-        <Zap className="w-5 h-5 text-[#f1c40f]" />
+      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4 flex items-center gap-2">
+        <Zap className="w-5 h-5 text-amber-500" />
         Tech Stack
       </h2>
       
@@ -395,8 +424,8 @@ graph TB
       
       <SectionDivider />
       
-      <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-        <Shield className="w-5 h-5 text-[#3fb950]" />
+      <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+        <Shield className="w-5 h-5 text-green-600" />
         Design Principles
       </h2>
       
@@ -416,7 +445,7 @@ graph TB
       
       <SectionDivider />
       
-      <h2 className="text-xl font-semibold text-white mb-4">Project Structure</h2>
+      <h2 className="text-xl font-semibold text-foreground mb-4">Project Structure</h2>
       <CodeBlock
         title="Directory Layout"
         language="bash"
@@ -524,32 +553,32 @@ graph TB
         diagram={blogGraphDiagram}
       />
       
-      <h2 className="text-xl font-semibold text-white mt-10 mb-4">Pipeline Nodes</h2>
+      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">Pipeline Nodes</h2>
       
       <div className="space-y-4">
-        <div className="p-4 rounded-xl border border-[#30363d] bg-[#161b22]/30">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-[#1f6feb]/20 flex items-center justify-center text-[#58a6ff] font-mono text-sm">1</div>
-            <h4 className="font-semibold text-white">Find Real-World Case</h4>
-          </div>
-          <p className="text-sm text-[#8b949e] ml-11">Searches for compelling case studies from major tech companies. Validates source URLs and scores relevance (minimum 6/10 to proceed).</p>
-        </div>
+       <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
+         <div className="flex items-center gap-3 mb-3">
+           <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 font-mono text-sm">1</div>
+           <h4 className="font-semibold text-foreground">Find Real-World Case</h4>
+         </div>
+         <p className="text-sm text-foreground/70 ml-11">Searches for compelling case studies from major tech companies. Validates source URLs and scores relevance (minimum 6/10 to proceed).</p>
+       </div>
         
-        <div className="p-4 rounded-xl border border-[#30363d] bg-[#161b22]/30">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-[#238636]/20 flex items-center justify-center text-[#3fb950] font-mono text-sm">2</div>
-            <h4 className="font-semibold text-white">Generate Blog Content</h4>
-          </div>
-          <p className="text-sm text-[#8b949e] ml-11">Creates structured blog with introduction, sections, code examples, and conclusion. Uses RAG to find related questions for enrichment.</p>
-        </div>
+       <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
+         <div className="flex items-center gap-3 mb-3">
+           <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 font-mono text-sm">2</div>
+           <h4 className="font-semibold text-foreground">Generate Blog Content</h4>
+         </div>
+         <p className="text-sm text-foreground/70 ml-11">Creates structured blog with introduction, sections, code examples, and conclusion. Uses RAG to find related questions for enrichment.</p>
+       </div>
         
-        <div className="p-4 rounded-xl border border-[#30363d] bg-[#161b22]/30">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-[#a371f7]/20 flex items-center justify-center text-[#a371f7] font-mono text-sm">3</div>
-            <h4 className="font-semibold text-white">Generate Pixel Art</h4>
-          </div>
-          <p className="text-sm text-[#8b949e] ml-11">Auto-detects scene type from content and generates 16-bit pixel art SVG illustrations with CSS animations.</p>
-        </div>
+       <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
+         <div className="flex items-center gap-3 mb-3">
+           <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 font-mono text-sm">3</div>
+           <h4 className="font-semibold text-foreground">Generate Pixel Art</h4>
+         </div>
+         <p className="text-sm text-foreground/70 ml-11">Auto-detects scene type from content and generates 16-bit pixel art SVG illustrations with CSS animations.</p>
+       </div>
       </div>
       
       <DiagramCard
@@ -560,7 +589,7 @@ graph TB
       
       <SectionDivider />
       
-      <h2 className="text-xl font-semibold text-white mb-4">Available Graphs</h2>
+      <h2 className="text-xl font-semibold text-foreground mb-4">Available Graphs</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {[
@@ -571,11 +600,11 @@ graph TB
           { name: 'improvement-graph.js', desc: 'Content improvement suggestions' },
           { name: 'linkedin-graph.js', desc: 'LinkedIn post generation' },
         ].map(g => (
-          <div key={g.name} className="flex items-center gap-3 p-3 rounded-lg border border-[#30363d] bg-[#161b22]/30">
-            <FileCode className="w-4 h-4 text-[#8b949e] shrink-0" />
+          <div key={g.name} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50">
+            <FileCode className="w-4 h-4 text-foreground/60 shrink-0" />
             <div className="min-w-0">
-              <div className="font-mono text-sm text-[#58a6ff] truncate">{g.name}</div>
-              <div className="text-xs text-[#6e7681] truncate">{g.desc}</div>
+              <div className="font-mono text-sm text-blue-600 truncate">{g.name}</div>
+              <div className="text-xs text-foreground/70 truncate">{g.desc}</div>
             </div>
           </div>
         ))}
@@ -583,7 +612,7 @@ graph TB
       
       <SectionDivider />
       
-      <h2 className="text-xl font-semibold text-white mb-4">State Management</h2>
+      <h2 className="text-xl font-semibold text-foreground mb-4">State Management</h2>
       <CodeBlock
         title="LangGraph State Definition"
         language="typescript"
@@ -687,29 +716,29 @@ graph LR
       />
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <div className="p-5 rounded-xl border border-[#30363d] bg-[#161b22]/30">
+        <div className="p-5 rounded-xl border border-gray-200 bg-gray-50">
           <div className="flex items-center gap-3 mb-3">
-            <Database className="w-6 h-6 text-[#00e5ff]" />
-            <h3 className="font-semibold text-white">Turso (LibSQL)</h3>
+            <Database className="w-6 h-6 text-cyan-600" />
+            <h3 className="font-semibold text-foreground">Turso (LibSQL)</h3>
           </div>
-          <ul className="text-sm text-[#8b949e] space-y-2">
-            <li className="flex items-start gap-2"><span className="text-[#3fb950]">•</span> Edge-ready SQLite with global replication</li>
-            <li className="flex items-start gap-2"><span className="text-[#3fb950]">•</span> Drizzle ORM for type-safe queries</li>
-            <li className="flex items-start gap-2"><span className="text-[#3fb950]">•</span> Automatic schema migrations</li>
-            <li className="flex items-start gap-2"><span className="text-[#3fb950]">•</span> Read replicas for performance</li>
+          <ul className="text-sm text-foreground/70 space-y-2">
+            <li className="flex items-start gap-2"><span className="text-green-600">•</span> Edge-ready SQLite with global replication</li>
+            <li className="flex items-start gap-2"><span className="text-green-600">•</span> Drizzle ORM for type-safe queries</li>
+            <li className="flex items-start gap-2"><span className="text-green-600">•</span> Automatic schema migrations</li>
+            <li className="flex items-start gap-2"><span className="text-green-600">•</span> Read replicas for performance</li>
           </ul>
         </div>
         
-        <div className="p-5 rounded-xl border border-[#30363d] bg-[#161b22]/30">
+        <div className="p-5 rounded-xl border border-gray-200 bg-gray-50">
           <div className="flex items-center gap-3 mb-3">
-            <Cpu className="w-6 h-6 text-[#a371f7]" />
-            <h3 className="font-semibold text-white">Qdrant Vector DB</h3>
+            <Cpu className="w-6 h-6 text-purple-600" />
+            <h3 className="font-semibold text-foreground">Qdrant Vector DB</h3>
           </div>
-          <ul className="text-sm text-[#8b949e] space-y-2">
-            <li className="flex items-start gap-2"><span className="text-[#a371f7]">•</span> Semantic similarity search</li>
-            <li className="flex items-start gap-2"><span className="text-[#a371f7]">•</span> Duplicate detection (85% threshold)</li>
-            <li className="flex items-start gap-2"><span className="text-[#a371f7]">•</span> Related content discovery</li>
-            <li className="flex items-start gap-2"><span className="text-[#a371f7]">•</span> HNSW indexing for fast queries</li>
+          <ul className="text-sm text-foreground/70 space-y-2">
+            <li className="flex items-start gap-2"><span className="text-purple-600">•</span> Semantic similarity search</li>
+            <li className="flex items-start gap-2"><span className="text-purple-600">•</span> Duplicate detection (85% threshold)</li>
+            <li className="flex items-start gap-2"><span className="text-purple-600">•</span> Related content discovery</li>
+            <li className="flex items-start gap-2"><span className="text-purple-600">•</span> HNSW indexing for fast queries</li>
           </ul>
         </div>
       </div>
@@ -728,7 +757,7 @@ graph LR
       
       <SectionDivider />
       
-      <h2 className="text-xl font-semibold text-white mb-4">Usage Examples</h2>
+        <h2 className="text-xl font-semibold text-foreground mb-4">Usage Examples</h2>
       
       <CodeBlock
         title="Vector DB Service"
@@ -838,7 +867,7 @@ graph TB
         diagram={componentDiagram}
       />
       
-      <h2 className="text-xl font-semibold text-white mt-10 mb-4">Component Categories</h2>
+      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">Component Categories</h2>
       
       <FeatureGrid>
         <FeatureCard icon={Layers} title="Layout Components" description="Header, Sidebar, Footer - structural components that define page layout" color="#58a6ff" />
@@ -851,7 +880,7 @@ graph TB
       
       <SectionDivider />
       
-      <h2 className="text-xl font-semibold text-white mb-4">Custom Hook Pattern</h2>
+        <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">Custom Hook Pattern</h2>
       
       <CodeBlock
         title="useQuestion Hook"
@@ -887,7 +916,7 @@ export function useQuestion(id: string) {
 }`}
       />
       
-      <h2 className="text-xl font-semibold text-white mt-8 mb-4">Context Provider Pattern</h2>
+      <h2 className="text-xl font-semibold text-foreground mt-8 mb-4">Context Provider Pattern</h2>
       
       <CodeBlock
         title="Achievement Context"
@@ -931,7 +960,7 @@ export const useAchievements = () => {
       
       <SectionDivider />
       
-      <h2 className="text-xl font-semibold text-white mb-4">Styling Approach</h2>
+      <h2 className="text-xl font-semibold text-foreground mb-4">Styling Approach</h2>
       
       <InfoBox type="info" title="Tailwind + CSS Variables">
         We use Tailwind for utility classes combined with CSS custom properties for theming. This allows easy theme switching while maintaining Tailwind's productivity benefits.
@@ -1021,44 +1050,44 @@ graph LR
         diagram={flowDiagram}
       />
       
-      <h2 className="text-xl font-semibold text-white mt-10 mb-4">Scene Types (27 Total)</h2>
+      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">Scene Types (27 Total)</h2>
       
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-8">
         {sceneTypes.map((scene) => (
-          <div key={scene.name} className="p-3 rounded-lg bg-[#161b22]/50 border border-[#30363d] hover:border-[#58a6ff]/50 transition-colors">
+          <div key={scene.name} className="p-3 rounded-lg bg-gray-100 border border-gray-200 hover:border-blue-300 transition-colors">
             <div className="flex items-center gap-2 mb-1">
               <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: scene.color }} />
-              <span className="font-medium text-white text-sm">{scene.name}</span>
+              <span className="font-medium text-foreground text-sm">{scene.name}</span>
             </div>
-            <p className="text-xs text-[#6e7681]">{scene.keywords}</p>
+            <p className="text-xs text-foreground/70">{scene.keywords}</p>
           </div>
         ))}
-        <div className="p-3 rounded-lg bg-[#21262d]/50 border border-dashed border-[#30363d] flex items-center justify-center">
-          <span className="text-xs text-[#6e7681]">+15 more scenes</span>
+        <div className="p-3 rounded-lg bg-gray-50 border border-dashed border-gray-300 flex items-center justify-center">
+          <span className="text-xs text-foreground/70">+15 more scenes</span>
         </div>
       </div>
       
       <SectionDivider />
       
-      <h2 className="text-xl font-semibold text-white mb-4">Character System</h2>
+        <h2 className="text-xl font-semibold text-foreground mb-4">Character System</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="p-4 rounded-xl border border-[#30363d] bg-[#161b22]/30">
-          <h4 className="font-semibold text-white mb-2">Character Dimensions</h4>
-          <ul className="text-sm text-[#8b949e] space-y-1">
+        <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
+          <h4 className="font-semibold text-foreground mb-2">Character Dimensions</h4>
+          <ul className="text-sm text-foreground/70 space-y-1">
             <li>• Grid: 200×125 units (4px per unit)</li>
             <li>• Character: 12 units wide × 20 units tall</li>
             <li>• Minimum spacing: 30-40 units between characters</li>
             <li>• Floor position: y=100 (standing/sitting)</li>
           </ul>
         </div>
-        <div className="p-4 rounded-xl border border-[#30363d] bg-[#161b22]/30">
-          <h4 className="font-semibold text-white mb-2">Poses Available</h4>
-          <ul className="text-sm text-[#8b949e] space-y-1">
-            <li>• <code className="text-[#58a6ff]">stand</code> - Default standing pose</li>
-            <li>• <code className="text-[#58a6ff]">sit</code> - Sitting at desk/chair</li>
-            <li>• <code className="text-[#58a6ff]">wave</code> - Waving hand</li>
-            <li>• <code className="text-[#58a6ff]">cheer</code> - Arms raised celebrating</li>
+        <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
+          <h4 className="font-semibold text-foreground mb-2">Poses Available</h4>
+          <ul className="text-sm text-foreground/70 space-y-1">
+            <li>• <code className="text-blue-600">stand</code> - Default standing pose</li>
+            <li>• <code className="text-blue-600">sit</code> - Sitting at desk/chair</li>
+            <li>• <code className="text-blue-600">wave</code> - Waving hand</li>
+            <li>• <code className="text-blue-600">cheer</code> - Arms raised celebrating</li>
           </ul>
         </div>
       </div>
@@ -1093,7 +1122,7 @@ function person(cx, by, opts = {}) {
 }`}
       />
       
-      <h2 className="text-xl font-semibold text-white mt-8 mb-4">Scene Detection</h2>
+      <h2 className="text-xl font-semibold text-foreground mt-8 mb-4">Scene Detection</h2>
       
       <CodeBlock
         title="Keyword Matching Algorithm"
@@ -1122,7 +1151,7 @@ function detectScene(title, content = '') {
 }`}
       />
       
-      <h2 className="text-xl font-semibold text-white mt-8 mb-4">CSS Animations</h2>
+      <h2 className="text-xl font-semibold text-foreground mt-8 mb-4">CSS Animations</h2>
       
       <CodeBlock
         title="Character Animations"
@@ -1195,32 +1224,32 @@ sequenceDiagram
         diagram={flowDiagram}
       />
       
-      <h2 className="text-xl font-semibold text-white mt-10 mb-4">Endpoints</h2>
+      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">Endpoints</h2>
       
-      <div className="rounded-xl border border-[#30363d] overflow-hidden">
+      <div className="rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-[#161b22]">
+            <thead className="bg-gray-100">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-[#8b949e]">Method</th>
-                <th className="px-4 py-3 text-left font-medium text-[#8b949e]">Path</th>
-                <th className="px-4 py-3 text-left font-medium text-[#8b949e] hidden md:table-cell">Description</th>
+<th className="px-4 py-3 text-left font-medium text-foreground/70">Method</th>
+                 <th className="px-4 py-3 text-left font-medium text-foreground/70">Path</th>
+                 <th className="px-4 py-3 text-left font-medium text-foreground/70 hidden md:table-cell">Description</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#21262d]">
+            <tbody className="divide-y divide-gray-200">
               {endpoints.map((ep, i) => (
-                <tr key={i} className="hover:bg-[#161b22]/50">
+                <tr key={i} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded text-xs font-mono font-medium ${
-                      ep.method === 'GET' ? 'bg-[#238636]/20 text-[#3fb950]' :
-                      ep.method === 'POST' ? 'bg-[#1f6feb]/20 text-[#58a6ff]' :
-                      'bg-[#bf8700]/20 text-[#d29922]'
+                      ep.method === 'GET' ? 'bg-green-100 text-green-700' :
+                      ep.method === 'POST' ? 'bg-blue-100 text-blue-700' :
+                      'bg-amber-100 text-amber-700'
                     }`}>
                       {ep.method}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-mono text-[#e6edf3]">{ep.path}</td>
-                  <td className="px-4 py-3 text-[#8b949e] hidden md:table-cell">{ep.desc}</td>
+                  <td className="px-4 py-3 font-mono text-foreground">{ep.path}</td>
+                  <td className="px-4 py-3 text-foreground/70 hidden md:table-cell">{ep.desc}</td>
                 </tr>
               ))}
             </tbody>
@@ -1230,7 +1259,7 @@ sequenceDiagram
       
       <SectionDivider />
       
-      <h2 className="text-xl font-semibold text-white mb-4">Request/Response Examples</h2>
+      <h2 className="text-xl font-semibold text-foreground mb-4">Request/Response Examples</h2>
       
       <CodeBlock
         title="GET /api/questions/:id - Response"
@@ -1273,7 +1302,7 @@ sequenceDiagram
 }`}
       />
       
-      <h2 className="text-xl font-semibold text-white mt-8 mb-4">Error Handling</h2>
+      <h2 className="text-xl font-semibold text-foreground mt-8 mb-4">Error Handling</h2>
       
       <CodeBlock
         title="Error Response Format"
@@ -1343,28 +1372,28 @@ graph LR
         diagram={pipelineDiagram}
       />
       
-      <h2 className="text-xl font-semibold text-white mt-10 mb-4">Environment Variables</h2>
+      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4">Environment Variables</h2>
       
-      <div className="rounded-xl border border-[#30363d] overflow-hidden">
+      <div className="rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-[#161b22]">
+            <thead className="bg-gray-100">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-[#8b949e]">Variable</th>
-                <th className="px-4 py-3 text-left font-medium text-[#8b949e] hidden sm:table-cell">Description</th>
-                <th className="px-4 py-3 text-left font-medium text-[#8b949e]">Required</th>
+<th className="px-4 py-3 text-left font-medium text-foreground/70">Variable</th>
+                 <th className="px-4 py-3 text-left font-medium text-foreground/70 hidden sm:table-cell">Description</th>
+                 <th className="px-4 py-3 text-left font-medium text-foreground/70">Required</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#21262d]">
+            <tbody className="divide-y divide-gray-200">
               {envVars.map((env, i) => (
-                <tr key={i} className="hover:bg-[#161b22]/50">
-                  <td className="px-4 py-3 font-mono text-[#58a6ff] text-xs">{env.name}</td>
-                  <td className="px-4 py-3 text-[#8b949e] hidden sm:table-cell">{env.desc}</td>
+                <tr key={i} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 font-mono text-blue-600 text-xs">{env.name}</td>
+                  <td className="px-4 py-3 text-foreground/70 hidden sm:table-cell">{env.desc}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded text-xs ${
                       env.required 
-                        ? 'bg-[#da3633]/20 text-[#f85149]' 
-                        : 'bg-[#30363d] text-[#8b949e]'
+                        ? 'bg-red-100 text-red-700' 
+                        : 'bg-gray-100 text-foreground/70'
                     }`}>
                       {env.required ? 'Required' : 'Optional'}
                     </span>
@@ -1378,13 +1407,13 @@ graph LR
       
       <SectionDivider />
       
-      <h2 className="text-xl font-semibold text-white mb-4">Quick Start</h2>
+      <h2 className="text-xl font-semibold text-foreground mb-4">Quick Start</h2>
       
       <div className="space-y-4">
-        <div className="p-4 rounded-xl border border-[#30363d] bg-[#161b22]/30">
+        <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-[#3fb950]/20 flex items-center justify-center text-[#3fb950] font-mono text-sm">1</div>
-            <h4 className="font-semibold text-white">Clone & Install</h4>
+            <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 font-mono text-sm">1</div>
+            <h4 className="font-semibold text-foreground">Clone & Install</h4>
           </div>
           <CodeBlock
             language="bash"
@@ -1395,10 +1424,10 @@ pnpm install`}
           />
         </div>
         
-        <div className="p-4 rounded-xl border border-[#30363d] bg-[#161b22]/30">
+        <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-[#3fb950]/20 flex items-center justify-center text-[#3fb950] font-mono text-sm">2</div>
-            <h4 className="font-semibold text-white">Configure Environment</h4>
+            <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 font-mono text-sm">2</div>
+            <h4 className="font-semibold text-foreground">Configure Environment</h4>
           </div>
           <CodeBlock
             language="bash"
@@ -1408,10 +1437,10 @@ pnpm install`}
           />
         </div>
         
-        <div className="p-4 rounded-xl border border-[#30363d] bg-[#161b22]/30">
+        <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-[#3fb950]/20 flex items-center justify-center text-[#3fb950] font-mono text-sm">3</div>
-            <h4 className="font-semibold text-white">Start Development</h4>
+            <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 font-mono text-sm">3</div>
+            <h4 className="font-semibold text-foreground">Start Development</h4>
           </div>
           <CodeBlock
             language="bash"
@@ -1424,7 +1453,7 @@ pnpm install`}
       
       <SectionDivider />
       
-      <h2 className="text-xl font-semibold text-white mb-4">Available Scripts</h2>
+      <h2 className="text-xl font-semibold text-foreground mb-4">Available Scripts</h2>
       
       <CodeBlock
         title="package.json scripts"

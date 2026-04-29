@@ -65,18 +65,18 @@ interface QuestionCardProps {
 const sizeClasses: Record<QuestionCardSize, { padding: string; title: string; meta: string }> = {
   sm: {
     padding: 'px-3 py-2',
-    title: 'text-sm sm:text-base',
-    meta: 'text-[9px] sm:text-[10px]'
+    title: 'text-base sm:text-base',
+    meta: 'text-xs sm:text-xs'
   },
   md: {
     padding: 'px-3 sm:px-4 lg:px-6 py-3 sm:py-4',
     title: 'text-base sm:text-lg lg:text-xl',
-    meta: 'text-[10px] sm:text-xs'
+    meta: 'text-xs sm:text-xs'
   },
   lg: {
     padding: 'px-4 sm:px-6 lg:px-8 py-4 sm:py-6',
     title: 'text-lg sm:text-xl lg:text-2xl',
-    meta: 'text-xs sm:text-sm'
+    meta: 'text-xs sm:text-base'
   }
 };
 
@@ -218,19 +218,19 @@ export function QuestionCard({
       {(showProgress || showDifficulty || showCompleted || showBookmark || showQuestionId || showHistory || badge) && (
         <div className="flex items-center justify-between mb-3 sm:mb-4">
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-            {/* Question ID - Desktop only */}
+             {/* Question ID - Desktop only */}
             {showQuestionId && (
               <div className="hidden lg:flex items-center gap-1 px-2 py-1 bg-muted/50 border border-border rounded-md">
                 <Hash className="w-3 h-3 text-primary" />
-                <span className={`font-mono text-muted-foreground ${sizeConfig.meta}`}>{question.id}</span>
+                <span className={`font-mono text-foreground/70 ${sizeConfig.meta}`}>{question.id}</span>
               </div>
             )}
 
-            {/* Progress pill */}
+             {/* Progress pill */}
             {showProgress && questionNumber && totalQuestions && (
-              <div className="flex items-center gap-1 px-2 py-1 bg-muted rounded-md">
-                <span className={`font-medium text-muted-foreground ${sizeConfig.meta}`}>
-                  {questionNumber}<span className="text-muted-foreground/50">/</span>{totalQuestions}
+              <div className="flex items-center gap-1 px-2 py-1 bg-muted/50 rounded-md">
+                <span className={`font-medium text-foreground/70 ${sizeConfig.meta}`}>
+                  {questionNumber}<span className="text-foreground/50">/</span>{totalQuestions}
                 </span>
               </div>
             )}
@@ -275,21 +275,21 @@ export function QuestionCard({
             )}
 
             {/* Bookmark button */}
-            {showBookmark && onToggleMark && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleMark();
-                }}
-                className={`p-1.5 rounded-md transition-colors ${
-                  isMarked
-                    ? 'bg-primary/10 text-primary border border-primary/20'
-                    : 'bg-muted text-muted-foreground hover:text-primary'
-                }`}
-              >
-                <Bookmark className={`w-4 h-4 ${isMarked ? 'fill-current' : ''}`} />
-              </button>
-            )}
+        {showBookmark && onToggleMark && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleMark();
+            }}
+            className={`p-1.5 rounded-md transition-colors ${
+              isMarked
+                ? 'bg-primary/10 text-primary border border-primary/20'
+                : 'bg-muted/50 text-foreground/70 hover:text-primary'
+            }`}
+          >
+            <Bookmark className={`w-4 h-4 ${isMarked ? 'fill-current' : ''}`} />
+          </button>
+        )}
           </div>
         </div>
       )}
@@ -300,7 +300,7 @@ export function QuestionCard({
         {/* Companies */}
         {showCompanies && question.companies && question.companies.length > 0 && (
           <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-            <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
+            <Building2 className="w-3.5 h-3.5 text-foreground/70" />
             {question.companies.map((company, idx) => (
               <span key={idx} className={`px-2 py-0.5 bg-blue-500/10 text-blue-500 font-medium rounded-full ${sizeConfig.meta}`}>
                 {company}
@@ -319,7 +319,7 @@ export function QuestionCard({
         {/* Sub-channel */}
         {showSubChannel && question.subChannel && (
           <div className="mt-2">
-            <span className={`text-muted-foreground uppercase tracking-wider font-medium ${sizeConfig.meta}`}>
+            <span className={`text-foreground/70 uppercase tracking-wider font-medium ${sizeConfig.meta}`}>
               {question.subChannel}
             </span>
           </div>
@@ -329,12 +329,12 @@ export function QuestionCard({
         {showTags && question.tags && question.tags.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {question.tags.slice(0, 5).map(tag => (
-              <span key={tag} className={`px-1.5 py-0.5 bg-muted font-mono text-muted-foreground rounded border border-border ${sizeConfig.meta}`}>
+              <span key={tag} className={`px-1.5 py-0.5 bg-muted font-mono text-foreground/70 rounded border border-border ${sizeConfig.meta}`}>
                 {formatTag(tag)}
               </span>
             ))}
             {question.tags.length > 5 && (
-              <span className={`text-muted-foreground py-0.5 ${sizeConfig.meta}`}>+{question.tags.length - 5}</span>
+              <span className={`text-foreground/70 py-0.5 ${sizeConfig.meta}`}>+{question.tags.length - 5}</span>
             )}
           </div>
         )}
@@ -421,12 +421,12 @@ export function CompactQuestionCard({
               <Check className="w-3.5 h-3.5 text-green-500" />
             )}
           </div>
-          <h3 className="font-semibold text-sm line-clamp-2 mb-1">
-            {question.question}
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            {question.subChannel}
-          </p>
+           <h3 className="font-semibold text-base line-clamp-2 mb-1">
+             {question.question}
+           </h3>
+           <p className="text-xs text-foreground/70">
+             {question.subChannel}
+           </p>
         </div>
         <div className="flex items-center gap-1">
           {showHistory && question.id && (
@@ -436,17 +436,17 @@ export function CompactQuestionCard({
               size="sm"
             />
           )}
-          {onToggleMark && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleMark();
-              }}
-              className={`p-1 rounded ${isMarked ? 'text-primary' : 'text-muted-foreground'}`}
-            >
-              <Bookmark className={`w-4 h-4 ${isMarked ? 'fill-current' : ''}`} />
-            </button>
-          )}
+           {onToggleMark && (
+             <button
+               onClick={(e) => {
+                 e.stopPropagation();
+                 onToggleMark();
+               }}
+               className={`p-1 rounded ${isMarked ? 'text-primary' : 'text-foreground/70'}`}
+             >
+               <Bookmark className={`w-4 h-4 ${isMarked ? 'fill-current' : ''}`} />
+             </button>
+           )}
         </div>
       </div>
     </motion.div>

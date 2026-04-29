@@ -25,9 +25,9 @@ const iconMap: Record<string, React.ReactNode> = {
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  frontend: '#f97316', backend: '#3b82f6', fullstack: '#8b5cf6',
+  frontend: '#f97316', backend: '#3b82f6', fullstack: '#4285F4',
   mobile: '#10b981', devops: '#f59e0b', 'data-engineer': '#06b6d4',
-  'ml-engineer': '#ec4899', security: '#ef4444', architect: '#a78bfa',
+  'ml-engineer': '#ec4899', security: '#EA4335', architect: '#8ab4f8',
 };
 
 const STATS = [
@@ -156,7 +156,7 @@ export function Onboarding() {
           <div className="hidden sm:flex items-center gap-1.5 text-sm">
             {['Role', 'Channels'].map((label, i) => (
               <div key={label} className="flex items-center gap-1.5">
-                <span className={`flex items-center gap-1 px-2.5 py-1 rounded-full font-semibold tracking-tight transition-all ${
+                <span className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-semibold tracking-tight transition-all ${
                   i < stepNum ? 'text-emerald-400' : i === stepNum ? 'text-white' : 'text-white/25'
                 }`}>
                   {i < stepNum ? <Check className="w-3 h-3" /> : <span className="w-3.5 h-3.5 rounded-full border flex items-center justify-center text-[9px]"

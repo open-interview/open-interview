@@ -248,9 +248,9 @@ export default function CertificationExam() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <Award className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+          <Award className="w-16 h-16 mx-auto mb-4 text-foreground/30" />
           <h2 className="text-xl font-semibold mb-2">Certification not found</h2>
-          <p className="text-muted-foreground text-sm">Redirecting to home...</p>
+          <p className="text-foreground/70 text-base">Redirecting to home...</p>
         </div>
       </div>
     );
@@ -260,16 +260,16 @@ export default function CertificationExam() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <AlertCircle className="w-16 h-16 mx-auto mb-4 text-amber-500" />
+          <AlertCircle className="w-16 h-16 mx-auto mb-4 text-foreground/70" />
           <h2 className="text-xl font-semibold mb-2">Questions Coming Soon</h2>
-          <p className="text-muted-foreground mb-4">
-            We're preparing certification-specific questions for {certification.name}. 
-            In the meantime, try the general practice mode.
-          </p>
-          <button 
-            onClick={() => setLocation(`/certification/${certificationId}`)}
-            className="min-h-[44px] px-6 py-2 bg-gradient-to-r from-primary to-primary text-primary-foreground rounded-lg font-medium cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90"
-          >
+<p className="text-foreground/70 mb-4 text-base">
+             We're preparing certification-specific questions for {certification.name}.
+             In the meantime, try the general practice mode.
+           </p>
+<button
+             onClick={() => setLocation(`/certification/${certificationId}`)}
+             className="min-h-[44px] px-6 py-2 bg-gradient-to-r from-primary to-primary text-primary-foreground rounded-2xl font-medium cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
+           >
             Go to Practice Mode
           </button>
         </div>
@@ -386,10 +386,10 @@ function SetupScreen({
       >
         {/* Header */}
         <div className="text-center mb-8">
-          <button
-            onClick={onBack}
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 min-h-[44px] cursor-pointer transition-colors duration-150 ease-out"
-          >
+<button
+             onClick={onBack}
+             className="inline-flex items-center gap-2 text-foreground/70 hover:text-foreground mb-4 min-h-[44px] cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
+           >
             <ArrowLeft className="w-4 h-4" />
             Back to certification
           </button>
@@ -399,30 +399,30 @@ function SetupScreen({
           </div>
           
           <h1 className="text-2xl font-bold mb-2">{certification.name}</h1>
-          <p className="text-muted-foreground">{certification.provider}</p>
+          <p className="text-foreground/70">{certification.provider}</p>
         </div>
 
-        {/* Exam Info */}
-        {examConfig && (
-          <div className="bg-muted/50 border border-border rounded-xl p-4 mb-6">
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
+{/* Exam Info */}
+         {examConfig && (
+           <div className="bg-muted/50 border border-border rounded-2xl p-4 mb-6">
+             <h3 className="font-semibold mb-3 flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-primary" />
               Exam Details
             </h3>
-            <div className="grid grid-cols-3 gap-4 text-sm">
-              <div>
-                <div className="text-muted-foreground">Questions</div>
-                <div className="font-semibold">{examConfig.totalQuestions}</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground">Time Limit</div>
-                <div className="font-semibold">{examConfig.timeLimit} min</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground">Passing</div>
-                <div className="font-semibold">{examConfig.passingScore}%</div>
-              </div>
-            </div>
+<div className="grid grid-cols-3 gap-4 text-base">
+               <div>
+                 <div className="text-foreground/70">Questions</div>
+                 <div className="font-semibold">{examConfig.totalQuestions}</div>
+               </div>
+               <div>
+                 <div className="text-foreground/70">Time Limit</div>
+                 <div className="font-semibold">{examConfig.timeLimit} min</div>
+               </div>
+               <div>
+                 <div className="text-foreground/70">Passing</div>
+                 <div className="font-semibold">{examConfig.passingScore}%</div>
+               </div>
+             </div>
           </div>
         )}
 
@@ -430,74 +430,74 @@ function SetupScreen({
         <div className="space-y-3 mb-6">
           <h3 className="font-semibold">Practice Mode</h3>
           
-          <button
-            onClick={() => setExamMode('practice')}
-            className={`w-full p-4 rounded-xl border-2 text-left transition-all duration-150 ease-out cursor-pointer min-h-[44px] ${
-              examMode === 'practice' 
-                ? 'border-primary bg-gradient-to-r from-primary/5 to-primary/5' 
-                : 'border-border hover:border-primary/50'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                examMode === 'practice' ? 'bg-gradient-to-r from-primary to-primary text-foreground' : 'bg-muted'
-              }`}>
-                <Lightbulb className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="font-medium">Learning Mode</div>
-                <div className="text-sm text-muted-foreground">See explanations after each answer</div>
-              </div>
-            </div>
+<button
+             onClick={() => setExamMode('practice')}
+             className={`w-full p-4 rounded-2xl border-2 text-left transition-all duration-150 ease-out cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${
+               examMode === 'practice'
+                 ? 'border-primary bg-gradient-to-r from-primary/5 to-primary/5'
+                 : 'border-border hover:border-primary/50'
+             }`}
+           >
+<div className="flex items-center gap-3">
+               <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
+                 examMode === 'practice' ? 'bg-gradient-to-r from-primary to-primary text-primary-foreground' : 'bg-muted'
+               }`}>
+                 <Lightbulb className="w-5 h-5" />
+               </div>
+               <div>
+                 <div className="font-medium">Learning Mode</div>
+                 <div className="text-base text-foreground/70">See explanations after each answer</div>
+               </div>
+             </div>
           </button>
 
-          <button
-            onClick={() => setExamMode('timed')}
-            className={`w-full p-4 rounded-xl border-2 text-left transition-all duration-150 ease-out cursor-pointer min-h-[44px] ${
-              examMode === 'timed' 
-                ? 'border-primary bg-gradient-to-r from-primary/5 to-primary/5' 
-                : 'border-border hover:border-primary/50'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                examMode === 'timed' ? 'bg-gradient-to-r from-primary to-primary text-foreground' : 'bg-muted'
-              }`}>
-                <Clock className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="font-medium">Exam Simulation</div>
-                <div className="text-sm text-muted-foreground">Timed test, results at the end</div>
-              </div>
-            </div>
+<button
+             onClick={() => setExamMode('timed')}
+             className={`w-full p-4 rounded-2xl border-2 text-left transition-all duration-150 ease-out cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${
+               examMode === 'timed'
+                 ? 'border-primary bg-gradient-to-r from-primary/5 to-primary/5'
+                 : 'border-border hover:border-primary/50'
+             }`}
+           >
+<div className="flex items-center gap-3">
+               <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
+                 examMode === 'timed' ? 'bg-gradient-to-r from-primary to-primary text-primary-foreground' : 'bg-muted'
+               }`}>
+                 <Clock className="w-5 h-5" />
+               </div>
+               <div>
+                 <div className="font-medium">Exam Simulation</div>
+                 <div className="text-base text-foreground/70">Timed test, results at the end</div>
+               </div>
+             </div>
           </button>
         </div>
 
         {/* Question Count */}
         <div className="mb-8">
           <h3 className="font-semibold mb-3">Questions ({totalQuestions} available)</h3>
-          <div className="flex gap-2">
-            {[5, 10, 15, 20].filter(n => n <= totalQuestions).map(count => (
-              <button
-                key={count}
-                onClick={() => setQuestionCount(count)}
-                className={`flex-1 py-2 rounded-lg font-medium transition-all duration-150 ease-out cursor-pointer min-h-[44px] ${
-                  questionCount === count
-                    ? 'bg-gradient-to-r from-primary to-primary text-primary-foreground'
-                    : 'bg-muted hover:bg-muted/80'
-                }`}
-              >
-                {count}
-              </button>
-            ))}
-          </div>
+<div className="flex gap-2">
+             {[5, 10, 15, 20].filter(n => n <= totalQuestions).map(count => (
+               <button
+                 key={count}
+                 onClick={() => setQuestionCount(count)}
+                 className={`flex-1 py-2 rounded-2xl font-medium transition-all duration-150 ease-out cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${
+                   questionCount === count
+                     ? 'bg-gradient-to-r from-primary to-primary text-primary-foreground'
+                     : 'bg-muted hover:bg-muted/80'
+                 }`}
+               >
+                 {count}
+               </button>
+             ))}
+           </div>
         </div>
 
         {/* Start Button */}
-        <button
-          onClick={onStart}
-          className="w-full min-h-[44px] py-4 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-xl font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity duration-150 ease-out cursor-pointer"
-        >
+<button
+           onClick={onStart}
+           className="w-full min-h-[40px] py-2.5 h-10 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-lg font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity duration-150 ease-out cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none text-sm shadow-none"
+         >
           <Zap className="w-5 h-5" />
           Start Practice
         </button>
@@ -570,28 +570,28 @@ function ActiveExam({
             className="fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setShowExitConfirm(false)}
           >
-            <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              className="bg-muted/50 border border-border rounded-2xl w-full max-w-sm p-5"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="text-center">
-                <Home className="w-12 h-12 mx-auto mb-3 text-amber-500" />
-                <h3 className="font-bold mb-2">Exit Exam?</h3>
-                <p className="text-sm text-muted-foreground mb-4">Your progress will be saved. You can resume later.</p>
+<motion.div
+               initial={{ scale: 0.9 }}
+               animate={{ scale: 1 }}
+               exit={{ scale: 0.9 }}
+               className="bg-muted/50 border border-border rounded-2xl w-full max-w-sm p-5 shadow-xl"
+               onClick={e => e.stopPropagation()}
+             >
+               <div className="text-center">
+                 <Home className="w-12 h-12 mx-auto mb-3 text-foreground/70" />
+                 <h3 className="font-bold mb-2">Exit Exam?</h3>
+                 <p className="text-base text-foreground/70 mb-4">Your progress will be saved. You can resume later.</p>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowExitConfirm(false)}
-                    className="flex-1 min-h-[44px] py-2.5 bg-muted rounded-xl font-medium cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80"
-                  >
+<button
+                     onClick={() => setShowExitConfirm(false)}
+                     className="flex-1 min-h-[44px] py-2.5 bg-muted rounded-2xl font-medium cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
+                   >
                     Continue
                   </button>
-                  <button
-                    onClick={onExit}
-                    className="flex-1 min-h-[44px] py-2.5 bg-amber-500/20 text-amber-500 rounded-xl font-medium cursor-pointer transition-colors duration-150 ease-out hover:bg-amber-500/30"
-                  >
+<button
+                     onClick={onExit}
+                     className="flex-1 min-h-[44px] py-2.5 bg-foreground/10 text-foreground/70 rounded-2xl font-medium cursor-pointer transition-colors duration-150 ease-out hover:bg-foreground/20 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
+                   >
                     Exit
                   </button>
                 </div>
@@ -602,39 +602,39 @@ function ActiveExam({
       </AnimatePresence>
 
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border shadow-lg shadow-primary/5">
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border shadow-xl">
         <div className="max-w-4xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowExitConfirm(true)}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-muted rounded-lg transition-colors duration-150 ease-out cursor-pointer"
-                title="Exit and save progress"
-              >
-                <Home className="w-4 h-4 text-muted-foreground" />
-              </button>
-              <span className="text-sm font-medium text-muted-foreground">
-                {certification.name}
-              </span>
+<button
+                 onClick={() => setShowExitConfirm(true)}
+                 className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-muted rounded-2xl transition-colors duration-150 ease-out cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
+                 title="Exit and save progress"
+               >
+                 <Home className="w-4 h-4 text-foreground/70" />
+               </button>
+               <span className="text-base font-medium text-foreground/70">
+                 {certification.name}
+               </span>
             </div>
 
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowNav(!showNav)}
-                className="min-h-[44px] px-3 py-1.5 bg-muted rounded-lg text-sm font-medium cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80"
-              >
+<button
+                 onClick={() => setShowNav(!showNav)}
+                 className="min-h-[44px] px-3 py-1.5 bg-muted rounded-2xl text-base font-medium cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
+               >
                 {currentIndex + 1}/{totalQuestions}
               </button>
             </div>
           </div>
 
           {/* Progress bar */}
-          <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-primary to-primary transition-all"
-              style={{ width: `${((currentIndex + 1) / totalQuestions) * 100}%` }}
-            />
-          </div>
+<div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
+             <div
+               className="h-full bg-gradient-to-r from-primary to-primary transition-all"
+               style={{ width: `${((currentIndex + 1) / totalQuestions) * 100}%` }}
+             />
+           </div>
         </div>
       </header>
 
@@ -648,13 +648,13 @@ function ActiveExam({
             className="fixed inset-0 z-50 bg-background/60 backdrop-blur-sm"
             onClick={() => setShowNav(false)}
           >
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              className="absolute bottom-0 left-0 right-0 bg-muted/50 rounded-t-2xl p-4 max-h-[60vh] overflow-y-auto"
-              onClick={e => e.stopPropagation()}
-            >
+<motion.div
+               initial={{ y: '100%' }}
+               animate={{ y: 0 }}
+               exit={{ y: '100%' }}
+               className="absolute bottom-0 left-0 right-0 bg-muted/50 rounded-t-2xl p-4 max-h-[60vh] overflow-y-auto shadow-xl"
+               onClick={e => e.stopPropagation()}
+             >
               <div className="text-center mb-4">
                 <div className="w-12 h-1 bg-muted rounded-full mx-auto mb-3" />
                 <h3 className="font-semibold">Question Navigator</h3>
@@ -667,42 +667,42 @@ function ActiveExam({
                   const isFlag = flaggedQuestions.has(i);
                   
                   return (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        onGoToQuestion(i);
-                        setShowNav(false);
-                      }}
-                      className={`relative aspect-square rounded-lg font-medium text-sm transition-all duration-150 ease-out cursor-pointer min-h-[44px] ${
-                        isCurrent
-                          ? 'bg-gradient-to-r from-primary to-primary text-primary-foreground'
-                          : answer
-                          ? answer.isCorrect
-                            ? 'bg-green-500/20 text-green-500'
-                            : 'bg-red-500/20 text-red-500'
-                          : 'bg-muted hover:bg-muted/80'
-                      }`}
-                    >
+<button
+                       key={i}
+                       onClick={() => {
+                         onGoToQuestion(i);
+                         setShowNav(false);
+                       }}
+                       className={`relative aspect-square rounded-2xl font-medium text-base transition-all duration-150 ease-out cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${
+                         isCurrent
+                           ? 'bg-gradient-to-r from-primary to-primary text-primary-foreground'
+                           : answer
+                           ? answer.isCorrect
+                             ? 'bg-green-500/20 text-green-500'
+                             : 'bg-red-500/20 text-red-500'
+                           : 'bg-muted hover:bg-muted/80'
+                       }`}
+                     >
                       {i + 1}
                       {isFlag && (
-                        <Flag className="absolute top-0.5 right-0.5 w-3 h-3 text-amber-500" />
+                        <Flag className="absolute top-0.5 right-0.5 w-3 h-3 text-foreground/70" />
                       )}
                     </button>
                   );
                 })}
               </div>
 
-              <div className="mt-4 flex gap-4 text-xs text-muted-foreground justify-center">
-                <span className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded bg-green-500/20" /> Correct
-                </span>
-                <span className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded bg-red-500/20" /> Wrong
-                </span>
-                <span className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded bg-muted" /> Unanswered
-                </span>
-              </div>
+<div className="mt-4 flex gap-4 text-xs text-foreground/70 justify-center">
+                 <span className="flex items-center gap-1">
+                   <div className="w-3 h-3 rounded bg-green-500/20" /> Correct
+                 </span>
+                 <span className="flex items-center gap-1">
+                   <div className="w-3 h-3 rounded bg-red-500/20" /> Wrong
+                 </span>
+                 <span className="flex items-center gap-1">
+                   <div className="w-3 h-3 rounded bg-muted" /> Unanswered
+                 </span>
+               </div>
             </motion.div>
           </motion.div>
         )}
@@ -710,126 +710,126 @@ function ActiveExam({
 
       {/* Question Content */}
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-6">
-        {/* Domain & Difficulty */}
-        <div className="flex items-center gap-2 mb-4">
-          <span className="px-2 py-1 bg-gradient-to-r from-primary/10 to-primary/10 text-primary text-xs rounded-full font-medium">
-            {currentQuestion.domain.replace(/-/g, ' ')}
-          </span>
-          <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-            currentQuestion.difficulty === 'beginner' ? 'bg-green-500/10 text-green-500' :
-            currentQuestion.difficulty === 'intermediate' ? 'bg-yellow-500/10 text-yellow-500' :
-            'bg-red-500/10 text-red-500'
-          }`}>
+{/* Domain & Difficulty */}
+         <div className="flex items-center gap-2 mb-4">
+           <span className="px-3 py-1.5 bg-gradient-to-r from-primary/10 to-primary/10 text-primary text-xs rounded-full font-medium">
+             {currentQuestion.domain.replace(/-/g, ' ')}
+           </span>
+           <span className={`px-3 py-1.5 text-xs rounded-full font-medium ${
+             currentQuestion.difficulty === 'beginner' ? 'bg-green-500/10 text-green-500' :
+             currentQuestion.difficulty === 'intermediate' ? 'bg-yellow-500/10 text-yellow-500' :
+             'bg-red-500/10 text-red-500'
+           }`}>
             {currentQuestion.difficulty}
           </span>
-          <button
-            onClick={onToggleFlag}
-            className={`ml-auto min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-colors duration-150 ease-out cursor-pointer ${
-              isFlagged ? 'bg-amber-500/10 text-amber-500' : 'hover:bg-muted text-muted-foreground'
-            }`}
-          >
+<button
+             onClick={onToggleFlag}
+             className={`ml-auto min-h-[44px] min-w-[44px] flex items-center justify-center rounded-2xl transition-colors duration-150 ease-out cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${
+               isFlagged ? 'bg-foreground/10 text-foreground/70' : 'hover:bg-muted text-foreground/70'
+             }`}
+           >
             <Flag className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Question */}
-        <h2 className="text-lg font-medium mb-6 leading-relaxed">
-          {currentQuestion.question}
-        </h2>
+{/* Question */}
+         <h2 className="text-lg font-medium mb-6 leading-relaxed text-base">
+           {currentQuestion.question}
+         </h2>
 
-        {/* Options */}
-        <div className="space-y-3 mb-6">
-          {currentQuestion.options.map((option) => {
-            const isSelected = selectedOption === option.id;
-            const showResult = isAnswered && (examMode === 'practice' || examMode === 'review');
-            const isCorrect = option.isCorrect;
-            
-            return (
-              <button
-                key={option.id}
-                onClick={() => !isAnswered && onSelectOption(option.id)}
-                disabled={isAnswered && examMode !== 'review'}
-                className={`w-full p-4 text-left border-2 rounded-xl transition-all duration-150 ease-out min-h-[44px] ${
-                  showResult
-                    ? isCorrect
-                      ? 'border-green-500 bg-green-500/10'
-                      : isSelected
-                      ? 'border-red-500 bg-red-500/10'
-                      : 'border-border'
-                    : isSelected
-                    ? 'border-primary bg-gradient-to-r from-primary/5 to-primary/5'
-                    : 'border-border hover:border-primary/50'
-                } ${isAnswered && examMode !== 'review' ? 'cursor-default' : 'cursor-pointer'}`}
-              >
+{/* Options */}
+         <div className="space-y-3 mb-6">
+           {currentQuestion.options.map((option) => {
+             const isSelected = selectedOption === option.id;
+             const showResult = isAnswered && (examMode === 'practice' || examMode === 'review');
+             const isCorrect = option.isCorrect;
+
+             return (
+               <button
+                 key={option.id}
+                 onClick={() => !isAnswered && onSelectOption(option.id)}
+                 disabled={isAnswered && examMode !== 'review'}
+                 className={`w-full p-4 text-left border-2 rounded-2xl transition-all duration-150 ease-out min-h-[44px] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${
+                   showResult
+                     ? isCorrect
+                       ? 'border-green-500 bg-green-500/10'
+                       : isSelected
+                       ? 'border-red-500 bg-red-500/10'
+                       : 'border-border'
+                     : isSelected
+                     ? 'border-primary bg-gradient-to-r from-primary/5 to-primary/5'
+                     : 'border-border hover:border-primary/50'
+                 } ${isAnswered && examMode !== 'review' ? 'cursor-default' : 'cursor-pointer'}`}
+               >
                 <div className="flex items-start gap-3">
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                    showResult && isCorrect ? 'border-green-500 bg-green-500' :
-                    showResult && isSelected && !isCorrect ? 'border-red-500 bg-red-500' :
-                    isSelected ? 'border-primary bg-gradient-to-r from-primary to-primary' :
-                    'border-muted-foreground/30'
-                  }`}>
+<div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                     showResult && isCorrect ? 'border-green-500 bg-green-500' :
+                     showResult && isSelected && !isCorrect ? 'border-red-500 bg-red-500' :
+                     isSelected ? 'border-primary bg-gradient-to-r from-primary to-primary' :
+                     'border-foreground/30'
+                   }`}>
                     {showResult && isCorrect && <CheckCircle className="w-4 h-4 text-foreground" />}
                     {showResult && isSelected && !isCorrect && <XCircle className="w-4 h-4 text-foreground" />}
                     {!showResult && isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
                   </div>
-                  <span className="text-sm leading-relaxed">{option.text}</span>
+                  <span className="text-base leading-relaxed">{option.text}</span>
                 </div>
               </button>
             );
           })}
         </div>
 
-        {/* Explanation */}
-        <AnimatePresence>
-          {showExplanation && currentQuestion.explanation && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mb-6"
-            >
-              <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
-                <div className="flex items-start gap-3">
-                  <Lightbulb className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <div className="font-medium text-blue-500 mb-1">Explanation</div>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {currentQuestion.explanation}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+{/* Explanation */}
+         <AnimatePresence>
+           {showExplanation && currentQuestion.explanation && (
+             <motion.div
+               initial={{ opacity: 0, height: 0 }}
+               animate={{ opacity: 1, height: 'auto' }}
+               exit={{ opacity: 0, height: 0 }}
+               className="mb-6"
+             >
+               <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl">
+                 <div className="flex items-start gap-3">
+                   <Lightbulb className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                   <div>
+                     <div className="font-medium text-blue-500 mb-1">Explanation</div>
+                     <p className="text-base text-foreground/70 leading-relaxed">
+                       {currentQuestion.explanation}
+                     </p>
+                   </div>
+                 </div>
+               </div>
+             </motion.div>
+           )}
+         </AnimatePresence>
       </main>
 
       {/* Footer Navigation */}
-      <footer className="sticky bottom-0 bg-background/95 backdrop-blur-xl border-t border-border p-4 pb-safe shadow-lg shadow-primary/5">
+      <footer className="sticky bottom-0 bg-background/95 backdrop-blur-xl border-t border-border p-4 pb-safe shadow-xl">
         <div className="max-w-4xl mx-auto flex items-center justify-between pb-2">
-          <button
-            onClick={onPrev}
-            disabled={currentIndex === 0}
-            className="flex items-center gap-2 px-4 min-h-[44px] bg-muted rounded-lg disabled:opacity-50 cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80 disabled:cursor-default"
-          >
+<button
+             onClick={onPrev}
+             disabled={currentIndex === 0}
+             className="flex items-center gap-2 px-4 min-h-[44px] bg-muted rounded-2xl disabled:opacity-50 cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80 disabled:cursor-default focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
+           >
             <ChevronLeft className="w-5 h-5" />
             <span className="hidden sm:inline">Previous</span>
           </button>
 
-          {currentIndex === totalQuestions - 1 ? (
-            <button
-              onClick={onFinish}
-              className="flex items-center gap-2 px-6 min-h-[44px] bg-gradient-to-r from-primary to-primary text-primary-foreground rounded-lg font-medium cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90"
-            >
+{currentIndex === totalQuestions - 1 ? (
+             <button
+               onClick={onFinish}
+               className="flex items-center gap-2 px-6 min-h-[44px] bg-gradient-to-r from-primary to-primary text-primary-foreground rounded-2xl font-medium cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
+             >
               <Trophy className="w-5 h-5" />
               Finish
             </button>
-          ) : (
-            <button
-              onClick={onNext}
-              disabled={!isAnswered && examMode === 'practice'}
-              className="flex items-center gap-2 px-4 min-h-[44px] bg-gradient-to-r from-primary to-primary text-primary-foreground rounded-lg disabled:opacity-50 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90 disabled:cursor-default"
-            >
+) : (
+             <button
+               onClick={onNext}
+               disabled={!isAnswered && examMode === 'practice'}
+               className="flex items-center gap-2 px-4 min-h-[44px] bg-gradient-to-r from-primary to-primary text-primary-foreground rounded-2xl disabled:opacity-50 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90 disabled:cursor-default focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
+             >
               <span className="hidden sm:inline">Next</span>
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -899,25 +899,25 @@ function ResultsScreen({
             {results.passed ? 'Congratulations!' : 'Keep Practicing!'}
           </h1>
           
-          <p className="text-muted-foreground mb-4">
-            {results.passed 
-              ? `You passed the ${certification.name} practice exam!`
-              : `You need ${examConfig?.passingScore || 70}% to pass. Keep studying!`
-            }
-          </p>
+<p className="text-foreground/70 mb-4 text-base">
+             {results.passed
+               ? `You passed the ${certification.name} practice exam!`
+               : `You need ${examConfig?.passingScore || 70}% to pass. Keep studying!`
+             }
+           </p>
 
           {/* Score Circle */}
           <div className="relative w-32 h-32 mx-auto mb-6">
             <svg className="w-full h-full transform -rotate-90">
-              <circle
-                cx="64"
-                cy="64"
-                r="56"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="8"
-                className="text-muted"
-              />
+<circle
+                 cx="64"
+                 cy="64"
+                 r="56"
+                 fill="none"
+                 stroke="currentColor"
+                 strokeWidth="8"
+                 className="text-foreground/70"
+               />
               <circle
                 cx="64"
                 cy="64"
@@ -931,48 +931,48 @@ function ResultsScreen({
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-3xl font-bold">{results.percentage}%</span>
-              <span className="text-xs text-muted-foreground">
-                {results.correct}/{results.total}
-              </span>
+<span className="text-xs text-foreground/70">
+                 {results.correct}/{results.total}
+               </span>
             </div>
           </div>
         </motion.div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-muted/50 border border-border rounded-xl p-4 text-center">
-            <Target className="w-5 h-5 mx-auto mb-2 text-primary" />
-            <div className="text-2xl font-bold">{results.correct}</div>
-            <div className="text-xs text-muted-foreground">Correct</div>
-          </div>
-          <div className="bg-muted/50 border border-border rounded-xl p-4 text-center">
-            <Trophy className="w-5 h-5 mx-auto mb-2 text-primary" />
-            <div className="text-2xl font-bold">{results.avgTime}s</div>
-            <div className="text-xs text-muted-foreground">Avg Time</div>
-          </div>
-          <div className="bg-muted/50 border border-border rounded-xl p-4 text-center">
-            <BarChart3 className="w-5 h-5 mx-auto mb-2 text-primary" />
-            <div className="text-2xl font-bold">{examConfig?.passingScore || 70}%</div>
-            <div className="text-xs text-muted-foreground">Pass Mark</div>
-          </div>
-        </div>
+{/* Stats */}
+         <div className="grid grid-cols-3 gap-4 mb-6">
+           <div className="bg-muted/50 border border-border rounded-2xl p-4 text-center">
+             <Target className="w-5 h-5 mx-auto mb-2 text-primary" />
+             <div className="text-2xl font-bold">{results.correct}</div>
+             <div className="text-xs text-foreground/70">Correct</div>
+           </div>
+           <div className="bg-muted/50 border border-border rounded-2xl p-4 text-center">
+             <Trophy className="w-5 h-5 mx-auto mb-2 text-primary" />
+             <div className="text-2xl font-bold">{results.avgTime}s</div>
+             <div className="text-xs text-foreground/70">Avg Time</div>
+           </div>
+           <div className="bg-muted/50 border border-border rounded-2xl p-4 text-center">
+             <BarChart3 className="w-5 h-5 mx-auto mb-2 text-primary" />
+             <div className="text-2xl font-bold">{examConfig?.passingScore || 70}%</div>
+             <div className="text-xs text-foreground/70">Pass Mark</div>
+           </div>
+         </div>
 
-        {/* Domain Breakdown */}
-        {examConfig && Object.keys(results.domainResults).length > 0 && (
-          <div className="bg-muted/50 border border-border rounded-xl p-4 mb-6">
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-primary" />
-              Domain Performance
-            </h3>
-            <div className="space-y-3">
-              {examConfig.domains.map(domain => {
-                const domainResult = results.domainResults[domain.id];
-                if (!domainResult || domainResult.total === 0) return null;
-                
-                return (
-                  <div key={domain.id}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-muted-foreground">{domain.name}</span>
+{/* Domain Breakdown */}
+         {examConfig && Object.keys(results.domainResults).length > 0 && (
+           <div className="bg-muted/50 border border-border rounded-2xl p-4 mb-6">
+             <h3 className="font-semibold mb-4 flex items-center gap-2">
+               <BarChart3 className="w-4 h-4 text-primary" />
+               Domain Performance
+             </h3>
+             <div className="space-y-3">
+               {examConfig.domains.map(domain => {
+                 const domainResult = results.domainResults[domain.id];
+                 if (!domainResult || domainResult.total === 0) return null;
+
+                 return (
+                   <div key={domain.id}>
+                     <div className="flex justify-between text-base mb-1">
+                       <span className="text-foreground/70">{domain.name}</span>
                       <span className={`font-medium ${
                         domainResult.percentage >= 70 ? 'text-green-500' : 'text-red-500'
                       }`}>
@@ -994,28 +994,28 @@ function ResultsScreen({
           </div>
         )}
 
-        {/* Actions */}
-        <div className="space-y-3 pb-24">
-          <button
-            onClick={onReview}
-            className="w-full min-h-[44px] py-3 bg-gradient-to-r from-primary to-primary text-primary-foreground rounded-xl font-medium flex items-center justify-center gap-2 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90"
-          >
+{/* Actions */}
+         <div className="space-y-3 pb-24">
+           <button
+             onClick={onReview}
+              className="w-full min-h-[40px] py-2.5 h-10 bg-gradient-to-r from-primary to-primary text-primary-foreground rounded-lg font-medium flex items-center justify-center gap-2 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none text-sm shadow-none"
+           >
             <BookOpen className="w-5 h-5" />
             Review Answers
           </button>
           
-          <button
-            onClick={onRetry}
-            className="w-full min-h-[44px] py-3 bg-muted rounded-xl font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80"
-          >
+<button
+             onClick={onRetry}
+              className="w-full min-h-[40px] py-2.5 h-10 bg-muted rounded-lg font-medium flex items-center justify-center gap-2 cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none text-sm shadow-none"
+           >
             <RotateCcw className="w-5 h-5" />
             Try Again
           </button>
           
-          <button
-            onClick={onBack}
-            className="w-full min-h-[44px] py-3 text-muted-foreground hover:text-foreground transition-colors duration-150 ease-out cursor-pointer"
-          >
+<button
+             onClick={onBack}
+              className="w-full min-h-[40px] py-2.5 h-10 text-foreground/70 hover:text-foreground transition-colors duration-150 ease-out cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none text-sm"
+           >
             Back to Certification
           </button>
         </div>

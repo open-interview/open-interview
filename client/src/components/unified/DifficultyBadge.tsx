@@ -59,18 +59,18 @@ const levelConfig = {
 
 const sizeClasses = {
   xs: {
-    text: 'text-[9px]',
-    padding: 'px-1.5 py-0.5',
+    text: 'text-xs',
+    padding: 'px-3 py-1.5',
     icon: 'w-2.5 h-2.5'
   },
   sm: {
-    text: 'text-[10px]',
-    padding: 'px-2 py-0.5',
+    text: 'text-xs',
+    padding: 'px-3 py-1.5',
     icon: 'w-3 h-3'
   },
   md: {
     text: 'text-xs',
-    padding: 'px-2 py-1',
+    padding: 'px-3 py-1.5',
     icon: 'w-3.5 h-3.5'
   },
   lg: {
@@ -103,8 +103,10 @@ export function DifficultyBadge({
         inline-flex items-center gap-1 rounded font-medium
         ${sizeConfig.text} ${sizeConfig.padding}
         ${colorClass} ${borderClass}
+        focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
         ${className}
       `}
+      tabIndex={0}
     >
       {showIcon && <Icon className={sizeConfig.icon} />}
       {showLabel && label}
@@ -182,7 +184,7 @@ export function DifficultyProgress({
   return (
     <div className={className}>
       {showLabels && (
-        <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+        <div className="flex items-center justify-between text-xs text-foreground/70 mb-2">
           <span>Difficulty Distribution</span>
           <span>{total} total</span>
         </div>
@@ -216,15 +218,15 @@ export function DifficultyProgress({
         <div className="flex items-center gap-3 mt-2 text-xs">
           <div className="flex items-center gap-1">
             <DifficultyIndicator level="beginner" size="sm" />
-            <span className="text-muted-foreground">{stats.beginner}</span>
+            <span className="text-foreground/70">{stats.beginner}</span>
           </div>
           <div className="flex items-center gap-1">
             <DifficultyIndicator level="intermediate" size="sm" />
-            <span className="text-muted-foreground">{stats.intermediate}</span>
+            <span className="text-foreground/70">{stats.intermediate}</span>
           </div>
           <div className="flex items-center gap-1">
             <DifficultyIndicator level="advanced" size="sm" />
-            <span className="text-muted-foreground">{stats.advanced}</span>
+            <span className="text-foreground/70">{stats.advanced}</span>
           </div>
         </div>
       )}

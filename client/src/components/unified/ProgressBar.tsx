@@ -61,14 +61,14 @@ export function ProgressBar({
     <div className={className}>
       {/* Label and percentage */}
       {(label || showPercentage) && (
-        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+        <div className="flex items-center justify-between text-base text-foreground/70 mb-1">
           {label && <span>{label}</span>}
           {showPercentage && <span>{Math.round(percentage)}%</span>}
         </div>
       )}
 
       {/* Progress bar */}
-      <div className={`bg-muted ${roundedClass} overflow-hidden ${heightClass}`}>
+       <div className={`bg-muted/50 ${roundedClass} overflow-hidden ${heightClass}`}>
         {animated ? (
           <motion.div
             initial={{ width: 0 }}

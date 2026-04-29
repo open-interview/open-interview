@@ -762,7 +762,7 @@ function QuestionSkeleton() {
     <div className="min-h-screen bg-background animate-pulse">
       <div className="h-20 bg-card" />
       <div className="flex h-[calc(100vh-80px)]">
-        <div className="flex-1 p-8 space-y-6">
+        <div className="flex-1 p-6 space-y-6">
           <div className="h-8 bg-muted rounded w-3/4" />
           <div className="h-4 bg-muted rounded w-1/2" />
           <div className="space-y-3">
@@ -863,7 +863,7 @@ function Header({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <Search className="w-4 h-4" />
+            <Search className="w-5 h-5 text-[#9AA0A6]" />
           </motion.button>
 
           {/* Fullscreen */}
@@ -984,7 +984,7 @@ function FilterDropdown({ label, options, selected, onSelect }: FilterDropdownPr
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
-          className="min-w-[180px] max-h-[350px] overflow-y-auto bg-popover backdrop-blur-xl border border-border rounded-xl shadow-2xl p-1.5 z-50"
+          className="min-w-[180px] max-h-[350px] overflow-y-auto bg-popover backdrop-blur-xl rounded-xl shadow-sm p-1.5 z-50"
           sideOffset={6}
         >
           {options.map((opt: any) => (

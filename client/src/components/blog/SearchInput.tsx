@@ -9,10 +9,11 @@ interface SearchInputProps {
   autoFocus?: boolean;
 }
 
-export function SearchInput({ defaultValue = "", onSearch, placeholder = "Search posts…", autoFocus }: SearchInputProps) {
+export function SearchInput({ defaultValue = "", onSearch, placeholder = "Search articles...", autoFocus }: SearchInputProps) {
   const [value, setValue] = useState(defaultValue);
   const [, navigate] = useLocation();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     clearTimeout(debounceRef.current);
@@ -26,30 +27,38 @@ export function SearchInput({ defaultValue = "", onSearch, placeholder = "Search
     return () => clearTimeout(debounceRef.current);
   }, [value]);
 
+  const handleClear = () => {
+    setValue("");
+    inputRef.current?.focus();
+  };
+
   return (
-    <div className="relative">
-      <Search
-        size={16}
-        strokeWidth={1.5}
-        className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-ink-muted)] pointer-events-none"
-        aria-hidden
-      />
-      <input
-        type="search"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder={placeholder}
-        autoFocus={autoFocus}
-        aria-label="Search posts"
-        className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] pl-9 pr-9 py-2 text-sm text-[var(--color-ink)] placeholder:text-[var(--color-ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition"
-      />
+    <div className="relative group">
+      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+        <Search
+          size={18}
+          strokeWidth={1.5}
+          className="text-[var(--color-ink-muted)] group-focus-within:text-[var(--color-accent)] transition-colors"
+          aria-hidden
+        />
+      </div>
+       <input
+         ref={inputRef}
+         type="search"
+         value={value}
+         onChange={(e) => setValue(e.target.value)}
+         placeholder={placeholder}
+         autoFocus={autoFocus}
+         aria-label="Search posts"
+         className="w-full h-[46px] rounded-full bg-[#F1F3F4] dark:bg-[#303134] pl-12 pr-10 text-base text-[var(--color-ink)] placeholder:text-[#9AA0A6] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/30 transition-all"
+       />
       {value && (
         <button
-          onClick={() => setValue("")}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors"
+          onClick={handleClear}
+          className="absolute inset-y-0 right-0 pr-4 flex items-center text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors"
           aria-label="Clear search"
         >
-          <X size={14} strokeWidth={1.5} />
+          <X size={16} strokeWidth={1.5} />
         </button>
       )}
     </div>

@@ -262,7 +262,7 @@ export default function LearningPaths() {
                     placeholder="My Custom Path"
                     value={customPath.name}
                     onChange={(e) => setCustomPath(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-6 py-4 bg-muted/50 border border-border rounded-[var(--radius-xl)] text-xl focus:outline-none focus:border-primary transition-all"
+                    className="w-full px-6 py-2.5 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:border-primary transition-all"
                   />
                 </div>
 
@@ -270,20 +270,20 @@ export default function LearningPaths() {
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
                   {/* Search */}
                   <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9AA0A6]" />
                     <input
                       type="text"
                       placeholder="Search channels and certifications..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 bg-muted/50 border border-border rounded-[var(--radius-lg)] focus:outline-none focus:border-primary transition-all"
+                      className="w-full pl-12 pr-4 h-[46px] bg-[#F1F3F4] dark:bg-[#303134] rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 transition-all placeholder:text-[#9AA0A6] text-foreground"
                     />
                   </div>
 
                   {/* Selected Summary */}
                   {(customPath.channels.length > 0 || customPath.certifications.length > 0) && (
                     <div className="p-4 bg-[var(--color-accent-violet)]/10 border border-[var(--color-accent-violet)]/30 rounded-[var(--radius-xl)]">
-                      <div className="text-sm text-muted-foreground mb-2">Selected:</div>
+                      <div className="text-sm text-foreground/70 mb-2">Selected:</div>
                       <div className="flex items-center gap-4 text-sm font-semibold">
                         <span>{customPath.channels.length} channels</span>
                         <span>•</span>
@@ -336,7 +336,7 @@ export default function LearningPaths() {
                           >
                             <div className="flex items-center justify-between">
                               <div>
-                                <div className="text-xs text-muted-foreground mb-1">{cert.provider}</div>
+                                <div className="text-xs text-foreground/70 mb-1">{cert.provider}</div>
                                 <div className="font-semibold text-sm">{cert.name}</div>
                               </div>
                               {isSelected && <Check className="w-5 h-5 text-primary" />}
@@ -353,7 +353,7 @@ export default function LearningPaths() {
                   <button
                     onClick={handleCreateCustomPath}
                     disabled={!customPath.name || (customPath.channels.length === 0 && customPath.certifications.length === 0)}
-                    className="w-full py-4 bg-gradient-to-r from-primary to-primary rounded-[var(--radius-xl)] font-bold text-xl text-white disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-all"
+                     className="w-full py-2.5 bg-gradient-to-r from-primary to-primary rounded-lg font-medium text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-all shadow-none"
                   >
                     Create Path
                   </button>
@@ -378,7 +378,7 @@ export default function LearningPaths() {
                   career path
                 </span>
               </h1>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              <p className="text-xl text-foreground/70 max-w-2xl mx-auto">
                 Curated learning journeys designed to land you your dream job
               </p>
             </motion.div>
@@ -392,7 +392,7 @@ export default function LearningPaths() {
             >
               <button
                 onClick={() => setShowCustom(!showCustom)}
-                className="w-full p-8 bg-gradient-to-r from-primary/20 to-primary/20 backdrop-blur-xl rounded-[var(--radius-3xl)] border-2 border-dashed border-primary/30 hover:border-primary/60 transition-all group"
+                className="w-full p-6 bg-gradient-to-r from-primary/20 to-primary/20 backdrop-blur-xl rounded-xl border border-dashed border-primary/30 hover:border-primary/60 transition-all group"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -401,7 +401,7 @@ export default function LearningPaths() {
                     </div>
                     <div className="text-left">
                       <h3 className="text-2xl font-bold mb-1">Create Custom Path</h3>
-                      <p className="text-muted-foreground">Build your own learning journey</p>
+                      <p className="text-foreground/70">Build your own learning journey</p>
                     </div>
                   </div>
                   <ChevronRight className="w-8 h-8 text-primary group-hover:translate-x-2 transition-transform" />
@@ -427,7 +427,7 @@ export default function LearningPaths() {
                       whileHover={{ scale: 1.02, y: -4 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => handleSelectPath(path.id)}
-                      className={`group relative p-8 backdrop-blur-xl rounded-[var(--radius-3xl)] border-2 transition-all text-left overflow-hidden ${
+                      className={`group relative p-6 backdrop-blur-xl rounded-xl border border-border/40 transition-all text-left overflow-hidden ${
                         isSelected
                           ? 'bg-gradient-to-br from-primary/20 to-primary/20 border-primary'
                           : 'bg-muted/50 border-border hover:border-[var(--color-border-strong)]'
@@ -445,7 +445,7 @@ export default function LearningPaths() {
                             </div>
                             <div>
                               <h3 className="text-2xl font-bold mb-1">{path.name}</h3>
-                              <p className="text-sm text-muted-foreground">{path.description}</p>
+                              <p className="text-sm text-foreground/70">{path.description}</p>
                             </div>
                           </div>
                           {isSelected && (
@@ -458,21 +458,21 @@ export default function LearningPaths() {
                         {/* Stats */}
                         <div className="grid grid-cols-3 gap-4">
                           <div className="p-3 bg-muted/50 rounded-[var(--radius-lg)]">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                            <div className="flex items-center gap-2 text-xs text-foreground/70 mb-1">
                               <Target className="w-3 h-3" />
                               <span>Difficulty</span>
                             </div>
                             <div className="font-bold text-sm">{path.difficulty}</div>
                           </div>
                           <div className="p-3 bg-muted/50 rounded-[var(--radius-lg)]">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                            <div className="flex items-center gap-2 text-xs text-foreground/70 mb-1">
                               <Clock className="w-3 h-3" />
                               <span>Duration</span>
                             </div>
                             <div className="font-bold text-sm">{path.duration}</div>
                           </div>
                           <div className="p-3 bg-muted/50 rounded-[var(--radius-lg)]">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                            <div className="flex items-center gap-2 text-xs text-foreground/70 mb-1">
                               <Zap className="w-3 h-3" />
                               <span>Questions</span>
                             </div>
@@ -482,7 +482,7 @@ export default function LearningPaths() {
 
                         {/* Skills */}
                         <div>
-                          <div className="text-xs text-muted-foreground mb-2">Skills you'll learn</div>
+                          <div className="text-xs text-foreground/70 mb-2">Skills you'll learn</div>
                           <div className="flex flex-wrap gap-2">
                             {path.skills.map((skill: string) => (
                               <span
@@ -497,7 +497,7 @@ export default function LearningPaths() {
 
                         {/* Jobs */}
                         <div className="pt-4 border-t border-border">
-                          <div className="text-xs text-muted-foreground mb-1">Career outcomes</div>
+                          <div className="text-xs text-foreground/70 mb-1">Career outcomes</div>
                           <div className="font-bold">{path.jobs[0]}</div>
                         </div>
 
@@ -513,7 +513,7 @@ export default function LearningPaths() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
-              className="p-8 bg-[var(--color-accent-violet)]/10 backdrop-blur-xl rounded-[var(--radius-3xl)] border border-[var(--color-accent-violet)]/30"
+              className="p-6 bg-[var(--color-accent-violet)]/10 backdrop-blur-xl rounded-xl border border-[var(--color-accent-violet)]/30"
             >
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--gradient-primary)' }}>
@@ -521,7 +521,7 @@ export default function LearningPaths() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold mb-2">Why choose a learning path?</h3>
-                  <ul className="space-y-2 text-muted-foreground">
+                  <ul className="space-y-2 text-foreground/70">
                     <li className="flex items-start gap-2">
                       <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                       <span>Structured curriculum designed by industry experts</span>

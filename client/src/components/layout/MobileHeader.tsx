@@ -13,6 +13,7 @@ const GOOGLE_SANS = "'Google Sans Display', 'Roboto Flex', sans-serif";
 interface MobileHeaderProps {
   title?: string;
   showBack?: boolean;
+  onBack?: () => void;
   onSearchClick?: () => void;
   transparent?: boolean;
   showSearch?: boolean;
@@ -51,7 +52,7 @@ function IconButton({
       onClick={onClick}
       aria-label={ariaLabel}
       data-testid={testId}
-      className="w-10 h-10 flex items-center justify-center rounded-full transition-colors"
+      className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
       style={{ color: 'var(--foreground)' }}
       onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--muted)')}
       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -78,6 +79,7 @@ function InlineThemeToggle() {
 export function MobileHeader({
   title,
   showBack,
+  onBack,
   onSearchClick,
   transparent,
   showSearch = true,
@@ -87,6 +89,14 @@ export function MobileHeader({
   const [scrolled, setScrolled] = useState(false);
   const isNested = useIsNestedRoute();
   const shouldShowBack = showBack ?? isNested;
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      window.history.back();
+    }
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -108,7 +118,7 @@ export function MobileHeader({
         <div className="flex items-center gap-1 min-w-0 flex-1">
           {shouldShowBack ? (
             <IconButton
-              onClick={() => window.history.back()}
+              onClick={handleBack}
               ariaLabel="Go back"
               testId="button-back"
             >

@@ -42,9 +42,9 @@ const sizeClasses: Record<CardSize, string> = {
 };
 
 const roundedClasses: Record<CardRounded, string> = {
-  default: 'rounded-lg',
-  lg: 'rounded-lg',
-  xl: 'rounded-xl',
+  default: 'rounded-2xl',
+  lg: 'rounded-2xl',
+  xl: 'rounded-2xl',
   '2xl': 'rounded-2xl',
   full: 'rounded-full'
 };
@@ -123,18 +123,18 @@ export function CardHeader({
           </div>
         )}
         <div className="flex-1 min-w-0">
-          {typeof title === 'string' ? (
-            <h3 className="font-semibold text-base leading-tight">{title}</h3>
-          ) : (
-            title
-          )}
-          {subtitle && (
-            typeof subtitle === 'string' ? (
-              <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>
-            ) : (
-              subtitle
-            )
-          )}
+           {typeof title === 'string' ? (
+             <h3 className="font-semibold text-base leading-tight">{title}</h3>
+           ) : (
+             title
+           )}
+           {subtitle && (
+             typeof subtitle === 'string' ? (
+               <p className="text-base text-foreground/70 mt-0.5">{subtitle}</p>
+             ) : (
+               subtitle
+             )
+           )}
         </div>
       </div>
       {action && (
@@ -250,10 +250,10 @@ export function StatCard({
     <Card variant={variant} size={size} className={className}>
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm text-muted-foreground mb-1">{label}</p>
-          <p className="text-2xl font-bold">{value}</p>
+       <p className="text-base text-foreground/70 mb-1">{label}</p>
+           <p className="text-2xl font-bold">{value}</p>
           {trend !== undefined && (
-            <p className={`text-xs mt-1 ${trend >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+               <p className={`text-base mt-1 ${trend >= 0 ? 'text-green-500' : 'text-red-500'}`}>
               {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%
             </p>
           )}
@@ -290,15 +290,15 @@ export function EmptyCard({
 }: EmptyCardProps) {
   return (
     <Card variant="default" size={size} className={`text-center ${className}`}>
-      {icon && (
-        <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4 text-muted-foreground">
-          {icon}
-        </div>
-      )}
-      <h3 className="font-semibold text-lg mb-2">{title}</h3>
-      {description && (
-        <p className="text-sm text-muted-foreground mb-4">{description}</p>
-      )}
+       {icon && (
+         <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4 text-foreground/70">
+           {icon}
+         </div>
+       )}
+       <h3 className="font-semibold text-lg mb-2">{title}</h3>
+       {description && (
+         <p className="text-base text-foreground/70 mb-4">{description}</p>
+       )}
       {action && action}
     </Card>
   );

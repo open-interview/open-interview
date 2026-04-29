@@ -374,7 +374,7 @@ export function OnboardingFlow({ onComplete }: Props) {
                         data-testid={`role-${r.id}`}
                         whileHover={{ y: -2 }}
                         whileTap={{ scale: 0.98 }}
-                        className="relative text-left p-5 rounded-3xl transition-all"
+                        className="relative text-left p-5 rounded-xl transition-all"
                         style={{
                           background: sel ? 'var(--secondary)' : 'var(--card)',
                           border: `1px solid ${sel ? 'var(--primary)' : 'var(--border)'}`,
@@ -574,7 +574,7 @@ export function OnboardingFlow({ onComplete }: Props) {
                       >
                         {provider}
                       </h3>
-                      <div className="rounded-3xl overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+                      <div className="rounded-xl overflow-hidden" style={{ background: 'var(--card)' }}>
                         {certs.map((cert, i) => {
                           const on = selectedCerts.has(cert.id);
                           return (

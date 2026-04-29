@@ -39,20 +39,20 @@ export function DailyReviewCard() {
   // Get channel colors
   const getChannelColor = (channel: string) => {
     const colors: Record<string, string> = {
-      algorithms: 'bg-blue-500/20 text-blue-400',
+      algorithms: 'bg-primary/20 text-primary',
       'system-design': 'bg-primary/20 text-primary',
-      networking: 'bg-green-500/20 text-green-400',
+      networking: 'bg-secondary/20 text-secondary',
       kubernetes: 'bg-primary/20 text-primary',
-      aws: 'bg-orange-500/20 text-orange-400',
-      gcp: 'bg-red-500/20 text-red-400',
+      aws: 'bg-tertiary/20 text-tertiary',
+      gcp: 'bg-destructive/20 text-destructive',
       azure: 'bg-primary/20 text-primary',
-      database: 'bg-yellow-500/20 text-yellow-400',
-      linux: 'bg-gray-500/20 text-gray-400',
-      security: 'bg-red-500/20 text-red-400',
-      devops: 'bg-teal-500/20 text-teal-400',
-      behavioral: 'bg-pink-500/20 text-pink-400',
+      database: 'bg-secondary/20 text-secondary',
+      linux: 'bg-tertiary/20 text-tertiary',
+      security: 'bg-destructive/20 text-destructive',
+      devops: 'bg-secondary/20 text-secondary',
+      behavioral: 'bg-tertiary/20 text-tertiary',
     };
-    return colors[channel] || 'bg-slate-500/20 text-slate-400';
+    return colors[channel] || 'bg-primary/20 text-primary';
   };
 
   // Get channels with due cards for quick access
@@ -82,20 +82,20 @@ export function DailyReviewCard() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`rounded-xl border overflow-hidden ${
+        className={`rounded-2xl border overflow-hidden ${
           hasDueCards 
-            ? 'bg-gradient-to-br from-primary/10 via-blue-500/5 to-primary/10 border-primary/20' 
-            : 'bg-gradient-to-br from-green-500/10 to-emerald-500/5 border-green-500/20'
+            ? 'bg-gradient-to-br from-primary/10 via-primary/5 to-primary/10 border-primary/20' 
+            : 'bg-gradient-to-br from-secondary/10 to-secondary/5 border-secondary/20'
         }`}
       >
         {/* Header with Level & Streak - Compact */}
-        <div className="px-3 py-2 flex items-center justify-between border-b border-border/30">
+        <div className="px-3 py-2 flex items-center justify-between border-b border-border/50">
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-primary/20 rounded-full">
-              <Zap className="w-2.5 h-2.5 text-primary" />
-              <span className="text-[10px] font-bold text-primary">Lv.{userXP.level}</span>
-            </div>
-            <span className="text-[10px] text-muted-foreground">{userXP.totalXP} XP</span>
+           <div className="flex items-center gap-1 px-1.5 py-0.5 bg-primary/20 rounded-full">
+               <Zap className="w-2.5 h-2.5 text-primary" />
+               <span className="text-xs font-bold text-primary">Lv.{userXP.level}</span>
+             </div>
+             <span className="text-xs text-foreground/70">{userXP.totalXP} XP</span>
           </div>
           {stats.reviewStreak > 0 && (
             <motion.div 
@@ -120,7 +120,7 @@ export function DailyReviewCard() {
               progress={hasDueCards ? todayProgress : 100} 
               size={56}
               strokeWidth={5}
-              color={hasDueCards ? '#a855f7' : '#22c55e'}
+              color={hasDueCards ? '#4285F4' : '#34A853'}
               bgColor={hasDueCards ? 'rgba(60,64,67,0.12)' : 'rgba(34, 197, 94, 0.15)'}
             >
               {hasDueCards ? (
@@ -180,7 +180,7 @@ export function DailyReviewCard() {
         </button>
 
         {/* Stats Footer - Compact 2x2 grid */}
-        <div className="px-3 py-2 border-t border-border/30 grid grid-cols-4 gap-1 text-center">
+        <div className="px-3 py-2 border-t border-border/50 grid grid-cols-4 gap-1 text-center">
           <div>
             <div className="text-xs font-bold">{stats.totalCards}</div>
             <div className="text-[8px] text-muted-foreground">Cards</div>

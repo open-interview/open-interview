@@ -75,10 +75,10 @@ function ProgressRing({ pct, size = 56, stroke = 4, color = '#7c3aed' }: { pct: 
 // ─── Stat Pill ────────────────────────────────────────────────────────────────
 function StatPill({ icon: Icon, value, label, color, onClick }: { icon: React.ElementType; value: string | number; label: string; color: string; onClick?: () => void }) {
   return (
-    <motion.button variants={fadeUp} onClick={onClick} className="flex-shrink-0 flex flex-col items-center gap-1.5 px-4 py-3 rounded-3xl bg-muted/80 border border-border/40 min-w-[80px] min-h-[44px] clay-press cursor-pointer shadow-clay-sm hover:shadow-clay-md transition-shadow duration-200">
+    <motion.button variants={fadeUp} onClick={onClick} className="flex-shrink-0 flex flex-col items-center gap-1.5 px-4 py-3 rounded-2xl bg-muted/80 border border-border/40 min-w-[80px] min-h-[44px] clay-press cursor-pointer shadow-clay-sm hover:shadow-clay-md transition-shadow duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">
       <Icon className={`w-4 h-4 ${color} animate-float`} />
       <span className="text-lg font-bold leading-none">{value}</span>
-      <span className="text-[10px] text-muted-foreground leading-none text-center">{label}</span>
+      <span className="text-xs text-foreground/70 leading-none text-center">{label}</span>
     </motion.button>
   );
 }
@@ -95,21 +95,21 @@ function ActionCard({
       variants={fadeUp}
       whileTap={{ scale: 0.96 }}
       onClick={onClick}
-      className={`group relative flex flex-col gap-3 p-4 rounded-3xl border text-left overflow-hidden transition-colors duration-150 ease-out cursor-pointer clay-press shadow-clay-sm
+      className={`group relative flex flex-col gap-3 p-4 rounded-2xl border text-left overflow-hidden transition-colors duration-150 ease-out cursor-pointer clay-press shadow-clay-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none
         ${primary
           ? 'bg-gradient-to-br from-primary/30 to-primary/20 border-primary/40 col-span-2 sm:col-span-1'
           : 'bg-muted/80 border-border/40 hover:shadow-clay-md'
         }`}
     >
       <div className={`absolute inset-0 bg-gradient-to-br ${color} opacity-0 group-hover:opacity-10 transition-opacity`} />
-      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center bg-gradient-to-br ${color} flex-shrink-0 shadow-clay-sm`}>
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br ${color} flex-shrink-0 shadow-clay-sm`}>
         {icon}
       </div>
       <div className="relative flex-1">
-        <div className="font-semibold text-sm leading-tight">{title}</div>
-        <div className="text-xs text-muted-foreground mt-0.5 leading-snug">{subtitle}</div>
+        <div className="font-semibold text-base leading-tight">{title}</div>
+        <div className="text-xs text-foreground/70 mt-0.5 leading-snug">{subtitle}</div>
       </div>
-      <ChevronRight className="absolute top-4 right-4 w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
+      <ChevronRight className="absolute top-4 right-4 w-4 h-4 text-foreground/70 group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
     </motion.button>
   );
 }
@@ -142,8 +142,8 @@ function OnboardingScreen({ onStart }: { onStart: () => void }) {
             <span style={{ color: 'var(--primary)' }}>Get hired faster.</span>
           </motion.h1>
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
-            className="text-base leading-relaxed"
-            style={{ color: 'var(--muted-foreground)', fontFamily: "'Roboto', 'Roboto Flex', sans-serif" }}>
+            className="text-base leading-relaxed text-foreground/70"
+            style={{ fontFamily: "'Roboto', 'Roboto Flex', sans-serif" }}>
             1000+ questions · AI voice interviews · Spaced repetition
           </motion.p>
         </div>
@@ -153,19 +153,18 @@ function OnboardingScreen({ onStart }: { onStart: () => void }) {
           <motion.button whileTap={{ scale: 0.98 }}
             onClick={onStart}
             data-testid="button-start-practicing"
-            className="inline-flex items-center justify-center gap-2 px-7 h-12 rounded-full text-sm transition-shadow"
+            className="inline-flex items-center justify-center gap-2 px-7 h-12 rounded-full text-base font-medium transition-shadow focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
             style={{
               background: 'var(--primary)',
               color: 'var(--primary-foreground)',
               fontFamily: "'Google Sans Display', 'Roboto Flex', sans-serif",
-              fontWeight: 500,
               letterSpacing: '0.01em',
               boxShadow: 'var(--shadow-sm)',
             }}>
             Start Practicing
             <span className="material-symbols-rounded" style={{ fontSize: 18 }}>arrow_forward</span>
           </motion.button>
-          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+          <p className="text-xs text-foreground/70">
             Choose your path · Practice daily · Land your dream job
           </p>
         </motion.div>
@@ -174,8 +173,8 @@ function OnboardingScreen({ onStart }: { onStart: () => void }) {
           className="flex items-center justify-center gap-8 text-sm">
           {[['12K+', 'Learners'], ['500K+', 'Solved'], ['85%', 'Success']].map(([n, l]) => (
             <div key={l} className="text-center">
-              <div className="text-base" style={{ fontWeight: 500, color: 'var(--foreground)' }}>{n}</div>
-              <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>{l}</div>
+              <div className="text-base font-medium text-foreground">{n}</div>
+              <div className="text-xs text-foreground/70">{l}</div>
             </div>
           ))}
         </motion.div>
@@ -219,9 +218,9 @@ function DailyChallengeCard({ onNavigate }: { onNavigate: (path: string) => void
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-      className="relative rounded-3xl overflow-hidden">
+      className="relative rounded-2xl overflow-hidden">
       <div
-        className="relative p-4 rounded-3xl overflow-hidden"
+        className="relative p-4 rounded-2xl overflow-hidden"
         style={{
           background: done ? 'color-mix(in srgb, #34a853 10%, var(--card))' : 'var(--card)',
           border: `1px solid ${done ? 'color-mix(in srgb, #34a853 32%, transparent)' : 'var(--border)'}`,
@@ -232,34 +231,33 @@ function DailyChallengeCard({ onNavigate }: { onNavigate: (path: string) => void
       <div className="relative space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Today's Challenge</span>
+            <Calendar className="w-4 h-4 text-foreground/70" />
+            <span className="text-xs font-semibold text-foreground/70 uppercase tracking-wider">Today's Challenge</span>
           </div>
           {done && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/20 border border-green-500/30">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/20 border border-green-500/30">
               <Check className="w-3 h-3 text-green-400" />
               <span className="text-xs font-semibold text-green-400">Done!</span>
             </div>
           )}
         </div>
-        <p className="text-sm font-medium leading-snug line-clamp-2">
+        <p className="text-base font-medium leading-snug line-clamp-2">
           {challenge.question.slice(0, 80)}{challenge.question.length > 80 ? '…' : ''}
         </p>
         <div className="flex items-center gap-2">
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${diffColor}`}>{challenge.difficulty}</span>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted border border-border text-muted-foreground">{challenge.topic}</span>
-          <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1"><Award className="w-3 h-3 text-amber-400" />+50 XP</span>
+          <span className={`px-3 py-1 rounded-full text-[10px] font-semibold border ${diffColor}`}>{challenge.difficulty}</span>
+          <span className="px-3 py-1 rounded-full text-[10px] font-semibold bg-muted border border-border text-foreground/70">{challenge.topic}</span>
+          <span className="ml-auto text-xs text-foreground/70 flex items-center gap-1"><Award className="w-3 h-3 text-amber-400" />+50 XP</span>
         </div>
         {!done ? (
           <motion.button whileTap={{ scale: 0.98 }}
             onClick={() => { localStorage.setItem(doneKey, 'true'); setDone(true); onNavigate('/training'); }}
             data-testid="button-start-daily-challenge"
-            className="w-full h-11 rounded-full text-sm flex items-center justify-center gap-2 min-h-[44px] cursor-pointer transition-shadow"
+            className="w-full h-11 rounded-full text-base font-medium flex items-center justify-center gap-2 min-h-[44px] cursor-pointer transition-shadow focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
             style={{
               background: 'var(--primary)',
               color: 'var(--primary-foreground)',
               fontFamily: "'Google Sans Display', 'Roboto Flex', sans-serif",
-              fontWeight: 500,
               boxShadow: 'var(--shadow-sm)',
             }}>
             Start challenge
@@ -267,7 +265,7 @@ function DailyChallengeCard({ onNavigate }: { onNavigate: (path: string) => void
           </motion.button>
         ) : (
           <button onClick={() => onNavigate('/training')}
-            className="w-full py-2.5 rounded-2xl font-semibold text-sm text-green-400 border border-green-500/25 hover:bg-green-500/10 transition-colors duration-150 ease-out min-h-[44px] cursor-pointer">
+            className="w-full py-2.5 rounded-xl font-semibold text-base text-green-400 border border-green-500/25 hover:bg-green-500/10 transition-colors duration-150 ease-out min-h-[44px] cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none">
             Practice More →
           </button>
         )}
@@ -293,7 +291,7 @@ function MyTopicsFeed({ onNavigate }: { onNavigate: (path: string) => void }) {
       <motion.button
         variants={fadeUp}
         onClick={() => onNavigate('/channels')}
-        className="w-full py-4 rounded-3xl border border-dashed border-primary/30 hover:border-primary/60 hover:bg-primary/5 transition-all duration-150 ease-out flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground min-h-[44px] cursor-pointer shadow-clay-sm"
+        className="w-full py-4 rounded-2xl border border-dashed border-primary/30 hover:border-primary/60 hover:bg-primary/5 transition-all duration-150 ease-out flex items-center justify-center gap-2 text-base text-foreground/70 hover:text-foreground min-h-[44px] cursor-pointer shadow-clay-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
       >
         <Plus className="w-4 h-4 text-primary" />
         Add topics to personalize your feed
@@ -304,10 +302,10 @@ function MyTopicsFeed({ onNavigate }: { onNavigate: (path: string) => void }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">My Topics</h2>
+        <h2 className="text-xs font-semibold text-foreground/70 uppercase tracking-wider">My Topics</h2>
         <button
           onClick={() => onNavigate('/manage-subscriptions')}
-          className="flex items-center gap-1 text-xs text-primary hover:text-primary transition-colors duration-150 ease-out cursor-pointer min-h-[44px] px-2"
+          className="flex items-center gap-1 text-xs text-primary hover:text-primary transition-colors duration-150 ease-out cursor-pointer min-h-[44px] px-2 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           <Settings2 className="w-3 h-3" /> Manage
         </button>
@@ -318,12 +316,12 @@ function MyTopicsFeed({ onNavigate }: { onNavigate: (path: string) => void }) {
             key={ch.id}
             whileTap={{ scale: 0.96 }}
             onClick={() => onNavigate(`/channel/${ch.id}`)}
-            className="flex-shrink-0 flex flex-col items-center gap-1.5 px-4 py-3 rounded-3xl bg-card/80 border border-border/40 hover:shadow-clay-md transition-shadow duration-200 min-w-[80px] min-h-[44px] cursor-pointer clay-press shadow-clay-sm"
+            className="flex-shrink-0 flex flex-col items-center gap-1.5 px-4 py-3 rounded-2xl bg-card/80 border border-border/40 hover:shadow-clay-md transition-shadow duration-200 min-w-[80px] min-h-[44px] cursor-pointer clay-press shadow-clay-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
           >
-            <div className="w-8 h-8 rounded-2xl bg-gradient-to-br from-[var(--color-accent-violet)]/20 to-[var(--color-accent-cyan)]/20 flex items-center justify-center shadow-clay-sm">
-              <BookOpen className="w-4 h-4 text-[var(--color-accent-violet-light)]" />
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-clay-sm">
+              <BookOpen className="w-4 h-4 text-primary" />
             </div>
-            <span className="text-[10px] font-semibold text-center leading-tight line-clamp-2">{ch.name}</span>
+            <span className="text-xs font-semibold text-center leading-tight line-clamp-2">{ch.name}</span>
           </motion.button>
         ))}
       </div>
@@ -541,7 +539,7 @@ export function HomePage() {
 
           {/* ══ HERO ══════════════════════════════════════════════════════════ */}
           <motion.div variants={stagger} initial="hidden" animate="show"
-            className="relative rounded-3xl overflow-hidden p-6 border border-border/40 shadow-clay-lg animate-float-slow"
+            className="relative rounded-xl overflow-hidden p-6 shadow-sm animate-float-slow"
             style={{ background: 'linear-gradient(135deg, rgba(167,139,250,0.15) 0%, rgba(60,64,67,0.15) 50%, rgba(6,182,212,0.10) 100%)' }}>
             {!prefersReducedMotion && (
               <motion.div className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl opacity-30"
@@ -569,7 +567,7 @@ export function HomePage() {
               variants={fadeUp}
               whileTap={{ scale: 0.96 }}
               onClick={() => setLocation(`/channel/${resumeState.channelId}?q=${resumeState.questionId}`)}
-              className="w-full flex items-center gap-4 p-4 rounded-3xl text-left min-h-[44px] cursor-pointer shadow-clay-sm clay-press border border-border/40"
+               className="w-full flex items-center gap-4 p-4 rounded-xl text-left min-h-[44px] cursor-pointer shadow-sm clay-press"
               style={{ background: 'linear-gradient(135deg, rgba(60,64,67,0.15) 0%, rgba(6, 182, 212, 0.08) 100%)' }}
               data-testid="button-continue-learning"
             >
@@ -629,7 +627,7 @@ export function HomePage() {
           {isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-28 w-full rounded-3xl" />
+              <Skeleton className="h-28 w-full rounded-xl" />
             </div>
           ) : activePaths.length > 0 && (
             <div>
@@ -650,7 +648,7 @@ export function HomePage() {
                       leftAction={{ icon: <Check className="w-5 h-5" />, label: 'Continue', color: 'bg-green-500', onAction: () => setLocation(`/channel/${path.channels[0]}`) }}
                       rightAction={{ icon: <X className="w-5 h-5" />, label: 'Remove', color: 'bg-red-500', onAction: () => removeActivePath(path.id) }}>
                       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                        className="relative flex items-center gap-4 p-4 rounded-3xl bg-card border border-border/40 overflow-hidden shadow-clay-sm">
+                        className="relative flex items-center gap-4 p-4 rounded-xl bg-card overflow-hidden shadow-sm">
                         <div className={`absolute inset-0 bg-gradient-to-r ${path.color} opacity-5`} />
                         <div className="relative flex-shrink-0 shadow-clay-sm rounded-full">
                           <ProgressRing pct={pct} size={52} stroke={4} color="#7c3aed" />
@@ -664,7 +662,7 @@ export function HomePage() {
                           <div className="flex flex-wrap gap-1 mt-2">
                             {path.channels.slice(0, 3).map((ch: string) => (
                               <button key={ch} onClick={() => setLocation(`/channel/${ch}`)}
-                                className="px-2 py-0.5 bg-muted hover:bg-muted/80 rounded-full text-[10px] transition-colors duration-150 ease-out cursor-pointer">{ch}</button>
+                                className="px-3 py-1 bg-muted hover:bg-muted/80 rounded-full text-[10px] transition-colors duration-150 ease-out cursor-pointer">{ch}</button>
                             ))}
                           </div>
                         </div>
@@ -691,7 +689,7 @@ export function HomePage() {
           {/* ══ RESUME SESSION ════════════════════════════════════════════════ */}
           {resumePath && (
             <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
-              className="p-4 rounded-3xl bg-amber-500/10 border border-amber-500/25 space-y-3 shadow-clay-sm">
+              className="p-4 rounded-xl bg-amber-500/10 space-y-3 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center flex-shrink-0 shadow-clay-sm">
                   <RotateCcw className="w-4 h-4 text-white" />
@@ -745,7 +743,7 @@ export function HomePage() {
           {activePaths.length < 3 && (
             <motion.button whileTap={{ scale: 0.96 }}
               onClick={() => setLocation('/learning-paths')}
-              className="w-full py-4 rounded-3xl border border-dashed border-border/40 hover:border-primary/40 hover:bg-primary/5 transition-all duration-200 flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground min-h-[44px] cursor-pointer clay-press shadow-clay-sm">
+              className="w-full py-4 rounded-xl border border-dashed border-border/40 hover:border-primary/40 hover:bg-primary/5 transition-all duration-200 flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground min-h-[44px] cursor-pointer clay-press shadow-sm">
               <Plus className="w-4 h-4" /> Add a learning path
             </motion.button>
           )}

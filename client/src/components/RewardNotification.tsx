@@ -50,7 +50,7 @@ function RewardToast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: str
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 60, scale: 0.92 }}
       transition={{ type: 'spring', stiffness: 280, damping: 26 }}
-      className="relative w-80 rounded-xl overflow-hidden shadow-2xl border border-[var(--color-border)]"
+      className="relative w-80 rounded-xl overflow-hidden shadow-sm"
       style={{ background: 'var(--surface-2)' }}
       role="status"
       aria-live="polite"

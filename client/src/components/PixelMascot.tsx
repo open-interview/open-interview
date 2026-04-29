@@ -147,7 +147,7 @@ const CatSprite = ({ state }: { state: MascotState }) => (
     {state === 'sleep' ? (
       <><rect x="11" y="11" width="3" height="1" fill="#333" /><rect x="18" y="11" width="3" height="1" fill="#333" /></>
     ) : (
-      <><rect x="11" y="9" width="4" height="4" fill="#22c55e" /><rect x="17" y="9" width="4" height="4" fill="#22c55e" /></>
+      <><rect x="11" y="9" width="4" height="4" fill="#34A853" /><rect x="17" y="9" width="4" height="4" fill="#34A853" /></>
     )}
     <rect x="10" y="18" width="12" height="10" fill="#f97316" />
     <rect x="10" y="28" width="3" height="4" fill="#f97316" />
@@ -158,10 +158,10 @@ const CatSprite = ({ state }: { state: MascotState }) => (
 const RobotSprite = ({ state }: { state: MascotState }) => (
   <>
     <rect x="15" y="0" width="2" height="4" fill="#6b7280" />
-    <rect x="14" y="0" width="4" height="2" fill="#ef4444" />
+    <rect x="14" y="0" width="4" height="2" fill="#EA4335" />
     <rect x="8" y="4" width="16" height="12" fill="#9ca3af" />
     {state === 'sleep' ? (
-      <><rect x="12" y="9" width="3" height="2" fill="#ef4444" /><rect x="17" y="9" width="3" height="2" fill="#ef4444" /></>
+      <><rect x="12" y="9" width="3" height="2" fill="#EA4335" /><rect x="17" y="9" width="3" height="2" fill="#EA4335" /></>
     ) : (
       <><rect x="12" y="8" width="3" height="4" fill="#22d3ee" /><rect x="17" y="8" width="3" height="4" fill="#22d3ee" /></>
     )}
@@ -183,7 +183,7 @@ const DogSprite = ({ state }: { state: MascotState }) => (
       <><rect x="11" y="9" width="3" height="3" fill="#4a3728" /><rect x="18" y="9" width="3" height="3" fill="#4a3728" /></>
     )}
     <rect x="14" y="13" width="4" height="3" fill="#333" />
-    <rect x="15" y="16" width="2" height="2" fill="#ef4444" />
+    <rect x="15" y="16" width="2" height="2" fill="#EA4335" />
     <rect x="10" y="18" width="12" height="10" fill="#f4c87a" />
     <rect x="10" y="28" width="3" height="4" fill="#f4c87a" />
     <rect x="19" y="28" width="3" height="4" fill="#f4c87a" />
@@ -202,7 +202,7 @@ const BunnySprite = ({ state }: { state: MascotState }) => (
     {state === 'sleep' ? (
       <><rect x="11" y="12" width="3" height="1" fill="#333" /><rect x="18" y="12" width="3" height="1" fill="#333" /></>
     ) : (
-      <><rect x="11" y="11" width="3" height="3" fill="#ef4444" /><rect x="18" y="11" width="3" height="3" fill="#ef4444" /></>
+      <><rect x="11" y="11" width="3" height="3" fill="#EA4335" /><rect x="18" y="11" width="3" height="3" fill="#EA4335" /></>
     )}
     <rect x="15" y="15" width="2" height="2" fill="#fce7f3" />
     <rect x="10" y="20" width="12" height="8" fill="#fff" />
@@ -281,21 +281,21 @@ const DuckSprite = ({ state }: { state: MascotState }) => (
 // Frog - green with big eyes
 const FrogSprite = ({ state }: { state: MascotState }) => (
   <>
-    <rect x="8" y="2" width="6" height="6" fill="#22c55e" />
-    <rect x="18" y="2" width="6" height="6" fill="#22c55e" />
+    <rect x="8" y="2" width="6" height="6" fill="#34A853" />
+    <rect x="18" y="2" width="6" height="6" fill="#34A853" />
     {state === 'sleep' ? (
       <><rect x="9" y="4" width="4" height="1" fill="#333" /><rect x="19" y="4" width="4" height="1" fill="#333" /></>
     ) : (
       <><rect x="9" y="3" width="4" height="4" fill="#fff" /><rect x="10" y="4" width="2" height="2" fill="#333" />
         <rect x="19" y="3" width="4" height="4" fill="#fff" /><rect x="20" y="4" width="2" height="2" fill="#333" /></>
     )}
-    <rect x="8" y="8" width="16" height="10" fill="#22c55e" />
+    <rect x="8" y="8" width="16" height="10" fill="#34A853" />
     <rect x="12" y="14" width="8" height="4" fill="#86efac" />
     <rect x="14" y="12" width="4" height="2" fill="#166534" />
-    <rect x="8" y="18" width="16" height="10" fill="#22c55e" />
+    <rect x="8" y="18" width="16" height="10" fill="#34A853" />
     <rect x="12" y="20" width="8" height="6" fill="#86efac" />
-    <rect x="6" y="26" width="6" height="6" fill="#22c55e" />
-    <rect x="20" y="26" width="6" height="6" fill="#22c55e" />
+    <rect x="6" y="26" width="6" height="6" fill="#34A853" />
+    <rect x="20" y="26" width="6" height="6" fill="#34A853" />
   </>
 );
 

@@ -1664,7 +1664,7 @@ Assistant (in ${languageName}):`;
           top: -30px;
           left: 50%;
           transform: translateX(-50%);
-          background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+          background: linear-gradient(135deg, #4285F4 0%, #ec4899 100%);
           color: white;
           padding: 4px 12px;
           border-radius: 12px;
@@ -1702,14 +1702,14 @@ Assistant (in ${languageName}):`;
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className={`fixed z-50 bg-card border border-border rounded-2xl shadow-2xl flex flex-col ${
+            className={`fixed z-50 bg-card rounded-xl shadow-sm flex flex-col ${
               isMinimized
                 ? 'bottom-6 right-6 w-80 h-16'
                 : 'bottom-6 right-6 w-96 h-[600px]'
             }`}
           >
             {/* Header */}
-            <div className="p-4 border-b border-border bg-gradient-to-r from-primary/10 to-pink-500/10 rounded-t-2xl">
+             <div className="p-4 border-b border-border bg-gradient-to-r from-primary/10 to-pink-500/10 rounded-t-xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gradient-to-r from-primary to-pink-500 rounded-full flex items-center justify-center">

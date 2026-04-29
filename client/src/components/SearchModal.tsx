@@ -256,8 +256,8 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
   };
 
   const renderEmptyState = () => (
-    <div className="p-8 text-center text-muted-foreground">
-      <Search className="w-12 h-12 mx-auto mb-4 opacity-30" />
+    <div className="p-6 text-center text-muted-foreground">
+      <Search className="w-5 h-5 mx-auto mb-4 opacity-30" />
       <p className="text-base mb-1">Type to search</p>
       <p className="text-sm opacity-70 mb-2">Search questions, topics, or tags</p>
       <div className="flex items-center justify-center gap-2 mb-6 text-xs">
@@ -280,8 +280,8 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
   );
 
   const renderNoResults = () => (
-    <div className="p-8 text-center text-muted-foreground">
-      <Search className="w-12 h-12 mx-auto mb-3 opacity-30" />
+    <div className="p-6 text-center text-muted-foreground">
+      <Search className="w-5 h-5 mx-auto mb-3 opacity-30" />
       <p className="text-base">No results for "{query}"</p>
       <p className="text-sm mt-2 opacity-70">Try different keywords</p>
     </div>
@@ -321,21 +321,21 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
             {/* Mobile Search Input */}
             <div className="px-4 py-3 flex-shrink-0">
               <div className="flex items-center gap-3 px-4 py-3 bg-muted border border-border rounded-2xl">
-                <Search className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                <input
-                  ref={mobileInputRef}
-                  type="text"
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Search questions..."
-                  className="flex-1 bg-transparent text-foreground text-base outline-none placeholder:text-muted-foreground"
-                  autoComplete="off"
-                  spellCheck={false}
-                  aria-label="Search questions"
-                  inputMode="search"
-                  data-testid="search-input-mobile"
-                />
+                 <Search className="w-5 h-5 text-[#9AA0A6] flex-shrink-0" />
+                 <input
+                   ref={mobileInputRef}
+                   type="text"
+                   value={query}
+                   onChange={e => setQuery(e.target.value)}
+                   onKeyDown={handleKeyDown}
+                   placeholder="Search questions..."
+                   className="flex-1 bg-transparent text-foreground text-base outline-none placeholder:text-[#9AA0A6]"
+                   autoComplete="off"
+                   spellCheck={false}
+                   aria-label="Search questions"
+                   inputMode="search"
+                   data-testid="search-input-mobile"
+                 />
                 {query && (
                   <button onClick={() => setQuery('')} className="p-1.5 hover:bg-muted/80 rounded-full flex-shrink-0">
                     <X className="w-4 h-4 text-muted-foreground" />
@@ -372,7 +372,7 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
             {/* Mobile Results */}
             <div className="flex-1 overflow-y-auto">
               {isSearching && (
-                <div className="p-8 text-center">
+                <div className="p-6 text-center">
                   <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
                 </div>
               )}
@@ -428,7 +428,7 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="w-full max-w-2xl bg-card border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+              className="w-full max-w-2xl bg-card rounded-xl shadow-sm overflow-hidden flex flex-col max-h-[80vh]"
               onClick={e => e.stopPropagation()}
               role="dialog"
               aria-modal="true"
@@ -484,11 +484,12 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
               {/* Desktop Results */}
               <div className="flex-1 overflow-y-auto">
                 {isSearching && (
-                  <div className="p-8 text-center">
-                    <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
-                  </div>
+                <div className="p-6 text-center">
+                  <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
+                </div>
                 )}
-                {!isSearching && query.length >= 2 && filteredResults.length === 0 && renderNoResults()}
+              
+              {!isSearching && query.length >= 2 && filteredResults.length === 0 && renderNoResults()}
                 {!isSearching && filteredResults.length > 0 && (
                   <>
                     <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/20">

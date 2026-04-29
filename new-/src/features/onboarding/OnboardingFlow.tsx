@@ -367,7 +367,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           </div>
         </div>
 
-        <div className="glass-morphism p-8 rounded-2xl">
+        <div className="glass-morphism p-6 rounded-xl">
           <h2 className="text-xl font-semibold text-white mb-6">
             {currentStep.title}
           </h2>

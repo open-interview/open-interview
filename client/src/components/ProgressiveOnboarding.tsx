@@ -116,7 +116,7 @@ export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps
         aria-modal="true"
         aria-labelledby="progressive-onboarding-heading"
       >
-        <div className="bg-card border border-border rounded-xl shadow-2xl overflow-hidden"
+        <div className="bg-card rounded-xl shadow-sm overflow-hidden"
           style={{
             background: 'rgba(20,20,25,0.85)',
             backdropFilter: 'blur(20px)',

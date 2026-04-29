@@ -20,7 +20,7 @@ export default function AboutBlogPage() {
         </div>
 
         {/* Author */}
-        <div className="mt-12 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] p-8">
+        <div className="mt-12 bg-[var(--color-surface-raised)] p-6">
           <div className="flex items-start gap-6">
             <div className="w-20 h-20 rounded-full bg-[var(--color-accent)]/20 flex items-center justify-center text-[var(--color-accent)] font-bold text-2xl shrink-0">
               OI
@@ -46,7 +46,7 @@ export default function AboutBlogPage() {
         </div>
 
         {/* Newsletter */}
-        <div className="mt-12 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] p-8">
+        <div className="mt-12 bg-[var(--color-surface-raised)] p-6">
           <h2 className="text-xl font-bold text-[var(--color-ink)] mb-2">Stay Updated</h2>
           <p className="text-sm text-[var(--color-ink-muted)] mb-6">
             Subscribe to get new posts delivered to your inbox.

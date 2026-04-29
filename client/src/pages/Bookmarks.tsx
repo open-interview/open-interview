@@ -16,7 +16,7 @@ import { ProgressStorage } from '../services/storage.service';
 import { STORAGE_KEYS } from '../lib/constants';
 import type { Question } from '../types';
 import {
-  Bookmark, Trash2, Play, Filter,
+  Star, Trash2, Play, Filter,
   Zap, Target, Flame, Building2, CheckCircle,
   Cpu, Terminal, Layout, Database, Activity, GitBranch, Server,
   Layers, X, ArrowUpDown, ChevronDown, ChevronUp, ChevronLeft, ChevronRight
@@ -40,9 +40,9 @@ interface BookmarkedQuestion extends Question {
 }
 
 const DIFFICULTY_CONFIG = {
-  beginner:     { icon: Zap,    color: 'text-green-400',  bg: 'bg-green-500/10',  border: 'border-green-500/30',  label: 'Easy' },
-  intermediate: { icon: Target, color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', label: 'Medium' },
-  advanced:     { icon: Flame,  color: 'text-red-400',    bg: 'bg-red-500/10',    border: 'border-red-500/30',    label: 'Hard' },
+  beginner:     { icon: Zap,    color: 'text-[var(--color-success)]',  bg: 'bg-[var(--color-success-container)]',  border: 'border-[var(--color-success)]/30',  label: 'Easy' },
+  intermediate: { icon: Target, color: 'text-[var(--color-warning)]', bg: 'bg-[var(--color-warning-container)]', border: 'border-[var(--color-warning)]/30', label: 'Medium' },
+  advanced:     { icon: Flame,  color: 'text-[var(--color-error)]',    bg: 'bg-[var(--color-error-container)]',    border: 'border-[var(--color-error)]/30',    label: 'Hard' },
 } as const;
 
 type SortKey = 'newest' | 'oldest' | 'topic';
@@ -152,82 +152,77 @@ export default function Bookmarks() {
                 >
                   <SearchBar value={search} onChange={setSearch} placeholder="Search bookmarks…" />
 
-                  <select
-                    value={filterChannel}
-                    onChange={e => setFilterChannel(e.target.value)}
-                    className="px-3 py-2 text-sm rounded-lg outline-none cursor-pointer min-h-[44px]"
-                    style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}
-                  >
-                    <option value="all">All Topics</option>
-                    {channelsWithBookmarks.map(ch => (
-                      <option key={ch} value={ch}>
-                        {ch.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                      </option>
-                    ))}
-                  </select>
+                   <select
+                     value={filterChannel}
+                     onChange={e => setFilterChannel(e.target.value)}
+                     className="px-3 py-2 text-base rounded-lg outline-none cursor-pointer min-h-[44px] bg-[var(--surface-2)] border border-[var(--color-border)] text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                   >
+                     <option value="all">All Topics</option>
+                     {channelsWithBookmarks.map(ch => (
+                       <option key={ch} value={ch}>
+                         {ch.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                       </option>
+                     ))}
+                   </select>
 
-                  <select
-                    value={filterDifficulty}
-                    onChange={e => setFilterDifficulty(e.target.value)}
-                    className="px-3 py-2 text-sm rounded-lg outline-none cursor-pointer min-h-[44px]"
-                    style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}
-                  >
-                    <option value="all">All Levels</option>
-                    <option value="beginner">Easy</option>
-                    <option value="intermediate">Medium</option>
-                    <option value="advanced">Hard</option>
-                  </select>
+                   <select
+                     value={filterDifficulty}
+                     onChange={e => setFilterDifficulty(e.target.value)}
+                     className="px-3 py-2 text-base rounded-lg outline-none cursor-pointer min-h-[44px] bg-[var(--surface-2)] border border-[var(--color-border)] text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                   >
+                     <option value="all">All Levels</option>
+                     <option value="beginner">Easy</option>
+                     <option value="intermediate">Medium</option>
+                     <option value="advanced">Hard</option>
+                   </select>
 
-                  <select
-                    value={sort}
-                    onChange={e => setSort(e.target.value as SortKey)}
-                    className="px-3 py-2 text-sm rounded-lg outline-none cursor-pointer min-h-[44px]"
-                    style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}
-                  >
-                    <option value="newest">Newest</option>
-                    <option value="oldest">Oldest</option>
-                    <option value="topic">By Topic</option>
-                  </select>
+                   <select
+                     value={sort}
+                     onChange={e => setSort(e.target.value as SortKey)}
+                     className="px-3 py-2 text-base rounded-lg outline-none cursor-pointer min-h-[44px] bg-[var(--surface-2)] border border-[var(--color-border)] text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                   >
+                     <option value="newest">Newest</option>
+                     <option value="oldest">Oldest</option>
+                     <option value="topic">By Topic</option>
+                   </select>
 
-                  {hasFilters && (
-                    <button
-                      onClick={() => { setSearch(''); setFilterChannel('all'); setFilterDifficulty('all'); }}
-                      className="px-3 py-2 text-sm flex items-center gap-1 rounded-lg transition-colors duration-150 hover:bg-white/5 cursor-pointer min-h-[44px]"
-                      style={{ color: 'var(--text-tertiary)' }}
-                    >
-                      <X className="w-3.5 h-3.5" /> Clear
-                    </button>
-                  )}
+                   {hasFilters && (
+                     <button
+                       onClick={() => { setSearch(''); setFilterChannel('all'); setFilterDifficulty('all'); }}
+                       className="px-3 py-2 text-base flex items-center gap-1 rounded-lg transition-colors duration-150 hover:bg-white/5 cursor-pointer min-h-[44px] text-foreground/70 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                     >
+                       <X className="w-3.5 h-3.5" /> Clear
+                     </button>
+                   )}
                 </motion.div>
               )}
 
               {/* Empty state */}
               {bookmarkedQuestions.length === 0 ? (
                 <EmptyState
-                  icon={<Bookmark className="w-10 h-10" />}
+                  icon={<Star className="w-10 h-10" />}
                   title="No bookmarks yet"
-                  description="Tap the bookmark icon on any question to save it for later review"
+                  description="Tap the star icon on any question to save it for later review"
                   action={<Button variant="primary" onClick={() => setLocation('/channels')}>Browse Questions</Button>}
                   size="lg"
                   animated={true}
                 />
-              ) : filteredQuestions.length === 0 ? (
-                <div className="text-center py-16">
-                  <Filter className="w-8 h-8 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No questions match your filters</p>
-                  <button
-                    onClick={() => { setSearch(''); setFilterChannel('all'); setFilterDifficulty('all'); }}
-                    className="mt-4 px-4 py-2 text-sm rounded-lg transition-colors duration-150 hover:bg-white/5 cursor-pointer min-h-[44px]"
-                    style={{ color: 'var(--color-accent-violet-light)' }}
-                  >
-                    Clear filters
-                  </button>
-                </div>
+               ) : filteredQuestions.length === 0 ? (
+                 <div className="text-center py-16">
+                   <Filter className="w-8 h-8 mx-auto mb-3 opacity-30" />
+                   <p className="text-base text-foreground/70">No questions match your filters</p>
+                   <button
+                     onClick={() => { setSearch(''); setFilterChannel('all'); setFilterDifficulty('all'); }}
+                     className="mt-4 px-4 py-2 text-base rounded-lg transition-colors duration-150 hover:bg-white/5 cursor-pointer min-h-[44px] text-[var(--color-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                   >
+                     Clear filters
+                   </button>
+                 </div>
               ) : (
                 <div className="space-y-3">
                   {filteredQuestions.map((question, index) => {
-                    const diff = DIFFICULTY_CONFIG[question.difficulty as keyof typeof DIFFICULTY_CONFIG]
-                      || { icon: Target, color: 'text-muted-foreground', bg: 'bg-muted', border: 'border-muted', label: 'Unknown' };
+                     const diff = DIFFICULTY_CONFIG[question.difficulty as keyof typeof DIFFICULTY_CONFIG]
+                       || { icon: Target, color: 'text-foreground/70', bg: 'bg-[var(--surface-2)]', border: 'border-[var(--color-border)]', label: 'Unknown' };
                     const DiffIcon = diff.icon;
                     const isCompleted = ProgressStorage.getCompleted(question.channelId).includes(question.id);
                     const isExpanded = expandedId === question.id;
@@ -241,118 +236,111 @@ export default function Bookmarks() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.03 }}
                         onClick={() => goToQuestion(question)}
-                        className="rounded-[var(--radius-xl)] p-4 cursor-pointer transition-all duration-200 ease-out hover:border-primary/40 hover:scale-[1.01] hover:shadow-lg"
-                        style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)' }}
+                         className="group rounded-2xl p-4 cursor-pointer transition-all duration-200 ease-out hover:scale-[1.01] active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none] bg-[var(--surface-2)] border border-[var(--color-border)] shadow-sm"
                       >
                         <div className="flex items-start gap-3">
-                          {/* Channel icon */}
-                          <div
-                            className="p-2 rounded-lg flex-shrink-0 hidden sm:flex"
-                            style={{ background: 'rgba(60,64,67,0.12)', color: 'var(--color-accent-violet-light)' }}
-                          >
-                            {channelIcons[question.channelId] || channelIcons.default}
-                          </div>
+                          {/* Star indicator */}
+                           <div className="relative flex-shrink-0">
+                            <div
+                                className="w-9 h-9 rounded-full flex items-center justify-center bg-[var(--color-warning-container)] text-[var(--color-warning)]"
+                              >
+                                <Star className="w-4 h-4 fill-current" />
+                              </div>
+                           </div>
 
                           {/* Content */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                              <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>
-                                {question.channelId.split('-').join(' ')}
-                              </span>
+                               <span className="text-xs uppercase tracking-wider font-medium text-foreground/70">
+                                 {question.channelId.split('-').join(' ')}
+                               </span>
                               <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs border ${diff.bg} ${diff.color} ${diff.border}`}>
                                 <DiffIcon className="w-3 h-3" />
                                 {diff.label}
                               </span>
-                              {isCompleted && (
-                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-green-500/10 text-green-400 border border-green-500/30">
-                                  <CheckCircle className="w-3 h-3" />
-                                  Done
-                                </span>
-                              )}
-                              <span className="text-[10px] ml-auto" style={{ color: 'var(--text-tertiary)' }}>
-                                {timeAgo(question.savedAt)}
-                              </span>
+                               {isCompleted && (
+                                 <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-[var(--color-success-container)] text-[var(--color-success)] border border-[var(--color-success)]/30">
+                                   <CheckCircle className="w-3 h-3" />
+                                   Done
+                                 </span>
+                               )}
+                               <span className="text-xs ml-auto text-foreground/70">
+                                 {timeAgo(question.savedAt)}
+                               </span>
                             </div>
 
-                            <h3 className="font-medium text-sm sm:text-base line-clamp-2 mb-2" style={{ color: 'var(--text-primary)' }}>
-                              {question.question}
-                            </h3>
+                              <h3 className="font-medium text-base line-clamp-2 mb-2 text-[var(--text-primary)]">
+                                {question.question}
+                              </h3>
 
                             {question.companies && question.companies.length > 0 && (
                               <div className="flex items-center gap-1.5">
-                                <Building2 className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }} />
-                                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                                  {question.companies.slice(0, 3).join(', ')}
-                                  {question.companies.length > 3 && ` +${question.companies.length - 3}`}
-                                </span>
+                                 <Building2 className="w-3 h-3 flex-shrink-0 text-foreground/70" />
+                                 <span className="text-xs text-foreground/70">
+                                   {question.companies.slice(0, 3).join(', ')}
+                                   {question.companies.length > 3 && ` +${question.companies.length - 3}`}
+                                 </span>
                               </div>
                             )}
                           </div>
 
                           {/* Actions — min 44px touch targets */}
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <button
-                              onClick={e => { e.stopPropagation(); setExpandedId(isExpanded ? null : question.id); }}
-                              className="w-11 h-11 flex items-center justify-center rounded-lg transition-colors duration-150 hover:bg-white/5 cursor-pointer sm:hidden"
-                              style={{ color: 'var(--text-tertiary)' }}
-                              aria-label={isExpanded ? 'Collapse' : 'Expand'}
-                            >
-                              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                            </button>
-                            <button
-                              onClick={e => { e.stopPropagation(); removeBookmark(question); }}
-                              className="w-11 h-11 flex items-center justify-center rounded-lg transition-colors duration-150 hover:bg-red-500/10 hover:text-red-400 cursor-pointer"
-                              style={{ color: 'var(--text-tertiary)' }}
-                              title="Remove bookmark"
-                              aria-label="Remove bookmark"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={e => { e.stopPropagation(); goToQuestion(question); }}
-                              className="w-11 h-11 flex items-center justify-center rounded-lg transition-colors duration-150 hover:opacity-80 cursor-pointer"
-                              style={{ background: 'rgba(60,64,67,0.12)', color: 'var(--color-accent-violet-light)' }}
-                              title="Review question"
-                              aria-label="Review question"
-                            >
-                              <Play className="w-4 h-4" fill="currentColor" />
-                            </button>
+                          <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                              <button
+                                onClick={e => { e.stopPropagation(); setExpandedId(isExpanded ? null : question.id); }}
+                                className="w-11 h-11 flex items-center justify-center rounded-full transition-colors duration-150 hover:bg-white/10 cursor-pointer sm:hidden text-foreground/70 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                                aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                              >
+                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
+                              <button
+                                onClick={e => { e.stopPropagation(); removeBookmark(question); }}
+                                className="w-11 h-11 flex items-center justify-center rounded-full transition-colors duration-150 hover:bg-[var(--color-error-container)] hover:text-[var(--color-error)] cursor-pointer text-foreground/70 focus-visible:ring-2 focus-visible:ring-[var(--color-error)] focus-visible:outline-none"
+                                title="Remove bookmark"
+                                aria-label="Remove bookmark"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={e => { e.stopPropagation(); goToQuestion(question); }}
+                                className="w-11 h-11 flex items-center justify-center rounded-full transition-colors duration-150 hover:opacity-80 cursor-pointer focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none bg-[var(--color-primary)] text-[var(--color-on-primary)]"
+                                title="Review question"
+                                aria-label="Review question"
+                              >
+                                <Play className="w-4 h-4 fill-current" />
+                              </button>
                           </div>
                         </div>
 
-                        {/* Mobile inline detail panel */}
-                        {isExpanded && previewText && (
-                          <div className="mt-3 pt-3 border-t border-border sm:hidden" onClick={e => e.stopPropagation()}>
-                            <p className="text-xs leading-relaxed mb-2" style={{ color: 'var(--text-secondary)' }}>{previewText}</p>
-                            <button
-                              onClick={() => goToQuestion(question)}
-                              className="text-xs text-primary hover:text-primary transition-colors duration-150 cursor-pointer"
-                            >
-                              Go to question →
-                            </button>
-                            <div className="flex items-center justify-between mt-3 pt-2 border-t border-border">
-                              <button
-                                disabled={currentIdx <= 0}
-                                onClick={() => setExpandedId(filteredQuestions[currentIdx - 1].id)}
-                                className="flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 cursor-pointer"
-                                style={{ color: 'var(--text-secondary)' }}
-                              >
-                                <ChevronLeft className="w-3.5 h-3.5" /> Prev
-                              </button>
-                              <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                                {currentIdx + 1} / {filteredQuestions.length}
-                              </span>
-                              <button
-                                disabled={currentIdx >= filteredQuestions.length - 1}
-                                onClick={() => setExpandedId(filteredQuestions[currentIdx + 1].id)}
-                                className="flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 cursor-pointer"
-                                style={{ color: 'var(--text-secondary)' }}
-                              >
-                                Next <ChevronRight className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                         {/* Mobile inline detail panel */}
+                         {isExpanded && previewText && (
+                           <div className="mt-3 pt-3 border-t border-border sm:hidden" onClick={e => e.stopPropagation()}>
+                             <p className="text-base leading-relaxed mb-2 text-foreground/70">{previewText}</p>
+                             <button
+                               onClick={() => goToQuestion(question)}
+                               className="text-base text-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors duration-150 cursor-pointer focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                             >
+                               Go to question →
+                             </button>
+                             <div className="flex items-center justify-between mt-3 pt-2 border-t border-border">
+                               <button
+                                 disabled={currentIdx <= 0}
+                                 onClick={() => setExpandedId(filteredQuestions[currentIdx - 1].id)}
+                                 className="flex items-center gap-1 px-2 py-1 text-base rounded transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 cursor-pointer text-foreground/70 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                               >
+                                 <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                               </button>
+                               <span className="text-base text-foreground/70">{currentIdx + 1} / {filteredQuestions.length}</span>
+                               <button
+                                 disabled={currentIdx >= filteredQuestions.length - 1}
+                                 onClick={() => setExpandedId(filteredQuestions[currentIdx + 1].id)}
+                                 className="flex items-center gap-1 px-2 py-1 text-base rounded transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 cursor-pointer text-foreground/70 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                               >
+                                 Next <ChevronRight className="w-3.5 h-3.5" />
+                               </button>
+                             </div>
+                           </div>
+                         )}
                       </motion.div>
                     );
 
@@ -361,26 +349,26 @@ export default function Bookmarks() {
                         <HoverCardTrigger asChild>
                           {cardContent}
                         </HoverCardTrigger>
-                        <HoverCardContent className="w-80 hidden sm:block" onClick={e => e.stopPropagation()}>
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium leading-snug">{question.question}</p>
-                            {previewText && (
-                              <p className="text-xs text-muted-foreground leading-relaxed">{previewText}</p>
-                            )}
-                            <div className="flex items-center justify-between pt-1">
-                              <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs border ${diff.bg} ${diff.color} ${diff.border}`}>
-                                <DiffIcon className="w-3 h-3" />
-                                {diff.label}
-                              </span>
-                              <button
-                                onClick={() => goToQuestion(question)}
-                                className="text-xs text-primary hover:text-primary transition-colors duration-150 cursor-pointer"
-                              >
-                                Go to question →
-                              </button>
-                            </div>
-                          </div>
-                        </HoverCardContent>
+                       <HoverCardContent className="w-80 hidden sm:block" onClick={e => e.stopPropagation()}>
+                           <div className="space-y-2">
+                             <p className="text-base font-medium leading-snug">{question.question}</p>
+                             {previewText && (
+                               <p className="text-base text-foreground/70 leading-relaxed">{previewText}</p>
+                             )}
+                             <div className="flex items-center justify-between pt-1">
+                               <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs border ${diff.bg} ${diff.color} ${diff.border}`}>
+                                 <DiffIcon className="w-3 h-3" />
+                                 {diff.label}
+                               </span>
+                               <button
+                                 onClick={() => goToQuestion(question)}
+                                 className="text-base text-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors duration-150 cursor-pointer focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                               >
+                                 Go to question →
+                               </button>
+                             </div>
+                           </div>
+                         </HoverCardContent>
                       </HoverCard>
                     );
                   })}

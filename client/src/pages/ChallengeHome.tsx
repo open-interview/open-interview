@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import {
   Search, Zap, Flame, Trophy, ArrowRight, Bot,
-  CheckCircle, Clock, RotateCcw, Layers, Type,
-  GitBranch, Network, BarChart2, SortAsc, Star,
-  ChevronRight,
+  CheckCircle, Clock, Star, Layers, Type,
+  GitBranch, Network, BarChart2, SortAsc,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
@@ -16,47 +15,51 @@ import type { ChallengeListItem, ChallengeStatus, Difficulty } from '@/types/cha
 import type { UserProgress } from '@/lib/challenge-progress';
 
 const ROLE_TAGS: Record<string, string[]> = {
-  frontend:        ['arrays', 'strings', 'dynamic-programming'],
-  backend:         ['arrays', 'trees', 'graphs'],
-  fullstack:       ['arrays', 'strings', 'trees'],
-  devops:          ['arrays', 'sorting', 'strings'],
-  sre:             ['arrays', 'sorting', 'strings'],
+  frontend: ['arrays', 'strings', 'dynamic-programming'],
+  backend: ['arrays', 'trees', 'graphs'],
+  fullstack: ['arrays', 'strings', 'trees'],
+  devops: ['arrays', 'sorting', 'strings'],
+  sre: ['arrays', 'sorting', 'strings'],
   'data-engineer': ['dynamic-programming', 'arrays', 'sorting'],
-  'ml-engineer':   ['dynamic-programming', 'arrays', 'sorting'],
-  'ai-engineer':   ['dynamic-programming', 'arrays', 'strings'],
-  'data-scientist':['dynamic-programming', 'arrays', 'sorting'],
-  security:        ['arrays', 'strings', 'bit-manipulation'],
-  architect:       ['graphs', 'trees', 'dynamic-programming'],
-  manager:         ['arrays', 'strings', 'sorting'],
-  platform:        ['arrays', 'graphs', 'sorting'],
-  mobile:          ['arrays', 'strings', 'trees'],
-  qa:              ['arrays', 'strings', 'sorting'],
-  sdet:            ['arrays', 'strings', 'sorting'],
+  'ml-engineer': ['dynamic-programming', 'arrays', 'sorting'],
+  'ai-engineer': ['dynamic-programming', 'arrays', 'strings'],
+  'data-scientist': ['dynamic-programming', 'arrays', 'sorting'],
+  security: ['arrays', 'strings', 'bit-manipulation'],
+  architect: ['graphs', 'trees', 'dynamic-programming'],
+  manager: ['arrays', 'strings', 'sorting'],
+  platform: ['arrays', 'graphs', 'sorting'],
+  mobile: ['arrays', 'strings', 'trees'],
+  qa: ['arrays', 'strings', 'sorting'],
+  sdet: ['arrays', 'strings', 'sorting'],
 };
 
 const LEVEL_NAMES = ['Newbie', 'Beginner', 'Learner', 'Coder', 'Developer', 'Engineer', 'Expert', 'Master'];
 const DIFFICULTIES: Array<'All' | Difficulty> = ['All', 'easy', 'medium', 'hard'];
 
-const DIFF_BADGE: Record<string, string> = {
-  easy:   'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-  medium: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  hard:   'bg-red-500/20 text-red-400 border-red-500/30',
+const DIFFICULTY_STYLES: Record<Difficulty, { bg: string; text: string; dot: string }> = {
+  easy: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', dot: 'bg-emerald-400' },
+  medium: { bg: 'bg-amber-500/10', text: 'text-amber-400', dot: 'bg-amber-400' },
+  hard: { bg: 'bg-red-500/10', text: 'text-red-400', dot: 'bg-red-400' },
 };
+
 const STATUS_LABEL: Record<ChallengeStatus, string> = {
-  solved: '✅ Solved', attempted: '🔄 Attempted', unsolved: '⬜ Unsolved',
+  solved: 'Solved',
+  attempted: 'Attempted',
+  unsolved: 'Unsolved',
 };
-const STATUS_STYLE: Record<ChallengeStatus, string> = {
-  solved:    'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  attempted: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  unsolved:  'bg-zinc-700/30 text-zinc-400 border-zinc-600/30',
+
+const STATUS_STYLES: Record<ChallengeStatus, { bg: string; text: string; border: string }> = {
+  solved: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
+  attempted: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20' },
+  unsolved: { bg: 'bg-zinc-700/20', text: 'text-zinc-400', border: 'border-zinc-600/30' },
 };
 
 const CATEGORIES = [
-  { label: 'Arrays',  tag: 'arrays',  icon: Layers },
+  { label: 'Arrays', tag: 'arrays', icon: Layers },
   { label: 'Strings', tag: 'strings', icon: Type },
-  { label: 'DP',      tag: 'dynamic-programming', icon: GitBranch },
-  { label: 'Trees',   tag: 'trees',   icon: Network },
-  { label: 'Graphs',  tag: 'graphs',  icon: BarChart2 },
+  { label: 'DP', tag: 'dynamic-programming', icon: GitBranch },
+  { label: 'Trees', tag: 'trees', icon: Network },
+  { label: 'Graphs', tag: 'graphs', icon: BarChart2 },
   { label: 'Sorting', tag: 'sorting', icon: SortAsc },
 ];
 
@@ -84,7 +87,6 @@ export default function ChallengeHome() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Read ?tag= from URL on mount
   useEffect(() => {
     const tag = new URLSearchParams(window.location.search).get('tag');
     if (tag) setActiveTag(tag);
@@ -127,34 +129,70 @@ export default function ChallengeHome() {
 
   return (
     <AppLayout title="Code Challenges" fullWidth>
-      <div className="max-w-5xl mx-auto px-4 py-10 space-y-10 pb-24">
+      <div className="max-w-6xl mx-auto px-4 py-10 space-y-8 pb-24">
 
-        {/* ── Hero ── */}
+        {/* Hero Section */}
         <section className="text-center space-y-4">
           <h1 className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-primary to-primary bg-clip-text text-transparent">
             Code. Learn. Level Up.
           </h1>
-          <p className="text-gray-400 text-lg">Practice coding challenges in your browser. No login required.</p>
+          <p className="text-foreground/70 text-base">Practice coding challenges in your browser. No login required.</p>
           {hasProgress && (
-            <div className="flex justify-center gap-6 pt-1">
+            <div className="flex justify-center gap-8 pt-2">
               {[
                 { icon: <CheckCircle className="w-4 h-4 text-emerald-400" />, val: progress.totalSolved, label: 'Solved' },
-                { icon: <Flame className="w-4 h-4 text-orange-400" />,        val: `${progress.streak}🔥`, label: 'Streak' },
-                { icon: <Zap className="w-4 h-4 text-yellow-400" />,          val: progress.xp,           label: 'XP' },
-                { icon: <Trophy className="w-4 h-4 text-primary" />,       val: `Lv ${progress.level}`, label: LEVEL_NAMES[Math.min(progress.level, 7)] },
+                { icon: <Flame className="w-4 h-4 text-orange-400" />, val: `${progress.streak}🔥`, label: 'Streak' },
+                { icon: <Zap className="w-4 h-4 text-yellow-400" />, val: progress.xp, label: 'XP' },
+                { icon: <Trophy className="w-4 h-4 text-primary" />, val: `Lv ${progress.level}`, label: LEVEL_NAMES[Math.min(progress.level, 7)] },
               ].map(({ icon, val, label }) => (
                 <div key={label} className="flex flex-col items-center gap-0.5">
                   <div className="flex items-center gap-1 text-sm font-bold">{icon}{val}</div>
-                  <span className="text-xs text-gray-500">{label}</span>
+                  <span className="text-xs text-foreground/60">{label}</span>
                 </div>
               ))}
             </div>
           )}
         </section>
 
-        {/* ── Recommended for You ── */}
+        {/* Featured + Rex */}
+        <div className="grid sm:grid-cols-2 gap-4">
+          {featured && (
+            <div className="bg-gradient-to-br from-background to-muted/50 border border-primary/30 rounded-2xl p-6 space-y-4 shadow-xl">
+              <div className="flex items-center gap-2 text-primary text-xs font-semibold uppercase tracking-wide">
+                <Zap className="w-3.5 h-3.5" /> Challenge of the Day
+              </div>
+               <p className="font-bold text-xl leading-snug text-foreground">{featured.title}</p>
+              <div className="flex items-center gap-3">
+                <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${DIFFICULTY_STYLES[featured.difficulty].bg} ${DIFFICULTY_STYLES[featured.difficulty].text}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${DIFFICULTY_STYLES[featured.difficulty].dot}`} />
+                  {featured.difficulty}
+                </span>
+                 <span className="flex items-center gap-1 text-foreground/70 text-xs">
+                   <Clock className="w-3 h-3" />{featured.estimatedMinutes}m
+                 </span>
+              </div>
+              <button
+                onClick={() => navigate(`/code/challenges/${featured.id}`)}
+                 className="inline-flex items-center gap-2 bg-primary text-primary-foreground text-sm font-semibold px-5 py-2.5 rounded-full transition-all duration-150 cursor-pointer hover:opacity-90 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                Solve Now <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+           <div className="bg-gradient-to-br from-teal-900/30 to-teal-800/20 border border-teal-500/30 rounded-2xl p-6 flex items-center gap-4 shadow-xl">
+            <div className="bg-teal-500/20 rounded-full p-3 shrink-0">
+              <Bot className="w-6 h-6 text-teal-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-teal-300">Rex is here to help!</p>
+               <p className="text-base text-teal-400/80">3-level hints without spoilers. Your AI coding companion.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Recommended for You */}
         {preferences.onboardingComplete && relevantChallenges.length > 0 && (
-          <section className="space-y-3">
+          <section className="space-y-4">
             <div className="flex items-center gap-2 text-amber-400 text-sm font-semibold">
               <Star className="w-4 h-4" /> Recommended for You
             </div>
@@ -163,16 +201,17 @@ export default function ChallengeHome() {
                 <button
                   key={c.id}
                   onClick={() => navigate(`/code/challenges/${c.id}`)}
-                  className="text-left bg-gray-900 border border-amber-800/30 hover:border-amber-600/60 rounded-xl p-4 space-y-2 transition-colors duration-150 cursor-pointer min-h-[44px]"
+                  className="text-left p-4 rounded-2xl border border-amber-500/20 bg-amber-900/10 hover:bg-amber-900/20 hover:border-amber-500/40 cursor-pointer transition-all duration-150 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                  <p className="font-medium text-white text-sm leading-snug">{c.title}</p>
+                     <p className="font-medium text-foreground text-sm leading-snug mb-2">{c.title}</p>
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded border text-xs font-medium ${DIFF_BADGE[c.difficulty]}`}>
+                    <span className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium ${DIFFICULTY_STYLES[c.difficulty].bg} ${DIFFICULTY_STYLES[c.difficulty].text}`}>
+                       <span className={`w-1.5 h-1.5 rounded-full ${DIFFICULTY_STYLES[c.difficulty].dot}`} />
                       {c.difficulty}
                     </span>
-                    <span className="flex items-center gap-1 text-gray-400 text-xs">
-                      <Clock className="w-3 h-3" />{c.estimatedMinutes}m
-                    </span>
+                         <span className="flex items-center gap-1 text-foreground/60 text-xs">
+                           <Clock className="w-3 h-3" />{c.estimatedMinutes}m
+                         </span>
                   </div>
                 </button>
               ))}
@@ -180,216 +219,138 @@ export default function ChallengeHome() {
           </section>
         )}
 
-        {/* ── Featured + Rex side-by-side ── */}
-        <div className="grid sm:grid-cols-2 gap-4">
-          {featured && (
-            <div className="bg-gray-900 border border-primary/50 rounded-2xl p-5 space-y-3">
-              <div className="flex items-center gap-2 text-primary text-xs font-semibold uppercase tracking-wide">
-                <Zap className="w-3.5 h-3.5" /> Challenge of the Day
-              </div>
-              <p className="font-bold text-lg leading-snug">{featured.title}</p>
-              <div className="flex items-center gap-3 text-sm">
-                <span className={`px-2 py-0.5 rounded border text-xs font-medium ${DIFF_BADGE[featured.difficulty]}`}>
-                  {featured.difficulty}
-                </span>
-                <span className="flex items-center gap-1 text-gray-400 text-xs">
-                  <Clock className="w-3 h-3" />{featured.estimatedMinutes}m
-                </span>
-              </div>
-              <button
-                onClick={() => navigate(`/code/challenges/${featured.id}`)}
-                className="inline-flex items-center gap-2 bg-primary hover:bg-primary text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors duration-150 cursor-pointer min-h-[44px]"
-              >
-                Solve Now <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-          <div className="bg-teal-950/60 border border-teal-700/50 rounded-2xl p-5 flex items-center gap-4">
-            <div className="bg-teal-600/20 rounded-full p-3 shrink-0">
-              <Bot className="w-6 h-6 text-teal-400" />
-            </div>
-            <div>
-              <p className="font-semibold text-teal-300">Rex is here to help!</p>
-              <p className="text-sm text-teal-400/80">3-level hints without spoilers. Your AI coding companion.</p>
-            </div>
-          </div>
+        {/* Search Bar - Google Style */}
+        <div className="relative">
+           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9AA0A6]" />
+         <Input
+           placeholder="Search challenges…"
+           value={search}
+           onChange={e => setSearch(e.target.value)}
+           className="pl-11 placeholder:text-[#9AA0A6] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-all duration-200"
+         />
         </div>
 
-        {/* ── Category chips ── */}
-        <div className="flex gap-2 flex-wrap">
-          {CATEGORIES.map(({ label, tag, icon: Icon }) => (
-            <button
-              key={tag}
-              onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 rounded-full text-xs font-medium border transition-colors duration-150 cursor-pointer min-h-[44px] ${
-                activeTag === tag
-                  ? 'bg-primary text-white border-primary'
-                  : 'bg-gray-900 text-gray-400 border-gray-700 hover:border-primary'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />{label}
-            </button>
-          ))}
+        {/* Filter Chips - Google Style */}
+        <div className="space-y-3">
+          {/* Difficulty filters */}
+          <div className="flex items-center gap-2 flex-wrap">
+           <span className="text-xs text-foreground/60 mr-1">Difficulty:</span>
+           {DIFFICULTIES.map(d => (
+             <button
+               key={d}
+               onClick={() => setDifficulty(d)}
+               className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 cursor-pointer min-h-[36px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                 difficulty === d
+                   ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                   : 'bg-muted/60 text-foreground/70 border-border/50 hover:bg-muted hover:border-border'
+               }`}
+             >
+                {d === 'All' ? 'All' : d.charAt(0).toUpperCase() + d.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {/* Category filters */}
+          <div className="flex items-center gap-2 flex-wrap">
+           <span className="text-xs text-foreground/60 mr-1">Topics:</span>
+             {CATEGORIES.map(({ label, tag, icon: Icon }) => (
+               <button
+                 key={tag}
+                 onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 cursor-pointer min-h-[36px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                   activeTag === tag
+                     ? 'bg-primary/20 text-primary border-primary/50 shadow-sm'
+                     : 'bg-muted/60 text-foreground/70 border-border/50 hover:bg-muted hover:border-border'
+                 }`}
+               >
+                <Icon className="w-3.5 h-3.5" />{label}
+              </button>
+            ))}
+          </div>
+
+          {/* Active tag indicator */}
           {activeTag && !CATEGORIES.find(c => c.tag === activeTag) && (
-            <button
-              onClick={() => setActiveTag(null)}
-              className="px-3 py-2.5 rounded-full text-xs font-medium border bg-primary text-white border-primary cursor-pointer min-h-[44px]"
-            >
+           <button
+             onClick={() => setActiveTag(null)}
+             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium border bg-muted/60 text-foreground border-border cursor-pointer min-h-[36px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+           >
               {activeTag} ×
             </button>
           )}
         </div>
 
-        {/* ── Search + Difficulty ── */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-            <Input
-              placeholder="Search challenges…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-9 bg-gray-900 border-gray-700 text-white placeholder:text-gray-500"
-            />
-          </div>
-          <div className="flex gap-2">
-            {DIFFICULTIES.map(d => (
-              <button
-                key={d}
-                onClick={() => setDifficulty(d)}
-                className={`px-3 py-2.5 rounded-full text-xs font-medium border transition-colors duration-150 cursor-pointer min-h-[44px] ${
-                  difficulty === d
-                    ? 'bg-white text-gray-900 border-white'
-                    : 'bg-gray-900 text-gray-400 border-gray-700 hover:border-gray-500'
-                }`}
-              >
-                {d === 'All' ? 'All' : d.charAt(0).toUpperCase() + d.slice(1)}
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Results count */}
+         <p className="text-base text-foreground/60">
+           {solvedCount} of {challenges.length} solved · showing {filtered.length}
+         </p>
 
-        {/* ── Challenge table ── */}
+        {/* Challenge Cards Grid */}
         {loading ? (
-          <div className="flex justify-center py-16"><Spinner className="size-8 text-gray-500" /></div>
+          <div className="flex justify-center py-16"><Spinner className="size-8 text-zinc-500" /></div>
         ) : error ? (
-          <div className="text-center py-16 text-red-400">{error}</div>
+           <div className="text-center py-16 text-destructive text-base">{error}</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16 space-y-3">
+             <p className="text-foreground/60">No challenges match your filters.</p>
+             <button
+               onClick={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
+               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-medium transition-colors duration-150 cursor-pointer hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+             >
+              Clear filters
+            </button>
+          </div>
         ) : (
-          <>
-            <p className="text-sm text-gray-500">{solvedCount} / {challenges.length} solved · showing {filtered.length}</p>
-            
-            {/* Desktop table */}
-            <div className="hidden sm:block rounded-xl border border-gray-800 overflow-x-auto">
-              <table className="w-full text-sm min-w-[480px]">
-                <thead>
-                  <tr className="border-b border-gray-800 bg-gray-900/60 text-gray-400 text-left">
-                    <th className="px-4 py-3 w-10">#</th>
-                    <th className="px-4 py-3">Title</th>
-                    <th className="px-4 py-3 w-28">Difficulty</th>
-                    <th className="px-4 py-3 hidden sm:table-cell">Tags</th>
-                    <th className="px-4 py-3 w-32">Status</th>
-                    <th className="px-4 py-3 w-20 hidden sm:table-cell">Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="text-center py-16">
-                        <p className="text-gray-500 mb-3">No challenges match.</p>
-                        <button
-                          onClick={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
-                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary hover:bg-primary text-white text-sm font-medium transition-colors duration-150 cursor-pointer"
-                        >
-                          Clear filters
-                        </button>
-                      </td>
-                    </tr>
-                  ) : filtered.map((c, i) => {
-                    const status: ChallengeStatus = progress?.challenges[c.id]?.status ?? 'unsolved';
-                    return (
-                      <tr
-                        key={c.id}
-                        onClick={() => navigate(`/code/challenges/${c.id}`)}
-                        className="border-b border-gray-800/60 last:border-0 hover:bg-gray-800/40 cursor-pointer transition-colors duration-150"
-                      >
-                        <td className="px-4 py-3 text-gray-500">{i + 1}</td>
-                        <td className="px-4 py-3 font-medium text-white">{c.title}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex px-2 py-0.5 rounded border text-xs font-medium ${DIFF_BADGE[c.difficulty]}`}>
-                            {c.difficulty.charAt(0).toUpperCase() + c.difficulty.slice(1)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 hidden sm:table-cell">
-                          <div className="flex gap-1 flex-wrap">
-                            {c.tags.slice(0, 3).map(t => (
-                              <span key={t} className="px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 text-xs border border-gray-700">{t}</span>
-                            ))}
-                            {c.tags.length > 3 && <span className="text-gray-500 text-xs">+{c.tags.length - 3}</span>}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex px-2 py-0.5 rounded border text-xs ${STATUS_STYLE[status]}`}>
-                            {STATUS_LABEL[status]}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-gray-400 hidden sm:table-cell">{c.estimatedMinutes}m</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filtered.map((c, i) => {
+              const status: ChallengeStatus = progress?.challenges[c.id]?.status ?? 'unsolved';
+              const diffStyle = DIFFICULTY_STYLES[c.difficulty];
+              const statusStyle = STATUS_STYLES[status];
 
-            {/* Mobile cards */}
-            <div className="sm:hidden space-y-2">
-              {filtered.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500 mb-3">No challenges match.</p>
-                  <button
-                    onClick={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary hover:bg-primary text-white text-sm font-medium transition-colors duration-150 cursor-pointer"
-                  >
-                    Clear filters
-                  </button>
-                </div>
-              ) : filtered.map((c, i) => {
-                const status: ChallengeStatus = progress?.challenges[c.id]?.status ?? 'unsolved';
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => navigate(`/code/challenges/${c.id}`)}
-                    className="w-full text-left p-3 rounded-lg border border-gray-800 bg-gray-900/40 hover:bg-gray-800/60 cursor-pointer transition-colors duration-150"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs text-gray-500">#{i + 1}</span>
-                          <span className={`inline-flex px-1.5 py-0.5 rounded border text-xs font-medium ${DIFF_BADGE[c.difficulty]}`}>
-                            {c.difficulty.charAt(0).toUpperCase() + c.difficulty.slice(1)}
-                          </span>
-                        </div>
-                        <h3 className="font-medium text-white truncate">{c.title}</h3>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className={`inline-flex px-2 py-0.5 rounded border text-xs ${STATUS_STYLE[status]}`}>
-                            {STATUS_LABEL[status]}
-                          </span>
-                          <span className="text-xs text-gray-500">{c.estimatedMinutes}m</span>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-gray-500 shrink-0 mt-1" />
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => navigate(`/code/challenges/${c.id}`)}
+                  className="group text-left p-4 rounded-2xl border border-border bg-card/40 hover:bg-card/60 hover:border-border/70 hover:shadow-xl cursor-pointer transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  {/* Card header */}
+                  <div className="flex items-center justify-between mb-3">
+                     <span className="text-xs text-foreground/60">#{i + 1}</span>
+                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${diffStyle.bg} ${diffStyle.text}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${diffStyle.dot}`} />
+                      {c.difficulty.charAt(0).toUpperCase() + c.difficulty.slice(1)}
                     </div>
-                    {c.tags.length > 0 && (
-                      <div className="flex gap-1 flex-wrap mt-2">
-                        {c.tags.slice(0, 2).map(t => (
-                          <span key={t} className="px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 text-xs border border-gray-700">{t}</span>
-                        ))}
-                        {c.tags.length > 2 && <span className="text-gray-500 text-xs">+{c.tags.length - 2}</span>}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </>
+                  </div>
+
+                  {/* Title */}
+                     <h3 className="font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                       {c.title}
+                     </h3>
+
+                  {/* Tags preview */}
+                  {c.tags.length > 0 && (
+                    <div className="flex gap-1.5 flex-wrap mb-3">
+                      {c.tags.slice(0, 2).map(t => (
+                         <span key={t} className="px-3 py-1.5 rounded-md bg-muted text-foreground/70 text-xs border border-border/50">
+                          {t}
+                        </span>
+                      ))}
+                         {c.tags.length > 2 && <span className="text-foreground/60 text-xs">+{c.tags.length - 2}</span>}
+                    </div>
+                  )}
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between pt-2 border-t border-zinc-800/50">
+                     <span className={`inline-flex px-3 py-1.5 rounded-md text-xs font-medium ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border} border`}>
+                      {STATUS_LABEL[status]}
+                    </span>
+                       <div className="flex items-center gap-1 text-xs text-foreground/60">
+                         <Clock className="w-3 h-3" />{c.estimatedMinutes}m
+                       </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
     </AppLayout>

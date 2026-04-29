@@ -201,7 +201,8 @@ export function ListenIconButton({
       onClick={handleClick}
       disabled={isLoading}
       className={`
-        rounded-lg transition-all
+        min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-all
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
         ${isPlaying 
           ? 'bg-primary text-primary-foreground' 
           : 'bg-primary/10 text-primary hover:bg-primary/20'

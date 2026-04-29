@@ -428,7 +428,7 @@ export default function ReviewSession() {
                 <Brain className="w-16 h-16 text-muted-foreground/30 mx-auto" />
                 <h2 className="text-2xl font-bold">No cards due</h2>
                 <p className="text-muted-foreground text-sm max-w-xs mx-auto">Add questions to your SRS deck by tapping "Add to SRS" while reviewing questions.</p>
-                <button onClick={() => setLocation('/channels')} className="px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-bold text-sm">Browse Questions</button>
+                <button onClick={() => setLocation('/channels')} className="px-4 py-2.5 min-h-[40px] h-10 bg-primary text-primary-foreground rounded-lg font-medium text-sm">Browse Questions</button>
               </div>
             </div>
           </div>
@@ -447,7 +447,7 @@ export default function ReviewSession() {
             <p className="text-muted-foreground mb-6">You've reviewed all cards for today</p>
             <button
               onClick={() => setLocation('/')}
-              className="min-h-[44px] cursor-pointer px-8 py-4 bg-gradient-to-r from-primary to-primary rounded-[16px] font-bold text-black"
+              className="min-h-[40px] h-10 cursor-pointer px-4 py-2.5 bg-gradient-to-r from-primary to-primary rounded-lg font-medium text-sm"
             >
               Back to Home
             </button>
@@ -482,7 +482,7 @@ export default function ReviewSession() {
                   {!selectedChannel && (
                     <button
                       onClick={() => handleChannelSelect(null)}
-                      className="min-h-[44px] px-4 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-primary to-primary text-black"
+                      className="min-h-[40px] h-10 px-4 py-2.5 rounded-full text-sm font-medium bg-gradient-to-r from-primary to-primary text-foreground"
                     >
                       All ({allCards.length})
                     </button>
@@ -491,11 +491,11 @@ export default function ReviewSession() {
                     <button
                       key={channel}
                       onClick={() => handleChannelSelect(channel)}
-                      className={`min-h-[44px] px-4 py-2 rounded-full text-sm font-bold border transition-all ${
-                        selectedChannel === channel
-                          ? 'bg-primary text-black border-primary'
-                          : `bg-gradient-to-br ${getChannelColor(channel)} border-transparent hover:opacity-80`
-                      }`}
+                       className={`min-h-[40px] h-10 px-4 py-2.5 rounded-full text-sm font-medium border transition-all ${
+                         selectedChannel === channel
+                           ? 'bg-primary text-foreground border-primary'
+                           : `bg-gradient-to-br ${getChannelColor(channel)} border-transparent hover:opacity-80`
+                       }`}
                     >
                       {channel} ({count})
                     </button>
@@ -573,11 +573,10 @@ export default function ReviewSession() {
                 className="relative w-full overflow-hidden"
               >
                 {/* Question Card */}
-                <div className="p-8 rounded-[28px] border min-h-[400px] flex flex-col w-full overflow-hidden"
+                <div className="p-6 rounded-xl min-h-[400px] flex flex-col w-full overflow-hidden"
                   style={{
                     background: 'color-mix(in srgb, var(--color-surface-2, #1e293b) 60%, transparent)',
-                    borderColor: 'var(--color-border-subtle, rgba(148,163,184,0.15))',
-                    boxShadow: '8px 8px 24px rgba(0,0,0,0.3), -4px -4px 16px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.05)'
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)'
                   }}>
                   {/* Tags */}
                   <div className="flex items-center justify-between gap-2 mb-6">
@@ -835,7 +834,7 @@ export default function ReviewSession() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={handleRevealAnswer}
-                      className="w-full min-h-[44px] py-6 cursor-pointer bg-gradient-to-r from-primary to-primary rounded-[20px] font-bold text-xl text-black flex items-center justify-center gap-3"
+                       className="w-full min-h-[40px] h-10 cursor-pointer px-4 py-2.5 bg-gradient-to-r from-primary to-primary rounded-lg font-medium text-sm flex items-center justify-center gap-3"
                     >
                       <Eye className="w-6 h-6" />
                       Tap to reveal answer
@@ -853,7 +852,7 @@ export default function ReviewSession() {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.92 }}
                             onClick={() => handleConfidence(level.id)}
-                            className={`min-h-[44px] px-3 py-2 rounded-xl text-sm font-bold cursor-pointer transition-all duration-150 flex items-center gap-1.5 ${level.cls}`}
+                            className={`min-h-[40px] h-10 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all duration-150 flex items-center gap-1.5 ${level.cls}`}
                             style={{
                               background: level.id === 'again' ? 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)' :
                                          level.id === 'hard' ? 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)' :

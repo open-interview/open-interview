@@ -1,18 +1,20 @@
 /**
  * My Path - View and Manage Custom Learning Paths
  * Shows all custom paths created by the user + curated paths
+ * Google Material Design 3 styling
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'wouter';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, Reorder, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
 import { SEOHead } from '../components/SEOHead';
 import { allChannelsConfig } from '../lib/channels-config';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import {
   Plus, Trash2, Edit, ChevronLeft, ChevronRight, Brain, Check, Target, Clock, Award,
-  Code, Rocket, Building2, X, Search
+  Code, Rocket, Building2, X, Search, GripVertical, PlayCircle, CheckCircle,
+  Flag, Star, Lightbulb, MoreVert
 } from 'lucide-react';
 
 interface CustomPath {
@@ -23,7 +25,14 @@ interface CustomPath {
   createdAt: string;
 }
 
-// Certification type
+interface LearningStep {
+  id: string;
+  title: string;
+  type: 'channel' | 'certification' | 'milestone';
+  completed: boolean;
+  order: number;
+}
+
 interface Certification {
   id: string;
   name: string;
@@ -67,6 +76,7 @@ function getPathTypeFromId(id: string) {
   if (id.startsWith('cert-')) return 'certification';
   return 'skill';
 }
+
 export default function MyPath() {
   const [, setLocation] = useLocation();
   const { preferences } = useUserPreferences();
@@ -77,7 +87,6 @@ export default function MyPath() {
   const subscribedSet = new Set(preferences.subscribedChannels);
   const visibleCuratedPaths = curatedPaths.filter(p => p.channels.some((c: string) => subscribedSet.has(c)));
   
-  // Edit modal state
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingPath, setEditingPath] = useState<CustomPath | null>(null);
   const [editForm, setEditForm] = useState({
@@ -89,7 +98,6 @@ export default function MyPath() {
   const [selectedCustomIdx, setSelectedCustomIdx] = useState(0);
   const [selectedCuratedIdx, setSelectedCuratedIdx] = useState(0);
 
-  // Load custom paths from localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem('customPaths');
@@ -97,11 +105,9 @@ export default function MyPath() {
         setCustomPaths(JSON.parse(saved));
       }
 
-      // Load active paths (plural - array)
       const activePaths = localStorage.getItem('activeLearningPaths');
       if (activePaths) {
         const pathIds = JSON.parse(activePaths);
-        // For now, just check if any path is active (we'll show badges for all)
         setActivePathId(pathIds.length > 0 ? pathIds[0] : null);
       }
     } catch (e) {
@@ -109,7 +115,6 @@ export default function MyPath() {
     }
   }, []);
 
-  // Load certifications
   useEffect(() => {
     async function loadCerts() {
       try {
@@ -126,7 +131,6 @@ export default function MyPath() {
     loadCerts();
   }, []);
 
-  // Load curated paths
   useEffect(() => {
     async function loadPaths() {
       try {
@@ -143,7 +147,6 @@ export default function MyPath() {
     loadPaths();
   }, []);
 
-  // Save paths to localStorage
   const savePaths = (paths: CustomPath[]) => {
     try {
       localStorage.setItem('customPaths', JSON.stringify(paths));
@@ -153,12 +156,10 @@ export default function MyPath() {
     }
   };
 
-  // Delete a custom path
   const deletePath = (pathId: string) => {
     const newPaths = customPaths.filter(p => p.id !== pathId);
     savePaths(newPaths);
 
-    // If deleting active path, remove it from active paths
     try {
       const currentPaths = JSON.parse(localStorage.getItem('activeLearningPaths') || '[]');
       if (currentPaths.includes(pathId)) {
@@ -170,51 +171,42 @@ export default function MyPath() {
     }
   };
 
-  // Toggle path activation (add or remove from active paths)
   const togglePathActivation = (path: CustomPath) => {
     try {
       const currentPaths = JSON.parse(localStorage.getItem('activeLearningPaths') || '[]');
       
       if (currentPaths.includes(path.id)) {
-        // Deactivate - remove from array
         const updatedPaths = currentPaths.filter((id: string) => id !== path.id);
         localStorage.setItem('activeLearningPaths', JSON.stringify(updatedPaths));
       } else {
-        // Activate - add to array
         const updatedPaths = [...currentPaths, path.id];
         localStorage.setItem('activeLearningPaths', JSON.stringify(updatedPaths));
       }
       
-      // Reload to reflect changes
       window.location.reload();
     } catch (e) {
       console.error('Failed to toggle path:', e);
     }
   };
 
-  // Toggle curated path activation
   const toggleCuratedPathActivation = (path: typeof curatedPaths[0]) => {
     try {
       const currentPaths = JSON.parse(localStorage.getItem('activeLearningPaths') || '[]');
       
       if (currentPaths.includes(path.id)) {
-        // Deactivate - remove from array
         const updatedPaths = currentPaths.filter((id: string) => id !== path.id);
         localStorage.setItem('activeLearningPaths', JSON.stringify(updatedPaths));
       } else {
-        // Activate - add to array
         const updatedPaths = [...currentPaths, path.id];
         localStorage.setItem('activeLearningPaths', JSON.stringify(updatedPaths));
       }
       
-      // Reload to reflect changes
       window.location.reload();
     } catch (e) {
       console.error('Failed to toggle curated path:', e);
     }
   };
 
-  // Check if a path is active
   const isPathActive = (pathId: string): boolean => {
     try {
       const currentPaths = JSON.parse(localStorage.getItem('activeLearningPaths') || '[]');
@@ -224,7 +216,6 @@ export default function MyPath() {
     }
   };
 
-  // Open edit modal
   const openEditModal = (path: CustomPath) => {
     setEditingPath(path);
     setEditForm({
@@ -236,7 +227,6 @@ export default function MyPath() {
     setShowEditModal(true);
   };
 
-  // Toggle channel in edit form
   const toggleEditChannel = (channelId: string) => {
     setEditForm(prev => ({
       ...prev,
@@ -246,7 +236,6 @@ export default function MyPath() {
     }));
   };
 
-  // Toggle certification in edit form
   const toggleEditCertification = (certId: string) => {
     setEditForm(prev => ({
       ...prev,
@@ -256,7 +245,6 @@ export default function MyPath() {
     }));
   };
 
-  // Save edited path
   const saveEditedPath = () => {
     if (!editingPath || !editForm.name || (editForm.channels.length === 0 && editForm.certifications.length === 0)) {
       alert('Please add a name and select at least one channel or certification');
@@ -284,7 +272,6 @@ export default function MyPath() {
     }
   };
 
-  // Filter channels and certs by search
   const filteredChannels = allChannelsConfig.filter(ch =>
     ch.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -301,14 +288,158 @@ export default function MyPath() {
       />
 
       <AppLayout>
-        {/* Edit Path Modal */}
+        <style>{`
+          .g-card {
+            background: var(--surface-bg, #fff);
+            border: 1px solid var(--border-default, #dadce0);
+            border-radius: 1rem;
+            box-shadow: var(--shadow-1);
+          }
+          .g-card:focus-visible {
+            outline: 2px solid var(--g-primary, #4285F4);
+            outline-offset: 2px;
+          }
+          .g-fab {
+            width: 56px;
+            height: 56px;
+            border-radius: 1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .g-fab-small {
+            width: 40px;
+            height: 40px;
+            border-radius: 0.75rem;
+          }
+          .g-fab-primary {
+            background: var(--g-primary, #4285F4);
+            color: white;
+          }
+          .g-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: var(--radius-md, 8px);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+          }
+          .g-button:focus-visible {
+            outline: 2px solid var(--g-primary, #4285F4);
+            outline-offset: 2px;
+          }
+          .g-button-primary {
+            background: var(--g-primary, #4285F4);
+            color: white;
+          }
+          .g-button-primary:hover {
+            background: var(--g-primary-dark, #1a73e8);
+          }
+          .g-button-secondary {
+            background: var(--surface-raised, #f8f9fa);
+            color: var(--text-primary, #202124);
+            border: 1px solid var(--border-default, #dadce0);
+          }
+          .g-button-tonal {
+            background: var(--g-primary-container, #e8f0fe);
+            color: var(--g-primary-dark, #1a73e8);
+          }
+          .g-text-field {
+            padding: 12px 16px;
+            border: 1px solid var(--border-default, #dadce0);
+            border-radius: var(--radius-md, 8px);
+            font-size: 1rem;
+            background: var(--surface-bg, #fff);
+            color: var(--text-primary, #202124);
+            width: 100%;
+          }
+          .g-text-field:focus {
+            outline: none;
+            border-color: var(--g-primary, #4285F4);
+            box-shadow: 0 0 0 2px var(--g-primary-light, #8ab4f8);
+          }
+          .g-chip {
+            padding: 6px 12px;
+            border-radius: 8px;
+            background: var(--surface-raised, #f8f9fa);
+            border: 1px solid var(--border-default, #dadce0);
+            font-size: 0.75rem;
+            font-weight: 500;
+          }
+          .g-chip-primary {
+            background: var(--g-primary, #4285F4);
+            color: white;
+            border-color: var(--g-primary, #4285F4);
+          }
+          .step-card {
+            position: relative;
+            padding: 16px 16px 16px 48px;
+          }
+          .step-dot {
+            position: absolute;
+            left: 8px;
+            top: 16px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--surface-raised);
+            border: 2px solid var(--border-default);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .step-dot-active {
+            background: var(--g-primary, #4285F4);
+            border-color: var(--g-primary, #4285F4);
+            color: white;
+            animation: pulse 2s infinite;
+          }
+          .step-dot-completed {
+            background: var(--g-success, #34A853);
+            border-color: var(--g-success, #34A853);
+            color: white;
+          }
+          .timeline-track {
+            position: absolute;
+            left: 19px;
+            top: 48px;
+            bottom: 24px;
+            width: 2px;
+            background: var(--border-default);
+          }
+          .timeline-track-progress {
+            background: var(--g-primary, #4285F4);
+          }
+          @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(66, 133, 244, 0); }
+          }
+          .progress-rail {
+            height: 8px;
+            background: var(--surface-raised, #f8f9fa);
+            border-radius: 4px;
+            overflow: hidden;
+          }
+          .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--g-primary, #4285F4), var(--g-success, #34A853));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+          }
+        `}</style>
+
         <AnimatePresence>
           {showEditModal && editingPath && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-6"
+              className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
               onClick={() => setShowEditModal(false)}
             >
               <motion.div
@@ -316,49 +447,44 @@ export default function MyPath() {
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 20 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-background border border-border rounded-[32px] max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+                className="bg-background border border-border rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col"
               >
-                {/* Header */}
-                <div className="p-8 border-b border-border">
+                <div className="p-6 border-b border-border">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-3xl font-bold">Edit Path</h2>
+                    <h2 className="text-2xl font-semibold">Edit Path</h2>
                     <button
                       onClick={() => setShowEditModal(false)}
-                      className="w-10 h-10 bg-muted/50 hover:bg-muted rounded-full flex items-center justify-center transition-all"
+                      className="g-button g-button-secondary g-fab-small"
                     >
                       <X className="w-5 h-5" />
                     </button>
                   </div>
                   
-                  {/* Path Name Input */}
                   <input
                     type="text"
                     placeholder="Path Name"
                     value={editForm.name}
                     onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-6 py-4 bg-muted/50 border border-border rounded-[16px] text-xl focus:outline-none focus:border-primary transition-all"
+                    className="g-text-field"
                   />
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto p-8 space-y-8">
-                  {/* Search */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
                   <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9AA0A6]" />
                     <input
                       type="text"
                       placeholder="Search channels and certifications..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 bg-muted/50 border border-border rounded-[12px] focus:outline-none focus:border-primary transition-all"
+                      className="w-full pl-12 pr-4 h-[46px] bg-[#F1F3F4] dark:bg-[#303134] rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 transition-all placeholder:text-[#9AA0A6] text-foreground"
                     />
                   </div>
 
-                  {/* Selected Summary */}
                   {(editForm.channels.length > 0 || editForm.certifications.length > 0) && (
-                    <div className="p-4 bg-gradient-to-r from-primary/10 to-primary/10 border border-primary/30 rounded-[16px]">
-                      <div className="text-sm text-muted-foreground mb-2">Selected:</div>
-                      <div className="flex items-center gap-4 text-sm font-semibold">
+                    <div className="g-card p-4 border-primary/30">
+                      <div className="text-sm text-foreground/70 mb-2">Selected:</div>
+                      <div className="flex items-center gap-4 text-sm font-medium">
                         <span>{editForm.channels.length} channels</span>
                         <span>•</span>
                         <span>{editForm.certifications.length} certifications</span>
@@ -366,24 +492,19 @@ export default function MyPath() {
                     </div>
                   )}
 
-                  {/* Channels Section */}
                   <div>
-                    <h3 className="text-xl font-bold mb-4">Channels</h3>
+                    <h3 className="text-lg font-semibold mb-4">Channels</h3>
                     <div className="grid grid-cols-2 gap-3">
-                      {filteredChannels.slice(0, 20).map((channel) => {
+                      {filteredChannels.slice(0, 16).map((channel) => {
                         const isSelected = editForm.channels.includes(channel.id);
                         return (
                           <button
                             key={channel.id}
                             onClick={() => toggleEditChannel(channel.id)}
-                            className={`p-4 rounded-[12px] border transition-all text-left ${
-                              isSelected
-                                ? 'bg-gradient-to-r from-primary/20 to-primary/20 border-primary'
-                                : 'bg-muted/50 border-border hover:border-border'
-                            }`}
+                            className={`g-card p-3 text-left transition-all ${isSelected ? 'border-primary bg-primary/5' : ''}`}
                           >
                             <div className="flex items-center justify-between">
-                              <span className="font-semibold">{channel.name}</span>
+                              <span className="font-medium text-sm">{channel.name}</span>
                               {isSelected && <Check className="w-5 h-5 text-primary" />}
                             </div>
                           </button>
@@ -392,26 +513,21 @@ export default function MyPath() {
                     </div>
                   </div>
 
-                  {/* Certifications Section */}
                   <div>
-                    <h3 className="text-xl font-bold mb-4">Certifications</h3>
+                    <h3 className="text-lg font-semibold mb-4">Certifications</h3>
                     <div className="grid grid-cols-2 gap-3">
-                      {filteredCerts.slice(0, 20).map((cert) => {
+                      {filteredCerts.slice(0, 16).map((cert) => {
                         const isSelected = editForm.certifications.includes(cert.id);
                         return (
                           <button
                             key={cert.id}
                             onClick={() => toggleEditCertification(cert.id)}
-                            className={`p-4 rounded-[12px] border transition-all text-left ${
-                              isSelected
-                                ? 'bg-gradient-to-r from-primary/20 to-primary/20 border-primary'
-                                : 'bg-muted/50 border-border hover:border-border'
-                            }`}
+                            className={`g-card p-3 text-left transition-all ${isSelected ? 'border-primary bg-primary/5' : ''}`}
                           >
                             <div className="flex items-center justify-between">
                               <div>
-                                <div className="text-xs text-muted-foreground mb-1">{cert.provider}</div>
-                                <div className="font-semibold text-sm">{cert.name}</div>
+                                <div className="text-xs text-foreground/70 mb-1">{cert.provider}</div>
+                                <div className="font-medium text-sm">{cert.name}</div>
                               </div>
                               {isSelected && <Check className="w-5 h-5 text-primary" />}
                             </div>
@@ -422,12 +538,11 @@ export default function MyPath() {
                   </div>
                 </div>
 
-                {/* Footer */}
-                <div className="p-8 border-t border-border">
+                <div className="p-6 border-t border-border">
                   <button
                     onClick={saveEditedPath}
                     disabled={!editForm.name || (editForm.channels.length === 0 && editForm.certifications.length === 0)}
-                    className="w-full py-4 bg-gradient-to-r from-primary to-primary rounded-[16px] font-bold text-xl text-black disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-all"
+                    className="g-button g-button-primary w-full"
                   >
                     Save Changes
                   </button>
@@ -438,290 +553,261 @@ export default function MyPath() {
         </AnimatePresence>
 
         <div className="min-h-screen bg-background text-foreground">
-          <div className="max-w-7xl mx-auto px-6 py-12">
-            {/* Header */}
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-12"
+              className="mb-8"
             >
-              <h1 className="text-6xl md:text-7xl font-bold mb-4">
-                My
-                <br />
-                <span className="bg-gradient-to-r from-primary to-primary bg-clip-text text-transparent">
-                  custom paths
-                </span>
-              </h1>
-              <p className="text-xl text-muted-foreground">
+              <h1 className="text-3xl font-semibold mb-2">My Learning Paths</h1>
+              <p className="text-foreground/70">
                 {customPaths.length} custom {customPaths.length === 1 ? 'path' : 'paths'} created
               </p>
             </motion.div>
 
-            {/* Create New Path Button */}
             <motion.button
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
               onClick={() => setLocation('/learning-paths')}
-              className="w-full p-8 bg-gradient-to-r from-primary/20 to-primary/20 backdrop-blur-xl rounded-[24px] border-2 border-dashed border-primary/30 hover:border-primary/60 transition-all group mb-8"
+              className="g-card p-6 mb-8 border-2 border-dashed border-primary/30 hover:border-primary/60 transition-all group"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary rounded-full flex items-center justify-center">
-                    <Plus className="w-8 h-8 text-primary-foreground" strokeWidth={3} />
+                  <div className="g-fab g-fab-primary">
+                    <Plus className="w-8 h-8" />
                   </div>
                   <div className="text-left">
-                    <h3 className="text-2xl font-bold mb-1">Create New Path</h3>
-                    <p className="text-muted-foreground">Build your own learning journey</p>
+                    <h3 className="text-lg font-semibold mb-1">Create New Path</h3>
+                    <p className="text-sm text-foreground/70">Build your own learning journey</p>
                   </div>
                 </div>
-                <ChevronRight className="w-8 h-8 text-primary group-hover:translate-x-2 transition-transform" />
+                <ChevronRight className="w-6 h-6 text-primary group-hover:translate-x-2 transition-transform" />
               </div>
             </motion.button>
 
-            {/* Custom Paths Grid */}
             {customPaths.length > 0 ? (
-              <div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold">Custom Paths</h2>
+                  <span className="g-chip">{customPaths.length}</span>
+                </div>
+
                 {(() => {
                   const idx = Math.min(selectedCustomIdx, customPaths.length - 1);
                   const path = customPaths[idx];
                   const isActive = isPathActive(path.id);
+                  
+                  const pathProgress = 0;
+                  
                   return (
-                    <motion.div
-                      key={path.id}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className={`group relative p-6 backdrop-blur-xl rounded-[24px] border-2 transition-all overflow-hidden ${
-                        isActive
-                          ? 'bg-gradient-to-br from-primary/20 to-primary/20 border-primary'
-                          : 'bg-muted/50 border-border hover:border-border'
-                      }`}
-                    >
-                      {isActive && (
-                        <div className="absolute top-4 right-4 px-3 py-1 bg-primary text-primary-foreground rounded-full text-xs font-bold flex items-center gap-1">
-                          <Check className="w-3 h-3" />
-                          Active
-                        </div>
-                      )}
-                      <div className="space-y-4">
-                        <div className="flex items-start gap-4">
-                          <div className="w-16 h-16 bg-gradient-to-br from-primary to-pink-500 rounded-[16px] flex items-center justify-center flex-shrink-0">
-                            <Brain className="w-8 h-8 text-foreground" strokeWidth={2.5} />
+                    <div className="g-card p-6 mb-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-4">
+                          <div className="g-fab bg-gradient-to-br from-primary to-pink-500">
+                            <Brain className="w-7 h-7 text-white" />
                           </div>
-                          <div className="flex-1">
-                            <h3 className="text-2xl font-bold mb-1">{path.name}</h3>
-                            <p className="text-sm text-muted-foreground">
+                          <div>
+                            <h3 className="text-xl font-semibold mb-1">{path.name}</h3>
+                            <p className="text-sm text-foreground/70">
                               Created {new Date(path.createdAt).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="p-3 bg-background/30 rounded-[12px]">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                              <Target className="w-3 h-3" />
-                              <span>Channels</span>
-                            </div>
-                            <div className="font-bold">{path.channels.length}</div>
-                          </div>
-                          <div className="p-3 bg-background/30 rounded-[12px]">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                              <Award className="w-3 h-3" />
-                              <span>Certifications</span>
-                            </div>
-                            <div className="font-bold">{path.certifications.length}</div>
-                          </div>
-                        </div>
-                        {path.channels.length > 0 && (
-                          <div>
-                            <div className="text-xs text-muted-foreground mb-2">Channels</div>
-                            <div className="flex flex-wrap gap-2">
-                              {path.channels.slice(0, 3).map((channel: string) => (
-                                <span key={channel} className="px-2 py-1 bg-muted/50 rounded-full text-xs font-medium">{channel}</span>
-                              ))}
-                              {path.channels.length > 3 && (
-                                <span className="px-2 py-1 bg-muted/50 rounded-full text-xs font-medium text-muted-foreground">+{path.channels.length - 3} more</span>
-                              )}
-                            </div>
-                          </div>
+                        {isActive && (
+                          <span className="g-chip g-chip-primary flex items-center gap-1">
+                            <CheckCircle className="w-4 h-4" />
+                            Active
+                          </span>
                         )}
-                        <div className="flex items-center gap-3 pt-2">
-                          <button
-                            onClick={() => togglePathActivation(path)}
-                            className={`flex-1 px-6 py-3 rounded-[16px] font-bold transition-all ${
-                              isActive
-                                ? 'bg-muted border border-border hover:bg-white/20'
-                                : 'bg-gradient-to-r from-primary to-primary text-primary-foreground hover:scale-105'
-                            }`}
-                          >
-                            {isActive ? 'Deactivate' : 'Activate'}
-                          </button>
-                          <button onClick={() => openEditModal(path)} className="px-4 py-3 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-[16px] transition-all" title="Edit path">
-                            <Edit className="w-5 h-5 text-blue-400" />
-                          </button>
-                          <button onClick={() => deletePath(path.id)} className="px-4 py-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-[16px] transition-all" title="Delete path">
-                            <Trash2 className="w-5 h-5 text-red-500" />
-                          </button>
+                      </div>
+
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between text-sm mb-2">
+                          <span className="text-foreground/70">Progress</span>
+                          <span className="font-medium">{pathProgress}%</span>
                         </div>
-                        {/* Prev/Next Navigation */}
-                        <div className="flex items-center justify-between pt-2 border-t border-border">
-                          <button
-                            onClick={() => setSelectedCustomIdx(i => Math.max(0, i - 1))}
-                            disabled={idx === 0}
-                            className="flex items-center gap-1 px-4 py-2 rounded-[12px] bg-muted/50 border border-border disabled:opacity-30 hover:bg-muted transition-all text-sm font-medium"
-                          >
-                            <ChevronLeft className="w-4 h-4" /> Previous Path
-                          </button>
-                          <span className="text-sm text-muted-foreground font-medium">{idx + 1} / {customPaths.length}</span>
-                          <button
-                            onClick={() => setSelectedCustomIdx(i => Math.min(customPaths.length - 1, i + 1))}
-                            disabled={idx === customPaths.length - 1}
-                            className="flex items-center gap-1 px-4 py-2 rounded-[12px] bg-muted/50 border border-border disabled:opacity-30 hover:bg-muted transition-all text-sm font-medium"
-                          >
-                            Next Path <ChevronRight className="w-4 h-4" />
-                          </button>
+                        <div className="progress-rail">
+                          <div className="progress-fill" style={{ width: `${pathProgress}%` }} />
                         </div>
                       </div>
-                    </motion.div>
+
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="g-card p-3">
+                          <div className="flex items-center gap-2 text-sm text-foreground/70 mb-1">
+                            <Target className="w-4 h-4" />
+                            <span>Channels</span>
+                          </div>
+                          <div className="text-xl font-semibold">{path.channels.length}</div>
+                        </div>
+                        <div className="g-card p-3">
+                          <div className="flex items-center gap-2 text-sm text-foreground/70 mb-1">
+                            <Award className="w-4 h-4" />
+                            <span>Certifications</span>
+                          </div>
+                          <div className="text-xl font-semibold">{path.certifications.length}</div>
+                        </div>
+                      </div>
+
+                      {path.channels.length > 0 && (
+                        <div className="mb-4">
+                          <div className="text-xs text-foreground/70 mb-2">Channels</div>
+                          <div className="flex flex-wrap gap-2">
+                            {path.channels.slice(0, 4).map((channel: string) => (
+                              <span key={channel} className="g-chip">{channel}</span>
+                            ))}
+                            {path.channels.length > 4 && (
+                              <span className="g-chip text-foreground/70">+{path.channels.length - 4} more</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => togglePathActivation(path)}
+                          className={`g-button ${isActive ? 'g-button-secondary' : 'g-button-primary'} flex-1`}
+                        >
+                          {isActive ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <button onClick={() => openEditModal(path)} className="g-button g-button-secondary" title="Edit path">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                         <button onClick={() => deletePath(path.id)} className="g-button bg-destructive/10 text-destructive hover:bg-destructive/20" title="Delete path">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                        <button
+                          onClick={() => setSelectedCustomIdx(i => Math.max(0, i - 1))}
+                          disabled={idx === 0}
+                          className="g-button g-button-secondary"
+                        >
+                          <ChevronLeft className="w-4 h-4" /> Previous
+                        </button>
+                        <span className="text-sm text-foreground/70">{idx + 1} / {customPaths.length}</span>
+                        <button
+                          onClick={() => setSelectedCustomIdx(i => Math.min(customPaths.length - 1, i + 1))}
+                          disabled={idx === customPaths.length - 1}
+                          className="g-button g-button-secondary"
+                        >
+                          Next <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
                   );
                 })()}
-              </div>
+              </motion.div>
             ) : (
-              /* Empty State */
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
-                className="text-center py-20"
+                className="g-card p-6 text-center"
               >
-                <div className="w-24 h-24 bg-gradient-to-br from-primary/20 to-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Brain className="w-12 h-12 text-primary" />
+                <div className="g-fab bg-primary/10 mx-auto mb-4">
+                  <Brain className="w-8 h-8 text-primary" />
                 </div>
-                <h3 className="text-2xl font-bold mb-2">No custom paths yet</h3>
-                <p className="text-muted-foreground mb-6">Create your first custom learning path to get started</p>
+                <h3 className="text-xl font-semibold mb-2">No custom paths yet</h3>
+                <p className="text-foreground/70 mb-6">Create your first custom learning path to get started</p>
                 <button
                   onClick={() => setLocation('/learning-paths')}
-                  className="px-8 py-4 bg-gradient-to-r from-primary to-primary text-primary-foreground rounded-[16px] font-bold hover:scale-105 transition-all"
+                  className="g-button g-button-primary"
                 >
                   Create Your First Path
                 </button>
               </motion.div>
             )}
 
-            {/* Curated Paths Section */}
-            <div className="mt-16">
+            {visibleCuratedPaths.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="mb-8"
+                className="mt-12"
               >
-                <h2 className="text-4xl font-bold mb-2">Curated Paths</h2>
-                <p className="text-muted-foreground">Pre-built learning journeys for popular career paths</p>
-              </motion.div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold">Curated Paths</h2>
+                  <span className="g-chip">{visibleCuratedPaths.length}</span>
+                </div>
 
-              {visibleCuratedPaths.length > 0 && (() => {
-                const idx = Math.min(selectedCuratedIdx, visibleCuratedPaths.length - 1);
-                const path = visibleCuratedPaths[idx];
-                const Icon = path.icon;
-                const isActive = isPathActive(path.id);
-                return (
-                  <div>
-                    <motion.div
-                      key={path.id}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className={`group relative p-6 backdrop-blur-xl rounded-[24px] border-2 transition-all overflow-hidden ${
-                        isActive
-                          ? 'bg-gradient-to-br from-primary/20 to-primary/20 border-primary'
-                          : 'bg-muted/50 border-border hover:border-border'
-                      }`}
-                    >
-                      <div className={`absolute inset-0 bg-gradient-to-br ${path.color} opacity-0 group-hover:opacity-10 transition-opacity`} />
-                      {isActive && (
-                        <div className="absolute top-4 right-4 px-3 py-1 bg-primary text-primary-foreground rounded-full text-xs font-bold flex items-center gap-1">
-                          <Check className="w-3 h-3" />
-                          Active
+                {(() => {
+                  const idx = Math.min(selectedCuratedIdx, visibleCuratedPaths.length - 1);
+                  const path = visibleCuratedPaths[idx];
+                  const Icon = path.icon;
+                  const isActive = isPathActive(path.id);
+                  
+                  return (
+                    <div className="g-card p-6">
+                      <div className="flex items-start gap-4 mb-4">
+                        <div className={`g-fab bg-gradient-to-br ${path.color}`}>
+                          <Icon className="w-7 h-7 text-white" />
                         </div>
-                      )}
-                      <div className="relative space-y-4">
-                        <div className="flex items-start gap-4">
-                          <div className={`w-16 h-16 bg-gradient-to-br ${path.color} rounded-[16px] flex items-center justify-center flex-shrink-0`}>
-                            <Icon className="w-8 h-8 text-foreground" strokeWidth={2.5} />
+                        <div className="flex-1">
+                          <h3 className="text-xl font-semibold mb-1">{path.name}</h3>
+                          <p className="text-sm text-foreground/70 line-clamp-2">{path.description}</p>
+                        </div>
+                        {isActive && (
+                          <span className="g-chip g-chip-primary flex items-center gap-1">
+                            <CheckCircle className="w-4 h-4" />
+                            Active
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="g-card p-3">
+                          <div className="flex items-center gap-2 text-sm text-foreground/70 mb-1">
+                            <Target className="w-4 h-4" />
+                            <span>Difficulty</span>
                           </div>
-                          <div className="flex-1">
-                            <h3 className="text-xl font-bold mb-1">{path.name}</h3>
-                            <p className="text-sm text-muted-foreground line-clamp-2">{path.description}</p>
+                          <div className="font-semibold">{path.difficulty}</div>
+                        </div>
+                        <div className="g-card p-3">
+                          <div className="flex items-center gap-2 text-sm text-foreground/70 mb-1">
+                            <Clock className="w-4 h-4" />
+                            <span>Duration</span>
                           </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="p-3 bg-background/30 rounded-[12px]">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                              <Target className="w-3 h-3" />
-                              <span>Difficulty</span>
-                            </div>
-                            <div className="font-bold text-sm">{path.difficulty}</div>
-                          </div>
-                          <div className="p-3 bg-background/30 rounded-[12px]">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                              <Clock className="w-3 h-3" />
-                              <span>Duration</span>
-                            </div>
-                            <div className="font-bold text-sm">{path.duration}</div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground mb-2">Channels ({path.channels.length})</div>
-                          <div className="flex flex-wrap gap-2">
-                            {path.channels.slice(0, 3).map((channel: string) => (
-                              <span key={channel} className="px-2 py-1 bg-muted/50 rounded-full text-xs font-medium">{channel}</span>
-                            ))}
-                            {path.channels.length > 3 && (
-                              <span className="px-2 py-1 bg-muted/50 rounded-full text-xs font-medium text-muted-foreground">+{path.channels.length - 3} more</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="pt-2 border-t border-border">
-                          <div className="text-xs text-muted-foreground mb-1">Avg. salary</div>
-                          <div className="font-bold text-primary">{path.salary}</div>
-                        </div>
-                        <div className="pt-2">
-                          <button
-                            onClick={() => toggleCuratedPathActivation(path)}
-                            className={`w-full px-6 py-3 rounded-[16px] font-bold transition-all ${
-                              isActive
-                                ? 'bg-muted border border-border hover:bg-white/20'
-                                : 'bg-gradient-to-r from-primary to-primary text-primary-foreground hover:scale-105'
-                            }`}
-                          >
-                            {isActive ? 'Deactivate' : 'Activate Path'}
-                          </button>
-                        </div>
-                        {/* Prev/Next Navigation */}
-                        <div className="flex items-center justify-between pt-2 border-t border-border">
-                          <button
-                            onClick={() => setSelectedCuratedIdx(i => Math.max(0, i - 1))}
-                            disabled={idx === 0}
-                            className="flex items-center gap-1 px-4 py-2 rounded-[12px] bg-muted/50 border border-border disabled:opacity-30 hover:bg-muted transition-all text-sm font-medium"
-                          >
-                            <ChevronLeft className="w-4 h-4" /> Previous Path
-                          </button>
-                          <span className="text-sm text-muted-foreground font-medium">{idx + 1} / {visibleCuratedPaths.length}</span>
-                          <button
-                            onClick={() => setSelectedCuratedIdx(i => Math.min(visibleCuratedPaths.length - 1, i + 1))}
-                            disabled={idx === visibleCuratedPaths.length - 1}
-                            className="flex items-center gap-1 px-4 py-2 rounded-[12px] bg-muted/50 border border-border disabled:opacity-30 hover:bg-muted transition-all text-sm font-medium"
-                          >
-                            Next Path <ChevronRight className="w-4 h-4" />
-                          </button>
+                          <div className="font-semibold">{path.duration}</div>
                         </div>
                       </div>
-                    </motion.div>
-                  </div>
-                );
-              })()}
-            </div>
+
+                      <button
+                        onClick={() => toggleCuratedPathActivation(path)}
+                        className={`g-button w-full ${isActive ? 'g-button-secondary' : 'g-button-primary'}`}
+                      >
+                        {isActive ? 'Deactivate' : 'Activate Path'}
+                      </button>
+
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                        <button
+                          onClick={() => setSelectedCuratedIdx(i => Math.max(0, i - 1))}
+                          disabled={idx === 0}
+                          className="g-button g-button-secondary"
+                        >
+                          <ChevronLeft className="w-4 h-4" /> Previous
+                        </button>
+                        <span className="text-sm text-foreground/70">{idx + 1} / {visibleCuratedPaths.length}</span>
+                        <button
+                          onClick={() => setSelectedCuratedIdx(i => Math.min(visibleCuratedPaths.length - 1, i + 1))}
+                          disabled={idx === visibleCuratedPaths.length - 1}
+                          className="g-button g-button-secondary"
+                        >
+                          Next <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </motion.div>
+            )}
           </div>
         </div>
       </AppLayout>

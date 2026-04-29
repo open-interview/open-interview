@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
-import { Search, ChevronRight } from 'lucide-react';
+import { Search, ChevronRight, Layers, Type, GitBranch, Network, BarChart2, SortAsc, Star } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { getProgress } from '@/lib/challenge-progress';
@@ -9,23 +9,32 @@ import type { ChallengeListItem, ChallengeStatus, Difficulty } from '@/types/cha
 
 const DIFFICULTIES: Array<'All' | Difficulty> = ['All', 'easy', 'medium', 'hard'];
 
-const DIFFICULTY_STYLES: Record<Difficulty, string> = {
-  easy: 'bg-green-500/20 text-green-400 border-green-500/30',
-  medium: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  hard: 'bg-red-500/20 text-red-400 border-red-500/30',
+const DIFFICULTY_STYLES: Record<Difficulty, { bg: string; text: string; dot: string }> = {
+  easy: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', dot: 'bg-emerald-400' },
+  medium: { bg: 'bg-amber-500/10', text: 'text-amber-400', dot: 'bg-amber-400' },
+  hard: { bg: 'bg-red-500/10', text: 'text-red-400', dot: 'bg-red-400' },
 };
 
 const STATUS_LABEL: Record<ChallengeStatus, string> = {
-  solved: '✅ Solved',
-  attempted: '🔄 Attempted',
-  unsolved: '⬜ Unsolved',
+  solved: 'Solved',
+  attempted: 'Attempted',
+  unsolved: 'Unsolved',
 };
 
-const STATUS_STYLES: Record<ChallengeStatus, string> = {
-  solved: 'bg-green-500/10 text-green-400 border-green-500/20',
-  attempted: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  unsolved: 'bg-zinc-700/30 text-zinc-400 border-zinc-600/30',
+const STATUS_STYLES: Record<ChallengeStatus, { bg: string; text: string; border: string }> = {
+  solved: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
+  attempted: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20' },
+  unsolved: { bg: 'bg-zinc-700/20', text: 'text-zinc-400', border: 'border-zinc-600/30' },
 };
+
+const CATEGORIES = [
+  { label: 'Arrays', tag: 'arrays', icon: Layers },
+  { label: 'Strings', tag: 'strings', icon: Type },
+  { label: 'DP', tag: 'dynamic-programming', icon: GitBranch },
+  { label: 'Trees', tag: 'trees', icon: Network },
+  { label: 'Graphs', tag: 'graphs', icon: BarChart2 },
+  { label: 'Sorting', tag: 'sorting', icon: SortAsc },
+];
 
 export default function ChallengeList() {
   const [challenges, setChallenges] = useState<ChallengeListItem[]>([]);
@@ -78,200 +87,154 @@ export default function ChallengeList() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-2 text-zinc-400">
         <p className="text-red-400 font-medium">Failed to load challenges</p>
-        <p className="text-sm">{error}</p>
+        <p className="text-base">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6 pb-24">
-      {/* Header + Stats */}
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6 pb-24">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Challenges</h1>
-          <p className="text-sm text-zinc-400 mt-0.5">
-            {solvedCount} / {challenges.length} solved
+          <h1 className="text-2xl font-bold text-foreground">Challenges</h1>
+          <p className="text-base text-foreground/70 mt-0.5">
+            {solvedCount} of {challenges.length} solved
           </p>
         </div>
       </div>
 
-      {/* Search + Filters */}
-      <div className="space-y-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-zinc-400" />
-          <Input
-            placeholder="Search challenges..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-zinc-900 border-zinc-700 text-white placeholder:text-zinc-500"
-          />
-        </div>
+      {/* Search Bar - Google Style */}
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9AA0A6]" />
+         <Input
+           placeholder="Search challenges..."
+           value={search}
+           onChange={(e) => setSearch(e.target.value)}
+           className="pl-11 placeholder:text-[#9AA0A6] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-all duration-200"
+         />
+      </div>
 
-        {/* Difficulty filter */}
-        <div className="flex gap-2 flex-wrap">
-          {DIFFICULTIES.map((d) => (
-            <button
-              key={d}
-              onClick={() => setDifficulty(d)}
-              className={`px-3 py-2.5 rounded-full text-xs font-medium border transition-colors duration-150 cursor-pointer min-h-[44px] ${
-                difficulty === d
-                  ? 'bg-white text-zinc-900 border-white'
-                  : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-500'
-              }`}
-            >
+      {/* Filter Chips - Google Style */}
+      <div className="space-y-3">
+        {/* Difficulty filters */}
+        <div className="flex items-center gap-2 flex-wrap">
+         <span className="text-xs text-foreground/60 mr-1">Difficulty:</span>
+           {DIFFICULTIES.map((d) => (
+             <button
+               key={d}
+               onClick={() => setDifficulty(d)}
+               className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 cursor-pointer min-h-[36px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                 difficulty === d
+                    ? 'bg-primary text-primary-foreground border-primary'
+                   : 'bg-muted/60 text-foreground/70 border-border/50 hover:bg-muted hover:border-border'
+               }`}
+             >
               {d === 'All' ? 'All' : d.charAt(0).toUpperCase() + d.slice(1)}
             </button>
           ))}
         </div>
 
-        {/* Tag filter */}
-        {allTags.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap">
-            {allTags.map((tag) => (
-              <button
-                key={tag}
-                onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-                className={`px-2.5 py-2 rounded text-xs border transition-colors duration-150 cursor-pointer min-h-[44px] ${
-                  activeTag === tag
-                    ? 'bg-indigo-500/30 text-indigo-300 border-indigo-500/50'
-                    : 'bg-zinc-800/60 text-zinc-400 border-zinc-700 hover:border-zinc-500'
-                }`}
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
+        {/* Category filters */}
+        <div className="flex items-center gap-2 flex-wrap">
+         <span className="text-xs text-foreground/60 mr-1">Topics:</span>
+           {CATEGORIES.map(({ label, tag, icon: Icon }) => (
+             <button
+               key={tag}
+               onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 cursor-pointer min-h-[36px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                 activeTag === tag
+                    ? 'bg-primary/20 text-primary border-primary/50'
+                   : 'bg-muted/60 text-foreground/70 border-border/50 hover:bg-muted hover:border-border'
+               }`}
+             >
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Active tag indicator */}
+        {activeTag && !CATEGORIES.find(c => c.tag === activeTag) && (
+           <button
+             onClick={() => setActiveTag(null)}
+             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium border bg-muted/60 text-foreground border-border cursor-pointer min-h-[36px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+           >
+            {activeTag} ×
+          </button>
         )}
       </div>
 
-      {/* List - Desktop table / Mobile cards */}
+      {/* Challenge Cards Grid */}
       {filtered.length === 0 ? (
         <div className="text-center py-16 space-y-3">
-          <p className="text-zinc-500">No challenges match your filters.</p>
-          <button
-            onClick={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors duration-150 cursor-pointer"
-          >
+           <p className="text-foreground/60">No challenges match your filters.</p>
+           <button
+             onClick={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
+             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-medium transition-colors duration-150 cursor-pointer hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+           >
             Clear filters
           </button>
         </div>
       ) : (
-        <>
-          {/* Desktop table */}
-          <div className="hidden sm:block rounded-lg border border-zinc-800 overflow-x-auto">
-            <table className="w-full text-sm min-w-[480px]">
-              <thead>
-                <tr className="border-b border-zinc-800 bg-zinc-900/60 text-zinc-400 text-left">
-                  <th className="px-4 py-3 w-12">#</th>
-                  <th className="px-4 py-3">Title</th>
-                  <th className="px-4 py-3 w-28">Difficulty</th>
-                  <th className="px-4 py-3 hidden sm:table-cell">Tags</th>
-                  <th className="px-4 py-3 w-32">Status</th>
-                  <th className="px-4 py-3 w-24 hidden sm:table-cell">Est. Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((challenge, idx) => {
-                  const status: ChallengeStatus =
-                    progress.challenges[challenge.id]?.status ?? 'unsolved';
-                  return (
-                    <tr
-                      key={challenge.id}
-                      onClick={() => navigate(`/code/challenges/${challenge.id}`)}
-                      className="border-b border-zinc-800/60 last:border-0 hover:bg-zinc-800/40 cursor-pointer transition-colors duration-150"
-                    >
-                      <td className="px-4 py-3 text-zinc-500">{idx + 1}</td>
-                      <td className="px-4 py-3 font-medium text-white">{challenge.title}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded border text-xs font-medium ${DIFFICULTY_STYLES[challenge.difficulty]}`}
-                        >
-                          {challenge.difficulty.charAt(0).toUpperCase() + challenge.difficulty.slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 hidden sm:table-cell">
-                        <div className="flex gap-1 flex-wrap">
-                          {challenge.tags.slice(0, 3).map((tag) => (
-                            <span
-                              key={tag}
-                              className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 text-xs border border-zinc-700"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                          {challenge.tags.length > 3 && (
-                            <span className="text-zinc-500 text-xs">+{challenge.tags.length - 3}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded border text-xs ${STATUS_STYLES[status]}`}
-                        >
-                          {STATUS_LABEL[status]}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-zinc-400 hidden sm:table-cell">{challenge.estimatedMinutes}m</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((challenge, idx) => {
+            const status: ChallengeStatus =
+              progress.challenges[challenge.id]?.status ?? 'unsolved';
+            const diffStyle = DIFFICULTY_STYLES[challenge.difficulty];
+            const statusStyle = STATUS_STYLES[status];
 
-          {/* Mobile cards */}
-          <div className="sm:hidden space-y-2">
-            {filtered.map((challenge, idx) => {
-              const status: ChallengeStatus =
-                progress.challenges[challenge.id]?.status ?? 'unsolved';
-              return (
-                <button
-                  key={challenge.id}
-                  onClick={() => navigate(`/code/challenges/${challenge.id}`)}
-                  className="w-full text-left p-3 rounded-lg border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-800/60 cursor-pointer transition-colors duration-150"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs text-zinc-500">#{idx + 1}</span>
-                        <span
-                          className={`inline-flex px-1.5 py-0.5 rounded border text-xs font-medium ${DIFFICULTY_STYLES[challenge.difficulty]}`}
-                        >
-                          {challenge.difficulty.charAt(0).toUpperCase() + challenge.difficulty.slice(1)}
-                        </span>
-                      </div>
-                      <h3 className="font-medium text-white truncate">{challenge.title}</h3>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded border text-xs ${STATUS_STYLES[status]}`}
-                        >
-                          {STATUS_LABEL[status]}
-                        </span>
-                        <span className="text-xs text-zinc-500">{challenge.estimatedMinutes}m</span>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-zinc-500 shrink-0 mt-1" />
+            return (
+          <button
+                 key={challenge.id}
+                 onClick={() => navigate(`/code/challenges/${challenge.id}`)}
+                  className="group text-left p-4 rounded-2xl border border-border bg-card/40 hover:bg-card/60 hover:border-border/70 cursor-pointer transition-all duration-200 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+               >
+                {/* Card header */}
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs text-foreground/60">#{idx + 1}</span>
+                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${diffStyle.bg} ${diffStyle.text}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${diffStyle.dot}`} />
+                    {challenge.difficulty.charAt(0).toUpperCase() + challenge.difficulty.slice(1)}
                   </div>
-                  {challenge.tags.length > 0 && (
-                    <div className="flex gap-1 flex-wrap mt-2">
-                      {challenge.tags.slice(0, 2).map((tag) => (
-                        <span
-                          key={tag}
-                          className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 text-xs border border-zinc-700"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                      {challenge.tags.length > 2 && (
-                        <span className="text-zinc-500 text-xs">+{challenge.tags.length - 2}</span>
-                      )}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </>
+                </div>
+
+                {/* Title */}
+                 <h3 className="font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                   {challenge.title}
+                 </h3>
+
+                {/* Tags preview */}
+                {challenge.tags.length > 0 && (
+                  <div className="flex gap-1.5 flex-wrap mb-3">
+                     {challenge.tags.slice(0, 2).map((tag) => (
+                       <span
+                         key={tag}
+                         className="px-3 py-1.5 rounded-md bg-muted text-foreground/70 text-xs border border-border/50"
+                       >
+                        {tag}
+                      </span>
+                    ))}
+                     {challenge.tags.length > 2 && (
+                       <span className="text-foreground/60 text-xs">+{challenge.tags.length - 2}</span>
+                     )}
+                  </div>
+                )}
+
+                {/* Footer */}
+                 <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                   <span className={`inline-flex px-3 py-1.5 rounded-md text-xs font-medium ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border} border`}>
+                     {STATUS_LABEL[status]}
+                   </span>
+                   <div className="flex items-center gap-1 text-xs text-foreground/60">
+                     <span>{challenge.estimatedMinutes}m</span>
+                    <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       )}
     </div>
   );

@@ -224,7 +224,7 @@ export default function ReviewSessionOptimized() {
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="flex items-center gap-1 px-2 py-0.5 bg-primary/20 rounded-lg"
+              className="flex items-center gap-1 px-3 py-1.5 bg-primary/20 rounded-lg"
             >
               <Zap className="w-3 h-3 text-primary" />
               <span className="text-xs font-bold text-primary">{sessionXP}</span>
@@ -269,7 +269,7 @@ export default function ReviewSessionOptimized() {
                     <motion.button
                       onClick={() => handleTagClick(currentCard.channel)}
                       whileTap={{ scale: 0.95 }}
-                      className="px-2 py-0.5 bg-primary/20 text-primary text-xs font-semibold rounded-full border border-primary/30 hover:bg-primary/30 transition-colors cursor-pointer"
+                      className="px-3 py-1.5 bg-primary/20 text-primary text-xs font-semibold rounded-full border border-primary/30 hover:bg-primary/30 transition-colors cursor-pointer"
                     >
                       {currentCard.channel}
                     </motion.button>
@@ -277,7 +277,7 @@ export default function ReviewSessionOptimized() {
                       onClick={() => handleTagClick(currentCard.difficulty)}
                       whileTap={{ scale: 0.95 }}
                       className={cn(
-                        "px-2 py-0.5 text-xs font-semibold rounded-full border hover:opacity-80 transition-opacity cursor-pointer",
+                        "px-3 py-1.5 text-xs font-semibold rounded-full border hover:opacity-80 transition-opacity cursor-pointer",
                         currentCard.difficulty === 'beginner' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
                         currentCard.difficulty === 'intermediate' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
                         'bg-red-500/20 text-red-400 border-red-500/30'
@@ -290,7 +290,7 @@ export default function ReviewSessionOptimized() {
                         key={idx}
                         onClick={() => handleTagClick(tag)}
                         whileTap={{ scale: 0.95 }}
-                        className="px-2 py-0.5 bg-primary/20 text-primary text-xs font-semibold rounded-full border border-primary/30 hover:bg-primary/30 transition-colors cursor-pointer"
+                        className="px-3 py-1.5 bg-primary/20 text-primary text-xs font-semibold rounded-full border border-primary/30 hover:bg-primary/30 transition-colors cursor-pointer"
                       >
                         {tag}
                       </motion.button>
@@ -486,7 +486,7 @@ export default function ReviewSessionOptimized() {
                             whileTap={{ scale: 0.92 }}
                             whileHover={{ scale: 1.03 }}
                             className={cn(
-                              'flex flex-col items-center gap-1 py-2.5 rounded-[16px] text-white',
+                               'flex flex-col items-center gap-1 py-2 rounded-[16px] text-white',
                               'min-h-[44px] transition-all duration-150',
                               btn.color
                             )}
@@ -709,7 +709,7 @@ function CheckpointTest({
                 <motion.button
                   onClick={() => handleAnswer(false)}
                   whileTap={{ scale: 0.95 }}
-                  className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg min-h-[56px]"
+                   className="flex flex-col items-center gap-1.5 py-2.5 h-10 rounded-lg bg-gradient-to-br from-red-500 to-red-600 text-white shadow-none min-h-[40px] text-sm font-medium"
                 >
                   <X className="w-5 h-5" />
                   <span className="text-sm font-semibold">Don't Remember</span>
@@ -718,7 +718,7 @@ function CheckpointTest({
                 <motion.button
                   onClick={() => handleAnswer(true)}
                   whileTap={{ scale: 0.95 }}
-                  className="flex flex-col items-center gap-1.5 py-3 rounded-xl bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg min-h-[56px]"
+                   className="flex flex-col items-center gap-1.5 py-2.5 h-10 rounded-lg bg-gradient-to-br from-green-500 to-green-600 text-white shadow-none min-h-[40px] text-sm font-medium"
                 >
                   <Check className="w-5 h-5" />
                   <span className="text-sm font-semibold">Remember</span>
@@ -756,7 +756,7 @@ function CheckpointTest({
             <motion.button
               onClick={() => onComplete(score)}
               whileTap={{ scale: 0.95 }}
-              className="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold shadow-lg"
+               className="w-full py-2.5 h-10 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium shadow-none text-sm"
             >
               Continue Reviewing
             </motion.button>
@@ -849,7 +849,7 @@ function CompletedScreen({
         <motion.button
           onClick={onGoHome}
           whileTap={{ scale: 0.95 }}
-          className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold shadow-lg"
+           className="w-full py-2.5 h-10 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg font-medium shadow-none text-sm"
         >
           Back to Home
         </motion.button>

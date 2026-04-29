@@ -39,6 +39,9 @@ function WaveformVisualizer({ isActive }: { isActive: boolean }) {
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [isActive]);
 
+  const primaryColor = 'var(--primary, #4285F4)';
+  const accentColor = 'var(--accent, #06b6d4)';
+
   return (
     <div className="flex items-center justify-center gap-[3px] h-14" aria-hidden>
       {heights.map((h, i) => (
@@ -46,7 +49,7 @@ function WaveformVisualizer({ isActive }: { isActive: boolean }) {
           key={i}
           style={{
             height: `${h}px`,
-            background: `linear-gradient(to top, var(--color-violet-600, #7c3aed), var(--color-cyan-500, #06b6d4))`,
+            background: `linear-gradient(to top, ${primaryColor}, ${accentColor})`,
             opacity: isActive ? 0.85 + (i % 3) * 0.05 : 0.3,
             transition: 'height 80ms ease, opacity 300ms ease',
             borderRadius: '2px',
@@ -74,9 +77,9 @@ function RecordingTimer({ isRunning }: { isRunning: boolean }) {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [isRunning]);
 
-  const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
   const ss = String(seconds % 60).padStart(2, '0');
-  return <span className="font-mono text-sm tabular-nums text-foreground">{mm}:{ss}</span>;
+  return <span className="font-mono text-xs tabular-nums text-foreground" aria-label="Recording time" aria-live="off">{mm}:{ss}</span>;
 }
 
 // ── Keyword-highlighted Transcript ──────────────────────────
@@ -88,7 +91,7 @@ function HighlightedTranscript({ text, keywords }: { text: string; keywords: str
     <>
       {parts.map((part, i) =>
         keywords.some(k => k.toLowerCase() === part.toLowerCase())
-          ? <mark key={i} className="bg-primary/25 text-primary rounded px-0.5 not-italic">{part}</mark>
+          ? <mark key={i} className="bg-primary/25 text-primary rounded px-0.5 not-italic" style={{ backgroundColor: 'color-mix(in srgb, var(--primary, #4285F4) 25%, transparent)', color: 'var(--primary, #4285F4)' }}>{part}</mark>
           : <span key={i}>{part}</span>
       )}
     </>
@@ -99,21 +102,20 @@ function HighlightedTranscript({ text, keywords }: { text: string; keywords: str
 function WordCountBar({ text, target = 150 }: { text: string; target?: number }) {
   const count = text.trim() ? text.trim().split(/\s+/).length : 0;
   const pct = Math.min(count / target, 1);
-  const color = pct >= 1 ? '#3fb950' : pct >= 0.5 ? '#d29922' : '#58a6ff';
+  const colorClass = pct >= 1 ? 'bg-green-500' : pct >= 0.5 ? 'bg-yellow-500' : 'bg-blue-500';
+  const shadowColor = pct >= 1 ? 'shadow-green-500/50' : '';
+  const barColor = pct >= 1 ? '#34A853' : pct >= 0.5 ? '#FBBC05' : '#3b82f6';
   return (
     <div className="flex items-center gap-2 mt-2">
-      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)' }}>
+      <div className="flex-1 h-1.5 rounded-full overflow-hidden">
         <motion.div
           animate={{ width: `${pct * 100}%` }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className="h-full rounded-full"
-          style={{ 
-            background: color,
-            boxShadow: pct >= 1 ? '0 0 8px rgba(63,185,80,0.5)' : 'none'
-          }}
+          className={`h-full rounded-full ${colorClass} ${shadowColor}`}
+          style={{ backgroundColor: barColor }}
         />
       </div>
-      <span className="text-xs tabular-nums text-muted-foreground">{count} / {target}w</span>
+       <span className="text-xs tabular-nums text-foreground/70">{count} / {target}w</span>
     </div>
   );
 }
@@ -123,14 +125,15 @@ function ScoreRing({ score }: { score: number }) {
   const r = 44;
   const circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ;
-  const color = score >= 70 ? '#3fb950' : score >= 50 ? '#d29922' : '#f85149';
+  const colorClass = score >= 70 ? 'text-green-500' : score >= 50 ? 'text-yellow-500' : 'text-red-500';
+  const strokeColor = score >= 70 ? 'var(--success, #34A853)' : score >= 50 ? 'var(--warning, #FBBC05)' : 'var(--error, #EA4335)';
   return (
     <div className="relative w-28 h-28 flex items-center justify-center">
       <svg className="absolute inset-0 -rotate-90" width="112" height="112">
-        <circle cx="56" cy="56" r={r} fill="none" stroke="var(--surface-2)" strokeWidth="8" />
+        <circle cx="56" cy="56" r={r} fill="none" stroke="var(--muted, #3f3f46)" strokeWidth="8" />
         <motion.circle
           cx="56" cy="56" r={r} fill="none"
-          stroke={color} strokeWidth="8"
+          stroke={strokeColor} strokeWidth="8"
           strokeLinecap="round"
           strokeDasharray={circ}
           initial={{ strokeDashoffset: circ }}
@@ -139,8 +142,8 @@ function ScoreRing({ score }: { score: number }) {
         />
       </svg>
       <div className="text-center">
-        <div className="text-2xl font-bold text-foreground">{score}</div>
-        <div className="text-[10px] text-muted-foreground">score</div>
+        <div className="text-xl font-bold text-foreground">{score}</div>
+        <div className="text-xs text-foreground/70">score</div>
       </div>
     </div>
   );
@@ -521,33 +524,19 @@ export default function VoiceInterview() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="max-w-md text-center">
-          <div className="w-20 h-20 rounded-2xl bg-[#d29922]/20 flex items-center justify-center mx-auto mb-6">
-            <AlertCircle className="w-10 h-10 text-[#d29922]" />
+          <div className="w-20 h-20 rounded-2xl bg-yellow-900/20 flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="w-10 h-10 text-yellow-500" aria-hidden="true" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-3">Browser Not Supported</h1>
-          <p className="text-muted-foreground mb-6">
-            Voice interview requires the Web Speech API. Please use Chrome, Edge, or Safari.
-          </p>
+           <p className="text-foreground/70 mb-6">
+             Voice interview requires the Web Speech API. Please use Chrome, Edge, or Safari.
+           </p>
           <button
             onClick={() => setLocation('/')}
-            className="px-6 py-3 bg-[#238636] text-white font-medium rounded-xl hover:bg-[#2ea043] transition-colors"
+className="px-6 py-4 bg-green-500 hover:bg-green-600 text-white font-medium rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
           >
             Go Home
           </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Loading
-  if (state === 'loading' || questions.length === 0) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#58a6ff]/20 flex items-center justify-center mx-auto mb-4">
-            <Loader2 className="w-8 h-8 animate-spin text-[#58a6ff]" />
-          </div>
-          <p className="text-muted-foreground">Loading interview questions...</p>
         </div>
       </div>
     );
@@ -558,14 +547,14 @@ export default function VoiceInterview() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="max-w-md text-center">
-          <div className="w-20 h-20 rounded-2xl bg-[#f85149]/20 flex items-center justify-center mx-auto mb-6">
-            <XCircle className="w-10 h-10 text-[#f85149]" />
+          <div className="w-20 h-20 rounded-2xl bg-red-900/20 flex items-center justify-center mx-auto mb-6">
+            <XCircle className="w-10 h-10 text-red-500" aria-hidden="true" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-3">Error</h1>
-          <p className="text-muted-foreground mb-6">{error}</p>
+           <p className="text-foreground/70 mb-6">{error}</p>
           <button
             onClick={() => setLocation('/')}
-            className="px-6 py-3 bg-[#238636] text-white font-medium rounded-xl hover:bg-[#2ea043] transition-colors"
+className="px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[40px] h-10 text-sm"
           >
             Go Home
           </button>
@@ -596,56 +585,55 @@ export default function VoiceInterview() {
             initial={{ opacity: 0, scale: 0.93 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="rounded-[32px] border border-white/10 bg-surface-1/80 backdrop-blur-xl p-8 overflow-hidden"
-            style={{ boxShadow: '0 12px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.1)', maxWidth: '100vw' }}
-          >
+              className="rounded-xl bg-surface-1/80 backdrop-blur-xl p-6 overflow-hidden shadow-sm"
+           >
             <div className="flex flex-col items-center mb-8">
               <ScoreRing score={avg} />
-              <h2 className="text-xl font-bold text-foreground mt-4">Session Complete!</h2>
-              <p className="text-sm text-muted-foreground mt-1">{questions.length} questions answered</p>
+               <h2 className="text-2xl font-bold text-foreground mt-4">Session Complete!</h2>
+                <p className="text-xs text-foreground/70 mt-1">{questions.length} questions answered</p>
             </div>
 
-              <div className="grid grid-cols-3 gap-3 mb-8">
-                <div className="rounded-2xl bg-surface-0/60 backdrop-blur-sm p-4 text-center border border-white/5" style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
-                  <div className="text-2xl font-bold text-foreground">{questions.length}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Questions</div>
+<div className="grid grid-cols-3 gap-3 mb-8">
+                   <div className="rounded-xl bg-surface-0/60 backdrop-blur-sm p-4 text-center border border-white/5 shadow-sm">
+                    <div className="text-xl font-bold text-foreground">{questions.length}</div>
+                    <div className="text-xs text-foreground/70 mt-1">Questions</div>
+                  </div>
+                   <div className="rounded-xl bg-surface-0/60 backdrop-blur-sm p-4 text-center border border-white/5 shadow-sm">
+                    <div className="text-xl font-bold text-foreground">{sessionScores.filter(s => s.score >= 60).length}</div>
+                  <div className="text-xs text-foreground/70 mt-1">Passed</div>
+                  </div>
+                   <div className="rounded-xl bg-surface-0/60 backdrop-blur-sm p-4 text-center border border-white/5 shadow-sm">
+                    <div className="text-xl font-bold text-foreground">{sessionScores.filter(s => s.score < 60).length}</div>
+                    <div className="text-xs text-foreground/70 mt-1">Missed</div>
+                  </div>
                 </div>
-                <div className="rounded-2xl bg-surface-0/60 backdrop-blur-sm p-4 text-center border border-white/5" style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
-                  <div className="text-2xl font-bold text-[#3fb950]">{sessionScores.filter(s => s.score >= 60).length}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Passed</div>
-                </div>
-                <div className="rounded-2xl bg-surface-0/60 backdrop-blur-sm p-4 text-center border border-white/5" style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
-                  <div className="text-2xl font-bold text-[#f85149]">{sessionScores.filter(s => s.score < 60).length}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Missed</div>
-                </div>
-              </div>
 
               {topMissed.length > 0 && (
                 <div className="mb-8">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                   <p className="text-xs font-semibold text-foreground/70 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                     <Brain className="w-3.5 h-3.5" /> Top missed concepts
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {topMissed.map(m => (
-                      <span key={m} className="px-2.5 py-1 bg-[#f85149]/10 border border-[#f85149]/20 rounded-full text-xs text-[#f85149]">{m}</span>
-                    ))}
+                      {topMissed.map(m => (
+                        <span key={m} className="px-3 py-1.5 bg-red-900/20 border border-red-700/30 rounded-full text-xs text-foreground">{m}</span>
+                      ))}
                   </div>
                 </div>
               )}
 
-              <div className="flex gap-3">
-                <button onClick={handleShare} className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-white/10 text-muted-foreground hover:text-foreground hover:border-white/20 rounded-xl transition-colors text-sm" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
-                  <ExternalLink className="w-4 h-4" /> Share
-                </button>
-                <button onClick={() => { setSessionScores([]); setCurrentIndex(0); setTranscript(''); setEvaluation(null); setState('ready'); }}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-white/10 text-muted-foreground hover:text-foreground hover:border-white/20 rounded-xl transition-colors text-sm" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
-                  <RotateCcw className="w-4 h-4" /> Again
-                </button>
-                <button onClick={() => setLocation('/')}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-white font-medium rounded-xl transition-all text-sm active:scale-95" style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)', boxShadow: '0 4px 16px rgba(60,64,67,0.15), inset 0 1px 0 rgba(255,255,255,0.2)' }}>
-                  <Home className="w-4 h-4" /> Home
-                </button>
-              </div>
+               <div className="flex gap-3">
+                  <button onClick={handleShare} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-white/10 text-foreground/70 hover:text-foreground hover:border-white/20 rounded-lg transition-colors text-xs shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[40px] h-10">
+                    <ExternalLink className="w-4 h-4" aria-hidden="true" /> Share
+                  </button>
+                  <button onClick={() => { setSessionScores([]); setCurrentIndex(0); setTranscript(''); setEvaluation(null); setState('ready'); }}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-white/10 text-foreground/70 hover:text-foreground hover:border-white/20 rounded-lg transition-colors text-xs shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[40px] h-10">
+                    <RotateCcw className="w-4 h-4" aria-hidden="true" /> Again
+                  </button>
+                  <button onClick={() => setLocation('/')}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-white font-medium rounded-lg transition-all text-xs active:scale-95 bg-blue-500 hover:bg-blue-600 shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[40px] h-10">
+                    <Home className="w-4 h-4" aria-hidden="true" /> Home
+                  </button>
+               </div>
             </motion.div>
           </div>
           <MobileBottomNav />
@@ -663,93 +651,98 @@ export default function VoiceInterview() {
         canonical="https://open-interview.github.io/voice-interview"
       />
 
-      <DesktopSidebarWrapper>
-      <div className="lg:hidden"><MobileHeader title="Voice Interview" showBack={true} /></div>
-      {/* iPhone 13 FIX: Ensure content fits within viewport with safe areas */}
-      <div className="min-h-screen bg-background text-foreground overflow-x-hidden w-full pb-[calc(56px+env(safe-area-inset-bottom,0px))] lg:pb-0">
-        {/* Header - COMPACT */}
-        <header className="hidden lg:block sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
-          <div className="max-w-4xl mx-auto px-3 h-14 flex items-center justify-between w-full" style={{ maxWidth: '100vw' }}>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={exitInterview}
-                className="p-1.5 hover:bg-muted rounded-lg transition-colors"
-                title="Exit and save progress"
-              >
-                <Home className="w-4 h-4 text-muted-foreground" />
-              </button>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#f85149] to-[#ff7b72] flex items-center justify-center">
-                  <Mic className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <h1 className="font-semibold text-foreground text-sm">Voice Interview</h1>
-                  <p className="text-[10px] text-muted-foreground">
-                    Q{currentIndex + 1}/{questions.length}
-                  </p>
+<DesktopSidebarWrapper>
+        <div className="lg:hidden"><MobileHeader title="Voice Interview" showBack={true} /></div>
+        {/* iPhone 13 FIX: Ensure content fits within viewport with safe areas */}
+        <div className="min-h-screen bg-background text-foreground overflow-x-hidden w-full pb-[calc(56px+env(safe-area-inset-bottom,0px))] lg:pb-0">
+          {/* Header - COMPACT */}
+          <header className="hidden lg:block sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
+            <div className="max-w-4xl mx-auto px-3 h-14 flex items-center justify-between w-full">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={exitInterview}
+                  className="p-1.5 hover:bg-muted rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px] min-w-[44px]"
+                  title="Exit and save progress"
+                  aria-label="Exit interview and save progress"
+                >
+                  <Home className="w-4 h-4 text-foreground/70" aria-hidden="true" />
+                </button>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-400 flex items-center justify-center">
+                    <Mic className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="font-semibold text-foreground text-xs">Voice Interview</h1>
+                    <p className="text-xs text-foreground/70">
+                      Q{currentIndex + 1}/{questions.length}
+                    </p>
+                  </div>
                 </div>
               </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setLocation('/voice-session')}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs bg-muted text-foreground/70 hover:text-foreground rounded-lg border border-border hover:border-blue-500/50 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
+                >
+                  <Target className="w-3.5 h-3.5" aria-hidden="true" />
+                  Sessions
+                </button>
+                <CreditsDisplay compact onClick={() => setLocation('/profile')} aria-label="View credits" />
+                {currentQuestion?.id && (
+                  <QuestionHistoryIcon 
+                    questionId={currentQuestion.id} 
+                    questionType="question"
+                    size="sm"
+                  />
+                )}
+              </div>
             </div>
-            
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setLocation('/voice-session')}
-                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs bg-muted text-muted-foreground hover:text-foreground rounded-lg border border-border hover:border-[#58a6ff]/50 transition-all"
+            {/* Progress Bar */}
+            <div className="max-w-4xl mx-auto px-3 pb-2 w-full">
+              <div
+                role="progressbar"
+                aria-valuenow={currentIndex + 1}
+                aria-valuemin={1}
+                aria-valuemax={questions.length}
+                aria-label="Interview progress"
+                className="h-1.5 bg-muted/30 rounded-full overflow-hidden"
               >
-                <Target className="w-3.5 h-3.5" />
-                Sessions
-              </button>
-              <CreditsDisplay compact onClick={() => setLocation('/profile')} />
-              {currentQuestion?.id && (
-                <QuestionHistoryIcon 
-                  questionId={currentQuestion.id} 
-                  questionType="question"
-                  size="sm"
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  className="h-full rounded-full shadow-[0_0_12px_var(--primary,#4285F4)]"
+                  style={{ 
+                    background: 'linear-gradient(to right, var(--primary, #4285F4), var(--accent, #ec4899))',
+                  }}
                 />
-              )}
+              </div>
             </div>
-          </div>
-          
-          {/* Progress Bar */}
-          <div className="max-w-4xl mx-auto px-3 pb-2 w-full" style={{ maxWidth: '100vw' }}>
-            <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden" style={{ boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)' }}>
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                className="h-full rounded-full"
-                style={{ 
-                  background: 'linear-gradient(90deg, #58a6ff 0%, #a371f7 50%, #f778ba 100%)',
-                  boxShadow: '0 0 12px rgba(88,166,255,0.5), 0 0 24px rgba(163,113,247,0.3)' 
-                }}
-              />
-            </div>
-          </div>
-        </header>
+          </header>
 
-        {/* Main Content */}
-        <main className="max-w-4xl mx-auto px-4 py-6 w-full overflow-x-hidden" style={{ maxWidth: '100vw' }}>
+{/* Main Content */}
+        <main className="max-w-4xl mx-auto px-4 py-6 w-full overflow-x-hidden">
 
           {/* Question Card */}
-<motion.div
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-[28px] border border-white/5 bg-surface-1/70 backdrop-blur-lg overflow-hidden mb-6 w-full"
-            style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)' }}
+              className="rounded-xl bg-surface-1/50 backdrop-blur-lg overflow-hidden mb-6 w-full shadow-sm"
           >
-            <div className="p-6">
+            <div className="p-5">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div className="flex items-start gap-4 flex-1">
-                  <div className="p-2.5 rounded-xl bg-[#58a6ff]/10 flex-shrink-0">
-                    <MessageSquare className="w-5 h-5 text-[#58a6ff]" />
+                  <div className="p-2.5 rounded-xl" style={{ backgroundColor: 'color-mix(in srgb, var(--primary, #4285F4) 20%, transparent)' }}>
+                    <MessageSquare className="w-5 h-5" style={{ color: 'var(--primary, #4285F4)' }} />
                   </div>
-                  <h2 className="text-lg font-medium text-foreground leading-relaxed">{currentQuestion?.question}</h2>
+                  <h2 className="text-xl font-medium text-foreground leading-relaxed">{currentQuestion?.question}</h2>
                 </div>
                 <button
                   onClick={goToOriginalQuestion}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-[#58a6ff] hover:bg-muted rounded-lg transition-colors flex-shrink-0"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-foreground/70 hover:text-blue-500 hover:bg-muted rounded-lg transition-colors flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
+                  aria-label="View question details"
                 >
-                  <ExternalLink className="w-3.5 h-3.5" />
+                  <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
                   <span className="hidden sm:inline">View Details</span>
                 </button>
               </div>
@@ -759,29 +752,30 @@ export default function VoiceInterview() {
                 <div className="flex items-center gap-2">
                   {/* Prev / Counter / Next */}
                   <button
-                    onClick={previousQuestion}
+onClick={previousQuestion}
                     disabled={currentIndex === 0}
-                    className="flex items-center gap-0.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="flex items-center gap-0.5 px-3 py-1.5 text-xs text-foreground/70 hover:text-foreground border border-border rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
                   >
-                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
                     Prev
                   </button>
-                  <span className="text-sm text-muted-foreground tabular-nums">{currentIndex + 1} / {questions.length}</span>
-                  <button
-                    onClick={nextQuestion}
-                    disabled={currentIndex >= questions.length - 1}
-                    className="flex items-center gap-0.5 px-2 py-1 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    Next
-                    <ChevronRight className="w-3.5 h-3.5" />
+                   <span className="text-xs text-foreground/70 tabular-nums">{currentIndex + 1} / {questions.length}</span>
+                   <button
+onClick={nextQuestion}
+                      disabled={currentIndex >= questions.length - 1}
+                      className="flex items-center gap-0.5 px-3 py-1.5 text-xs text-foreground/70 hover:text-foreground border border-border rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
+                    >
+                     Next
+                    <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
                   </button>
                   {/* Actions Dropdown */}
                   <div className="relative">
                     <button
                       onClick={() => setShowActions(!showActions)}
-                      className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                       className="p-1.5 text-foreground/70 hover:text-foreground hover:bg-muted rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px] min-w-[44px]"
+                      aria-label="More actions"
                     >
-                      <MoreHorizontal className="w-4 h-4" />
+                      <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
                     </button>
                     
                     <AnimatePresence>
@@ -790,37 +784,37 @@ export default function VoiceInterview() {
                           initial={{ opacity: 0, y: -5 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -5 }}
-                          className="absolute left-0 top-full mt-1 bg-surface-1 border border-border rounded-xl shadow-xl py-1 z-10 min-w-[160px]"
+                           className="absolute left-0 top-full mt-1 bg-surface-1 border border-border rounded-xl shadow-lg py-1 z-10 min-w-[160px]"
                         >
-                          <button
-                            onClick={previousQuestion}
-                            disabled={currentIndex === 0}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30"
-                          >
-                            <ChevronLeft className="w-4 h-4" />
+                           <button
+                             onClick={previousQuestion}
+                             disabled={currentIndex === 0}
+                             className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-foreground/70 hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
+                           >
+                            <ChevronLeft className="w-4 h-4" aria-hidden="true" />
                             Previous
                           </button>
-                          <button
-                            onClick={skipQuestion}
-                            disabled={currentIndex >= questions.length - 1}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30"
-                          >
-                            <SkipForward className="w-4 h-4" />
+                           <button
+                             onClick={skipQuestion}
+                             disabled={currentIndex >= questions.length - 1}
+                             className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-foreground/70 hover:text-foreground hover:bg-muted transition-colors disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
+                           >
+                            <SkipForward className="w-4 h-4" aria-hidden="true" />
                             Skip Question
                           </button>
-                          <button
-                            onClick={shuffleQuestions}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                          >
-                            <Shuffle className="w-4 h-4" />
+                           <button
+                             onClick={shuffleQuestions}
+                             className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-foreground/70 hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
+                           >
+                            <Shuffle className="w-4 h-4" aria-hidden="true" />
                             Shuffle All
                           </button>
                           <div className="border-t border-border my-1" />
-                          <button
-                            onClick={goToOriginalQuestion}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                          >
-                            <ExternalLink className="w-4 h-4" />
+                           <button
+                             onClick={goToOriginalQuestion}
+                             className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-foreground/70 hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
+                           >
+                            <ExternalLink className="w-4 h-4" aria-hidden="true" />
                             View Full Question
                           </button>
                         </motion.div>
@@ -832,7 +826,7 @@ export default function VoiceInterview() {
                 <div className="flex items-center gap-3">
                   <ListenButton text={currentQuestion?.question || ''} label="Listen" size="sm" />
                   {currentQuestion?.voiceKeywords && currentQuestion.voiceKeywords.length > 0 && (
-                    <span className="text-xs text-muted-foreground">
+                     <span className="text-xs text-foreground/70">
                       {currentQuestion.voiceKeywords.length} key terms
                     </span>
                   )}
@@ -841,48 +835,47 @@ export default function VoiceInterview() {
             </div>
             
             {error && (
-              <div className="mx-6 mb-6 p-4 bg-[#f85149]/10 border border-[#f85149]/30 rounded-xl text-[#f85149] text-sm">
+              <div className="mx-6 mb-6 p-4 bg-red-900/20 border border-red-700/30 rounded-xl text-red-500 text-xs" aria-live="assertive" role="alert">
                 {error}
               </div>
             )}
           </motion.div>
 
-          {/* Tips & Keywords Panel - fills dead space when in 'ready' state */}
+{/* Tips & Keywords Panel - fills dead space when in 'ready' state */}
           {state === 'ready' && currentQuestion && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-[28px] border border-white/5 bg-surface-1/70 backdrop-blur-lg p-5 mb-6 w-full"
-              style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)' }}
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <Lightbulb className="w-4 h-4 text-[#d29922]" />
-                <span className="text-sm font-semibold text-foreground">How to answer well</span>
-              </div>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+             className="rounded-xl bg-surface-1/50 backdrop-blur-lg p-5 mb-6 w-full shadow-sm"
+          >
+               <div className="flex items-center gap-2 mb-4">
+                 <Lightbulb className="w-4 h-4" style={{ color: 'var(--warning, #FBBC05)' }} />
+                 <span className="text-xs font-semibold text-foreground">How to answer well</span>
+             </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                 {[
                   { tip: 'State your approach first, then explain the details' },
                   { tip: 'Use concrete examples or numbers when possible' },
                   { tip: 'Mention trade-offs — interviewers love nuanced answers' },
                   { tip: 'Summarize your answer at the end' },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                    <ChevronRight className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-[#58a6ff]" />
+                 ].map((item, i) => (
+                   <div key={i} className="flex items-start gap-2 text-xs text-foreground/70">
+                    <ChevronRight className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-blue-500" />
                     <span>{item.tip}</span>
                   </div>
                 ))}
               </div>
               {currentQuestion.voiceKeywords && currentQuestion.voiceKeywords.length > 0 && (
                 <div>
-                  <div className="text-xs text-muted-foreground mb-2 flex items-center justify-between gap-1.5">
-                    <span className="flex items-center gap-1.5">
-                      <Brain className="w-3.5 h-3.5" />
-                      Key terms to mention:
-                    </span>
+                   <div className="text-xs text-foreground/70 mb-2 flex items-center justify-between gap-1.5">
+                     <span className="flex items-center gap-1.5">
+                       <Brain className="w-3.5 h-3.5" aria-hidden="true" />
+                       Key terms to mention:
+                     </span>
                     {!keywordsRevealed && (
                       <button
                         onClick={() => setKeywordsRevealed(true)}
-                        className="cursor-pointer text-[11px] text-[#58a6ff] hover:underline"
+                        className="cursor-pointer text-xs text-blue-500 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
                       >
                         Reveal ({currentQuestion.voiceKeywords.length})
                       </button>
@@ -891,13 +884,13 @@ export default function VoiceInterview() {
                   {keywordsRevealed ? (
                     <div className="flex flex-wrap gap-1.5">
                       {currentQuestion.voiceKeywords.map((kw: string) => (
-                        <span key={kw} className="px-2 py-0.5 bg-[#58a6ff]/10 border border-[#58a6ff]/20 rounded-full text-[11px] text-[#58a6ff]">
+                         <span key={kw} className="px-3 py-1.5 bg-blue-900/20 border border-blue-700/30 rounded-full text-xs text-foreground">
                           {kw}
                         </span>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic">
+                     <p className="text-xs text-foreground/70 italic">
                       Try to recall key concepts on your own first. Reveal when you need guidance.
                     </p>
                   )}
@@ -914,76 +907,93 @@ export default function VoiceInterview() {
                 animate={{ opacity: 1, x: 0, transition: { duration: 0.25, ease: 'easeOut' } }}
                 exit={{ opacity: 0, x: 20, transition: { duration: 0.15, ease: 'easeIn' } }}
                 className="mb-6 flex items-start gap-3"
+                aria-live="polite"
               >
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#a371f7] to-[#f778ba] flex items-center justify-center flex-shrink-0">
-                  <User className="w-5 h-5 text-white" />
+                <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, var(--primary, #4285F4), var(--accent, #ec4899))' }}>
+                  <User className="w-5 h-5 text-white" aria-hidden="true" />
                 </div>
-                <div className="flex-1 p-4 bg-muted border border-border rounded-2xl rounded-tl-none">
-                  <p className="text-sm italic text-muted-foreground">"{interviewerComment}"</p>
-                  <p className="text-[10px] text-muted-foreground mt-2">— Your Interviewer</p>
+                 <div className="flex-1 p-4 bg-muted rounded-xl rounded-tl-none">
+                   <p className="text-xs italic text-foreground/70">"{interviewerComment}"</p>
+                 <p className="text-xs text-foreground/70 mt-2">— Your Interviewer</p>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Recording Interface */}
+{/* Recording Interface */}
           <div
-            className="rounded-[28px] border bg-surface-1/80 backdrop-blur-xl p-6 mb-6 w-full overflow-hidden transition-all duration-300"
-            style={{
-              maxWidth: '100%',
-              borderColor: state === 'recording' ? 'rgba(248,81,73,0.5)' : state === 'evaluated' ? 'rgba(63,185,80,0.4)' : 'rgba(255,255,255,0.08)',
-              boxShadow: state === 'recording' 
-                ? '0 0 0 1px rgba(248,81,73,0.2), 0 8px 32px rgba(248,81,73,0.15), inset 0 1px 0 rgba(255,255,255,0.1)' 
-                : '0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)',
-            }}
+            className={`rounded-2xl border bg-surface-1/80 backdrop-blur-xl p-6 mb-6 w-full overflow-hidden transition-all duration-300 shadow-md ${
+               state === 'recording' ? 'border-error/50' : state === 'evaluated' ? 'border-success/40' : 'border-border/50'
+            }`}
           >
 
             {/* State Header */}
             <div className="flex items-center justify-between mb-5">
               <AnimatePresence mode="wait">
-                {state === 'ready' && (
+{state === 'ready' && (
                   <motion.div key="ready" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
                     className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                      <Mic className="w-4 h-4 text-muted-foreground" />
+                      <Mic className="w-4 h-4 text-foreground/70" aria-hidden="true" />
                     </div>
-                    <span className="text-sm font-medium text-muted-foreground">Ready</span>
+                    <span className="text-xs font-medium text-foreground/70">Ready</span>
+                  </motion.div>
+                )}
+                {state === 'editing' && (
+                  <motion.div key="editing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+                    className="flex items-center gap-2">
+                    <Edit3 className="w-4 h-4" style={{ color: 'var(--warning, #FBBC05)' }} />
+                    <span className="text-xs font-medium" style={{ color: 'var(--warning, #FBBC05)' }}>Review & Edit</span>
+                  </motion.div>
+                )}
+                {state === 'processing' && (
+                  <motion.div key="processing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+                    className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--primary, #3b82f6)' }} />
+                    <span className="text-xs font-medium" style={{ color: 'var(--primary, #3b82f6)' }}>Processing...</span>
+                  </motion.div>
+                )}
+                {state === 'evaluated' && (
+                  <motion.div key="evaluated" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+                    className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" style={{ color: 'var(--success, #34A853)' }} />
+                    <span className="text-xs font-medium" style={{ color: 'var(--success, #34A853)' }}>Evaluated</span>
                   </motion.div>
                 )}
                 {state === 'recording' && (
                   <motion.div key="recording" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
                     className="flex items-center gap-3">
-                    <span className="w-3 h-3 bg-[#f85149] rounded-full animate-pulse shadow-[0_0_8px_#f85149]" />
-                    <span className="text-sm font-semibold text-[#f85149]">Listening...</span>
+                    <span className="w-3 h-3 rounded-full animate-pulse shadow-[0_0_8px_var(--error,#EA4335)]" style={{ backgroundColor: 'var(--error, #EA4335)' }} aria-hidden="true" />
+                    <span className="text-xs font-semibold" style={{ color: 'var(--error, #EA4335)' }}>Listening...</span>
                     <RecordingTimer isRunning={state === 'recording'} />
                   </motion.div>
                 )}
                 {state === 'editing' && (
                   <motion.div key="editing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
                     className="flex items-center gap-2">
-                    <Edit3 className="w-4 h-4 text-[#d29922]" />
-                    <span className="text-sm font-medium text-[#d29922]">Review & Edit</span>
+                    <Edit3 className="w-4 h-4 text-yellow-500" aria-hidden="true" />
+                    <span className="text-xs font-medium text-yellow-500">Review & Edit</span>
                   </motion.div>
                 )}
                 {state === 'processing' && (
                   <motion.div key="processing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
                     className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-[#58a6ff]" />
-                    <span className="text-sm font-medium text-[#58a6ff]">Processing...</span>
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-500" aria-hidden="true" />
+                    <span className="text-xs font-medium text-blue-500">Processing...</span>
                   </motion.div>
                 )}
                 {state === 'evaluated' && (
                   <motion.div key="evaluated" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
                     className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-[#3fb950]" />
-                    <span className="text-sm font-medium text-[#3fb950]">Evaluated</span>
+                    <CheckCircle className="w-4 h-4 text-green-500" aria-hidden="true" />
+                    <span className="text-xs font-medium text-green-500">Evaluated</span>
                   </motion.div>
                 )}
               </AnimatePresence>
 
               {/* Word count when transcript exists */}
               {transcript && state !== 'evaluated' && (
-                <span className="text-xs text-muted-foreground tabular-nums">
+                 <span className="text-xs text-foreground/70 tabular-nums">
                   {transcript.trim().split(/\s+/).filter(Boolean).length} words
                 </span>
               )}
@@ -1001,60 +1011,59 @@ export default function VoiceInterview() {
               <div className="mb-4">
                 {(recordingSeconds >= 30 || transcript.trim().split(/\s+/).filter(Boolean).length >= 50) && (
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
+                     <button
                       onClick={() => setRevealedHintCount(c => Math.min(c + 1, currentQuestion.voiceKeywords!.length))}
                       disabled={revealedHintCount >= currentQuestion.voiceKeywords.length}
-                      className="cursor-pointer flex items-center gap-1.5 text-xs text-[#d29922] border border-[#d29922]/30 rounded-full px-3 py-1 hover:bg-[#d29922]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="cursor-pointer flex items-center gap-1.5 text-xs text-yellow-500 border border-yellow-500/30 rounded-full px-3 py-1.5 hover:bg-yellow-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
                     >
-                      <Lightbulb className="w-3 h-3" />
-                      {revealedHintCount < currentQuestion.voiceKeywords.length ? 'Need a nudge?' : 'All hints shown'}
-                    </button>
-                    {currentQuestion.voiceKeywords.slice(0, revealedHintCount).map((kw: string, i: number) => (
-                      <span key={i} className="px-2 py-0.5 bg-[#d29922]/10 border border-[#d29922]/20 rounded-full text-[11px] text-[#d29922]">
-                        Think about: {kw.split(' ')[0]}...
-                      </span>
-                    ))}
+                      <Lightbulb className="w-3 h-3" aria-hidden="true" />
+                       {revealedHintCount < currentQuestion.voiceKeywords.length ? 'Need a nudge?' : 'All hints shown'}
+                     </button>
+                     {currentQuestion.voiceKeywords.slice(0, revealedHintCount).map((kw: string, i: number) => (
+                         <span key={i} className="px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-full text-xs text-foreground">
+                         Think about: {kw.split(' ')[0]}...
+                       </span>
+                     ))}
                   </div>
                 )}
               </div>
             )}
 
-            {/* Transcript Display */}
-            {(state === 'recording' || state === 'editing' || transcript) && state !== 'evaluated' && (
-              <div className="mb-6">
-                {state === 'editing' ? (
-                  <>
-                    <textarea
-                      value={transcript}
-                      onChange={(e) => setTranscript(e.target.value)}
-                      className="w-full p-4 bg-background border border-[#d29922]/30 rounded-xl min-h-[150px] max-h-[300px] text-sm text-foreground resize-y focus:outline-none focus:ring-2 focus:ring-[#d29922]/50 focus:border-[#d29922]"
-                      placeholder="Edit your transcribed answer here..."
-                    />
-                    <WordCountBar text={transcript} />
-                  </>
-                ) : (
-                  <>
-                    <div className="p-4 bg-background rounded-xl min-h-[100px] max-h-[200px] overflow-y-auto border border-border">
-                      {transcript || interimTranscript ? (
-                        <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-                          <HighlightedTranscript text={transcript} keywords={currentQuestion?.voiceKeywords || []} />
-                          <span className="text-muted-foreground">{interimTranscript}</span>
-                          {state === 'recording' && <span className="animate-pulse text-[#58a6ff]">|</span>}
-                        </p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">
-                          {state === 'recording'
-                            ? 'Start speaking... Your words will appear here.'
-                            : 'No transcript yet'}
-                        </p>
-                      )}
-                    </div>
-                    {transcript && <WordCountBar text={transcript} />}
-                  </>
-                )}
-                {state === 'editing' && (
-                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
-                    <Lightbulb className="w-3.5 h-3.5 text-[#d29922]" />
+                {/* Transcript Display */}
+                {(state === 'recording' || state === 'editing' || transcript) && state !== 'evaluated' && (
+                  <div className="mb-6" aria-live="polite">
+                    {state === 'editing' ? (
+                      <>
+                        <textarea
+                          value={transcript}
+                          onChange={(e) => setTranscript(e.target.value)}
+                          className="w-full p-4 bg-background border border-yellow-500/30 rounded-xl min-h-[150px] max-h-[300px] text-xs text-foreground resize-y focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500 placeholder:text-foreground/40"
+                          placeholder="Edit your transcribed answer here..."
+                        />
+                        <WordCountBar text={transcript} />
+                      </>
+                    ) : (
+                      <>
+                        <div className="p-4 bg-background rounded-xl min-h-[100px] max-h-[200px] overflow-y-auto border border-border">
+                          {transcript || interimTranscript ? (
+                            <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
+                              <HighlightedTranscript text={transcript} keywords={currentQuestion?.voiceKeywords || []} />
+                               <span className="text-foreground/70">{interimTranscript}</span>
+                              {state === 'recording' && <span className="animate-pulse text-blue-500">|</span>}
+                            </p>
+                          ) : (
+                             <p className="text-xs text-foreground/70 italic">
+                              {state === 'recording'
+                                ? 'Start speaking... Your words will appear here.'
+                                : 'No transcript yet'}
+                            </p>
+                          )}
+</div>
+                      </>
+                    )}
+                  {state === 'editing' && (
+                   <p className="text-xs text-foreground/70 mt-2 flex items-center gap-1.5">
+                      <Lightbulb className="w-3.5 h-3.5 text-yellow-500" />
                     Fix any transcription errors before submitting
                   </p>
                 )}
@@ -1065,91 +1074,78 @@ export default function VoiceInterview() {
             <div className="flex flex-col items-center gap-3">
               <div className="flex items-center justify-center gap-4">
               {state === 'ready' && (
-                <motion.button
+<motion.button
                   whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.92 }}
                   onClick={startRecording}
-                  className="flex items-center gap-3 px-10 py-5 text-white font-semibold rounded-2xl transition-all"
-                  style={{ 
-                    background: 'linear-gradient(135deg, #f85149 0%, #ff6b6b 50%, #f472b6 100%)', 
-                    boxShadow: '0 8px 24px rgba(248,81,73,0.4), 0 0 40px rgba(248,81,73,0.2), inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -2px 0 rgba(0,0,0,0.1)' 
-                  }}
+                   className="flex items-center gap-3 px-10 py-5 text-white font-semibold rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
+                   style={{ 
+                     background: 'linear-gradient(135deg, var(--error, #EA4335) 0%, var(--primary, #4285F4) 100%)', 
+                   }}
                 >
-                  <Mic className="w-6 h-6" />
+                  <Mic className="w-6 h-6" aria-hidden="true" />
                   Start Recording
                 </motion.button>
               )}
 
               {state === 'recording' && (
                 <div className="flex items-center gap-3">
-                  <motion.button
+<motion.button
                     whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.92 }}
                     onClick={stopRecording}
-                    className="flex items-center gap-3 px-10 py-5 text-white font-semibold rounded-2xl transition-all"
-                    style={{ 
-                      background: 'linear-gradient(135deg, #dc2626 0%, #f97316 100%)', 
-                      boxShadow: '0 8px 24px rgba(220,38,38,0.4), inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -2px 0 rgba(0,0,0,0.1)' 
-                    }}
+                     className="flex items-center gap-3 px-10 py-5 text-white font-semibold rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
+                     style={{ 
+                       background: 'var(--error, #dc2626)',
+                     }}
                   >
-                    <Square className="w-6 h-6" />
+                    <Square className="w-6 h-6" aria-hidden="true" />
                     Stop
                   </motion.button>
                 </div>
               )}
 
-              {state === 'editing' && (
+{state === 'editing' && (
                 <div className="flex gap-3">
-                  <button
-                    onClick={retryQuestion}
-                    className="flex items-center gap-2 px-5 py-3 border border-white/10 text-muted-foreground hover:text-foreground hover:border-white/20 rounded-xl transition-colors"
-                    style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    Re-record
-                  </button>
-                  <motion.button
-                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                    onClick={submitAnswer}
-                    disabled={!transcript.trim()}
-                    className="flex items-center gap-3 px-8 py-3 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ 
-                      background: !transcript.trim() ? 'linear-gradient(135deg, #4b5563 0%, #6b7280 100%)' : 'linear-gradient(135deg, #238636 0%, #3fb950 100%)', 
-                      boxShadow: !transcript.trim() ? 'none' : '0 4px 16px rgba(35,134,54,0.3), inset 0 1px 0 rgba(255,255,255,0.2)' 
-                    }}
-                  >
-                    <CheckCircle className="w-5 h-5" />
-                    Submit Answer
-                  </motion.button>
-                </div>
-              )}
+<button
+                      onClick={retryQuestion}
+                       className="flex items-center gap-2 px-5 py-4 border border-border text-foreground/70 hover:text-foreground hover:bg-muted rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
+                    >
+                     <RotateCcw className="w-4 h-4" />
+                     Try Again
+                   </button>
+                   <motion.button
+                      whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                      onClick={nextQuestion}
+                       className="flex items-center gap-2 px-6 py-4 text-white font-semibold rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px] bg-green-500 hover:bg-green-600"
+                    >
+                      <CheckCircle className="w-5 h-5" />
+                      Submit Answer
+                    </motion.button>
+                 </div>
+               )}
 
-              {state === 'evaluated' && (
+               {state === 'evaluated' && (
                 <div className="flex gap-3">
-                  <button
+<button
                     onClick={retryQuestion}
-                    className="flex items-center gap-2 px-5 py-3 border border-white/10 text-muted-foreground hover:text-foreground hover:border-white/20 rounded-xl transition-colors"
-                    style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    Try Again
-                  </button>
-                  <motion.button
-                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                    onClick={nextQuestion}
-                    className="flex items-center gap-2 px-6 py-3 text-white font-semibold rounded-xl transition-all"
-                    style={{ 
-                      background: 'linear-gradient(135deg, #238636 0%, #3fb950 100%)', 
-                      boxShadow: '0 4px 16px rgba(35,134,54,0.3), inset 0 1px 0 rgba(255,255,255,0.2)' 
-                    }}
-                  >
-                    {currentIndex < questions.length - 1 ? 'Next Question' : 'View Results'}
-                    <ChevronRight className="w-4 h-4" />
-                  </motion.button>
-                </div>
-              )}
+                      className="flex items-center gap-2 px-5 py-4 border border-border text-foreground/70 hover:text-foreground hover:bg-muted rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
+                   >
+                     <RotateCcw className="w-4 h-4" />
+                     Try Again
+                   </button>
+                    <motion.button
+                      whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                      onClick={nextQuestion}
+                      className="flex items-center gap-2 px-6 py-3 text-white font-semibold rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px] bg-green-500 hover:bg-green-600"
+                    >
+                      {currentIndex < questions.length - 1 ? 'Next Question' : 'View Results'}
+                      <ChevronRight className="w-4 h-4" />
+                    </motion.button>
+                 </div>
+               )}
             </div>
             {(state === 'ready' || state === 'recording') && (
-              <p className="text-center text-[10px] text-muted-foreground mt-3">
-                Press <kbd className="px-1.5 py-0.5 bg-muted border border-border rounded text-[10px] font-mono">Space</kbd> to {state === 'recording' ? 'stop' : 'start'}
+              <p className="text-center text-xs text-foreground/70 mt-3">
+                Press <kbd className="px-1.5 py-0.5 bg-muted border border-border rounded text-xs font-mono">Space</kbd> to {state === 'recording' ? 'stop' : 'start'}
               </p>
             )}
             </div>
@@ -1165,28 +1161,29 @@ export default function VoiceInterview() {
                 transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                 className="space-y-4"
               >
-                {/* Credits Earned Banner */}
+{/* Credits Earned Banner */}
                 {earnedCredits && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.1 }}
-                    className="p-4 bg-gradient-to-r from-[#d29922]/20 to-[#f1c40f]/20 border border-[#d29922]/30 rounded-2xl flex items-center justify-between"
+                    className="p-4 border rounded-xl flex items-center justify-between shadow-sm"
+                     style={{ backgroundColor: 'color-mix(in srgb, var(--warning, #FBBC05) 15%, transparent)', borderColor: 'color-mix(in srgb, var(--warning, #FBBC05) 40%, transparent)' }}
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-[#d29922]/20 flex items-center justify-center">
-                        <Coins className="w-6 h-6 text-[#d29922]" />
-                      </div>
+                     <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'color-mix(in srgb, var(--warning, #FBBC05) 20%, transparent)' }}>
+                         <Coins className="w-6 h-6" style={{ color: 'var(--warning, #FBBC05)' }} aria-hidden="true" />
+                       </div>
                       <div>
-                        <div className="font-bold text-[#d29922] text-lg">+{earnedCredits.total} Credits Earned!</div>
-                        <div className="text-xs text-muted-foreground">
+                         <div className="font-bold text-lg" style={{ color: 'var(--warning, #FBBC05)' }}>+{earnedCredits.total} Credits Earned!</div>
+                         <div className="text-xs text-foreground/70">
                           {earnedCredits.bonus > 0
                             ? `${config.VOICE_ATTEMPT} base + ${earnedCredits.bonus} success bonus`
                             : 'Thanks for practicing!'}
                         </div>
                       </div>
                     </div>
-                    <Award className="w-8 h-8 text-[#d29922]/50" />
+                    <Award className="w-8 h-8" style={{ color: 'color-mix(in srgb, var(--warning, #FBBC05) 50%, transparent)' }} />
                   </motion.div>
                 )}
 
@@ -1195,38 +1192,38 @@ export default function VoiceInterview() {
                   initial={{ opacity: 0, scale: 0.97 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.05, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                  className={`p-6 rounded-2xl border ${getVerdictStyle(evaluation.verdict)}`}
+                   className={`p-6 rounded-xl border shadow-sm ${getVerdictStyle(evaluation.verdict)}`}
                 >
                   <div className="flex items-center gap-6 mb-4">
                     <ScoreRing score={evaluation.score} />
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-1">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${getVerdictBgStyle(evaluation.verdict)}`}>
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: getVerdictBgColorValue(evaluation.verdict) }}>
                           {getVerdictIcon(evaluation.verdict)}
                         </div>
                         <h3 className="font-bold text-xl text-foreground">{getVerdictLabel(evaluation.verdict)}</h3>
                       </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{evaluation.feedback}</p>
+                       <p className="text-xs text-foreground/70 leading-relaxed">{evaluation.feedback}</p>
                     </div>
                   </div>
                 </motion.div>
 
-                {/* Key Points — checkmarks & X marks */}
+{/* Key Points — checkmarks & X marks */}
                 <motion.div
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.15 }}
                   className="grid md:grid-cols-2 gap-4"
                 >
-                  <div className="p-5 rounded-2xl bg-[#238636]/10 border border-[#238636]/30">
-                    <h4 className="font-semibold text-[#3fb950] flex items-center gap-2 mb-4">
-                      <CheckCircle className="w-5 h-5" />
-                      Covered ({evaluation.keyPointsCovered.length})
-                    </h4>
+                   <div className="p-5 rounded-xl border shadow-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--success, #34A853) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--success, #34A853) 30%, transparent)' }}>
+                     <h4 className="font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--success, #34A853)' }}>
+                        <CheckCircle className="w-5 h-5" aria-hidden="true" />
+                        Covered ({evaluation.keyPointsCovered.length})
+                      </h4>
                     <ul className="space-y-2">
-                      {evaluation.keyPointsCovered.map((point, i) => (
-                        <li key={i} className="text-sm flex items-start gap-2 text-muted-foreground">
-                          <span className="text-[#3fb950] mt-0.5 flex-shrink-0">✓</span>
+                        {evaluation.keyPointsCovered.map((point, i) => (
+                          <li key={i} className="text-xs flex items-start gap-2 text-foreground/70">
+                           <span style={{ color: 'var(--success, #34A853)' }}>✓</span>
                           <span>
                             {typeof point === 'object' && 'concept' in point
                               ? `${point.concept}${point.confidence !== 'exact' ? ` (as "${point.matchedAs}")` : ''}`
@@ -1234,43 +1231,43 @@ export default function VoiceInterview() {
                           </span>
                         </li>
                       ))}
-                      {evaluation.keyPointsCovered.length === 0 && (
-                        <li className="text-sm text-muted-foreground">No key concepts identified</li>
-                      )}
+                       {evaluation.keyPointsCovered.length === 0 && (
+                         <li className="text-xs text-foreground/70">No key concepts identified</li>
+                       )}
                     </ul>
-                  </div>
+                   </div>
 
-                  <div className="p-5 rounded-2xl bg-[#f85149]/10 border border-[#f85149]/30">
-                    <h4 className="font-semibold text-[#f85149] flex items-center gap-2 mb-4">
-                      <XCircle className="w-5 h-5" />
-                      Missed ({evaluation.keyPointsMissed.length})
-                    </h4>
+                   <div className="p-5 rounded-xl border shadow-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--error, #EA4335) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--error, #EA4335) 30%, transparent)' }}>
+                     <h4 className="font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--error, #EA4335)' }}>
+                        <XCircle className="w-5 h-5" aria-hidden="true" />
+                        Missed ({evaluation.keyPointsMissed.length})
+                      </h4>
                     <ul className="space-y-2">
-                      {evaluation.keyPointsMissed.map((point, i) => (
-                        <li key={i} className="text-sm flex items-start gap-2 text-muted-foreground">
-                          <span className="text-[#f85149] mt-0.5 flex-shrink-0">✗</span>
+                        {evaluation.keyPointsMissed.map((point, i) => (
+                          <li key={i} className="text-xs flex items-start gap-2 text-foreground/70">
+                           <span style={{ color: 'var(--error, #EA4335)' }}>✗</span>
                           <span>{point}</span>
                         </li>
                       ))}
-                      {evaluation.keyPointsMissed.length === 0 && (
-                        <li className="text-sm text-muted-foreground">Great job covering all concepts!</li>
-                      )}
+                       {evaluation.keyPointsMissed.length === 0 && (
+                         <li className="text-xs text-foreground/70">Great job covering all concepts!</li>
+                       )}
                     </ul>
-                  </div>
+                   </div>
                 </motion.div>
 
                 {/* Multi-Dimensional Scores */}
                 {evaluation.scores && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="p-6 rounded-2xl border border-border bg-surface-1"
-                  >
-                    <h4 className="font-semibold text-foreground flex items-center gap-2 mb-5">
-                      <BarChart3 className="w-5 h-5 text-[#58a6ff]" />
-                      Detailed Analysis
-                    </h4>
+<motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                   className="p-6 rounded-xl border bg-surface-1 shadow-sm"
+                >
+                   <h4 className="font-semibold text-foreground flex items-center gap-2 mb-5">
+                      <BarChart3 className="w-5 h-5" style={{ color: 'var(--primary, #4285F4)' }} aria-hidden="true" />
+                     Detailed Analysis
+                   </h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <ScoreDimension label="Technical" score={evaluation.scores.technical} icon={<Brain className="w-4 h-4" />} description="Accuracy & depth" />
                       <ScoreDimension label="Completeness" score={evaluation.scores.completeness} icon={<Target className="w-4 h-4" />} description="Coverage" />
@@ -1281,20 +1278,20 @@ export default function VoiceInterview() {
                     {evaluation.structureAnalysis && (
                       <div className="mt-5 pt-5 border-t border-border flex flex-wrap gap-2">
                         {evaluation.structureAnalysis.hasIntroduction && (
-                          <span className="px-3 py-1.5 text-xs bg-[#238636]/20 text-[#3fb950] rounded-lg font-medium">✓ Introduction</span>
+                          <span className="px-3 py-1.5 text-xs bg-green-900/20 text-green-500 rounded-lg font-medium">✓ Introduction</span>
                         )}
-                        {evaluation.structureAnalysis.hasExamples && (
-                          <span className="px-3 py-1.5 text-xs bg-[#238636]/20 text-[#3fb950] rounded-lg font-medium">✓ Examples</span>
-                        )}
+                         {evaluation.structureAnalysis.hasExamples && (
+                           <span className="px-3 py-1.5 text-xs bg-green-500/10 text-green-500 rounded-lg font-medium">✓ Examples</span>
+                         )}
                         {evaluation.structureAnalysis.hasConclusion && (
-                          <span className="px-3 py-1.5 text-xs bg-[#238636]/20 text-[#3fb950] rounded-lg font-medium">✓ Conclusion</span>
+                          <span className="px-3 py-1.5 text-xs bg-green-900/20 text-green-500 rounded-lg font-medium">✓ Conclusion</span>
                         )}
-                        {evaluation.structureAnalysis.usesSTAR && (
-                          <span className="px-3 py-1.5 text-xs bg-[#a371f7]/20 text-[#a371f7] rounded-lg font-medium">STAR Method</span>
-                        )}
+                         {evaluation.structureAnalysis.usesSTAR && (
+                           <span className="px-3 py-1.5 text-xs bg-purple-500/20 text-purple-500 rounded-lg font-medium">STAR Method</span>
+                         )}
                         {evaluation.fluencyMetrics && evaluation.fluencyMetrics.fillerWordCount > 3 && (
-                          <span className="px-3 py-1.5 text-xs bg-[#d29922]/20 text-[#d29922] rounded-lg font-medium">
-                            {evaluation.fluencyMetrics.fillerWordCount} filler words
+                           <span className="px-3 py-1.5 text-xs bg-yellow-900/20 text-yellow-500 rounded-lg font-medium">
+                             {evaluation.fluencyMetrics.fillerWordCount} filler words
                           </span>
                         )}
                       </div>
@@ -1309,34 +1306,34 @@ export default function VoiceInterview() {
                   transition={{ delay: 0.25 }}
                   className="grid md:grid-cols-2 gap-4"
                 >
-                  <div className="p-5 rounded-2xl border border-border bg-surface-1">
-                    <h4 className="font-semibold text-foreground flex items-center gap-2 mb-4">
-                      <Sparkles className="w-5 h-5 text-[#f1c40f]" />
-                      Strengths
-                    </h4>
-                    <ul className="space-y-2">
-                      {evaluation.strengths.map((s, i) => (
-                        <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                          <Zap className="w-4 h-4 text-[#f1c40f] flex-shrink-0 mt-0.5" />
-                          {s}
-                        </li>
-                      ))}
-                    </ul>
+                   <div className="p-5 rounded-xl bg-surface-1">
+                     <h4 className="font-semibold text-foreground flex items-center gap-2 mb-4">
+                        <Sparkles className="w-5 h-5 text-yellow-500" aria-hidden="true" />
+                        Strengths
+                     </h4>
+                     <ul className="space-y-2">
+                       {evaluation.strengths.map((s, i) => (
+                         <li key={i} className="text-xs text-foreground/70 flex items-start gap-2">
+                            <Zap className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                           {s}
+                         </li>
+                       ))}
+                     </ul>
                   </div>
 
-                  <div className="p-5 rounded-2xl border border-border bg-surface-1">
-                    <h4 className="font-semibold text-foreground flex items-center gap-2 mb-4">
-                      <Target className="w-5 h-5 text-[#58a6ff]" />
-                      Areas to Improve
-                    </h4>
-                    <ul className="space-y-2">
-                      {evaluation.improvements.map((s, i) => (
-                        <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                          <ChevronRight className="w-4 h-4 text-[#58a6ff] flex-shrink-0 mt-0.5" />
-                          {s}
-                        </li>
-                      ))}
-                    </ul>
+                   <div className="p-5 rounded-xl bg-surface-1">
+                     <h4 className="font-semibold text-foreground flex items-center gap-2 mb-4">
+                        <Target className="w-5 h-5 text-blue-500" aria-hidden="true" />
+                        Areas to Improve
+                     </h4>
+                     <ul className="space-y-2">
+                       {evaluation.improvements.map((s, i) => (
+                         <li key={i} className="text-xs text-foreground/70 flex items-start gap-2">
+                            <ChevronRight className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                           {s}
+                         </li>
+                       ))}
+                     </ul>
                   </div>
                 </motion.div>
 
@@ -1346,18 +1343,18 @@ export default function VoiceInterview() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.3 }}
-                    className="p-5 rounded-2xl border border-border bg-surface-1 group"
+                    className="p-5 rounded-xl bg-surface-1 group"
                   >
-                    <summary className="cursor-pointer font-semibold text-foreground flex items-center gap-2 list-none">
-                      <Volume2 className="w-5 h-5 text-[#a371f7]" />
+                    <summary className="cursor-pointer font-semibold text-foreground flex items-center gap-2 list-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]">
+                      <Volume2 className="w-5 h-5 text-purple-500" aria-hidden="true" />
                       View Ideal Answer
-                      <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto transition-transform group-open:rotate-90" />
+                      <ChevronRight className="w-4 h-4 text-foreground/70 ml-auto transition-transform group-open:rotate-90" aria-hidden="true" />
                     </summary>
                     <div className="mt-4 pt-4 border-t border-border space-y-3">
                       <div className="flex justify-end">
                         <ListenButton text={currentQuestion?.answer || ''} label="Listen to Answer" size="sm" />
                       </div>
-                      <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed bg-background p-4 rounded-xl">
+                       <div className="text-xs text-foreground/70 whitespace-pre-wrap leading-relaxed bg-background p-4 rounded-xl">
                         {currentQuestion?.answer}
                       </div>
                     </div>
@@ -1367,9 +1364,9 @@ export default function VoiceInterview() {
             )}
           </AnimatePresence>
         </main>
-      </div>
-      <MobileBottomNav />
-      </DesktopSidebarWrapper>
+        </div>
+        <MobileBottomNav />
+        </DesktopSidebarWrapper>
     </>
   );
 }
@@ -1379,17 +1376,17 @@ function ScoreDimension({ label, score, icon, description }: {
   label: string; score: number; icon: React.ReactNode; description: string;
 }) {
   const getColor = (s: number) => {
-    if (s >= 70) return 'text-[#3fb950]';
-    if (s >= 50) return 'text-[#d29922]';
-    if (s >= 30) return 'text-[#f0883e]';
-    return 'text-[#f85149]';
+    if (s >= 70) return 'text-green-500';
+    if (s >= 50) return 'text-yellow-500';
+    if (s >= 30) return 'text-orange-500';
+    return 'text-red-500';
   };
   
   const getBgColor = (s: number) => {
-    if (s >= 70) return 'bg-[#238636]';
-    if (s >= 50) return 'bg-[#d29922]';
-    if (s >= 30) return 'bg-[#f0883e]';
-    return 'bg-[#f85149]';
+    if (s >= 70) return 'bg-green-500';
+    if (s >= 50) return 'bg-yellow-500';
+    if (s >= 30) return 'bg-orange-500';
+    return 'bg-red-500';
   };
   
   return (
@@ -1398,7 +1395,7 @@ function ScoreDimension({ label, score, icon, description }: {
         {icon}
         <span className="text-xs font-medium">{label}</span>
       </div>
-      <div className="text-2xl font-bold text-foreground">{score}%</div>
+       <div className="text-xl font-bold text-foreground">{score}%</div>
       <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-2">
         <motion.div
           initial={{ scaleX: 0 }}
@@ -1408,7 +1405,7 @@ function ScoreDimension({ label, score, icon, description }: {
           className={`h-full ${getBgColor(score)}`}
         />
       </div>
-      <div className="text-[10px] text-muted-foreground mt-2">{description}</div>
+       <div className="text-xs text-foreground/70 mt-2">{description}</div>
     </div>
   );
 }
@@ -1416,31 +1413,31 @@ function ScoreDimension({ label, score, icon, description }: {
 // Helper functions
 function getVerdictStyle(verdict: EvaluationResult['verdict']): string {
   switch (verdict) {
-    case 'strong-hire': return 'bg-[#238636]/20 border-[#238636]/50';
-    case 'hire': return 'bg-[#3fb950]/20 border-[#3fb950]/50';
-    case 'lean-hire': return 'bg-[#d29922]/20 border-[#d29922]/50';
-    case 'lean-no-hire': return 'bg-[#f0883e]/20 border-[#f0883e]/50';
-    case 'no-hire': return 'bg-[#f85149]/20 border-[#f85149]/50';
+    case 'strong-hire': return 'bg-green-900/10 border-green-700/30';
+    case 'hire': return 'bg-green-900/10 border-green-700/30';
+    case 'lean-hire': return 'bg-yellow-900/10 border-yellow-700/30';
+    case 'lean-no-hire': return 'bg-orange-900/10 border-orange-700/30';
+    case 'no-hire': return 'bg-red-900/10 border-red-700/30';
   }
 }
 
-function getVerdictBgStyle(verdict: EvaluationResult['verdict']): string {
+function getVerdictBgColorValue(verdict: EvaluationResult['verdict']): string {
   switch (verdict) {
     case 'strong-hire':
-    case 'hire': return 'bg-[#238636]/30';
-    case 'lean-hire': return 'bg-[#d29922]/30';
+    case 'hire': return 'color-mix(in srgb, var(--success, #34A853) 20%, transparent)';
+    case 'lean-hire': return 'color-mix(in srgb, var(--warning, #FBBC05) 20%, transparent)';
     case 'lean-no-hire':
-    case 'no-hire': return 'bg-[#f85149]/30';
+    case 'no-hire': return 'color-mix(in srgb, var(--error, #EA4335) 20%, transparent)';
   }
 }
 
 function getVerdictIcon(verdict: EvaluationResult['verdict']) {
   switch (verdict) {
     case 'strong-hire':
-    case 'hire': return <ThumbsUp className="w-7 h-7 text-[#3fb950]" />;
-    case 'lean-hire': return <Minus className="w-7 h-7 text-[#d29922]" />;
+    case 'hire': return <ThumbsUp className="w-7 h-7 text-green-500" aria-hidden="true" />;
+    case 'lean-hire': return <Minus className="w-7 h-7 text-yellow-500" aria-hidden="true" />;
     case 'lean-no-hire':
-    case 'no-hire': return <ThumbsDown className="w-7 h-7 text-[#f85149]" />;
+    case 'no-hire': return <ThumbsDown className="w-7 h-7 text-red-500" aria-hidden="true" />;
   }
 }
 

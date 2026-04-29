@@ -105,16 +105,16 @@ export default function QuestionEditorDemo() {
               </button>
               <div>
                 <h1 className="text-2xl font-bold">Question Editor Demo</h1>
-                <p className="text-muted-foreground">
-                  Integrated with Answer Formatting Standards
-                </p>
+<p className="text-foreground/70 text-base">
+                   Integrated with Answer Formatting Standards
+                 </p>
               </div>
             </div>
 
             <button
               onClick={handleCreateNew}
               className="flex items-center gap-2 px-5 py-2.5 font-semibold rounded-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-              style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', color: '#fff', boxShadow: '0 4px 16px rgba(60,64,67,0.12), inset 0 1px 0 rgba(255,255,255,0.2)' }}
+              style={{ background: 'linear-gradient(135deg, #4285F4, #1a73e8)', color: '#fff', boxShadow: '0 4px 16px rgba(60,64,67,0.12), inset 0 1px 0 rgba(255,255,255,0.2)' }}
             >
               <Plus className="w-4 h-4" />
               Create Question
@@ -133,9 +133,9 @@ export default function QuestionEditorDemo() {
               <FileText className="w-5 h-5 text-primary" />
               Sample Questions
             </h2>
-            <p className="text-muted-foreground mb-6">
-              Try editing these sample questions to see the Answer Formatting Standards in action.
-            </p>
+<p className="text-foreground/70 text-base mb-6">
+               Try editing these sample questions to see the Answer Formatting Standards in action.
+             </p>
 
             <div className="space-y-4">
               {sampleQuestions.map((question, index) => (
@@ -163,9 +163,9 @@ export default function QuestionEditorDemo() {
                         </span>
                       </div>
 
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {question.answer}
-                      </p>
+<p className="text-base text-foreground/70 line-clamp-2">
+                         {question.answer}
+                       </p>
 
                       {question.tags && question.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
@@ -178,9 +178,9 @@ export default function QuestionEditorDemo() {
                             </span>
                           ))}
                           {question.tags.length > 3 && (
-                            <span className="text-xs text-muted-foreground">
-                              +{question.tags.length - 3}
-                            </span>
+<span className="text-xs text-foreground/70">
+                               +{question.tags.length - 3}
+                             </span>
                           )}
                         </div>
                       )}
@@ -204,20 +204,20 @@ export default function QuestionEditorDemo() {
               <FileText className="w-5 h-5 text-green-600" />
               Saved Questions ({savedQuestions.length})
             </h2>
-            <p className="text-muted-foreground mb-6">
-              Questions you've created or edited will appear here.
-            </p>
+<p className="text-foreground/70 text-base mb-6">
+               Questions you've created or edited will appear here.
+             </p>
 
             {savedQuestions.length === 0 ? (
-              <div className="bg-card border border-dashed border-border rounded-lg p-8 text-center">
-                <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                <p className="text-muted-foreground mb-4">
-                  No saved questions yet
-                </p>
+              <div className="bg-card border border-dashed border-border rounded-xl p-6 text-center">
+                <FileText className="w-12 h-12 text-foreground/70 mx-auto mb-4 opacity-50" />
+<p className="text-foreground/70 text-base mb-4">
+                   No saved questions yet
+                 </p>
                 <button
                   onClick={handleCreateNew}
                   className="px-5 py-2.5 font-semibold rounded-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-                  style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', color: '#fff', boxShadow: '0 4px 16px rgba(60,64,67,0.12), inset 0 1px 0 rgba(255,255,255,0.2)' }}
+                  style={{ background: 'linear-gradient(135deg, #4285F4, #1a73e8)', color: '#fff', boxShadow: '0 4px 16px rgba(60,64,67,0.12), inset 0 1px 0 rgba(255,255,255,0.2)' }}
                 >
                   Create Your First Question
                 </button>

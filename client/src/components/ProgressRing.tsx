@@ -19,7 +19,7 @@ export function ProgressRing({
   progress,
   size = 80,
   strokeWidth = 8,
-  color = '#a855f7',
+  color = '#4285F4',
   bgColor = 'rgba(60,64,67,0.12)',
   children,
   animate = true

@@ -64,7 +64,7 @@ export default function XPCelebration({
       )}
 
       {/* Card */}
-      <div className="relative z-10 mx-4 w-full max-w-sm rounded-2xl bg-gradient-to-b from-indigo-900 to-teal-900 p-8 text-center shadow-2xl ring-1 ring-white/10">
+      <div className="relative z-10 mx-4 w-full max-w-sm rounded-xl bg-gradient-to-b from-indigo-900 to-teal-900 p-6 text-center shadow-sm">
 
         {/* XP earned */}
         <div className={`mb-2 ${prefersReducedMotion ? '' : 'animate-bounce'} text-6xl font-black text-teal-300 drop-shadow-lg`}>

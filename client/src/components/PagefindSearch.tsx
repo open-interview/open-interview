@@ -61,9 +61,10 @@ interface SearchResultItem {
 interface PagefindSearchProps {
   isOpen: boolean;
   onClose: () => void;
+  initialQuery?: string;
 }
 
-export function PagefindSearch({ isOpen, onClose }: PagefindSearchProps) {
+export function PagefindSearch({ isOpen, onClose, initialQuery }: PagefindSearchProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -146,12 +147,12 @@ export function PagefindSearch({ isOpen, onClose }: PagefindSearchProps) {
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
-      setQuery('');
+      setQuery(initialQuery || '');
       setResults([]);
       setSelectedIndex(0);
       setActiveFilter(null);
     }
-  }, [isOpen]);
+  }, [isOpen, initialQuery]);
 
   useEffect(() => {
     async function performSearch() {
@@ -264,13 +265,13 @@ export function PagefindSearch({ isOpen, onClose }: PagefindSearchProps) {
   const renderResults = () => (
     <div className="flex-1 overflow-y-auto">
       {isSearching && (
-        <div className="p-8 text-center">
+        <div className="p-6 text-center">
           <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
         </div>
       )}
       {!isSearching && query.length >= 2 && results.length === 0 && (
-        <div className="p-8 text-center text-muted-foreground">
-          <Search className="w-12 h-12 mx-auto mb-3 opacity-30" />
+        <div className="p-6 text-center text-muted-foreground">
+          <Search className="w-5 h-5 mx-auto mb-3 opacity-30" />
           <p className="text-base">No questions found for "{query}"</p>
           <p className="text-sm mt-2 opacity-70">Try different keywords</p>
         </div>
@@ -299,8 +300,8 @@ export function PagefindSearch({ isOpen, onClose }: PagefindSearchProps) {
         </div>
       )}
       {!isSearching && query.length < 2 && !isLoading && (
-        <div className="p-8 text-center text-muted-foreground">
-          <Search className="w-12 h-12 mx-auto mb-4 opacity-30" />
+        <div className="p-6 text-center text-muted-foreground">
+          <Search className="w-5 h-5 mx-auto mb-4 opacity-30" />
           <p className="text-base mb-1">Type at least 2 characters</p>
           <p className="text-sm opacity-70 mb-6">Search questions, topics, or tags</p>
           <div className="flex flex-wrap justify-center gap-2">
@@ -340,32 +341,32 @@ export function PagefindSearch({ isOpen, onClose }: PagefindSearchProps) {
             </button>
           </div>
 
-          {/* Mobile Search Input */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card flex-shrink-0">
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 text-muted-foreground animate-spin flex-shrink-0" />
-            ) : (
-              <Search className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-            )}
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={isLoading ? "Loading search..." : "Search questions..."}
-              className="flex-1 bg-transparent text-foreground text-base outline-none placeholder:text-muted-foreground/50"
-              autoComplete="off"
-              spellCheck={false}
-              disabled={isLoading}
-              data-testid="search-input"
-            />
-            {query && (
-              <button onClick={() => setQuery('')} className="p-1.5 hover:bg-muted rounded-full flex-shrink-0">
-                <X className="w-4 h-4 text-muted-foreground" />
-              </button>
-            )}
-          </div>
+           {/* Mobile Search Input */}
+           <div className="flex items-center gap-3 px-4 py-2 border-b border-border bg-card flex-shrink-0">
+             {isLoading ? (
+               <Loader2 className="w-5 h-5 text-muted-foreground animate-spin flex-shrink-0" />
+             ) : (
+               <Search className="w-5 h-5 text-[#9AA0A6] flex-shrink-0" />
+             )}
+             <input
+               ref={inputRef}
+               type="text"
+               value={query}
+               onChange={e => setQuery(e.target.value)}
+               onKeyDown={handleKeyDown}
+               placeholder={isLoading ? "Loading search..." : "Search questions..."}
+               className="flex-1 bg-transparent text-foreground text-base outline-none placeholder:text-[#9AA0A6]"
+               autoComplete="off"
+               spellCheck={false}
+               disabled={isLoading}
+               data-testid="search-input"
+             />
+             {query && (
+               <button onClick={() => setQuery('')} className="p-1.5 hover:bg-muted rounded-full flex-shrink-0">
+                 <X className="w-4 h-4 text-muted-foreground" />
+               </button>
+             )}
+           </div>
 
           {error && (
             <div className="px-4 py-2 bg-yellow-500/10 border-b border-yellow-500/20 text-yellow-600 dark:text-yellow-400 text-xs flex-shrink-0">
@@ -378,7 +379,7 @@ export function PagefindSearch({ isOpen, onClose }: PagefindSearchProps) {
 
           {/* Mobile Footer */}
           <div 
-            className="px-4 py-3 border-t border-border bg-card flex-shrink-0" 
+            className="px-4 py-2 border-t border-border bg-card flex-shrink-0" 
             style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
           >
             <p className="text-sm text-muted-foreground text-center">
@@ -405,7 +406,7 @@ export function PagefindSearch({ isOpen, onClose }: PagefindSearchProps) {
           initial={{ opacity: 0, y: -20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -20, scale: 0.95 }}
-          className="w-full max-w-2xl bg-card border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+           className="w-full max-w-2xl bg-card rounded-xl shadow-sm overflow-hidden flex flex-col max-h-[80vh]"
           onClick={e => e.stopPropagation()}
         >
           {/* Desktop Search Input */}
@@ -446,7 +447,7 @@ export function PagefindSearch({ isOpen, onClose }: PagefindSearchProps) {
           {renderResults()}
 
           {/* Desktop Footer */}
-          <div className="px-4 py-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+          <div className="px-4 py-2 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
             <div className="flex items-center gap-4">
               <span><kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px]">↑↓</kbd> Navigate</span>
               <span><kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px]">↵</kbd> Select</span>

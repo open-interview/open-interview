@@ -68,7 +68,7 @@ export function Microphone({
         }}
         className={`
           relative z-10 w-24 h-24 rounded-full flex items-center justify-center
-          transition-all shadow-2xl
+          transition-all shadow-sm
           ${
             isRecording
               ? 'bg-gradient-to-r from-red-500 to-pink-500'

@@ -38,18 +38,14 @@ function formatDate(iso: string) {
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
-    <div className="flex rounded-full overflow-hidden border" style={{ borderColor: 'var(--color-border)', background: 'var(--surface-3)' }}>
+    <div className="flex rounded-full overflow-hidden border border-border bg-surface-3">
       {(['On', 'Off'] as const).map((label) => {
         const active = label === 'On' ? on : !on;
         return (
           <button
             key={label}
             onClick={() => { if (label === 'On' ? !on : on) onToggle(); }}
-            className="px-4 py-2 min-h-[44px] text-xs font-semibold transition-all duration-200 cursor-pointer"
-            style={{
-              background: active ? 'var(--gradient-primary)' : 'transparent',
-              color: active ? '#fff' : 'var(--text-tertiary)',
-            }}
+            className={`px-4 py-2 min-h-[44px] text-xs font-semibold transition-all duration-200 cursor-pointer rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${active ? 'bg-gradient-primary text-white' : 'text-foreground/70'}`}
           >
             {label}
           </button>
@@ -63,14 +59,14 @@ function SettingRow({ icon, label, description, children }: {
   icon: React.ReactNode; label: string; description?: string; children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between py-3 px-4 min-h-[44px] rounded-[var(--radius-md)] transition-colors duration-200 hover:bg-[var(--surface-3)]">
+    <div className="flex items-center justify-between py-3 px-4 min-h-[44px] rounded-xl transition-colors duration-200 hover:bg-surface-3">
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--surface-3)' }}>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-surface-3">
           {icon}
         </div>
         <div>
-          <div className="text-sm font-medium">{label}</div>
-          {description && <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{description}</div>}
+          <div className="text-base font-medium">{label}</div>
+          {description && <div className="text-xs text-foreground/70">{description}</div>}
         </div>
       </div>
       {children}
@@ -79,7 +75,7 @@ function SettingRow({ icon, label, description, children }: {
 }
 
 const HEATMAP_LEVELS = ['bg-white/5','bg-primary/30','bg-primary/55','bg-primary/80','bg-primary'];
-const CHART_COLORS = ['#7c3aed','#6366f1','#06b6d4','#10b981','#f59e0b','#f43f5e','#8b5cf6','#0891b2'];
+const CHART_COLORS = ['#1a73e8','#4285F4','#06b6d4','#34A853','#FBBC05','#EA4335','#8ab4f8','#0891b2'];
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAY_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
@@ -93,8 +89,7 @@ function activityLevel(count: number) {
 
 function HeatmapTooltip({ date, count }: { date: string; count: number }) {
   return (
-    <div className="px-2 py-1 rounded-md text-xs font-medium pointer-events-none"
-      style={{ background: 'var(--surface-4)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}>
+    <div className="px-2 py-1 rounded-md text-xs font-medium pointer-events-none bg-surface-4 border border-border text-foreground">
       {formatDate(date)} · {count} {count === 1 ? 'activity' : 'activities'}
     </div>
   );
@@ -160,19 +155,12 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
   return (
     <div className="space-y-6">
       {/* Profile Card */}
-      <motion.div {...fadeUp(0)} 
-        className="rounded-[28px] p-6"
-        style={{
-          background: 'rgba(15, 22, 41, 0.75)',
-          backdropFilter: 'blur(20px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-          border: '1px solid rgba(60,64,67,0.12)',
-          boxShadow: '12px 12px 40px rgba(0,0,0,0.35), -6px -6px 24px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.1)'
-        }}
+      <motion.div {...fadeUp(0)}
+        className="glass-card rounded-2xl p-6 shadow-sm"
       >
         <div className="flex flex-col items-center gap-4">
-          <div className="p-0.5 rounded-full" style={{ background: 'var(--gradient-primary)' }}>
-            <div className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold text-white" style={{ background: 'var(--surface-2)' }}>
+          <div className="p-0.5 rounded-full bg-gradient-primary">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold text-white bg-surface-2">
               {initials}
             </div>
           </div>
@@ -180,8 +168,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
             <div className="flex items-center gap-2">
               <input autoFocus value={nameInput} onChange={e => setNameInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditingName(false); }}
-                className="text-center text-xl font-bold bg-transparent border-b-2 outline-none px-2"
-                style={{ borderColor: 'var(--color-accent-violet)', color: 'var(--text-primary)' }} />
+                className="text-center text-xl font-bold bg-transparent border-b-2 border-accent-violet outline-none px-2 text-foreground" />
               <button onClick={saveName} className="p-1 rounded-full hover:bg-green-500/20 text-green-400"><Check className="w-4 h-4" /></button>
               <button onClick={() => setEditingName(false)} className="p-1 rounded-full hover:bg-red-500/20 text-red-400"><X className="w-4 h-4" /></button>
             </div>
@@ -189,43 +176,43 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold">{displayName}</h2>
               <button onClick={() => { setNameInput(displayName); setEditingName(true); }}
-                className="p-1 rounded-full transition-colors hover:bg-white/10" style={{ color: 'var(--text-tertiary)' }}>
+                className="p-1 rounded-full transition-colors hover:bg-white/10 text-foreground/70">
                 <Edit2 className="w-3.5 h-3.5" />
               </button>
             </div>
           )}
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Member since {memberSince}</p>
-          <div className="flex gap-6 pt-2 border-t w-full justify-center" style={{ borderColor: 'var(--color-border)' }}>
+          <p className="text-base text-foreground/70">Member since {memberSince}</p>
+          <div className="flex gap-6 pt-2 border-t w-full justify-center border-border">
             {[
-              { label: 'XP', value: balance, color: 'var(--color-xp)' },
-              { label: 'Level', value: level, color: 'var(--color-accent-violet-light)' },
-              { label: 'Done', value: totalCompleted, color: 'var(--color-accent-cyan)' },
-              { label: 'Badges', value: unlockedBadges.length, color: 'var(--color-success)' },
-              { label: 'Streak', value: streak, color: 'var(--color-streak)' },
-            ].map(({ label, value, color }) => (
+              { label: 'XP', value: balance, className: 'text-xp' },
+              { label: 'Level', value: level, className: 'text-accent-violet-light' },
+              { label: 'Done', value: totalCompleted, className: 'text-accent-cyan' },
+              { label: 'Badges', value: unlockedBadges.length, className: 'text-success' },
+              { label: 'Streak', value: streak, className: 'text-streak' },
+            ].map(({ label, value, className }) => (
               <div key={label} className="text-center">
-                <div className="text-lg font-bold" style={{ color }}>{value}</div>
-                <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{label}</div>
+                <div className={`text-lg font-bold ${className}`}>{value}</div>
+                <div className="text-xs text-foreground/70">{label}</div>
               </div>
             ))}
           </div>
           <div className="w-full">
-            <div className="flex justify-end text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+            <div className="flex justify-end text-xs mb-1 text-foreground/70">
               <span>{xpInLevel}/100 XP</span>
             </div>
-            <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-4)' }}>
+            <div className="h-2 rounded-full overflow-hidden bg-surface-4">
               <motion.div initial={{ width: 0 }} animate={{ width: `${xpInLevel}%` }} transition={{ duration: 1 }}
-                className="h-full rounded-full" style={{ background: 'var(--gradient-primary)' }} />
+                className="h-full rounded-full bg-gradient-primary" />
             </div>
           </div>
         </div>
       </motion.div>
 
       {/* Achievements */}
-      <motion.div {...fadeUp(0.1)} className="glass-card rounded-[var(--radius-2xl)] p-6">
+      <motion.div {...fadeUp(0.1)} className="glass-card rounded-2xl p-6">
         <div className="flex items-center justify-between mb-4">
-          <SectionHeader title="Achievements" icon={<Trophy className="w-4 h-4" style={{ color: 'var(--color-xp)' }} />} />
-          <button onClick={() => setLocation('/badges')} className="text-xs flex items-center gap-1 min-h-[44px] px-2 cursor-pointer hover:opacity-80 transition-opacity duration-200" style={{ color: 'var(--color-accent-violet-light)' }}>
+          <SectionHeader title="Achievements" icon={<Trophy className="w-4 h-4 text-xp" />} />
+          <button onClick={() => setLocation('/badges')} className="text-xs flex items-center gap-1 min-h-[44px] px-3 py-1.5 rounded-xl cursor-pointer hover:opacity-80 transition-opacity duration-200 text-accent-violet-light focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
             View All <ChevronRight className="w-3 h-3" />
           </button>
         </div>
@@ -235,9 +222,10 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
               const { achievement } = badge;
               // Tier ring colors
               const tierRing: Record<string, string> = {
-                bronze: '#cd7f32', silver: '#c0c0c0', gold: '#ffd700', platinum: '#e5e4e2', diamond: '#b9f2ff'
+                bronze: 'text-orange-700', silver: 'text-gray-400', gold: 'text-yellow-400', platinum: 'text-gray-300', diamond: 'text-cyan-300'
               };
-              const ringColor = tierRing[achievement.tier] || achievement.color || '#7c3aed';
+              const ringClass = tierRing[achievement.tier] || achievement.color || 'text-primary';
+              const ringBg = { bronze: '#cd7f32', silver: '#c0c0c0', gold: '#ffd700', platinum: '#e5e4e2', diamond: '#b9f2ff' }[achievement.tier] || achievement.color || '#7c3aed';
               // Resolve lucide icon
               const iconName = (achievement.icon || 'star').split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join('');
               const IconComp = (LucideIcons as any)[iconName] || Trophy;
@@ -255,27 +243,26 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
                   <div className="relative" style={{ width: 72, height: 72 }}>
                     {/* Outer glow ring */}
                     <div className="absolute inset-0 rounded-full opacity-30 blur-sm group-hover:opacity-60 transition-opacity"
-                      style={{ background: ringColor }} />
+                      style={{ background: ringBg }} />
                     {/* Tier ring */}
                     <svg width={72} height={72} className="absolute inset-0 -rotate-90">
                       <circle cx={36} cy={36} r={32} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={4} />
-                      <circle cx={36} cy={36} r={32} fill="none" stroke={ringColor} strokeWidth={4}
+                      <circle cx={36} cy={36} r={32} fill="none" stroke={ringBg} strokeWidth={4}
                         strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 32}`} strokeDashoffset={0} />
                     </svg>
                     {/* Inner medal face */}
-                    <div className={`absolute rounded-full flex items-center justify-center bg-gradient-to-br ${achievement.gradient || 'from-primary to-primary'} shadow-lg`}
+                     <div className={`absolute rounded-full flex items-center justify-center bg-gradient-to-br ${achievement.gradient || 'from-primary to-primary'}`}
                       style={{ inset: 6 }}>
-                      <IconComp className="text-white drop-shadow" style={{ width: 28, height: 28 }} />
+                      <IconComp className="text-white drop-shadow w-7 h-7" />
                     </div>
                     {/* Tier badge dot */}
-                    <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center text-[8px] font-black shadow"
-                      style={{ background: ringColor, borderColor: 'var(--surface-1)', color: achievement.tier === 'silver' || achievement.tier === 'platinum' ? '#333' : '#fff' }}>
+                    <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full border-2 border-surface-1 flex items-center justify-center text-xs font-black shadow"
+                      style={{ background: ringBg, color: achievement.tier === 'silver' || achievement.tier === 'platinum' ? '#333' : '#fff' }}>
                       {achievement.tier[0].toUpperCase()}
                     </div>
                   </div>
                   {/* Name */}
-                  <span className="text-[10px] font-semibold text-center leading-tight line-clamp-2 w-full"
-                    style={{ color: 'var(--text-primary)' }}>
+                  <span className="text-xs font-semibold text-center leading-tight line-clamp-2 w-full text-foreground">
                     {achievement.name}
                   </span>
                 </motion.div>
@@ -283,21 +270,21 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
             })}
           </div>
         ) : (
-          <p className="text-sm text-center py-4" style={{ color: 'var(--text-tertiary)' }}>Complete challenges to earn badges</p>
+          <p className="text-base text-center py-4 text-foreground/70">Complete challenges to earn badges</p>
         )}
       </motion.div>
 
       {/* Learning Preferences */}
-      <motion.div {...fadeUp(0.2)} className="glass-card rounded-[var(--radius-2xl)] p-6">
-        <SectionHeader title="Learning Preferences" icon={<Settings className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />} />
+      <motion.div {...fadeUp(0.2)} className="glass-card rounded-2xl p-6">
+        <SectionHeader title="Learning Preferences" icon={<Settings className="w-4 h-4 text-accent-cyan" />} />
         <div className="space-y-1">
-          <SettingRow icon={<Shuffle className="w-4 h-4" style={{ color: 'var(--color-accent-violet-light)' }} />} label="Shuffle Questions" description="Randomize question order">
+          <SettingRow icon={<Shuffle className="w-4 h-4 text-accent-violet-light" />} label="Shuffle Questions" description="Randomize question order">
             <Toggle on={preferences.shuffleQuestions !== false} onToggle={toggleShuffleQuestions} />
           </SettingRow>
-          <SettingRow icon={<Eye className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />} label="Prioritize New" description="Show unvisited questions first">
+          <SettingRow icon={<Eye className="w-4 h-4 text-accent-cyan" />} label="Prioritize New" description="Show unvisited questions first">
             <Toggle on={preferences.prioritizeUnvisited !== false} onToggle={togglePrioritizeUnvisited} />
           </SettingRow>
-          <SettingRow icon={<Volume2 className="w-4 h-4" style={{ color: 'var(--color-accent-violet-light)' }} />} label="Auto-play Audio" description="Automatically read questions">
+          <SettingRow icon={<Volume2 className="w-4 h-4 text-accent-violet-light" />} label="Auto-play Audio" description="Automatically read questions">
             <Toggle on={!!((preferences as unknown as Record<string, unknown>)['autoPlayTTS'])}
               onToggle={() => {
                 try {
@@ -312,29 +299,28 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
       </motion.div>
 
       {/* Learning Summary */}
-      <motion.div {...fadeUp(0.25)} className="glass-card rounded-[var(--radius-2xl)] p-6">
-        <SectionHeader title="Learning Summary" icon={<BookOpen className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />} />
+      <motion.div {...fadeUp(0.25)} className="glass-card rounded-2xl p-6">
+        <SectionHeader title="Learning Summary" icon={<BookOpen className="w-4 h-4 text-accent-cyan" />} />
         <div className="grid grid-cols-3 gap-3">
           {[
-            { icon: Target, label: 'Topics Studied', value: learningSummary.topicsStudied, color: 'var(--color-accent-violet-light)', bg: 'rgba(60,64,67,0.15)' },
-            { icon: GraduationCap, label: 'Certs Practiced', value: learningSummary.certsPracticed, color: 'var(--color-xp)', bg: 'rgba(245,158,11,0.1)' },
-            { icon: Code2, label: 'Coding Done', value: learningSummary.codingDone, color: 'var(--color-accent-cyan)', bg: 'rgba(6,182,212,0.1)' },
+            { icon: Target, label: 'Topics Studied', value: learningSummary.topicsStudied, color: 'text-accent-violet-light', bg: 'bg-surface-3' },
+            { icon: GraduationCap, label: 'Certs Practiced', value: learningSummary.certsPracticed, color: 'text-xp', bg: 'bg-amber-500/10' },
+            { icon: Code2, label: 'Coding Done', value: learningSummary.codingDone, color: 'text-accent-cyan', bg: 'bg-cyan-500/10' },
           ].map(({ icon: Icon, label, value, color, bg }) => (
-            <div key={label} className="rounded-[var(--radius-xl)] p-4 text-center" style={{ background: bg, border: `1px solid ${bg.replace('0.1', '0.25')}` }}>
-              <Icon className="w-5 h-5 mx-auto mb-1" style={{ color }} />
+            <div key={label} className={`rounded-xl p-4 text-center ${bg} border border-border`}>
+              <Icon className={`w-5 h-5 mx-auto mb-1 ${color}`} />
               <div className="text-2xl font-black">{value}</div>
-              <div className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{label}</div>
+              <div className="text-xs mt-0.5 text-foreground/70">{label}</div>
             </div>
           ))}
         </div>
       </motion.div>
 
       {/* Data Export */}
-      <motion.div {...fadeUp(0.28)} className="glass-card rounded-[var(--radius-2xl)] p-6">
-        <SectionHeader title="Data" icon={<Download className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />} />
-        <button onClick={exportData} className="w-full flex items-center justify-between px-4 py-3 min-h-[44px] rounded-[var(--radius-lg)] cursor-pointer transition-opacity duration-200 hover:opacity-80"
-          style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', color: 'var(--color-accent-cyan)' }}>
-          <span className="text-sm font-medium">Export my data</span>
+      <motion.div {...fadeUp(0.28)} className="glass-card rounded-2xl p-6">
+        <SectionHeader title="Data" icon={<Download className="w-4 h-4 text-accent-cyan" />} />
+        <button onClick={exportData} className="w-full flex items-center justify-between px-4 py-3 min-h-[44px] rounded-xl cursor-pointer transition-opacity duration-200 hover:opacity-80 bg-cyan-500/10 border border-cyan-500/25 text-accent-cyan focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+          <span className="text-base font-medium">Export my data</span>
           <Download className="w-4 h-4" />
         </button>
       </motion.div>
@@ -439,37 +425,37 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
 
       {/* 4 stat chips */}
       {[
-        { icon: Target,    label: 'Questions',  value: totalCompleted, sub: `+${todayCount}`, color: '#06b6d4', bg: 'rgba(6,182,212,0.08)'  },
-        { icon: BarChart2, label: 'Mastered',   value: topicsMastered, sub: undefined,        color: '#7c3aed', bg: 'rgba(60,64,67,0.15)' },
-        { icon: Trophy,    label: 'Certs',      value: certCount,      sub: undefined,        color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
-        { icon: Mic,       label: 'Voice',      value: voiceSessions,  sub: undefined,        color: '#10b981', bg: 'rgba(16,185,129,0.08)' },
+        { icon: Target,    label: 'Questions',  value: totalCompleted, sub: `+${todayCount}`, color: 'text-cyan-500', bg: 'bg-cyan-500/10'  },
+        { icon: BarChart2, label: 'Mastered',   value: topicsMastered, sub: undefined,        color: 'text-primary', bg: 'bg-surface-3' },
+        { icon: Trophy,    label: 'Certs',      value: certCount,      sub: undefined,        color: 'text-amber-500', bg: 'bg-amber-500/10' },
+        { icon: Mic,       label: 'Voice',      value: voiceSessions,  sub: undefined,        color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
       ].map(({ icon: Icon, label, value, sub, color, bg }, i) => (
         <motion.div key={label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-          className="rounded-2xl p-3 flex flex-col gap-0.5" style={{ background: bg, border: `1px solid ${color}20` }}>
-          <Icon style={{ color, width: 13, height: 13 }} />
+          className={`rounded-2xl p-3 flex flex-col gap-0.5 ${bg} border border-border`}>
+          <Icon className={`${color} w-3.5 h-3.5`} />
           <div className="text-lg font-black leading-none mt-1">{value}</div>
-          <div className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>{label}</div>
-          {sub && <div className="text-[9px] font-semibold" style={{ color }}>{sub}</div>}
+          <div className="text-xs text-foreground/70">{label}</div>
+          {sub && <div className={`text-xs font-semibold ${color}`}>{sub}</div>}
         </motion.div>
       ))}
 
       {/* Heatmap — full width */}
-      <motion.div {...fadeUp(0.2)} className="glass-card rounded-2xl p-3 col-span-2 sm:col-span-4">
+       <motion.div {...fadeUp(0.2)} className="glass-card rounded-2xl p-3 col-span-2 sm:col-span-4 shadow-sm">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Activity</span>
-          <span className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>52 weeks</span>
+          <span className="text-xs font-semibold text-foreground/70">Activity</span>
+          <span className="text-xs text-foreground/70">52 weeks</span>
         </div>
         <div className="overflow-x-auto">
           <div className="min-w-[520px]">
             <div className="relative h-3.5 mb-0.5 pl-6">
               {monthLabels.map(({ label, col }) => (
-                <span key={`${label}-${col}`} className="text-[9px] absolute" style={{ color: 'var(--text-tertiary)', left: `${24 + col * 9}px` }}>{label}</span>
+                <span key={`${label}-${col}`} className="text-xs absolute text-foreground/70" style={{ left: `${24 + col * 9}px` }}>{label}</span>
               ))}
             </div>
             <div className="flex gap-0.5">
               <div className="flex flex-col gap-0.5 mr-0.5">
                 {DAY_LABELS.map((d, i) => (
-                  <div key={d} className="text-[8px] w-4 text-right" style={{ color: i % 2 === 0 ? 'var(--text-tertiary)' : 'transparent', height: '8px', lineHeight: '8px' }}>{d[0]}</div>
+                  <div key={d} className="text-xs w-4 text-right" style={{ color: i % 2 === 0 ? 'var(--text-tertiary)' : 'transparent', height: '8px', lineHeight: '8px' }}>{d[0]}</div>
                 ))}
               </div>
               <div className="flex gap-0.5">
@@ -497,8 +483,8 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
       </motion.div>
 
       {/* Weekly bar widget */}
-      <motion.div {...fadeUp(0.25)} className="glass-card rounded-2xl p-3 col-span-1 sm:col-span-2">
-        <div className="text-[10px] font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>This Week</div>
+       <motion.div {...fadeUp(0.25)} className="glass-card rounded-2xl p-3 col-span-1 sm:col-span-2 shadow-sm">
+        <div className="text-xs font-semibold mb-2 text-foreground/70">This Week</div>
         <ResponsiveContainer width="100%" height={90}>
           <BarChart data={weeklyData} barSize={12} margin={{ top: 0, right: 0, left: -28, bottom: 0 }}>
             <XAxis dataKey="day" tick={{ fill: 'var(--text-tertiary)', fontSize: 9 }} axisLine={false} tickLine={false} />
@@ -511,8 +497,8 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
       </motion.div>
 
       {/* Topic distribution widget */}
-      <motion.div {...fadeUp(0.28)} className="glass-card rounded-2xl p-3 col-span-1 sm:col-span-2">
-        <div className="text-[10px] font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>Topics</div>
+       <motion.div {...fadeUp(0.28)} className="glass-card rounded-2xl p-3 col-span-1 sm:col-span-2 shadow-sm">
+        <div className="text-xs font-semibold mb-2 text-foreground/70">Topics</div>
         {topicData.length > 0 ? (() => {
           const total = topicData.reduce((s, d) => s + d.value, 0);
           return (
@@ -521,11 +507,11 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
                 const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
                 return (
                   <div key={i}>
-                    <div className="flex justify-between text-[9px] mb-0.5">
-                      <span className="truncate max-w-[65%]" style={{ color: 'var(--text-secondary)' }}>{d.name}</span>
+                    <div className="flex justify-between text-xs mb-0.5">
+                      <span className="truncate max-w-[65%] text-foreground/70">{d.name}</span>
                       <span style={{ color: d.color }}>{pct}%</span>
                     </div>
-                    <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--surface-3)' }}>
+                    <div className="h-1 rounded-full overflow-hidden bg-surface-3">
                       <motion.div className="h-full rounded-full" style={{ background: d.color }}
                         initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.5, delay: i * 0.04 }} />
                     </div>
@@ -534,13 +520,13 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
               })}
             </div>
           );
-        })() : <div className="text-[10px] text-center py-4" style={{ color: 'var(--text-tertiary)' }}>No data yet</div>}
+        })() : <div className="text-xs text-center py-4 text-foreground/70">No data yet</div>}
       </motion.div>
 
       {/* 30-day line — spans full width */}
-      <motion.div {...fadeUp(0.32)} className="glass-card rounded-2xl p-3 col-span-2 sm:col-span-4">
+       <motion.div {...fadeUp(0.32)} className="glass-card rounded-2xl p-3 col-span-2 sm:col-span-4 shadow-sm">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-semibold" style={{ color: 'var(--text-tertiary)' }}>30-day trend</span>
+          <span className="text-xs font-semibold text-foreground/70">30-day trend</span>
         </div>
         <ResponsiveContainer width="100%" height={80}>
           <LineChart data={dailyData} margin={{ top: 2, right: 2, left: -28, bottom: 0 }}>
@@ -554,44 +540,40 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
       </motion.div>
 
       {/* Recent sessions widget */}
-      <motion.div {...fadeUp(0.36)} className="glass-card rounded-2xl p-3 col-span-1 sm:col-span-2">
-        <div className="text-[10px] font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>Recent Sessions</div>
+       <motion.div {...fadeUp(0.36)} className="glass-card rounded-2xl p-3 col-span-1 sm:col-span-2 shadow-sm">
+        <div className="text-xs font-semibold mb-2 text-foreground/70">Recent Sessions</div>
         {recentSessions.length > 0 ? (
           <div className="space-y-1">
             {recentSessions.slice(0, 4).map(s => {
-              const cfg = { swipe: { label: 'Swipe', color: '#7c3aed' }, voice: { label: 'Voice', color: '#10b981' }, test: { label: 'Test', color: '#f59e0b' } }[s.mode];
+              const cfg = { swipe: { label: 'Swipe', color: 'text-primary' }, voice: { label: 'Voice', color: 'text-emerald-500' }, test: { label: 'Test', color: 'text-amber-500' } }[s.mode];
               return (
-                <div key={s.date} className="flex items-center justify-between text-[10px]">
-                  <span style={{ color: 'var(--text-tertiary)' }}>{formatDate(s.date)}</span>
-                  <span className="font-semibold" style={{ color: cfg?.color }}>{cfg?.label}</span>
+                <div key={s.date} className="flex items-center justify-between text-xs">
+                  <span className="text-foreground/70">{formatDate(s.date)}</span>
+                  <span className={`font-semibold ${cfg?.color}`}>{cfg?.label}</span>
                   <span className="font-bold">{s.count}q</span>
                 </div>
               );
             })}
           </div>
-        ) : <div className="text-[10px] text-center py-2" style={{ color: 'var(--text-tertiary)' }}>No sessions yet</div>}
+        ) : <div className="text-xs text-center py-2 text-foreground/70">No sessions yet</div>}
       </motion.div>
 
       {/* Calendar widget */}
-      <motion.div {...fadeUp(0.38)} className="glass-card rounded-2xl p-3 col-span-1 sm:col-span-2">
+       <motion.div {...fadeUp(0.38)} className="glass-card rounded-2xl p-3 col-span-1 sm:col-span-2 shadow-sm">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-semibold" style={{ color: 'var(--text-tertiary)' }}>{calendarMonth}</span>
-          <span className="text-[10px] font-bold" style={{ color: 'var(--color-streak)' }}>{streak}d 🔥</span>
+          <span className="text-xs font-semibold text-foreground/70">{calendarMonth}</span>
+          <span className="text-xs font-bold text-streak">{streak}d 🔥</span>
         </div>
         <div className="grid grid-cols-7 gap-0.5 mb-0.5">
           {['S','M','T','W','T','F','S'].map((d, i) => (
-            <div key={i} className="text-center text-[8px]" style={{ color: 'var(--text-tertiary)' }}>{d}</div>
+            <div key={i} className="text-center text-xs text-foreground/70">{d}</div>
           ))}
         </div>
         <div className="grid grid-cols-7 gap-0.5">
           {Array.from({ length: new Date(new Date().getFullYear(), new Date().getMonth(), 1).getDay() }, (_, i) => <div key={`e-${i}`} />)}
           {calendarDays.map(({ day, active, isToday }) => (
-            <div key={day} className={`flex items-center justify-center rounded text-[9px] font-medium ${isToday ? 'ring-1 ring-primary' : ''}`}
-              style={{
-                aspectRatio: '1',
-                background: active ? (isToday ? '#7c3aed' : 'rgba(60,64,67,0.15)') : isToday ? 'rgba(60,64,67,0.15)' : 'var(--surface-2)',
-                color: active ? '#fff' : isToday ? '#a78bfa' : 'var(--text-tertiary)',
-              }}>
+            <div key={day} className={`flex items-center justify-center rounded text-xs font-medium ${isToday ? 'ring-2 ring-primary' : ''} ${active ? 'bg-primary text-white' : isToday ? 'bg-primary/10 text-primary' : 'bg-surface-2 text-foreground/70'}`}
+              style={{ aspectRatio: '1' }}>
               {day}
             </div>
           ))}
@@ -599,23 +581,23 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
       </motion.div>
 
       {/* Channel progress — full width */}
-      <motion.div {...fadeUp(0.42)} className="glass-card rounded-2xl p-3 col-span-2 sm:col-span-4">
-        <div className="text-[10px] font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>Channel Progress</div>
+       <motion.div {...fadeUp(0.42)} className="glass-card rounded-2xl p-3 col-span-2 sm:col-span-4 shadow-sm">
+        <div className="text-xs font-semibold mb-2 text-foreground/70">Channel Progress</div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {moduleProgress.slice(0, 8).map((mod, i) => (
             <motion.button key={mod.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.44 + i * 0.03 }}
               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
               onClick={() => setLocation(`/channel/${mod.id}`)}
-              className="p-3 min-h-[56px] rounded-2xl text-left cursor-pointer" style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)' }}>
+              className="p-3 min-h-[56px] rounded-2xl text-left cursor-pointer bg-surface-2 border border-border focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-medium truncate max-w-[75%]">{mod.name}</span>
-                <span className="text-[9px] font-bold flex-shrink-0" style={{ color: mod.pct === 100 ? '#f59e0b' : 'var(--text-tertiary)' }}>
+                <span className="text-xs font-medium truncate max-w-[75%]">{mod.name}</span>
+                <span className={`text-xs font-bold flex-shrink-0 ${mod.pct === 100 ? 'text-amber-500' : 'text-foreground/70'}`}>
                   {mod.pct === 100 ? '✓' : `${mod.pct}%`}
                 </span>
               </div>
-              <div className="h-0.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-4)' }}>
+              <div className="h-0.5 rounded-full overflow-hidden bg-surface-4">
                 <motion.div initial={{ width: 0 }} animate={{ width: `${mod.pct}%` }} transition={{ duration: 0.6, delay: 0.5 + i * 0.04 }}
-                  className="h-full rounded-full" style={{ background: mod.pct === 100 ? '#f59e0b' : '#7c3aed' }} />
+                  className={`h-full rounded-full ${mod.pct === 100 ? 'bg-amber-500' : 'bg-primary'}`} />
               </div>
             </motion.button>
           ))}

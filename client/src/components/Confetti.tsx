@@ -16,11 +16,11 @@ interface Particle {
 }
 
 const COLORS = [
-  '#a855f7', // purple
+  '#4285F4', // blue
   '#3b82f6', // blue
-  '#22c55e', // green
+  '#34A853', // green
   '#f59e0b', // amber
-  '#ef4444', // red
+  '#EA4335', // red
   '#ec4899', // pink
   '#06b6d4', // cyan
 ];

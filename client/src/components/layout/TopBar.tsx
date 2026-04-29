@@ -38,13 +38,13 @@ export function TopBar({ onMenuClick, onSearchClick, title, showBackButton }: To
         <div className="flex-1 max-w-xl mx-4">
           <button
             onClick={onSearchClick}
-            className="w-full flex items-center gap-3 px-4 py-2.5 bg-muted/50 hover:bg-muted rounded-full transition-colors group"
+            className="w-full flex items-center gap-3 px-4 h-[46px] bg-[#F1F3F4] dark:bg-[#303134] hover:bg-[#E8EAED] dark:hover:bg-[#3C4043] rounded-full transition-colors group"
           >
-            <Search className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-            <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors hidden sm:block">
+            <Search className="w-5 h-5 text-[#9AA0A6]" />
+            <span className="text-sm text-[#9AA0A6] hidden sm:block">
               Search questions...
             </span>
-            <kbd className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 text-xs text-muted-foreground bg-background rounded border border-border ml-auto">
+            <kbd className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 text-xs text-[#9AA0A6] bg-background/50 rounded border border-border ml-auto">
               <span className="text-xs">⌘</span>K
             </kbd>
           </button>

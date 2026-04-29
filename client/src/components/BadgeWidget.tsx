@@ -95,15 +95,15 @@ export function BadgeWidget() {
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between p-3 border-b border-border cursor-pointer hover:bg-muted/30 transition-colors"
+        className="flex items-center justify-between p-3 border-b border-border cursor-pointer hover:bg-muted/30 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         onClick={() => setLocation('/badges')}
       >
         <div className="flex items-center gap-2">
           <Trophy className="w-4 h-4 text-primary" />
           <span className="text-xs font-bold uppercase tracking-widest">Badges</span>
         </div>
-        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-          <span>{unlockedBadges.length} unlocked</span>
+        <div className="flex items-center gap-1 text-xs text-foreground/70">
+           <span>{unlockedBadges.length} unlocked</span>
           <ChevronRight className="w-3 h-3" />
         </div>
       </div>
@@ -111,7 +111,7 @@ export function BadgeWidget() {
       {/* Recent Badges */}
       {recentBadges.length > 0 && (
         <div className="p-3 border-b border-border/50">
-          <div className="text-[9px] text-muted-foreground uppercase mb-2">Recent</div>
+           <div className="text-xs text-foreground/70 uppercase mb-2">Recent</div>
           <div className="flex gap-2 justify-center">
             {recentBadges.map((bp) => (
               <BadgeRing key={bp.badge.id} progress={bp} size="sm" showProgress={false} />
@@ -123,11 +123,11 @@ export function BadgeWidget() {
       {/* Next Badge Progress */}
       {nextBadge && (
         <div className="p-3">
-          <div className="text-[9px] text-muted-foreground uppercase mb-2">Next Up</div>
+           <div className="text-xs text-foreground/70 uppercase mb-2">Next Up</div>
           <div className="flex items-center gap-2">
             <BadgeRing progress={nextBadge} size="sm" showProgress={false} />
             <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-bold truncate">{nextBadge.badge.name}</div>
+               <div className="text-xs font-bold truncate">{nextBadge.badge.name}</div>
               <ProgressBar
                 current={nextBadge.current}
                 max={nextBadge.badge.requirement}
@@ -135,7 +135,7 @@ export function BadgeWidget() {
                 animated={false}
                 className="mt-1"
               />
-              <div className="text-[9px] text-muted-foreground mt-0.5">
+               <div className="text-xs text-foreground/70 mt-0.5">
                 {nextBadge.current}/{nextBadge.badge.requirement} {nextBadge.badge.unit}
               </div>
             </div>

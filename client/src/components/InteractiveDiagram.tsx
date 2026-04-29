@@ -42,10 +42,10 @@ const mermaidThemeConfigs: Record<MermaidTheme, object> = {
     theme: 'dark',
     themeVariables: {
       primaryColor: '#1f2937', primaryTextColor: '#fff',
-      primaryBorderColor: '#22c55e', lineColor: '#666',
+      primaryBorderColor: '#34A853', lineColor: '#666',
       secondaryColor: '#1a1a1a', tertiaryColor: '#333',
       background: '#0a0a0a', mainBkg: '#1f2937',
-      nodeBorder: '#22c55e', clusterBkg: '#1a1a1a',
+      nodeBorder: '#34A853', clusterBkg: '#1a1a1a',
       clusterBorder: '#333', titleColor: '#fff',
       edgeLabelBackground: '#1a1a1a',
     },
@@ -337,7 +337,7 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
   const themes: { id: MermaidTheme; name: string; color: string }[] = [
     { id: 'default', name: 'Default', color: '#326ce5' },
     { id: 'neutral', name: 'Neutral', color: '#999' },
-    { id: 'dark',    name: 'Dark',    color: '#22c55e' },
+    { id: 'dark',    name: 'Dark',    color: '#34A853' },
     { id: 'forest',  name: 'Forest',  color: '#6eaa49' },
     { id: 'base',    name: 'Base',    color: '#f9a825' },
   ];
