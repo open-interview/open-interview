@@ -105,7 +105,7 @@ export function ListenButton({
         }
         ${sizeClasses[size]}
         ${className}
-        disabled:opacity-50
+        disabled:opacity-[0.38]
       `}
       title={isPlaying ? 'Stop listening' : 'Listen to answer'}
     >
@@ -201,7 +201,7 @@ export function ListenIconButton({
       onClick={handleClick}
       disabled={isLoading}
       className={`
-        min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-all
+        min-w-[48px] min-h-[48px] flex items-center justify-center rounded-lg transition-all
         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
         ${isPlaying 
           ? 'bg-primary text-primary-foreground' 
@@ -209,7 +209,7 @@ export function ListenIconButton({
         }
         ${sizeClasses[size]}
         ${className}
-        disabled:opacity-50
+        disabled:opacity-[0.38]
       `}
       title={isPlaying ? 'Stop listening' : 'Listen to answer'}
     >

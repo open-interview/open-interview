@@ -36,7 +36,7 @@ export function SearchDialogExample() {
     <div>
       <p>Press Ctrl+K (or Cmd+K) to open search</p>
       {isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black bg-opacity-[0.38] flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg">
             <h2>Search Dialog</h2>
             <input type="text" placeholder="Search..." className="border p-2 w-full" />
@@ -83,9 +83,9 @@ export function ImageGalleryExample() {
   return (
     <div>
       <div className="text-center">
-        <img 
-          src={images[currentIndex]} 
-          alt={`Image ${currentIndex + 1}`}
+        <img
+          src={images[currentIndex]}
+          alt={`Gallery image ${currentIndex + 1} of ${images.length}`}
           className="max-w-md mx-auto"
         />
         <p className="mt-4">
@@ -226,7 +226,7 @@ export function ModalExample() {
       )}
 
       {isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black bg-opacity-[0.38] flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg max-w-md">
             <h2 className="text-xl font-bold mb-4">Confirm Action</h2>
             <p className="mb-4">Are you sure you want to proceed?</p>

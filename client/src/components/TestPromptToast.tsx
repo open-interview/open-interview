@@ -84,7 +84,7 @@ export function TestPromptToast({
           
           <div className="p-4">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+              <div className="min-w-[48px] w-10 min-h-[48px] h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                 <Brain className="w-5 h-5 text-primary" />
               </div>
               

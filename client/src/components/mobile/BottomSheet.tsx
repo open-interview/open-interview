@@ -43,18 +43,19 @@ export function BottomSheet({
         {/* Backdrop */}
         <Drawer.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" />
         
-        {/* Sheet */}
-        <Drawer.Content 
-          role="dialog"
-          aria-modal="true"
-          className={cn(
-            "fixed bottom-0 left-0 right-0 z-50 flex flex-col",
-            "bg-white dark:bg-gray-900 rounded-t-[24px]",
-            "max-h-[95vh] md:max-h-[85vh]",
-            "border-t border-gray-200 dark:border-gray-800",
-            className
-          )}
-        >
+         {/* Sheet */}
+         <Drawer.Content
+           role="dialog"
+           aria-modal="true"
+           className={cn(
+             "fixed bottom-0 left-0 right-0 z-50 flex flex-col",
+             "bg-white dark:bg-gray-900 rounded-t-[24px]",
+             "max-h-[95vh] md:max-h-[85vh]",
+             "border-t border-gray-200 dark:border-gray-800",
+             className
+           )}
+           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+         >
           {/* Drag Handle */}
           <div className="flex justify-center pt-3 pb-2 md:hidden">
             <div className="w-12 h-1 bg-gray-300 dark:bg-gray-700 rounded-full" />
@@ -78,7 +79,7 @@ export function BottomSheet({
                 </div>
                 <button
                   onClick={() => onOpenChange(false)}
-                  className="ml-2 w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
+                  className="ml-2 w-9 h-9 md:min-w-[48px] w-10 md:min-h-[48px] h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
                   aria-label="Close"
                 >
                   <X className="w-4 h-4 md:w-5 md:h-5" />
@@ -92,12 +93,12 @@ export function BottomSheet({
             {children}
           </div>
           
-          {/* Footer - Sticky */}
-          {footer && (
-            <div className="p-3 md:p-4 border-t border-gray-200 dark:border-gray-800 flex-shrink-0 bg-white dark:bg-gray-900">
-              {footer}
-            </div>
-          )}
+           {/* Footer - Sticky */}
+           {footer && (
+             <div className="p-3 md:p-4 border-t border-gray-200 dark:border-gray-800 flex-shrink-0 bg-white dark:bg-gray-900" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }}>
+               {footer}
+             </div>
+           )}
         </Drawer.Content>
       </Drawer.Portal>
     </Drawer.Root>

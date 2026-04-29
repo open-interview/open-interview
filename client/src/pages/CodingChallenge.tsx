@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'wouter';
+import { useParams, Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import Editor from '@monaco-editor/react';
-import { Play, Send, Loader2, ChevronLeft, Code2, CheckCircle2, XCircle, Clock, Terminal, BookOpen, Lightbulb } from 'lucide-react';
+import { Play, Send, Loader2, ChevronLeft, Code2, CheckCircle2, XCircle, Clock, Terminal, BookOpen, Lightbulb, Circle, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,12 +18,19 @@ import { calculateScore, type ScoreResult, type Verdict } from '@/lib/test-runne
 import { checkAndAwardBadges } from '@/lib/challenge-badges';
 import TestResultsPanel from '@/components/TestResultsPanel';
 import XPCelebration from '@/components/XPCelebration';
+import { NetworkError, NotFound404 } from '@/components/google/ErrorStates';
 
 const GoogleColors = {
   blue: '#4285F4',
   red: '#EA4335',
   yellow: '#FBBC04',
   green: '#34A853',
+};
+
+const DIFFICULTY_ICONS: Record<string, typeof Circle> = {
+  easy: Circle,
+  medium: AlertCircle,
+  hard: CheckCircle2,
 };
 
 const DIFFICULTY_STYLES: Record<string, { bg: string; text: string; border: string }> = {
@@ -54,6 +61,7 @@ interface CelebrationState {
 
 export default function CodingChallenge() {
   const { id } = useParams<{ id: string }>();
+  const [, navigate] = useLocation();
   const isMobile = useIsMobile();
   const [showEditor, setShowEditor] = useState(false);
   const [challenge, setChallenge] = useState<Challenge | null>(null);
@@ -160,15 +168,30 @@ export default function CodingChallenge() {
 
   if (error || !challenge) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4 bg-background">
-        <div className="w-16 h-16 rounded-full bg-[#EA4335]/10 flex items-center justify-center">
-<XCircle className="w-8 h-8 text-[${GoogleColors.red}]" />
-           </div>
-           <p className={`text-[${GoogleColors.red}] font-medium`}>{error ?? 'Challenge not found'}</p>
-        <Link href="/code">
-          <Button className={`bg-[${GoogleColors.blue}] hover:bg-[${GoogleColors.blue}80] text-white rounded-full px-6 focus-visible:ring-2 focus-visible:ring-[${GoogleColors.blue}] focus-visible:ring-offset-2`}>Back to Challenges</Button>
-        </Link>
-      </div>
+      error ? (
+        <NetworkError
+          title="Failed to load challenge"
+          message="We couldn't load the challenge due to a network issue."
+          onRetry={() => {
+            setError(null);
+            setLoading(true);
+            loadChallenge(id!)
+              .then(c => {
+                setChallenge(c);
+                setCode(c.starterCode.javascript);
+              })
+              .catch(e => setError(e.message))
+              .finally(() => setLoading(false));
+          }}
+          onGoBack={() => navigate('/code/challenges')}
+        />
+      ) : (
+        <NotFound404
+          title="Challenge not found"
+          message="This challenge may have been removed or the link is incorrect."
+          onGoHome={() => navigate('/coding')}
+        />
+      )
     );
   }
 
@@ -193,10 +216,10 @@ export default function CodingChallenge() {
         <motion.header
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`flex items-center gap-3 px-4 py-3 border-b border-[#3C4043] shrink-0 ${isMobile ? 'flex-wrap' : ''}`}
+          className={`flex items-center gap-3 px-4 py-2 border-b border-[#3C4043] shrink-0 ${isMobile ? 'flex-wrap' : ''}`}
         >
-          <Link href="/code">
-            <Button variant="ghost" size="sm" className="gap-1.5 text-foreground/70 hover:text-white hover:bg-[#303134] cursor-pointer rounded-full px-4 min-h-[44px] focus-visible:ring-2 focus-visible:ring-[${GoogleColors.blue}] focus-visible:ring-offset-2">
+          <Link href="/coding">
+             <Button variant="ghost" size="sm" className="gap-1.5 text-foreground/70 hover:text-white hover:bg-[#303134] cursor-pointer rounded-full px-4 min-h-[48px] min-h-[48px] h-10 focus-visible:ring-2 focus-visible:ring-[${GoogleColors.blue}] focus-visible:ring-offset-2">
               <ChevronLeft className="w-4 h-4" />
               <span className="hidden sm:inline">Challenges</span>
             </Button>
@@ -204,7 +227,8 @@ export default function CodingChallenge() {
           <h1 className="font-medium text-base text-white truncate flex-1 min-w-0" style={{ fontFamily: "'Google Sans', 'Roboto', sans-serif" }}>
             {challenge.title}
           </h1>
-          <Badge className={`text-xs border ${diffStyle.bg} ${diffStyle.text} ${diffStyle.border} rounded-2xl`}>
+          <Badge className={`text-xs border ${diffStyle.bg} ${diffStyle.text} ${diffStyle.border} rounded-2xl inline-flex items-center gap-1.5`}>
+            {(() => { const Icon = DIFFICULTY_ICONS[challenge.difficulty]; return <Icon className="w-3 h-3" />; })()}
             {challenge.difficulty.charAt(0).toUpperCase() + challenge.difficulty.slice(1)}
           </Badge>
           <div className="hidden sm:flex items-center gap-1.5 text-xs text-foreground/70">
@@ -215,7 +239,7 @@ export default function CodingChallenge() {
             <Button
               size="sm"
               onClick={() => setShowEditor(!showEditor)}
-              className="min-h-[44px] gap-1.5 bg-[#303134] hover:bg-[#3C4043] text-white border border-[#5F6368] rounded-full"
+              className="min-h-[48px] gap-1.5 bg-[#303134] hover:bg-[#3C4043] text-white border border-[#5F6368] rounded-full"
             >
               <Code2 className="w-4 h-4" />
               {showEditor ? 'Problem' : 'Code'}
@@ -246,7 +270,7 @@ export default function CodingChallenge() {
                     size="sm"
                     onClick={handleRun}
                     disabled={running || submitting}
-                    className={`gap-2 bg-[#303134] hover:bg-[#3C4043] text-white border border-[#5F6368] rounded-full min-h-[44px] cursor-pointer focus-visible:ring-2 focus-visible:ring-[${GoogleColors.blue}] focus-visible:ring-offset-2`}
+                    className={`gap-2 bg-[#303134] hover:bg-[#3C4043] text-white border border-[#5F6368] rounded-full min-h-[48px] cursor-pointer focus-visible:ring-2 focus-visible:ring-[${GoogleColors.blue}] focus-visible:ring-offset-2`}
                   >
                     {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                     Run
@@ -255,7 +279,7 @@ export default function CodingChallenge() {
                     size="sm"
                     onClick={handleSubmit}
                     disabled={running || submitting}
-                    className={`gap-2 bg-[${GoogleColors.blue}] hover:bg-[${GoogleColors.blue}80] text-white border border-[#5F6368] rounded-full min-h-[44px] cursor-pointer focus-visible:ring-2 focus-visible:ring-[${GoogleColors.blue}] focus-visible:ring-offset-2`}
+                    className={`gap-2 bg-[${GoogleColors.blue}] hover:bg-[${GoogleColors.blue}80] text-white border border-[#5F6368] rounded-full min-h-[48px] cursor-pointer focus-visible:ring-2 focus-visible:ring-[${GoogleColors.blue}] focus-visible:ring-offset-2`}
                   >
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     Submit
@@ -289,7 +313,7 @@ export default function CodingChallenge() {
                   <div className="px-3 py-2 border-b border-[#3C4043] shrink-0 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Terminal className="w-4 h-4 text-foreground/70" />
-                      <span className="text-base font-medium text-foreground/70">Output</span>
+                        <span className="text-sm font-medium text-foreground/70">Output</span>
                     </div>
                     {runResult && (
                       <div className={`flex items-center gap-1.5 text-sm font-medium ${runResult.allPassed ? 'text-[${GoogleColors.green}]' : 'text-[${GoogleColors.red}]'}`}>
@@ -316,9 +340,9 @@ export default function CodingChallenge() {
               <div className="flex flex-col h-full">
                 <Tabs defaultValue="description" className="flex flex-col flex-1 overflow-hidden">
                   <TabsList className="mx-3 mt-2 shrink-0 w-fit bg-[#202124] p-1 rounded-full">
-<TabsTrigger value="description" className="cursor-pointer min-h-[44px] text-base text-foreground/70 data-[state=active]:bg-[#303134] data-[state=active]:text-white rounded-full px-4">Description</TabsTrigger>
-                     <TabsTrigger value="testcases" className="cursor-pointer min-h-[44px] text-base text-foreground/70 data-[state=active]:bg-[#303134] data-[state=active]:text-white rounded-full px-4">Test Cases</TabsTrigger>
-                     <TabsTrigger value="editorial" className="cursor-pointer min-h-[44px] text-base text-foreground/70 data-[state=active]:bg-[#303134] data-[state=active]:text-white rounded-full px-4">Editorial</TabsTrigger>
+<TabsTrigger value="description" className="cursor-pointer min-h-[48px] min-h-[48px] h-10 text-sm text-foreground/70 data-[state=active]:bg-[#303134] data-[state=active]:text-white rounded-full px-4">Description</TabsTrigger>
+                     <TabsTrigger value="testcases" className="cursor-pointer min-h-[48px] min-h-[48px] h-10 text-sm text-foreground/70 data-[state=active]:bg-[#303134] data-[state=active]:text-white rounded-full px-4">Test Cases</TabsTrigger>
+                     <TabsTrigger value="editorial" className="cursor-pointer min-h-[48px] min-h-[48px] h-10 text-sm text-foreground/70 data-[state=active]:bg-[#303134] data-[state=active]:text-white rounded-full px-4">Editorial</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="description" className="flex-1 overflow-hidden mt-0">
@@ -329,8 +353,8 @@ export default function CodingChallenge() {
                         className="p-4 space-y-4"
                       >
                         {/* Problem Card */}
-<div className="rounded-2xl border border-[#3C4043] bg-[#202124] p-4 space-y-3 shadow-sm">
-                           <p className="text-base text-foreground leading-relaxed whitespace-pre-wrap" style={{ fontFamily: "'Roboto', sans-serif" }}>
+<div className="rounded-lg border border-[#3C4043] bg-[#202124] p-4 space-y-3 shadow-sm">
+                            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap" style={{ fontFamily: "'Roboto', sans-serif" }}>
                             {challenge.description}
                           </p>
                         </div>
@@ -338,9 +362,9 @@ export default function CodingChallenge() {
                         {/* Examples */}
                         {challenge.examples.length > 0 && (
                           <div className="space-y-3">
-                            <h3 className="text-base font-medium text-white flex items-center gap-2">
-                              <Lightbulb className="w-4 h-4 text-[${GoogleColors.yellow}]" />
-                              Examples
+<h3 className="text-sm font-medium text-white flex items-center gap-2">
+                               <Lightbulb className="w-4 h-4 text-[${GoogleColors.yellow}]" />
+                               Examples
                             </h3>
                             {challenge.examples.map((ex, i) => (
                                <div key={i} className="rounded-2xl border border-[#3C4043] bg-[#202124] p-4 space-y-2 shadow-sm">
@@ -373,7 +397,7 @@ export default function CodingChallenge() {
                      <ScrollArea className="h-full">
                        <div className="p-4 space-y-4">
                          <div className="flex items-center gap-2 text-base text-foreground/70">
-                           <div className={`w-8 h-8 rounded-lg bg-[${GoogleColors.blue}]/20 flex items-center justify-center`}>
+                           <div className={`min-w-[48px] w-8 min-h-[48px] h-8 rounded-lg bg-[${GoogleColors.blue}]/20 flex items-center justify-center`}>
                              <BookOpen className={`w-4 h-4 text-[${GoogleColors.blue}]`} />
                            </div>
                            Visible test cases ({challenge.testCases.visible.length})
@@ -390,7 +414,7 @@ export default function CodingChallenge() {
                          ))}
                          {challenge.testCases.hidden.length > 0 && (
                             <div className="flex items-center gap-3 p-4 rounded-2xl border border-[#3C4043] bg-[#202124] text-base text-foreground/70">
-                             <div className={`w-8 h-8 rounded-full bg-[${GoogleColors.yellow}]/20 flex items-center justify-center`}>
+                             <div className={`min-w-[48px] w-8 min-h-[48px] h-8 rounded-full bg-[${GoogleColors.yellow}]/20 flex items-center justify-center`}>
                                <span className={`text-sm text-[${GoogleColors.yellow}]`}>+</span>
                              </div>
                              {challenge.testCases.hidden.length} hidden test case{challenge.testCases.hidden.length > 1 ? 's' : ''}
@@ -419,16 +443,16 @@ export default function CodingChallenge() {
               <div className="flex flex-col h-full bg-[#202124]">
                 <Tabs defaultValue="description" className="flex flex-col flex-1 overflow-hidden">
                   <TabsList className="mx-4 mt-3 shrink-0 w-fit bg-[#303134] p-1 rounded-full">
-<TabsTrigger value="description" className="cursor-pointer min-h-[40px] text-base text-foreground/70 data-[state=active]:bg-[${GoogleColors.blue}] data-[state=active]:text-white rounded-full px-5">
-                      Description
-                    </TabsTrigger>
-                    <TabsTrigger value="testcases" className="cursor-pointer min-h-[40px] text-base text-foreground/70 data-[state=active]:bg-[${GoogleColors.blue}] data-[state=active]:text-white rounded-full px-5">
-                      Test Cases
-                    </TabsTrigger>
-                    <TabsTrigger value="editorial" className="cursor-pointer min-h-[40px] text-base text-foreground/70 data-[state=active]:bg-[${GoogleColors.blue}] data-[state=active]:text-white rounded-full px-5">
-                      <Lightbulb className="w-4 h-4 mr-1.5" />
-                      Editorial
-                    </TabsTrigger>
+<TabsTrigger value="description" className="cursor-pointer min-h-[48px] min-h-[48px] h-10 text-sm text-foreground/70 data-[state=active]:bg-[${GoogleColors.blue}] data-[state=active]:text-white rounded-full px-5">
+                       Description
+                     </TabsTrigger>
+                     <TabsTrigger value="testcases" className="cursor-pointer min-h-[48px] min-h-[48px] h-10 text-sm text-foreground/70 data-[state=active]:bg-[${GoogleColors.blue}] data-[state=active]:text-white rounded-full px-5">
+                       Test Cases
+                     </TabsTrigger>
+                     <TabsTrigger value="editorial" className="cursor-pointer min-h-[48px] min-h-[48px] h-10 text-sm text-foreground/70 data-[state=active]:bg-[${GoogleColors.blue}] data-[state=active]:text-white rounded-full px-5">
+                       <Lightbulb className="w-4 h-4 mr-1.5" />
+                       Editorial
+                     </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="description" className="flex-1 overflow-hidden mt-0">
@@ -440,8 +464,8 @@ export default function CodingChallenge() {
                         className="p-5 space-y-5"
                       >
                         {/* Problem Card */}
-<div className="rounded-2xl border border-[#3C4043] bg-[#2D2D2D] p-5 shadow-sm">
-                           <p className="text-base text-foreground leading-relaxed whitespace-pre-wrap" style={{ fontFamily: "'Roboto', sans-serif" }}>
+<div className="rounded-lg border border-[#3C4043] bg-[#2D2D2D] p-5 shadow-sm">
+                            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap" style={{ fontFamily: "'Roboto', sans-serif" }}>
                             {challenge.description}
                           </p>
                         </div>
@@ -449,14 +473,14 @@ export default function CodingChallenge() {
                         {/* Examples */}
                         {challenge.examples.length > 0 && (
                           <div className="space-y-4">
-                            <h3 className="text-base font-medium text-white flex items-center gap-2" style={{ fontFamily: "'Google Sans', 'Roboto', sans-serif" }}>
+                            <h3 className="text-sm font-medium text-white flex items-center gap-2" style={{ fontFamily: "'Google Sans', 'Roboto', sans-serif" }}>
                               <div className="w-6 h-6 rounded-full bg-[#FBBC04]/20 flex items-center justify-center">
                                 <Lightbulb className={`w-3.5 h-3.5 text-[${GoogleColors.yellow}]`} />
                               </div>
                               Examples
                             </h3>
                             {challenge.examples.map((ex, i) => (
-                               <div key={i} className="rounded-2xl border border-[#3C4043] bg-[#2D2D2D] p-4 space-y-2 shadow-sm">
+                               <div key={i} className="rounded-lg border border-[#3C4043] bg-[#2D2D2D] p-4 space-y-2 shadow-sm">
                                 <div className="text-xs font-medium text-foreground/70 uppercase tracking-wide flex items-center gap-2">
                                   <div className={`w-5 h-5 rounded-full bg-[${GoogleColors.blue}]/20 flex items-center justify-center text-[${GoogleColors.blue}]`}>{i + 1}</div>
                                   Example
@@ -489,7 +513,7 @@ export default function CodingChallenge() {
                      <ScrollArea className="h-full">
                        <div className="p-5 space-y-4">
                          <div className="flex items-center gap-2 text-base text-foreground/70">
-                           <div className={`w-8 h-8 rounded-lg bg-[${GoogleColors.blue}]/20 flex items-center justify-center`}>
+                           <div className={`min-w-[48px] w-8 min-h-[48px] h-8 rounded-lg bg-[${GoogleColors.blue}]/20 flex items-center justify-center`}>
                              <BookOpen className={`w-4 h-4 text-[${GoogleColors.blue}]`} />
                            </div>
                            Visible test cases ({challenge.testCases.visible.length})
@@ -506,7 +530,7 @@ export default function CodingChallenge() {
                          ))}
                          {challenge.testCases.hidden.length > 0 && (
                             <div className="flex items-center gap-3 p-4 rounded-2xl border border-[#3C4043] bg-[#2D2D2D] text-base text-foreground/70">
-                             <div className={`w-8 h-8 rounded-full bg-[${GoogleColors.yellow}]/20 flex items-center justify-center`}>
+                             <div className={`min-w-[48px] w-8 min-h-[48px] h-8 rounded-full bg-[${GoogleColors.yellow}]/20 flex items-center justify-center`}>
                                <span className={`text-sm text-[${GoogleColors.yellow}]`}>+</span>
                              </div>
                              {challenge.testCases.hidden.length} hidden test case{challenge.testCases.hidden.length > 1 ? 's' : ''}
@@ -550,7 +574,7 @@ export default function CodingChallenge() {
                           size="sm"
                           onClick={handleRun}
                           disabled={running || submitting}
-                          className={`gap-2 bg-[#303134] hover:bg-[#3C4043] text-white border border-[#5F6368] rounded-full min-h-[44px] cursor-pointer px-5 focus-visible:ring-2 focus-visible:ring-[${GoogleColors.blue}] focus-visible:ring-offset-2`}
+                          className={`gap-2 bg-[#303134] hover:bg-[#3C4043] text-white border border-[#5F6368] rounded-full min-h-[48px] cursor-pointer px-5 focus-visible:ring-2 focus-visible:ring-[${GoogleColors.blue}] focus-visible:ring-offset-2`}
                         >
                           {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                           {running ? 'Running...' : 'Run Code'}
@@ -559,7 +583,7 @@ export default function CodingChallenge() {
                           size="sm"
                           onClick={handleSubmit}
                           disabled={running || submitting}
-                          className={`gap-2 bg-[${GoogleColors.blue}] hover:bg-[${GoogleColors.blue}80] text-white border border-[#5F6368] rounded-full min-h-[44px] cursor-pointer px-5 focus-visible:ring-2 focus-visible:ring-[${GoogleColors.blue}] focus-visible:ring-offset-2`}
+                          className={`gap-2 bg-[${GoogleColors.blue}] hover:bg-[${GoogleColors.blue}80] text-white border border-[#5F6368] rounded-full min-h-[48px] cursor-pointer px-5 focus-visible:ring-2 focus-visible:ring-[${GoogleColors.blue}] focus-visible:ring-offset-2`}
                         >
                           {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                           {submitting ? 'Submitting...' : 'Submit Solution'}
@@ -595,7 +619,7 @@ export default function CodingChallenge() {
                 {/* Output panel - Google Style */}
                 <Panel defaultSize={35} minSize={15}>
                   <div className="flex flex-col h-full">
-                    <div className="px-4 py-3 border-b border-[#3C4043] shrink-0 bg-[#202124] flex items-center justify-between">
+                     <div className="px-4 py-2 border-b border-[#3C4043] shrink-0 bg-[#202124] flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Terminal className="w-4 h-4 text-foreground/70" />
 <span className="text-base font-medium text-foreground/70">Output</span>
@@ -604,7 +628,7 @@ export default function CodingChallenge() {
                         <motion.div
                           initial={{ scale: 0.9, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
-className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
+className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
                          runResult.allPassed
                            ? 'bg-[${GoogleColors.green}]/20 text-[${GoogleColors.green}]'
                            : 'bg-[${GoogleColors.red}]/20 text-[${GoogleColors.red}]'

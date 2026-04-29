@@ -1,372 +1,398 @@
 /**
- * Mobile Channels Browser
- * Card-based channel discovery with categories
+ * Mobile Channels — Material Design 3
+ * Persistent search · Filter chips · Elevated cards · Progress rings · Sticky headers
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { allChannelsConfig, categories, ChannelConfig } from '../../lib/channels-config';
 import { useUserPreferences } from '../../context/UserPreferencesContext';
 import { useChannelStats } from '../../hooks/use-stats';
 import { useProgress } from '../../hooks/use-progress';
 import {
-  Search, Check, Plus, ChevronRight, X,
+  Search, Mic, X, Check, Plus,
   Cpu, Terminal, Layout, Database, Activity, GitBranch, Server,
-  Layers, Smartphone, Shield, Brain, Workflow, Box, Cloud, Code,
-  Network, MessageCircle, Users, Sparkles, Eye, FileText, CheckCircle, 
-  Monitor, Zap, Gauge
+  Layers, Smartphone, Shield, Brain, Box, Cloud, Code,
+  Network, MessageCircle, Users, Sparkles, Eye, FileText, CheckCircle,
+  Monitor, Zap, Gauge, BookOpen, Award,
 } from 'lucide-react';
 
-const iconMap: Record<string, React.ReactNode> = {
-  'cpu': <Cpu className="w-5 h-5" />,
-  'terminal': <Terminal className="w-5 h-5" />,
-  'layout': <Layout className="w-5 h-5" />,
-  'database': <Database className="w-5 h-5" />,
-  'activity': <Activity className="w-5 h-5" />,
-  'infinity': <GitBranch className="w-5 h-5" />,
-  'server': <Server className="w-5 h-5" />,
-  'layers': <Layers className="w-5 h-5" />,
-  'smartphone': <Smartphone className="w-5 h-5" />,
-  'shield': <Shield className="w-5 h-5" />,
-  'brain': <Brain className="w-5 h-5" />,
-  'workflow': <Workflow className="w-5 h-5" />,
-  'box': <Box className="w-5 h-5" />,
-  'cloud': <Cloud className="w-5 h-5" />,
-  'code': <Code className="w-5 h-5" />,
-  'network': <Network className="w-5 h-5" />,
-  'message-circle': <MessageCircle className="w-5 h-5" />,
-  'users': <Users className="w-5 h-5" />,
-  'sparkles': <Sparkles className="w-5 h-5" />,
-  'eye': <Eye className="w-5 h-5" />,
-  'file-text': <FileText className="w-5 h-5" />,
-  'chart': <Activity className="w-5 h-5" />,
-  'check-circle': <CheckCircle className="w-5 h-5" />,
-  'monitor': <Monitor className="w-5 h-5" />,
-  'zap': <Zap className="w-5 h-5" />,
-  'gauge': <Gauge className="w-5 h-5" />
+// ─── Icon map ────────────────────────────────────────────────────────────────
+
+const iconMap: Record<string, React.ElementType> = {
+  'cpu': Cpu, 'terminal': Terminal, 'layout': Layout, 'database': Database,
+  'activity': Activity, 'infinity': GitBranch, 'server': Server, 'layers': Layers,
+  'smartphone': Smartphone, 'shield': Shield, 'brain': Brain, 'workflow': Layers,
+  'box': Box, 'boxes': Box, 'cloud': Cloud, 'code': Code, 'network': Network,
+  'message-circle': MessageCircle, 'users': Users, 'sparkles': Sparkles,
+  'eye': Eye, 'file-text': FileText, 'check-circle': CheckCircle,
+  'monitor': Monitor, 'zap': Zap, 'gauge': Gauge, 'award': Award,
+  'book-open': BookOpen, 'chart-line': Activity, 'git-branch': GitBranch,
+  'binary': Cpu, 'puzzle': Layers, 'git-merge': Network, 'calculator': Brain,
 };
 
-export function MobileChannels() {
-  const [, setLocation] = useLocation();
-  const { isSubscribed, toggleSubscription, preferences } = useUserPreferences();
-  const { stats } = useChannelStats();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+// ─── Category metadata ───────────────────────────────────────────────────────
 
-  const questionCounts: Record<string, number> = {};
-  const newThisWeekCounts: Record<string, number> = {};
-  stats.forEach(s => { 
-    questionCounts[s.id] = s.total;
-    newThisWeekCounts[s.id] = s.newThisWeek || 0;
-  });
+const categoryMeta: Record<string, { emoji: string }> = {
+  fundamentals:  { emoji: '🧮' },
+  engineering:   { emoji: '🏗️' },
+  cloud:         { emoji: '☁️' },
+  data:          { emoji: '📊' },
+  ai:            { emoji: '🤖' },
+  security:      { emoji: '🔒' },
+  testing:       { emoji: '🧪' },
+  mobile:        { emoji: '📱' },
+  management:    { emoji: '👥' },
+  certification: { emoji: '🏆' },
+};
 
-  const filteredChannels = allChannelsConfig.filter(channel => {
-    const matchesSearch = channel.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         channel.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !selectedCategory || channel.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+// ─── Progress ring ───────────────────────────────────────────────────────────
 
-  const groupedChannels = categories.map(cat => ({
-    ...cat,
-    channels: filteredChannels.filter(c => c.category === cat.id)
-  })).filter(group => group.channels.length > 0);
-
+function ProgressRing({ pct, size = 52, stroke = 3 }: { pct: number; size?: number; stroke?: number }) {
+  const r = (size - stroke * 2) / 2;
+  const circ = 2 * Math.PI * r;
   return (
-    <div className="pb-20">
-      {/* Search Bar */}
-      <div className="sticky top-14 z-30 bg-background px-4 py-3 border-b border-border/50">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9AA0A6]" />
-            <input
-              type="text"
-              placeholder="Search channels..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-[46px] bg-[#F1F3F4] dark:bg-[#303134] rounded-full pl-12 pr-4 text-sm focus:outline-none placeholder:text-[#9AA0A6] text-foreground"
-            />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded-full"
-            >
-              <X className="w-4 h-4 text-muted-foreground" />
-            </button>
-          )}
-        </div>
+    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke="hsl(var(--muted))" strokeWidth={stroke} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke="hsl(var(--primary))" strokeWidth={stroke}
+        strokeDasharray={circ}
+        strokeDashoffset={circ - (pct / 100) * circ}
+        strokeLinecap="round"
+        style={{ transition: 'stroke-dashoffset 0.8s ease-out' }} />
+    </svg>
+  );
+}
+
+// ─── Skeleton card ───────────────────────────────────────────────────────────
+
+function SkeletonCard() {
+  return (
+    <div className="rounded-3xl p-4 bg-card shadow-sm animate-pulse space-y-3">
+      <div className="flex items-start justify-between">
+        <div className="w-12 h-12 rounded-2xl bg-muted" />
+        <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-full bg-muted" />
       </div>
-
-      {/* Category Pills */}
-      <div className="px-4 py-3 border-b border-border/50">
-        <div className="flex gap-2 overflow-x-auto no-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
-          <CategoryPill
-            label="All"
-            isActive={!selectedCategory}
-            onClick={() => setSelectedCategory(null)}
-          />
-          {categories.map(cat => (
-            <CategoryPill
-              key={cat.id}
-              label={cat.name.split(' ')[0]}
-              icon={iconMap[cat.icon]}
-              isActive={selectedCategory === cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-            />
-          ))}
-        </div>
+      <div className="space-y-2">
+        <div className="h-4 w-3/4 rounded bg-muted" />
+        <div className="h-3 w-full rounded bg-muted" />
       </div>
-
-      {/* Stats Summary */}
-      <div className="mx-4 my-3">
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Subscribed</p>
-              <p className="text-2xl font-bold">{preferences.subscribedChannels.length}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">Available</p>
-              <p className="text-2xl font-bold">{allChannelsConfig.length}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Channel List */}
-      {selectedCategory ? (
-        <div className="px-4 space-y-3">
-          {filteredChannels.map((channel, index) => (
-            <ChannelListCard
-              key={channel.id}
-              channel={channel}
-              isSubscribed={isSubscribed(channel.id)}
-              onToggle={() => toggleSubscription(channel.id)}
-              questionCount={questionCounts[channel.id] || 0}
-              newThisWeek={newThisWeekCounts[channel.id]}
-              index={index}
-              onNavigate={() => setLocation(`/channel/${channel.id}`)}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-6 py-3">
-          {groupedChannels.map(group => (
-            <CategorySection
-              key={group.id}
-              category={group}
-              channels={group.channels}
-              questionCounts={questionCounts}
-              newThisWeekCounts={newThisWeekCounts}
-              isSubscribed={isSubscribed}
-              onToggle={toggleSubscription}
-              onNavigate={(id) => setLocation(`/channel/${id}`)}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Empty State */}
-      {filteredChannels.length === 0 && (
-        <div className="text-center py-12 px-4">
-          <Search className="w-5 h-5 mx-auto mb-4 text-[#9AA0A6]/30" />
-          <h3 className="text-lg font-medium mb-2">No channels found</h3>
-          <p className="text-muted-foreground text-sm">
-            Try adjusting your search
-          </p>
-        </div>
-      )}
+      <div className="h-3 w-1/3 rounded bg-muted" />
     </div>
   );
 }
 
-function CategoryPill({ 
-  label, 
-  icon, 
-  isActive, 
-  onClick 
-}: { 
-  label: string;
-  icon?: React.ReactNode;
-  isActive: boolean;
-  onClick: () => void;
+// ─── Filter chip ─────────────────────────────────────────────────────────────
+
+function FilterChip({ active, onClick, children }: {
+  active: boolean; onClick: () => void; children: React.ReactNode;
 }) {
   return (
     <button
       onClick={onClick}
       className={`
-        flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all flex-shrink-0
-        ${isActive 
-          ? 'bg-primary text-primary-foreground' 
-          : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+        inline-flex items-center gap-1 px-4 min-h-[48px] h-8 rounded-full text-sm font-medium
+        whitespace-nowrap transition-all duration-200 flex-shrink-0 border
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50
+        ${active
+          ? 'bg-[hsl(var(--primary-container,var(--primary)))] text-[hsl(var(--on-primary-container,var(--primary-foreground)))] border-transparent'
+          : 'bg-transparent border-[hsl(var(--outline,var(--border)))] text-[hsl(var(--on-surface-variant,var(--muted-foreground)))] hover:bg-muted/60'
         }
       `}
     >
-      {icon}
-      {label}
+      {active && <Check className="w-3 h-3" />}
+      {children}
     </button>
   );
 }
 
-function CategorySection({ 
-  category, 
-  channels, 
-  questionCounts,
-  newThisWeekCounts,
-  isSubscribed,
-  onToggle,
-  onNavigate
-}: { 
-  category: any;
-  channels: ChannelConfig[];
-  questionCounts: Record<string, number>;
-  newThisWeekCounts: Record<string, number>;
-  isSubscribed: (id: string) => boolean;
-  onToggle: (id: string) => void;
-  onNavigate: (id: string) => void;
-}) {
-  // Show all channels - let scroll handle overflow
-  const displayedChannels = channels;
-  
-  // Calculate optimal height based on content
-  const itemHeight = 64; // Approximate height of each channel item
-  const optimalHeight = Math.min(displayedChannels.length * itemHeight, 320);
-  const minHeight = Math.min(itemHeight * 2, optimalHeight); // Show at least 2 items or actual content
-  
-  const dynamicStyle = {
-    '--category-height': `${optimalHeight}px`,
-    '--category-min-height': `${minHeight}px`,
-  } as React.CSSProperties;
+// ─── Channel card (M3 elevated) ───────────────────────────────────────────────
 
-  return (
-    <section>
-      <div className="flex items-center justify-between px-4 mb-3">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-primary/10 rounded-lg text-primary">
-            {iconMap[category.icon]}
-          </div>
-          <h2 className="font-semibold">{category.name}</h2>
-        </div>
-        <span className="text-xs text-muted-foreground">{channels.length} channels</span>
-      </div>
-      
-      <div className="px-4" style={dynamicStyle}>
-        <div className="space-y-2 overflow-y-auto force-scrollbar dynamic-category-height">
-          {displayedChannels.map((channel, index) => (
-            <ChannelListCard
-              key={channel.id}
-              channel={channel}
-              isSubscribed={isSubscribed(channel.id)}
-              onToggle={() => onToggle(channel.id)}
-              questionCount={questionCounts[channel.id] || 0}
-              newThisWeek={newThisWeekCounts[channel.id]}
-              index={index}
-              onNavigate={() => onNavigate(channel.id)}
-              compact
-            />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ChannelListCard({ 
-  channel, 
-  isSubscribed, 
-  onToggle,
-  questionCount,
-  newThisWeek,
-  index,
-  onNavigate,
-  compact = false
-}: { 
+function ChannelCard({ channel, questionCount, isSubscribed, onToggle, onNavigate, index }: {
   channel: ChannelConfig;
+  questionCount: number;
   isSubscribed: boolean;
   onToggle: () => void;
-  questionCount: number;
-  newThisWeek?: number;
-  index: number;
   onNavigate: () => void;
-  compact?: boolean;
+  index: number;
 }) {
   const { completed } = useProgress(channel.id);
-  const progress = questionCount > 0 ? Math.min(100, Math.round((completed.length / questionCount) * 100)) : 0;
+  const pct = questionCount > 0 ? Math.min(100, Math.round((completed.length / questionCount) * 100)) : 0;
+  const hasProgress = pct > 0;
+  const Icon = iconMap[channel.icon] || BookOpen;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      layout
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.03 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.22, delay: Math.min(index * 0.025, 0.25) }}
+      onClick={onNavigate}
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => e.key === 'Enter' && onNavigate()}
+      aria-label={`${channel.name}, ${questionCount} questions${hasProgress ? `, ${pct}% complete` : ''}`}
       className={`
-        relative bg-card border rounded-xl overflow-hidden transition-all
-        ${isSubscribed ? 'border-primary/30' : 'border-border'}
+        group relative rounded-3xl p-4 cursor-pointer transition-all duration-200
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50
+        ${hasProgress
+          ? 'bg-[hsl(var(--primary-container,var(--primary)/0.12))] shadow-md'
+          : 'bg-card shadow-[0_1px_3px_hsl(0_0%_0%/0.12)] active:shadow-sm'
+        }
       `}
     >
-      {/* New badge - disabled for now as all questions show as new after migration */}
-      {/* {newThisWeek && newThisWeek > 0 && (
-        <div className="absolute top-2 right-2 flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold rounded-full shadow-sm">
-          <Sparkles className="w-2.5 h-2.5" />
-          +{newThisWeek}
-        </div>
-      )} */}
-
-      <div className="flex items-center gap-3 p-3">
-        {/* Icon */}
-        <button
-          onClick={onNavigate}
-          className={`
-            p-2.5 rounded-xl flex-shrink-0 transition-colors
-            ${isSubscribed 
-              ? 'bg-primary text-primary-foreground' 
-              : 'bg-muted text-muted-foreground'
-            }
-          `}
-        >
-          {iconMap[channel.icon] || <Code className="w-5 h-5" />}
-        </button>
-
-        {/* Content */}
-        <button onClick={onNavigate} className="flex-1 min-w-0 text-left">
-          <h3 className="font-medium text-sm truncate">{channel.name}</h3>
-          {!compact && (
-            <p className="text-xs text-muted-foreground truncate">{channel.description}</p>
-          )}
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs text-muted-foreground">{questionCount} questions</span>
-            {isSubscribed && progress > 0 && (
-              <span className="text-xs text-primary font-medium">{progress}%</span>
+      <div className="space-y-3">
+        {/* Header: 48dp tonal icon + subscribe toggle */}
+        <div className="flex items-start justify-between">
+          <div className="relative w-12 h-12 flex-shrink-0">
+            {hasProgress && (
+              <div className="absolute -inset-1 flex items-center justify-center pointer-events-none">
+                <ProgressRing pct={pct} size={56} stroke={3} />
+              </div>
             )}
+            <div className="absolute inset-0 rounded-2xl flex items-center justify-center bg-[hsl(var(--secondary-container,var(--primary)/0.15))]">
+              <Icon className="w-5 h-5 text-[hsl(var(--on-secondary-container,var(--primary)))]" />
+            </div>
           </div>
-        </button>
 
-        {/* Subscribe Button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle();
-          }}
-          className={`
-            p-2 rounded-full flex-shrink-0 transition-all
-            ${isSubscribed 
-              ? 'bg-primary text-primary-foreground' 
-              : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary'
-            }
-          `}
+          <motion.button
+            whileTap={{ scale: 0.82 }}
+            onClick={e => { e.stopPropagation(); onToggle(); }}
+            aria-label={isSubscribed ? `Unsubscribe from ${channel.name}` : `Subscribe to ${channel.name}`}
+            className={`
+              min-w-[48px] w-8 min-h-[48px] h-8 rounded-full flex items-center justify-center transition-all
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50
+              ${isSubscribed
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-primary/15 hover:text-primary'
+              }
+            `}
+          >
+            {isSubscribed ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+          </motion.button>
+        </div>
+
+        {/* Title Medium */}
+        <div>
+          <h3 className="text-sm font-medium leading-snug line-clamp-2 group-active:text-primary transition-colors">
+            {channel.name}
+          </h3>
+        </div>
+
+        {/* Body Small: question count */}
+        <p className="text-xs text-[hsl(var(--on-surface-variant,var(--muted-foreground)))]">
+          {questionCount} questions
+          {hasProgress && (
+            <span className="ml-1.5 font-medium text-primary">{pct}%</span>
+          )}
+        </p>
+
+        {/* Progress bar */}
+        {hasProgress && (
+          <div className="h-1 rounded-full overflow-hidden bg-[hsl(var(--primary)/0.2)]">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.6, ease: 'easeOut' }}
+              className="h-full rounded-full bg-primary"
+            />
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Sticky category header ───────────────────────────────────────────────────
+
+function CategoryHeader({ id, name, count }: { id: string; name: string; count: number }) {
+  const meta = categoryMeta[id] ?? { emoji: '📋' };
+  return (
+    <div className="sticky top-[calc(var(--mobile-search-height,112px))] z-10 -mx-4 px-4 py-2 bg-background/90 backdrop-blur-sm">
+      <div className="flex items-center gap-2">
+        <span className="text-sm" aria-hidden>{meta.emoji}</span>
+        <h2 className="text-sm font-medium text-[hsl(var(--on-surface-variant,var(--muted-foreground)))]">
+          {name}
+        </h2>
+        <span className="text-xs text-[hsl(var(--on-surface-variant,var(--muted-foreground)))]">
+          · {count}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export function MobileChannels() {
+  const [, setLocation] = useLocation();
+  const { isSubscribed, toggleSubscription } = useUserPreferences();
+  const { stats } = useChannelStats();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 500);
+    return () => clearTimeout(t);
+  }, []);
+
+  const questionCounts: Record<string, number> = {};
+  stats.forEach(s => { questionCounts[s.id] = s.total; });
+
+  const filtered = allChannelsConfig.filter(ch => {
+    const q = searchQuery.trim().toLowerCase();
+    const matchSearch = q.length < 2 ||
+      ch.name.toLowerCase().includes(q) ||
+      ch.description.toLowerCase().includes(q);
+    const matchCat = !selectedCategory || ch.category === selectedCategory;
+    return matchSearch && matchCat;
+  });
+
+  const grouped = categories
+    .map(cat => ({ ...cat, channels: filtered.filter(c => c.category === cat.id) }))
+    .filter(g => g.channels.length > 0);
+
+  return (
+    <div className="pb-24">
+
+      {/* ── Persistent M3 Search Bar ── */}
+      <div className="sticky top-14 z-30 bg-background px-4 pt-3 pb-2 border-b border-border/40">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[hsl(var(--on-surface-variant,var(--muted-foreground)))] pointer-events-none" />
+          <input
+            type="search"
+            placeholder="Search channels…"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            aria-label="Search channels"
+            className="
+              w-full h-12 rounded-full pl-12 pr-20 text-sm
+              bg-[hsl(var(--surface-variant,var(--muted)))]
+              text-[hsl(var(--on-surface,var(--foreground)))]
+              placeholder:text-[hsl(var(--on-surface-variant,var(--muted-foreground)))]
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40
+              shadow-[0_1px_3px_hsl(0_0%_0%/0.08)]
+            "
+          />
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
+                className="p-2 rounded-full hover:bg-muted transition-colors"
+              >
+                <X className="w-4 h-4 text-[hsl(var(--on-surface-variant,var(--muted-foreground)))]" />
+              </button>
+            )}
+            <button aria-label="Voice search" className="p-2 rounded-full hover:bg-muted transition-colors">
+              <Mic className="w-5 h-5 text-[hsl(var(--on-surface-variant,var(--muted-foreground)))]" />
+            </button>
+          </div>
+        </div>
+
+        {/* ── Filter chips ── */}
+        <div
+          className="flex gap-2 mt-2 overflow-x-auto pb-1"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          role="group"
+          aria-label="Filter by category"
         >
-          {isSubscribed ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-        </button>
+          <FilterChip active={!selectedCategory} onClick={() => setSelectedCategory(null)}>
+            All
+          </FilterChip>
+          {categories.map(cat => (
+            <FilterChip
+              key={cat.id}
+              active={selectedCategory === cat.id}
+              onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
+            >
+              {categoryMeta[cat.id]?.emoji} {cat.name.split(' ')[0]}
+            </FilterChip>
+          ))}
+        </div>
       </div>
 
-      {/* Progress bar for subscribed */}
-      {isSubscribed && progress > 0 && (
-        <div className="h-1 bg-muted">
-          <div 
-            className="h-full bg-primary transition-all"
-            style={{ width: `${progress}%` }}
-          />
+      {/* ── Skeleton ── */}
+      {loading && (
+        <div className="grid grid-cols-2 gap-3 px-4 pt-4">
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       )}
-    </motion.div>
+
+      {/* ── Empty state ── */}
+      {!loading && filtered.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center text-center py-16 px-6"
+        >
+          <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
+            <Search className="w-6 h-6 text-muted-foreground" />
+          </div>
+          <h3 className="text-base font-medium mb-1">
+            No results for "{searchQuery}"
+          </h3>
+          <p className="text-sm text-[hsl(var(--on-surface-variant,var(--muted-foreground)))] mb-5">
+            Try a different keyword or browse all categories
+          </p>
+          <button
+            onClick={() => { setSearchQuery(''); setSelectedCategory(null); }}
+            className="px-5 h-9 rounded-full bg-primary text-primary-foreground text-sm font-medium"
+          >
+            Clear filters
+          </button>
+        </motion.div>
+      )}
+
+      {/* ── Content ── */}
+      {!loading && filtered.length > 0 && (
+        selectedCategory ? (
+          /* Flat 2-col grid for filtered view */
+          <div className="grid grid-cols-2 gap-3 px-4 pt-4">
+            <AnimatePresence mode="popLayout">
+              {filtered.map((ch, i) => (
+                <ChannelCard
+                  key={ch.id}
+                  channel={ch}
+                  questionCount={questionCounts[ch.id] ?? 0}
+                  isSubscribed={isSubscribed(ch.id)}
+                  onToggle={() => toggleSubscription(ch.id)}
+                  onNavigate={() => setLocation(`/channel/${ch.id}`)}
+                  index={i}
+                />
+              ))}
+            </AnimatePresence>
+          </div>
+        ) : (
+          /* Grouped with sticky category headers */
+          <div className="px-4 pt-2 space-y-6">
+            {grouped.map(group => (
+              <section key={group.id}>
+                <CategoryHeader id={group.id} name={group.name} count={group.channels.length} />
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <AnimatePresence mode="popLayout">
+                    {group.channels.map((ch, i) => (
+                      <ChannelCard
+                        key={ch.id}
+                        channel={ch}
+                        questionCount={questionCounts[ch.id] ?? 0}
+                        isSubscribed={isSubscribed(ch.id)}
+                        onToggle={() => toggleSubscription(ch.id)}
+                        onNavigate={() => setLocation(`/channel/${ch.id}`)}
+                        index={i}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </section>
+            ))}
+          </div>
+        )
+      )}
+    </div>
   );
 }

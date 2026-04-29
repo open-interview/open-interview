@@ -20,7 +20,7 @@ export function VoiceReminder() {
         initial={{ opacity: 0, y: 50, scale: 0.9 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 50, scale: 0.9 }}
-        className="fixed bottom-20 left-4 right-4 z-50 sm:left-auto sm:right-4 sm:max-w-sm"
+        className="fixed left-4 right-4 z-50 sm:left-auto sm:right-4 sm:max-w-sm" style={{ bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}
       >
         <div className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 backdrop-blur-lg border border-emerald-500/30 rounded-2xl p-4 shadow-xl">
           <button
@@ -31,7 +31,7 @@ export function VoiceReminder() {
           </button>
 
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-500/30 flex items-center justify-center flex-shrink-0">
+            <div className="min-w-[48px] w-10 min-h-[48px] h-10 rounded-full bg-emerald-500/30 flex items-center justify-center flex-shrink-0">
               <Mic className="w-5 h-5 text-emerald-400" />
             </div>
             

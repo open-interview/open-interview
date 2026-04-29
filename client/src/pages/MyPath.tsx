@@ -11,6 +11,7 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { SEOHead } from '../components/SEOHead';
 import { allChannelsConfig } from '../lib/channels-config';
 import { useUserPreferences } from '../context/UserPreferencesContext';
+import { useUnifiedToast } from '../hooks/use-unified-toast';
 import {
   Plus, Trash2, Edit, ChevronLeft, ChevronRight, Brain, Check, Target, Clock, Award,
   Code, Rocket, Building2, X, Search, GripVertical, PlayCircle, CheckCircle,
@@ -86,6 +87,7 @@ export default function MyPath() {
   const [curatedPaths, setCuratedPaths] = useState<any[]>([]);
   const subscribedSet = new Set(preferences.subscribedChannels);
   const visibleCuratedPaths = curatedPaths.filter(p => p.channels.some((c: string) => subscribedSet.has(c)));
+  const { toast } = useUnifiedToast();
   
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingPath, setEditingPath] = useState<CustomPath | null>(null);
@@ -247,7 +249,11 @@ export default function MyPath() {
 
   const saveEditedPath = () => {
     if (!editingPath || !editForm.name || (editForm.channels.length === 0 && editForm.certifications.length === 0)) {
-      alert('Please add a name and select at least one channel or certification');
+      toast({
+        title: 'Invalid Path',
+        description: 'Please add a name and select at least one channel or certification',
+        variant: 'destructive'
+      });
       return;
     }
 
@@ -577,7 +583,7 @@ export default function MyPath() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="g-fab g-fab-primary">
-                    <Plus className="w-8 h-8" />
+                    <Plus className="min-w-[48px] w-8 h-8" />
                   </div>
                   <div className="text-left">
                     <h3 className="text-lg font-semibold mb-1">Create New Path</h3>
@@ -713,7 +719,7 @@ export default function MyPath() {
                 className="g-card p-6 text-center"
               >
                 <div className="g-fab bg-primary/10 mx-auto mb-4">
-                  <Brain className="w-8 h-8 text-primary" />
+                  <Brain className="min-w-[48px] w-8 min-h-[48px] h-8 text-primary" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2">No custom paths yet</h3>
                 <p className="text-foreground/70 mb-6">Create your first custom learning path to get started</p>

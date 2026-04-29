@@ -6,8 +6,8 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTheme } from '../../context/ThemeContext';
-import { useCredits } from '../../context/CreditsContext';
+import { useTheme } from '../context/ThemeContext';
+import { useCredits } from '../context/CreditsContext';
 
 const GOOGLE_SANS = "'Google Sans Display', 'Roboto Flex', sans-serif";
 
@@ -31,11 +31,13 @@ function IconButton({
   onClick,
   children,
   ariaLabel,
+  ariaPressed,
   className = '',
 }: {
   onClick?: () => void;
   children: React.ReactNode;
   ariaLabel: string;
+  ariaPressed?: boolean;
   className?: string;
 }) {
   const { theme } = useTheme();
@@ -44,7 +46,8 @@ function IconButton({
     <button
       onClick={onClick}
       aria-label={ariaLabel}
-      className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${className}`}
+      aria-pressed={ariaPressed}
+      className={`min-w-[48px] w-10 min-h-[48px] h-10 flex items-center justify-center rounded-full transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none ${className}`}
       style={{
         color: 'var(--foreground)',
         background: 'transparent',
@@ -188,6 +191,7 @@ function ThemeToggleIcon({ isDark, size = 22 }: { isDark: boolean; size?: number
       fill="none"
       animate={{ rotate: isDark ? 180 : 0 }}
       transition={{ duration: 0.3 }}
+      aria-hidden="true"
     >
       {isDark ? (
         <motion.g
@@ -234,7 +238,7 @@ function SearchPill({ onFocus }: { onFocus?: () => void }) {
   return (
     <div className="hidden md:flex flex-1 max-w-2xl mx-auto items-center px-4">
       <div
-        className="flex items-center w-full h-10 px-4 rounded-full cursor-pointer transition-all hover:shadow-md"
+        className="flex items-center w-full min-h-[48px] h-10 px-4 rounded-full cursor-pointer transition-all hover:shadow-md"
         style={{
           background: isDark ? '#303134' : '#f1f3f4',
           border: '1px solid transparent',
@@ -297,8 +301,7 @@ export function NavigationGoogle({ onMenuClick }: NavigationGoogleProps) {
           borderBottom: scrolled
             ? `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#e8eaed'}`
             : '1px solid transparent',
-          boxShadow: scrolled ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
-          paddingTop: 'env(safe-area-inset-top, 0px)',
+                    paddingTop: 'env(safe-area-inset-top, 0px)',
         }}
       >
         <div className="flex items-center h-16 px-4 gap-2">
@@ -346,7 +349,7 @@ export function NavigationGoogle({ onMenuClick }: NavigationGoogleProps) {
             {/* Credits display */}
             <button
               onClick={() => setLocation('/profile')}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-full cursor-pointer hidden sm:flex transition-colors"
+              className="flex items-center gap-1.5 min-h-[48px] h-8 px-3 rounded-full cursor-pointer hidden sm:flex transition-colors"
               style={{
                 background: isDark ? 'rgba(249,171,0,0.15)' : 'rgba(249,171,0,0.1)',
                 color: '#f9ab00',
@@ -382,14 +385,14 @@ export function NavigationGoogle({ onMenuClick }: NavigationGoogleProps) {
             </IconButton>
 
             {/* Theme toggle */}
-            <IconButton onClick={toggleTheme} ariaLabel="Toggle theme">
+            <IconButton onClick={toggleTheme} ariaLabel="Toggle theme" aria-pressed={isDark}>
               <ThemeToggleIcon isDark={isDark} size={22} />
             </IconButton>
 
             {/* Profile avatar */}
             <button
               onClick={() => setLocation('/profile')}
-              className="w-8 h-8 rounded-full overflow-hidden cursor-pointer flex items-center justify-center transition-colors"
+              className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-full overflow-hidden cursor-pointer flex items-center justify-center transition-colors"
               style={{
                 background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
                 border: 'none',
@@ -496,7 +499,7 @@ export function NavigationGoogle({ onMenuClick }: NavigationGoogleProps) {
                 />
                 <button
                   onClick={() => setSearchFocused(false)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-colors"
+                  className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-full flex items-center justify-center cursor-pointer transition-colors"
                   style={{
                     background: 'transparent',
                     border: 'none',

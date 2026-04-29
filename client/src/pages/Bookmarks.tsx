@@ -3,7 +3,7 @@
  * Shows all bookmarked/tagged questions across all channels
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
@@ -14,6 +14,8 @@ import { getAllQuestions } from '../lib/questions-loader';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { ProgressStorage } from '../services/storage.service';
 import { STORAGE_KEYS } from '../lib/constants';
+import { useUndo } from '../hooks/use-undo';
+import { useUnifiedNotifications } from '../components/UnifiedNotificationManager';
 import type { Question } from '../types';
 import {
   Star, Trash2, Play, Filter,
@@ -64,6 +66,11 @@ export default function Bookmarks() {
   const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
   const [sort, setSort] = useState<SortKey>('newest');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState('');
+  const liveRegionRef = useRef<HTMLDivElement>(null);
+  const { pendingAction, triggerUndo, undo, dismiss } = useUndo<BookmarkedQuestion[]>();
+  const lastRemovedRef = useRef<BookmarkedQuestion | null>(null);
+  const { showToast } = useUnifiedNotifications();
 
   useEffect(() => {
     const subscribedChannels = getSubscribedChannels();
@@ -117,8 +124,29 @@ export default function Bookmarks() {
   }, [bookmarkedQuestions, filterChannel, filterDifficulty, search, sort]);
 
   const removeBookmark = (question: BookmarkedQuestion) => {
+    const previousState = [...bookmarkedQuestions];
+    lastRemovedRef.current = question;
+    
+    const undoFn = () => {
+      ProgressStorage.toggleMarked(question.channelId, question.id);
+      setBookmarkedQuestions(prev => [...prev, question].sort((a, b) => b.savedAt - a.savedAt));
+      setAnnouncement(`Bookmark restored: ${question.question}`);
+      setTimeout(() => setAnnouncement(''), 1000);
+      dismiss();
+    };
+
     ProgressStorage.toggleMarked(question.channelId, question.id);
     setBookmarkedQuestions(prev => prev.filter(q => q.id !== question.id));
+    setAnnouncement(`Removed bookmark: ${question.question}`);
+    setTimeout(() => setAnnouncement(''), 1000);
+    
+    showToast(
+      `Removed: ${question.question.slice(0, 30)}${question.question.length > 30 ? '...' : ''}`,
+      'Bookmark removed',
+      'default',
+      { label: 'Undo', onClick: undoFn },
+      4000
+    );
   };
 
   const goToQuestion = (question: BookmarkedQuestion) => {
@@ -134,6 +162,25 @@ export default function Bookmarks() {
         description="View and manage your bookmarked interview questions"
       />
       <AppLayout fullWidth>
+        {/* Skip link for keyboard users */}
+        <a
+          href="#bookmarks-list"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-[var(--color-primary)] focus:text-[var(--color-on-primary)] focus:rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2"
+        >
+          Skip to bookmarks list
+        </a>
+
+        {/* Live region for screen reader announcements */}
+        <div
+          ref={liveRegionRef}
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="sr-only"
+        >
+          {announcement}
+        </div>
+
         <div className="min-h-screen bg-background text-foreground overflow-x-hidden pb-24 lg:pb-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <PageHeader
@@ -150,13 +197,14 @@ export default function Bookmarks() {
                   transition={{ delay: 0.05 }}
                   className="flex flex-wrap gap-2 mb-5"
                 >
-                  <SearchBar value={search} onChange={setSearch} placeholder="Search bookmarks…" />
+                  <SearchBar value={search} onChange={setSearch} placeholder="Search bookmarks…" aria-label="Search bookmarks" />
 
                    <select
-                     value={filterChannel}
-                     onChange={e => setFilterChannel(e.target.value)}
-                     className="px-3 py-2 text-base rounded-lg outline-none cursor-pointer min-h-[44px] bg-[var(--surface-2)] border border-[var(--color-border)] text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
-                   >
+                      value={filterChannel}
+                      onChange={e => setFilterChannel(e.target.value)}
+                      aria-label="Filter by topic"
+                      className="px-3 py-2 text-base rounded-lg outline-none cursor-pointer min-h-[48px] bg-[var(--surface-2)] border border-[var(--color-border)] text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                    >
                      <option value="all">All Topics</option>
                      {channelsWithBookmarks.map(ch => (
                        <option key={ch} value={ch}>
@@ -166,10 +214,11 @@ export default function Bookmarks() {
                    </select>
 
                    <select
-                     value={filterDifficulty}
-                     onChange={e => setFilterDifficulty(e.target.value)}
-                     className="px-3 py-2 text-base rounded-lg outline-none cursor-pointer min-h-[44px] bg-[var(--surface-2)] border border-[var(--color-border)] text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
-                   >
+                      value={filterDifficulty}
+                      onChange={e => setFilterDifficulty(e.target.value)}
+                      aria-label="Filter by difficulty level"
+                      className="px-3 py-2 text-base rounded-lg outline-none cursor-pointer min-h-[48px] bg-[var(--surface-2)] border border-[var(--color-border)] text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                    >
                      <option value="all">All Levels</option>
                      <option value="beginner">Easy</option>
                      <option value="intermediate">Medium</option>
@@ -177,50 +226,56 @@ export default function Bookmarks() {
                    </select>
 
                    <select
-                     value={sort}
-                     onChange={e => setSort(e.target.value as SortKey)}
-                     className="px-3 py-2 text-base rounded-lg outline-none cursor-pointer min-h-[44px] bg-[var(--surface-2)] border border-[var(--color-border)] text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
-                   >
+                      value={sort}
+                      onChange={e => setSort(e.target.value as SortKey)}
+                      aria-label="Sort bookmarks"
+                      className="px-3 py-2 text-base rounded-lg outline-none cursor-pointer min-h-[48px] bg-[var(--surface-2)] border border-[var(--color-border)] text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                    >
                      <option value="newest">Newest</option>
                      <option value="oldest">Oldest</option>
                      <option value="topic">By Topic</option>
                    </select>
 
-                   {hasFilters && (
-                     <button
-                       onClick={() => { setSearch(''); setFilterChannel('all'); setFilterDifficulty('all'); }}
-                       className="px-3 py-2 text-base flex items-center gap-1 rounded-lg transition-colors duration-150 hover:bg-white/5 cursor-pointer min-h-[44px] text-foreground/70 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
-                     >
-                       <X className="w-3.5 h-3.5" /> Clear
-                     </button>
-                   )}
+                    {hasFilters && (
+                      <button
+                        onClick={() => { setSearch(''); setFilterChannel('all'); setFilterDifficulty('all'); }}
+                        aria-label="Clear all filters"
+                        className="px-3 py-2 text-base flex items-center gap-1 rounded-lg transition-colors duration-150 hover:bg-white/5 cursor-pointer min-h-[48px] text-foreground/70 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                      >
+                        <X className="w-3.5 h-3.5" /> Clear
+                      </button>
+                    )}
                 </motion.div>
               )}
 
               {/* Empty state */}
               {bookmarkedQuestions.length === 0 ? (
-                <EmptyState
-                  icon={<Star className="w-10 h-10" />}
-                  title="No bookmarks yet"
-                  description="Tap the star icon on any question to save it for later review"
-                  action={<Button variant="primary" onClick={() => setLocation('/channels')}>Browse Questions</Button>}
-                  size="lg"
-                  animated={true}
-                />
+                <div role="status" aria-live="polite" className="outline-none">
+                  <EmptyState
+                    icon={<Star className="min-w-[48px] w-10 h-10" />}
+                    title="No bookmarks yet"
+                    description="Tap the star icon on any question to save it for later review"
+                    action={<Button variant="primary" onClick={() => setLocation('/channels')}>Browse Questions</Button>}
+                    size="lg"
+                    animated={true}
+                  />
+                </div>
                ) : filteredQuestions.length === 0 ? (
-                 <div className="text-center py-16">
-                   <Filter className="w-8 h-8 mx-auto mb-3 opacity-30" />
-                   <p className="text-base text-foreground/70">No questions match your filters</p>
-                   <button
-                     onClick={() => { setSearch(''); setFilterChannel('all'); setFilterDifficulty('all'); }}
-                     className="mt-4 px-4 py-2 text-base rounded-lg transition-colors duration-150 hover:bg-white/5 cursor-pointer min-h-[44px] text-[var(--color-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
-                   >
-                     Clear filters
-                   </button>
-                 </div>
+                <div role="status" aria-live="polite" className="text-center py-16 outline-none">
+                  <Filter className="min-w-[48px] w-8 min-h-[48px] h-8 mx-auto mb-3 opacity-[0.38]" />
+                  <p className="text-base text-foreground/70">No questions match your filters</p>
+                  <button
+                    onClick={() => { setSearch(''); setFilterChannel('all'); setFilterDifficulty('all'); }}
+                    className="mt-4 px-4 py-2 text-base rounded-lg transition-colors duration-150 hover:bg-white/5 cursor-pointer min-h-[48px] text-[var(--color-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                  >
+                    Clear filters
+                  </button>
+                </div>
               ) : (
-                <div className="space-y-3">
-                  {filteredQuestions.map((question, index) => {
+                <>
+                  <h2 className="sr-only">Your bookmarked questions</h2>
+                  <div ref={listRef} id="bookmarks-list" role="list" aria-label="Bookmarked questions" className="space-y-3">
+                    {filteredQuestions.map((question, index) => {
                      const diff = DIFFICULTY_CONFIG[question.difficulty as keyof typeof DIFFICULTY_CONFIG]
                        || { icon: Target, color: 'text-foreground/70', bg: 'bg-[var(--surface-2)]', border: 'border-[var(--color-border)]', label: 'Unknown' };
                     const DiffIcon = diff.icon;
@@ -232,10 +287,13 @@ export default function Bookmarks() {
                     const cardContent = (
                       <motion.div
                         key={question.id}
+                        role="listitem"
+                        tabIndex={0}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.03 }}
                         onClick={() => goToQuestion(question)}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goToQuestion(question); } }}
                          className="group rounded-2xl p-4 cursor-pointer transition-all duration-200 ease-out hover:scale-[1.01] active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none] bg-[var(--surface-2)] border border-[var(--color-border)] shadow-sm"
                       >
                         <div className="flex items-start gap-3">
@@ -284,32 +342,33 @@ export default function Bookmarks() {
                             )}
                           </div>
 
-                          {/* Actions — min 44px touch targets */}
-                          <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                              <button
-                                onClick={e => { e.stopPropagation(); setExpandedId(isExpanded ? null : question.id); }}
-                                className="w-11 h-11 flex items-center justify-center rounded-full transition-colors duration-150 hover:bg-white/10 cursor-pointer sm:hidden text-foreground/70 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
-                                aria-label={isExpanded ? 'Collapse' : 'Expand'}
-                              >
-                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                              </button>
-                              <button
-                                onClick={e => { e.stopPropagation(); removeBookmark(question); }}
-                                className="w-11 h-11 flex items-center justify-center rounded-full transition-colors duration-150 hover:bg-[var(--color-error-container)] hover:text-[var(--color-error)] cursor-pointer text-foreground/70 focus-visible:ring-2 focus-visible:ring-[var(--color-error)] focus-visible:outline-none"
-                                title="Remove bookmark"
-                                aria-label="Remove bookmark"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={e => { e.stopPropagation(); goToQuestion(question); }}
-                                className="w-11 h-11 flex items-center justify-center rounded-full transition-colors duration-150 hover:opacity-80 cursor-pointer focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none bg-[var(--color-primary)] text-[var(--color-on-primary)]"
-                                title="Review question"
-                                aria-label="Review question"
-                              >
-                                <Play className="w-4 h-4 fill-current" />
-                              </button>
-                          </div>
+                          {/* Actions — min 48px touch targets */}
+                           <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                               <button
+                                 onClick={e => { e.stopPropagation(); setExpandedId(isExpanded ? null : question.id); }}
+                                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setExpandedId(isExpanded ? null : question.id); } }}
+                                 className="w-12 h-12 flex items-center justify-center rounded-full transition-colors duration-150 hover:bg-white/10 cursor-pointer sm:hidden text-foreground/70 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                                 aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                               >
+                                 {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                               </button>
+                               <button
+                                 onClick={e => { e.stopPropagation(); removeBookmark(question); }}
+                                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); removeBookmark(question); } }}
+                                 className="w-12 h-12 flex items-center justify-center rounded-full transition-colors duration-150 hover:bg-[var(--color-error-container)] hover:text-[var(--color-error)] cursor-pointer text-foreground/70 focus-visible:ring-2 focus-visible:ring-[var(--color-error)] focus-visible:outline-none"
+                                 aria-label="Remove bookmark"
+                               >
+                                 <Trash2 className="w-4 h-4" />
+                               </button>
+                               <button
+                                 onClick={e => { e.stopPropagation(); goToQuestion(question); }}
+                                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); goToQuestion(question); } }}
+                                 className="w-12 h-12 flex items-center justify-center rounded-full transition-colors duration-150 hover:opacity-80 cursor-pointer focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none bg-[var(--color-primary)] text-[var(--color-on-primary)]"
+                                 aria-label="Review question"
+                               >
+                                 <Play className="w-4 h-4 fill-current" />
+                               </button>
+                           </div>
                         </div>
 
                          {/* Mobile inline detail panel */}
@@ -326,7 +385,7 @@ export default function Bookmarks() {
                                <button
                                  disabled={currentIdx <= 0}
                                  onClick={() => setExpandedId(filteredQuestions[currentIdx - 1].id)}
-                                 className="flex items-center gap-1 px-2 py-1 text-base rounded transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 cursor-pointer text-foreground/70 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                                 className="flex items-center gap-1 px-2 py-1 text-base rounded transition-colors duration-150 disabled:opacity-[0.38] disabled:cursor-not-allowed hover:bg-white/5 cursor-pointer text-foreground/70 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
                                >
                                  <ChevronLeft className="w-3.5 h-3.5" /> Prev
                                </button>
@@ -334,7 +393,7 @@ export default function Bookmarks() {
                                <button
                                  disabled={currentIdx >= filteredQuestions.length - 1}
                                  onClick={() => setExpandedId(filteredQuestions[currentIdx + 1].id)}
-                                 className="flex items-center gap-1 px-2 py-1 text-base rounded transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 cursor-pointer text-foreground/70 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+                                 className="flex items-center gap-1 px-2 py-1 text-base rounded transition-colors duration-150 disabled:opacity-[0.38] disabled:cursor-not-allowed hover:bg-white/5 cursor-pointer text-foreground/70 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
                                >
                                  Next <ChevronRight className="w-3.5 h-3.5" />
                                </button>
@@ -370,10 +429,11 @@ export default function Bookmarks() {
                            </div>
                          </HoverCardContent>
                       </HoverCard>
-                    );
-                  })}
-                </div>
-              )}
+                     );
+                   })}
+                 </div>
+                 </>
+               )}
             </div>
           </div>
         </div>

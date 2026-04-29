@@ -163,7 +163,7 @@ export function CompactEmptyState({
   return (
     <div className={`flex flex-col items-center justify-center gap-2 p-4 ${className}`}>
       {icon && (
-        <div className="w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground">
+        <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground">
           {icon}
         </div>
       )}

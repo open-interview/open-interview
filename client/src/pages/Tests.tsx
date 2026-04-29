@@ -137,7 +137,7 @@ export default function TestsPage() {
               {/* Subscribed toggle */}
               <button
                 onClick={() => setSubscribedOnly(s => !s)}
-                className={`cursor-pointer px-3 min-h-[44px] rounded-xl text-xs font-semibold border transition-all duration-150 whitespace-nowrap focus-visible:ring-2 focus-visible:ring-primary/50 ${
+                className={`cursor-pointer px-3 min-h-[48px] rounded-xl text-xs font-semibold border transition-all duration-150 whitespace-nowrap focus-visible:ring-2 focus-visible:ring-primary/50 ${
                   subscribedOnly
                     ? 'bg-[var(--color-accent-violet)]/15 border-[var(--color-accent-violet)] text-[var(--color-accent-violet-light)]'
                     : 'bg-muted/50 border-border text-foreground/70 hover:border-primary/50'
@@ -148,7 +148,7 @@ export default function TestsPage() {
               <div className="relative">
                 <button
                   onClick={() => setShowSort(s => !s)}
-                  className="cursor-pointer flex items-center gap-1.5 px-3 min-h-[44px] bg-muted/50 border border-border rounded-xl text-sm hover:border-primary/50 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary/50"
+                  className="cursor-pointer flex items-center gap-1.5 px-3 min-h-[48px] bg-muted/50 border border-border rounded-xl text-sm hover:border-primary/50 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary/50"
                 >
                   <SlidersHorizontal className="w-4 h-4" />
                   <span className="hidden sm:inline">Sort</span>
@@ -159,13 +159,13 @@ export default function TestsPage() {
                       initial={{ opacity: 0, y: -8, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                      className="absolute right-0 top-full mt-1 w-44 bg-card border border-border rounded-xl shadow-xl z-10 overflow-hidden"
+                       className="absolute right-0 top-full mt-1 w-44 bg-card border border-border rounded-xl shadow-lg z-10 overflow-hidden"
                     >
                       {([['name', 'Name'], ['last-attempt', 'Last Attempt'], ['score', 'Score']] as [SortKey, string][]).map(([key, label]) => (
                         <button
                           key={key}
                           onClick={() => { setSort(key); setShowSort(false); }}
-                          className={`cursor-pointer w-full text-left flex items-center px-4 min-h-[44px] text-sm transition-colors duration-150 hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-primary/50 rounded-xl ${sort === key ? 'text-primary font-semibold' : 'text-foreground/70'}`}
+                          className={`cursor-pointer w-full text-left flex items-center px-4 min-h-[48px] text-sm transition-colors duration-150 hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-primary/50 rounded-xl ${sort === key ? 'text-primary font-semibold' : 'text-foreground/70'}`}
                         >
                           {label}
                         </button>
@@ -205,7 +205,7 @@ export default function TestsPage() {
                 <p className="text-sm text-foreground/70 mb-4">Try a different filter or search term</p>
                  <button
                    onClick={() => { setSearchQuery(''); setFilter('all'); setSubscribedOnly(false); }}
-                    className="cursor-pointer min-h-[44px] px-6 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-95 transition-all duration-150 focus-visible:ring-2 focus-visible:ring-primary/50"
+                    className="cursor-pointer min-h-[48px] px-6 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-95 transition-all duration-150 focus-visible:ring-2 focus-visible:ring-primary/50"
                  >
                   Clear filters
                 </button>

@@ -9,6 +9,7 @@ import {
   ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { useFocusTrap } from "../../hooks/use-focus-trap";
 import "./GoogleDialog.css";
 
 interface GoogleDialogProps extends HTMLAttributes<HTMLDivElement> {
@@ -28,6 +29,10 @@ export const GoogleDialog = forwardRef<HTMLDivElement, GoogleDialogProps>(
   ({ open, onClose, title, children, className = "", ...props }, ref) => {
     const [mounted, setMounted] = useState(false);
     const dialogRef = useRef<HTMLDivElement>(null);
+    const previousFocusRef = useRef<HTMLElement | null>(null);
+
+    // Use focus trap
+    useFocusTrap(dialogRef, { enabled: open, returnFocus: true });
 
     useEffect(() => {
       setMounted(true);
@@ -35,9 +40,14 @@ export const GoogleDialog = forwardRef<HTMLDivElement, GoogleDialogProps>(
 
     useEffect(() => {
       if (open) {
+        previousFocusRef.current = document.activeElement as HTMLElement | null;
         document.body.style.overflow = "hidden";
       } else {
         document.body.style.overflow = "";
+        // Restore focus on close
+        if (previousFocusRef.current) {
+          previousFocusRef.current.focus();
+        }
       }
       return () => {
         document.body.style.overflow = "";
@@ -58,10 +68,14 @@ export const GoogleDialog = forwardRef<HTMLDivElement, GoogleDialogProps>(
 
     return createPortal(
       <DialogContext.Provider value={{ onClose }}>
-        <div className="google-dialog-scrim" onClick={onClose}>
+        <div
+          className="google-dialog-scrim"
+          onClick={onClose}
+          role="presentation"
+        >
           <div
             ref={(node) => {
-              dialogRef.current = node;
+              dialogRef.current = node!;
               if (typeof ref === "function") {
                 ref(node);
               } else if (ref) {

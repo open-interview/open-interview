@@ -100,7 +100,7 @@ export default function NotFound() {
         >
           <button
             onClick={() => setLocation('/')}
-            className="flex items-center justify-center gap-2 px-4 py-2 min-h-[40px] h-10 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all duration-150 ease-out cursor-pointer text-sm"
+            className="flex items-center justify-center gap-2 px-4 py-2 min-h-[48px] min-h-[48px] h-10 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all duration-150 ease-out cursor-pointer text-sm"
           >
             <Home className="w-5 h-5" />
             Go Home Now
@@ -108,7 +108,7 @@ export default function NotFound() {
 
           <button
             onClick={() => window.history.back()}
-              className="flex items-center justify-center gap-2 px-4 py-2 min-h-[40px] h-10 bg-card border border-border text-foreground rounded-lg font-medium hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all duration-150 ease-out cursor-pointer text-sm"
+              className="flex items-center justify-center gap-2 px-4 py-2 min-h-[48px] min-h-[48px] h-10 bg-card border border-border text-foreground rounded-lg font-medium hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all duration-150 ease-out cursor-pointer text-sm"
            >
              <ArrowLeft className="w-5 h-5" />
              Go Back
@@ -116,7 +116,7 @@ export default function NotFound() {
 
            <button
              onClick={() => setLocation('/channels')}
-             className="flex items-center justify-center gap-2 px-4 py-2 min-h-[40px] h-10 bg-card border border-border text-foreground rounded-lg font-medium hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all duration-150 ease-out cursor-pointer text-sm"
+             className="flex items-center justify-center gap-2 px-4 py-2 min-h-[48px] min-h-[48px] h-10 bg-card border border-border text-foreground rounded-lg font-medium hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all duration-150 ease-out cursor-pointer text-sm"
           >
             <Search className="w-5 h-5" />
             Browse Channels
@@ -143,7 +143,7 @@ export default function NotFound() {
               <button
                 key={link.path}
                 onClick={() => setLocation(link.path)}
-                 className="px-4 py-2 min-h-[40px] h-10 text-sm bg-muted hover:bg-muted/80 text-foreground rounded-full focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all duration-150 ease-out cursor-pointer"
+                 className="px-4 py-2 min-h-[48px] min-h-[48px] h-10 text-sm bg-muted hover:bg-muted/80 text-foreground rounded-full focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all duration-150 ease-out cursor-pointer"
               >
                 {link.label}
               </button>

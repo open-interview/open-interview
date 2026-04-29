@@ -1,151 +1,94 @@
-import { useEffect, useRef, RefObject } from 'react';
+import { useEffect, useRef, useCallback, RefObject } from 'react';
 
-/**
- * Options for configuring the focus trap behavior
- */
-export interface UseFocusTrapOptions {
-  /** Whether the focus trap is enabled */
-  enabled: boolean;
-  /** Optional ref to the element that should receive initial focus */
-  initialFocus?: RefObject<HTMLElement | null>;
-  /** Whether to return focus to the previously focused element when trap is disabled */
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+interface FocusTrapOptions {
+  enabled?: boolean;
+  initialFocus?: RefObject<HTMLElement> | null;
   returnFocus?: boolean;
 }
 
 /**
- * Hook that manages focus trapping within a container element.
- * 
- * This hook is essential for accessible modals and dialogs, ensuring that:
- * - Focus stays within the container when Tab/Shift+Tab is pressed
- * - Focus moves to the first focusable element when the trap is activated
- * - Focus returns to the previously focused element when the trap is deactivated
- * 
- * @param containerRef - Ref to the container element that should trap focus
- * @param options - Configuration options for the focus trap
- * 
- * @example
- * ```tsx
- * function Modal({ isOpen, onClose }) {
- *   const modalRef = useRef<HTMLDivElement>(null);
- *   useFocusTrap(modalRef, { enabled: isOpen, returnFocus: true });
- *   
- *   return (
- *     <div ref={modalRef} role="dialog" aria-modal="true">
- *       <button onClick={onClose}>Close</button>
- *       <input type="text" />
- *     </div>
- *   );
- * }
- * ```
- * 
- * Validates: Requirements 2.2, 2.3, 5.2, 5.3, 11.1
+ * Focus trap hook - keeps keyboard focus within a container
+ * Supports both simple usage (single boolean) and advanced options
  */
 export function useFocusTrap(
-  containerRef: RefObject<HTMLElement | null>,
-  options: UseFocusTrapOptions = { enabled: true, returnFocus: true }
-): void {
-  const previousActiveElement = useRef<HTMLElement | null>(null);
-  
+  containerRef: RefObject<HTMLElement> | boolean,
+  options?: FocusTrapOptions
+): RefObject<HTMLElement> {
+  const internalRef = useRef<HTMLElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  // Handle both usage patterns
+  const isActive = typeof containerRef === 'boolean'
+    ? containerRef
+    : options?.enabled ?? true;
+
+  const ref = typeof containerRef === 'boolean'
+    ? internalRef
+    : containerRef;
+
+  const { initialFocus, returnFocus = true } = options || {};
+
+  const getFocusableElements = useCallback((container: HTMLElement): HTMLElement[] => {
+    return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+      .filter(el => el.offsetParent !== null && !el.hasAttribute('disabled'));
+  }, []);
+
   useEffect(() => {
-    // Early return if trap is disabled or container doesn't exist
-    if (!options.enabled || !containerRef.current) {
-      return;
-    }
-    
-    // Store the element that had focus before trap activated
-    previousActiveElement.current = document.activeElement as HTMLElement;
-    
-    /**
-     * Get all focusable elements within the container.
-     * Includes standard focusable elements and elements with non-negative tabindex.
-     * Excludes disabled elements and elements with aria-hidden.
-     */
-    const getFocusableElements = (): HTMLElement[] => {
-      const selector = [
-        'a[href]',
-        'button:not([disabled])',
-        'textarea:not([disabled])',
-        'input:not([disabled])',
-        'select:not([disabled])',
-        '[tabindex]:not([tabindex="-1"])'
-      ].join(', ');
-      
-      if (!containerRef.current) return [];
-      
-      return Array.from(
-        containerRef.current.querySelectorAll<HTMLElement>(selector)
-      ).filter(el => {
-        // Exclude elements that are hidden from assistive technologies
-        if (el.hasAttribute('aria-hidden') && el.getAttribute('aria-hidden') === 'true') {
-          return false;
-        }
-        
-        // Exclude elements that are not visible
-        const style = window.getComputedStyle(el);
-        if (style.display === 'none' || style.visibility === 'hidden') {
-          return false;
-        }
-        
-        return true;
-      });
-    };
-    
+    if (!isActive || !ref.current) return;
+
+    const container = ref.current;
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+
     // Focus initial element or first focusable element
-    const focusableElements = getFocusableElements();
-    
-    if (focusableElements.length === 0) {
-      console.warn('useFocusTrap: No focusable elements found in container');
-      return;
-    }
-    
-    if (options.initialFocus?.current) {
-      options.initialFocus.current.focus();
+    if (initialFocus?.current) {
+      initialFocus.current.focus();
     } else {
-      focusableElements[0].focus();
+      const focusable = getFocusableElements(container);
+      if (focusable.length > 0) {
+        focusable[0].focus();
+      }
     }
-    
-    /**
-     * Handle Tab key to trap focus within the container.
-     * When Tab is pressed on the last element, focus cycles to the first.
-     * When Shift+Tab is pressed on the first element, focus cycles to the last.
-     */
-    const handleKeyDown = (e: KeyboardEvent): void => {
+
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return;
-      
-      const focusableElements = getFocusableElements();
-      if (focusableElements.length === 0) return;
-      
-      const firstElement = focusableElements[0];
-      const lastElement = focusableElements[focusableElements.length - 1];
-      
-      // Shift+Tab on first element: cycle to last
-      if (e.shiftKey && document.activeElement === firstElement) {
-        e.preventDefault();
-        lastElement.focus();
-      } 
-      // Tab on last element: cycle to first
-      else if (!e.shiftKey && document.activeElement === lastElement) {
-        e.preventDefault();
-        firstElement.focus();
+
+      const focusable = getFocusableElements(container);
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
-    
-    // Add event listener for Tab key
-    document.addEventListener('keydown', handleKeyDown);
-    
-    // Cleanup function
+
+    container.addEventListener('keydown', handleKeyDown);
+
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      
-      // Return focus to previous element if option is enabled
-      if (options.returnFocus && previousActiveElement.current) {
-        // Use setTimeout to ensure the element is focusable
-        setTimeout(() => {
-          if (previousActiveElement.current) {
-            previousActiveElement.current.focus();
-          }
-        }, 0);
+      container.removeEventListener('keydown', handleKeyDown);
+      if (returnFocus && previousFocusRef.current) {
+        previousFocusRef.current.focus();
       }
     };
-  }, [options.enabled, containerRef, options.initialFocus, options.returnFocus]);
+  }, [isActive, ref, initialFocus, returnFocus, getFocusableElements]);
+
+  return ref;
 }

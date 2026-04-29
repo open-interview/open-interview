@@ -74,7 +74,7 @@ export function Microphone({
               ? 'bg-gradient-to-r from-red-500 to-pink-500'
               : 'bg-gradient-to-r from-primary to-primary'
           }
-          ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-[0_0_30px_var(--shadow-glow)]'}
+          ${disabled ? 'opacity-[0.38] cursor-not-allowed' : 'hover:shadow-[0_0_30px_var(--shadow-glow)]'}
         `}
       >
         {isRecording ? (

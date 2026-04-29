@@ -26,9 +26,10 @@ export function VisitCounter({
       {showLabel && <span className="text-xs text-muted-foreground mr-1">visits</span>}
       <img 
         src="https://hits.sh/devprep-io.github.io.svg?style=flat&label=&color=6366f1&labelColor=transparent"
-        alt="Visit count"
+        alt="Page visit counter badge"
         className="h-5"
         loading="lazy"
+        aria-hidden="true"
       />
     </motion.div>
   );

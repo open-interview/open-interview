@@ -205,12 +205,12 @@ export const UnifiedQuestionPanel = memo(function UnifiedQuestionPanel({
       {/* Question text - Main focus - OPTIMIZED */}
       <motion.div variants={itemVariants} className="relative">
         {/* Decorative gradient border */}
-        <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/20 via-purple-500/20 to-pink-500/20 rounded-xl sm:rounded-2xl blur-sm opacity-30" />
+        <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/20 via-purple-500/20 to-pink-500/20 rounded-xl sm:rounded-2xl blur-sm opacity-[0.38]" />
         
         <div className="relative bg-card/90 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-border/50 shadow-lg">
           <div className="flex items-start gap-3 sm:gap-4">
             <motion.div 
-              className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center"
+              className="flex-shrink-0 w-9 h-9 sm:min-w-[48px] w-10 sm:min-h-[48px] h-10 rounded-xl bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center"
               whileHover={{ rotate: 180, scale: 1.1 }}
               transition={{ duration: 0.3 }}
             >

@@ -52,7 +52,7 @@ export function XPBar({ currentXP, className = '', compact = false }: XPBarProps
         <div className="flex-1 h-1.5 bg-[var(--surface-3)] rounded-full overflow-hidden min-w-[60px]">
           <motion.div
             className="h-full rounded-full"
-            style={{ background: 'linear-gradient(90deg, #f59e0b, #f97316)', boxShadow: '0 0 6px #f59e0b80' }}
+            style={{ background: 'linear-gradient(90deg, #f59e0b, #f97316)', }}
             initial={{ width: 0 }}
             animate={{ width: `${progressPct}%` }}
             transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
@@ -74,7 +74,7 @@ export function XPBar({ currentXP, className = '', compact = false }: XPBarProps
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 4 }}
               className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap z-50 pointer-events-none"
-              style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', }}
             >
               <span className="text-amber-400 font-semibold">{xpToNext.toLocaleString()} XP</span>
               <span className="text-[var(--text-tertiary)]"> to Level {nextLevel.level}</span>
@@ -91,7 +91,7 @@ export function XPBar({ currentXP, className = '', compact = false }: XPBarProps
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <motion.div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black text-foreground"
+            className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-full flex items-center justify-center text-sm font-black text-foreground"
             style={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: leveledUp ? '0 0 20px #f59e0b' : '0 0 8px #f59e0b60' }}
             animate={leveledUp ? { scale: [1, 1.3, 1], boxShadow: ['0 0 8px #f59e0b60', '0 0 24px #ffd700', '0 0 8px #f59e0b60'] } : {}}
             transition={{ duration: 0.8 }}
@@ -120,7 +120,7 @@ export function XPBar({ currentXP, className = '', compact = false }: XPBarProps
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 4 }}
                   className="absolute right-0 bottom-full mb-2 px-3 py-2 rounded-lg text-xs whitespace-nowrap z-50"
-                  style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
+                  style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', }}
                 >
                   <div className="text-[var(--text-secondary)]">Level {nextLevel.level}: <span className="text-amber-400 font-bold">{nextLevel.xpRequired.toLocaleString()} XP</span></div>
                   <div className="text-[var(--text-tertiary)]">{progressPct}% complete</div>

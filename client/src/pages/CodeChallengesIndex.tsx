@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import { Search, ChevronRight, Layers, Type, GitBranch, Network, BarChart2, SortAsc, CheckCircle2, Clock, Code2 } from 'lucide-react';
+import { Search, ChevronRight, Layers, Type, GitBranch, Network, BarChart2, SortAsc, CheckCircle2, Clock, Code2, Circle, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { getProgress } from '@/lib/challenge-progress';
 import { loadAllChallenges } from '@/lib/challenges-loader';
 import type { ChallengeListItem, ChallengeStatus, Difficulty } from '@/types/challenges';
+import { NetworkError, NoResults } from '@/components/google/ErrorStates';
 
 const GoogleColors = {
   blue: '#4285F4',
@@ -16,6 +17,12 @@ const GoogleColors = {
 };
 
 const DIFFICULTIES: Array<'All' | Difficulty> = ['All', 'easy', 'medium', 'hard'];
+
+const DIFFICULTY_ICONS: Record<Difficulty, typeof Circle> = {
+  easy: Circle,
+  medium: AlertCircle,
+  hard: CheckCircle2,
+};
 
 const DIFFICULTY_STYLES: Record<Difficulty, { bg: string; text: string; border: string }> = {
   easy: { bg: `bg-[${GoogleColors.green}]/10`, text: `text-[${GoogleColors.green}]`, border: `border-[${GoogleColors.green}]/30` },
@@ -84,10 +91,18 @@ export default function CodeChallengesIndex() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-2">
-        <p className={`text-[${GoogleColors.red}] font-medium`}>Failed to load challenges</p>
-        <p className="text-base text-foreground/70">{error}</p>
-      </div>
+      <NetworkError
+        title="Failed to load challenges"
+        message="We couldn't load the challenges. Your internet connection may be unstable."
+        onRetry={() => {
+          setError(null);
+          setLoading(true);
+          loadAllChallenges()
+            .then(setChallenges)
+            .catch((e) => setError(e.message))
+            .finally(() => setLoading(false));
+        }}
+      />
     );
   }
 
@@ -102,7 +117,7 @@ export default function CodeChallengesIndex() {
           className="mb-8"
         >
           <div className="flex items-center gap-2 mb-2">
-            <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br from-[${GoogleColors.blue}] to-[${GoogleColors.blue}80] flex items-center justify-center`}>
+            <div className={`min-w-[48px] w-10 min-h-[48px] h-10 rounded-2xl bg-gradient-to-br from-[${GoogleColors.blue}] to-[${GoogleColors.blue}80] flex items-center justify-center`}>
               <Code2 className="w-5 h-5 text-white" />
             </div>
             <h1 
@@ -178,22 +193,13 @@ className={`px-4 py-2 rounded-full text-sm font-medium border transition-all dur
 
         {/* Challenge Cards Grid */}
         {filtered.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-16 space-y-4"
-          >
-            <div className="w-16 h-16 rounded-full bg-[#202124] mx-auto flex items-center justify-center">
-              <Search className="w-8 h-8 text-foreground/70" />
-            </div>
-            <p className="text-foreground/70">No challenges match your filters.</p>
-            <button
-              onClick={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
-               className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[${GoogleColors.blue}] text-white text-sm font-medium transition-all duration-150 cursor-pointer hover:bg-[${GoogleColors.blue}80] focus-visible:ring-2 focus-visible:ring-[${GoogleColors.blue}] focus-visible:ring-offset-2`}
-            >
-              Clear filters
-            </button>
-          </motion.div>
+          <NoResults
+            title="No challenges found"
+            message="No challenges match your current filters."
+            onClearSearch={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
+            suggestions={['arrays', 'strings', 'dynamic-programming']}
+            query={search}
+          />
         ) : (
           <motion.div
             variants={stagger}
@@ -217,15 +223,19 @@ className={`px-4 py-2 rounded-full text-sm font-medium border transition-all dur
                 >
                   {/* Card header */}
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      {status === 'solved' && (
-                        <CheckCircle2 className="w-4 h-4 text-[${GoogleColors.green}]" />
-                      )}
-                      <span className="text-xs text-foreground/70">#{idx + 1}</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-medium border ${diffStyle.bg} ${diffStyle.text} ${diffStyle.border}`}>
-                      {challenge.difficulty.charAt(0).toUpperCase() + challenge.difficulty.slice(1)}
-                    </div>
+                     <div className="flex items-center gap-2">
+                       {status === 'solved' && (
+                         <CheckCircle2 className="w-4 h-4 text-[${GoogleColors.green}]" aria-label="Solved" />
+                       )}
+                       {status === 'attempted' && (
+                         <AlertCircle className="w-4 h-4 text-[${GoogleColors.yellow}]" aria-label="Attempted" />
+                       )}
+                       <span className="text-xs text-foreground/70">#{idx + 1}</span>
+                     </div>
+                     <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-medium border ${diffStyle.bg} ${diffStyle.text} ${diffStyle.border}`}>
+                       {(() => { const Icon = DIFFICULTY_ICONS[challenge.difficulty]; return <Icon className="w-3 h-3" />; })()}
+                       {challenge.difficulty.charAt(0).toUpperCase() + challenge.difficulty.slice(1)}
+                     </div>
                   </div>
 
                   {/* Title */}
@@ -251,18 +261,21 @@ className={`px-4 py-2 rounded-full text-sm font-medium border transition-all dur
                   )}
 
                   {/* Footer */}
-                  <div className="flex items-center justify-between pt-3 border-t border-[#3C4043]/50">
-<div className="flex items-center gap-1 text-xs text-foreground/70">
-                       <Clock className="w-3 h-3" />
-                      <span>{challenge.estimatedMinutes}m</span>
-                    </div>
-<div className="flex items-center gap-1 text-xs">
-                       <span className={status === 'solved' ? 'text-[${GoogleColors.green}]' : 'text-foreground/70'}>
-                        {status === 'solved' ? 'Solved' : status === 'attempted' ? 'Attempted' : 'Unsolved'}
-                      </span>
-                      <ChevronRight className="w-3.5 h-3.5 text-foreground/70 group-hover:text-[${GoogleColors.blue}] group-hover:translate-x-0.5 transition-all" />
-                    </div>
-                  </div>
+                   <div className="flex items-center justify-between pt-3 border-t border-[#3C4043]/50">
+ <div className="flex items-center gap-1 text-xs text-foreground/70">
+                        <Clock className="w-3 h-3" />
+                       <span>{challenge.estimatedMinutes}m</span>
+                     </div>
+ <div className="flex items-center gap-1 text-xs">
+                        {status === 'solved' && <CheckCircle2 className="w-3 h-3 text-[${GoogleColors.green}]" />}
+                        {status === 'attempted' && <AlertCircle className="w-3 h-3 text-[${GoogleColors.yellow}]" />}
+                        {status === 'unsolved' && <Circle className="w-3 h-3 text-foreground/50" />}
+                        <span className={status === 'solved' ? 'text-[${GoogleColors.green}]' : status === 'attempted' ? 'text-[${GoogleColors.yellow}]' : 'text-foreground/70'}>
+                         {status === 'solved' ? 'Solved' : status === 'attempted' ? 'Attempted' : 'Unsolved'}
+                       </span>
+                       <ChevronRight className="w-3.5 h-3.5 text-foreground/70 group-hover:text-[${GoogleColors.blue}] group-hover:translate-x-0.5 transition-all" />
+                     </div>
+                   </div>
                 </motion.button>
               );
             })}

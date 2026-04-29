@@ -12,13 +12,15 @@ const ToastViewport = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Viewport
-    ref={ref}
-    className={cn(
-      "fixed top-2 right-2 z-[100] flex max-h-screen w-auto flex-col-reverse p-2 sm:bottom-2 sm:right-2 sm:top-auto sm:flex-col max-w-[200px]",
-      className
-    )}
-    {...props}
-  />
+     ref={ref}
+     className={cn(
+       "fixed z-[100] flex max-h-screen w-auto flex-col-reverse p-2 max-w-[200px]",
+       "sm:bottom-2 sm:right-2 sm:flex-col",
+       className
+     )}
+     style={{ top: 'calc(8px + env(safe-area-inset-top, 0px))', right: 'calc(8px + env(safe-area-inset-right, 0px))' }}
+     {...props}
+   />
 ))
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
@@ -62,7 +64,7 @@ const ToastAction = React.forwardRef<
   <ToastPrimitives.Action
     ref={ref}
     className={cn(
-      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
+      "inline-flex min-h-[48px] h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-[0.38] group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
       className
     )}
     {...props}

@@ -11,6 +11,7 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Progress } from '../ui/progress';
+import { GoogleDialog } from '../google/GoogleDialog';
 import { 
   metricsCollector, 
   FormatMetrics as FormatMetricsType, 
@@ -295,6 +296,7 @@ export const FormatMetricsDashboard: React.FC<FormatMetricsProps> = ({
   const [metrics, setMetrics] = useState<FormatMetricsType | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [showClearDialog, setShowClearDialog] = useState(false);
 
   // Load metrics
   const loadMetrics = async () => {
@@ -325,17 +327,20 @@ export const FormatMetricsDashboard: React.FC<FormatMetricsProps> = ({
 
   // Clear metrics (for testing)
   const handleClearMetrics = () => {
-    if (confirm('Are you sure you want to clear all metrics? This action cannot be undone.')) {
-      metricsCollector.clearMetrics();
-      loadMetrics();
-    }
+    setShowClearDialog(true);
+  };
+
+  const confirmClearMetrics = () => {
+    setShowClearDialog(false);
+    metricsCollector.clearMetrics();
+    loadMetrics();
   };
 
   if (loading) {
     return (
       <div className={`p-6 ${className}`}>
         <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded mb-4"></div>
+          <div className="min-h-[48px] h-8 bg-gray-200 rounded mb-4"></div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {[1, 2, 3].map(i => (
               <div key={i} className="h-24 bg-gray-200 rounded"></div>
@@ -360,122 +365,153 @@ export const FormatMetricsDashboard: React.FC<FormatMetricsProps> = ({
   }
 
   return (
-    <div className={`p-6 space-y-6 ${className}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Answer Formatting Metrics</h1>
-          <p className="text-gray-600">
-            Last updated: {new Date(metrics.lastUpdated).toLocaleString()}
+    <>
+      <div className={`p-6 space-y-6 ${className}`}>
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Answer Formatting Metrics</h1>
+            <p className="text-gray-600">
+              Last updated: {new Date(metrics.lastUpdated).toLocaleString()}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleRefresh}>
+              Refresh
+            </Button>
+            <Button variant="outline" onClick={handleClearMetrics}>
+              Clear Data
+            </Button>
+          </div>
+        </div>
+
+        {/* Overview Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <MetricCard
+            title="Total Questions"
+            value={metrics.totalQuestions}
+            description="Questions analyzed"
+          />
+          <MetricCard
+            title="Compliance Rate"
+            value={metrics.complianceRate}
+            description="Questions passing validation"
+          />
+          <MetricCard
+            title="Average Score"
+            value={metrics.averageScore}
+            description="Overall formatting quality"
+          />
+          <MetricCard
+            title="Auto-Fix Success"
+            value={metrics.autoFixSuccessRate}
+            description="Violations successfully fixed"
+          />
+        </div>
+
+        {/* Detailed Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <MetricCard
+            title="Validation Pass Rate"
+            value={metrics.validationPassRate}
+            description="First-attempt validation success"
+          />
+          <MetricCard
+            title="Average Violations"
+            value={metrics.averageViolationsPerQuestion}
+            description="Per question"
+          />
+          <MetricCard
+            title="Auto-Fix Attempts"
+            value={metrics.autoFixAttempts}
+            description="Total fix attempts"
+          />
+          <MetricCard
+            title="Auto-Fix Successes"
+            value={metrics.autoFixSuccesses}
+            description="Successful fixes"
+          />
+        </div>
+
+        {/* Tabs for detailed views */}
+        <Tabs defaultValue="trends" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="trends">Trends</TabsTrigger>
+            <TabsTrigger value="patterns">Patterns</TabsTrigger>
+            <TabsTrigger value="channels">Channels</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="trends" className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <TrendChart
+                trends={metrics.trends}
+                metric="complianceRate"
+                title="Compliance Rate Trend"
+              />
+              <TrendChart
+                trends={metrics.trends}
+                metric="validationPassRate"
+                title="Validation Pass Rate Trend"
+              />
+            </div>
+            <TrendChart
+              trends={metrics.trends}
+              metric="autoFixSuccessRate"
+              title="Auto-Fix Success Rate Trend"
+            />
+          </TabsContent>
+
+          <TabsContent value="patterns">
+            <PatternUsageTable patternUsage={metrics.patternUsage} />
+          </TabsContent>
+
+          <TabsContent value="channels">
+            <ChannelBreakdown channels={metrics.channelBreakdown} />
+          </TabsContent>
+        </Tabs>
+
+        {/* Footer Info */}
+        <div className="text-xs text-gray-500 border-t pt-4">
+          <p>
+            Metrics are automatically collected and updated in real-time. 
+            Data is stored locally in your browser.
+          </p>
+          <p className="mt-1">
+            Refresh interval: {refreshInterval / 1000}s | 
+            Last refresh: {lastRefresh.toLocaleTimeString()}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleRefresh}>
-            Refresh
-          </Button>
-          <Button variant="outline" onClick={handleClearMetrics}>
-            Clear Data
-          </Button>
-        </div>
       </div>
 
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard
-          title="Total Questions"
-          value={metrics.totalQuestions}
-          description="Questions analyzed"
-        />
-        <MetricCard
-          title="Compliance Rate"
-          value={metrics.complianceRate}
-          description="Questions passing validation"
-        />
-        <MetricCard
-          title="Average Score"
-          value={metrics.averageScore}
-          description="Overall formatting quality"
-        />
-        <MetricCard
-          title="Auto-Fix Success"
-          value={metrics.autoFixSuccessRate}
-          description="Violations successfully fixed"
-        />
-      </div>
-
-      {/* Detailed Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <MetricCard
-          title="Validation Pass Rate"
-          value={metrics.validationPassRate}
-          description="First-attempt validation success"
-        />
-        <MetricCard
-          title="Average Violations"
-          value={metrics.averageViolationsPerQuestion}
-          description="Per question"
-        />
-        <MetricCard
-          title="Auto-Fix Attempts"
-          value={metrics.autoFixAttempts}
-          description="Total fix attempts"
-        />
-        <MetricCard
-          title="Auto-Fix Successes"
-          value={metrics.autoFixSuccesses}
-          description="Successful fixes"
-        />
-      </div>
-
-      {/* Tabs for detailed views */}
-      <Tabs defaultValue="trends" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="trends">Trends</TabsTrigger>
-          <TabsTrigger value="patterns">Patterns</TabsTrigger>
-          <TabsTrigger value="channels">Channels</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="trends" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <TrendChart
-              trends={metrics.trends}
-              metric="complianceRate"
-              title="Compliance Rate Trend"
-            />
-            <TrendChart
-              trends={metrics.trends}
-              metric="validationPassRate"
-              title="Validation Pass Rate Trend"
-            />
+      {/* Clear Metrics Dialog */}
+      <GoogleDialog
+        open={showClearDialog}
+        onClose={() => setShowClearDialog(false)}
+        title="Clear All Metrics"
+      >
+        <div className="p-6">
+          <p className="text-sm text-gray-600 mb-6">
+            Are you sure you want to clear all metrics? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setShowClearDialog(false)}
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={{ background: 'transparent', color: 'var(--text-secondary)' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmClearMetrics}
+              className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors"
+              style={{ background: 'var(--color-error)' }}
+            >
+              Clear Data
+            </button>
           </div>
-          <TrendChart
-            trends={metrics.trends}
-            metric="autoFixSuccessRate"
-            title="Auto-Fix Success Rate Trend"
-          />
-        </TabsContent>
-
-        <TabsContent value="patterns">
-          <PatternUsageTable patternUsage={metrics.patternUsage} />
-        </TabsContent>
-
-        <TabsContent value="channels">
-          <ChannelBreakdown channels={metrics.channelBreakdown} />
-        </TabsContent>
-      </Tabs>
-
-      {/* Footer Info */}
-      <div className="text-xs text-gray-500 border-t pt-4">
-        <p>
-          Metrics are automatically collected and updated in real-time. 
-          Data is stored locally in your browser.
-        </p>
-        <p className="mt-1">
-          Refresh interval: {refreshInterval / 1000}s | 
-          Last refresh: {lastRefresh.toLocaleTimeString()}
-        </p>
-      </div>
-    </div>
+        </div>
+      </GoogleDialog>
+    </>
   );
 };
 

@@ -223,7 +223,7 @@ export default function Flashcards() {
 
           {/* Header */}
           <header className="flex items-center justify-between px-4 py-2 flex-shrink-0" style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
-            <button onClick={() => setLocation('/')} className="cursor-pointer flex items-center gap-1 min-h-[44px] px-2 -ml-2 text-sm font-medium text-foreground/70 hover:text-foreground transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none">
+            <button onClick={() => setLocation('/')} className="cursor-pointer flex items-center gap-1 min-h-[48px] px-2 -ml-2 text-sm font-medium text-foreground/70 hover:text-foreground transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none">
               <ChevronLeft className="w-5 h-5" /><span>Back</span>
             </button>
             <h1 className="text-lg font-semibold">Flashcards</h1>
@@ -307,11 +307,11 @@ export default function Flashcards() {
           {/* Card area */}
           <div className="relative flex-1 flex flex-col items-center justify-center px-4 py-4 min-h-0" style={{ perspective: '1200px' }}>
              <button onClick={goPrev} disabled={index === 0}
-                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full items-center justify-center bg-muted hover:bg-muted/80 text-foreground/70 hover:text-foreground disabled:opacity-20 disabled:cursor-not-allowed transition-all cursor-pointer border border-outline focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none">
+                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 min-w-[48px] w-10 min-h-[48px] h-10 rounded-full items-center justify-center bg-muted hover:bg-muted/80 text-foreground/70 hover:text-foreground disabled:opacity-20 disabled:cursor-not-allowed transition-all cursor-pointer border border-outline focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none">
                <ChevronLeft className="w-5 h-5" />
              </button>
              <button onClick={goNext} disabled={index >= filtered.length - 1}
-                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full items-center justify-center bg-muted hover:bg-muted/80 text-foreground/70 hover:text-foreground disabled:opacity-20 disabled:cursor-not-allowed transition-all cursor-pointer border border-outline focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none">
+                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 min-w-[48px] w-10 min-h-[48px] h-10 rounded-full items-center justify-center bg-muted hover:bg-muted/80 text-foreground/70 hover:text-foreground disabled:opacity-20 disabled:cursor-not-allowed transition-all cursor-pointer border border-outline focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none">
                <ChevronRight className="w-5 h-5" />
              </button>
             <AnimatePresence mode="wait">
@@ -363,7 +363,7 @@ export default function Flashcards() {
                        </div>
                      </div>
                       {/* Back */}
-                       <div                        className="absolute inset-0 rounded-xl p-5 flex flex-col gap-3 shadow-sm">
+                       <div className="absolute inset-0 rounded-xl p-5 flex flex-col gap-3 shadow-sm"
                         style={{
                           backfaceVisibility: 'hidden',
                           WebkitBackfaceVisibility: 'hidden',
@@ -376,18 +376,18 @@ export default function Flashcards() {
                         <span className="self-start px-3 py-1.5 rounded-full text-sm font-medium" style={{ background: 'var(--color-primary)', color: 'var(--color-primary-foreground)' }}>Answer</span>
                        <p className="text-base leading-relaxed text-foreground overflow-y-auto" style={{ flex: '1 1 0', minHeight: 0 }}>{current.back}</p>
                        {current.hint && (
-                         <div className="rounded-xl px-3 py-2 text-sm flex-shrink-0"
-                           style={{ background: 'var(--color-muted)', border: '1px solid var(--color-outline)' }}>
-                           <span className="font-medium mr-1">💡</span>{current.hint}
-                         </div>
-                       )}
+                          <div className="rounded-xl px-3 py-2 text-sm flex-shrink-0"
+                            style={{ background: 'var(--color-muted)', border: '1px solid var(--color-outline)' }}>
+                            <span className="font-medium mr-1">💡</span>{current.hint}
+                          </div>
+                        )}
                        {current.mnemonic && (
-                         <div className="rounded-xl px-3 py-2 text-sm flex-shrink-0"
-                           style={{ background: 'var(--color-muted)', border: '1px solid var(--color-outline)' }}>
-                           <span className="font-medium mr-1">🧠</span>{current.mnemonic}
-                         </div>
-                       )}
-                     </div>
+                          <div className="rounded-xl px-3 py-2 text-sm flex-shrink-0"
+                            style={{ background: 'var(--color-muted)', border: '1px solid var(--color-outline)' }}>
+                            <span className="font-medium mr-1">🧠</span>{current.mnemonic}
+                          </div>
+                        )}
+                      </div>
                    </div>
                 </motion.div>
                ) : (
@@ -403,41 +403,42 @@ export default function Flashcards() {
           </div>
 
           {/* Navigation controls */}
-           <div className="flex items-center justify-center gap-3 px-4 pb-4 flex-shrink-0" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
-             {!current && cards.length > 0 ? (
-               <button onClick={() => { setSelectedChannels(new Set()); setMode('all'); setIndex(0); setFlipped(false); }}
-                  className="cursor-pointer px-4 py-2 h-10 rounded-full bg-muted hover:bg-muted/80 text-sm font-medium transition-all border border-outline focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
-                  Show all cards
-               </button>
-             ) : !flipped ? (
-               <button onClick={flip} disabled={!current}
-                   className="cursor-pointer w-full max-w-xs py-4 rounded-full text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-primary text-primary-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none">
-                 Show Answer
-               </button>
-              ) : (
-                <div className="flex gap-2 w-full max-w-md">
-                  {[
-                    { r: 'again' as ConfidenceRating, label: 'Again', key: '1', colorVar: 'var(--color-error, #EA4335)', Icon: AgainIcon },
-                    { r: 'hard' as ConfidenceRating, label: 'Hard', key: '2', colorVar: 'var(--color-warning, #FBBC05)', Icon: HardIcon },
-                    { r: 'good' as ConfidenceRating, label: 'Good', key: '3', colorVar: 'var(--color-success, #34A853)', Icon: GoodIcon },
-                    { r: 'easy' as ConfidenceRating, label: 'Easy', key: '4', colorVar: 'var(--color-primary, #3b82f6)', Icon: EasyIcon },
-                  ].map(({ r, label, key, colorVar, Icon }) => (
-                    <motion.button key={r} whileTap={{ scale: 0.92 }} onClick={() => rate(r)}
-                       className="cursor-pointer flex-1 flex flex-col items-center justify-center py-2 h-10 rounded-lg text-sm font-medium transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none shadow-none"
-                      style={{
-                        background: flash === r ? colorVar : 'var(--color-muted)',
-                        color: flash === r ? '#fff' : colorVar,
-                        border: `1px solid ${flash === r ? 'transparent' : 'var(--color-outline)'}`,
-                        boxShadow: flash === r ? `0 0 20px ${colorVar}66` : 'none',
-                      }}>
-                      <Icon />
-                      <span className="font-semibold">{label}</span>
-                      <span className="text-xs opacity-50">{key}</span>
-                    </motion.button>
-                  ))}
-                </div>
-              )}
-           </div>
+            <div className="flex items-center justify-center gap-3 px-4 pb-4 flex-shrink-0" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+              {!current && cards.length > 0 ? (
+                <button onClick={() => { setSelectedChannels(new Set()); setMode('all'); setIndex(0); setFlipped(false); }}
+                   className="cursor-pointer px-4 py-2 min-h-[48px] h-10 rounded-full bg-muted hover:bg-muted/80 text-sm font-medium transition-all border border-outline focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
+                >
+                   Show all cards
+                </button>
+              ) : !flipped ? (
+                <button onClick={flip} disabled={!current}
+                    className="cursor-pointer w-full max-w-xs py-4 rounded-full text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-primary text-primary-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none">
+                  Show Answer
+                </button>
+               ) : (
+                 <div className="flex gap-2 w-full max-w-md">
+                   {[
+                     { r: 'again' as ConfidenceRating, label: 'Again', key: '1', colorVar: 'var(--color-error, #EA4335)', Icon: AgainIcon },
+                     { r: 'hard' as ConfidenceRating, label: 'Hard', key: '2', colorVar: 'var(--color-warning, #FBBC05)', Icon: HardIcon },
+                     { r: 'good' as ConfidenceRating, label: 'Good', key: '3', colorVar: 'var(--color-success, #34A853)', Icon: GoodIcon },
+                     { r: 'easy' as ConfidenceRating, label: 'Easy', key: '4', colorVar: 'var(--color-primary, #3b82f6)', Icon: EasyIcon },
+                   ].map(({ r, label, key, colorVar, Icon }) => (
+                     <motion.button key={r} whileTap={{ scale: 0.92 }} onClick={() => rate(r)}
+                        className="cursor-pointer flex-1 flex flex-col items-center justify-center py-2 min-h-[48px] h-10 rounded-lg text-sm font-medium transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none shadow-none"
+                       style={{
+                         background: flash === r ? colorVar : 'var(--color-muted)',
+                         color: flash === r ? '#fff' : colorVar,
+                         border: `1px solid ${flash === r ? 'transparent' : 'var(--color-outline)'}`,
+                         boxShadow: flash === r ? `0 0 20px ${colorVar}66` : 'none',
+                       }}>
+                       <Icon />
+                       <span className="font-semibold">{label}</span>
+                       <span className="text-xs opacity-[0.38]">{key}</span>
+                     </motion.button>
+                   ))}
+                 </div>
+               )}
+            </div>
         </div>
       </AppLayout>
     </>

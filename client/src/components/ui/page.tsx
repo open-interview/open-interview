@@ -89,7 +89,7 @@ export function FilterPill({ label, active, onClick, badge }: FilterPillProps) {
     <button
       onClick={onClick}
       className={cn(
-        'cursor-pointer px-4 min-h-[44px] rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-150',
+        'cursor-pointer px-4 min-h-[48px] rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-150',
         active
           ? 'bg-gradient-to-r from-primary to-primary text-primary-foreground'
           : 'bg-muted/50 border border-border text-muted-foreground hover:bg-muted'

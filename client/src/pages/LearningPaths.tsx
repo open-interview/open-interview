@@ -4,12 +4,13 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, useSearchParams } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
 import { SEOHead } from '../components/SEOHead';
 import { allChannelsConfig } from '../lib/channels-config';
 import { useUserPreferences } from '../context/UserPreferencesContext';
+import { useUnifiedToast } from '../hooks/use-unified-toast';
 import {
   Code, Rocket, Brain, Building2, Award,
   Plus, ChevronRight, Star, Clock, Zap, Check, X, Search, Target
@@ -73,21 +74,106 @@ function getPathTypeFromId(id: string) {
 
 export default function LearningPaths() {
   const [, setLocation] = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [showCustom, setShowCustom] = useState(false);
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [curatedPaths, setCuratedPaths] = useState<any[]>([]);
+  const { toast } = useUnifiedToast();
+
+  // Filter states initialized from URL
+  const [selectedLevels, setSelectedLevels] = useState<string[]>(() => {
+    const level = searchParams.get('level');
+    return level ? level.split(',') : [];
+  });
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(() => {
+    const category = searchParams.get('category');
+    return category ? category.split(',') : [];
+  });
+  const [sortBy, setSortBy] = useState<string>(() => {
+    return searchParams.get('sort') || '';
+  });
+  const [searchQuery, setSearchQuery] = useState(() => {
+    return searchParams.get('search') || '';
+  });
+  const [modalSearchQuery, setModalSearchQuery] = useState('');
+
   const { preferences } = useUserPreferences();
   const subscribedSet = new Set(preferences.subscribedChannels);
-  const visibleCuratedPaths = curatedPaths.filter(p => p.channels.some((c: string) => subscribedSet.has(c)));
-  
+
+  // Sync filters to URL
+  useEffect(() => {
+    const params: Record<string, string> = {};
+    if (selectedLevels.length > 0) params.level = selectedLevels.join(',');
+    if (selectedCategories.length > 0) params.category = selectedCategories.join(',');
+    if (sortBy) params.sort = sortBy;
+    if (searchQuery) params.search = searchQuery;
+    setSearchParams(params, { replace: true });
+  }, [selectedLevels, selectedCategories, sortBy, searchQuery]);
+
+  // Handle browser back/forward
+  useEffect(() => {
+    const handlePopState = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const level = urlParams.get('level');
+      const category = urlParams.get('category');
+      const sort = urlParams.get('sort');
+      const search = urlParams.get('search');
+      setSelectedLevels(level ? level.split(',') : []);
+      setSelectedCategories(category ? category.split(',') : []);
+      setSortBy(sort || '');
+      setSearchQuery(search || '');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Filter and sort curated paths
+  const visibleCuratedPaths = curatedPaths
+    .filter(p => p.channels.some((c: string) => subscribedSet.has(c)))
+    .filter(p => {
+      if (selectedLevels.length > 0) {
+        const difficulty = p.difficulty?.toLowerCase();
+        return selectedLevels.some(l => difficulty === l.toLowerCase());
+      }
+      return true;
+    })
+    .filter(p => {
+      if (selectedCategories.length > 0) {
+        return p.skills?.some((s: string) =>
+          selectedCategories.some(cat => s.toLowerCase().includes(cat.toLowerCase()))
+        );
+      }
+      return true;
+    })
+    .filter(p => {
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        return p.name?.toLowerCase().includes(query) ||
+               p.description?.toLowerCase().includes(query) ||
+               p.skills?.some((s: string) => s.toLowerCase().includes(query));
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (!sortBy) return 0;
+      switch (sortBy) {
+        case 'name': return (a.name || '').localeCompare(b.name || '');
+        case 'difficulty': {
+          const order = { 'beginner': 1, 'intermediate': 2, 'advanced': 3 };
+          return (order[a.difficulty?.toLowerCase()] || 0) - (order[b.difficulty?.toLowerCase()] || 0);
+        }
+        case 'progress': return (b.totalQuestions || 0) - (a.totalQuestions || 0);
+        default: return 0;
+      }
+    });
+
   // Custom path builder state
   const [customPath, setCustomPath] = useState<CustomPath>({
     name: '',
     channels: [],
     certifications: []
   });
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Load certifications
   useEffect(() => {
@@ -148,7 +234,11 @@ export default function LearningPaths() {
 
   const handleCreateCustomPath = () => {
     if (!customPath.name || (customPath.channels.length === 0 && customPath.certifications.length === 0)) {
-      alert('Please add a name and select at least one channel or certification');
+      toast({
+        title: 'Invalid Path',
+        description: 'Please add a name and select at least one channel or certification',
+        variant: 'destructive'
+      });
       return;
     }
 
@@ -250,7 +340,7 @@ export default function LearningPaths() {
                     <h2 className="text-3xl font-semibold">Create Custom Path</h2>
                     <button
                       onClick={() => setShowCustom(false)}
-                      className="w-10 h-10 bg-muted/50 hover:bg-muted rounded-full flex items-center justify-center transition-all"
+                      className="min-w-[48px] w-10 min-h-[48px] h-10 bg-muted/50 hover:bg-muted rounded-full flex items-center justify-center transition-all"
                     >
                       <X className="w-5 h-5" />
                     </button>
@@ -353,7 +443,7 @@ export default function LearningPaths() {
                   <button
                     onClick={handleCreateCustomPath}
                     disabled={!customPath.name || (customPath.channels.length === 0 && customPath.certifications.length === 0)}
-                     className="w-full py-2.5 bg-gradient-to-r from-primary to-primary rounded-lg font-medium text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-all shadow-none"
+                     className="w-full py-2.5 bg-gradient-to-r from-primary to-primary rounded-lg font-medium text-sm text-white disabled:opacity-[0.38] disabled:cursor-not-allowed hover:scale-105 transition-all shadow-none"
                   >
                     Create Path
                   </button>
@@ -397,16 +487,73 @@ export default function LearningPaths() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary rounded-full flex items-center justify-center">
-                      <Plus className="w-8 h-8 text-primary-foreground" strokeWidth={3} />
+                      <Plus className="min-w-[48px] w-8 min-h-[48px] h-8 text-primary-foreground" strokeWidth={3} />
                     </div>
                     <div className="text-left">
                       <h3 className="text-2xl font-bold mb-1">Create Custom Path</h3>
                       <p className="text-foreground/70">Build your own learning journey</p>
                     </div>
                   </div>
-                  <ChevronRight className="w-8 h-8 text-primary group-hover:translate-x-2 transition-transform" />
+                  <ChevronRight className="min-w-[48px] w-8 min-h-[48px] h-8 text-primary group-hover:translate-x-2 transition-transform" />
                 </div>
               </button>
+            </motion.div>
+
+            {/* Filters */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="mb-8 space-y-4"
+            >
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9AA0A6]" />
+                <input
+                  type="text"
+                  placeholder="Search learning paths..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 h-[46px] bg-[#F1F3F4] dark:bg-[#303134] rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 transition-all placeholder:text-[#9AA0A6] text-foreground"
+                />
+              </div>
+
+              {/* Level Filter */}
+              <div className="flex flex-wrap gap-2">
+                <span className="text-sm text-foreground/70 py-2">Level:</span>
+                {['beginner', 'intermediate', 'advanced'].map(level => (
+                  <button
+                    key={level}
+                    onClick={() => {
+                      setSelectedLevels(prev =>
+                        prev.includes(level) ? prev.filter(l => l !== level) : [...prev, level]
+                      );
+                    }}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      selectedLevels.includes(level)
+                        ? 'bg-primary text-white'
+                        : 'bg-muted/50 hover:bg-muted border border-border'
+                    }`}
+                  >
+                    {level.charAt(0).toUpperCase() + level.slice(1)}
+                  </button>
+                ))}
+              </div>
+
+              {/* Sort */}
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-foreground/70">Sort by:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm focus:outline-none focus:border-primary"
+                >
+                  <option value="">Default</option>
+                  <option value="name">Name</option>
+                  <option value="difficulty">Difficulty</option>
+                  <option value="progress">Questions</option>
+                </select>
+              </div>
             </motion.div>
 
             {/* Curated Paths */}
@@ -441,7 +588,7 @@ export default function LearningPaths() {
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-4">
                             <div className={`w-16 h-16 bg-gradient-to-br ${path.color} rounded-[var(--radius-xl)] flex items-center justify-center`}>
-                              <Icon className="w-8 h-8 text-foreground" strokeWidth={2.5} />
+                              <Icon className="min-w-[48px] w-8 min-h-[48px] h-8 text-foreground" strokeWidth={2.5} />
                             </div>
                             <div>
                               <h3 className="text-2xl font-bold mb-1">{path.name}</h3>
@@ -449,7 +596,7 @@ export default function LearningPaths() {
                             </div>
                           </div>
                           {isSelected && (
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'var(--color-success)' }}>
+                            <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-full flex items-center justify-center" style={{ background: 'var(--color-success)' }}>
                               <Check className="w-5 h-5 text-white" strokeWidth={3} />
                             </div>
                           )}

@@ -20,7 +20,7 @@ export function CreditsDisplay({ compact = false, onClick }: CreditsDisplayProps
       <button
         onClick={onClick}
         aria-label="View credits"
-        className="flex items-center gap-1 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full hover:bg-amber-500/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px] min-w-[44px]"
+        className="flex items-center gap-1 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full hover:bg-amber-500/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[48px] min-w-[48px]"
       >
         <Coins className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
         <span className="text-xs font-bold text-amber-500">{formatCredits(balance)}</span>
@@ -34,7 +34,7 @@ export function CreditsDisplay({ compact = false, onClick }: CreditsDisplayProps
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       aria-label="View credits"
-      className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20 rounded-lg hover:from-amber-500/20 hover:to-yellow-500/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[44px]"
+      className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20 rounded-lg hover:from-amber-500/20 hover:to-yellow-500/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[48px]"
     >
       <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center">
         <Coins className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />

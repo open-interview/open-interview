@@ -257,8 +257,8 @@ export function LevelDisplay({
 // Compact level badge for navigation/header
 export function LevelBadge({ level, size = 'md' }: { level: number; size?: 'sm' | 'md' | 'lg' }) {
   const sizes = {
-    sm: 'w-8 h-8 text-sm',
-    md: 'w-10 h-10 text-base',
+    sm: 'min-w-[48px] w-8 min-h-[48px] h-8 text-sm',
+    md: 'min-w-[48px] w-10 min-h-[48px] h-10 text-base',
     lg: 'w-12 h-12 text-lg',
   };
   

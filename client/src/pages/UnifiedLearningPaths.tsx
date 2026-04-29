@@ -3,7 +3,7 @@
  * Shows: Active paths, Custom paths, Curated paths
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
@@ -12,6 +12,9 @@ import { allChannelsConfig } from '../lib/channels-config';
 import { PageHeader, SearchBar, FilterPills } from '@/components/ui/page';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { isPersonalized } from '../lib/personalization';
+import { useUnifiedNotifications } from '../components/UnifiedNotificationManager';
+import { GoogleDialog } from '../components/google/GoogleDialog';
+import { useUndo } from '../hooks/use-undo';
 import {
   Plus, Trash2, Edit, ChevronRight, Brain, Check, Target, Clock, Sparkles, Award,
   Code, Server, Rocket, X, Search, Star, Zap, Trophy, Building2,
@@ -118,7 +121,7 @@ function PathCard({ path, isActive, pathProgress, onSelect, onContinue, onDeacti
       <div className="relative space-y-3">
         {/* Icon + name row */}
         <div className="flex items-start gap-3">
-          <div className="relative w-10 h-10 flex-shrink-0">
+          <div className="relative min-w-[48px] w-10 min-h-[48px] h-10 flex-shrink-0">
             {isActive && pathProgress > 0 && (
               <div className="absolute -inset-1 flex items-center justify-center pointer-events-none">
                 <ProgressRing progress={pathProgress} size={48} stroke={3} />
@@ -181,14 +184,14 @@ function PathCard({ path, isActive, pathProgress, onSelect, onContinue, onDeacti
             <>
               <button
                 onClick={e => { e.stopPropagation(); onContinue(); }}
-                className="flex-1 min-h-[44px] py-2 rounded-xl text-xs font-bold transition-all duration-150 ease-out flex items-center justify-center gap-1.5 text-white cursor-pointer"
+                className="flex-1 min-h-[48px] py-2 rounded-xl text-xs font-bold transition-all duration-150 ease-out flex items-center justify-center gap-1.5 text-white cursor-pointer"
                 style={{ background: gradient }}
               >
                 Continue <ChevronRight className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={e => { e.stopPropagation(); onDeactivate(); }}
-                className="px-3 min-h-[44px] rounded-xl transition-all duration-150 ease-out hover:bg-muted/80 border border-border text-muted-foreground cursor-pointer"
+                className="px-3 min-h-[48px] rounded-xl transition-all duration-150 ease-out hover:bg-muted/80 border border-border text-muted-foreground cursor-pointer"
                 title="Deactivate"
               >
                 <X className="w-3.5 h-3.5" />
@@ -197,7 +200,7 @@ function PathCard({ path, isActive, pathProgress, onSelect, onContinue, onDeacti
           ) : (
             <button
               onClick={e => { e.stopPropagation(); onActivate(); }}
-              className="flex-1 min-h-[44px] py-2 rounded-xl text-xs font-bold transition-all duration-150 ease-out flex items-center justify-center gap-1.5 text-white cursor-pointer"
+              className="flex-1 min-h-[48px] py-2 rounded-xl text-xs font-bold transition-all duration-150 ease-out flex items-center justify-center gap-1.5 text-white cursor-pointer"
               style={{ background: gradient }}
             >
               <Plus className="w-3.5 h-3.5" />Start Path
@@ -227,7 +230,7 @@ function PathSection({ title, emoji, paths, activePaths, getPathProgress, onSele
 
   return (
     <div className="mb-6">
-      <button onClick={() => setOpen(o => !o)} className="w-full min-h-[44px] flex items-center justify-between px-1 py-2 mb-3 group cursor-pointer">
+      <button onClick={() => setOpen(o => !o)} className="w-full min-h-[48px] flex items-center justify-between px-1 py-2 mb-3 group cursor-pointer">
         <div className="flex items-center gap-2.5">
           <span className="text-xl">{emoji}</span>
           <div className="text-left">
@@ -311,6 +314,37 @@ export default function UnifiedLearningPaths() {
       if (saved) setCustomPaths(JSON.parse(saved));
     } catch (e) { console.error('Failed to load custom paths:', e); }
   }, []);
+
+  const { showToast } = useUnifiedNotifications();
+  const { pendingAction, triggerUndo, undo: performUndo, dismiss } = useUndo<CustomPath[]>();
+  const deletedPathRef = useRef<CustomPath | null>(null);
+
+  const handleDeleteCustomPath = (path: CustomPath) => {
+    deletedPathRef.current = path;
+    const previousState = [...customPaths];
+    const undoFn = () => {
+      setCustomPaths(prev => [...prev, path].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
+      showToast('Path restored', path.name, 'success');
+      dismiss();
+    };
+
+    try {
+      const updated = customPaths.filter(p => p.id !== path.id);
+      localStorage.setItem('customLearningPaths', JSON.stringify(updated));
+      setCustomPaths(updated);
+      deactivateCustomPath(path.id);
+      
+      showToast('Path deleted', path.name, 'default', { label: 'Undo', onClick: undoFn }, 4000);
+    } catch (e) { console.error('Failed to delete path:', e); }
+  };
+
+  const skipDeleteConfirm = (pathId: string) => {
+    try {
+      const current = JSON.parse(localStorage.getItem('activeLearningPaths') || '[]');
+      localStorage.setItem('activeLearningPaths', JSON.stringify(current.filter((id: string) => id !== pathId)));
+      window.location.reload();
+    } catch (e) { console.error('Failed to deactivate path:', e); }
+  };
 
   useEffect(() => {
     async function loadCerts() {
@@ -416,18 +450,13 @@ export default function UnifiedLearningPaths() {
       window.location.reload();
     } catch (e) { console.error('Failed to deactivate path:', e); }
   };
-  const deleteCustomPath = (pathId: string) => {
-    if (!confirm('Delete this path? This cannot be undone.')) return;
-    try {
-      const updated = customPaths.filter(p => p.id !== pathId);
-      localStorage.setItem('customLearningPaths', JSON.stringify(updated));
-      setCustomPaths(updated);
-      deactivateCustomPath(pathId);
-    } catch (e) { console.error('Failed to delete path:', e); }
+  const deleteCustomPath = (path: CustomPath) => {
+    handleDeleteCustomPath(path);
   };
   const saveEditedPath = () => {
     if (!selectedPath || !editForm.name || (editForm.channels.length === 0 && editForm.certifications.length === 0)) {
-      alert('Please enter a name and select at least one channel or certification'); return;
+      showToast('Validation Error', 'Please enter a name and select at least one channel or certification', 'destructive');
+      return;
     }
     const updated = customPaths.map(p => p.id === selectedPath.id ? { ...p, name: editForm.name, channels: editForm.channels, certifications: editForm.certifications } : p);
     localStorage.setItem('customLearningPaths', JSON.stringify(updated));
@@ -445,7 +474,7 @@ export default function UnifiedLearningPaths() {
   const toggleEditCertification = (certId: string) => setEditForm(prev => ({ ...prev, certifications: prev.certifications.includes(certId) ? prev.certifications.filter(id => id !== certId) : [...prev.certifications, certId] }));
   const saveCustomPath = () => {
     if (!customForm.name || (customForm.channels.length === 0 && customForm.certifications.length === 0)) {
-      alert('Please enter a name and select at least one channel or certification'); return;
+      showToast('Validation Error', 'Please enter a name and select at least one channel or certification', 'destructive'); return;
     }
     const newPath: CustomPath = { id: `custom-${Date.now()}`, name: customForm.name, channels: customForm.channels, certifications: customForm.certifications, createdAt: new Date().toISOString() };
     const updated = [...customPaths, newPath];
@@ -531,7 +560,7 @@ export default function UnifiedLearningPaths() {
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => openPathModal(null, 'create')}
-                 className="inline-flex items-center gap-2 mt-5 px-5 py-2 rounded-full text-sm font-bold text-white cursor-pointer transition-all duration-150 shadow-lg hover:shadow-violet-500/30"
+                  className="inline-flex items-center gap-2 mt-5 px-5 py-2 rounded-full text-sm font-bold text-white cursor-pointer transition-all duration-150"
                 style={{ background: 'var(--gradient-primary)' }}
               >
                 <Plus className="w-4 h-4" strokeWidth={3} />
@@ -645,7 +674,7 @@ export default function UnifiedLearningPaths() {
                         <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl" style={{ background: path.gradient || 'var(--gradient-primary)' }} />
                         <div className="flex items-center justify-between mb-3 mt-1">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: path.gradient || 'var(--gradient-primary)' }}>
+                            <div className="min-w-[48px] w-10 min-h-[48px] h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: path.gradient || 'var(--gradient-primary)' }}>
                               <Icon className="w-5 h-5" style={{ color: 'var(--btn-primary-text)' }} strokeWidth={2.5} />
                             </div>
                             <div className="min-w-0">
@@ -665,10 +694,10 @@ export default function UnifiedLearningPaths() {
                         )}
                         <div className="flex gap-2">
                           <button onClick={() => path.channels?.[0] && setLocation(`/channel/${path.channels[0]}`)}
-                            className="flex-1 min-h-[44px] py-2 rounded-xl text-xs font-bold text-white transition-all duration-150 ease-out hover:opacity-90 cursor-pointer"
+                            className="flex-1 min-h-[48px] py-2 rounded-xl text-xs font-bold text-white transition-all duration-150 ease-out hover:opacity-90 cursor-pointer"
                             style={{ background: 'var(--gradient-primary)' }}>Continue</button>
                           <button onClick={() => deactivateCustomPath(path.id)}
-                             className="px-2 min-h-[44px] rounded-xl transition-all duration-150 ease-out hover:bg-red-500/20 cursor-pointer"
+                             className="px-2 min-h-[48px] rounded-xl transition-all duration-150 ease-out hover:bg-red-500/20 cursor-pointer"
                             style={{ background: 'var(--surface-3)' }}>
                             <X className="w-3.5 h-3.5" style={{ color: 'var(--color-error)' }} />
                           </button>
@@ -716,7 +745,7 @@ export default function UnifiedLearningPaths() {
                 <div className="flex flex-col sm:flex-row gap-3 mb-6">
                   <SearchBar value={curatedSearchQuery} onChange={setCuratedSearchQuery} placeholder="Search paths…" className="flex-1" />
                    <select value={filterDifficulty} onChange={e => setFilterDifficulty(e.target.value)}
-                     className="px-3 py-2 rounded-xl text-sm focus:outline-none cursor-pointer min-h-[44px]"
+                     className="px-3 py-2 rounded-xl text-sm focus:outline-none cursor-pointer min-h-[48px]"
                     style={{ background: 'var(--surface-3)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}>
                     <option value="">All Levels</option>
                     <option value="Beginner">Beginner</option>
@@ -724,7 +753,7 @@ export default function UnifiedLearningPaths() {
                     <option value="Advanced">Advanced</option>
                   </select>
                   <select value={filterRole} onChange={e => setFilterRole(e.target.value)}
-                    className="px-3 py-2.5 rounded-xl text-sm focus:outline-none cursor-pointer min-h-[44px]"
+                    className="px-3 py-2.5 rounded-xl text-sm focus:outline-none cursor-pointer min-h-[48px]"
                     style={{ background: 'var(--surface-3)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}>
                     <option value="">All Types</option>
                     <option value="job-title">Job Title</option>
@@ -772,14 +801,14 @@ export default function UnifiedLearningPaths() {
                 className="w-full max-w-3xl h-[90vh] md:h-auto md:max-h-[85vh] flex flex-col overflow-hidden md:mb-0 mb-16"
                 style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-3xl) var(--radius-3xl) 0 0' }}>
                 <div className="flex justify-center pt-3 pb-1 md:hidden">
-                  <div className="w-10 h-1 rounded-full" style={{ background: 'var(--color-border-strong)' }} />
+                  <div className="min-w-[48px] w-10 h-1 rounded-full" style={{ background: 'var(--color-border-strong)' }} />
                 </div>
                 <div className="px-5 py-4 border-b flex-shrink-0" style={{ borderColor: 'var(--color-border)' }}>
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-lg font-bold truncate pr-2">
                       {modalMode === 'create' ? 'Create Path' : modalMode === 'edit' ? 'Edit Path' : selectedPath?.name}
                     </h2>
-                    <button onClick={closePathModal} className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-150 ease-out hover:bg-white/10 cursor-pointer flex-shrink-0" style={{ background: 'var(--surface-3)' }}>
+                    <button onClick={closePathModal} className="min-w-[48px] w-10 min-h-[48px] h-10 rounded-full flex items-center justify-center transition-all duration-150 ease-out hover:bg-white/10 cursor-pointer flex-shrink-0" style={{ background: 'var(--surface-3)' }}>
                       <X className="w-4 h-4" />
                     </button>
                   </div>
@@ -845,7 +874,7 @@ export default function UnifiedLearningPaths() {
                     const count = tab === 'channels' ? currentChannels.length : currentCertifications.length;
                     return (
                       <button key={tab} onClick={() => setModalTab(tab)}
-                         className="flex-1 min-h-[44px] py-2 text-xs font-semibold capitalize relative transition-colors duration-150 ease-out cursor-pointer"
+                         className="flex-1 min-h-[48px] py-2 text-xs font-semibold capitalize relative transition-colors duration-150 ease-out cursor-pointer"
                         style={{ color: modalTab === tab ? 'var(--color-accent-violet-light)' : 'var(--text-tertiary)' }}>
                         {tab} ({count})
                         {modalTab === tab && <motion.div layoutId="modal-tab" className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: 'var(--color-accent-violet)' }} />}
@@ -871,7 +900,7 @@ export default function UnifiedLearningPaths() {
                           const isSelected = currentChannels.includes(channel.id);
                           return (
                             <button key={channel.id} onClick={() => { if (isReadonly) return; if (modalMode === 'create') setCustomForm(p => ({ ...p, channels: isSelected ? p.channels.filter(id => id !== channel.id) : [...p.channels, channel.id] })); else toggleEditChannel(channel.id); }}
-                              disabled={isReadonly} className="p-3 min-h-[44px] rounded-xl border text-left transition-all duration-150 ease-out cursor-pointer"
+                              disabled={isReadonly} className="p-3 min-h-[48px] rounded-xl border text-left transition-all duration-150 ease-out cursor-pointer"
                               style={{ background: isSelected ? 'color-mix(in srgb, var(--color-accent-violet) 12%, transparent)' : 'var(--surface-3)', borderColor: isSelected ? 'var(--color-accent-violet)' : 'var(--color-border)' }}>
                               <div className="flex items-center justify-between">
                                 <span className="font-medium text-sm">{channel.name}</span>
@@ -884,7 +913,7 @@ export default function UnifiedLearningPaths() {
                           const isSelected = currentCertifications.includes(cert.id);
                           return (
                             <button key={cert.id} onClick={() => { if (isReadonly) return; if (modalMode === 'create') setCustomForm(p => ({ ...p, certifications: isSelected ? p.certifications.filter(id => id !== cert.id) : [...p.certifications, cert.id] })); else toggleEditCertification(cert.id); }}
-                              disabled={isReadonly} className="p-3 min-h-[44px] rounded-xl border text-left transition-all duration-150 ease-out cursor-pointer"
+                              disabled={isReadonly} className="p-3 min-h-[48px] rounded-xl border text-left transition-all duration-150 ease-out cursor-pointer"
                               style={{ background: isSelected ? 'color-mix(in srgb, var(--color-accent-violet) 12%, transparent)' : 'var(--surface-3)', borderColor: isSelected ? 'var(--color-accent-violet)' : 'var(--color-border)' }}>
                               <div className="flex items-center justify-between gap-2">
                                 <div className="min-w-0">
@@ -902,14 +931,14 @@ export default function UnifiedLearningPaths() {
                 <div className="p-4 border-t flex-shrink-0" style={{ borderColor: 'var(--color-border)', background: 'var(--surface-2)' }}>
                   {isReadonly ? (
                      <button onClick={() => { activateCustomPath(selectedPath.id); closePathModal(); }}
-                        className="w-full py-2 h-10 rounded-lg font-medium text-sm text-white transition-all duration-150 ease-out hover:opacity-90 active:scale-95 cursor-pointer shadow-none"
+                        className="w-full py-2 min-h-[48px] h-10 rounded-lg font-medium text-sm text-white transition-all duration-150 ease-out hover:opacity-90 active:scale-95 cursor-pointer shadow-none"
                       style={{ background: selectedPath?.gradient || 'var(--gradient-primary)' }}>
                       {activePaths.some(p => p.id === selectedPath?.id) ? 'Resume Path' : 'Start Path'}
                     </button>
                   ) : (
                     <button onClick={modalMode === 'create' ? saveCustomPath : saveEditedPath}
                       disabled={(modalMode === 'create' && (!customForm.name || (customForm.channels.length === 0 && customForm.certifications.length === 0))) || (modalMode === 'edit' && (!editForm.name || (editForm.channels.length === 0 && editForm.certifications.length === 0)))}
-                       className="w-full py-2 h-10 rounded-lg font-medium text-sm text-white transition-all duration-150 ease-out hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-none"
+                       className="w-full py-2 min-h-[48px] h-10 rounded-lg font-medium text-sm text-white transition-all duration-150 ease-out hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-none"
                       style={{ background: 'var(--gradient-primary)' }}>
                       {modalMode === 'create' ? 'Create Path' : 'Save Changes'}
                     </button>

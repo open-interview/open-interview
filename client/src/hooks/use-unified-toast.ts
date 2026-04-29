@@ -13,6 +13,8 @@ interface ToastProps {
   title?: string;
   description?: string;
   variant?: ToastVariant;
+  action?: { label: string; onClick: () => void };
+  duration?: number;
 }
 
 // Notification storage helper - stores toasts as notifications for history
@@ -53,7 +55,7 @@ export function useUnifiedToast() {
   const { showToast } = useUnifiedNotifications();
   
   const toast = useCallback((props: ToastProps) => {
-    const { title, description, variant = 'default' } = props;
+    const { title, description, variant = 'default', action, duration } = props;
     
     if (title) {
       // Map variants to the unified system
@@ -61,7 +63,7 @@ export function useUnifiedToast() {
         : variant === 'success' ? 'success'
         : variant === 'warning' ? 'warning'
         : 'default';
-      showToast(title, description, unifiedVariant);
+      showToast(title, description, unifiedVariant, action, duration);
       
       // Also save to notification history
       saveToNotifications(title, description, variant);

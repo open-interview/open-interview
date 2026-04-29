@@ -243,7 +243,6 @@ export function AccessibleModal({ isOpen, onClose }: { isOpen: boolean; onClose:
         background: 'white',
         padding: '24px',
         borderRadius: '8px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
         // Respect reduced motion preference
         animation: prefersReducedMotion 
           ? 'none' 

@@ -81,7 +81,6 @@ export function RecallRatingBar({ onRate, disabled = false, size = 'md' }: Recal
                 background: isSelected ? cfg.gradient : cfg.bg,
                 color: cfg.color,
                 border: isSelected ? `2px solid ${cfg.color}` : `1px solid ${cfg.border}`,
-                boxShadow: isSelected ? cfg.glow : 'none',
               }}
             >
               <span className="font-bold">{cfg.label}</span>

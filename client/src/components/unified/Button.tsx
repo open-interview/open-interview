@@ -75,7 +75,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const baseClasses = 'inline-flex items-center justify-center gap-2 font-medium text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+    const baseClasses = 'inline-flex items-center justify-center gap-2 font-medium text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-[0.38] disabled:cursor-not-allowed';
     const variantClass = variantClasses[variant];
     const sizeClass = sizeClasses[size];
     const roundedClass = roundedClasses[rounded];
@@ -152,7 +152,7 @@ export const MotionButton = forwardRef<HTMLButtonElement, MotionButtonProps>(
     const spring = getSpringTransition(prefersReducedMotion);
     const bounce = prefersReducedMotion ? { duration: 0.01 } : springTransitionBounce;
 
-    const baseClasses = 'inline-flex items-center justify-center gap-2 font-medium text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+    const baseClasses = 'inline-flex items-center justify-center gap-2 font-medium text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-[0.38] disabled:cursor-not-allowed';
     const variantClass = variantClasses[variant];
     const sizeClass = sizeClasses[size];
     const roundedClass = roundedClasses[rounded];
@@ -206,8 +206,8 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
   ({ icon, size = 'md', rounded = 'default', className = '', ...props }, ref) => {
     const sizeMap = {
       xs: 'w-6 h-6',
-      sm: 'w-8 h-8',
-      md: 'w-10 h-10',
+      sm: 'min-w-[48px] w-8 h-8',
+      md: 'min-w-[48px] w-10 h-10',
       lg: 'w-12 h-12',
       xl: 'w-14 h-14'
     };
@@ -217,7 +217,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         ref={ref}
         size={size}
         rounded={rounded}
-        className={`min-w-[40px] min-h-[40px] h-10 ${sizeMap[size]} p-0 flex items-center justify-center ${className}`}
+        className={`min-w-[48px] min-h-[48px] min-h-[48px] h-10 ${sizeMap[size]} p-0 flex items-center justify-center ${className}`}
         {...props}
       >
         {icon}

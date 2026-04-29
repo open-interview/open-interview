@@ -1,18 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
-import { Search, ChevronRight, Layers, Type, GitBranch, Network, BarChart2, SortAsc, Star } from 'lucide-react';
+import { Search, ChevronRight, Layers, Type, GitBranch, Network, BarChart2, SortAsc, Star, Circle, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Spinner } from '@/components/ui/spinner';
+import { SkeletonGrid } from '@/components/ui/skeleton-loaders';
 import { getProgress } from '@/lib/challenge-progress';
 import { loadAllChallenges } from '@/lib/challenges-loader';
 import type { ChallengeListItem, ChallengeStatus, Difficulty } from '@/types/challenges';
+import { NetworkError, NoResults } from '@/components/google/ErrorStates';
 
 const DIFFICULTIES: Array<'All' | Difficulty> = ['All', 'easy', 'medium', 'hard'];
+
+const DIFFICULTY_ICONS: Record<Difficulty, typeof Circle> = {
+  easy: Circle,
+  medium: AlertCircle,
+  hard: CheckCircle2,
+};
 
 const DIFFICULTY_STYLES: Record<Difficulty, { bg: string; text: string; dot: string }> = {
   easy: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', dot: 'bg-emerald-400' },
   medium: { bg: 'bg-amber-500/10', text: 'text-amber-400', dot: 'bg-amber-400' },
   hard: { bg: 'bg-red-500/10', text: 'text-red-400', dot: 'bg-red-400' },
+};
+
+const STATUS_ICONS: Record<ChallengeStatus, typeof CheckCircle2> = {
+  solved: CheckCircle2,
+  attempted: AlertCircle,
+  unsolved: Circle,
 };
 
 const STATUS_LABEL: Record<ChallengeStatus, string> = {
@@ -39,6 +52,7 @@ const CATEGORIES = [
 export default function ChallengeList() {
   const [challenges, setChallenges] = useState<ChallengeListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const showLoading = useMinDelay(loading, 300);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [difficulty, setDifficulty] = useState<'All' | Difficulty>('All');
@@ -75,20 +89,64 @@ export default function ChallengeList() {
     [challenges, progress]
   );
 
-  if (loading) {
+  if (showLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Spinner className="size-8 text-zinc-400" />
+      <div className="max-w-6xl mx-auto px-4 py-8 space-y-6 pb-24">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="m3-shimmer" style={{ width: 180, height: 28, borderRadius: 4, marginBottom: 8 }} />
+            <div className="m3-shimmer" style={{ width: 140, height: 16, borderRadius: 4 }} />
+          </div>
+        </div>
+        <div className="m3-shimmer" style={{ width: '100%', height: 42, borderRadius: 9999 }} />
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            {[72, 80, 96].map((w, i) => (
+              <div key={i} className="m3-shimmer" style={{ width: w, height: 32, borderRadius: 9999 }} />
+            ))}
+          </div>
+          <div className="flex gap-2">
+            {[64, 56, 60, 52].map((w, i) => (
+              <div key={i} className="m3-shimmer" style={{ width: w, height: 32, borderRadius: 9999 }} />
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <QuestionCardSkeleton key={i} />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-2 text-zinc-400">
-        <p className="text-red-400 font-medium">Failed to load challenges</p>
-        <p className="text-base">{error}</p>
-      </div>
+      <NetworkError
+        title="Failed to load challenges"
+        message="We couldn't load the challenge list. Your internet connection may be unstable."
+        onRetry={() => {
+          setError(null);
+          setLoading(true);
+          loadAllChallenges()
+            .then(setChallenges)
+            .catch((e) => setError(e.message))
+            .finally(() => setLoading(false));
+        }}
+      />
+    );
+  }
+
+  if (filtered.length === 0 && !loading) {
+    const suggestions = ['arrays', 'strings', 'dynamic-programming'].filter(t => t !== activeTag);
+    return (
+      <NoResults
+        title="No challenges found"
+        message="No challenges match your current filters. Try adjusting or clearing your filters."
+        onClearSearch={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
+        suggestions={suggestions}
+        query={search}
+      />
     );
   }
 
@@ -117,23 +175,24 @@ export default function ChallengeList() {
 
       {/* Filter Chips - Google Style */}
       <div className="space-y-3">
-        {/* Difficulty filters */}
-        <div className="flex items-center gap-2 flex-wrap">
-         <span className="text-xs text-foreground/60 mr-1">Difficulty:</span>
-           {DIFFICULTIES.map((d) => (
-             <button
-               key={d}
-               onClick={() => setDifficulty(d)}
-               className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 cursor-pointer min-h-[36px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                 difficulty === d
-                    ? 'bg-primary text-primary-foreground border-primary'
-                   : 'bg-muted/60 text-foreground/70 border-border/50 hover:bg-muted hover:border-border'
-               }`}
-             >
-              {d === 'All' ? 'All' : d.charAt(0).toUpperCase() + d.slice(1)}
-            </button>
-          ))}
-        </div>
+           {/* Difficulty filters */}
+         <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-foreground/60 mr-1">Difficulty:</span>
+            {DIFFICULTIES.map((d) => (
+              <button
+                key={d}
+                onClick={() => setDifficulty(d)}
+                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 cursor-pointer min-h-[36px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                  difficulty === d
+                     ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-muted/60 text-foreground/70 border-border/50 hover:bg-muted hover:border-border'
+                }`}
+              >
+               {d !== 'All' && (() => { const Icon = DIFFICULTY_ICONS[d]; return <Icon className="w-3.5 h-3.5" />; })()}
+               {d === 'All' ? 'All' : d.charAt(0).toUpperCase() + d.slice(1)}
+             </button>
+           ))}
+         </div>
 
         {/* Category filters */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -193,10 +252,11 @@ export default function ChallengeList() {
                 {/* Card header */}
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs text-foreground/60">#{idx + 1}</span>
-                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${diffStyle.bg} ${diffStyle.text}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${diffStyle.dot}`} />
-                    {challenge.difficulty.charAt(0).toUpperCase() + challenge.difficulty.slice(1)}
-                  </div>
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${diffStyle.bg} ${diffStyle.text}`}>
+                     {(() => { const Icon = DIFFICULTY_ICONS[challenge.difficulty]; return <Icon className="w-3 h-3" />; })()}
+                     <span className={`w-1.5 h-1.5 rounded-full ${diffStyle.dot}`} />
+                     {challenge.difficulty.charAt(0).toUpperCase() + challenge.difficulty.slice(1)}
+                   </div>
                 </div>
 
                 {/* Title */}
@@ -223,9 +283,10 @@ export default function ChallengeList() {
 
                 {/* Footer */}
                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                   <span className={`inline-flex px-3 py-1.5 rounded-md text-xs font-medium ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border} border`}>
-                     {STATUS_LABEL[status]}
-                   </span>
+                    <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border} border`}>
+                      {(() => { const Icon = STATUS_ICONS[status]; return <Icon className="w-3 h-3" />; })()}
+                      {STATUS_LABEL[status]}
+                    </span>
                    <div className="flex items-center gap-1 text-xs text-foreground/60">
                      <span>{challenge.estimatedMinutes}m</span>
                     <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />

@@ -259,7 +259,7 @@ export function StatCard({
           )}
         </div>
         {icon && (
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+          <div className="min-w-[48px] w-10 min-h-[48px] h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
             {icon}
           </div>
         )}

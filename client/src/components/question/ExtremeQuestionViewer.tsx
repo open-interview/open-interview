@@ -548,7 +548,7 @@ export function ExtremeQuestionViewer({ channelId, questionId }: ExtremeQuestion
           <p className="text-muted-foreground mb-4">The channel "{channelId}" doesn't exist.</p>
           <button
             onClick={() => setLocation('/')}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg min-h-[44px] cursor-pointer transition-colors duration-150 ease-out hover:bg-primary/90"
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg min-h-[48px] cursor-pointer transition-colors duration-150 ease-out hover:bg-primary/90"
           >
             Go Home
           </button>
@@ -619,7 +619,7 @@ export function ExtremeQuestionViewer({ channelId, questionId }: ExtremeQuestion
                 setSelectedDifficulty('all');
                 setSelectedCompany('all');
               }}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg min-h-[44px] cursor-pointer transition-colors duration-150 ease-out hover:bg-primary/90"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg min-h-[48px] cursor-pointer transition-colors duration-150 ease-out hover:bg-primary/90"
             >
               Reset Filters
             </button>
@@ -682,23 +682,23 @@ export function ExtremeQuestionViewer({ channelId, questionId }: ExtremeQuestion
           <div className="flex-1 flex flex-col lg:hidden overflow-hidden">
             {/* Mobile Tabs */}
             <div className="flex border-b border-border bg-card backdrop-blur relative z-10">
-              <button
-                onClick={() => setMobileView('question')}
-                className={`flex-1 py-3 text-sm font-medium transition-colors duration-150 ease-out min-h-[44px] cursor-pointer ${
-                  mobileView === 'question'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-muted-foreground'
-                }`}
+               <button
+                 onClick={() => setMobileView('question')}
+                 className={`flex-1 py-2 text-sm font-medium transition-colors duration-150 ease-out min-h-[48px] cursor-pointer ${
+                   mobileView === 'question'
+                     ? 'text-primary border-b-2 border-primary'
+                     : 'text-muted-foreground'
+                 }`}
               >
                 Question
               </button>
-              <button
-                onClick={() => setMobileView('answer')}
-                className={`flex-1 py-3 text-sm font-medium transition-colors duration-150 ease-out min-h-[44px] cursor-pointer ${
-                  mobileView === 'answer'
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-muted-foreground'
-                }`}
+               <button
+                 onClick={() => setMobileView('answer')}
+                 className={`flex-1 py-2 text-sm font-medium transition-colors duration-150 ease-out min-h-[48px] cursor-pointer ${
+                   mobileView === 'answer'
+                     ? 'text-primary border-b-2 border-primary'
+                     : 'text-muted-foreground'
+                 }`}
               >
                 Answer
               </button>
@@ -763,7 +763,7 @@ function QuestionSkeleton() {
       <div className="h-20 bg-card" />
       <div className="flex h-[calc(100vh-80px)]">
         <div className="flex-1 p-6 space-y-6">
-          <div className="h-8 bg-muted rounded w-3/4" />
+          <div className="min-h-[48px] h-8 bg-muted rounded w-3/4" />
           <div className="h-4 bg-muted rounded w-1/2" />
           <div className="space-y-3">
             <div className="h-4 bg-muted rounded" />
@@ -801,7 +801,7 @@ function Header({
         <div className="flex items-center gap-2">
           <motion.button 
             onClick={onBack} 
-            className="p-1.5 hover:bg-muted rounded-lg transition-all duration-150 ease-out min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
+            className="p-1.5 hover:bg-muted rounded-lg transition-all duration-150 ease-out min-h-[48px] min-w-[48px] flex items-center justify-center cursor-pointer"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -839,7 +839,7 @@ function Header({
           {filters && (
             <motion.button 
               onClick={() => setShowFilters(!showFilters)}
-              className={`relative p-1.5 rounded-lg transition-all duration-150 ease-out min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer ${
+              className={`relative p-1.5 rounded-lg transition-all duration-150 ease-out min-h-[48px] min-w-[48px] flex items-center justify-center cursor-pointer ${
                 showFilters || hasActiveFilter 
                   ? 'bg-primary/10 text-primary border border-primary/30' 
                   : 'hover:bg-muted text-muted-foreground'
@@ -859,7 +859,7 @@ function Header({
           {/* Search */}
           <motion.button 
             onClick={onSearch} 
-            className="p-1.5 hover:bg-muted rounded-lg transition-all duration-150 ease-out text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
+            className="p-1.5 hover:bg-muted rounded-lg transition-all duration-150 ease-out text-muted-foreground hover:text-foreground min-h-[48px] min-w-[48px] flex items-center justify-center cursor-pointer"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -870,7 +870,7 @@ function Header({
           {onFullscreen && (
             <motion.button 
               onClick={onFullscreen} 
-              className="hidden lg:flex p-1.5 hover:bg-muted rounded-lg transition-all duration-150 ease-out text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] items-center justify-center cursor-pointer"
+              className="hidden lg:flex p-1.5 hover:bg-muted rounded-lg transition-all duration-150 ease-out text-muted-foreground hover:text-foreground min-h-[48px] min-w-[48px] items-center justify-center cursor-pointer"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -890,7 +890,7 @@ function Header({
             transition={{ duration: 0.2 }}
             className="overflow-hidden border-t border-border"
           >
-            <div className="px-3 py-3 bg-muted/30">
+            <div className="px-3 py-2 bg-muted/30">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Filters:</span>
                 
@@ -935,7 +935,7 @@ function Header({
                       onFilterChange('diff', 'all');
                       onFilterChange('company', 'all');
                     }}
-                    className="ml-auto px-2.5 py-1 text-[10px] font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted/80 rounded-lg transition-all duration-150 ease-out cursor-pointer min-h-[44px] flex items-center"
+                    className="ml-auto px-2.5 py-1 text-[10px] font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted/80 rounded-lg transition-all duration-150 ease-out cursor-pointer min-h-[48px] flex items-center"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
@@ -972,7 +972,7 @@ function FilterDropdown({ label, options, selected, onSelect }: FilterDropdownPr
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
         <button 
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ease-out whitespace-nowrap outline-none focus:outline-none min-h-[44px] cursor-pointer ${
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ease-out whitespace-nowrap outline-none focus:outline-none min-h-[48px] cursor-pointer ${
             isActive 
               ? 'bg-primary/10 text-primary border border-primary/30' 
               : 'bg-card hover:bg-muted border border-border text-foreground'
@@ -1048,7 +1048,7 @@ function AIAssistantPanel({ question, onClose }: { question: any; onClose: () =>
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 hover:bg-muted rounded-lg transition-colors duration-150 ease-out min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
+          className="p-1.5 hover:bg-muted rounded-lg transition-colors duration-150 ease-out min-h-[48px] min-w-[48px] flex items-center justify-center cursor-pointer"
         >
           <X className="w-4 h-4 text-muted-foreground" />
         </button>
@@ -1058,7 +1058,7 @@ function AIAssistantPanel({ question, onClose }: { question: any; onClose: () =>
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
           <div className="text-center text-muted-foreground text-sm">
-            <Brain className="w-8 h-8 mx-auto mb-2 text-purple-500" />
+            <Brain className="min-w-[48px] w-8 min-h-[48px] h-8 mx-auto mb-2 text-purple-500" />
             <p>Ask me anything about this question!</p>
           </div>
         )}
@@ -1099,7 +1099,7 @@ function AIAssistantPanel({ question, onClose }: { question: any; onClose: () =>
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className="px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-colors duration-150 ease-out cursor-pointer min-h-[44px]"
+            className="px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:opacity-[0.38] disabled:cursor-not-allowed text-white rounded-xl transition-colors duration-150 ease-out cursor-pointer min-h-[48px]"
           >
             <Sparkles className="w-4 h-4" />
           </button>
@@ -1132,10 +1132,10 @@ function NavigationFooter({
           <motion.button
             onClick={onPrev}
             disabled={!canGoPrev}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-xs transition-all duration-150 ease-out min-h-[44px] ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-xs transition-all duration-150 ease-out min-h-[48px] ${
               canGoPrev
                 ? 'bg-card hover:bg-muted text-foreground border border-border cursor-pointer'
-                : 'bg-muted/50 text-muted-foreground border border-border cursor-not-allowed opacity-50'
+                : 'bg-muted/50 text-muted-foreground border border-border cursor-not-allowed opacity-[0.38]'
             }`}
             whileHover={canGoPrev ? { scale: 1.05 } : {}}
             whileTap={canGoPrev ? { scale: 0.95 } : {}}
@@ -1149,7 +1149,7 @@ function NavigationFooter({
             {/* Bookmark */}
             <motion.button
               onClick={onToggleMark}
-              className={`p-2 rounded-lg transition-all duration-150 ease-out min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer ${
+              className={`p-2 rounded-lg transition-all duration-150 ease-out min-h-[48px] min-w-[48px] flex items-center justify-center cursor-pointer ${
                 isMarked
                   ? 'bg-primary/10 text-primary border border-primary/30'
                   : 'bg-card text-muted-foreground hover:text-primary border border-border'
@@ -1163,7 +1163,7 @@ function NavigationFooter({
             {/* Share */}
             <motion.button 
               onClick={onShare} 
-              className="p-2 rounded-lg bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-150 ease-out border border-border min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
+              className="p-2 rounded-lg bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-150 ease-out border border-border min-h-[48px] min-w-[48px] flex items-center justify-center cursor-pointer"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -1175,10 +1175,10 @@ function NavigationFooter({
           <motion.button
             onClick={onNext}
             disabled={!canGoNext}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-xs transition-all duration-150 ease-out min-h-[44px] ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-xs transition-all duration-150 ease-out min-h-[48px] ${
               canGoNext
                 ? 'bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer'
-                : 'bg-muted/50 text-muted-foreground border border-border cursor-not-allowed opacity-50'
+                : 'bg-muted/50 text-muted-foreground border border-border cursor-not-allowed opacity-[0.38]'
             }`}
             whileHover={canGoNext ? { scale: 1.05 } : {}}
             whileTap={canGoNext ? { scale: 0.95 } : {}}
@@ -1205,7 +1205,7 @@ function NavigationFooter({
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-xs transition-all duration-150 ease-out ${
                 canGoPrev
                   ? 'bg-muted hover:bg-muted/80 text-foreground cursor-pointer'
-                  : 'bg-muted/50 text-muted-foreground cursor-not-allowed opacity-50'
+                  : 'bg-muted/50 text-muted-foreground cursor-not-allowed opacity-[0.38]'
               }`}
               whileHover={canGoPrev ? { scale: 1.05 } : {}}
               whileTap={canGoPrev ? { scale: 0.95 } : {}}
@@ -1269,7 +1269,7 @@ function NavigationFooter({
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-xs transition-all duration-150 ease-out ${
                 canGoNext
                   ? 'bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer'
-                  : 'bg-muted/50 text-muted-foreground cursor-not-allowed opacity-50'
+                  : 'bg-muted/50 text-muted-foreground cursor-not-allowed opacity-[0.38]'
               }`}
               whileHover={canGoNext ? { scale: 1.05 } : {}}
               whileTap={canGoNext ? { scale: 0.95 } : {}}

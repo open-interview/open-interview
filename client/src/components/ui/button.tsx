@@ -29,10 +29,10 @@ const buttonVariants = cva(
           "bg-primary text-primary-foreground hover:brightness-110",
       },
       size: {
-        default: "min-h-10 px-6 py-2",
-        sm: "min-h-8 rounded-full px-4 text-xs",
+        default: "min-min-h-[48px] h-10 px-6 py-2",
+        sm: "min-min-h-[48px] h-8 rounded-full px-4 text-xs",
         lg: "min-h-12 rounded-full px-8",
-        icon: "h-10 w-10 rounded-full",
+        icon: "min-h-[48px] h-10 min-w-[48px] w-10 rounded-full",
       },
     },
     defaultVariants: {

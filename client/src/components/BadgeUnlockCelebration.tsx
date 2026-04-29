@@ -91,7 +91,7 @@ export function BadgeUnlockCelebration({ badge, onClose }: BadgeUnlockCelebratio
           <div className="p-3 flex items-center gap-3">
             {/* Badge icon */}
             <div 
-              className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${badge.gradient}`}
+              className={`min-w-[48px] w-10 min-h-[48px] h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${badge.gradient}`}
             >
               <Icon className="w-5 h-5 text-white" />
             </div>

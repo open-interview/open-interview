@@ -59,10 +59,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
       // Default error UI
       return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="min-h-screen bg-background flex items-center justify-center p-4" role="alert" aria-live="assertive">
           <div className="max-w-md w-full text-center space-y-6">
             <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
-              <AlertCircle className="w-8 h-8 text-destructive" />
+              <AlertCircle className="min-w-[48px] w-8 min-h-[48px] h-8 text-destructive" />
             </div>
             
             <div className="space-y-2">

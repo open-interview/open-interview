@@ -44,7 +44,7 @@ export function InterviewIntelligence() {
     return (
       <Card className="border-dashed">
         <CardContent className="p-6 text-center">
-          <AlertCircle className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
+          <AlertCircle className="min-w-[48px] w-10 min-h-[48px] h-10 mx-auto mb-3 text-muted-foreground" />
           <h3 className="font-medium mb-1">Not Enough Data Yet</h3>
           <p className="text-sm text-muted-foreground">
             Answer at least 5 questions to unlock your Interview Intelligence profile.

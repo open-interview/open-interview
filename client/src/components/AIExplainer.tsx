@@ -11,6 +11,7 @@ import {
   Play, Pause, RotateCcw, Download, Copy, Check
 } from 'lucide-react';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
+import { useUnifiedToast } from '@/hooks/use-unified-toast';
 
 interface AIExplainerProps {
   content: {
@@ -48,6 +49,7 @@ export function AIExplainer({ content, context = 'learning' }: AIExplainerProps)
   const [explanation, setExplanation] = useState('');
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const { toast } = useUnifiedToast();
   
   // Settings
   const [provider, setProvider] = useState<AIProvider>('groq');
@@ -111,7 +113,11 @@ export function AIExplainer({ content, context = 'learning' }: AIExplainerProps)
                    huggingfaceKey;
     
     if (!apiKey) {
-      alert(`Please set your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key in settings`);
+      toast({
+        title: 'API Key Required',
+        description: `Please set your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key in settings`,
+        variant: 'destructive'
+      });
       setShowSettings(true);
       return;
     }
@@ -757,7 +763,7 @@ Explanation in ${languageName}:`;
                 <div className="p-6 border-b border-border bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-t-xl">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                    <div className="min-w-[48px] w-10 min-h-[48px] h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
                       <Sparkles className="w-5 h-5 text-white" />
                     </div>
                     <div>
@@ -987,7 +993,7 @@ Explanation in ${languageName}:`;
                     <button
                       onClick={generateExplanation}
                       disabled={isGenerating}
-                      className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-bold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2 mx-auto"
+                      className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-bold hover:opacity-90 transition-opacity disabled:opacity-[0.38] flex items-center gap-2 mx-auto"
                     >
                       {isGenerating ? (
                         <>

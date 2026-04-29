@@ -63,13 +63,13 @@ const sizeClasses: Record<MetricCardSize, { padding: string; value: string; labe
     padding: 'p-3',
     value: 'text-xl',
     label: 'text-xs',
-    icon: 'w-8 h-8'
+    icon: 'min-w-[48px] w-8 h-8'
   },
   md: {
     padding: 'p-4',
     value: 'text-2xl',
     label: 'text-sm',
-    icon: 'w-10 h-10'
+    icon: 'min-w-[48px] w-10 h-10'
   },
   lg: {
     padding: 'p-6',
@@ -201,7 +201,7 @@ export function CompactMetricCard({
       onClick={onClick}
     >
       {icon && (
-        <div className={`w-8 h-8 rounded-lg ${variantConfig.iconBg} flex items-center justify-center flex-shrink-0`}>
+        <div className={`min-w-[48px] w-8 min-h-[48px] h-8 rounded-lg ${variantConfig.iconBg} flex items-center justify-center flex-shrink-0`}>
           <span className={variantConfig.text}>{icon}</span>
         </div>
       )}

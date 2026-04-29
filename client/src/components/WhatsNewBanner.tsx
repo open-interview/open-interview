@@ -105,7 +105,7 @@ export function WhatsNewBanner() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
-        className="fixed top-4 left-4 right-4 z-50 max-w-2xl mx-auto"
+        className="fixed left-4 right-4 z-50 max-w-2xl mx-auto" style={{ top: 'calc(16px + env(safe-area-inset-top, 0px))' }}
       >
         <div className="bg-card border border-primary/50 rounded-lg shadow-lg shadow-primary/10 overflow-hidden">
           {/* Header */}

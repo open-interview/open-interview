@@ -188,7 +188,7 @@ export default function PersonalizedPath() {
             >
               <div className="text-center mb-8">
                 <div className="g-fab g-fab-primary mb-4">
-                  <User className="w-8 h-8" />
+                  <User className="min-w-[48px] w-8 h-8" />
                 </div>
                 <h1 className="g-headline-medium text-foreground mb-2">
                   Let's Personalize Your Journey
@@ -605,9 +605,9 @@ export default function PersonalizedPath() {
                       <div className="flex items-start gap-4">
                         <div className={`step-indicator ${isCompleted ? 'step-completed' : isActive ? 'step-active' : ''}`}>
                           {isCompleted ? (
-                            <CheckCircle className="w-8 h-8 text-primary" />
+                            <CheckCircle className="min-w-[48px] w-8 min-h-[48px] h-8 text-primary" />
                           ) : isActive ? (
-                            <PlayCircle className="w-8 h-8 text-primary" />
+                            <PlayCircle className="min-w-[48px] w-8 min-h-[48px] h-8 text-primary" />
                           ) : (
                             <div className="step-number">{step.order + 1}</div>
                           )}
@@ -667,7 +667,7 @@ export default function PersonalizedPath() {
               {steps.length === 0 && (
                 <div className="g-card p-6 text-center">
                   <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Rocket className="w-8 h-8 text-primary" />
+                    <Rocket className="min-w-[48px] w-8 min-h-[48px] h-8 text-primary" />
                   </div>
                   <h3 className="text-xl font-semibold mb-2">No steps yet</h3>
                   <p className="text-foreground/70 mb-6">

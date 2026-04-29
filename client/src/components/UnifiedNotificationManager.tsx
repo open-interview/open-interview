@@ -11,6 +11,7 @@ import { Trophy, Zap, Coins, Star, X, CheckCircle, AlertCircle, Info, Bell, Awar
 import { Achievement, Reward } from '../lib/achievements';
 import { Badge } from '../lib/badges';
 import { cn } from '../lib/utils';
+import { announcePolite, announceAssertive } from '../lib/aria-announcer';
 
 // Notification types
 type NotificationType = 'achievement' | 'badge' | 'levelup' | 'toast' | 'system';
@@ -48,6 +49,10 @@ interface ToastNotification extends BaseNotification {
   title: string;
   description?: string;
   variant: ToastVariant;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
 interface SystemNotification extends BaseNotification {
@@ -63,7 +68,7 @@ interface NotificationContextType {
   showAchievement: (achievement: Achievement, rewards?: Reward[]) => void;
   showBadge: (badge: Badge) => void;
   showLevelUp: (from: number, to: number, title: string, rewards?: Reward[]) => void;
-  showToast: (title: string, description?: string, variant?: ToastVariant) => void;
+  showToast: (title: string, description?: string, variant?: ToastVariant, action?: { label: string; onClick: () => void }, duration?: number) => void;
   showSystem: (title: string, description?: string, icon?: ReactNode) => void;
   dismissCurrent: () => void;
   clearAll: () => void;
@@ -108,6 +113,22 @@ export function UnifiedNotificationProvider({ children }: { children: ReactNode 
     const next = sorted[0];
     setQueue(prev => prev.filter(n => n.id !== next.id));
     setCurrent(next);
+    
+    // Announce notification to screen readers
+    if (next.type === 'toast' || next.type === 'system') {
+      const message = next.title + (next.description ? `: ${next.description}` : '');
+      if (next.variant === 'destructive') {
+        announceAssertive(message);
+      } else {
+        announcePolite(message);
+      }
+    } else if (next.type === 'achievement') {
+      announcePolite(`Achievement unlocked: ${next.achievement.name}`);
+    } else if (next.type === 'badge') {
+      announcePolite(`Badge unlocked: ${next.badge.name}`);
+    } else if (next.type === 'levelup') {
+      announcePolite(`Level up! Now level ${next.to}: ${next.title}`);
+    }
   }, [queue, current, isAnimating]);
 
   // Auto-dismiss current notification
@@ -172,16 +193,23 @@ export function UnifiedNotificationProvider({ children }: { children: ReactNode 
     });
   }, [addToQueue]);
 
-  const showToast = useCallback((title: string, description?: string, variant: ToastVariant = 'default') => {
+  const showToast = useCallback((
+    title: string,
+    description?: string,
+    variant: ToastVariant = 'default',
+    action?: { label: string; onClick: () => void },
+    duration?: number
+  ) => {
     addToQueue({
       id: `toast-${Date.now()}-${Math.random()}`,
       type: 'toast',
       priority: PRIORITY.toast,
-      duration: DURATION.toast,
+      duration: action ? (duration ?? 4000) : (duration ?? DURATION.toast), // M3 §6.1: with action = 4000ms
       createdAt: Date.now(),
       title,
       description,
       variant,
+      action,
     });
   }, [addToQueue]);
 
@@ -247,6 +275,11 @@ function NotificationRenderer({
   queueLength: number;
   onDismiss: () => void;
 }) {
+  // Determine aria-live value based on notification type
+  const ariaLive = notification?.type === 'toast' && notification.variant === 'destructive' 
+    ? 'assertive' 
+    : 'polite';
+  
   return (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none">
       <AnimatePresence mode="wait">
@@ -258,6 +291,9 @@ function NotificationRenderer({
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="pointer-events-auto"
+            role={notification.type === 'toast' ? 'alert' : 'status'}
+            aria-live={ariaLive}
+            aria-atomic="true"
           >
             {notification.type === 'achievement' && (
               <AchievementCard notification={notification} onDismiss={onDismiss} queueLength={queueLength} />
@@ -415,7 +451,7 @@ function LevelUpCard({
           animate={{ scale: 1, rotate: 0 }}
           transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.05 }}
           className="w-20 h-20 mx-auto mb-3 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center border-2 border-white/40"
-          style={{ boxShadow: '0 0 32px rgba(255,215,0,0.6)' }}
+          style={{ }}
         >
           <span className="text-4xl font-black text-white">{notification.to}</span>
         </motion.div>
@@ -524,6 +560,20 @@ function ToastCard({
             <X className="w-3 h-3 text-white/50" />
           </button>
         </div>
+        
+        {notification.action && (
+          <div className="mt-2 pt-2 border-t border-white/10">
+            <button
+              onClick={() => {
+                notification.action?.onClick();
+                onDismiss();
+              }}
+              className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              {notification.action.label}
+            </button>
+          </div>
+        )}
         
         {queueLength > 0 && (
           <div className="mt-2 pt-2 border-t border-white/10 text-center">

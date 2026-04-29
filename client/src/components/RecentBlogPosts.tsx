@@ -81,7 +81,7 @@ export function RecentBlogPosts({ limit = 3, className = '' }: RecentBlogPostsPr
               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
               className="block p-4 rounded-xl bg-muted/30 hover:bg-muted/60 border border-border hover:border-primary/30 transition-all group">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                <div className="min-w-[48px] w-10 min-h-[48px] h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                   <FileText className="w-5 h-5 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">

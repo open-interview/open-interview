@@ -111,7 +111,7 @@ export function UIToggleSwitch() {
       <button
         onClick={toggleUI}
         className={`
-          relative w-12 h-6 rounded-full transition-colors
+          relative w-12 h-6 min-h-[48px] rounded-full transition-colors
           ${isNewUI ? 'bg-primary' : 'bg-muted'}
         `}
       >

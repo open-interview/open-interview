@@ -209,7 +209,7 @@ export function QuestionHistoryIcon({
 
   const buttonSizeClasses = {
     sm: 'h-7 px-2 gap-1',
-    md: 'h-8 px-2.5 gap-1.5',
+    md: 'min-h-[48px] h-8 px-2.5 gap-1.5',
     lg: 'h-9 px-3 gap-2'
   };
 
@@ -309,7 +309,7 @@ export function QuestionHistoryIcon({
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 gap-4">
                     <div className="w-16 h-16 rounded-2xl bg-[#21262d] flex items-center justify-center">
-                      <History className="w-8 h-8 text-[#8b949e]" />
+                      <History className="min-w-[48px] w-8 min-h-[48px] h-8 text-[#8b949e]" />
                     </div>
                     <div className="text-center">
                       <p className="text-[#e6edf3] font-medium mb-1">No History Available</p>
@@ -354,7 +354,7 @@ function HistoryItem({ record, isFirst }: HistoryItemProps) {
         className="w-full flex items-center gap-3 p-3 text-left hover:bg-white/5 transition-colors"
       >
         {/* Event Icon */}
-        <div className={`w-8 h-8 rounded-lg ${config.bg} border ${config.border} flex items-center justify-center flex-shrink-0`}>
+        <div className={`min-w-[48px] w-8 min-h-[48px] h-8 rounded-lg ${config.bg} border ${config.border} flex items-center justify-center flex-shrink-0`}>
           <EventIcon className={`w-4 h-4 ${config.text}`} />
         </div>
 

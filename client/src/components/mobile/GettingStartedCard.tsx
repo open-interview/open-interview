@@ -101,7 +101,7 @@ export function GettingStartedCard({
             </span>
             <button 
               onClick={handleDismiss}
-              className="text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer transition-colors duration-150 ease-out"
+              className="text-muted-foreground hover:text-foreground min-h-[48px] min-w-[48px] flex items-center justify-center cursor-pointer transition-colors duration-150 ease-out"
               aria-label="Dismiss getting started"
             >
               <X className="w-4 h-4" />
@@ -124,7 +124,7 @@ export function GettingStartedCard({
               key={step.id}
               onClick={() => setLocation(step.path)}
               className={`
-                w-full flex items-center gap-3 p-3 rounded-lg text-left min-h-[44px] cursor-pointer
+                w-full flex items-center gap-3 p-3 rounded-lg text-left min-h-[48px] cursor-pointer
                 transition-all duration-150 ease-out active:scale-[0.98]
                 ${step.completed 
                   ? 'bg-primary/5 opacity-60' 
@@ -136,7 +136,7 @@ export function GettingStartedCard({
             >
               {/* Step indicator */}
               <div className={`
-                w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
+                min-w-[48px] w-10 min-h-[48px] h-10 rounded-full flex items-center justify-center flex-shrink-0
                 ${step.completed 
                   ? 'bg-primary/20 text-primary' 
                   : step.id === nextStep.id

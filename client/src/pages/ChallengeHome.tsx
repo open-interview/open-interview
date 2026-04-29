@@ -3,7 +3,8 @@ import { Link, useLocation } from 'wouter';
 import {
   Search, Zap, Flame, Trophy, ArrowRight, Bot,
   CheckCircle, Clock, Star, Layers, Type,
-  GitBranch, Network, BarChart2, SortAsc,
+  GitBranch, Network, BarChart2, SortAsc, X,
+  Circle, AlertCircle, CheckCircle2,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
@@ -13,6 +14,49 @@ import { loadAllChallenges } from '@/lib/challenges-loader';
 import { useUserPreferences } from '@/context/UserPreferencesContext';
 import type { ChallengeListItem, ChallengeStatus, Difficulty } from '@/types/challenges';
 import type { UserProgress } from '@/lib/challenge-progress';
+import { NetworkError, NoResults } from '@/components/google/ErrorStates';
+
+function readFiltersFromURL(): {
+  topic: string | null;
+  difficulty: 'All' | Difficulty;
+  status: ChallengeStatus | 'All';
+  search: string;
+} {
+  const params = new URLSearchParams(window.location.search);
+  const topic = params.get('topic');
+  const difficultyParam = params.get('difficulty');
+  const statusParam = params.get('status') as ChallengeStatus | 'All' | null;
+  const searchParam = params.get('search') || '';
+
+  const validDifficulties = ['easy', 'medium', 'hard'] as const;
+  const difficulty = difficultyParam && validDifficulties.includes(difficultyParam as Difficulty)
+    ? difficultyParam as Difficulty
+    : 'All';
+
+  const validStatuses = ['solved', 'attempted', 'unsolved'] as const;
+  const status = statusParam && validStatuses.includes(statusParam as ChallengeStatus)
+    ? statusParam as ChallengeStatus
+    : 'All';
+
+  return { topic, difficulty, status, search: searchParam };
+}
+
+function updateURL(params: {
+  topic: string | null;
+  difficulty: 'All' | Difficulty;
+  status: ChallengeStatus | 'All';
+  search: string;
+}): void {
+  const urlParams = new URLSearchParams();
+  if (params.topic) urlParams.set('topic', params.topic);
+  if (params.difficulty !== 'All') urlParams.set('difficulty', params.difficulty);
+  if (params.status !== 'All') urlParams.set('status', params.status);
+  if (params.search) urlParams.set('search', params.search);
+
+  const query = urlParams.toString();
+  const url = query ? `?${query}` : window.location.pathname;
+  window.history.replaceState(null, '', url);
+}
 
 const ROLE_TAGS: Record<string, string[]> = {
   frontend: ['arrays', 'strings', 'dynamic-programming'],
@@ -36,10 +80,22 @@ const ROLE_TAGS: Record<string, string[]> = {
 const LEVEL_NAMES = ['Newbie', 'Beginner', 'Learner', 'Coder', 'Developer', 'Engineer', 'Expert', 'Master'];
 const DIFFICULTIES: Array<'All' | Difficulty> = ['All', 'easy', 'medium', 'hard'];
 
+const DIFFICULTY_ICONS: Record<Difficulty, typeof Circle> = {
+  easy: Circle,
+  medium: AlertCircle,
+  hard: CheckCircle2,
+};
+
 const DIFFICULTY_STYLES: Record<Difficulty, { bg: string; text: string; dot: string }> = {
   easy: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', dot: 'bg-emerald-400' },
   medium: { bg: 'bg-amber-500/10', text: 'text-amber-400', dot: 'bg-amber-400' },
   hard: { bg: 'bg-red-500/10', text: 'text-red-400', dot: 'bg-red-400' },
+};
+
+const STATUS_ICONS: Record<ChallengeStatus, typeof CheckCircle2> = {
+  solved: CheckCircle2,
+  attempted: AlertCircle,
+  unsolved: Circle,
 };
 
 const STATUS_LABEL: Record<ChallengeStatus, string> = {
@@ -77,7 +133,41 @@ export default function ChallengeHome() {
   const [progress, setProgress] = useState<UserProgress | null>(null);
   const [search, setSearch] = useState('');
   const [difficulty, setDifficulty] = useState<'All' | Difficulty>('All');
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [activeTags, setActiveTags] = useState<string[]>([]);
+  const [status, setStatus] = useState<ChallengeStatus | 'All'>('All');
+
+  // Initialize filters from URL on mount
+  useEffect(() => {
+    const { topic, difficulty: urlDifficulty, status: urlStatus, search: urlSearch } = readFiltersFromURL();
+    if (urlSearch) setSearch(urlSearch);
+    if (urlDifficulty !== 'All') setDifficulty(urlDifficulty);
+    if (urlStatus !== 'All') setStatus(urlStatus);
+    if (topic) setActiveTags(topic.split(','));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync filters to URL when they change
+  useEffect(() => {
+    updateURL({
+      topic: activeTags.length > 0 ? activeTags.join(',') : null,
+      difficulty,
+      status,
+      search,
+    });
+  }, [search, difficulty, activeTags, status]);
+
+  // Handle browser back/forward
+  useEffect(() => {
+    const handlePopState = () => {
+      const { topic, difficulty: urlDifficulty, status: urlStatus, search: urlSearch } = readFiltersFromURL();
+      setSearch(urlSearch);
+      setDifficulty(urlDifficulty);
+      setStatus(urlStatus);
+      setActiveTags(topic ? topic.split(',') : []);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     setProgress(getProgress());
@@ -85,11 +175,6 @@ export default function ChallengeHome() {
       .then(setChallenges)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    const tag = new URLSearchParams(window.location.search).get('tag');
-    if (tag) setActiveTag(tag);
   }, []);
 
   const hasProgress = progress && (progress.xp > 0 || progress.totalSolved > 0);
@@ -105,11 +190,12 @@ export default function ChallengeHome() {
     const q = search.toLowerCase();
     return challenges.filter(c => {
       if (difficulty !== 'All' && c.difficulty !== difficulty) return false;
-      if (activeTag && !c.tags.includes(activeTag)) return false;
+      if (activeTags.length > 0 && !activeTags.some(tag => c.tags.includes(tag))) return false;
+      if (status !== 'All' && (progress?.challenges[c.id]?.status ?? 'unsolved') !== status) return false;
       if (q && !c.title.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [challenges, search, difficulty, activeTag]);
+  }, [challenges, search, difficulty, activeTags, status, progress]);
 
   const solvedCount = useMemo(
     () => challenges.filter(c => progress?.challenges[c.id]?.status === 'solved').length,
@@ -157,13 +243,14 @@ export default function ChallengeHome() {
         {/* Featured + Rex */}
         <div className="grid sm:grid-cols-2 gap-4">
           {featured && (
-            <div className="bg-gradient-to-br from-background to-muted/50 border border-primary/30 rounded-2xl p-6 space-y-4 shadow-xl">
+             <div className="bg-gradient-to-br from-background to-muted/50 border border-primary/30 rounded-2xl p-6 space-y-4">
               <div className="flex items-center gap-2 text-primary text-xs font-semibold uppercase tracking-wide">
                 <Zap className="w-3.5 h-3.5" /> Challenge of the Day
               </div>
                <p className="font-bold text-xl leading-snug text-foreground">{featured.title}</p>
               <div className="flex items-center gap-3">
                 <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${DIFFICULTY_STYLES[featured.difficulty].bg} ${DIFFICULTY_STYLES[featured.difficulty].text}`}>
+                  {React.createElement(DIFFICULTY_ICONS[featured.difficulty], { className: "w-3 h-3" })}
                   <span className={`w-1.5 h-1.5 rounded-full ${DIFFICULTY_STYLES[featured.difficulty].dot}`} />
                   {featured.difficulty}
                 </span>
@@ -206,6 +293,7 @@ export default function ChallengeHome() {
                      <p className="font-medium text-foreground text-sm leading-snug mb-2">{c.title}</p>
                   <div className="flex items-center gap-2">
                     <span className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium ${DIFFICULTY_STYLES[c.difficulty].bg} ${DIFFICULTY_STYLES[c.difficulty].text}`}>
+                       {React.createElement(DIFFICULTY_ICONS[c.difficulty], { className: "w-3 h-3" })}
                        <span className={`w-1.5 h-1.5 rounded-full ${DIFFICULTY_STYLES[c.difficulty].dot}`} />
                       {c.difficulty}
                     </span>
@@ -232,51 +320,86 @@ export default function ChallengeHome() {
 
         {/* Filter Chips - Google Style */}
         <div className="space-y-3">
-          {/* Difficulty filters */}
-          <div className="flex items-center gap-2 flex-wrap">
-           <span className="text-xs text-foreground/60 mr-1">Difficulty:</span>
-           {DIFFICULTIES.map(d => (
-             <button
-               key={d}
-               onClick={() => setDifficulty(d)}
-               className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 cursor-pointer min-h-[36px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                 difficulty === d
-                   ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                   : 'bg-muted/60 text-foreground/70 border-border/50 hover:bg-muted hover:border-border'
-               }`}
-             >
+            {/* Difficulty filters */}
+           <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-foreground/60 mr-1">Difficulty:</span>
+            {DIFFICULTIES.map(d => (
+              <button
+                key={d}
+                onClick={() => setDifficulty(d)}
+                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 cursor-pointer min-h-[36px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                  difficulty === d
+                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                    : 'bg-muted/60 text-foreground/70 border-border/50 hover:bg-muted hover:border-border'
+                }`}
+              >
+                {d !== 'All' && (() => { const Icon = DIFFICULTY_ICONS[d]; return <Icon className="w-3.5 h-3.5" />; })()}
                 {d === 'All' ? 'All' : d.charAt(0).toUpperCase() + d.slice(1)}
               </button>
             ))}
           </div>
 
-          {/* Category filters */}
-          <div className="flex items-center gap-2 flex-wrap">
-           <span className="text-xs text-foreground/60 mr-1">Topics:</span>
-             {CATEGORIES.map(({ label, tag, icon: Icon }) => (
+           {/* Topic filters */}
+           <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-foreground/60 mr-1">Topics:</span>
+              {CATEGORIES.map(({ label, tag, icon: Icon }) => (
+                <button
+                  key={tag}
+                  onClick={() => {
+                    setActiveTags(prev =>
+                      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+                    );
+                  }}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 cursor-pointer min-h-[36px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                    activeTags.includes(tag)
+                      ? 'bg-primary/20 text-primary border-primary/50 shadow-sm'
+                      : 'bg-muted/60 text-foreground/70 border-border/50 hover:bg-muted hover:border-border'
+                  }`}
+                >
+                 <Icon className="w-3.5 h-3.5" />{label}
+               </button>
+             ))}
+           </div>
+
+            {/* Status filters */}
+            <div className="flex items-center gap-2 flex-wrap">
+             <span className="text-xs text-foreground/60 mr-1">Status:</span>
+             {(['All', 'solved', 'attempted', 'unsolved'] as const).map(s => (
                <button
-                 key={tag}
-                 onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 cursor-pointer min-h-[36px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                   activeTag === tag
-                     ? 'bg-primary/20 text-primary border-primary/50 shadow-sm'
+                 key={s}
+                 onClick={() => setStatus(s)}
+                 className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 cursor-pointer min-h-[36px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                   status === s
+                     ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                      : 'bg-muted/60 text-foreground/70 border-border/50 hover:bg-muted hover:border-border'
                  }`}
                >
-                <Icon className="w-3.5 h-3.5" />{label}
-              </button>
-            ))}
-          </div>
+                  {s !== 'All' && (() => { const Icon = STATUS_ICONS[s]; return <Icon className="w-3.5 h-3.5" />; })()}
+                  {s === 'All' ? 'All' : STATUS_LABEL[s]}
+                </button>
+              ))}
+            </div>
 
-          {/* Active tag indicator */}
-          {activeTag && !CATEGORIES.find(c => c.tag === activeTag) && (
-           <button
-             onClick={() => setActiveTag(null)}
-             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium border bg-muted/60 text-foreground border-border cursor-pointer min-h-[36px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-           >
-              {activeTag} ×
-            </button>
-          )}
+           {/* Active tags indicator */}
+           {activeTags.length > 0 && (
+             <div className="flex items-center gap-2 flex-wrap">
+               {activeTags.map(tag => (
+                 <button
+                   key={tag}
+                   onClick={() => setActiveTags(prev => prev.filter(t => t !== tag))}
+                   className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium border bg-primary/20 text-primary border-primary/50 cursor-pointer min-h-[36px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                 >
+                    {tag} <X className="w-3 h-3" />
+                  </button>
+               ))}
+               <button
+                 onClick={() => setActiveTags([])}
+                 className="text-xs text-foreground/60 hover:text-foreground transition-colors"
+               >
+                 Clear all
+               </button>
+             </div>
+           )}
         </div>
 
         {/* Results count */}
@@ -288,17 +411,26 @@ export default function ChallengeHome() {
         {loading ? (
           <div className="flex justify-center py-16"><Spinner className="size-8 text-zinc-500" /></div>
         ) : error ? (
-           <div className="text-center py-16 text-destructive text-base">{error}</div>
+          <NetworkError
+            title="Failed to load challenges"
+            message="We couldn't load the challenges due to a network issue."
+            onRetry={() => {
+              setError(null);
+              setLoading(true);
+              loadAllChallenges()
+                .then(setChallenges)
+                .catch(e => setError(e.message))
+                .finally(() => setLoading(false));
+            }}
+          />
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16 space-y-3">
-             <p className="text-foreground/60">No challenges match your filters.</p>
-             <button
-               onClick={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
-               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-medium transition-colors duration-150 cursor-pointer hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-             >
-              Clear filters
-            </button>
-          </div>
+          <NoResults
+            title="No challenges match filters"
+            message="Try adjusting your filters or search term to see more challenges."
+            onClearSearch={() => { setSearch(''); setDifficulty('All'); setActiveTags([]); }}
+            suggestions={['arrays', 'strings', 'dynamic-programming']}
+            query={search}
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((c, i) => {
@@ -315,10 +447,11 @@ export default function ChallengeHome() {
                   {/* Card header */}
                   <div className="flex items-center justify-between mb-3">
                      <span className="text-xs text-foreground/60">#{i + 1}</span>
-                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${diffStyle.bg} ${diffStyle.text}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${diffStyle.dot}`} />
-                      {c.difficulty.charAt(0).toUpperCase() + c.difficulty.slice(1)}
-                    </div>
+                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${diffStyle.bg} ${diffStyle.text}`}>
+                       {React.createElement(DIFFICULTY_ICONS[c.difficulty], { className: "w-3 h-3" })}
+                       <span className={`w-1.5 h-1.5 rounded-full ${diffStyle.dot}`} />
+                       {c.difficulty.charAt(0).toUpperCase() + c.difficulty.slice(1)}
+                     </div>
                   </div>
 
                   {/* Title */}
@@ -340,7 +473,8 @@ export default function ChallengeHome() {
 
                   {/* Footer */}
                   <div className="flex items-center justify-between pt-2 border-t border-zinc-800/50">
-                     <span className={`inline-flex px-3 py-1.5 rounded-md text-xs font-medium ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border} border`}>
+                     <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border} border`}>
+                      {React.createElement(STATUS_ICONS[status], { className: "w-3 h-3" })}
                       {STATUS_LABEL[status]}
                     </span>
                        <div className="flex items-center gap-1 text-xs text-foreground/60">

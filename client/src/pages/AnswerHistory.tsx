@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
 import { AppLayout } from '../components/layout/AppLayout';
+import { ProgressTabBar } from '../components/ProgressTabBar';
 import { allChannelsConfig } from '../lib/channels-config';
 import { getQuestionById } from '../lib/questions-loader';
 
@@ -203,6 +204,7 @@ export default function AnswerHistory() {
       
       <div className="min-h-screen bg-surface-container-low pb-24 pb-safe lg:pb-8 pt-14 lg:pt-0">
         <div className="max-w-4xl mx-auto px-4 py-6">
+          <ProgressTabBar activeTab="history" />
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -251,18 +253,20 @@ export default function AnswerHistory() {
             <div className="flex flex-col lg:flex-row gap-3">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9AA0A6]" />
-                 <input
-                   type="text"
-                   placeholder="Search questions or channels..."
-                   value={searchQuery}
-                   onChange={(e) => setSearchQuery(e.target.value)}
-                   data-testid="history-search-input"
-                   className="w-full pl-11 pr-10 h-[46px] bg-[#F1F3F4] dark:bg-[#303134] rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary placeholder:text-[#9AA0A6] text-foreground text-base"
-                 />
+                   <input
+                    type="text"
+                    placeholder="Search questions or channels..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    data-testid="history-search-input"
+                    aria-label="Search questions or channels in your answer history"
+                    className="w-full pl-11 pr-10 h-[46px] min-h-[48px] bg-[#F1F3F4] dark:bg-[#303134] rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary placeholder:text-[#9AA0A6] text-foreground text-base"
+                  />
                 {searchQuery && (
                 <button 
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
+                  aria-label="Clear search query"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 min-w-[48px] min-h-[48px] flex items-center justify-center text-on-surface-variant hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
                 >
                     <X className="w-4 h-4" />
                   </button>
@@ -273,7 +277,8 @@ export default function AnswerHistory() {
                 value={selectedChannel}
                 onChange={(e) => setSelectedChannel(e.target.value)}
                 data-testid="history-channel-filter"
-                className="px-4 py-2.5 bg-surface border border-on-surface-variant/20 rounded-full focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary cursor-pointer text-base min-w-[140px]"
+                aria-label="Filter history by channel"
+                className="px-4 py-2.5 bg-surface border border-on-surface-variant/20 rounded-full focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary cursor-pointer text-base min-w-[140px] min-h-[48px]"
               >
                 <option value="all">All ({history.length})</option>
                 {channels.map(channel => (
@@ -287,7 +292,8 @@ export default function AnswerHistory() {
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value as any)}
                 data-testid="history-date-filter"
-                className="px-4 py-2.5 bg-surface border border-on-surface-variant/20 rounded-full focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary cursor-pointer text-base"
+                aria-label="Filter history by date range"
+                className="px-4 py-2.5 bg-surface border border-on-surface-variant/20 rounded-full focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary cursor-pointer text-base min-h-[48px]"
               >
                 <option value="all">All Time</option>
                 <option value="today">Today</option>
@@ -298,7 +304,8 @@ export default function AnswerHistory() {
               <button
                 onClick={exportHistory}
                 data-testid="history-export-button"
-                className="px-4 py-2.5 bg-primary text-on-primary rounded-full hover:bg-primary/90 transition-colors duration-150 flex items-center gap-2 cursor-pointer text-base font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                aria-label="Export answer history as JSON file"
+                className="px-4 py-2.5 bg-primary text-on-primary rounded-full hover:bg-primary/90 transition-colors duration-150 flex items-center gap-2 cursor-pointer text-base font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 min-h-[48px]"
               >
                 <Download className="w-4 h-4" />
                 Export
@@ -306,9 +313,10 @@ export default function AnswerHistory() {
             </div>
           </motion.div>
 
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+           {loading ? (
+            <div className="flex items-center justify-center py-12" role="status" aria-label="Loading answer history">
+              <div className="animate-spin rounded-full min-h-[48px] h-8 min-w-[48px] w-8 border-b-2 border-primary" aria-hidden="true"></div>
+              <span className="sr-only">Loading your answer history...</span>
             </div>
           ) : filteredHistory.length === 0 ? (
             <motion.div
@@ -317,7 +325,7 @@ export default function AnswerHistory() {
               className="text-center py-16"
             >
               <div className="w-16 h-16 rounded-2xl bg-primary-container flex items-center justify-center mx-auto mb-4">
-                <History className="w-8 h-8 text-on-primary-container" />
+                <History className="min-w-[48px] w-8 min-h-[48px] h-8 text-on-primary-container" />
               </div>
               <h3 className="text-lg font-medium mb-2">No History Found</h3>
               <p className="text-on-surface-variant text-base mb-6">
@@ -325,36 +333,42 @@ export default function AnswerHistory() {
                   ? "Start answering questions to build your history!"
                   : "Try adjusting your filters to see more results."}
               </p>
-              {history.length === 0 && (
-                  <a
-                   href="/"
-                   className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary text-on-primary rounded-full hover:bg-primary/90 transition-colors duration-150 cursor-pointer font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                 >
-                  Browse Channels
-                </a>
-              )}
+               {history.length === 0 && (
+                   <a
+                    href="/"
+                    aria-label="Browse channels to start answering questions"
+                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary text-on-primary rounded-full hover:bg-primary/90 transition-colors duration-150 cursor-pointer font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 min-h-[48px]"
+                  >
+                   Browse Channels
+                 </a>
+               )}
             </motion.div>
-          ) : (
-            <>
-              <div className="bg-surface-container-high rounded-2xl p-4 mb-4">
-                {Object.entries(groupedByDate).map(([date, entries]) => (
-                  <div key={date} className="mb-6 last:mb-0">
-                    <h3 className="text-base font-medium text-on-surface-variant mb-3 sticky top-0 bg-surface-container-high py-2">
-                      {formatDateHeader(date)}
-                    </h3>
-                    <div className="space-y-0">
-                      {entries.map((entry, idx) => (
-                        <TimelineItem 
-                          key={`${entry.questionId}-${entry.timestamp}`} 
-                          entry={entry} 
-                          isFirst={idx === 0}
-                          isLast={idx === entries.length - 1}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+           ) : (
+             <>
+               <div 
+                 className="bg-surface-container-high rounded-2xl p-4 mb-4"
+                 role="region"
+                 aria-label="Answer history timeline"
+                 aria-live="polite"
+               >
+                 {Object.entries(groupedByDate).map(([date, entries]) => (
+                   <div key={date} className="mb-6 last:mb-0">
+                     <div className="text-base font-medium text-on-surface-variant mb-3 sticky top-0 bg-surface-container-high py-2">
+                       {formatDateHeader(date)}
+                     </div>
+                     <div className="space-y-0" role="list" aria-label={`Answers from ${formatDateHeader(date)}`}>
+                       {entries.map((entry, idx) => (
+                         <TimelineItem 
+                           key={`${entry.questionId}-${entry.timestamp}`} 
+                           entry={entry} 
+                           isFirst={idx === 0}
+                           isLast={idx === entries.length - 1}
+                         />
+                       ))}
+                     </div>
+                   </div>
+                 ))}
+               </div>
 
               {totalPages > 1 && (
                 <div className="flex items-center justify-between px-2 py-4">
@@ -362,13 +376,14 @@ export default function AnswerHistory() {
                      Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredHistory.length)} of {filteredHistory.length}
                    </div>
                   <div className="flex items-center gap-2">
-                     <button
-                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                       disabled={currentPage === 1}
-                       className="w-8 h-8 rounded-full flex items-center justify-center bg-surface-container-high hover:bg-surface-container hover:shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                     >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
+                   <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        aria-label="Previous page"
+                        className="min-w-[48px] min-h-[48px] w-8 h-8 rounded-full flex items-center justify-center bg-surface-container-high hover:bg-surface-container hover:shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                       <ChevronLeft className="w-5 h-5" aria-hidden="true" />
+                     </button>
                     <div className="flex items-center gap-1">
                       {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                         let pageNum: number;
@@ -382,27 +397,30 @@ export default function AnswerHistory() {
                           pageNum = currentPage - 2 + i;
                         }
                         return (
-                          <button
-                             key={pageNum}
-                             onClick={() => setCurrentPage(pageNum)}
-                             className={`w-8 h-8 rounded-full text-base flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                               currentPage === pageNum
-                                 ? 'bg-primary text-on-primary'
-                                 : 'hover:bg-surface-container'
-                             }`}
-                           >
-                            {pageNum}
-                          </button>
+                        <button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum)}
+                              aria-label={`Page ${pageNum}`}
+                              aria-current={currentPage === pageNum ? 'page' : undefined}
+                              className={`min-w-[48px] min-h-[48px] w-8 h-8 rounded-full text-base flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                                currentPage === pageNum
+                                  ? 'bg-primary text-on-primary'
+                                  : 'hover:bg-surface-container'
+                              }`}
+                            >
+                             {pageNum}
+                           </button>
                         );
                       })}
                     </div>
-                     <button
-                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                       disabled={currentPage === totalPages}
-                       className="w-8 h-8 rounded-full flex items-center justify-center bg-surface-container-high hover:bg-surface-container hover:shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                     >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
+                      <button
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        aria-label="Next page"
+                        className="min-w-[48px] min-h-[48px] w-8 h-8 rounded-full flex items-center justify-center bg-surface-container-high hover:bg-surface-container hover:shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                       <ChevronRight className="w-5 h-5" aria-hidden="true" />
+                     </button>
                   </div>
                 </div>
               )}
@@ -425,7 +443,7 @@ function MaterialStatCard({ icon, label, value }: {
       animate={{ opacity: 1, scale: 1 }}
       className="bg-surface-container-high rounded-2xl p-4 hover:shadow-md transition-shadow"
     >
-      <div className="w-10 h-10 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center mb-3">
+      <div className="min-w-[48px] w-10 min-h-[48px] h-10 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center mb-3">
         {icon}
       </div>
        <div className="text-2xl font-medium">{value}</div>
@@ -465,35 +483,52 @@ function TimelineItem({ entry, isFirst, isLast }: {
     return new Date(entry.timestamp).toLocaleDateString();
   }, [entry.timestamp]);
 
+  const handleClick = () => {
+    if (question) setLocation(`/channel/${entry.channelId}?q=${entry.questionId}`);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       data-testid={`history-item-${entry.questionId}`}
-      className="relative flex gap-0 group focus-visible:outline-none"
-      onClick={() => { if (question) setLocation(`/channel/${entry.channelId}?q=${entry.questionId}`); }}
-      tabIndex={0}
+      role="listitem"
+      className="relative flex gap-0 group"
     >
-      <div className="flex flex-col items-center">
-        <div className={`w-3 h-3 rounded-full bg-primary-container border-2 border-surface-container-high z-10 ${!isFirst ? 'mt-4' : ''}`} />
-        {!isLast && <div className="w-0.5 h-full bg-outline-variant/30 absolute top-3" />}
-      </div>
-      <div className="flex-1 pb-4 ml-4">
-        <div className="bg-surface-container hover:bg-surface-container-high rounded-2xl p-4 cursor-pointer transition-all hover:shadow-md group-hover:translate-x-1 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none">
+       <div className="flex flex-col items-center">
+         <div className={`w-3 h-3 rounded-full bg-primary-container border-2 border-surface-container-high z-10 ${!isFirst ? 'mt-4' : ''}`} />
+         {!isLast && <div className="w-0.5 h-full bg-outline-variant/30 absolute top-3" />}
+       </div>
+       <div className="flex-1 pb-4 ml-4">
+         <div 
+           role="button"
+           tabIndex={0}
+           aria-label={`View question: ${displayText}`}
+           onClick={handleClick}
+           onKeyDown={handleKeyDown}
+           className="bg-surface-container hover:bg-surface-container-high rounded-2xl p-4 cursor-pointer transition-all hover:shadow-md group-hover:translate-x-1 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none min-h-[48px]"
+          >
           <div className="flex items-start justify-between gap-2 mb-2">
             <span className="text-base font-medium line-clamp-2">{displayText}</span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-container text-base text-on-primary-container">
-              <CheckCircle className="w-3 h-3" />
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-container text-base text-on-primary-container" aria-label={entry.status === 'incorrect' ? 'Incorrect answer' : 'Correct answer'}>
+              <CheckCircle className="w-3 h-3" aria-hidden="true" />
               {entry.status === 'incorrect' ? 'Incorrect' : 'Correct'}
             </span>
           </div>
           <div className="flex items-center gap-3 text-base text-foreground/70">
             <span className="inline-flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-tertiary-container" />
+              <span className="w-2 h-2 rounded-full bg-tertiary-container" aria-hidden="true" />
               {entry.channelName}
             </span>
             <span className="inline-flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5" />
+              <Clock className="w-3.5 h-3.5" aria-hidden="true" />
               {formatTime(entry.timestamp)}
             </span>
             <span className="text-foreground/70">{timeAgo}</span>

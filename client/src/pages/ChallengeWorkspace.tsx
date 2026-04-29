@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'wouter';
+import { useParams, Link, useLocation } from 'wouter';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import Editor from '@monaco-editor/react';
 import {
@@ -17,6 +17,8 @@ import {
   Lightbulb,
   Settings2,
   RotateCcw,
+  Circle,
+  AlertCircle,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,6 +35,13 @@ import { checkAndAwardBadges } from '@/lib/challenge-badges';
 import RexCompanion from '@/components/RexCompanion';
 import TestResultsPanel from '@/components/TestResultsPanel';
 import XPCelebration from '@/components/XPCelebration';
+import { NetworkError, NotFound404 } from '@/components/google/ErrorStates';
+
+const DIFFICULTY_ICONS: Record<string, typeof Circle> = {
+  easy: Circle,
+  medium: AlertCircle,
+  hard: CheckCircle2,
+};
 
 const DIFFICULTY_COLORS: Record<string, string> = {
   easy: 'bg-green-500/20 text-green-500 border-green-500/30',
@@ -71,6 +80,7 @@ type EditorStatus = 'idle' | 'running' | 'success' | 'error';
 
 export default function ChallengeWorkspace() {
   const { id } = useParams<{ id: string }>();
+  const [, navigate] = useLocation();
   const isMobile = useIsMobile();
   const [showEditor, setShowEditor] = useState(false);
   const [challenge, setChallenge] = useState<Challenge | null>(null);
@@ -166,19 +176,37 @@ export default function ChallengeWorkspace() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-foreground/70" />
+        <Loader2 className="min-w-[48px] w-8 min-h-[48px] h-8 animate-spin text-foreground/70" />
       </div>
     );
   }
 
   if (error || !challenge) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4 bg-background">
-        <p className="text-destructive">{error ?? 'Challenge not found'}</p>
-        <Link href="/code">
-          <Button variant="outline">Back to Challenges</Button>
-        </Link>
-      </div>
+      error ? (
+        <NetworkError
+          title="Failed to load challenge"
+          message="We couldn't load the challenge due to a network issue."
+          onRetry={() => {
+            setError(null);
+            setLoading(true);
+            loadChallenge(id!)
+              .then(c => {
+                setChallenge(c);
+                setCode(c.starterCode.javascript);
+              })
+              .catch(e => setError(e.message))
+              .finally(() => setLoading(false));
+          }}
+          onGoBack={() => navigate('/code/challenges')}
+        />
+      ) : (
+        <NotFound404
+          title="Challenge not found"
+          message="This challenge may have been removed or the link is incorrect."
+          onGoHome={() => navigate('/coding')}
+        />
+      )
     );
   }
 
@@ -200,14 +228,15 @@ export default function ChallengeWorkspace() {
 
       {/* Header - compact on mobile */}
       <header className={`flex items-center gap-2 px-2 py-2 border-b border-border shrink-0 ${isMobile ? 'flex-wrap' : ''}`}>
-        <Link href="/code">
-          <Button variant="ghost" size="sm" className="gap-1 text-foreground/70 cursor-pointer min-h-[44px] transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+        <Link href="/coding">
+          <Button variant="ghost" size="sm" className="gap-1 text-foreground/70 cursor-pointer min-h-[48px] transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
             <ChevronLeft className="w-4 h-4" /> 
             <span className="hidden sm:inline">Challenges</span>
           </Button>
         </Link>
         <h1 className="font-semibold text-base truncate flex-1 min-w-0">{challenge.title}</h1>
-        <Badge className={`text-sm border ${DIFFICULTY_COLORS[challenge.difficulty]}`} variant="outline">
+        <Badge className={`text-sm border ${DIFFICULTY_COLORS[challenge.difficulty]} inline-flex items-center gap-1.5`} variant="outline">
+          {(() => { const Icon = DIFFICULTY_ICONS[challenge.difficulty]; return <Icon className="w-3.5 h-3.5" />; })()}
           {challenge.difficulty}
         </Badge>
         <span className="text-sm text-foreground/70 hidden sm:inline">{challenge.estimatedMinutes} min</span>
@@ -216,7 +245,7 @@ export default function ChallengeWorkspace() {
             size="sm"
             variant="outline"
             onClick={() => setShowEditor(!showEditor)}
-            className="min-h-[44px] gap-1"
+            className="min-h-[48px] gap-1"
           >
             <Code2 className="w-4 h-4" />
             {showEditor ? 'Problem' : 'Code'}
@@ -234,7 +263,7 @@ export default function ChallengeWorkspace() {
                 <select
                   value={language}
                   onChange={e => setLanguage(e.target.value as Language)}
-                  className="text-sm bg-background border border-input rounded-md px-2 py-1.5 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer min-h-[44px] transition-colors duration-150 ease-out flex-1"
+                  className="text-sm bg-background border border-input rounded-md px-2 py-1.5 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer min-h-[48px] transition-colors duration-150 ease-out flex-1"
                 >
                   <option value="javascript">JavaScript</option>
                   {challenge.starterCode.python && <option value="python">Python</option>}
@@ -244,7 +273,7 @@ export default function ChallengeWorkspace() {
                   variant="outline"
                   onClick={handleRun}
                   disabled={running || submitting}
-                  className="gap-1 text-sm min-h-[44px] cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="gap-1 text-sm min-h-[48px] cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   {running ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
                 </Button>
@@ -252,7 +281,7 @@ export default function ChallengeWorkspace() {
                   size="sm"
                   onClick={handleSubmit}
                   disabled={running || submitting}
-                  className="gap-1 text-sm min-h-[44px] cursor-pointer transition-colors duration-150 ease-out bg-primary hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="gap-1 text-sm min-h-[48px] cursor-pointer transition-colors duration-150 ease-out bg-primary hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 </Button>
@@ -310,9 +339,9 @@ export default function ChallengeWorkspace() {
             <div className="flex flex-col h-full">
               <Tabs defaultValue="description" className="flex flex-col flex-1 overflow-hidden">
                 <TabsList className="mx-2 mt-2 shrink-0 w-fit">
-                  <TabsTrigger value="description" className="cursor-pointer min-h-[44px] text-sm">Description</TabsTrigger>
-                  <TabsTrigger value="testcases" className="cursor-pointer min-h-[44px] text-sm">Test Cases</TabsTrigger>
-                  <TabsTrigger value="editorial" className="cursor-pointer min-h-[44px] text-sm">Editorial</TabsTrigger>
+                  <TabsTrigger value="description" className="cursor-pointer min-h-[48px] text-sm">Description</TabsTrigger>
+                  <TabsTrigger value="testcases" className="cursor-pointer min-h-[48px] text-sm">Test Cases</TabsTrigger>
+                  <TabsTrigger value="editorial" className="cursor-pointer min-h-[48px] text-sm">Editorial</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="description" className="flex-1 overflow-hidden mt-0">
@@ -391,9 +420,9 @@ export default function ChallengeWorkspace() {
             <div className="flex flex-col h-full">
               <Tabs defaultValue="description" className="flex flex-col flex-1 overflow-hidden">
                 <TabsList className="mx-3 mt-2 shrink-0 w-fit">
-                  <TabsTrigger value="description" className="cursor-pointer min-h-[44px] text-sm">Description</TabsTrigger>
-                  <TabsTrigger value="testcases" className="cursor-pointer min-h-[44px] text-sm">Test Cases</TabsTrigger>
-                  <TabsTrigger value="editorial" className="cursor-pointer min-h-[44px] text-sm">Editorial</TabsTrigger>
+                  <TabsTrigger value="description" className="cursor-pointer min-h-[48px] text-sm">Description</TabsTrigger>
+                  <TabsTrigger value="testcases" className="cursor-pointer min-h-[48px] text-sm">Test Cases</TabsTrigger>
+                  <TabsTrigger value="editorial" className="cursor-pointer min-h-[48px] text-sm">Editorial</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="description" className="flex-1 overflow-hidden mt-0">

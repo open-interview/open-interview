@@ -271,7 +271,7 @@ export function PagefindSearch({ isOpen, onClose, initialQuery }: PagefindSearch
       )}
       {!isSearching && query.length >= 2 && results.length === 0 && (
         <div className="p-6 text-center text-muted-foreground">
-          <Search className="w-5 h-5 mx-auto mb-3 opacity-30" />
+          <Search className="w-5 h-5 mx-auto mb-3 opacity-[0.38]" />
           <p className="text-base">No questions found for "{query}"</p>
           <p className="text-sm mt-2 opacity-70">Try different keywords</p>
         </div>
@@ -301,7 +301,7 @@ export function PagefindSearch({ isOpen, onClose, initialQuery }: PagefindSearch
       )}
       {!isSearching && query.length < 2 && !isLoading && (
         <div className="p-6 text-center text-muted-foreground">
-          <Search className="w-5 h-5 mx-auto mb-4 opacity-30" />
+          <Search className="w-5 h-5 mx-auto mb-4 opacity-[0.38]" />
           <p className="text-base mb-1">Type at least 2 characters</p>
           <p className="text-sm opacity-70 mb-6">Search questions, topics, or tags</p>
           <div className="flex flex-wrap justify-center gap-2">

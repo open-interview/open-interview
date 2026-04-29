@@ -79,7 +79,7 @@ export function MobileHomeFocused() {
   const { stats: channelStats } = useChannelStats();
   const { getSubscribedChannels, unsubscribeChannel } = useUserPreferences();
   const { stats: activityStats } = useGlobalStats();
-  const { balance, formatCredits, config } = useCredits();
+  const { balance } = useCredits();
   const subscribedChannels = getSubscribedChannels();
 
   const questionCounts: Record<string, number> = {};
@@ -136,83 +136,65 @@ export function MobileHomeFocused() {
 
         {/* Sidebar Column - Stats, Actions & Review */}
         <div className="lg:col-span-4 mt-3 lg:mt-0 flex flex-col">
-          {/* Premium Stats Card - Matching Profile Design */}
+          {/* M3 tonal stat chips — no gradient noise */}
           <div className="bg-card rounded-xl border border-border overflow-hidden mb-3">
-            {/* Mini Profile Header - Premium gradient */}
             <button
               onClick={() => setLocation('/profile')}
-              className="w-full bg-gradient-to-br from-primary via-primary to-primary p-3 hover:from-primary hover:via-primary hover:to-primary transition-all"
+              className="w-full p-3 flex items-center justify-around hover:bg-muted/30 transition-colors"
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
-                    <Coins className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-xl font-bold text-white">{formatCredits(balance)}</div>
-                    <div className="text-xs text-white/80">Level {Math.floor(balance / 100)} · {balance % 100}/100 XP</div>
-                  </div>
+              <div className="flex items-center gap-2">
+                <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-xl flex items-center justify-center"
+                  style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
+                  <Target className="w-4 h-4 text-primary" />
                 </div>
-                <div className="text-right text-xs">
-                  <div className="text-green-200">+{config.VOICE_ATTEMPT} voice</div>
-                  <div className="text-red-200">-{config.QUESTION_VIEW_COST}/q</div>
+                <div className="text-left">
+                  <div className="font-bold text-sm">{totalCompleted > 0 ? totalCompleted : '—'}</div>
+                  <div className="text-foreground/60" style={{ fontSize: 11 }}>{totalCompleted > 0 ? 'Done' : 'Start!'}</div>
                 </div>
               </div>
-              {/* Level progress bar */}
-              <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-full transition-all"
-                  style={{ width: `${(balance % 100)}%` }}
-                />
+              <div className="w-px min-h-[48px] h-8 bg-border" />
+              <div className="flex items-center gap-2">
+                <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-xl flex items-center justify-center"
+                  style={{ backgroundColor: 'color-mix(in srgb, #EA4335 12%, transparent)' }}>
+                  <Flame className="w-4 h-4" style={{ color: '#EA4335' }} />
+                </div>
+                <div className="text-left">
+                  <div className="font-bold text-sm">{streak > 0 ? streak : '—'}</div>
+                  <div className="text-foreground/60" style={{ fontSize: 11 }}>{streak > 0 ? 'Streak' : 'No streak'}</div>
+                </div>
               </div>
+              <div className="w-px min-h-[48px] h-8 bg-border" />
+              <div className="flex items-center gap-2">
+                <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-xl flex items-center justify-center"
+                  style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
+                  <Layers className="w-4 h-4 text-primary" />
+                </div>
+                <div className="text-left">
+                  <div className="font-bold text-sm">{subscribedChannels.length}</div>
+                  <div className="text-foreground/60" style={{ fontSize: 11 }}>Topics</div>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-foreground/40" />
             </button>
-
-            {/* Quick Stats Row - Enhanced */}
-            {hasChannels && (
-              <button 
-                onClick={() => setLocation('/profile')}
-                className="w-full p-3 flex items-center justify-around hover:bg-muted/30 transition-colors border-t border-border/50"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Target className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="text-left">
-                    <div className="font-bold text-sm">{totalCompleted > 0 ? totalCompleted : '—'}</div>
-                    <div className="text-xs text-foreground/70">{totalCompleted > 0 ? 'Done' : 'Start!'}</div>
-                  </div>
-                </div>
-                <div className="w-px h-8 bg-border" />
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                    <Flame className="w-4 h-4 text-amber-500" />
-                  </div>
-                  <div className="text-left">
-                    <div className="font-bold text-sm">{streak > 0 ? streak : '—'}</div>
-                    <div className="text-xs text-foreground/70">{streak > 0 ? 'Streak' : 'No streak'}</div>
-                  </div>
-                </div>
-                <div className="w-px h-8 bg-border" />
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Layers className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="text-left">
-                    <div className="font-bold text-sm">{subscribedChannels.length}</div>
-                    <div className="text-xs text-foreground/70">Topics</div>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-foreground/70" />
-              </button>
-            )}
           </div>
 
           {/* Adaptive Grid for Sidebar Cards */}
           {hasChannels && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-2 mb-3">
-              {/* Training Mode - Compact */}
-              <TrainingModeCardCompact onStart={() => setLocation('/training')} />
-              
+              {/* Practice Hub */}
+              <button
+                onClick={() => setLocation('/practice')}
+                className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/40 transition-colors text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'color-mix(in srgb, #4285F4 15%, transparent)' }}>
+                  <span className="material-symbols-rounded text-[18px]" style={{ color: '#4285F4' }}>fitness_center</span>
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-foreground">Practice Hub</div>
+                  <div className="text-xs text-foreground/60">All practice modes</div>
+                </div>
+              </button>
+
               {/* Practice CTAs */}
               <CodingChallengeCardCompact onStart={() => setLocation('/coding')} />
               <CertificationCardCompact onStart={() => setLocation('/certifications')} />
@@ -248,7 +230,7 @@ export function MobileHomeFocused() {
             {hasChannels && (
               <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-primary/10 rounded-xl border border-primary/20 p-3 h-fit">
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
                     <Sparkles className="w-4 h-4 text-primary" />
                   </div>
                   <div>
@@ -450,15 +432,26 @@ function QuickQuizCard({
   if (isLoading) {
     return (
       <section className="mb-3">
-        <div className="bg-gradient-to-br from-primary/15 to-card rounded-xl p-4 border border-primary/20">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-primary/20 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-primary animate-pulse" />
+        {/* M3 Shimmer Skeleton */}
+        <div className="rounded-2xl overflow-hidden border border-border/40 p-4 space-y-3"
+          style={{ backgroundColor: 'var(--card, white)' }}>
+          <div className="flex items-center gap-2">
+            <div className="relative overflow-hidden w-24 h-4 rounded-full bg-muted">
+              <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
             </div>
-            <div>
-              <h2 className="font-semibold sm:text-lg">Loading quiz...</h2>
-              <p className="text-xs sm:text-sm text-foreground/70">Preparing questions</p>
+            <div className="relative overflow-hidden w-16 h-4 rounded-full bg-muted">
+              <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
             </div>
+          </div>
+          <div className="relative overflow-hidden w-full h-5 rounded-lg bg-muted">
+            <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+          </div>
+          <div className="space-y-2">
+            {[1,2,3,4].map(n => (
+              <div key={n} className="relative overflow-hidden w-full min-h-[48px] h-10 rounded-xl bg-muted">
+                <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -466,18 +459,19 @@ function QuickQuizCard({
   }
 
   if (!currentQuestion || questions.length === 0) {
+    // M3 Empty State: illustration + headline + body + CTA
     return (
       <section className="mb-3">
-        <div className="bg-gradient-to-br from-primary/15 to-card rounded-xl p-4 border border-primary/20">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-primary/20 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-            </div>
-            <div>
-              <h2 className="font-semibold sm:text-lg">No quiz available</h2>
-              <p className="text-xs sm:text-sm text-foreground/70">Tests coming soon for your channels</p>
-            </div>
+        <div className="rounded-2xl p-8 flex flex-col items-center text-center gap-3"
+          style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 8%, var(--card, white))' }}>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
+            <Sparkles className="min-w-[48px] w-8 min-h-[48px] h-8 text-primary" />
           </div>
+          <h2 className="font-normal text-foreground" style={{ fontSize: 20, lineHeight: '28px' }}>No quiz available yet</h2>
+          <p className="text-foreground/60" style={{ fontSize: 14, lineHeight: '20px' }}>
+            Tests are coming soon for your subscribed channels.
+          </p>
         </div>
       </section>
     );
@@ -487,7 +481,7 @@ function QuickQuizCard({
     <section className="mb-3">
       <div className="bg-gradient-to-br from-primary/15 to-card rounded-xl overflow-hidden border border-primary/20">
         {/* Header */}
-        <div className="px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between border-b border-border/50 bg-primary/5">
+         <div className="px-3 sm:px-4 py-2 sm:py-2 flex items-center justify-between border-b border-border/50 bg-primary/5">
           <div className="flex items-center gap-2">
             <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
             <span className="text-[11px] sm:text-xs font-semibold text-primary uppercase tracking-wide">
@@ -534,7 +528,7 @@ function QuickQuizCard({
             )}
             <button 
               onClick={handleRefresh}
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-muted rounded transition-colors"
+              className="min-w-[48px] min-h-[48px] flex items-center justify-center hover:bg-muted rounded transition-colors"
             >
               <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground/70" />
             </button>
@@ -555,7 +549,7 @@ function QuickQuizCard({
               <div className="flex items-center gap-1.5 mb-2 flex-wrap">
                 <button
                   onClick={() => currentTest && onViewChannel(currentTest.channelId)}
-                  className="px-2 py-0.5 min-h-[44px] bg-primary/10 rounded flex items-center gap-1.5 hover:bg-primary/20 transition-colors"
+                  className="px-2 py-0.5 min-h-[48px] bg-primary/10 rounded flex items-center gap-1.5 hover:bg-primary/20 transition-colors"
                 >
                   <span className="text-primary">{channelConfig && iconMap[channelConfig.icon]}</span>
                   <span className="text-[11px] sm:text-xs font-medium">{channelConfig?.name || currentTest?.channelName}</span>
@@ -613,7 +607,7 @@ function QuickQuizCard({
                           : isSelected
                           ? 'border-primary bg-primary/10'
                           : 'border-border hover:border-primary/50'
-                      } ${showFeedback && !showCorrect && !showWrong && !isSelected ? 'opacity-50 cursor-default' : showFeedback ? 'cursor-default' : ''}`}
+                      } ${showFeedback && !showCorrect && !showWrong && !isSelected ? 'opacity-[0.38] cursor-default' : showFeedback ? 'cursor-default' : ''}`}
                     >
                       <div className="flex items-center gap-2.5">
                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
@@ -820,7 +814,7 @@ function ChannelCard({
         
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+            <div className="min-w-[48px] w-10 min-h-[48px] h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
               {iconMap[channel.icon] || <Code className="w-5 h-5" />}
             </div>
             <div className="flex-1 min-w-0">
@@ -858,7 +852,7 @@ function ChannelCard({
         className="w-full p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors text-left border border-border/50 hover:border-primary/30"
       >
         <div className="flex items-start justify-between mb-3">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+          <div className="min-w-[48px] w-10 min-h-[48px] h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
             {iconMap[channel.icon] || <Code className="w-5 h-5" />}
           </div>
           <div className="text-right">
@@ -889,7 +883,7 @@ function ChannelCard({
           e.stopPropagation();
           setConfirmingUnsubscribe(true);
         }}
-        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-background/80 border border-border opacity-60 group-hover:opacity-100 hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-all flex items-center justify-center"
+        className="absolute top-2 right-2 min-w-[48px] w-8 min-h-[48px] h-8 rounded-full bg-background/80 border border-border opacity-60 group-hover:opacity-100 hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-all flex items-center justify-center"
         title="Unsubscribe"
       >
         <X className="w-3.5 h-3.5" />
@@ -924,7 +918,7 @@ function ChannelRow({
 
   if (confirmingUnsubscribe) {
     return (
-      <div className="relative px-3 py-3 overflow-hidden">
+       <div className="relative px-3 py-2 overflow-hidden">
         {/* Subtle gradient background */}
         <div className="absolute inset-0 bg-gradient-to-r from-destructive/5 via-destructive/10 to-destructive/5" />
         
@@ -964,9 +958,9 @@ function ChannelRow({
     <div className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 hover:bg-muted/50 transition-colors">
       <button
         onClick={onClick}
-        className="flex-1 flex items-center gap-3 text-left min-h-[44px]"
+        className="flex-1 flex items-center gap-3 text-left min-h-[48px]"
       >
-        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+        <div className="w-9 h-9 sm:min-w-[48px] w-10 sm:min-h-[48px] h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
           {iconMap[channel.icon] || <Code className="w-4 h-4 sm:w-5 sm:h-5" />}
         </div>
         
@@ -997,7 +991,7 @@ function ChannelRow({
           e.stopPropagation();
           setConfirmingUnsubscribe(true);
         }}
-        className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors flex-shrink-0"
+        className="min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors flex-shrink-0"
         title="Unsubscribe"
       >
         <X className="w-4 h-4" />
@@ -1013,7 +1007,7 @@ function CodingChallengeCardCompact({ onStart }: { onStart: () => void }) {
       onClick={onStart}
       className="bg-gradient-to-br from-primary/10 to-blue-500/10 rounded-xl border border-primary/20 p-3 flex flex-col items-center gap-2 hover:from-primary/15 hover:to-blue-500/15 transition-colors text-center"
     >
-      <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+      <div className="min-w-[48px] w-10 min-h-[48px] h-10 rounded-xl bg-primary/20 flex items-center justify-center">
         <Code className="w-5 h-5 text-primary" />
       </div>
       <div>
@@ -1031,7 +1025,7 @@ function CertificationCardCompact({ onStart }: { onStart: () => void }) {
       onClick={onStart}
       className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-xl border border-amber-500/20 p-3 flex flex-col items-center gap-2 hover:from-amber-500/15 hover:to-orange-500/15 transition-colors text-center"
     >
-      <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+      <div className="min-w-[48px] w-10 min-h-[48px] h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
         <Award className="w-5 h-5 text-amber-500" />
       </div>
       <div>
@@ -1049,7 +1043,7 @@ function TrainingModeCardCompact({ onStart }: { onStart: () => void }) {
       onClick={onStart}
       className="bg-gradient-to-br from-blue-500/10 to-primary/10 rounded-xl border border-blue-500/20 p-3 flex flex-col items-center gap-2 hover:from-blue-500/15 hover:to-primary/15 transition-colors text-center"
     >
-      <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+      <div className="min-w-[48px] w-10 min-h-[48px] h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
         <BookOpen className="w-5 h-5 text-blue-500" />
       </div>
       <div>
@@ -1066,28 +1060,28 @@ function QuickLinksCompact({ onNavigate }: { onNavigate: (path: string) => void 
     <div className="bg-card rounded-xl border border-border p-2 flex flex-wrap justify-center gap-1.5">
       <button
         onClick={() => onNavigate('/badges')}
-        className="p-3 rounded-lg hover:bg-muted/50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+        className="p-3 rounded-lg hover:bg-muted/50 transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center"
         aria-label="Badges"
       >
         <Award className="w-4 h-4 text-yellow-500" />
       </button>
       <button
         onClick={() => onNavigate('/bookmarks')}
-        className="p-3 rounded-lg hover:bg-muted/50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+        className="p-3 rounded-lg hover:bg-muted/50 transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center"
         aria-label="Bookmarks"
       >
         <BookOpen className="w-4 h-4 text-blue-500" />
       </button>
       <button
         onClick={() => onNavigate('/tests')}
-        className="p-3 rounded-lg hover:bg-muted/50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+        className="p-3 rounded-lg hover:bg-muted/50 transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center"
         aria-label="Tests"
       >
         <Target className="w-4 h-4 text-green-500" />
       </button>
       <button
         onClick={() => onNavigate('/profile')}
-        className="p-3 rounded-lg hover:bg-muted/50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+        className="p-3 rounded-lg hover:bg-muted/50 transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center"
         aria-label="Stats"
       >
         <Activity className="w-4 h-4 text-primary" />
@@ -1112,7 +1106,7 @@ function VoiceInterviewCard({ onStart }: { onStart: () => void }) {
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform">
               <Mic className="w-6 h-6 text-white" />
             </div>
-            <div className="absolute inset-0 rounded-xl bg-primary/30 animate-ping opacity-30" />
+            <div className="absolute inset-0 rounded-xl bg-primary/30 animate-ping opacity-[0.38]" />
           </div>
           
           <div className="flex-1 text-left min-w-0">
@@ -1140,7 +1134,7 @@ function VoiceInterviewCard({ onStart }: { onStart: () => void }) {
           <span className="text-xs text-foreground/70">Focused practice?</span>
           <button
             onClick={() => setLocation('/voice-session')}
-            className="text-xs text-primary hover:underline flex items-center gap-1 min-h-[44px] px-2"
+            className="text-xs text-primary hover:underline flex items-center gap-1 min-h-[48px] px-2"
           >
             <Target className="w-2.5 h-2.5" />
             Micro Sessions
@@ -1165,7 +1159,7 @@ function TrainingModeCard({ onStart }: { onStart: () => void }) {
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform">
               <BookOpen className="w-6 h-6 text-white" />
             </div>
-            <div className="absolute inset-0 rounded-xl bg-blue-500/30 animate-ping opacity-30" />
+            <div className="absolute inset-0 rounded-xl bg-blue-500/30 animate-ping opacity-[0.38]" />
           </div>
           
           <div className="flex-1 text-left min-w-0">
@@ -1201,29 +1195,35 @@ function TrainingModeCard({ onStart }: { onStart: () => void }) {
   );
 }
 
-// Welcome Card for new users
+// Welcome Card — M3 Empty State formula: illustration + headline + body + CTA
 function WelcomeCard({ onGetStarted }: { onGetStarted: () => void }) {
   return (
     <section className="mb-3">
-      <div className="bg-gradient-to-br from-primary/15 to-card rounded-xl p-5 sm:p-6">
-        <div className="text-center">
-          <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-3 sm:mb-4">
-            <Code className="w-7 h-7 sm:w-10 sm:h-10 text-primary" />
-          </div>
-          
-          <h1 className="font-bold text-lg sm:text-2xl lg:text-3xl mb-1 sm:mb-2">Welcome to Learn Reels</h1>
-          <p className="text-sm sm:text-base text-foreground/70 mb-4 sm:mb-6 max-w-md mx-auto">
-            Master technical interviews with bite-sized questions
-          </p>
-
-            <button
-              onClick={onGetStarted}
-              className="w-full sm:w-auto px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold flex items-center justify-center gap-2 text-sm mx-auto"
-            >
-            <Compass className="w-4 h-4 sm:w-5 sm:h-5" />
-            Choose Your Topics
-          </button>
+      {/* M3 Filled Card — primary container */}
+      <div className="rounded-2xl p-6 sm:p-8 flex flex-col items-center text-center gap-4"
+        style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 10%, var(--card, white))' }}>
+        {/* Illustration */}
+        <div className="w-20 h-20 rounded-full flex items-center justify-center"
+          style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 15%, transparent)' }}>
+          <Code className="min-w-[48px] w-10 min-h-[48px] h-10 text-primary" />
         </div>
+        {/* Headline — M3 Headline Medium 28/36 */}
+        <h1 className="font-normal text-foreground" style={{ fontSize: 24, lineHeight: '32px' }}>
+          Welcome to Open Interview
+        </h1>
+        {/* Body — M3 Body Large 16/24 */}
+        <p className="text-foreground/60 max-w-sm" style={{ fontSize: 15, lineHeight: '22px' }}>
+          Master technical interviews with bite-sized questions across 40+ topics.
+        </p>
+        {/* CTA — M3 Filled Button */}
+        <button
+          onClick={onGetStarted}
+          className="inline-flex items-center justify-center gap-2 min-h-[48px] h-10 px-6 rounded-full font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', fontSize: 14, fontWeight: 500 }}
+        >
+          <Compass className="w-4 h-4" />
+          Choose Your Topics
+        </button>
       </div>
     </section>
   );

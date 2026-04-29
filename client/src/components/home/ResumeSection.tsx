@@ -13,11 +13,13 @@ import {
 } from '../../lib/resume-service';
 import { ResumeTile } from './ResumeTile';
 import { useUnifiedToast } from '../../hooks/use-unified-toast';
+import { GoogleDialog } from '../google/GoogleDialog';
 
 export function ResumeSection() {
   const [sessions, setSessions] = useState<ResumeSession[]>([]);
   const [, setLocation] = useLocation();
   const { toast } = useUnifiedToast();
+  const [abandonSession, setAbandonSession] = useState<ResumeSession | null>(null);
 
   // Load sessions on mount
   useEffect(() => {
@@ -42,7 +44,7 @@ export function ResumeSection() {
         setLocation(`/certification/${session.certificationId}/exam`);
         break;
       case 'training':
-        setLocation('/training');
+        setLocation('/voice-interview');
         break;
       default:
         toast({
@@ -54,15 +56,19 @@ export function ResumeSection() {
   };
 
   const handleAbandon = (session: ResumeSession) => {
-    // Confirm before abandoning
-    if (confirm(`Are you sure you want to abandon "${session.title}"? Your progress will be lost.`)) {
-      abandonSession(session.id);
+    setAbandonSession(session);
+  };
+
+  const confirmAbandon = () => {
+    if (abandonSession) {
+      abandonSession(abandonSession.id);
       loadSessions(); // Refresh list
       
       toast({
         title: 'Session abandoned',
-        description: `"${session.title}" has been removed`,
+        description: `"${abandonSession.title}" has been removed`,
       });
+      setAbandonSession(null);
     }
   };
 
@@ -80,7 +86,7 @@ export function ResumeSection() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+          <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
             <RotateCcw className="w-4 h-4 text-primary" />
           </div>
           <div>
@@ -111,6 +117,35 @@ export function ResumeSection() {
           ))}
         </AnimatePresence>
       </div>
+
+      {/* Abandon Session Dialog */}
+      <GoogleDialog
+        open={abandonSession !== null}
+        onClose={() => setAbandonSession(null)}
+        title="Abandon Session"
+      >
+        <div className="p-6">
+          <p className="text-sm text-gray-600 mb-6">
+            Are you sure you want to abandon "{abandonSession?.title}"? Your progress will be lost.
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setAbandonSession(null)}
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={{ background: 'transparent', color: 'var(--text-secondary)' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmAbandon}
+              className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors"
+              style={{ background: 'var(--color-error)' }}
+            >
+              Abandon
+            </button>
+          </div>
+        </div>
+      </GoogleDialog>
     </motion.section>
   );
 }

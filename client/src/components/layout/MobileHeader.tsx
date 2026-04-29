@@ -1,9 +1,14 @@
 /**
- * Mobile Header — Material 3 top app bar
- * Light surface, IconButton circles, Material Symbols icons.
+ * Mobile Header — Material Design 3 Top App Bar
+ *
+ * Visible on mobile + tablet (<840px).
+ * 64dp tall (h-16), center-aligned title, search icon + avatar on right.
+ * Hides on scroll-down, shows on scroll-up.
+ * Uses M3 color roles via CSS custom properties.
+ * Safe area: env(safe-area-inset-top) applied.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { useCredits } from '../../context/CreditsContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -19,16 +24,11 @@ interface MobileHeaderProps {
   showSearch?: boolean;
 }
 
-function useIsNestedRoute() {
-  const [location] = useLocation();
-  return location.split('/').filter(Boolean).length > 1;
-}
-
-function MIcon({ name, size = 22, filled = false }: { name: string; size?: number; filled?: boolean }) {
+function MIcon({ name, size = 24, filled = false }: { name: string; size?: number; filled?: boolean }) {
   return (
     <span
       className={`material-symbols-rounded${filled ? ' filled' : ''}`}
-      style={{ fontSize: size }}
+      style={{ fontSize: size, lineHeight: 1 }}
       aria-hidden="true"
     >
       {name}
@@ -40,21 +40,24 @@ function IconButton({
   onClick,
   children,
   ariaLabel,
+  ariaPressed,
   testId,
 }: {
   onClick?: () => void;
   children: React.ReactNode;
   ariaLabel: string;
+  ariaPressed?: boolean;
   testId?: string;
 }) {
   return (
     <button
       onClick={onClick}
       aria-label={ariaLabel}
+      aria-pressed={ariaPressed}
       data-testid={testId}
-      className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:outline-none"
-      style={{ color: 'var(--foreground)' }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--muted)')}
+      className="min-w-[48px] w-10 min-h-[48px] h-10 flex items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2"
+      style={{ color: 'var(--md-sys-color-on-surface)' }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = 'color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent)')}
       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
     >
       {children}
@@ -62,18 +65,29 @@ function IconButton({
   );
 }
 
-function InlineThemeToggle() {
-  const { theme, toggleTheme } = useTheme();
-  const isDark = theme === 'dark';
-  return (
-    <IconButton
-      onClick={toggleTheme}
-      ariaLabel="Toggle theme"
-      testId="button-theme-toggle"
-    >
-      <MIcon name={isDark ? 'light_mode' : 'dark_mode'} size={20} />
-    </IconButton>
-  );
+function useScrollBehavior() {
+  const lastY = useRef(0);
+  const [hidden, setHidden] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY;
+      setScrolled(y > 4);
+      if (y > lastY.current + 4) setHidden(true);
+      else if (y < lastY.current - 4) setHidden(false);
+      lastY.current = y;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  return { hidden, scrolled };
+}
+
+function useIsNestedRoute() {
+  const [location] = useLocation();
+  return location.split('/').filter(Boolean).length > 1;
 }
 
 export function MobileHeader({
@@ -86,117 +100,105 @@ export function MobileHeader({
 }: MobileHeaderProps) {
   const [, setLocation] = useLocation();
   const { balance, formatCredits } = useCredits();
-  const [scrolled, setScrolled] = useState(false);
+  const { theme, toggleTheme } = useTheme();
   const isNested = useIsNestedRoute();
   const shouldShowBack = showBack ?? isNested;
+  const { hidden, scrolled } = useScrollBehavior();
 
-  const handleBack = () => {
-    if (onBack) {
-      onBack();
-    } else {
-      window.history.back();
-    }
-  };
+  const handleBack = () => (onBack ? onBack() : window.history.back());
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  const bgColor = transparent && !scrolled
+    ? 'transparent'
+    : scrolled
+      ? 'var(--md-sys-color-surface-container)'
+      : 'var(--md-sys-color-surface)';
 
   return (
     <header
-      className="sticky top-0 z-40 lg:hidden transition-colors"
+      className="sticky top-0 z-40 lg:hidden transition-transform duration-300"
       style={{
-        background: transparent && !scrolled ? 'transparent' : 'var(--background)',
-        borderBottom: scrolled ? '1px solid var(--border)' : '1px solid transparent',
+        background: bgColor,
+        borderBottom: scrolled ? '1px solid var(--md-sys-color-outline-variant)' : '1px solid transparent',
         paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
+        transform: hidden ? 'translateY(-100%)' : 'translateY(0)',
+        boxShadow: scrolled
+          ? '0 1px 3px color-mix(in srgb, var(--md-sys-color-shadow) 15%, transparent)'
+          : 'none',
       }}
     >
-      <div className="flex items-center justify-between h-14 px-2 gap-2">
-        {/* Left */}
-        <div className="flex items-center gap-1 min-w-0 flex-1">
+      {/* 64dp = h-16 */}
+      <div className="flex items-center h-16 px-1 gap-1">
+
+        {/* Leading: back button or brand logo */}
+        <div className="w-12 flex items-center justify-center shrink-0">
           {shouldShowBack ? (
-            <IconButton
-              onClick={handleBack}
-              ariaLabel="Go back"
-              testId="button-back"
-            >
-              <MIcon name="arrow_back" size={20} />
+            <IconButton onClick={handleBack} ariaLabel="Go back" testId="button-back">
+              <MIcon name="arrow_back" size={24} />
             </IconButton>
           ) : (
             <button
               onClick={() => setLocation('/')}
-              className="flex items-center gap-2.5 shrink-0 pl-2 pr-1"
+              className="min-w-[48px] w-10 min-h-[48px] h-10 flex items-center justify-center rounded-full"
               data-testid="button-brand"
-            >
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[12px]"
-                style={{
-                  background: 'var(--primary)',
-                  color: 'var(--primary-foreground)',
-                  fontFamily: GOOGLE_SANS,
-                  fontWeight: 500,
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                OI
-              </div>
-              {!title && (
-                <span
-                  className="text-base"
-                  style={{
-                    color: 'var(--foreground)',
-                    fontFamily: GOOGLE_SANS,
-                    fontWeight: 500,
-                    letterSpacing: '-0.005em',
-                  }}
-                >
-                  Open Interview
-                </span>
-              )}
-            </button>
-          )}
-
-          {title && (
-            <h1
-              className="text-base truncate ml-1"
               style={{
-                color: 'var(--foreground)',
+                background: 'var(--md-sys-color-primary)',
+                color: 'var(--md-sys-color-on-primary)',
                 fontFamily: GOOGLE_SANS,
-                fontWeight: 500,
-                letterSpacing: '-0.005em',
+                fontWeight: 600,
+                fontSize: 13,
+                letterSpacing: '-0.01em',
               }}
             >
-              {title}
-            </h1>
+              OI
+            </button>
           )}
         </div>
 
-        {/* Right */}
-        <div className="flex items-center gap-1 shrink-0 pr-1">
-          <button
-            onClick={() => setLocation('/profile')}
-            data-testid="button-credits-mobile"
-            className="flex items-center gap-1.5 h-9 px-3 rounded-full transition-colors"
+        {/* Center title — M3 center-aligned top app bar */}
+        <div className="flex-1 flex items-center justify-center min-w-0">
+          <h1
+            className="text-lg truncate"
             style={{
-              background: 'color-mix(in srgb, #f9ab00 14%, transparent)',
-              color: '#f9ab00',
+              color: 'var(--md-sys-color-on-surface)',
               fontFamily: GOOGLE_SANS,
-              fontWeight: 500,
+              fontWeight: 400,
+              letterSpacing: 0,
             }}
           >
-            <MIcon name="paid" size={16} filled />
-            <span className="text-xs">{formatCredits(balance)}</span>
-          </button>
+            {title ?? 'Open Interview'}
+          </h1>
+        </div>
 
+        {/* Trailing: search + theme toggle + avatar */}
+        <div className="flex items-center shrink-0">
           {showSearch && (
             <IconButton onClick={onSearchClick} ariaLabel="Search" testId="button-search-mobile">
-              <MIcon name="search" size={20} />
+              <MIcon name="search" size={24} />
             </IconButton>
           )}
 
-          <InlineThemeToggle />
+          <IconButton onClick={toggleTheme} ariaLabel="Toggle theme" aria-pressed={theme === 'dark'} testId="button-theme-toggle">
+            <MIcon name={theme === 'dark' ? 'light_mode' : 'dark_mode'} size={24} />
+          </IconButton>
+
+          {/* Avatar / credits chip */}
+          <button
+            onClick={() => setLocation('/profile')}
+            data-testid="button-credits-mobile"
+            className="min-w-[48px] w-10 min-h-[48px] h-10 flex items-center justify-center rounded-full transition-colors"
+            style={{
+              background: 'color-mix(in srgb, var(--md-sys-color-tertiary) 16%, transparent)',
+              color: 'var(--md-sys-color-tertiary)',
+              fontFamily: GOOGLE_SANS,
+              fontWeight: 600,
+              fontSize: 12,
+            }}
+            title={`${formatCredits(balance)} credits`}
+          >
+            <MIcon name="person" size={20} filled />
+          </button>
         </div>
       </div>
     </header>

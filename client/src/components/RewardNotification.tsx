@@ -117,7 +117,7 @@ function RewardToast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: str
             className="flex items-center gap-3 p-2.5 rounded-lg border border-yellow-500/30"
             style={{ background: 'linear-gradient(135deg, rgba(234,179,8,0.12), rgba(245,158,11,0.08))' }}
           >
-            <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center">
+            <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-full bg-yellow-500/20 flex items-center justify-center">
               <Crown className="w-4 h-4 text-yellow-400" />
             </div>
             <div>
@@ -165,7 +165,7 @@ function AchievementRow({ achievement }: { achievement: UnlockedAchievement }) {
       animate={{ x: 0, opacity: 1 }}
       className={`flex items-center gap-3 p-2.5 rounded-lg bg-gradient-to-r ${TIER_GRADIENT[achievement.tier] ?? TIER_GRADIENT.bronze}`}
     >
-      <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+      <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
         <Award className="w-4 h-4 text-white" />
       </div>
       <div className="flex-1 min-w-0">

@@ -181,7 +181,7 @@ export function PullToRefresh({
         <button
           onClick={handleRefreshClick}
           disabled={disabled || isRefreshing}
-          className="flex items-center gap-2 px-4 py-2.5 min-h-[44px] text-sm font-medium text-primary bg-primary/10 hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-all duration-150 active:scale-95 shadow-[4px_4px_8px_rgba(163,177,198,0.5),-4px_-4px_8px_rgba(255,255,255,1)] dark:shadow-[4px_4px_8px_rgba(0,0,0,0.4),-4px_-4px_8px_rgba(255,255,255,0.08)]"
+          className="flex items-center gap-2 px-4 py-2.5 min-h-[48px] text-sm font-medium text-primary bg-primary/10 hover:bg-primary/20 disabled:opacity-[0.38] disabled:cursor-not-allowed rounded-full transition-all duration-150 active:scale-95 shadow-[4px_4px_8px_rgba(163,177,198,0.5),-4px_-4px_8px_rgba(255,255,255,1)] dark:shadow-[4px_4px_8px_rgba(0,0,0,0.4),-4px_-4px_8px_rgba(255,255,255,0.08)]"
           aria-label="Refresh content"
         >
           <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />

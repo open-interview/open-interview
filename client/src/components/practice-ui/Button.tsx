@@ -41,9 +41,9 @@ export function Button({
   };
 
   const sizes = {
-    sm: 'px-4 py-2.5 text-sm rounded-lg min-h-[40px] h-10',
-    md: 'px-4 py-2.5 text-sm rounded-lg min-h-[40px] h-10',
-    lg: 'px-4 py-2.5 text-base rounded-lg min-h-[40px] h-10',
+    sm: 'px-4 py-2.5 text-sm rounded-lg min-h-[48px] h-10',
+    md: 'px-4 py-2.5 text-sm rounded-lg min-h-[48px] h-10',
+    lg: 'px-4 py-2.5 text-base rounded-lg min-h-[48px] h-10',
   };
 
   return (
@@ -58,7 +58,7 @@ export function Button({
         'transition-all font-medium text-sm',
         variants[variant],
         sizes[size],
-        disabled && 'opacity-50 cursor-not-allowed',
+        disabled && 'opacity-[0.38] cursor-not-allowed',
         className
       )}
     >

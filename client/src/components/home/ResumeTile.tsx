@@ -34,7 +34,7 @@ export function ResumeTile({ session, onResume, onAbandon }: ResumeTileProps) {
       {/* Header */}
       <div className="flex items-start gap-3 mb-3">
         <div 
-          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+          className="min-w-[48px] w-10 min-h-[48px] h-10 rounded-lg flex items-center justify-center flex-shrink-0"
           style={{ backgroundColor: `${session.color}20` }}
         >
           <Icon 

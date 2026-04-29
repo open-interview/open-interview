@@ -91,6 +91,10 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('.js') ||
     url.pathname.endsWith('.css') ||
     url.pathname.endsWith('.png') ||
+    url.pathname.endsWith('.jpg') ||
+    url.pathname.endsWith('.jpeg') ||
+    url.pathname.endsWith('.webp') ||
+    url.pathname.endsWith('.avif') ||
     url.pathname.endsWith('.svg') ||
     url.pathname.endsWith('.ico') ||
     url.pathname.endsWith('.woff2')
@@ -149,4 +153,78 @@ self.addEventListener('message', (event) => {
       })
     );
   }
+});
+
+// Notification click handling with actions
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const action = event.action;
+  const data = event.notification.data || {};
+  let url = data.url || '/';
+
+  // Handle notification actions
+  if (action === 'view') {
+    url = data.url || '/';
+  } else if (action === 'dismiss') {
+    return; // Just close the notification
+  } else if (action === 'snooze') {
+    // Re-show notification after 15 minutes
+    setTimeout(() => {
+      event.notification.close();
+      self.registration.showNotification(data.title, {
+        ...data.options,
+        tag: data.tag + '_snoozed'
+      });
+    }, 15 * 60 * 1000);
+    return;
+  } else if (action === 'complete') {
+    url = '/challenge?completed=' + (data.challengeId || '');
+  } else if (action === 'review') {
+    url = '/review?session=' + (data.sessionId || '');
+  }
+
+  // Focus or open window
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then((clientList) => {
+      // Check if there's already a window open
+      for (const client of clientList) {
+        if (client.url === url && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Open new window
+      if (clients.openWindow) {
+        return clients.openWindow(url);
+      }
+    })
+  );
+});
+
+// Handle push events with actionable notifications
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  const data = event.data.json();
+  const options = {
+    body: data.body || '',
+    icon: data.icon || '/favicon.png',
+    badge: data.badge || '/favicon.png',
+    tag: data.tag || 'default',
+    data: {
+      url: data.url || '/',
+      ...data
+    },
+    // Add notification actions for better UX (M3 §15)
+    actions: data.actions || [
+      { action: 'view', title: 'View', icon: '/icons/view.png' },
+      { action: 'dismiss', title: 'Dismiss', icon: '/icons/dismiss.png' }
+    ],
+    requireInteraction: data.requireInteraction || false,
+    silent: data.silent || false
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Open-Interview', options)
+  );
 });

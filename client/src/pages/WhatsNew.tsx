@@ -53,7 +53,7 @@ function ChangelogEntryCard({ entry, index }: { entry: ChangelogEntry; index: nu
       transition={{ delay: index * 0.04, duration: 0.3 }}
       className="group"
     >
-        <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+        <div className="bg-card rounded-xl shadow-sm overflow-hidden">
         <button
           onClick={() => setExpanded(!expanded)}
           aria-expanded={expanded}
@@ -217,15 +217,15 @@ export default function WhatsNew() {
                animate={{ opacity: 1, y: 0 }}
                className="grid grid-cols-3 gap-3 mb-6"
              >
-                <div className="bg-card rounded-2xl p-4 text-center border border-border">
+                <div className="bg-card rounded-xl p-4 text-center">
                  <div className="text-2xl font-bold text-primary">{data.stats.totalQuestionsAdded}</div>
                  <div className="text-xs uppercase tracking-widest text-foreground/70">Added</div>
                </div>
-                <div className="bg-card rounded-2xl p-4 text-center border border-border">
+                <div className="bg-card rounded-xl p-4 text-center">
                  <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{data.stats.totalQuestionsImproved}</div>
                  <div className="text-xs uppercase tracking-widest text-foreground/70">Improved</div>
                </div>
-                <div className="bg-card rounded-2xl p-4 text-center border border-border">
+                <div className="bg-card rounded-xl p-4 text-center">
                  <div className="text-2xl font-bold text-violet-600 dark:text-violet-400">{data.entries.length}</div>
                  <div className="text-xs uppercase tracking-widest text-foreground/70">Updates</div>
                </div>
@@ -248,18 +248,18 @@ export default function WhatsNew() {
 
             {isLoading && (
               <div className="text-center py-12 text-foreground/70">
-                <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin" />
+                <Loader2 className="min-w-[48px] w-8 min-h-[48px] h-8 mx-auto mb-4 animate-spin" />
                 <p>Loading updates...</p>
               </div>
             )}
 
             {!isLoading && data.entries.length === 0 && (
               <div className="text-center py-12 text-foreground/70">
-                <Sparkles className="w-8 h-8 mx-auto mb-4 opacity-50" />
+                <Sparkles className="min-w-[48px] w-8 min-h-[48px] h-8 mx-auto mb-4 opacity-[0.38]" />
                 <p className="text-base mb-4">No updates yet. Check back soon!</p>
                 <button
                   onClick={() => setLocation('/')}
-                  className="px-4 py-2.5 min-h-[40px] h-10 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-sm"
+                  className="px-4 py-2.5 min-h-[48px] min-h-[48px] h-10 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-sm"
                 >
                   Browse Channels
                 </button>

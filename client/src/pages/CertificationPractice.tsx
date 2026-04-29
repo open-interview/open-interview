@@ -8,8 +8,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { useLocation, useRoute } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  getCertificationById, 
+import {
+  getCertificationById,
   getPrerequisiteCertifications,
 } from '../lib/certifications-config';
 import { useCredits } from '../context/CreditsContext';
@@ -32,6 +32,10 @@ import {
   SkipForward, Lock, Unlock, CheckCircle, XCircle, RefreshCw,
   ChevronDown, ChevronUp, Lightbulb
 } from 'lucide-react';
+
+const M3_MOTION_DURATION = 200;
+const M3_MOTION_EASING = [0.2, 0, 0, 1];
+const M3_DISABLED_OPACITY = 0.38;
 
 const SKIP_TEST_PENALTY = 50;
 const QUESTIONS_PER_TEST = 5;
@@ -428,18 +432,18 @@ export default function CertificationPractice() {
   if (!certification) {
     return (
       <AppLayout fullWidth>
-        <div className="min-h-screen bg-background text-foreground">
+        <div className="min-h-screen bg-[var(--md-sys-color-background)] text-[var(--md-sys-color-on-background)]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <div className="text-center mb-10">
-              <h1 className="text-5xl md:text-6xl font-black mb-3">
-                <span className="bg-gradient-to-r from-primary to-primary bg-clip-text text-transparent">Certification Practice</span>
+              <h1 className="text-[var(--md-sys-typescale-display-large-size,3.5625rem)] font-[var(--md-sys-typescale-display-large-weight,400)] leading-[var(--md-sys-typescale-display-large-line-height,1.12)] tracking-[var(--md-sys-typescale-display-large-tracking,-0.015625em)] mb-3">
+                <span className="bg-gradient-to-r from-[var(--md-sys-color-primary)] to-[var(--md-sys-color-primary)] bg-clip-text text-transparent">Certification Practice</span>
               </h1>
             </div>
-            <div className="flex items-center justify-center py-20">
+            <div className="flex items-center justify-center py-20" role="alert" aria-label="Certification not found">
               <div className="text-center">
-                <Award className="w-16 h-16 mx-auto mb-4 text-foreground/70/30" />
-                <h2 className="text-xl font-semibold mb-2">Certification not found</h2>
-                <p className="text-foreground/70 text-sm">Redirecting to home...</p>
+                <Award className="w-16 h-16 mx-auto mb-4 text-[var(--md-sys-color-on-surface-variant)]/30" />
+                <h2 className="text-xl font-semibold mb-2 text-[var(--md-sys-color-on-surface)]">Certification not found</h2>
+                <p className="text-[var(--md-sys-color-on-surface-variant)] text-sm">Redirecting to home...</p>
               </div>
             </div>
           </div>
@@ -458,42 +462,43 @@ export default function CertificationPractice() {
     if (!showTest) return null;
 
     return (
-      <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 bg-[var(--md-sys-color-scrim)]/90 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Checkpoint Test">
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="bg-muted/50 border border-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-xl"
+          transition={{ duration: 0.2, ease: M3_MOTION_EASING }}
+          className="bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-xl"
         >
           {/* Header */}
-          <div className="p-4 border-b border-border bg-gradient-to-r from-amber-500/10 via-primary/10 to-amber-500/10">
+          <div className="p-4 border-b border-[var(--md-sys-color-outline-variant)] bg-gradient-to-r from-[var(--md-sys-color-tertiary)]/10 via-[var(--md-sys-color-primary)]/10 to-[var(--md-sys-color-tertiary)]/10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                  showResults ? (testResults.passed ? 'bg-green-500/20' : 'bg-red-500/20') : 'bg-amber-500/20'
+                <div className={`min-w-[48px] w-10 min-h-[48px] h-10 rounded-xl flex items-center justify-center ${
+                  showResults ? (testResults.passed ? 'bg-[var(--md-sys-color-tertiary)]/20' : 'bg-[var(--md-sys-color-error)]/20') : 'bg-[var(--md-sys-color-tertiary)]/20'
                 }`}>
                   {showResults ? (
-                    testResults.passed ? <Unlock className="w-5 h-5 text-green-500" /> : <Lock className="w-5 h-5 text-red-500" />
+                    testResults.passed ? <Unlock className="w-5 h-5 text-[var(--md-sys-color-tertiary)]" /> : <Lock className="w-5 h-5 text-[var(--md-sys-color-error)]" />
                   ) : (
-                    <Zap className="w-5 h-5 text-amber-500" />
+                    <Zap className="w-5 h-5 text-[var(--md-sys-color-tertiary)]" />
                   )}
                 </div>
                 <div>
-                  <h3 className="font-bold">
+                  <h3 className="font-bold text-[var(--md-sys-color-on-surface)]">
                     {showResults ? (testResults.passed ? 'Passed!' : 'Failed') : 'Checkpoint Test'}
                   </h3>
-                  <p className="text-xs text-foreground/70">
+                  <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
                     {showResults ? `${testResults.correct}/${testResults.total} correct` : `Q${currentTestIndex + 1}/${testQuestions.length} • Tap answer to submit`}
                   </p>
                 </div>
               </div>
-              
+
               {!showResults && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1" role="progressbar" aria-label={`Question ${currentTestIndex + 1} of ${testQuestions.length}`}>
                   {testQuestions.map((_, i) => (
                     <div key={i} className={`w-2.5 h-2.5 rounded-full ${
                       i < testAnswers.length
-                        ? testAnswers[i]?.isCorrect ? 'bg-green-500' : 'bg-red-500'
-                        : i === currentTestIndex ? 'bg-gradient-to-r from-primary to-primary' : 'bg-muted'
+                        ? testAnswers[i]?.isCorrect ? 'bg-[var(--md-sys-color-tertiary)]' : 'bg-[var(--md-sys-color-error)]'
+                        : i === currentTestIndex ? 'bg-[var(--md-sys-color-primary)]' : 'bg-[var(--md-sys-color-surface-container)]'
                     }`} />
                   ))}
                 </div>
@@ -505,11 +510,11 @@ export default function CertificationPractice() {
           <div className="flex-1 overflow-y-auto p-5">
             {showResults ? (
               // Results - expandable review
-              <div className="space-y-3">
+              <div className="space-y-3" role="region" aria-label="Test results">
                 {!testResults.passed && (
-                  <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-2xl text-sm">
-                    <span className="font-medium text-red-500">Need 100% to proceed.</span>
-                    <span className="text-foreground/70 ml-1">Review below, then retry or skip.</span>
+                  <div className="p-3 bg-[var(--md-sys-color-error)]/10 border border-[var(--md-sys-color-error)]/20 rounded-2xl text-sm">
+                    <span className="font-medium text-[var(--md-sys-color-error)]">Need 100% to proceed.</span>
+                    <span className="text-[var(--md-sys-color-on-surface-variant)] ml-1">Review below, then retry or skip.</span>
                   </div>
                 )}
 
@@ -521,19 +526,21 @@ export default function CertificationPractice() {
 
                   return (
                     <div key={q.id} className={`border rounded-2xl overflow-hidden ${
-                      answer?.isCorrect ? 'border-green-500/30' : 'border-red-500/30'
+                      answer?.isCorrect ? 'border-[var(--md-sys-color-tertiary)]/30' : 'border-[var(--md-sys-color-error)]/30'
                     }`}>
-<button
-                         onClick={() => toggleResultExpand(index)}
-                         className="w-full p-3 flex items-center gap-3 text-left hover:bg-muted/30 min-h-[44px] cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
-                       >
+                      <button
+                        onClick={() => toggleResultExpand(index)}
+                        aria-expanded={isExpanded}
+                        aria-label={`Question ${index + 1}: ${q.question}`}
+                        className="w-full p-3 flex items-center gap-3 text-left hover:bg-[var(--md-sys-color-surface-container)] min-h-[48px] cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none"
+                      >
                         {answer?.isCorrect ? (
-                          <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                          <CheckCircle className="w-5 h-5 text-[var(--md-sys-color-tertiary)] flex-shrink-0" />
                         ) : (
-                          <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                          <XCircle className="w-5 h-5 text-[var(--md-sys-color-error)] flex-shrink-0" />
                         )}
-                        <span className="flex-1 text-sm line-clamp-1">{q.question}</span>
-                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        <span className="flex-1 text-sm line-clamp-1 text-[var(--md-sys-color-on-surface)]">{q.question}</span>
+                        {isExpanded ? <ChevronUp className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)]" /> : <ChevronDown className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)]" />}
                       </button>
 
                       <AnimatePresence>
@@ -542,23 +549,24 @@ export default function CertificationPractice() {
                             initial={{ height: 0 }}
                             animate={{ height: 'auto' }}
                             exit={{ height: 0 }}
-                            className="overflow-hidden border-t border-border/50"
+                            transition={{ duration: 0.3, ease: M3_MOTION_EASING }}
+                            className="overflow-hidden border-t border-[var(--md-sys-color-outline-variant)]"
                           >
                             <div className="p-3 space-y-2 text-sm">
-                              <div className={`p-2 rounded-2xl ${answer?.isCorrect ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-                                <span className="text-xs text-foreground/70">Your answer: </span>
-                                <span className={answer?.isCorrect ? 'text-green-500' : 'text-red-500'}>{selectedOption?.text}</span>
+                              <div className={`p-2 rounded-2xl ${answer?.isCorrect ? 'bg-[var(--md-sys-color-tertiary)]/10' : 'bg-[var(--md-sys-color-error)]/10'}`}>
+                                <span className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Your answer: </span>
+                                <span className={answer?.isCorrect ? 'text-[var(--md-sys-color-tertiary)]' : 'text-[var(--md-sys-color-error)]'}>{selectedOption?.text}</span>
                               </div>
                               {!answer?.isCorrect && (
-                                <div className="p-2 rounded-2xl bg-green-500/10">
-                                  <span className="text-xs text-foreground/70">Correct: </span>
-                                  <span className="text-green-500">{correctOption?.text}</span>
+                                <div className="p-2 rounded-2xl bg-[var(--md-sys-color-tertiary)]/10">
+                                  <span className="text-xs text-[var(--md-sys-color-on-surface-variant)]">Correct: </span>
+                                  <span className="text-[var(--md-sys-color-tertiary)]">{correctOption?.text}</span>
                                 </div>
                               )}
                               {q.explanation && (
-                                <div className="p-2 rounded-2xl bg-blue-500/10 flex gap-2">
-                                  <Lightbulb className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-                                  <span className="text-foreground/70">{q.explanation}</span>
+                                <div className="p-2 rounded-2xl bg-[var(--md-sys-color-primary)]/10 flex gap-2">
+                                  <Lightbulb className="w-4 h-4 text-[var(--md-sys-color-primary)] flex-shrink-0 mt-0.5" />
+                                  <span className="text-[var(--md-sys-color-on-surface-variant)]">{q.explanation}</span>
                                 </div>
                               )}
                             </div>
@@ -574,47 +582,50 @@ export default function CertificationPractice() {
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <span className={`text-xs px-3 py-1.5 rounded-md ${
-                    currentTestQuestion?.difficulty === 'beginner' ? 'bg-green-500/10 text-green-500' :
-                    currentTestQuestion?.difficulty === 'intermediate' ? 'bg-yellow-500/10 text-yellow-500' :
-                    'bg-red-500/10 text-red-500'
+                    currentTestQuestion?.difficulty === 'beginner' ? 'bg-[var(--md-sys-color-tertiary)]/10 text-[var(--md-sys-color-tertiary)]' :
+                    currentTestQuestion?.difficulty === 'intermediate' ? 'bg-[var(--md-sys-color-tertiary)]/10 text-[var(--md-sys-color-tertiary)]' :
+                    'bg-[var(--md-sys-color-error)]/10 text-[var(--md-sys-color-error)]'
                   }`}>
                     {currentTestQuestion?.difficulty}
                   </span>
                 </div>
-                
-                <h4 className="font-medium mb-5">{currentTestQuestion?.question}</h4>
-                
-                <div className="space-y-2">
+
+                <h4 className="font-medium mb-5 text-[var(--md-sys-color-on-surface)]">{currentTestQuestion?.question}</h4>
+
+                <div className="space-y-2" role="radiogroup" aria-label="Answer options">
                   {currentTestQuestion?.options.map((option) => {
                     const isSelected = lastAnswer?.selectedOptionId === option.id;
                     const isCorrect = option.isCorrect;
                     const showResult = showingFeedback && (isSelected || isCorrect);
-                    
+
                     return (
                       <button
                         key={option.id}
                         onClick={() => handleAnswerClick(option.id)}
                         disabled={showingFeedback}
-className={`w-full p-4 text-left border-2 rounded-xl transition-all duration-150 ease-out min-h-[44px] focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none ${
+                        role="radio"
+                        aria-checked={isSelected}
+                        aria-label={option.text}
+                        className={`w-full p-4 text-left border-2 rounded-xl transition-all duration-200 ease-out min-h-[48px] focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none ${
                            showResult
                              ? isCorrect
-                               ? 'border-green-500 bg-green-500/10'
+                               ? 'border-[var(--md-sys-color-tertiary)] bg-[var(--md-sys-color-tertiary)]/10'
                                : isSelected
-                               ? 'border-red-500 bg-red-500/10'
-                               : 'border-border'
-                             : 'border-border hover:border-primary/50 hover:bg-muted/30'
+                               ? 'border-[var(--md-sys-color-error)] bg-[var(--md-sys-color-error)]/10'
+                               : 'border-[var(--md-sys-color-outline-variant)]'
+                             : 'border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-primary)]/50 hover:bg-[var(--md-sys-color-surface-container)]'
                          } ${showingFeedback ? 'cursor-default' : 'cursor-pointer'}`}
                       >
                         <div className="flex items-center gap-3">
-<div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                             showResult && isCorrect ? 'border-green-500 bg-green-500' :
-                             showResult && isSelected && !isCorrect ? 'border-red-500 bg-red-500' :
-                             'border-foreground/30'
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                             showResult && isCorrect ? 'border-[var(--md-sys-color-tertiary)] bg-[var(--md-sys-color-tertiary)]' :
+                             showResult && isSelected && !isCorrect ? 'border-[var(--md-sys-color-error)] bg-[var(--md-sys-color-error)]' :
+                             'border-[var(--md-sys-color-outline-variant)]'
                            }`}>
-                            {showResult && isCorrect && <Check className="w-3 h-3 text-foreground" />}
-                            {showResult && isSelected && !isCorrect && <X className="w-3 h-3 text-foreground" />}
+                            {showResult && isCorrect && <Check className="w-3 h-3 text-[var(--md-sys-color-on-tertiary)]" />}
+                            {showResult && isSelected && !isCorrect && <X className="w-3 h-3 text-[var(--md-sys-color-on-error)]" />}
                           </div>
-                          <span className="text-sm">{option.text}</span>
+                          <span className="text-sm text-[var(--md-sys-color-on-surface)]">{option.text}</span>
                         </div>
                       </button>
                     );
@@ -625,10 +636,11 @@ className={`w-full p-4 text-left border-2 rounded-xl transition-all duration-150
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-2xl text-sm flex gap-2"
+                    transition={{ duration: 0.2, ease: M3_MOTION_EASING }}
+                    className="mt-4 p-3 bg-[var(--md-sys-color-primary)]/10 border border-[var(--md-sys-color-primary)]/20 rounded-2xl text-sm flex gap-2"
                   >
-                    <Lightbulb className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-foreground/70">{currentTestQuestion.explanation}</span>
+                    <Lightbulb className="w-4 h-4 text-[var(--md-sys-color-primary)] flex-shrink-0 mt-0.5" />
+                    <span className="text-[var(--md-sys-color-on-surface-variant)]">{currentTestQuestion.explanation}</span>
                   </motion.div>
                 )}
               </div>
@@ -636,29 +648,29 @@ className={`w-full p-4 text-left border-2 rounded-xl transition-all duration-150
           </div>
 
           {/* Footer */}
-          <div className="p-4 border-t border-border bg-muted/30">
+          <div className="p-4 border-t border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)]/30">
             {showResults ? (
               <div className="flex gap-3">
                 {testResults.passed ? (
-<button onClick={closeTestAndContinue} className="flex-1 min-h-[40px] py-2.5 h-10 bg-green-500 text-foreground rounded-lg font-medium flex items-center justify-center gap-2 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none text-sm shadow-none">
-                     <Unlock className="w-5 h-5" /> Continue
-                   </button>
+                  <button onClick={closeTestAndContinue} className="flex-1 min-h-[48px] py-2 h-10 bg-[var(--md-sys-color-tertiary)] text-[var(--md-sys-color-on-tertiary)] rounded-lg font-medium flex items-center justify-center gap-2 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none text-sm shadow-none" aria-label="Continue to next section">
+                    <Unlock className="w-5 h-5" /> Continue
+                  </button>
                 ) : (
                   <>
-<button onClick={retryTest} className="flex-1 min-h-[40px] py-2.5 h-10 bg-gradient-to-r from-primary to-primary text-primary-foreground rounded-lg font-medium flex items-center justify-center gap-2 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none text-sm shadow-none">
-                       <RefreshCw className="w-4 h-4" /> Retry
-                     </button>
-                     <button onClick={() => setShowSkipConfirm(true)} className="flex-1 min-h-[40px] py-2.5 h-10 bg-muted rounded-lg font-medium flex items-center justify-center gap-2 text-foreground/70 cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none text-sm shadow-none">
-                       <SkipForward className="w-4 h-4" /> Skip (-{SKIP_TEST_PENALTY})
-                     </button>
+                    <button onClick={retryTest} className="flex-1 min-h-[48px] py-2 h-10 bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] rounded-lg font-medium flex items-center justify-center gap-2 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none text-sm shadow-none" aria-label="Retry test">
+                      <RefreshCw className="w-4 h-4" /> Retry
+                    </button>
+                    <button onClick={() => setShowSkipConfirm(true)} className="flex-1 min-h-[48px] py-2 h-10 bg-[var(--md-sys-color-surface-container)] rounded-lg font-medium flex items-center justify-center gap-2 text-[var(--md-sys-color-on-surface-variant)] cursor-pointer transition-colors duration-150 ease-out hover:bg-[var(--md-sys-color-surface-container-high)] focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none text-sm shadow-none" aria-label={`Skip test (${SKIP_TEST_PENALTY} credits)`}>
+                      <SkipForward className="w-4 h-4" /> Skip (-{SKIP_TEST_PENALTY})
+                    </button>
                   </>
                 )}
               </div>
             ) : (
-              <div className="flex items-center justify-between text-sm text-foreground/70">
-<button onClick={() => setShowSkipConfirm(true)} className="flex items-center gap-1 hover:text-foreground min-h-[40px] py-2.5 h-10 cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none text-sm">
-                   <SkipForward className="w-4 h-4" /> Skip (-{SKIP_TEST_PENALTY})
-                 </button>
+              <div className="flex items-center justify-between text-sm text-[var(--md-sys-color-on-surface-variant)]">
+                <button onClick={() => setShowSkipConfirm(true)} className="flex items-center gap-1 hover:text-[var(--md-sys-color-on-surface)] min-h-[48px] py-2.5 h-10 cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none text-sm" aria-label={`Skip test (${SKIP_TEST_PENALTY} credits)`}>
+                  <SkipForward className="w-4 h-4" /> Skip (-{SKIP_TEST_PENALTY})
+                </button>
                 <span>Tap an answer to submit</span>
               </div>
             )}
@@ -676,35 +688,41 @@ className={`w-full p-4 text-left border-2 rounded-xl transition-all duration-150
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[60] bg-background/80 flex items-center justify-center p-4"
+          transition={{ duration: 0.2, ease: M3_MOTION_EASING }}
+          className="fixed inset-0 z-[60] bg-[var(--md-sys-color-scrim)]/80 flex items-center justify-center p-4"
           onClick={() => setShowSkipConfirm(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm skip test"
         >
           <motion.div
             initial={{ scale: 0.9 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0.9 }}
-            className="bg-muted/50 border border-border rounded-2xl w-full max-w-sm p-5"
+            transition={{ duration: 0.2, ease: M3_MOTION_EASING }}
+            className="bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] rounded-2xl w-full max-w-sm p-5"
             onClick={e => e.stopPropagation()}
           >
             <div className="text-center">
-              <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-amber-500" />
-              <h3 className="font-bold mb-2">Skip Test?</h3>
-              <p className="text-sm text-foreground/70 mb-4">
-                Cost: <span className="text-red-500 font-bold">{SKIP_TEST_PENALTY} credits</span>
+              <AlertTriangle className="w-12 h-12 mx-auto mb-3 text-[var(--md-sys-color-tertiary)]" />
+              <h3 className="font-bold mb-2 text-[var(--md-sys-color-on-surface)]">Skip Test?</h3>
+              <p className="text-sm text-[var(--md-sys-color-on-surface-variant)] mb-4">
+                Cost: <span className="text-[var(--md-sys-color-error)] font-bold">{SKIP_TEST_PENALTY} credits</span>
               </p>
-              <div className="flex items-center justify-center gap-2 mb-4 p-2 bg-muted/50 rounded-lg text-sm">
-                <Coins className="w-4 h-4 text-amber-500" />
-                <span>Balance: <b>{formatCredits(balance)}</b></span>
+              <div className="flex items-center justify-center gap-2 mb-4 p-2 bg-[var(--md-sys-color-surface-container)] rounded-lg text-sm">
+                <Coins className="w-4 h-4 text-[var(--md-sys-color-tertiary)]" />
+                <span className="text-[var(--md-sys-color-on-surface-variant)]">Balance: <b>{formatCredits(balance)}</b></span>
               </div>
               <div className="flex gap-2">
-<button onClick={() => setShowSkipConfirm(false)} className="flex-1 min-h-[44px] py-2.5 bg-muted rounded-xl font-medium cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none">
-                   Cancel
-                 </button>
-<button
-                   onClick={skipTestWithPenalty}
-                   disabled={balance < SKIP_TEST_PENALTY}
-                   className="flex-1 min-h-[44px] py-2.5 bg-red-500 text-foreground rounded-xl font-medium disabled:opacity-50 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90 disabled:cursor-default focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
-                 >
+                <button onClick={() => setShowSkipConfirm(false)} className="flex-1 min-h-[48px] py-2.5 bg-[var(--md-sys-color-surface-container)] rounded-xl font-medium cursor-pointer transition-colors duration-150 ease-out hover:bg-[var(--md-sys-color-surface-container-high)] focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none text-[var(--md-sys-color-on-surface-variant)]">
+                  Cancel
+                </button>
+                <button
+                  onClick={skipTestWithPenalty}
+                  disabled={balance < SKIP_TEST_PENALTY}
+                  aria-label={`Skip test (${SKIP_TEST_PENALTY} credits)`}
+                  className="flex-1 min-h-[48px] py-2.5 bg-[var(--md-sys-color-error)] text-[var(--md-sys-color-on-error)] rounded-xl font-medium disabled:opacity-[0.38] cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90 disabled:cursor-default focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none"
+                >
                   Skip
                 </button>
               </div>
@@ -723,7 +741,7 @@ className={`w-full p-4 text-left border-2 rounded-xl transition-all duration-150
 
       <div className="min-h-screen bg-background pt-14 lg:pt-0">
         {/* Compact Header - Single row with integrated progress */}
-        <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
+        <header className="sticky top-0 z-40 bg-[var(--md-sys-color-background)]/95 backdrop-blur border-b border-[var(--md-sys-color-outline-variant)]">
           <div className="max-w-7xl mx-auto px-3 pt-1.5 pb-0">
             <Breadcrumb>
               <BreadcrumbList className="text-xs">
@@ -740,31 +758,31 @@ className={`w-full p-4 text-left border-2 rounded-xl transition-all duration-150
           <div className="max-w-7xl mx-auto px-3 py-2">
             {/* Main row: Back, Title, Progress, Credits */}
             <div className="flex items-center gap-2">
-              <button onClick={exitSession} className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-muted rounded-md shrink-0 cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none" title="Exit and save progress">
-                <ArrowLeft className="w-4 h-4" />
+              <button onClick={exitSession} aria-label="Exit and save progress" className="min-h-[48px] min-w-[48px] flex items-center justify-center hover:bg-[var(--md-sys-color-surface-container)] rounded-md shrink-0 cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none">
+                <ArrowLeft className="w-4 h-4 text-[var(--md-sys-color-on-surface-variant)]" />
               </button>
-              
+
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="font-semibold text-sm leading-tight">{certification.name}</h1>
-                  <span className="text-xs text-foreground/70 shrink-0">{certification.provider}</span>
+                  <h1 className="font-semibold text-sm leading-tight text-[var(--md-sys-color-on-surface)]">{certification.name}</h1>
+                  <span className="text-xs text-[var(--md-sys-color-on-surface-variant)] shrink-0">{certification.provider}</span>
                 </div>
                 {/* Inline progress bar */}
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs text-foreground/70 tabular-nums">Q{currentIndex + 1}/{totalQuestions}</span>
-                  <div className="relative flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-[200px]">
-                    <div className="h-full bg-gradient-to-r from-primary to-primary rounded-full transition-all" style={{ width: `${((currentIndex + 1) / totalQuestions) * 100}%` }} />
+                  <span className="text-xs text-[var(--md-sys-color-on-surface-variant)] tabular-nums" aria-live="polite">Q{currentIndex + 1}/{totalQuestions}</span>
+                  <div className="relative flex-1 h-1.5 bg-[var(--md-sys-color-surface-container)] rounded-full overflow-hidden max-w-[200px]">
+                    <div className="h-full bg-[var(--md-sys-color-primary)] rounded-full transition-all" style={{ width: `${((currentIndex + 1) / totalQuestions) * 100}%`, transitionDuration: M3_MOTION_DURATION, transitionTimingFunction: M3_MOTION_EASING }} />
                     {Array.from({ length: Math.floor(totalQuestions / QUESTIONS_PER_TEST) }).map((_, i) => {
                       const idx = (i + 1) * QUESTIONS_PER_TEST;
                       const pos = (idx / totalQuestions) * 100;
                       const passed = passedCheckpoints.has(idx);
                       return (
-                        <div key={i} className={`absolute top-1/2 w-1.5 h-1.5 rounded-full ${passed ? 'bg-green-500' : 'bg-amber-500'}`}
+                        <div key={i} className={`absolute top-1/2 w-1.5 h-1.5 rounded-full ${passed ? 'bg-[var(--md-sys-color-tertiary)]' : 'bg-[var(--md-sys-color-tertiary)]'}`}
                           style={{ left: `${pos}%`, transform: 'translate(-50%, -50%)' }} />
                       );
                     })}
                   </div>
-                  <span className="text-xs text-primary font-medium tabular-nums">{progress}%</span>
+                  <span className="text-xs text-[var(--md-sys-color-primary)] font-medium tabular-nums">{progress}%</span>
                 </div>
               </div>
 
@@ -772,38 +790,43 @@ className={`w-full p-4 text-left border-2 rounded-xl transition-all duration-150
               <div className="flex items-center gap-1 shrink-0">
                 {['all', 'beginner', 'intermediate', 'advanced'].map(diff => (
                   <button key={diff} onClick={() => { setSelectedDifficulty(diff); setCurrentIndex(0); }}
-                    className={`px-3 py-1.5 text-xs rounded-md capitalize hidden sm:block min-h-[44px] cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none ${
-                      selectedDifficulty === diff 
-                        ? diff === 'beginner' ? 'bg-green-500/20 text-green-500' 
-                          : diff === 'intermediate' ? 'bg-yellow-500/20 text-yellow-500'
-                          : diff === 'advanced' ? 'bg-red-500/20 text-red-500'
-                          : 'bg-gradient-to-r from-primary to-primary text-primary-foreground'
-                        : 'bg-muted/50 text-foreground/70 hover:bg-muted'
+                    aria-pressed={selectedDifficulty === diff}
+                    aria-label={`Filter by ${diff === 'all' ? 'all difficulties' : diff}`}
+                    className={`px-3 py-1.5 text-xs rounded-md capitalize hidden sm:block min-h-[48px] cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none ${
+                      selectedDifficulty === diff
+                        ? diff === 'beginner' ? 'bg-[var(--md-sys-color-tertiary)]/20 text-[var(--md-sys-color-tertiary)]'
+                          : diff === 'intermediate' ? 'bg-[var(--md-sys-color-tertiary)]/20 text-[var(--md-sys-color-tertiary)]'
+                          : diff === 'advanced' ? 'bg-[var(--md-sys-color-error)]/20 text-[var(--md-sys-color-error)]'
+                          : 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]'
+                        : 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)]'
                     }`}>
                     {diff === 'all' ? 'All' : diff === 'beginner' ? 'Easy' : diff === 'intermediate' ? 'Med' : 'Hard'}
                   </button>
                 ))}
-                <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-md ml-1">
-                  <Coins className="w-3 h-3 text-amber-500" />
-                  <span className="text-xs font-bold text-amber-500 tabular-nums">{formatCredits(balance)}</span>
+                <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-[var(--md-sys-color-tertiary)]/10 border border-[var(--md-sys-color-tertiary)]/20 rounded-md ml-1">
+                  <Coins className="w-3 h-3 text-[var(--md-sys-color-tertiary)]" />
+                  <span className="text-xs font-bold text-[var(--md-sys-color-tertiary)] tabular-nums">{formatCredits(balance)}</span>
                 </div>
-<button onClick={() => setShowInfo(!showInfo)} className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-muted rounded-md cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none">
-                   <Info className="w-3.5 h-3.5" />
-                 </button>
+                <button onClick={() => setShowInfo(!showInfo)} aria-label={showInfo ? 'Hide info' : 'Show info'} className="min-h-[48px] min-w-[48px] flex items-center justify-center hover:bg-[var(--md-sys-color-surface-container)] rounded-md cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none">
+                  <Info className="w-3.5 h-3.5 text-[var(--md-sys-color-on-surface-variant)]" />
+                </button>
               </div>
             </div>
 
             {/* Mobile difficulty filter - only on small screens */}
-            <div className="flex items-center gap-1 mt-1.5 sm:hidden overflow-x-auto no-scrollbar">
-{['all', 'beginner', 'intermediate', 'advanced'].map(diff => (
+            <div className="flex items-center gap-1 mt-1.5 sm:hidden overflow-x-auto no-scrollbar" role="radiogroup" aria-label="Difficulty filter">
+              {['all', 'beginner', 'intermediate', 'advanced'].map(diff => (
                   <button key={diff} onClick={() => { setSelectedDifficulty(diff); setCurrentIndex(0); }}
-                    className={`px-3 py-1.5 text-xs rounded-md capitalize shrink-0 min-h-[44px] cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none ${
-                      selectedDifficulty === diff 
-                        ? diff === 'beginner' ? 'bg-green-500/20 text-green-500' 
-                          : diff === 'intermediate' ? 'bg-yellow-500/20 text-yellow-500'
-                          : diff === 'advanced' ? 'bg-red-500/20 text-red-500'
-                          : 'bg-gradient-to-r from-primary to-primary text-primary-foreground'
-                        : 'bg-muted/50 text-foreground/70'
+                    role="radio"
+                    aria-checked={selectedDifficulty === diff}
+                    aria-label={`Filter by ${diff === 'all' ? 'all difficulties' : diff}`}
+                    className={`px-3 py-1.5 text-xs rounded-md capitalize shrink-0 min-h-[48px] cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none ${
+                      selectedDifficulty === diff
+                        ? diff === 'beginner' ? 'bg-[var(--md-sys-color-tertiary)]/20 text-[var(--md-sys-color-tertiary)]'
+                          : diff === 'intermediate' ? 'bg-[var(--md-sys-color-tertiary)]/20 text-[var(--md-sys-color-tertiary)]'
+                          : diff === 'advanced' ? 'bg-[var(--md-sys-color-error)]/20 text-[var(--md-sys-color-error)]'
+                          : 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]'
+                        : 'bg-[var(--md-sys-color-surface-container)] text-[var(--md-sys-color-on-surface-variant)]'
                     }`}>
                   {diff === 'all' ? 'All' : diff === 'beginner' ? 'Easy' : diff === 'intermediate' ? 'Medium' : 'Hard'}
                 </button>
@@ -831,12 +854,12 @@ className={`w-full p-4 text-left border-2 rounded-xl transition-all duration-150
 
         {/* Content */}
         {loading ? (
-          <div className="flex items-center justify-center h-[60vh]">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="flex items-center justify-center h-[60vh]" role="status" aria-label="Loading questions">
+            <div className="min-w-[48px] w-8 min-h-[48px] h-8 border-2 border-[var(--md-sys-color-primary)] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : error ? (
-          <div className="flex items-center justify-center h-[60vh] text-center">
-            <div><p className="text-red-500 mb-2">{error}</p><button onClick={() => window.location.reload()} className="text-primary focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none">Retry</button></div>
+          <div className="flex items-center justify-center h-[60vh] text-center" role="alert">
+            <div><p className="text-[var(--md-sys-color-error)] mb-2">{error}</p><button onClick={() => window.location.reload()} className="text-[var(--md-sys-color-primary)] focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none transition-opacity duration-150 ease-out hover:opacity-90" aria-label="Retry loading questions">Retry</button></div>
           </div>
         ) : totalQuestions === 0 ? (
           <ComingSoon 
@@ -850,54 +873,54 @@ className={`w-full p-4 text-left border-2 rounded-xl transition-all duration-150
             {/* Desktop - Optimized split layout */}
             <div className="hidden lg:flex h-[calc(100vh-100px)]">
               <div className="w-[40%] border-r border-border flex flex-col">
-                <div className="flex-1 overflow-y-auto">
-                  {currentQuestion && <QuestionPanel question={currentQuestion} questionNumber={currentIndex + 1} totalQuestions={totalQuestions} isMarked={isMarked} isCompleted={isCompleted} onToggleMark={toggleMark} timerEnabled={false} timeLeft={0} />}
-                </div>
-                <div className="border-t border-border px-4 py-2 flex items-center justify-between shrink-0">
-<button onClick={goToPrev} disabled={currentIndex === 0} className="flex items-center gap-1 px-3 min-h-[44px] bg-muted rounded-md disabled:opacity-40 text-xs cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80 disabled:cursor-default focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none">
-                     <ChevronLeft className="w-4 h-4" />Prev
-                   </button>
-                  <span className="text-xs text-foreground/70 tabular-nums">Question {currentIndex + 1} of {totalQuestions}</span>
-<button onClick={goToNext} disabled={currentIndex >= totalQuestions - 1} className="flex items-center gap-1 px-3 min-h-[44px] bg-muted rounded-md disabled:opacity-40 text-xs cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80 disabled:cursor-default focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none">
-                     Next<ChevronRight className="w-4 h-4" />
-                   </button>
-                </div>
+               <div className="flex-1 overflow-y-auto">
+                   {currentQuestion && <QuestionPanel question={currentQuestion} questionNumber={currentIndex + 1} totalQuestions={totalQuestions} isMarked={isMarked} isCompleted={isCompleted} onToggleMark={toggleMark} timerEnabled={false} timeLeft={0} />}
+                 </div>
+                 <div className="border-t border-[var(--md-sys-color-outline-variant)] px-4 py-2 flex items-center justify-between shrink-0">
+<button onClick={goToPrev} disabled={currentIndex === 0} aria-label="Previous question" className="flex items-center gap-1 px-3 min-h-[48px] bg-[var(--md-sys-color-surface-container)] rounded-md disabled:opacity-[0.38] text-xs cursor-pointer transition-colors duration-150 ease-out hover:bg-[var(--md-sys-color-surface-container-high)] disabled:cursor-default focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none">
+                      <ChevronLeft className="w-4 h-4" />Prev
+                    </button>
+                   <span className="text-xs text-[var(--md-sys-color-on-surface-variant)] tabular-nums" aria-live="polite">Question {currentIndex + 1} of {totalQuestions}</span>
+<button onClick={goToNext} disabled={currentIndex >= totalQuestions - 1} aria-label="Next question" className="flex items-center gap-1 px-3 min-h-[48px] bg-[var(--md-sys-color-surface-container)] rounded-md disabled:opacity-[0.38] text-xs cursor-pointer transition-colors duration-150 ease-out hover:bg-[var(--md-sys-color-surface-container-high)] disabled:cursor-default focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none">
+                      Next<ChevronRight className="w-4 h-4" />
+                    </button>
+                 </div>
               </div>
               <div className="w-[60%] overflow-y-auto">
                 {currentQuestion && <AnswerPanel question={currentQuestion} isCompleted={isCompleted} />}
               </div>
             </div>
 
-            {/* Mobile */}
-            <div className="lg:hidden flex flex-col h-[calc(100vh-140px)]">
-              <div className="flex border-b border-border">
-<button onClick={() => setMobileView('question')} className={`flex-1 py-2 text-sm font-medium min-h-[44px] cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none ${mobileView === 'question' ? 'text-primary border-b-2 border-primary' : 'text-foreground/70'}`}>Question</button>
-                 <button onClick={() => setMobileView('answer')} className={`flex-1 py-2 text-sm font-medium min-h-[44px] cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none ${mobileView === 'answer' ? 'text-primary border-b-2 border-primary' : 'text-foreground/70'}`}>Answer</button>
-              </div>
-              <div className="flex-1 overflow-y-auto pb-14" onTouchStart={swipeHandlers.onTouchStart} onTouchMove={swipeHandlers.onTouchMove} onTouchEnd={swipeHandlers.onTouchEnd}>
-                {mobileView === 'question' ? (
-                  currentQuestion && <QuestionPanel question={currentQuestion} questionNumber={currentIndex + 1} totalQuestions={totalQuestions} isMarked={isMarked} isCompleted={isCompleted} onToggleMark={toggleMark} onTapQuestion={() => setMobileView('answer')} timerEnabled={false} timeLeft={0} />
-                ) : (
-                  currentQuestion && <AnswerPanel question={currentQuestion} isCompleted={isCompleted} />
-                )}
-              </div>
-            </div>
+             {/* Mobile */}
+             <div className="lg:hidden flex flex-col h-[calc(100vh-140px)]">
+               <div className="flex border-b border-[var(--md-sys-color-outline-variant)]" role="tablist" aria-label="Question and Answer view">
+<button onClick={() => setMobileView('question')} role="tab" aria-selected={mobileView === 'question'} aria-label="View question" className={`flex-1 py-2 text-sm font-medium min-h-[48px] cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none ${mobileView === 'question' ? 'text-[var(--md-sys-color-primary)] border-b-2 border-[var(--md-sys-color-primary)]' : 'text-[var(--md-sys-color-on-surface-variant)]'}`}>Question</button>
+                  <button onClick={() => setMobileView('answer')} role="tab" aria-selected={mobileView === 'answer'} aria-label="View answer" className={`flex-1 py-2 text-sm font-medium min-h-[48px] cursor-pointer transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none ${mobileView === 'answer' ? 'text-[var(--md-sys-color-primary)] border-b-2 border-[var(--md-sys-color-primary)]' : 'text-[var(--md-sys-color-on-surface-variant)]'}`}>Answer</button>
+               </div>
+               <div className="flex-1 overflow-y-auto pb-14" onTouchStart={swipeHandlers.onTouchStart} onTouchMove={swipeHandlers.onTouchMove} onTouchEnd={swipeHandlers.onTouchEnd}>
+                 {mobileView === 'question' ? (
+                   currentQuestion && <QuestionPanel question={currentQuestion} questionNumber={currentIndex + 1} totalQuestions={totalQuestions} isMarked={isMarked} isCompleted={isCompleted} onToggleMark={toggleMark} onTapQuestion={() => setMobileView('answer')} timerEnabled={false} timeLeft={0} />
+                 ) : (
+                   currentQuestion && <AnswerPanel question={currentQuestion} isCompleted={isCompleted} />
+                 )}
+               </div>
+             </div>
 
-            {/* Nav - Minimal */}
-            <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border py-1.5 px-3 pb-safe">
-              <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 pb-2">
-<button onClick={goToPrev} disabled={currentIndex === 0} className="flex items-center gap-1 px-2.5 min-h-[44px] bg-muted rounded-md disabled:opacity-40 text-xs cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80 disabled:cursor-default focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none">
-                   <ChevronLeft className="w-4 h-4" />Prev
+             {/* Nav - Minimal */}
+             <div className="fixed bottom-0 left-0 right-0 bg-[var(--md-sys-color-background)]/95 backdrop-blur border-t border-[var(--md-sys-color-outline-variant)] py-1.5 px-3 pb-safe">
+               <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 pb-2">
+<button onClick={goToPrev} disabled={currentIndex === 0} aria-label="Previous question" className="flex items-center gap-1 px-2.5 min-h-[48px] bg-[var(--md-sys-color-surface-container)] rounded-md disabled:opacity-[0.38] text-xs cursor-pointer transition-colors duration-150 ease-out hover:bg-[var(--md-sys-color-surface-container-high)] disabled:cursor-default focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none">
+                    <ChevronLeft className="w-4 h-4" />Prev
+                  </button>
+                 <button onClick={markCompleted} disabled={isCompleted} aria-label={isCompleted ? 'Already marked as done' : 'Mark question as done'} className={`flex items-center gap-1 px-3 min-h-[48px] rounded-md text-xs font-medium cursor-pointer transition-all duration-150 ease-out focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none ${isCompleted ? 'bg-[var(--md-sys-color-tertiary)]/10 text-[var(--md-sys-color-tertiary)] cursor-default' : 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:opacity-90'}`}>
+                   <Check className="w-3.5 h-3.5" />{isCompleted ? 'Done' : 'Mark Done'}
                  </button>
-                <button onClick={markCompleted} disabled={isCompleted} className={`flex items-center gap-1 px-3 min-h-[44px] rounded-md text-xs font-medium cursor-pointer transition-all duration-150 ease-out focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none ${isCompleted ? 'bg-green-500/10 text-green-500 cursor-default' : 'bg-gradient-to-r from-primary to-primary text-primary-foreground hover:opacity-90'}`}>
-                  <Check className="w-3.5 h-3.5" />{isCompleted ? 'Done' : 'Mark Done'}
-                </button>
-                <button onClick={goToNext} disabled={currentIndex === totalQuestions - 1} className="flex items-center gap-1 px-2.5 min-h-[44px] bg-muted rounded-md disabled:opacity-40 text-xs cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80 disabled:cursor-default focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none">
-                  Next<ChevronRight className="w-4 h-4" />
-                  {isTestCheckpoint(currentIndex + 1) && !isCheckpointPassed(currentIndex + 1) && <Lock className="w-3 h-3 text-amber-500" />}
-                </button>
-              </div>
-            </div>
+                 <button onClick={goToNext} disabled={currentIndex === totalQuestions - 1} aria-label="Next question" className="flex items-center gap-1 px-2.5 min-h-[48px] bg-[var(--md-sys-color-surface-container)] rounded-md disabled:opacity-[0.38] text-xs cursor-pointer transition-colors duration-150 ease-out hover:bg-[var(--md-sys-color-surface-container-high)] disabled:cursor-default focus-visible:ring-2 focus-visible:ring-[var(--md-sys-color-primary)]/50 focus-visible:outline-none">
+                   Next<ChevronRight className="w-4 h-4" />
+                   {isTestCheckpoint(currentIndex + 1) && !isCheckpointPassed(currentIndex + 1) && <Lock className="w-3 h-3 text-[var(--md-sys-color-tertiary)]" />}
+                 </button>
+               </div>
+             </div>
           </>
         )}
       </div>

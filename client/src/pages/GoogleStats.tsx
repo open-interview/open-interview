@@ -1,893 +1,517 @@
 /**
- * Google-Style Analytics Dashboard
- * Clean metric cards, charts, and progress visualization
+ * Google Stats — M3 redesign
+ * Pure SVG charts, M3 color roles, no third-party chart libraries
  */
-
 import '../styles/google-stats.css';
-
 import { useState, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
+import { ProgressTabBar } from '../components/ProgressTabBar';
 import { useGlobalStats } from '../hooks/use-progress';
 import { useAchievements } from '../hooks/use-achievements';
 import { useLevel } from '../hooks/use-level';
 import { channels, getQuestions, getAllQuestions, getQuestionDifficulty } from '../lib/data';
 import { SEOHead } from '../components/SEOHead';
-import { GitHubAnalytics } from '../components/GitHubAnalytics';
-import { AchievementGrid, LevelDisplay } from '../components/unified';
-import {
-  Trophy, Flame, Zap, Target, Activity, TrendingUp,
-  ChevronRight, BarChart2, Calendar, TrendingDown, Minus
-} from 'lucide-react';
+import { Trophy, Flame, Target, BarChart2, Calendar, TrendingUp, TrendingDown, Minus, ChevronRight } from 'lucide-react';
 
-/* ===================== SVG Components ===================== */
+// ── M3 color roles (CSS vars) ─────────────────────────────────────────────────
+const C = {
+  primary:        'var(--color-primary,#6750a4)',
+  primaryCont:    'var(--color-primary-container,#eaddff)',
+  onPrimaryCont:  'var(--color-on-primary-container,#21005d)',
+  secondary:      'var(--color-secondary,#625b71)',
+  secondaryCont:  'var(--color-secondary-container,#e8def8)',
+  onSecondaryCont:'var(--color-on-secondary-container,#1d192b)',
+  tertiary:       'var(--color-tertiary,#7d5260)',
+  tertiaryCont:   'var(--color-tertiary-container,#ffd8e4)',
+  onTertiaryCont: 'var(--color-on-tertiary-container,#31111d)',
+  error:          'var(--color-error,#b3261e)',
+  errorCont:      'var(--color-error-container,#f9dedc)',
+  onErrorCont:    'var(--color-on-error-container,#410e0b)',
+  surface:        'var(--color-background,#fffbfe)',
+  surfaceVar:     'var(--color-surface-variant,#e7e0ec)',
+  onSurface:      'var(--color-on-surface,#1c1b1f)',
+  onSurfaceVar:   'var(--color-on-surface-variant,#49454f)',
+  outline:        'var(--color-outline,#79747e)',
+};
 
-function FloatingDots({ count = 20 }: { count?: number }) {
-  const dots = useMemo(() => {
-    return Array.from({ length: count }, (_, i) => ({
-      id: i,
-      cx: Math.random() * 100,
-      cy: Math.random() * 100,
-      r: 1 + Math.random() * 3,
-      opacity: 0.1 + Math.random() * 0.25,
-      duration: 8 + Math.random() * 12,
-      delay: Math.random() * 10,
-      color: ['var(--color-primary)', 'var(--color-red-500)', 'var(--color-yellow-500)', 'var(--color-green-500)'][Math.floor(Math.random() * 4)]
-    }));
-  }, [count]);
-
+// ── SVG Bar Chart ─────────────────────────────────────────────────────────────
+function M3BarChart({ data, labels, height = 100 }: { data: number[]; labels?: string[]; height?: number }) {
+  const max = Math.max(...data, 1);
+  const n = data.length;
+  const barW = 100 / n;
   return (
-    <svg className="floating-dots-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-      <defs>
-        <style>{`
-          @keyframes floatDot {
-            0%, 100% { transform: translate(0, 0); }
-            25% { transform: translate(2px, -4px); }
-            50% { transform: translate(-2px, -8px); }
-            75% { transform: translate(3px, -4px); }
-          }
-        `}</style>
-      </defs>
-      {dots.map(dot => (
-        <circle
-          key={dot.id}
-          cx={dot.cx}
-          cy={dot.cy}
-          r={dot.r}
-          fill={dot.color}
-          opacity={dot.opacity}
-          style={{
-            animation: `floatDot ${dot.duration}s ease-in-out ${dot.delay}s infinite`
-          }}
-        />
-      ))}
-    </svg>
-  );
-}
-
-function FireIconWithGlow({ size = 24, className = '' }: { size?: number; className?: string }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      className={className}
-      aria-label="Fire streak icon"
-    >
-      <defs>
-        <filter id="fireGlow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="1.5" result="blur" />
-          <feComposite in="SourceGraphic" in2="blur" operator="over" />
-        </filter>
-        <radialGradient id="fireGradient" cx="50%" cy="60%" r="50%">
-          <stop offset="0%" stopColor="#ff6b35" />
-          <stop offset="50%" stopColor="#f7931e" />
-          <stop offset="100%" stopColor="#ff4444" />
-        </radialGradient>
-        <animate
-          attributeName="opacity"
-          values="0.8;1;0.8"
-          dur="1.5s"
-          repeatCount="indefinite"
-        />
-      </defs>
-      <g filter="url(#fireGlow)">
-        <path
-          d="M12 2C12 2 6 8 6 12C6 15.3 8.7 18 12 18C15.3 18 18 15.3 18 12C18 8 12 2 12 2Z"
-          fill="url(#fireGradient)"
-          opacity="0.9"
-        >
-          <animateTransform
-            attributeName="transform"
-            type="scale"
-            values="1;1.05;1"
-            dur="2s"
-            repeatCount="indefinite"
-          />
-        </path>
-        <path
-          d="M12 8C12 8 9 11 9 13C9 14.7 10.3 16 12 16C13.7 16 15 14.7 15 13C15 11 12 8 12 8Z"
-          fill="#ffdd57"
-          opacity="0.7"
-        />
-      </g>
-    </svg>
-  );
-}
-
-function SVGProgressBarRing({
-  progress,
-  size = 80,
-  strokeWidth = 6,
-  color = '#4285f4',
-  gradientId = 'progressGradient',
-  showGradient = true
-}: {
-  progress: number;
-  size?: number;
-  strokeWidth?: number;
-  color?: string;
-  gradientId?: string;
-  showGradient?: boolean;
-}) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (progress / 100) * circumference;
-  const center = size / 2;
-
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="google-ring-svg">
-      <defs>
-        {showGradient && (
-          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={color} stopOpacity="1" />
-            <stop offset="100%" stopColor={color} stopOpacity="0.6" />
-          </linearGradient>
-        )}
-        <filter id={`ringShadow-${gradientId}`} x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="0" stdDeviation="2" floodColor={color} floodOpacity="0.3" />
-        </filter>
-      </defs>
-      <circle
-        cx={center}
-        cy={center}
-        r={radius}
-        fill="none"
-        stroke="var(--color-surface-2, #e8eaed)"
-        strokeWidth={strokeWidth}
-      />
-      <motion.circle
-        cx={center}
-        cy={center}
-        r={radius}
-        fill="none"
-        stroke={showGradient ? `url(#${gradientId})` : color}
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeDasharray={circumference}
-        initial={{ strokeDashoffset: circumference }}
-        animate={{ strokeDashoffset: offset }}
-        transition={{ duration: 0.8, ease: 'easeOut' }}
-        transform={`rotate(-90 ${center} ${center})`}
-        filter={`url(#ringShadow-${gradientId})`}
-      />
-    </svg>
-  );
-}
-
-function SVGProgressBarRingCard({ label, completed, total, color }: {
-  label: string;
-  completed: number;
-  total: number;
-  color: string;
-}) {
-  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-  const gradientId = `gradient-${label.toLowerCase()}`;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="google-ring-card"
-    >
-      <div className="google-ring">
-        <SVGProgressBarRing progress={pct} color={color} gradientId={gradientId} />
-        <div className="google-ring-value" style={{ color }}>
-          {pct}%
-        </div>
-      </div>
-      <div className="google-ring-label">{label}</div>
-      <div className="google-ring-stats">{completed}/{total}</div>
-    </motion.div>
-  );
-}
-
-function SVGBarChart({ data, height = 120 }: { data: number[]; height?: number }) {
-  const maxVal = Math.max(...data, 1);
-  const barWidth = 100 / data.length;
-  const googleColors = ['#4285f4', '#ea4335', '#fbbc04', '#34a853', '#ff6d01', '#46bdc6', '#7b61ff'];
-
-  return (
-    <svg width="100%" height={height} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" className="svg-bar-chart">
-      <defs>
-        <style>{`
-          @keyframes barGrow {
-            from { transform: scaleY(0); }
-            to { transform: scaleY(1); }
-          }
-          .svg-bar {
-            transform-origin: bottom;
-            animation: barGrow 0.4s ease-out forwards;
-          }
-          .svg-bar:hover {
-            filter: brightness(1.2);
-          }
-        `}</style>
-        {googleColors.map((color, i) => (
-          <linearGradient key={i} id={`barGrad-${i}`} x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stopColor={color} stopOpacity="0.8" />
-            <stop offset="100%" stopColor={color} stopOpacity="1" />
-          </linearGradient>
-        ))}
-      </defs>
-      {data.map((val, i) => {
-        const barHeight = (val / maxVal) * (height - 20);
-        const x = i * barWidth;
-        const y = height - barHeight - 10;
+    <svg width="100%" height={height} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none">
+      {data.map((v, i) => {
+        const bh = (v / max) * (height - 18);
+        const x = i * barW + barW * 0.1;
+        const w = barW * 0.8;
+        const y = height - bh - 14;
         return (
-          <g key={i} className="svg-bar-group">
-            <motion.rect
-              x={`${x + 0.5}%`}
-              y={y}
-              width={`${barWidth - 1}%`}
-              height={barHeight}
-              fill={`url(#barGrad-${i % googleColors.length})`}
-              rx="2"
-              initial={{ height: 0, y: height - 10 }}
-              animate={{ height: barHeight, y }}
-              transition={{ duration: 0.3, delay: i * 0.02 }}
-              className="svg-bar"
-            />
-            {val > 0 && (
-              <text
-                x={`${x + barWidth / 2}%`}
-                y={y - 4}
-                textAnchor="middle"
-                fontSize="8"
-                fill="var(--color-text-secondary, #5f6368)"
-                className="svg-bar-label"
-              >
-                {val}
+          <g key={i}>
+            <motion.rect x={`${x}%`} y={y} width={`${w}%`} height={bh} rx={2}
+              fill={C.primary} opacity={0.85}
+              initial={{ height: 0, y: height - 14 }} animate={{ height: bh, y }}
+              transition={{ duration: 0.35, delay: i * 0.025 }} />
+            {v > 0 && (
+              <text x={`${x + w / 2}%`} y={y - 2} textAnchor="middle" fontSize={7} fill={C.onSurfaceVar}>{v}</text>
+            )}
+            {labels && (
+              <text x={`${x + w / 2}%`} y={height - 2} textAnchor="middle" fontSize={7} fill={C.onSurfaceVar}>
+                {labels[i]}
               </text>
             )}
           </g>
         );
       })}
-      <line x1="0" y1={height - 10} x2="100%" y2={height - 10} stroke="var(--color-surface-2, #e8eaed)" strokeWidth="1" />
     </svg>
   );
 }
 
-function SVGLineChart({ data, width = 100, height = 80 }: { data: number[]; width?: number; height?: number }) {
-  const maxVal = Math.max(...data, 1);
-  const minVal = Math.min(...data, 0);
-  const range = maxVal - minVal || 1;
-  const points = data.map((val, i) => {
-    const x = (i / (data.length - 1)) * width;
-    const y = height - ((val - minVal) / range) * (height - 20) - 10;
-    return `${x},${y}`;
-  }).join(' ');
-
+// ── SVG Line Chart ────────────────────────────────────────────────────────────
+function M3LineChart({ data, height = 70 }: { data: number[] }) {
+  const max = Math.max(...data, 1);
+  const pts = data.map((v, i) => {
+    const x = (i / Math.max(data.length - 1, 1)) * 100;
+    const y = height - (v / max) * (height - 10) - 5;
+    return [x, y] as [number, number];
+  });
+  const linePath = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y}`).join(' ');
+  const areaPath = `${linePath} L100,${height} L0,${height} Z`;
   return (
-    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="svg-line-chart">
+    <svg width="100%" height={height} viewBox={`0 0 100 ${height}`} preserveAspectRatio="none">
       <defs>
-        <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#4285f4" />
-          <stop offset="50%" stopColor="#ea4335" />
-          <stop offset="100%" stopColor="#34a853" />
-        </linearGradient>
-        <linearGradient id="areaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#4285f4" stopOpacity="0.3" />
-          <stop offset="100%" stopColor="#4285f4" stopOpacity="0" />
+        <linearGradient id="m3-area" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={C.primary} stopOpacity="0.2" />
+          <stop offset="100%" stopColor={C.primary} stopOpacity="0" />
         </linearGradient>
       </defs>
-      <motion.path
-        d={`M${points.split(' ').map((p, i) => {
-          const [x, y] = p.split(',');
-          return `${i === 0 ? 'M' : 'L'}${x},${y}`;
-        }).join(' ')}`}
-        fill="none"
-        stroke="url(#lineGrad)"
-        strokeWidth="2"
-        initial={{ pathLength: 0 }}
-        animate={{ pathLength: 1 }}
-        transition={{ duration: 1, ease: 'easeOut' }}
-      />
-      <motion.path
-        d={`M${points.split(' ').map((p, i) => {
-          const [x, y] = p.split(',');
-          return `${i === 0 ? 'M' : 'L'}${x},${y}`;
-        }).join(' ')} L${width},${height} L0,${height} Z`}
-        fill="url(#areaGrad)"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.8, delay: 0.3 }}
-      />
-      {points.split(' ').map((p, i) => {
-        const [x, y] = p.split(',');
-        return (
-          <motion.circle
-            key={i}
-            cx={x}
-            cy={y}
-            r="3"
-            fill="#4285f4"
-            stroke="white"
-            strokeWidth="1.5"
-            initial={{ r: 0 }}
-            animate={{ r: 3 }}
-            transition={{ delay: i * 0.05 + 0.5, duration: 0.2 }}
-          />
-        );
-      })}
+      <path d={areaPath} fill="url(#m3-area)" />
+      <motion.path d={linePath} fill="none" stroke={C.primary} strokeWidth={1.5}
+        initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1 }} />
+      {pts.map(([x, y], i) => (
+        <motion.circle key={i} cx={x} cy={y} r={2} fill={C.primary}
+          initial={{ r: 0 }} animate={{ r: 2 }} transition={{ delay: i * 0.04 + 0.5 }} />
+      ))}
     </svg>
   );
 }
 
-function SVGHeatmap({ data, days, cellSize = 14, gap = 3 }: { data: any[]; days: number; cellSize?: number; gap?: number }) {
-  const weeks = Math.ceil(days / 7);
-  const googleColors = ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39'];
+// ── SVG Heatmap ───────────────────────────────────────────────────────────────
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+// M3 primary tones 10/40/70/90
+const HEAT_COLORS = [
+  C.surfaceVar,
+  'var(--color-primary-container,#eaddff)',
+  C.primary,
+  '#4a3780',
+  '#2d1f5e',
+];
+function heatLevel(n: number) { return !n ? 0 : n < 3 ? 1 : n < 6 ? 2 : n < 10 ? 3 : 4; }
 
-  const getColor = (count: number) => {
-    if (count === 0) return googleColors[0];
-    if (count === 1) return googleColors[1];
-    if (count <= 3) return googleColors[2];
-    if (count <= 5) return googleColors[3];
-    return googleColors[4];
-  };
+function M3Heatmap({ stats }: { stats: { date: string; count: number }[] }) {
+  const CELL = 11, GAP = 2, STEP = CELL + GAP;
+  const { cells, months } = useMemo(() => {
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(today.getDate() - 364);
+    start.setDate(start.getDate() - start.getDay());
+    const map = new Map(stats.map(s => [s.date, s.count]));
+    const cells: { date: string; count: number; col: number; row: number }[] = [];
+    const months: { label: string; col: number }[] = [];
+    let lastMonth = -1;
+    for (let col = 0; col < 53; col++) {
+      for (let row = 0; row < 7; row++) {
+        const d = new Date(start); d.setDate(start.getDate() + col * 7 + row);
+        if (d > today) continue;
+        const iso = d.toISOString().split('T')[0];
+        cells.push({ date: iso, count: map.get(iso) || 0, col, row });
+        if (row === 0 && d.getMonth() !== lastMonth) {
+          months.push({ label: MONTH_NAMES[d.getMonth()], col });
+          lastMonth = d.getMonth();
+        }
+      }
+    }
+    return { cells, months };
+  }, [stats]);
 
-  const svgWidth = weeks * (cellSize + gap) - gap;
-  const svgHeight = 7 * (cellSize + gap) - gap;
-
+  const W = 53 * STEP, H = 7 * STEP + 16;
   return (
-    <svg width="100%" height={svgHeight + 20} viewBox={`0 0 ${svgWidth} ${svgHeight + 20}`} className="svg-heatmap">
-      <defs>
-        <style>{`
-          @keyframes cellPulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-          }
-          .heatmap-cell:hover rect {
-            stroke: #333;
-            stroke-width: 1;
-          }
-        `}</style>
-      </defs>
-      {data.map((day, i) => {
-        const week = Math.floor(i / 7);
-        const dow = i % 7;
-        const x = week * (cellSize + gap);
-        const y = dow * (cellSize + gap);
-        const color = day ? getColor(day.count) : googleColors[0];
-        const hasActivity = day && day.count > 0;
-
-        return (
-          <g key={i} className="heatmap-cell" title={day ? `${day.date}: ${day.count} questions` : ''}>
-            <motion.rect
-              x={x}
-              y={y}
-              width={cellSize}
-              height={cellSize}
-              rx="2"
-              ry="2"
-              fill={color}
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.003, duration: 0.2 }}
-            />
-            {hasActivity && (
-              <motion.rect
-                x={x}
-                y={y}
-                width={cellSize}
-                height={cellSize}
-                rx="2"
-                ry="2"
-                fill={color}
-                opacity="0.6"
-                animate={{ opacity: [0.6, 0.3, 0.6] }}
-                transition={{ duration: 2, repeat: Infinity, delay: i * 0.05 }}
-              />
-            )}
-          </g>
-        );
-      })}
-      <div className="svg-heatmap-day-labels">
-        {['S', '', 'T', '', 'T', '', 'S'].map((d, i) => (
-          <text key={i} x="-5" y={i * (cellSize + gap) + cellSize - 2} textAnchor="end" fontSize="9" fill="#666">
-            {d}
-          </text>
+    <div className="overflow-x-auto">
+      <svg width={W} height={H} style={{ minWidth: W }}>
+        {months.map(({ label, col }) => (
+          <text key={`${label}-${col}`} x={col * STEP} y={10} fontSize={9} fill={C.onSurfaceVar}>{label}</text>
         ))}
-      </div>
-    </svg>
+        {cells.map(cell => (
+          <rect key={cell.date}
+            x={cell.col * STEP} y={16 + cell.row * STEP}
+            width={CELL} height={CELL} rx={2}
+            fill={HEAT_COLORS[heatLevel(cell.count)]}
+            className="cursor-pointer hover:opacity-70 transition-opacity"
+          >
+            <title>{cell.date}: {cell.count} activities</title>
+          </rect>
+        ))}
+      </svg>
+    </div>
   );
 }
 
-function AchievementBadgeSVG({ name, isUnlocked, progress = 100, icon = '🏆' }: {
-  name: string;
-  isUnlocked: boolean;
-  progress?: number;
-  icon?: string;
-}) {
-  const badgeSize = 60;
-  const center = badgeSize / 2;
-
+// ── SVG Ring Progress ─────────────────────────────────────────────────────────
+function M3Ring({ pct, color, size = 72, label }: { pct: number; color: string; size?: number; label: string }) {
+  const r = (size - 8) / 2;
+  const circ = 2 * Math.PI * r;
+  const c = size / 2;
   return (
-    <svg width={badgeSize} height={badgeSize} viewBox={`0 0 ${badgeSize} ${badgeSize}`} className="achievement-badge-svg">
-      <defs>
-        <radialGradient id={`badgeGrad-${name}`} cx="50%" cy="40%" r="50%">
-          <stop offset="0%" stopColor={isUnlocked ? '#FFD700' : '#d1d5db'} />
-          <stop offset="100%" stopColor={isUnlocked ? '#FFA500' : '#9ca3af'} />
-        </radialGradient>
-        <filter id={`badgeGlow-${name}`} x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="2" result="blur" />
-          {isUnlocked && <feComposite in="SourceGraphic" in2="blur" operator="over" />}
-        </filter>
-        <clipPath id={`badgeClip-${name}`}>
-          <circle cx={center} cy={center} r={center - 4} />
-        </clipPath>
-        {isUnlocked && (
-          <animateTransform
-            attributeName="transform"
-            type="rotate"
-            from={`0 ${center} ${center}`}
-            to={`360 ${center} ${center}`}
-            dur="10s"
-            repeatCount="indefinite"
-          />
-        )}
-      </defs>
-      <motion.g
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-        filter={isUnlocked ? `url(#badgeGlow-${name})` : undefined}
-      >
-        <circle cx={center} cy={center} r={center - 4} fill={`url(#badgeGrad-${name})`} />
-        {isUnlocked && (
-          <circle cx={center} cy={center} r={center - 6} fill="none" stroke="#fff" strokeWidth="1" opacity="0.3" />
-        )}
-        <text x={center} y={center + 2} textAnchor="middle" dominantBaseline="central" fontSize="24">
-          {icon}
-        </text>
-        {!isUnlocked && progress < 100 && (
-          <circle
-            cx={center}
-            cy={center}
-            r={center - 4}
-            fill="none"
-            stroke="#fff"
-            strokeWidth="3"
-            strokeDasharray={`${progress} ${100 - progress}`}
-            strokeLinecap="round"
-            transform={`rotate(-90 ${center} ${center})`}
-            opacity="0.6"
-          />
-        )}
-        {isUnlocked && (
-          <>
-            <circle cx={center} cy="8" r="3" fill="#FFD700" opacity="0.8">
-              <animate attributeName="opacity" values="0.8;0.3;0.8" dur="2s" repeatCount="indefinite" />
-            </circle>
-            <circle cx={badgeSize - 8} cy={center + 5} r="2" fill="#FFD700" opacity="0.6">
-              <animate attributeName="opacity" values="0.6;0.2;0.6" dur="2.5s" repeatCount="indefinite" />
-            </circle>
-          </>
-        )}
-      </motion.g>
-    </svg>
+    <div className="flex flex-col items-center gap-1">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} className="-rotate-90 absolute inset-0">
+          <circle cx={c} cy={c} r={r} fill="none" stroke={C.surfaceVar} strokeWidth={6} />
+          <motion.circle cx={c} cy={c} r={r} fill="none" stroke={color} strokeWidth={6}
+            strokeLinecap="round" strokeDasharray={circ}
+            initial={{ strokeDashoffset: circ }}
+            animate={{ strokeDashoffset: circ * (1 - pct / 100) }}
+            transition={{ duration: 0.8, ease: 'easeOut' }} />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-sm font-medium" style={{ color }}>{pct}%</span>
+        </div>
+      </div>
+      <span className="text-xs font-medium" style={{ color: C.onSurfaceVar }}>{label}</span>
+    </div>
   );
 }
 
+// ── M3 Metric Card ────────────────────────────────────────────────────────────
+function M3MetricCard({ label, value, unit, subtext, trend, change, bg, fg }: {
+  label: string; value: number; unit?: string; subtext?: string;
+  trend?: 'up' | 'down' | 'neutral'; change?: number; bg: string; fg: string;
+}) {
+  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+      className="rounded-3xl p-4 flex flex-col gap-1" style={{ background: bg }}>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium uppercase tracking-wide" style={{ color: fg, opacity: 0.7 }}>{label}</span>
+        {change !== undefined && (
+          <span className="flex items-center gap-0.5 text-xs font-medium" style={{ color: fg, opacity: 0.8 }}>
+            <TrendIcon className="w-3 h-3" />
+            {change > 0 ? '+' : ''}{change}%
+          </span>
+        )}
+      </div>
+      <div className="text-4xl font-normal leading-none" style={{ color: fg }}>
+        {value.toLocaleString()}<span className="text-lg">{unit}</span>
+      </div>
+      {subtext && <div className="text-xs" style={{ color: fg, opacity: 0.7 }}>{subtext}</div>}
+    </motion.div>
+  );
+}
+
+// ── Main export ───────────────────────────────────────────────────────────────
 export default function GoogleStats() {
   const [, setLocation] = useLocation();
   const { stats } = useGlobalStats();
   const { progress: achievementProgress, nextUp } = useAchievements();
   const level = useLevel();
   const [timeRange, setTimeRange] = useState<'30' | '90' | '365'>('90');
-
   const days = parseInt(timeRange);
 
   const {
-    totalCompleted,
-    totalQuestions,
-    overallPct,
-    streak,
-    totalSessions,
-    globalDifficulty,
-    moduleProgress,
-    activityData,
-    sessionHistory,
-    prevPeriodCount
+    totalCompleted, totalQuestions, overallPct, streak,
+    totalSessions, globalDifficulty, moduleProgress,
+    activityData, sessionHistory, changePercent,
   } = useMemo(() => {
     const allQuestions = getAllQuestions();
     const allCompletedIds = new Set<string>();
-    const channelsWithProgress: string[] = [];
-    const channelCompletionPcts: number[] = [];
-
     const globalDiff = {
-      beginner: { total: 0, done: 0 },
+      beginner:     { total: 0, done: 0 },
       intermediate: { total: 0, done: 0 },
-      advanced: { total: 0, done: 0 }
+      advanced:     { total: 0, done: 0 },
     };
 
     const modProgress = channels.map(ch => {
       const questions = getQuestions(ch.id);
       const stored = localStorage.getItem(`progress-${ch.id}`);
-      const completedIds = stored ? new Set(JSON.parse(stored)) : new Set();
-
-      Array.from(completedIds).forEach((id) => allCompletedIds.add(id as string));
-      if (completedIds.size > 0) channelsWithProgress.push(ch.id);
-
-      const difficulty = {
-        beginner: { total: 0, done: 0 },
-        intermediate: { total: 0, done: 0 },
-        advanced: { total: 0, done: 0 }
-      };
-
+      const completedIds = stored ? new Set<string>(JSON.parse(stored)) : new Set<string>();
+      completedIds.forEach(id => allCompletedIds.add(id));
       questions.forEach(q => {
         const d = getQuestionDifficulty(q);
-        difficulty[d].total++;
         globalDiff[d].total++;
-        if (completedIds.has(q.id)) {
-          difficulty[d].done++;
-          globalDiff[d].done++;
-        }
+        if (completedIds.has(q.id)) globalDiff[d].done++;
       });
-
-      const validCompleted = Math.min(completedIds.size, questions.length);
-      const pct = questions.length > 0 ? Math.min(100, Math.round((validCompleted / questions.length) * 100)) : 0;
-      if (questions.length > 0) channelCompletionPcts.push(pct);
-
-      return {
-        id: ch.id,
-        name: ch.name,
-        completed: validCompleted,
-        total: questions.length,
-        pct,
-        difficulty
-      };
+      const valid = Math.min(completedIds.size, questions.length);
+      const pct = questions.length > 0 ? Math.min(100, Math.round((valid / questions.length) * 100)) : 0;
+      return { id: ch.id, name: ch.name, completed: valid, total: questions.length, pct };
     }).filter(m => m.total > 0).sort((a, b) => b.pct - a.pct);
 
     let currentStreak = 0;
     for (let i = 0; i < 365; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
+      const d = new Date(); d.setDate(d.getDate() - i);
       if (stats.find(x => x.date === d.toISOString().split('T')[0])) currentStreak++;
       else break;
     }
 
-    const actData: { date: string; count: number; week: number; dayOfWeek: number }[] = [];
     const today = new Date();
-    let currentPeriodCount = 0;
-    let prevPeriodCount = 0;
-    const halfDays = Math.floor(days / 2);
-
+    const actData: { date: string; count: number }[] = [];
+    let curPeriod = 0, prevPeriod = 0;
+    const half = Math.floor(days / 2);
     for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      const activity = stats.find(s => s.date === dateStr);
-      const count = activity?.count || 0;
-      if (i < halfDays) currentPeriodCount += count;
-      else prevPeriodCount += count;
-      actData.push({
-        date: dateStr,
-        count,
-        week: Math.floor((days - 1 - i) / 7),
-        dayOfWeek: date.getDay()
-      });
+      const d = new Date(today); d.setDate(today.getDate() - i);
+      const iso = d.toISOString().split('T')[0];
+      const count = stats.find(s => s.date === iso)?.count || 0;
+      if (i < half) curPeriod += count; else prevPeriod += count;
+      actData.push({ date: iso, count });
     }
 
     const sessionHist: number[] = [];
     for (let i = 13; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const activity = stats.find(s => s.date === dateStr);
-      sessionHist.push(activity?.count || 0);
+      const d = new Date(); d.setDate(d.getDate() - i);
+      sessionHist.push(stats.find(s => s.date === d.toISOString().split('T')[0])?.count || 0);
     }
 
-    const validTotalCompleted = Math.min(allCompletedIds.size, allQuestions.length);
+    const chg = prevPeriod !== 0
+      ? Math.round(((curPeriod - prevPeriod) / prevPeriod) * 100)
+      : curPeriod > 0 ? 100 : 0;
+
+    const validTotal = Math.min(allCompletedIds.size, allQuestions.length);
     return {
-      totalCompleted: validTotalCompleted,
+      totalCompleted: validTotal,
       totalQuestions: allQuestions.length,
-      overallPct: allQuestions.length > 0 ? Math.min(100, Math.round((validTotalCompleted / allQuestions.length) * 100)) : 0,
+      overallPct: allQuestions.length > 0 ? Math.min(100, Math.round((validTotal / allQuestions.length) * 100)) : 0,
       streak: currentStreak,
       totalSessions: stats.reduce((a, c) => a + c.count, 0),
       globalDifficulty: globalDiff,
       moduleProgress: modProgress,
       activityData: actData,
       sessionHistory: sessionHist,
-      prevPeriodCount: currentPeriodCount - prevPeriodCount
+      changePercent: chg,
     };
   }, [stats, days]);
 
-  const changePercent = prevPeriodCount !== 0
-    ? Math.round(((activityData.slice(0, Math.floor(days / 2)).reduce((a, d) => a + d.count, 0) - prevPeriodCount) / prevPeriodCount) * 100)
-    : activityData.slice(0, Math.floor(days / 2)).reduce((a, d) => a + d.count, 0) > 0 ? 100 : 0;
+  const weekLabels = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (13 - i));
+    return d.toLocaleDateString('en-US', { weekday: 'short' });
+  });
 
   return (
     <>
-      <SEOHead
-        title="Track Your Interview Prep Progress - Stats & Analytics | Code Reels"
-        description="Monitor your technical interview preparation progress with detailed analytics."
-        canonical="https://open-interview.github.io/stats"
-      />
-
+      <SEOHead title="Statistics | Open Interview"
+        description="Monitor your technical interview preparation progress."
+        canonical="https://open-interview.github.io/stats" />
       <AppLayout title="Statistics">
-        <div className="google-stats">
-          <FloatingDots count={30} />
+        <div className="max-w-2xl mx-auto px-4 py-6 pb-24 space-y-4" style={{ background: C.surface }}>
+          <ProgressTabBar activeTab="overview" />
+          {/* Page title */}
+          <h1 className="text-3xl font-normal" style={{ color: C.onSurface }}>Statistics</h1>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <LevelDisplay
-              {...level.levelProgress}
-              currentStreak={level.currentStreak}
-              streakMultiplier={level.streakMultiplier}
-              variant="card"
-            />
+          {/* XP / Level progress */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            className="rounded-3xl p-5" style={{ background: C.primaryCont }}>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="text-xs font-medium uppercase tracking-wide mb-0.5" style={{ color: C.onPrimaryCont, opacity: 0.7 }}>
+                  Level {level.levelProgress.currentLevel}
+                </div>
+                <div className="text-4xl font-normal" style={{ color: C.onPrimaryCont }}>
+                  {level.levelProgress.currentXP} XP
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs" style={{ color: C.onPrimaryCont, opacity: 0.7 }}>Next level</div>
+                <div className="text-sm font-medium" style={{ color: C.onPrimaryCont }}>
+                  {level.levelProgress.xpForNextLevel} XP
+                </div>
+              </div>
+            </div>
+            {/* M3 linear progress */}
+            <div className="h-1 rounded-full overflow-hidden" style={{ background: `${C.onPrimaryCont}30` }}>
+              <motion.div className="h-full rounded-full" style={{ background: C.onPrimaryCont }}
+                initial={{ width: 0 }}
+                animate={{ width: `${level.levelProgress.progressPercent}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut' }} />
+            </div>
+            <div className="flex justify-between text-xs mt-1" style={{ color: C.onPrimaryCont, opacity: 0.6 }}>
+              <span>{level.levelProgress.currentXP % 100}/100 XP to next level</span>
+              {level.currentStreak > 0 && (
+                <span className="flex items-center gap-1">
+                  <Flame className="w-3 h-3" style={{ color: C.error }} />
+                  {level.currentStreak}d streak
+                </span>
+              )}
+            </div>
           </motion.div>
 
-          <div className="google-metric-grid">
-            <GoogleMetricCard
-              label="Progress"
-              value={overallPct}
-              unit="%"
-              subtext={`${totalCompleted} of ${totalQuestions} questions`}
-              trend={overallPct > 50 ? 'up' : overallPct > 25 ? 'neutral' : 'down'}
-              color="primary"
-            />
-            <GoogleMetricCard
-              label="Current Streak"
-              value={streak}
-              unit=""
-              subtext={
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <FireIconWithGlow size={14} /> days
-                </span>
-              }
-              trend={streak > 0 ? 'up' : 'neutral'}
-              color="orange"
-            />
-            <GoogleMetricCard
-              label="Total Sessions"
-              value={totalSessions}
-              unit=""
-              subtext="completed"
-              trend={totalSessions > 10 ? 'up' : 'neutral'}
-              color="blue"
-            />
-            <GoogleMetricCard
-              label={`${timeRange}d Activity`}
+          {/* 4 metric cards — 2-col grid */}
+          <div className="grid grid-cols-2 gap-3">
+            <M3MetricCard label="Progress" value={overallPct} unit="%" subtext={`${totalCompleted}/${totalQuestions} questions`}
+              trend={overallPct > 50 ? 'up' : 'neutral'} bg={C.secondaryCont} fg={C.onSecondaryCont} />
+            <M3MetricCard label="Streak" value={streak} subtext="days"
+              trend={streak > 0 ? 'up' : 'neutral'} bg={C.errorCont} fg={C.onErrorCont} />
+            <M3MetricCard label="Sessions" value={totalSessions} subtext="completed"
+              trend="neutral" bg={C.primaryCont} fg={C.onPrimaryCont} />
+            <M3MetricCard label={`${timeRange}d Activity`}
               value={activityData.reduce((a, d) => a + d.count, 0)}
-              unit=""
               subtext="questions solved"
               trend={changePercent > 0 ? 'up' : changePercent < 0 ? 'down' : 'neutral'}
-              color="purple"
-              change={changePercent}
-            />
+              change={changePercent} bg={C.tertiaryCont} fg={C.onTertiaryCont} />
           </div>
 
-          <div className="google-chart-section">
-            <div className="google-chart-card">
-              <div className="google-chart-header">
-                <h3>Activity Trend</h3>
-                <span>Last 14 days</span>
-              </div>
-              <SVGBarChart data={sessionHistory} height={140} />
-              <div style={{ marginTop: '12px' }}>
-                <SVGLineChart data={sessionHistory} width={100} height={80} />
-              </div>
+          {/* Activity trend — bar + line */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            className="rounded-3xl p-5" style={{ background: C.surfaceVar }}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-base font-medium" style={{ color: C.onSurface }}>Activity Trend</span>
+              <span className="text-xs" style={{ color: C.onSurfaceVar }}>Last 14 days</span>
             </div>
-          </div>
-
-          <div className="google-progress-section">
-            <div className="google-progress-grid">
-              <SVGProgressBarRingCard
-                label="Beginner"
-                completed={globalDifficulty.beginner.done}
-                total={globalDifficulty.beginner.total}
-                color="#34A853"
-              />
-              <SVGProgressBarRingCard
-                label="Intermediate"
-                completed={globalDifficulty.intermediate.done}
-                total={globalDifficulty.intermediate.total}
-                color="#FBBC05"
-              />
-              <SVGProgressBarRingCard
-                label="Advanced"
-                completed={globalDifficulty.advanced.done}
-                total={globalDifficulty.advanced.total}
-                color="#EA4335"
-              />
+            <M3BarChart data={sessionHistory} labels={weekLabels} height={110} />
+            <div className="mt-3">
+              <M3LineChart data={sessionHistory} height={60} />
             </div>
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="google-badges-card"
-          >
-            <div className="google-card-header">
-              <h3>
-                <Trophy className="icon-primary" />
-                Achievements
-              </h3>
-              <button onClick={() => setLocation('/badges')} className="google-view-all">
-                View All
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="google-achievement-svg-grid">
-              {achievementProgress.filter(a => a.isUnlocked).slice(0, 8).map((ap) => (
-                <div
-                  key={ap.achievement.id}
-                  className="google-achievement-svg-item"
-                  onClick={() => setLocation('/badges')}
-                  title={ap.achievement.name}
-                >
-                  <AchievementBadgeSVG
-                    name={ap.achievement.id}
-                    isUnlocked={ap.isUnlocked}
-                    progress={ap.progress}
-                    icon={ap.achievement.icon || '🏆'}
-                  />
-                  <span className="google-achievement-svg-name">{ap.achievement.name}</span>
-                </div>
-              ))}
-            </div>
-            {nextUp.length > 0 && (
-              <div className="google-next-section">
-                <div className="google-next-label">Next Up</div>
-                <div className="google-next-grid">
-                  {nextUp.slice(0, 4).map((ap) => (
-                    <div key={ap.achievement.id} className="google-next-item">
-                      <AchievementBadgeSVG
-                        name={ap.achievement.id}
-                        isUnlocked={false}
-                        progress={ap.progress}
-                        icon={ap.achievement.icon || '🏆'}
-                      />
-                      <div className="google-next-info">
-                        <div className="google-next-name">{ap.achievement.name}</div>
-                        <div className="google-next-progress">{Math.round(ap.progress)}%</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </motion.div>
 
-          <GitHubAnalytics />
+          {/* Difficulty rings */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            className="rounded-3xl p-5" style={{ background: C.surfaceVar }}>
+            <span className="text-base font-medium block mb-4" style={{ color: C.onSurface }}>By Difficulty</span>
+            <div className="flex justify-around">
+              {[
+                { label: 'Beginner', d: globalDifficulty.beginner, color: '#34a853' },
+                { label: 'Intermediate', d: globalDifficulty.intermediate, color: '#fbbc04' },
+                { label: 'Advanced', d: globalDifficulty.advanced, color: C.error },
+              ].map(({ label, d, color }) => {
+                const pct = d.total > 0 ? Math.round((d.done / d.total) * 100) : 0;
+                return (
+                  <div key={label} className="flex flex-col items-center gap-1">
+                    <M3Ring pct={pct} color={color} label={label} />
+                    <span className="text-xs" style={{ color: C.onSurfaceVar }}>{d.done}/{d.total}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="google-activity-card"
-          >
-            <div className="google-card-header">
-              <h3>
-                <Calendar className="icon-primary" />
-                Activity
-              </h3>
-              <div className="google-time-filter">
-                {(['30', '90', '365'] as const).map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setTimeRange(r)}
-                    className={`google-time-btn ${timeRange === r ? 'active' : ''}`}
-                  >
+          {/* Activity heatmap */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            className="rounded-3xl p-5" style={{ background: C.surfaceVar }}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-base font-medium" style={{ color: C.onSurface }}>Activity</span>
+              <div className="flex gap-1">
+                {(['30', '90', '365'] as const).map(r => (
+                  <button key={r} onClick={() => setTimeRange(r)}
+                    className="px-3 py-1 rounded-full text-xs font-medium transition-colors"
+                    style={{
+                      background: timeRange === r ? C.primary : 'transparent',
+                      color: timeRange === r ? '#fff' : C.onSurfaceVar,
+                    }}>
                     {r === '365' ? '1Y' : r + 'D'}
                   </button>
                 ))}
               </div>
             </div>
-            <SVGHeatmap data={activityData} days={days} cellSize={14} gap={3} />
+            <M3Heatmap stats={stats} />
+            {/* Legend */}
+            <div className="flex items-center gap-1.5 mt-2 justify-end">
+              <span className="text-xs" style={{ color: C.onSurfaceVar }}>Less</span>
+              {HEAT_COLORS.map((c, i) => <div key={i} className="w-2.5 h-2.5 rounded-sm" style={{ background: c }} />)}
+              <span className="text-xs" style={{ color: C.onSurfaceVar }}>More</span>
+            </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="google-channels-card"
-          >
-            <div className="google-card-header">
-              <h3>
-                <BarChart2 className="icon-primary" />
-                Channel Progress
-              </h3>
+          {/* Achievements */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            className="rounded-3xl p-5" style={{ background: C.surfaceVar }}>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-base font-medium" style={{ color: C.onSurface }}>Achievements</span>
+              <button onClick={() => setLocation('/badges')}
+                className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full hover:bg-black/10 transition-colors"
+                style={{ color: C.primary }}>
+                View All <ChevronRight className="w-3 h-3" />
+              </button>
             </div>
-            <div className="google-channels-list">
+            <div className="grid grid-cols-4 gap-3">
+              {achievementProgress.filter(a => a.isUnlocked).slice(0, 8).map((ap, i) => (
+                <motion.button key={ap.achievement.id}
+                  initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.05, type: 'spring', stiffness: 260 }}
+                  onClick={() => setLocation('/badges')}
+                  className="flex flex-col items-center gap-1.5 p-2 rounded-2xl hover:bg-black/10 transition-colors"
+                  style={{ background: C.primaryCont }}>
+                  <span className="text-xl">{ap.achievement.icon || '🏆'}</span>
+                  <span className="text-xs font-medium text-center leading-tight line-clamp-2"
+                    style={{ color: C.onPrimaryCont }}>{ap.achievement.name}</span>
+                </motion.button>
+              ))}
+            </div>
+
+            {nextUp.length > 0 && (
+              <div className="mt-4">
+                <span className="text-xs font-medium uppercase tracking-wide block mb-2" style={{ color: C.onSurfaceVar }}>
+                  Almost There
+                </span>
+                <div className="space-y-2">
+                  {nextUp.slice(0, 3).map(ap => {
+                    const pct = ap.target > 0 ? Math.min(100, (ap.current / ap.target) * 100) : 0;
+                    return (
+                      <div key={ap.achievement.id} className="flex items-center gap-3 p-3 rounded-2xl"
+                        style={{ background: C.primaryCont }}>
+                        <span className="text-lg flex-shrink-0">{ap.achievement.icon || '🏆'}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium truncate" style={{ color: C.onPrimaryCont }}>
+                            {ap.achievement.name}
+                          </div>
+                          <div className="h-1 rounded-full overflow-hidden mt-1" style={{ background: `${C.onPrimaryCont}30` }}>
+                            <div className="h-full rounded-full" style={{ background: C.primary, width: `${pct}%` }} />
+                          </div>
+                        </div>
+                        <span className="text-xs flex-shrink-0" style={{ color: C.onPrimaryCont, opacity: 0.7 }}>
+                          {ap.current}/{ap.target}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Channel progress */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            className="rounded-3xl p-5" style={{ background: C.surfaceVar }}>
+            <span className="text-base font-medium block mb-4" style={{ color: C.onSurface }}>Channel Progress</span>
+            <div className="space-y-3">
               {moduleProgress.slice(0, 10).map((m, i) => (
-                <motion.div
-                  key={m.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
+                <motion.button key={m.id}
+                  initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.03 }}
                   onClick={() => setLocation(`/channel/${m.id}`)}
-                  className="google-channel-item"
-                >
-                  <div className="google-channel-info">
-                    <span className="google-channel-name">{m.name}</span>
-                    <span className="google-channel-stats">
-                      {m.completed}/{m.total}
-                    </span>
+                  className="w-full text-left flex items-center gap-3 p-3 rounded-2xl hover:bg-black/10 transition-colors"
+                  style={{ background: C.primaryCont }}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium truncate" style={{ color: C.onPrimaryCont }}>{m.name}</span>
+                      <span className="text-xs flex-shrink-0 ml-2" style={{ color: C.onPrimaryCont, opacity: 0.7 }}>
+                        {m.completed}/{m.total}
+                      </span>
+                    </div>
+                    <div className="h-1 rounded-full overflow-hidden" style={{ background: `${C.onPrimaryCont}25` }}>
+                      <motion.div className="h-full rounded-full"
+                        style={{ background: m.pct === 100 ? C.tertiary : C.primary }}
+                        initial={{ width: 0 }} animate={{ width: `${m.pct}%` }}
+                        transition={{ duration: 0.5, delay: i * 0.03 }} />
+                    </div>
                   </div>
-                  <div className="google-channel-bar">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${m.pct}%` }}
-                      transition={{ duration: 0.4, delay: i * 0.03 }}
-                      className="google-channel-fill"
-                    />
-                  </div>
-                  <span className="google-channel-pct">{m.pct}%</span>
-                </motion.div>
+                  <span className="text-xs font-medium flex-shrink-0" style={{ color: m.pct === 100 ? C.tertiary : C.primary }}>
+                    {m.pct}%
+                  </span>
+                </motion.button>
               ))}
             </div>
           </motion.div>
+
         </div>
       </AppLayout>
     </>
   );
 }
-
-function GoogleMetricCard({ label, value, unit, subtext, trend, color, change }: {
-  label: string;
-  value: number;
-  unit: string;
-  subtext: string | React.ReactNode;
-  trend: 'up' | 'down' | 'neutral';
-  color: string;
-  change?: number;
-}) {
-  const trendIcon = trend === 'up' ? <TrendingUp /> : trend === 'down' ? <TrendingDown /> : <Minus />;
-  const trendClass = trend === 'up' ? 'trend-up' : trend === 'down' ? 'trend-down' : 'trend-neutral';
-  
-  const colors: Record<string, string> = {
-    primary: 'var(--color-primary)',
-    orange: '#f97316',
-    blue: '#3b82f6',
-    purple: '#4285F4'
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="google-metric-card"
-    >
-      <div className="google-metric-header">
-        <span className="google-metric-label">{label}</span>
-        {change !== undefined && (
-          <span className={`google-metric-trend ${trendClass}`}>
-            {trendIcon}
-            {change > 0 ? '+' : ''}{change}%
-          </span>
-        )}
-      </div>
-      <div className="google-metric-value" style={{ color: colors[color] }}>
-        {value.toLocaleString()}<span className="google-metric-unit">{unit}</span>
-      </div>
-      <div className="google-metric-subtext">{subtext}</div>
-    </motion.div>
-  );
-}
-
-// Old components removed - replaced with SVG components above

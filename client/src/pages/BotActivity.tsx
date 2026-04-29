@@ -214,7 +214,7 @@ function TimelineItem({ children, last = false }: { children: React.ReactNode; l
   return (
     <div className="flex gap-4">
       <div className="flex flex-col items-center">
-        <div className="w-8 h-8 rounded-full bg-card border-2 border-border flex items-center justify-center z-10">
+        <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-full bg-card border-2 border-border flex items-center justify-center z-10">
           {children}
         </div>
         {!last && <div className="w-0.5 flex-1 bg-border/50" />}
@@ -409,7 +409,7 @@ function Tab({ active, onClick, children, icon: Icon, count }: {
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 px-4 min-h-[40px] text-sm font-medium rounded-full transition-all duration-150 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "flex items-center gap-2 px-4 min-h-[48px] text-sm font-medium rounded-full transition-all duration-150 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         active 
           ? "bg-primary text-primary-foreground shadow-sm" 
           : "text-foreground/70 hover:bg-muted hover:text-foreground"
@@ -496,7 +496,7 @@ export default function BotActivity() {
             <button 
               onClick={handleRefresh}
               disabled={refreshing}
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-muted rounded-lg disabled:opacity-50 transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="min-w-[48px] min-h-[48px] flex items-center justify-center hover:bg-muted rounded-lg disabled:opacity-[0.38] transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
             </button>
@@ -507,7 +507,7 @@ export default function BotActivity() {
             <button 
               onClick={handleRefresh}
               disabled={refreshing}
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-muted rounded-lg disabled:opacity-50 transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="min-w-[48px] min-h-[48px] flex items-center justify-center hover:bg-muted rounded-lg disabled:opacity-[0.38] transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
             </button>
@@ -536,7 +536,7 @@ export default function BotActivity() {
                   <div className="relative">
                     <div className="flex items-center gap-3 mb-3">
                       <div className={cn(
-                        "w-10 h-10 rounded-2xl flex items-center justify-center bg-gradient-to-br",
+                        "min-w-[48px] w-10 min-h-[48px] h-10 rounded-2xl flex items-center justify-center bg-gradient-to-br",
                         config.gradient
                       )}>
                         <Icon className="w-5 h-5 text-white" />
@@ -663,7 +663,7 @@ export default function BotActivity() {
                       action={
                         <button
                           onClick={handleRefresh}
-                          className="px-4 min-h-[44px] text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="px-4 min-h-[48px] text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           Try again
                         </button>
@@ -758,7 +758,7 @@ export default function BotActivity() {
                 <div className="p-4">
                   {workQueue.length === 0 ? (
                     <div className="p-6 text-center">
-                      <CheckCircle className="w-8 h-8 mx-auto text-emerald-500 mb-2" />
+                      <CheckCircle className="min-w-[48px] w-8 min-h-[48px] h-8 mx-auto text-emerald-500 mb-2" />
                       <p className="text-sm text-foreground/70 font-medium">Queue is empty</p>
                       <p className="text-xs text-foreground/70 mt-1">All tasks completed</p>
                     </div>
@@ -796,7 +796,7 @@ export default function BotActivity() {
                 <div className="p-4">
                   {ledger.length === 0 ? (
                     <div className="p-6 text-center">
-                      <FileText className="w-8 h-8 mx-auto text-foreground/70 mb-2" />
+                      <FileText className="min-w-[48px] w-8 min-h-[48px] h-8 mx-auto text-foreground/70 mb-2" />
                       <p className="text-sm text-foreground/70 font-medium">No ledger entries yet</p>
                       <p className="text-xs text-foreground/70 mt-1">Activity will appear here once bots run</p>
                     </div>

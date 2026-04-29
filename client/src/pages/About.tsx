@@ -102,7 +102,7 @@ function HeroSection() {
         >
           <button
             onClick={() => setLocation('/voice-interview')}
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#4285F4] text-white rounded-full font-medium text-sm hover:bg-[#3367d6] transition-colors shadow-sm h-10"
+            className="inline-flex items-center gap-2 px-6 py-2 bg-[#4285F4] text-white rounded-full font-medium text-sm hover:bg-[#3367d6] transition-colors shadow-sm h-10"
             style={{ fontFamily: "'Roboto', sans-serif" }}
           >
             <Play className="w-4 h-4" /> Start Practicing
@@ -340,7 +340,7 @@ function ValuesSection() {
               transition={{ delay: i * 0.1 }}
               className="text-center p-5"
             >
-              <CheckCircle className="w-8 h-8 mx-auto mb-3" style={{ color: GoogleColors.green }} />
+              <CheckCircle className="min-w-[48px] w-8 min-h-[48px] h-8 mx-auto mb-3" style={{ color: GoogleColors.green }} />
               <h3 className="font-medium text-foreground">{v.title}</h3>
               <p className="text-sm text-foreground/70 mt-2">{v.desc}</p>
             </motion.div>

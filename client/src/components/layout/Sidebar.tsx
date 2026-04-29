@@ -26,31 +26,38 @@ const sections: { label: string; icon: string; items: NavItem[] }[] = [
     label: 'Learn',
     icon: 'school',
     items: [
-      { id: 'channels',       label: 'Channels',       icon: 'view_module',     path: '/channels',       shortcut: 'C' },
+      { id: 'channels',       label: 'Channels',       icon: 'view_module',       path: '/channels',       shortcut: 'C' },
       { id: 'certifications', label: 'Certifications', icon: 'workspace_premium', path: '/certifications', shortcut: 'E' },
-      { id: 'my-path',        label: 'My Path',        icon: 'route',           path: '/my-path',        badge: 'NEW' },
+      { id: 'learning-paths', label: 'Learning Paths', icon: 'route',             path: '/learning-paths' },
     ],
   },
   {
     label: 'Practice',
     icon: 'fitness_center',
     items: [
-      { id: 'voice',      label: 'Voice Interview', icon: 'mic',           path: '/voice-interview', badge: '+10', shortcut: 'V' },
-      { id: 'tests',      label: 'Quick Tests',     icon: 'task_alt',      path: '/tests',           shortcut: 'T' },
-      { id: 'coding',     label: 'Code Challenges', icon: 'code',          path: '/code',            shortcut: 'X', badge: 'NEW' },
-      { id: 'review',     label: 'SRS Review',      icon: 'event_repeat',  path: '/review',          shortcut: 'R' },
-      { id: 'flashcards', label: 'Flashcards',      icon: 'style',         path: '/flashcards',      badge: 'NEW' },
+      { id: 'practice',   label: 'Practice Hub',    icon: 'fitness_center', path: '/practice',        badge: 'NEW' },
+      { id: 'voice',      label: 'Voice Interview', icon: 'mic',            path: '/voice-interview', badge: '+10', shortcut: 'V' },
+      { id: 'tests',      label: 'Quick Tests',     icon: 'task_alt',       path: '/tests',           shortcut: 'T' },
+      { id: 'coding',     label: 'Code Challenges', icon: 'code',           path: '/coding',          shortcut: 'X' },
+      { id: 'review',     label: 'SRS Review',      icon: 'event_repeat',   path: '/review',          shortcut: 'R' },
+      { id: 'flashcards', label: 'Flashcards',      icon: 'style',          path: '/flashcards' },
     ],
   },
   {
     label: 'Progress',
     icon: 'insights',
     items: [
-      { id: 'badges',    label: 'Badges',           icon: 'military_tech', path: '/badges' },
-      { id: 'bookmarks', label: 'Bookmarks',        icon: 'bookmark',      path: '/bookmarks' },
-      { id: 'profile',   label: 'Profile',          icon: 'person',        path: '/profile' },
-      { id: 'manage-subscriptions', label: 'My Subscriptions', icon: 'tune', path: '/manage-subscriptions' },
-      { id: 'about',     label: 'About',            icon: 'info',          path: '/about' },
+      { id: 'progress',  label: 'My Progress', icon: 'insights',      path: '/progress' },
+      { id: 'bookmarks', label: 'Bookmarks',   icon: 'bookmark',      path: '/bookmarks' },
+      { id: 'manage-subscriptions', label: 'Subscriptions', icon: 'tune', path: '/manage-subscriptions' },
+    ],
+  },
+  {
+    label: 'Account',
+    icon: 'person',
+    items: [
+      { id: 'profile', label: 'Profile', icon: 'person', path: '/profile' },
+      { id: 'about',   label: 'About',   icon: 'info',   path: '/about' },
     ],
   },
 ];
@@ -163,7 +170,6 @@ export function Sidebar() {
                 style={{
                   background: 'var(--popover)',
                   color: 'var(--popover-foreground)',
-                  boxShadow: 'var(--shadow-md)',
                   border: '1px solid var(--border)',
                   fontFamily: GOOGLE_SANS,
                   fontWeight: 500,
@@ -231,7 +237,7 @@ export function Sidebar() {
         {!isCollapsed && (
           <button
             onClick={toggleSidebar}
-            className="w-10 h-10 flex items-center justify-center rounded-full transition-colors"
+            className="min-w-[48px] w-10 min-h-[48px] h-10 flex items-center justify-center rounded-full transition-colors"
             style={{ color: 'var(--muted-foreground)' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--muted)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}

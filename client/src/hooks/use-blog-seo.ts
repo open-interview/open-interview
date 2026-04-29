@@ -10,7 +10,7 @@ interface SEOProps {
 }
 
 const SITE_NAME = "OpenInterview Blog";
-const DEFAULT_OG_IMAGE = "/opengraph.jpg";
+const DEFAULT_OG_IMAGE = "/opengraph.webp";
 
 function setMeta(name: string, content: string, property = false) {
   const attr = property ? "property" : "name";

@@ -30,7 +30,7 @@ export function EmptyGeneric({ icon, title, description, action, className }: Em
 export function EmptyBookmarks({ onAction }: { onAction?: () => void }) {
   return (
     <EmptyGeneric
-      icon={<Bookmark className="w-8 h-8" />}
+      icon={<Bookmark className="min-w-[48px] w-8 h-8" />}
       title="No bookmarks yet"
       description="Start saving questions you want to revisit!"
       action={onAction ? { label: "Browse questions", onClick: onAction } : undefined}
@@ -41,7 +41,7 @@ export function EmptyBookmarks({ onAction }: { onAction?: () => void }) {
 export function EmptyActivity({ onAction }: { onAction?: () => void }) {
   return (
     <EmptyGeneric
-      icon={<Activity className="w-8 h-8" />}
+      icon={<Activity className="min-w-[48px] w-8 h-8" />}
       title="No activity yet"
       description="Your learning history will appear here."
       action={onAction ? { label: "Start practicing", onClick: onAction } : undefined}
@@ -52,7 +52,7 @@ export function EmptyActivity({ onAction }: { onAction?: () => void }) {
 export function EmptyBadges({ onAction }: { onAction?: () => void }) {
   return (
     <EmptyGeneric
-      icon={<Trophy className="w-8 h-8" />}
+      icon={<Trophy className="min-w-[48px] w-8 h-8" />}
       title="No badges yet"
       description="Complete challenges to earn badges!"
       action={onAction ? { label: "View challenges", onClick: onAction } : undefined}
@@ -73,7 +73,7 @@ export function EmptySearch({ query }: { query?: string }) {
 export function EmptyHistory({ onAction }: { onAction?: () => void }) {
   return (
     <EmptyGeneric
-      icon={<Activity className="w-8 h-8" />}
+      icon={<Activity className="min-w-[48px] w-8 h-8" />}
       title="No history yet"
       description="Your learning history will appear here."
       action={onAction ? { label: "Start learning", onClick: onAction } : undefined}
@@ -84,7 +84,7 @@ export function EmptyHistory({ onAction }: { onAction?: () => void }) {
 export function EmptyPath({ onAction }: { onAction?: () => void }) {
   return (
     <EmptyGeneric
-      icon={<MapPin className="w-8 h-8" />}
+      icon={<MapPin className="min-w-[48px] w-8 h-8" />}
       title="No learning path started"
       description="Start a learning path to track your progress."
       action={onAction ? { label: "Explore paths", onClick: onAction } : undefined}

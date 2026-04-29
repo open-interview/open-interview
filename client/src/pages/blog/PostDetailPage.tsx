@@ -72,7 +72,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
       <BlogLayout>
         <div className="mx-auto max-w-3xl px-4 py-12 animate-pulse space-y-4">
           <div className="aspect-video rounded-xl bg-[var(--color-border)]" />
-          <div className="h-8 w-3/4 rounded bg-[var(--color-border)]" />
+          <div className="min-h-[48px] h-8 w-3/4 rounded bg-[var(--color-border)]" />
           <div className="h-4 w-1/2 rounded bg-[var(--color-border)]" />
           <div className="space-y-2 mt-8">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -95,7 +95,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
         <div className="w-full aspect-[21/9] overflow-hidden bg-[var(--color-border)] relative">
           <img
             src={post.coverImage}
-            alt={post.title}
+            alt={`Cover image: ${post.title}`}
             className="w-full h-full object-cover"
             fetchPriority="high"
             decoding="async"

@@ -20,13 +20,15 @@ export function ThemeToggle() {
       whileTap={prefersReducedMotion ? {} : { scale: 0.9 }}
       transition={{ duration: prefersReducedMotion ? 0.01 : 0.2 }}
       onClick={toggleTheme}
+      aria-pressed={isDark}
       className={cn(
-        "fixed bottom-6 left-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all group",
+        "fixed left-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all group",
         isDark
           ? "bg-gradient-to-br from-[#00ff88] to-[#00d4ff] shadow-[#00ff88]/50"
           : "bg-gradient-to-br from-amber-400 to-orange-500 shadow-amber-500/50"
-      )}
-      aria-label="Toggle theme"
+        )}
+        style={{ bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}
+      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       title={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >
       <motion.div
@@ -34,15 +36,17 @@ export function ThemeToggle() {
         animate={{ rotate: isDark ? 0 : 180, scale: isDark ? 1 : 0 }}
         transition={{ duration: prefersReducedMotion ? 0.01 : 0.3 }}
         className="absolute"
+        aria-hidden="true"
       >
         <Moon className="w-6 h-6 text-black" strokeWidth={2.5} />
       </motion.div>
-      
+
       <motion.div
         initial={false}
         animate={{ rotate: isDark ? 180 : 0, scale: isDark ? 0 : 1 }}
         transition={{ duration: prefersReducedMotion ? 0.01 : 0.3 }}
         className="absolute"
+        aria-hidden="true"
       >
         <Sun className="w-6 h-6 text-white" strokeWidth={2.5} />
       </motion.div>

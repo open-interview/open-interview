@@ -81,7 +81,7 @@ export default function BlogSearchPage() {
 
           {!searched && (
             <div className="text-center py-16">
-              <Search size={48} strokeWidth={1} className="mx-auto text-[var(--color-ink-muted)] mb-4 opacity-50" />
+              <Search size={48} strokeWidth={1} className="mx-auto text-[var(--color-ink-muted)] mb-4 opacity-[0.38]" />
               <p className="text-[var(--color-ink-muted)]">
                 Type at least 2 characters to search.
               </p>

@@ -8,7 +8,7 @@ import {
   BookOpen, Code, Database, Cpu, Layers, GitBranch, 
   Zap, Shield, BarChart3, Palette, ChevronLeft, ChevronRight, ChevronDown,
   Terminal, Server, Globe, Brain, FileCode, Copy, Check,
-  ExternalLink, Search, Menu, X, Home, Sparkles, Box, ArrowRight, Keyboard
+  ExternalLink, Search, Menu, X, Home, Sparkles, Box, ArrowRight, Keyboard, Gauge
 } from 'lucide-react';
 import { EnhancedMermaid } from '@/components/EnhancedMermaid';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -20,7 +20,8 @@ const sections = [
   { id: 'ai-pipeline', title: 'AI Pipeline', icon: Brain, color: '#a371f7' },
   { id: 'database', title: 'Database & Storage', icon: Database, color: '#3fb950' },
   { id: 'frontend', title: 'Frontend Patterns', icon: Code, color: '#f78166' },
-  { id: 'illustrations', title: 'Illustration System', icon: Palette, color: '#f778ba' },
+  { id: 'analytics', title: 'Analytics & A/B', icon: Gauge, color: '#f778ba' },
+  { id: 'illustrations', title: 'Illustration System', icon: Palette, color: '#39c5cf' },
   { id: 'api', title: 'API Reference', icon: Server, color: '#39c5cf' },
   { id: 'deployment', title: 'Deployment', icon: Globe, color: '#d29922' },
 ];
@@ -66,7 +67,7 @@ export default function Documentation() {
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="lg:hidden p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              className="lg:hidden p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer min-h-[48px] min-w-[48px] flex items-center justify-center focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             >
               {sidebarOpen ? <X className="w-5 h-5 text-foreground/70" /> : <Menu className="w-5 h-5 text-foreground/70" />}
             </button>
@@ -112,7 +113,7 @@ export default function Documentation() {
               )}
             </div>
             <Link href="/">
-              <a className="flex items-center gap-2 px-3 py-2 text-sm text-foreground/70 hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+              <a className="flex items-center gap-2 px-3 py-2 text-sm text-foreground/70 hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors cursor-pointer min-h-[48px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
                 <Home className="w-4 h-4" />
                 <span className="hidden sm:inline">Home</span>
               </a>
@@ -141,7 +142,7 @@ export default function Documentation() {
                   key={section.id}
                   onClick={() => setActiveSection(section.id)}
                     className={`
-                      w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
+                      w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 cursor-pointer min-h-[48px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
                       ${isActive 
                         ? 'bg-blue-50 text-blue-700' 
                         : 'text-foreground/70 hover:text-foreground hover:bg-gray-50'
@@ -165,13 +166,13 @@ export default function Documentation() {
                 Resources
               </div>
               <a href="https://github.com" target="_blank" rel="noopener" 
-                className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground/70 hover:text-foreground hover:bg-gray-50 rounded-lg transition-colors cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+                className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground/70 hover:text-foreground hover:bg-gray-50 rounded-lg transition-colors cursor-pointer min-h-[48px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
                 <GitBranch className="w-4 h-4" />
                 <span>GitHub</span>
                 <ExternalLink className="w-3 h-3 ml-auto text-foreground/60" />
               </a>
               <a href="/whats-new"
-                className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground/70 hover:text-foreground hover:bg-gray-50 rounded-lg transition-colors cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+                className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground/70 hover:text-foreground hover:bg-gray-50 rounded-lg transition-colors cursor-pointer min-h-[48px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
                 <Sparkles className="w-4 h-4" />
                 <span>What's New</span>
               </a>
@@ -228,6 +229,7 @@ export default function Documentation() {
             {activeSection === 'ai-pipeline' && <AIPipelineSection />}
             {activeSection === 'database' && <DatabaseSection />}
             {activeSection === 'frontend' && <FrontendSection />}
+            {activeSection === 'analytics' && <AnalyticsSection />}
             {activeSection === 'illustrations' && <IllustrationSection />}
             {activeSection === 'api' && <APISection />}
             {activeSection === 'deployment' && <DeploymentSection />}
@@ -241,7 +243,7 @@ export default function Documentation() {
                   {prevSection ? (
                     <button
                       onClick={() => setActiveSection(prevSection.id)}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground/70 hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors cursor-pointer min-h-[44px] font-medium focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground/70 hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors cursor-pointer min-h-[48px] font-medium focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                     >
                       <ChevronLeft className="w-4 h-4" />
                       {prevSection.title}
@@ -250,7 +252,7 @@ export default function Documentation() {
                   {nextSection ? (
                     <button
                       onClick={() => setActiveSection(nextSection.id)}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground/70 hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors cursor-pointer min-h-[44px] font-medium focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground/70 hover:text-foreground hover:bg-gray-100 rounded-lg transition-colors cursor-pointer min-h-[48px] font-medium focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                     >
                       {nextSection.title}
                       <ChevronRight className="w-4 h-4" />
@@ -309,7 +311,7 @@ function CodeBlock({ code, language = 'typescript', title, copyable = true }: {
           {copyable && (
             <button 
               onClick={handleCopy}
-              className="p-1.5 hover:bg-gray-200 rounded transition-colors cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              className="p-1.5 hover:bg-gray-200 rounded transition-colors cursor-pointer min-h-[48px] min-w-[48px] flex items-center justify-center focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               title="Copy code"
             >
               {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4 text-foreground/60" />}
@@ -333,7 +335,7 @@ function DiagramCard({ title, description, diagram }: { title: string; descripti
      <div className="rounded-xl border border-gray-200 bg-gray-50/50 overflow-hidden my-8">
       <button 
         onClick={() => setExpanded(!expanded)}
-        className="w-full p-4 flex items-center justify-between hover:bg-gray-100 transition-colors cursor-pointer min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        className="w-full p-4 flex items-center justify-between hover:bg-gray-100 transition-colors cursor-pointer min-h-[48px] focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
       >
         <div className="text-left">
           <h3 className="font-semibold text-foreground flex items-center gap-2">
@@ -558,7 +560,7 @@ graph TB
       <div className="space-y-4">
        <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
          <div className="flex items-center gap-3 mb-3">
-           <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 font-mono text-sm">1</div>
+           <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 font-mono text-sm">1</div>
            <h4 className="font-semibold text-foreground">Find Real-World Case</h4>
          </div>
          <p className="text-sm text-foreground/70 ml-11">Searches for compelling case studies from major tech companies. Validates source URLs and scores relevance (minimum 6/10 to proceed).</p>
@@ -566,7 +568,7 @@ graph TB
         
        <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
          <div className="flex items-center gap-3 mb-3">
-           <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 font-mono text-sm">2</div>
+           <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 font-mono text-sm">2</div>
            <h4 className="font-semibold text-foreground">Generate Blog Content</h4>
          </div>
          <p className="text-sm text-foreground/70 ml-11">Creates structured blog with introduction, sections, code examples, and conclusion. Uses RAG to find related questions for enrichment.</p>
@@ -574,7 +576,7 @@ graph TB
         
        <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
          <div className="flex items-center gap-3 mb-3">
-           <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 font-mono text-sm">3</div>
+           <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 font-mono text-sm">3</div>
            <h4 className="font-semibold text-foreground">Generate Pixel Art</h4>
          </div>
          <p className="text-sm text-foreground/70 ml-11">Auto-detects scene type from content and generates 16-bit pixel art SVG illustrations with CSS animations.</p>
@@ -997,6 +999,119 @@ export const useAchievements = () => {
   );
 }
 
+// ============== ANALYTICS SECTION ==============
+
+function AnalyticsSection() {
+  return (
+    <div>
+      <SectionHeader 
+        icon={Gauge} 
+        title="Analytics & A/B Testing" 
+        description="Track user interactions and run experiments with PostHog for data-driven product decisions."
+        color="#f778ba"
+      />
+
+      <div className="bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-950/30 dark:to-purple-950/30 rounded-xl p-6 border border-pink-200 dark:border-pink-800 mb-8">
+        <div className="flex items-center gap-3 mb-4">
+          <Gauge className="w-6 h-6 text-pink-600" />
+          <h3 className="text-lg font-semibold text-foreground">PostHog Dashboard</h3>
+        </div>
+        <p className="text-foreground/70 mb-4">
+          View all your A/B tests, feature flags, and analytics in the PostHog dashboard.
+        </p>
+        <a 
+          href="https://app.posthog.com" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors font-medium cursor-pointer min-h-[48px] focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+        >
+          Open PostHog Dashboard
+          <ExternalLink className="w-4 h-4" />
+        </a>
+      </div>
+
+      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4 flex items-center gap-2">
+        <Zap className="w-5 h-5 text-amber-500" />
+        Feature Flags
+      </h2>
+
+      <InfoBox type="info" title="Feature Flag Configuration">
+        Feature flags are defined in <code className="text-sm bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">src/lib/feature-flags.ts</code> and control the availability of new features.
+      </InfoBox>
+
+      <div className="overflow-x-auto border border-gray-200 rounded-xl my-6">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 dark:bg-gray-900">
+            <tr>
+              <th className="text-left px-4 py-3 font-medium text-foreground">Flag Key</th>
+              <th className="text-left px-4 py-3 font-medium text-foreground">Category</th>
+              <th className="text-left px-4 py-3 font-medium text-foreground">Type</th>
+              <th className="text-left px-4 py-3 font-medium text-foreground">Default</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+            <tr><td className="px-4 py-3 font-mono text-pink-600">new-ui-components</td><td className="px-4 py-3 text-foreground/70">UI</td><td className="px-4 py-3 text-foreground/70">boolean</td><td className="px-4 py-3 text-foreground/70">false</td></tr>
+            <tr><td className="px-4 py-3 font-mono text-pink-600">ai-hint-system</td><td className="px-4 py-3 text-foreground/70">AI</td><td className="px-4 py-3 text-foreground/70">boolean</td><td className="px-4 py-3 text-foreground/70">false</td></tr>
+            <tr><td className="px-4 py-3 font-mono text-pink-600">ai-voice-feedback</td><td className="px-4 py-3 text-foreground/70">AI</td><td className="px-4 py-3 text-foreground/70">boolean</td><td className="px-4 py-3 text-foreground/70">false</td></tr>
+            <tr><td className="px-4 py-3 font-mono text-pink-600">ai-code-review</td><td className="px-4 py-3 text-foreground/70">AI</td><td className="px-4 py-3 text-foreground/70">boolean</td><td className="px-4 py-3 text-foreground/70">false</td></tr>
+            <tr><td className="px-4 py-3 font-mono text-pink-600">experimental-swipe</td><td className="px-4 py-3 text-foreground/70">Experimental</td><td className="px-4 py-3 text-foreground/70">boolean</td><td className="px-4 py-3 text-foreground/70">false</td></tr>
+            <tr><td className="px-4 py-3 font-mono text-pink-600">button-text-challenge</td><td className="px-4 py-3 text-foreground/70">UI (A/B)</td><td className="px-4 py-3 text-foreground/70">multivariate</td><td className="px-4 py-3 text-foreground/70">A</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4 flex items-center gap-2">
+        <Sparkles className="w-5 h-5 text-purple-500" />
+        A/B Testing Hook
+      </h2>
+
+      <p className="text-foreground/70 mb-4">
+        Use the <code className="text-sm bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">useABTest</code> hook to run experiments with consistent variant assignment.
+      </p>
+
+      <CodeBlock 
+        title="use-ab-test.ts" 
+        code={`import { useABTest } from '@/hooks/use-ab-test';
+
+// Example: Challenge button text A/B test
+const { variant, value, trackExposure, isLoaded } = useABTest({
+  testName: 'button_text_challenge',
+  variants: {
+    A: 'Start Challenge',
+    B: 'Practice Now',
+  },
+  featureFlagKey: 'button-text-challenge',
+  enableTracking: true,
+});
+
+// Track exposure when component mounts
+useEffect(() => {
+  if (isLoaded) trackExposure();
+}, [isLoaded]);
+
+return <button>{value}</button>;`} 
+      />
+
+      <InfoBox type="tip" title="Performance Best Practice">
+        PostHog loads asynchronously with a 2-second delay to avoid impacting Core Web Vitals. Feature flags default to control values until loaded.
+      </InfoBox>
+
+      <h2 className="text-xl font-semibold text-foreground mt-10 mb-4 flex items-center gap-2">
+        <BarChart3 className="w-5 h-5 text-green-600" />
+        Environment Variables
+      </h2>
+
+      <CodeBlock 
+        title=".env" 
+        code={`# PostHog Analytics & A/B Testing
+# Get credentials from https://app.posthog.com
+VITE_POST_HOG_API_KEY="phc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+VITE_POST_HOG_HOST="https://app.posthog.com"`} 
+      />
+    </div>
+  );
+}
+
 // ============== ILLUSTRATION SECTION ==============
 
 function IllustrationSection() {
@@ -1231,9 +1346,9 @@ sequenceDiagram
           <table className="w-full text-sm">
             <thead className="bg-gray-100">
               <tr>
-<th className="px-4 py-3 text-left font-medium text-foreground/70">Method</th>
-                 <th className="px-4 py-3 text-left font-medium text-foreground/70">Path</th>
-                 <th className="px-4 py-3 text-left font-medium text-foreground/70 hidden md:table-cell">Description</th>
+<th className="px-4 py-2 text-left font-medium text-foreground/70">Method</th>
+                 <th className="px-4 py-2 text-left font-medium text-foreground/70">Path</th>
+                 <th className="px-4 py-2 text-left font-medium text-foreground/70 hidden md:table-cell">Description</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -1248,8 +1363,8 @@ sequenceDiagram
                       {ep.method}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-mono text-foreground">{ep.path}</td>
-                  <td className="px-4 py-3 text-foreground/70 hidden md:table-cell">{ep.desc}</td>
+                   <td className="px-4 py-2 font-mono text-foreground">{ep.path}</td>
+                  <td className="px-4 py-2 text-foreground/70 hidden md:table-cell">{ep.desc}</td>
                 </tr>
               ))}
             </tbody>
@@ -1379,24 +1494,24 @@ graph LR
           <table className="w-full text-sm">
             <thead className="bg-gray-100">
               <tr>
-<th className="px-4 py-3 text-left font-medium text-foreground/70">Variable</th>
-                 <th className="px-4 py-3 text-left font-medium text-foreground/70 hidden sm:table-cell">Description</th>
-                 <th className="px-4 py-3 text-left font-medium text-foreground/70">Required</th>
+<th className="px-4 py-2 text-left font-medium text-foreground/70">Variable</th>
+                 <th className="px-4 py-2 text-left font-medium text-foreground/70 hidden sm:table-cell">Description</th>
+                 <th className="px-4 py-2 text-left font-medium text-foreground/70">Required</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {envVars.map((env, i) => (
                 <tr key={i} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-blue-600 text-xs">{env.name}</td>
-                  <td className="px-4 py-3 text-foreground/70 hidden sm:table-cell">{env.desc}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      env.required 
-                        ? 'bg-red-100 text-red-700' 
-                        : 'bg-gray-100 text-foreground/70'
-                    }`}>
-                      {env.required ? 'Required' : 'Optional'}
-                    </span>
+                  <td className="px-4 py-2 font-mono text-blue-600 text-xs">{env.name}</td>
+                  <td className="px-4 py-2 text-foreground/70 hidden sm:table-cell">{env.desc}</td>
+                   <td className="px-4 py-2">
+                     <span className={`px-2 py-1 rounded text-xs ${
+                       env.required 
+                         ? 'bg-red-100 text-red-700' 
+                         : 'bg-gray-100 text-foreground/70'
+                     }`}>
+                       {env.required ? 'Yes' : 'No'}
+                     </span>
                   </td>
                 </tr>
               ))}
@@ -1412,7 +1527,7 @@ graph LR
       <div className="space-y-4">
         <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 font-mono text-sm">1</div>
+            <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 font-mono text-sm">1</div>
             <h4 className="font-semibold text-foreground">Clone & Install</h4>
           </div>
           <CodeBlock
@@ -1426,7 +1541,7 @@ pnpm install`}
         
         <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 font-mono text-sm">2</div>
+            <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 font-mono text-sm">2</div>
             <h4 className="font-semibold text-foreground">Configure Environment</h4>
           </div>
           <CodeBlock
@@ -1439,7 +1554,7 @@ pnpm install`}
         
         <div className="p-4 rounded-xl border border-gray-200 bg-gray-50">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 font-mono text-sm">3</div>
+            <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 font-mono text-sm">3</div>
             <h4 className="font-semibold text-foreground">Start Development</h4>
           </div>
           <CodeBlock

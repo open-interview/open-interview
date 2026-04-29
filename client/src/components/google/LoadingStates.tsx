@@ -1,11 +1,9 @@
 import { HTMLAttributes, forwardRef } from "react";
 import "./LoadingStates.css";
 
-// Google color palette
 const GOOGLE_BLUE = "#4285F4";
 const GOOGLE_RED = "#EA4335";
 const GOOGLE_YELLOW = "#FBBC04";
-const GOOGLE_GREEN = "#34A853";
 
 interface LoadingBaseProps extends HTMLAttributes<HTMLDivElement> {
   size?: "sm" | "md" | "lg";
@@ -14,23 +12,15 @@ interface LoadingBaseProps extends HTMLAttributes<HTMLDivElement> {
 
 const sizeMap = { sm: 16, md: 24, lg: 48 };
 
-// Spinner - SVG circle with animated dash rotation
+// ─── Spinner ──────────────────────────────────────────────────────────────────
+
 export const Spinner = forwardRef<HTMLDivElement, LoadingBaseProps>(
   ({ size = "md", className = "", ...props }, ref) => {
     const dim = sizeMap[size];
     return (
       <div ref={ref} className={`google-spinner google-spinner--${size} ${className}`} aria-busy="true" role="status" {...props}>
         <svg width={dim} height={dim} viewBox="0 0 24 24" className="google-spinner__svg">
-          <circle
-            className="google-spinner__circle"
-            cx="12"
-            cy="12"
-            r="9"
-            fill="none"
-            stroke={GOOGLE_BLUE}
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          />
+          <circle className="google-spinner__circle" cx="12" cy="12" r="9" fill="none" stroke={GOOGLE_BLUE} strokeWidth="2.5" strokeLinecap="round" />
         </svg>
         <span className="sr-only">Loading...</span>
       </div>
@@ -39,33 +29,24 @@ export const Spinner = forwardRef<HTMLDivElement, LoadingBaseProps>(
 );
 Spinner.displayName = "Spinner";
 
-// Skeleton - Animated gradient shimmer overlay
+// ─── Skeleton (CSS-only shimmer) ──────────────────────────────────────────────
+
 export const Skeleton = forwardRef<HTMLDivElement, LoadingBaseProps & { lines?: number }>(
   ({ size = "md", className = "", lines = 1, style, ...props }, ref) => {
     const height = size === "sm" ? 12 : size === "lg" ? 24 : 16;
     return (
       <div ref={ref} className={`google-skeleton ${className}`} aria-busy="true" role="status" style={style} {...props}>
-        <svg width="100%" height={height * lines + (lines > 1 ? (lines - 1) * 8 : 0)} className="google-skeleton__svg">
-          <defs>
-            <linearGradient id="shimmer-gradient" x1="0%" y1="0%" x2="200%" y2="0%">
-              <stop offset="0%" stopColor="#e8eaed" />
-              <stop offset="50%" stopColor="#f1f3f4" />
-              <stop offset="100%" stopColor="#e8eaed" />
-            </linearGradient>
-          </defs>
-          {Array.from({ length: lines }).map((_, i) => (
-            <rect
-              key={i}
-              x="0"
-              y={i * (height + 8)}
-              width="100%"
-              height={height}
-              rx="4"
-              fill="url(#shimmer-gradient)"
-              className="google-skeleton__rect"
-            />
-          ))}
-        </svg>
+        {Array.from({ length: lines }).map((_, i) => (
+          <div
+            key={i}
+            className="google-skeleton__line"
+            style={{
+              height,
+              width: i === lines - 1 && lines > 1 ? '75%' : '100%',
+              marginBottom: i < lines - 1 ? 8 : 0,
+            }}
+          />
+        ))}
         <span className="sr-only">Loading content...</span>
       </div>
     );
@@ -73,29 +54,34 @@ export const Skeleton = forwardRef<HTMLDivElement, LoadingBaseProps & { lines?: 
 );
 Skeleton.displayName = "Skeleton";
 
-// Progress - SVG progress bar with gradient fill animation
+// ─── Progress ─────────────────────────────────────────────────────────────────
+
 export const Progress = forwardRef<HTMLDivElement, LoadingBaseProps & { value?: number }>(
   ({ size = "md", className = "", value = 0, ...props }, ref) => {
     const isIndeterminate = value === 0;
-    const w = 120;
     const h = size === "sm" ? 4 : size === "lg" ? 8 : 6;
     return (
-      <div ref={ref} className={`google-progress-bar google-progress-bar--${size} ${className}`} aria-busy="true" role="progressbar" aria-valuenow={isIndeterminate ? undefined : value} aria-valuemin={0} aria-valuemax={100} {...props}>
-        <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} className="google-progress-bar__svg">
-          <defs>
-            <linearGradient id="progress-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor={GOOGLE_BLUE} />
-              <stop offset="50%" stopColor={GOOGLE_GREEN} />
-              <stop offset="100%" stopColor={GOOGLE_BLUE} />
-            </linearGradient>
-          </defs>
-          <rect x="0" y="0" width={w} height={h} rx={h / 2} fill="#e8eaed" />
-          {isIndeterminate ? (
-            <rect className="google-progress-bar__indeterminate" x="0" y="0" width={w * 0.4} height={h} rx={h / 2} fill="url(#progress-gradient)" />
-          ) : (
-            <rect x="0" y="0" width={(value / 100) * w} height={h} rx={h / 2} fill="url(#progress-gradient)" className="google-progress-bar__determined" />
-          )}
-        </svg>
+      <div
+        ref={ref}
+        className={`google-progress-bar google-progress-bar--${size} ${className}`}
+        aria-busy="true"
+        role="progressbar"
+        aria-valuenow={isIndeterminate ? undefined : value}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        style={{ height: h, borderRadius: h / 2, background: '#e8eaed', overflow: 'hidden', width: '100%' }}
+        {...props}
+      >
+        <div
+          className={isIndeterminate ? 'google-progress-bar__indeterminate' : 'google-progress-bar__determined'}
+          style={{
+            height: '100%',
+            width: isIndeterminate ? '40%' : `${value}%`,
+            background: `linear-gradient(90deg, ${GOOGLE_BLUE}, #34A853, ${GOOGLE_BLUE})`,
+            borderRadius: h / 2,
+            transition: isIndeterminate ? undefined : 'width 0.3s ease',
+          }}
+        />
         <span className="sr-only">Loading: {value}% complete</span>
       </div>
     );
@@ -103,7 +89,8 @@ export const Progress = forwardRef<HTMLDivElement, LoadingBaseProps & { value?: 
 );
 Progress.displayName = "Progress";
 
-// Dots - Three bouncing dots like Google's loading
+// ─── Dots ─────────────────────────────────────────────────────────────────────
+
 export const Dots = forwardRef<HTMLDivElement, LoadingBaseProps>(
   ({ size = "md", className = "", ...props }, ref) => {
     const dim = sizeMap[size];
@@ -124,7 +111,8 @@ export const Dots = forwardRef<HTMLDivElement, LoadingBaseProps>(
 );
 Dots.displayName = "Dots";
 
-// Pulse - Pulsing circle SVG
+// ─── Pulse ────────────────────────────────────────────────────────────────────
+
 export const Pulse = forwardRef<HTMLDivElement, LoadingBaseProps>(
   ({ size = "md", className = "", ...props }, ref) => {
     const dim = sizeMap[size];
@@ -141,29 +129,20 @@ export const Pulse = forwardRef<HTMLDivElement, LoadingBaseProps>(
 );
 Pulse.displayName = "Pulse";
 
-// Wave - Wave loading animation SVG
+// ─── Wave ─────────────────────────────────────────────────────────────────────
+
 export const Wave = forwardRef<HTMLDivElement, LoadingBaseProps>(
   ({ size = "md", className = "", ...props }, ref) => {
     const dim = sizeMap[size];
     const barW = size === "sm" ? 2 : size === "lg" ? 5 : 3;
-    const barH = dim;
     const gap = size === "sm" ? 1 : size === "lg" ? 3 : 2;
     const bars = 5;
     const totalW = bars * barW + (bars - 1) * gap;
     return (
       <div ref={ref} className={`google-wave google-wave--${size} ${className}`} aria-busy="true" role="status" {...props}>
-        <svg width={totalW} height={barH} viewBox={`0 0 ${totalW} ${barH}`} className="google-wave__svg">
+        <svg width={totalW} height={dim} viewBox={`0 0 ${totalW} ${dim}`} className="google-wave__svg">
           {Array.from({ length: bars }).map((_, i) => (
-            <rect
-              key={i}
-              className={`google-wave__bar google-wave__bar--${i + 1}`}
-              x={i * (barW + gap)}
-              y="0"
-              width={barW}
-              height={barH}
-              rx={barW / 2}
-              fill={GOOGLE_BLUE}
-            />
+            <rect key={i} className={`google-wave__bar google-wave__bar--${i + 1}`} x={i * (barW + gap)} y="0" width={barW} height={dim} rx={barW / 2} fill={GOOGLE_BLUE} />
           ))}
         </svg>
         <span className="sr-only">Loading...</span>
@@ -173,5 +152,92 @@ export const Wave = forwardRef<HTMLDivElement, LoadingBaseProps>(
 );
 Wave.displayName = "Wave";
 
-// Default export with all components
+// ─── M3 Skeleton cards (CSS-only shimmer, no JS) ──────────────────────────────
+
+/** Question card skeleton */
+export function QuestionCardSkeleton({ className = "" }: { className?: string }) {
+  return (
+    <div className={`m3-skeleton-card ${className}`} aria-busy="true" role="status">
+      <div className="m3-skeleton-row" style={{ marginBottom: 12 }}>
+        <div className="m3-shimmer" style={{ width: 72, height: 22, borderRadius: 9999 }} />
+        <div className="m3-shimmer" style={{ width: 56, height: 22, borderRadius: 9999 }} />
+      </div>
+      <div className="m3-shimmer" style={{ width: '100%', height: 18, borderRadius: 4, marginBottom: 8 }} />
+      <div className="m3-shimmer" style={{ width: '85%', height: 18, borderRadius: 4, marginBottom: 8 }} />
+      <div className="m3-shimmer" style={{ width: '65%', height: 18, borderRadius: 4, marginBottom: 16 }} />
+      <div className="m3-skeleton-row">
+        <div className="m3-shimmer" style={{ width: 64, height: 28, borderRadius: 9999 }} />
+        <div className="m3-shimmer" style={{ width: 64, height: 28, borderRadius: 9999 }} />
+      </div>
+      <span className="sr-only">Loading question...</span>
+    </div>
+  );
+}
+
+/** Channel card skeleton */
+export function ChannelCardSkeleton({ className = "" }: { className?: string }) {
+  return (
+    <div className={`m3-skeleton-card ${className}`} aria-busy="true" role="status">
+      <div className="m3-skeleton-row" style={{ marginBottom: 12 }}>
+        <div className="m3-shimmer" style={{ width: 40, height: 40, borderRadius: 12, flexShrink: 0 }} />
+        <div style={{ flex: 1 }}>
+          <div className="m3-shimmer" style={{ width: '60%', height: 16, borderRadius: 4, marginBottom: 6 }} />
+          <div className="m3-shimmer" style={{ width: '40%', height: 12, borderRadius: 4 }} />
+        </div>
+      </div>
+      <div className="m3-shimmer" style={{ width: '100%', height: 6, borderRadius: 9999, marginBottom: 8 }} />
+      <div className="m3-skeleton-row">
+        <div className="m3-shimmer" style={{ width: 48, height: 12, borderRadius: 4 }} />
+        <div className="m3-shimmer" style={{ width: 36, height: 12, borderRadius: 4 }} />
+      </div>
+      <span className="sr-only">Loading channel...</span>
+    </div>
+  );
+}
+
+/** Profile stats skeleton */
+export function ProfileStatsSkeleton({ className = "" }: { className?: string }) {
+  return (
+    <div className={`m3-skeleton-profile ${className}`} aria-busy="true" role="status">
+      <div className="m3-skeleton-row" style={{ marginBottom: 20 }}>
+        <div className="m3-shimmer" style={{ width: 72, height: 72, borderRadius: '50%', flexShrink: 0 }} />
+        <div style={{ flex: 1 }}>
+          <div className="m3-shimmer" style={{ width: '50%', height: 22, borderRadius: 4, marginBottom: 8 }} />
+          <div className="m3-shimmer" style={{ width: '35%', height: 14, borderRadius: 4, marginBottom: 6 }} />
+          <div className="m3-shimmer" style={{ width: '65%', height: 12, borderRadius: 4 }} />
+        </div>
+      </div>
+      <div className="m3-skeleton-stats-grid">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="m3-skeleton-card" style={{ padding: 12 }}>
+            <div className="m3-shimmer" style={{ width: '60%', height: 12, borderRadius: 4, marginBottom: 8 }} />
+            <div className="m3-shimmer" style={{ width: '40%', height: 28, borderRadius: 4, marginBottom: 6 }} />
+            <div className="m3-shimmer" style={{ width: '70%', height: 10, borderRadius: 4 }} />
+          </div>
+        ))}
+      </div>
+      <span className="sr-only">Loading profile...</span>
+    </div>
+  );
+}
+
+/** Certification card skeleton */
+export function CertificationCardSkeleton({ className = "" }: { className?: string }) {
+  return (
+    <div className={`m3-skeleton-card ${className}`} aria-busy="true" role="status">
+      <div className="m3-skeleton-row" style={{ marginBottom: 12 }}>
+        <div className="m3-shimmer" style={{ width: 48, height: 48, borderRadius: 14, flexShrink: 0 }} />
+        <div style={{ flex: 1 }}>
+          <div className="m3-shimmer" style={{ width: '70%', height: 18, borderRadius: 4, marginBottom: 6 }} />
+          <div className="m3-shimmer" style={{ width: '45%', height: 12, borderRadius: 4, marginBottom: 6 }} />
+          <div className="m3-shimmer" style={{ width: '30%', height: 12, borderRadius: 4 }} />
+        </div>
+      </div>
+      <div className="m3-shimmer" style={{ width: '100%', height: 6, borderRadius: 9999, marginBottom: 12 }} />
+      <div className="m3-shimmer" style={{ width: '100%', height: 36, borderRadius: 9999 }} />
+      <span className="sr-only">Loading certification...</span>
+    </div>
+  );
+}
+
 export const LoadingStates = { Spinner, Skeleton, Progress, Dots, Pulse, Wave };

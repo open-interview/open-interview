@@ -200,7 +200,7 @@ export function Recommendations({
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#f0883e] to-[#db6d28] flex items-center justify-center">
+          <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-lg bg-gradient-to-br from-[#f0883e] to-[#db6d28] flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-white" />
           </div>
           <div>
@@ -245,7 +245,7 @@ export function Recommendations({
                 >
                   {/* Icon */}
                   <div className={`
-                    w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0
+                    min-w-[48px] w-10 min-h-[48px] h-10 rounded-lg flex items-center justify-center flex-shrink-0
                     ${config.bg} border ${config.border}
                   `}>
                     <Icon className={`w-5 h-5 ${config.text}`} />

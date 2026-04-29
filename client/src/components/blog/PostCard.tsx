@@ -35,15 +35,15 @@ export function PostCard({ post, variant = "grid" }: PostCardProps) {
         <article className="grid grid-cols-1 md:grid-cols-2 gap-0 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden hover:shadow-lg hover:border-[var(--color-accent)]/20 transition-all duration-200">
           <div className="aspect-video md:aspect-auto bg-[var(--color-border)] overflow-hidden relative">
             {post.coverImage ? (
-              <img
-                src={post.coverImage}
-                alt={post.title}
-                className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
-                loading="eager"
-                decoding="async"
-                width={600}
-                height={338}
-              />
+              <ResponsivePicture
+                 src={post.coverImage}
+                 alt={`Cover image: ${post.title}`}
+                 className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+                 loading="eager"
+                 decoding="async"
+                 width={600}
+                 height={338}
+               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-[var(--color-ink-muted)] text-sm">
                 {post.category}
@@ -85,7 +85,7 @@ export function PostCard({ post, variant = "grid" }: PostCardProps) {
             <div className="w-24 h-20 shrink-0 rounded-lg overflow-hidden bg-[var(--color-border)]">
               <img
                 src={post.coverImage}
-                alt=""
+                alt={`Cover image for ${post.title}`}
                 className="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-200"
                 loading="lazy"
                 decoding="async"
@@ -107,7 +107,7 @@ export function PostCard({ post, variant = "grid" }: PostCardProps) {
           {post.coverImage ? (
             <img
               src={post.coverImage}
-              alt={post.title}
+              alt={`Cover image: ${post.title}`}
               className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
               loading="lazy"
               decoding="async"

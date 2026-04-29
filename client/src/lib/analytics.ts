@@ -419,3 +419,209 @@ export function trackMobilePerformance(
     'page': page,
   });
 }
+
+// ============================================
+// HEART Framework Metrics Tracking
+// ============================================
+
+/**
+ * Track NPS (Net Promoter Score)
+ * @param score - NPS score (0-10)
+ * @param category - Promoter, Passive, or Detractor
+ * @param feedback - Optional feedback text
+ */
+export function trackHEARTNPS(
+  score: number,
+  category: 'promoter' | 'passive' | 'detractor',
+  feedback?: string
+) {
+  trackEvent('heart_nps', {
+    'nps_score': score,
+    'nps_category': category,
+    'nps_feedback': feedback || '',
+    'event_category': 'HEART_Happiness',
+  });
+}
+
+/**
+ * Track CSAT (Customer Satisfaction)
+ * @param rating - CSAT rating (1-5)
+ * @param context - Context of the rating
+ */
+export function trackHEARTCSAT(rating: number, context: string = 'general') {
+  trackEvent('heart_csat', {
+    'csat_rating': rating,
+    'csat_context': context,
+    'event_category': 'HEART_Happiness',
+  });
+}
+
+/**
+ * Track feature usage for engagement
+ * @param featureName - Name of the feature used
+ * @param sessionCount - Current session count
+ */
+export function trackHEARTFeatureUsage(featureName: string, sessionCount: number) {
+  trackEvent('heart_feature_used', {
+    'feature_name': featureName,
+    'session_count': sessionCount,
+    'event_category': 'HEART_Engagement',
+  });
+}
+
+/**
+ * Track sessions per day for engagement
+ * @param sessionsPerDay - Average sessions per day
+ * @param totalSessions - Total session count
+ */
+export function trackHEARTSessionsPerDay(sessionsPerDay: number, totalSessions: number) {
+  trackEvent('heart_engagement', {
+    'engagement_type': 'sessions_per_day',
+    'sessions_per_day': sessionsPerDay,
+    'total_sessions': totalSessions,
+    'event_category': 'HEART_Engagement',
+  });
+}
+
+/**
+ * Track new user activation for adoption
+ * @param completedOnboarding - Whether onboarding was completed
+ * @param daysSinceSignup - Days since user signed up
+ */
+export function trackHEARTNewUserActivation(completedOnboarding: boolean, daysSinceSignup: number) {
+  trackEvent('heart_adoption', {
+    'adoption_type': 'new_user_activation',
+    'completed_onboarding': completedOnboarding,
+    'days_since_signup': daysSinceSignup,
+    'event_category': 'HEART_Adoption',
+  });
+}
+
+/**
+ * Track feature adoption
+ * @param featureName - Feature name
+ * @param adopted - Whether the feature was adopted
+ */
+export function trackHEARTFeatureAdoption(featureName: string, adopted: boolean) {
+  trackEvent('heart_adoption', {
+    'adoption_type': 'feature_adoption',
+    'feature_name': featureName,
+    'adopted': adopted,
+    'event_category': 'HEART_Adoption',
+  });
+}
+
+/**
+ * Track retention (D1, D7, D30)
+ * @param retentionType - D1, D7, or D30
+ * @param retained - Whether the user returned
+ */
+export function trackHEARTRetention(retentionType: 'D1' | 'D7' | 'D30', retained: boolean) {
+  trackEvent('heart_retention', {
+    'retention_type': retentionType,
+    'retained': retained,
+    'event_category': 'HEART_Retention',
+  });
+}
+
+/**
+ * Track churn risk
+ * @param reason - Reason for churn risk
+ * @param sessionCount - Current session count
+ */
+export function trackHEARTChurnRisk(reason: string, sessionCount: number) {
+  trackEvent('heart_churn_risk', {
+    'churn_reason': reason,
+    'session_count': sessionCount,
+    'event_category': 'HEART_Retention',
+  });
+}
+
+/**
+ * Track task success
+ * @param taskName - Name of the task
+ * @param success - Whether the task was successful
+ * @param timeOnTask - Time spent on task (seconds)
+ * @param completionRate - Overall completion rate
+ */
+export function trackHEARTTaskSuccess(
+  taskName: string,
+  success: boolean,
+  timeOnTask: number,
+  completionRate: number
+) {
+  trackEvent('heart_task_success', {
+    'task_name': taskName,
+    'success': success,
+    'time_on_task_seconds': timeOnTask,
+    'completion_rate': completionRate,
+    'event_category': 'HEART_Task_Success',
+  });
+}
+
+/**
+ * Track challenge completion (key user journey)
+ * @param challengeId - Challenge ID
+ * @param channel - Channel name
+ * @param timeSpent - Time spent (seconds)
+ * @param difficulty - Difficulty level
+ */
+export function trackHEARTChallengeCompletion(
+  challengeId: string,
+  channel: string,
+  timeSpent: number,
+  difficulty: string
+) {
+  trackEvent('heart_challenge_completion', {
+    'challenge_id': challengeId,
+    'channel': channel,
+    'time_spent_seconds': timeSpent,
+    'difficulty': difficulty,
+    'event_category': 'HEART_Task_Success',
+  });
+}
+
+/**
+ * Track bookmark rate (key user journey)
+ * @param itemId - Item ID
+ * @param itemType - Type of item
+ * @param bookmarked - Whether bookmarked
+ */
+export function trackHEARTBookmarkRate(itemId: string, itemType: string, bookmarked: boolean) {
+  trackEvent('heart_bookmark', {
+    'item_id': itemId,
+    'item_type': itemType,
+    'bookmarked': bookmarked,
+    'event_category': 'HEART_Engagement',
+  });
+}
+
+/**
+ * Track share rate (key user journey)
+ * @param itemId - Item ID
+ * @param itemType - Type of item
+ * @param platform - Sharing platform
+ */
+export function trackHEARTShareRate(itemId: string, itemType: string, platform: string) {
+  trackEvent('heart_share', {
+    'item_id': itemId,
+    'item_type': itemType,
+    'platform': platform,
+    'event_category': 'HEART_Engagement',
+  });
+}
+
+/**
+ * Track error for task success metric
+ * @param errorType - Type of error
+ * @param errorMessage - Error message
+ * @param context - Error context
+ */
+export function trackHEARTError(errorType: string, errorMessage: string, context?: string) {
+  trackEvent('heart_error', {
+    'error_type': errorType,
+    'error_message': errorMessage,
+    'error_context': context || '',
+    'event_category': 'HEART_Task_Success',
+  });
+}

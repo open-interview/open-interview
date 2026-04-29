@@ -14,14 +14,14 @@ function NetflixLogo() {
     <motion.div className="relative w-24 h-32 sm:w-32 sm:h-44">
       {/* Left bar */}
       <motion.div
-        className="absolute left-0 top-0 w-6 sm:w-8 h-full bg-[#E50914] rounded-sm"
+        className="absolute left-0 top-0 w-6 sm:min-w-[48px] w-8 h-full bg-[#E50914] rounded-sm"
         initial={{ scaleY: 0, originY: 1 }}
         animate={{ scaleY: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
       />
       {/* Diagonal */}
       <motion.div
-        className="absolute left-0 top-0 w-6 sm:w-8 h-full bg-gradient-to-b from-[#E50914] to-[#B20710] rounded-sm origin-top-left"
+        className="absolute left-0 top-0 w-6 sm:min-w-[48px] w-8 h-full bg-gradient-to-b from-[#E50914] to-[#B20710] rounded-sm origin-top-left"
         style={{ transform: 'skewX(-20deg) translateX(60%)' }}
         initial={{ scaleY: 0, originY: 0 }}
         animate={{ scaleY: 1 }}
@@ -29,7 +29,7 @@ function NetflixLogo() {
       />
       {/* Right bar */}
       <motion.div
-        className="absolute right-0 top-0 w-6 sm:w-8 h-full bg-[#E50914] rounded-sm"
+        className="absolute right-0 top-0 w-6 sm:min-w-[48px] w-8 h-full bg-[#E50914] rounded-sm"
         initial={{ scaleY: 0, originY: 0 }}
         animate={{ scaleY: 1 }}
         transition={{ duration: 0.5, delay: 0.5, ease: 'easeOut' }}

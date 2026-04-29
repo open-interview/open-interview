@@ -3,7 +3,7 @@
  * Shows all past toast notifications
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
@@ -57,6 +57,10 @@ const unreadDots = {
 export default function Notifications() {
   const [, setLocation] = useLocation();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [announcement, setAnnouncement] = useState('');
+  const previousCountRef = useState(notifications.length)[0];
+  const listRef = useRef<HTMLDivElement>(null);
+  const notificationRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   useEffect(() => {
     const loadNotifications = () => {
@@ -70,10 +74,20 @@ export default function Notifications() {
 
     loadNotifications();
 
-    const handleNewNotification = () => loadNotifications();
+    const handleNewNotification = () => {
+      loadNotifications();
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const notifs = JSON.parse(stored);
+        if (notifs.length > previousCountRef) {
+          setAnnouncement('New notification received');
+          setTimeout(() => setAnnouncement(''), 1000);
+        }
+      }
+    };
     window.addEventListener('notification-added', handleNewNotification);
     return () => window.removeEventListener('notification-added', handleNewNotification);
-  }, []);
+  }, [previousCountRef]);
 
   const saveNotifications = (updated: Notification[]) => {
     setNotifications(updated);
@@ -120,11 +134,16 @@ export default function Notifications() {
         description="View your notifications and alerts"
       />
 
+      {/* Accessibility announcements for screen readers */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {announcement}
+      </div>
+
       <AppLayout fullWidth>
         <div className="min-h-screen bg-gray-50 text-gray-900">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-24">
             <PageHeader title="Notifications" subtitle="Your alerts and updates" />
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-3xl mx-auto" role="region" aria-label="Notifications list">
 
               {/* Header Actions */}
               {notifications.length > 0 && (
@@ -140,7 +159,7 @@ export default function Notifications() {
                     {unreadCount > 0 && (
                       <button
                         onClick={markAllAsRead}
-                        className="flex items-center gap-1.5 px-4 py-2 min-h-[40px] text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors duration-150 ease-out cursor-pointer"
+                        className="flex items-center gap-1.5 px-4 py-2 min-h-[48px] text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors duration-150 ease-out cursor-pointer"
                       >
                         <CheckCheck className="w-4 h-4" />
                         Mark all read
@@ -148,7 +167,7 @@ export default function Notifications() {
                     )}
                     <button
                       onClick={clearAll}
-                      className="flex items-center gap-1.5 px-4 py-2 min-h-[40px] text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-150 ease-out cursor-pointer"
+                      className="flex items-center gap-1.5 px-4 py-2 min-h-[48px] text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-150 ease-out cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                       Clear all
@@ -158,54 +177,96 @@ export default function Notifications() {
               )}
 
               {/* Notifications List */}
-              <div className="space-y-3">
+                <div
+                 className="space-y-3"
+                 role="list"
+                 aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
+                 ref={listRef}
+                 onKeyDown={(e) => {
+                   const items = notifications.filter(n => n);
+                   if (items.length === 0) return;
+                   const currentIndex = items.findIndex(
+                     (_, i) => notificationRefs.current.get(items[i].id) === document.activeElement
+                   );
+                   if (e.key === 'ArrowDown') {
+                     e.preventDefault();
+                     const nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+                     notificationRefs.current.get(items[nextIndex].id)?.focus();
+                   } else if (e.key === 'ArrowUp') {
+                     e.preventDefault();
+                     const prevIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+                     notificationRefs.current.get(items[prevIndex].id)?.focus();
+                   }
+                 }}
+               >
                 <AnimatePresence mode="popLayout">
                   {notifications.length === 0 ? (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.96 }}
                       animate={{ opacity: 1, scale: 1 }}
-                       className="bg-white rounded-2xl border border-gray-200 p-12 text-center"
+                       className="bg-white rounded-xl p-6 text-center"
                     >
                       <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-5">
-                        <Bell className="w-10 h-10 text-gray-400" />
+                        <Bell className="min-w-[48px] w-10 min-h-[48px] h-10 text-gray-400" />
                       </div>
                       <h3 className="text-xl font-semibold text-gray-900 mb-2">All caught up!</h3>
                       <p className="text-base text-gray-500 mb-8 max-w-sm mx-auto leading-relaxed">
                         You're all caught up. Notifications will appear here when there's something new.
                       </p>
-                      <button
-                        onClick={() => setLocation('/')}
-                         className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 transition-colors duration-150 ease-out cursor-pointer"
-                      >
+                       <button
+                         onClick={() => setLocation('/')}
+                          className="inline-flex items-center gap-2 px-6 py-2.5 min-h-[48px] bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 transition-colors duration-150 ease-out cursor-pointer"
+                       >
                         Browse Questions
                       </button>
                     </motion.div>
                   ) : (
-                    notifications.map((notification, index) => (
-                      <motion.div
-                        key={notification.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 100 }}
-                        transition={{ delay: index * 0.05, duration: 0.25, ease: 'easeOut' }}
-                         className={`group relative bg-white rounded-xl border overflow-hidden transition-all duration-200 ease-out ${
-                          notification.read ? 'border-gray-200' : typeColors[notification.type]
-                         } ${notification.link ? 'cursor-pointer' : ''}`}
-                      >
-                        {/* Swipe to delete indicator */}
-                        <div className="absolute inset-y-0 right-0 w-20 bg-red-500 rounded-r-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      notifications.map((notification, index) => (
+                       <motion.div
+                         key={notification.id}
+                         ref={(el) => {
+                           if (el) notificationRefs.current.set(notification.id, el);
+                           else notificationRefs.current.delete(notification.id);
+                         }}
+                         initial={{ opacity: 0, x: -20 }}
+                         animate={{ opacity: 1, x: 0 }}
+                         exit={{ opacity: 0, x: 100 }}
+                         transition={{ delay: index * 0.05, duration: 0.25, ease: 'easeOut' }}
+                          className={`group relative bg-white rounded-xl border overflow-hidden transition-all duration-200 ease-out ${
+                           notification.read ? 'border-gray-200' : typeColors[notification.type]
+                          }`}
+                         role="listitem"
+                         aria-label={`${notification.read ? 'Read' : 'Unread'} ${notification.type} notification: ${notification.title}`}
+                       >
+                        {/* Swipe to delete indicator - accessible via keyboard */}
+                        <div className="absolute inset-y-0 right-0 w-20 bg-red-500 rounded-r-xl flex items-center justify-center opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
                           <button
                             onClick={(e) => handleSwipeDelete(notification.id, e)}
-                            className="w-full h-full flex items-center justify-center text-white hover:bg-red-600 transition-colors"
-                            aria-label="Swipe to delete"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleSwipeDelete(notification.id);
+                              }
+                            }}
+                            className="w-full h-full flex items-center justify-center text-white hover:bg-red-600 focus:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300 transition-colors min-h-[48px]"
+                            aria-label={`Delete notification: ${notification.title}`}
                           >
                             <Trash2 className="w-5 h-5" />
                           </button>
                         </div>
-                        
+
                         <div
                           className="flex items-start gap-4 p-4"
                           onClick={() => handleNotificationClick(notification)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleNotificationClick(notification);
+                            }
+                          }}
+                          role={notification.link ? 'link' : 'button'}
+                          tabIndex={0}
+                          aria-label={`${notification.read ? 'Read' : 'Unread'} ${notification.type} notification: ${notification.title}. ${notification.description || ''} ${formatTime(notification.timestamp)} ago. ${notification.link ? 'Press Enter to view details.' : ''}`}
                         >
                           {/* Colored dot indicator */}
                           <div className="flex flex-col items-center gap-2">
@@ -217,21 +278,28 @@ export default function Notifications() {
                             </div>
                           </div>
                           
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-3">
-                              <h4 className={`font-medium text-[15px] leading-snug ${notification.read ? 'text-gray-500' : 'text-gray-900'}`}>
-                                {notification.title}
-                              </h4>
+                           <div className="flex-1 min-w-0">
+                             <div className="flex items-start justify-between gap-3">
+                               <span className={`font-medium text-[15px] leading-snug ${notification.read ? 'text-gray-600' : 'text-gray-900'}`}>
+                                 {notification.title}
+                               </span>
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  clearNotification(notification.id);
-                                }}
-                                className="flex-shrink-0 w-[36px] h-[36px] flex items-center justify-center -mr-1 -mt-1 rounded-full opacity-0 group-hover:opacity-100 hover:bg-gray-100 transition-all duration-150 ease-out cursor-pointer"
-                                aria-label="Dismiss notification"
-                              >
-                                <X className="w-4 h-4 text-gray-400" />
-                              </button>
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   clearNotification(notification.id);
+                                 }}
+                                 onKeyDown={(e) => {
+                                   if (e.key === 'Enter' || e.key === ' ') {
+                                     e.preventDefault();
+                                     e.stopPropagation();
+                                     clearNotification(notification.id);
+                                   }
+                                 }}
+                                 className="flex-shrink-0 w-[48px] h-[48px] flex items-center justify-center -mr-1 -mt-1 rounded-full opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-all duration-150 ease-out cursor-pointer"
+                                 aria-label={`Dismiss notification: ${notification.title}`}
+                               >
+                                 <X className="w-4 h-4 text-gray-400" />
+                               </button>
                             </div>
                             {notification.description && (
                               <p className="text-sm text-gray-500 mt-1.5 line-clamp-2 leading-relaxed">
@@ -239,9 +307,9 @@ export default function Notifications() {
                               </p>
                             )}
                             <div className="flex items-center gap-3 mt-2.5">
-                              <span className="text-xs text-gray-400 font-medium">
-                                {formatTime(notification.timestamp)}
-                              </span>
+                               <span className="text-xs text-gray-500 font-medium">
+                                 {formatTime(notification.timestamp)}
+                               </span>
                               {notification.link && (
                                 <span className="text-xs text-indigo-600 font-medium">View →</span>
                               )}

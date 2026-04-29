@@ -382,7 +382,7 @@ export default function VoiceSession() {
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
           <div className="max-w-md text-center">
             <div className="w-20 h-20 rounded-2xl bg-warning/20 flex items-center justify-center mx-auto mb-6">
-              <AlertCircle className="w-10 h-10 text-warning" />
+              <AlertCircle className="min-w-[48px] w-10 min-h-[48px] h-10 text-warning" />
             </div>
             <h1 className="text-2xl font-bold text-foreground mb-3">Browser Not Supported</h1>
             <p className="text-foreground/70 mb-6">Voice sessions require the Web Speech API. Use Chrome, Edge, or Safari.</p>
@@ -399,7 +399,7 @@ export default function VoiceSession() {
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center">
             <div className="w-16 h-16 rounded-2xl bg-info/20 flex items-center justify-center mx-auto mb-4">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <Loader2 className="min-w-[48px] w-8 min-h-[48px] h-8 animate-spin text-primary" />
             </div>
             <p className="text-foreground/70">Loading sessions...</p>
           </div>
@@ -423,11 +423,11 @@ export default function VoiceSession() {
           <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
             <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <button onClick={() => setLocation('/')} className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-muted rounded-lg transition-colors duration-150 ease-out cursor-pointer">
+                <button onClick={() => setLocation('/')} className="min-h-[48px] min-w-[48px] flex items-center justify-center hover:bg-muted rounded-lg transition-colors duration-150 ease-out cursor-pointer">
                   <Home className="w-5 h-5 text-foreground/70" />
                 </button>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary flex items-center justify-center">
+                  <div className="min-w-[48px] w-10 min-h-[48px] h-10 rounded-xl bg-gradient-to-br from-primary to-primary flex items-center justify-center">
                     <Target className="w-5 h-5 text-black" />
                   </div>
                   <div>
@@ -443,8 +443,8 @@ export default function VoiceSession() {
           <main className="max-w-4xl mx-auto px-4 py-6 pb-24">
             {availableSessions.length === 0 ? (
               <div className="text-center py-16">
-                <div className="w-20 h-20 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-6">
-                  <AlertCircle className="w-10 h-10 text-foreground/70" />
+                <div className="w-20 h-20 rounded-xl bg-muted/50 flex items-center justify-center mx-auto mb-6">
+                  <AlertCircle className="min-w-[48px] w-10 min-h-[48px] h-10 text-foreground/70" />
                 </div>
                 <h2 className="text-xl font-semibold text-foreground mb-2">No Sessions Available</h2>
                 <p className="text-foreground/70 mb-6">Subscribe to channels to unlock voice sessions.</p>
@@ -518,8 +518,8 @@ export default function VoiceSession() {
             className="max-w-lg w-full"
           >
             <Card className="p-6 text-center">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary flex items-center justify-center mx-auto mb-6">
-                <Target className="w-10 h-10 text-black" />
+               <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-primary to-primary flex items-center justify-center mx-auto mb-6">
+                <Target className="min-w-[48px] w-10 min-h-[48px] h-10 text-black" />
               </div>
               <h1 className="text-2xl font-bold text-foreground mb-2">{sessionState.session.topic}</h1>
               <p className="text-foreground/70 mb-6">
@@ -531,10 +531,10 @@ export default function VoiceSession() {
               </div>
 
               <div className="flex gap-3">
-                <Button variant="secondary" onClick={exitSession} className="flex-1 cursor-pointer min-h-[44px]">
+                <Button variant="secondary" onClick={exitSession} className="flex-1 cursor-pointer min-h-[48px] h-10">
                   Back
                 </Button>
-                <Button variant="primary" onClick={beginQuestions} className="flex-1 cursor-pointer min-h-[44px]">
+                <Button variant="primary" onClick={beginQuestions} className="flex-1 cursor-pointer min-h-[48px] h-10">
                   <Play className="w-5 h-5 mr-2" />
                   Start Session
                 </Button>
@@ -559,7 +559,7 @@ export default function VoiceSession() {
             <div className="max-w-4xl mx-auto px-4">
               <div className="h-16 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <button onClick={exitSession} className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-muted rounded-lg transition-colors duration-150 ease-out cursor-pointer">
+                  <button onClick={exitSession} className="min-h-[48px] min-w-[48px] flex items-center justify-center hover:bg-muted rounded-lg transition-colors duration-150 ease-out cursor-pointer">
                     <Home className="w-5 h-5 text-foreground/70" />
                   </button>
                   <div>
@@ -663,11 +663,11 @@ export default function VoiceSession() {
 
                 {pageState === 'editing' && (
                   <div className="flex gap-3">
-                    <Button variant="secondary" onClick={retryQuestion} className="cursor-pointer min-h-[44px]">
+                    <Button variant="secondary" onClick={retryQuestion} className="cursor-pointer min-h-[48px]">
                       <RotateCcw className="w-4 h-4 mr-2" />
                       Re-record
                     </Button>
-                    <Button variant="primary" onClick={submitCurrentAnswer} disabled={!transcript.trim()} className="cursor-pointer min-h-[44px]">
+                    <Button variant="primary" onClick={submitCurrentAnswer} disabled={!transcript.trim()} className="cursor-pointer min-h-[48px]">
                       <CheckCircle className="w-5 h-5 mr-2" />
                       Submit
                     </Button>
@@ -749,11 +749,11 @@ export default function VoiceSession() {
 
               {/* CTAs */}
               <div className="flex gap-3">
-                <Button variant="secondary" onClick={retryQuestion} className="flex-1 cursor-pointer min-h-[44px]">
+                <Button variant="secondary" onClick={retryQuestion} className="flex-1 cursor-pointer min-h-[48px]">
                   <RotateCcw className="w-4 h-4 mr-2" />
                   Try Again
                 </Button>
-                <Button variant="primary" onClick={goToNextQuestion} className="flex-1 cursor-pointer min-h-[44px]">
+                <Button variant="primary" onClick={goToNextQuestion} className="flex-1 cursor-pointer min-h-[48px]">
                   {isLastQuestion ? 'View Results' : 'Next Question'}
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
@@ -841,7 +841,7 @@ export default function VoiceSession() {
                            }}
                          />
                       </div>
-                      <span className="text-xs font-mono text-foreground/70 w-8 text-right">{a.score}%</span>
+                      <span className="text-xs font-mono text-foreground/70 min-w-[48px] w-8 text-right">{a.score}%</span>
                     </div>
                   ))}
                 </div>
@@ -861,15 +861,15 @@ export default function VoiceSession() {
 
               {/* CTAs */}
               <div className="flex gap-3">
-                <Button variant="secondary" onClick={handleShare} className="flex-1 cursor-pointer min-h-[44px]">
+                <Button variant="secondary" onClick={handleShare} className="flex-1 cursor-pointer min-h-[48px]">
                   <Share2 className="w-4 h-4 mr-2" />
                   Share
                 </Button>
-                <Button variant="secondary" onClick={exitSession} className="flex-1 cursor-pointer min-h-[44px]">
+                <Button variant="secondary" onClick={exitSession} className="flex-1 cursor-pointer min-h-[48px]">
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Again
                 </Button>
-                <Button variant="primary" onClick={() => setLocation('/')} className="flex-1 cursor-pointer min-h-[44px]">
+                <Button variant="primary" onClick={() => setLocation('/')} className="flex-1 cursor-pointer min-h-[48px]">
                   <Home className="w-4 h-4 mr-2" />
                   Home
                 </Button>

@@ -10,6 +10,7 @@ import { allChannelsConfig } from '../lib/channels-config';
 import { formatTag } from '../lib/utils';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { isPersonalized } from '../lib/personalization';
+import { useMinDelay } from '@/hooks/use-min-delay';
 
 type FilterType = 'all' | 'tags' | 'company' | 'video' | 'diagram' | 'coding';
 
@@ -33,6 +34,7 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
   const [filteredResults, setFilteredResults] = useState<UnifiedSearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
+  const showSearching = useMinDelay(isSearching, 300);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [hiddenCount, setHiddenCount] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -257,7 +259,7 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
 
   const renderEmptyState = () => (
     <div className="p-6 text-center text-muted-foreground">
-      <Search className="w-5 h-5 mx-auto mb-4 opacity-30" />
+      <Search className="w-5 h-5 mx-auto mb-4 opacity-[0.38]" />
       <p className="text-base mb-1">Type to search</p>
       <p className="text-sm opacity-70 mb-2">Search questions, topics, or tags</p>
       <div className="flex items-center justify-center gap-2 mb-6 text-xs">
@@ -281,7 +283,7 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
 
   const renderNoResults = () => (
     <div className="p-6 text-center text-muted-foreground">
-      <Search className="w-5 h-5 mx-auto mb-3 opacity-30" />
+      <Search className="w-5 h-5 mx-auto mb-3 opacity-[0.38]" />
       <p className="text-base">No results for "{query}"</p>
       <p className="text-sm mt-2 opacity-70">Try different keywords</p>
     </div>
@@ -369,44 +371,53 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
               </div>
             )}
 
-            {/* Mobile Results */}
-            <div className="flex-1 overflow-y-auto">
-              {isSearching && (
-                <div className="p-6 text-center">
-                  <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
-                </div>
-              )}
-              {!isSearching && query.length >= 2 && filteredResults.length === 0 && renderNoResults()}
-              {!isSearching && filteredResults.length > 0 && (
-                <>
-                  <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/20">
-                    <span className="text-xs text-muted-foreground" aria-live="polite">{filteredResults.length} results</span>
-                    <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={myTopicsOnly}
-                        onChange={e => setMyTopicsOnly(e.target.checked)}
-                        className="accent-primary"
-                      />
-                      My Topics Only
-                    </label>
-                  </div>
-                  <div role="list" className="py-2">{filteredResults.map((r, i) => renderResultItem(r, i))}</div>
-                  {hiddenCount > 0 && (
-                    <div className="px-4 py-3 text-center border-t border-border">
-                      <span className="text-xs text-muted-foreground">{hiddenCount} more result{hiddenCount !== 1 ? 's' : ''} in other topics</span>
-                      <button onClick={() => setMyTopicsOnly(false)} className="ml-2 text-xs text-primary underline">Show all</button>
-                    </div>
-                  )}
-                </>
-              )}
-              {!isSearching && query.length < 2 && renderEmptyState()}
-            </div>
+             {/* Mobile Results */}
+             <div className="flex-1 overflow-y-auto">
+               {showSearching && (
+                 <div className="p-6 space-y-3" role="status" aria-label="Searching">
+                   {Array.from({ length: 4 }).map((_, i) => (
+                     <div key={i} className="flex items-start gap-3 px-4 py-3">
+                       <div className="m3-shimmer" style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0 }} />
+                       <div className="flex-1 space-y-2">
+                         <div className="m3-shimmer" style={{ width: '80%', height: 14, borderRadius: 4 }} />
+                         <div className="m3-shimmer" style={{ width: '100%', height: 12, borderRadius: 4 }} />
+                         <div className="m3-shimmer" style={{ width: '60%', height: 12, borderRadius: 4 }} />
+                       </div>
+                     </div>
+                   ))}
+                 </div>
+               )}
+               {!showSearching && query.length >= 2 && filteredResults.length === 0 && renderNoResults()}
+               {!showSearching && filteredResults.length > 0 && (
+                 <>
+                   <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/20">
+                     <span className="text-xs text-muted-foreground" aria-live="polite">{filteredResults.length} results</span>
+                     <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer select-none">
+                       <input
+                         type="checkbox"
+                         checked={myTopicsOnly}
+                         onChange={e => setMyTopicsOnly(e.target.checked)}
+                         className="accent-primary"
+                       />
+                       My Topics Only
+                     </label>
+                   </div>
+                   <div role="list" className="py-2">{filteredResults.map((r, i) => renderResultItem(r, i))}</div>
+                   {hiddenCount > 0 && (
+                        <div className="px-4 py-2 text-center border-t border-border">
+                       <span className="text-xs text-muted-foreground">{hiddenCount} more result{hiddenCount !== 1 ? 's' : ''} in other topics</span>
+                       <button onClick={() => setMyTopicsOnly(false)} className="ml-2 text-xs text-primary underline">Show all</button>
+                     </div>
+                   )}
+                 </>
+               )}
+               {!showSearching && query.length < 2 && renderEmptyState()}
+             </div>
 
             {/* Mobile Footer */}
             <div 
-              className="px-4 py-3 border-t border-border flex-shrink-0"
-              style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
+               className="px-4 py-2 border-t border-border flex-shrink-0"
+               style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
             >
               <p className="text-sm text-muted-foreground text-center">
                 {filteredResults.length > 0 ? `${filteredResults.length} results` : 'Tap to search'}
@@ -481,43 +492,55 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
                 </div>
               )}
 
-              {/* Desktop Results */}
-              <div className="flex-1 overflow-y-auto">
-                {isSearching && (
-                <div className="p-6 text-center">
-                  <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
-                </div>
-                )}
-              
-              {!isSearching && query.length >= 2 && filteredResults.length === 0 && renderNoResults()}
-                {!isSearching && filteredResults.length > 0 && (
-                  <>
-                    <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/20">
-                      <span className="text-xs text-muted-foreground" aria-live="polite">{filteredResults.length} results</span>
-                      <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={myTopicsOnly}
-                          onChange={e => setMyTopicsOnly(e.target.checked)}
-                          className="accent-primary"
-                        />
-                        My Topics Only
-                      </label>
-                    </div>
-                    <div role="list" className="py-2">{filteredResults.map((r, i) => renderResultItem(r, i))}</div>
-                    {hiddenCount > 0 && (
-                      <div className="px-4 py-3 text-center border-t border-border">
-                        <span className="text-xs text-muted-foreground">{hiddenCount} more result{hiddenCount !== 1 ? 's' : ''} in other topics</span>
-                        <button onClick={() => setMyTopicsOnly(false)} className="ml-2 text-xs text-primary underline">Show all</button>
-                      </div>
-                    )}
-                  </>
-                )}
-                {!isSearching && query.length < 2 && renderEmptyState()}
-              </div>
+               {/* Desktop Results */}
+               <div className="flex-1 overflow-y-auto">
+                 {showSearching && (
+                   <div className="p-6 space-y-3" role="status" aria-label="Searching">
+                     {Array.from({ length: 5 }).map((_, i) => (
+                       <div key={i} className="flex items-start gap-3 px-4 py-3">
+                         <div className="m3-shimmer" style={{ width: 32, height: 32, borderRadius: 6, flexShrink: 0 }} />
+                         <div className="flex-1 space-y-2">
+                           <div className="flex items-center gap-2">
+                             <div className="m3-shimmer" style={{ width: 80, height: 10, borderRadius: 4 }} />
+                             <div className="m3-shimmer" style={{ width: 60, height: 10, borderRadius: 4 }} />
+                           </div>
+                           <div className="m3-shimmer" style={{ width: '100%', height: 12, borderRadius: 4 }} />
+                           <div className="m3-shimmer" style={{ width: '75%', height: 10, borderRadius: 4 }} />
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                 )}
+
+               {!showSearching && query.length >= 2 && filteredResults.length === 0 && renderNoResults()}
+                 {!showSearching && filteredResults.length > 0 && (
+                   <>
+                     <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/20">
+                       <span className="text-xs text-muted-foreground" aria-live="polite">{filteredResults.length} results</span>
+                       <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer select-none">
+                         <input
+                           type="checkbox"
+                           checked={myTopicsOnly}
+                           onChange={e => setMyTopicsOnly(e.target.checked)}
+                           className="accent-primary"
+                         />
+                         My Topics Only
+                       </label>
+                     </div>
+                     <div role="list" className="py-2">{filteredResults.map((r, i) => renderResultItem(r, i))}</div>
+                     {hiddenCount > 0 && (
+                       <div className="px-4 py-2 text-center border-t border-border">
+                         <span className="text-xs text-muted-foreground">{hiddenCount} more result{hiddenCount !== 1 ? 's' : ''} in other topics</span>
+                         <button onClick={() => setMyTopicsOnly(false)} className="ml-2 text-xs text-primary underline">Show all</button>
+                       </div>
+                     )}
+                   </>
+                 )}
+                 {!showSearching && query.length < 2 && renderEmptyState()}
+               </div>
 
               {/* Desktop Footer */}
-              <div className="px-4 py-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+               <div className="px-4 py-2 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
                 <div className="flex items-center gap-4">
                   <span><kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px]">↑↓</kbd> Navigate</span>
                   <span><kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px]">↵</kbd> Select</span>

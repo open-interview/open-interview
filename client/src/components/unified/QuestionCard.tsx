@@ -69,7 +69,7 @@ const sizeClasses: Record<QuestionCardSize, { padding: string; title: string; me
     meta: 'text-xs sm:text-xs'
   },
   md: {
-    padding: 'px-3 sm:px-4 lg:px-6 py-3 sm:py-4',
+    padding: 'px-3 sm:px-4 lg:px-6 py-2 sm:py-4',
     title: 'text-base sm:text-lg lg:text-xl',
     meta: 'text-xs sm:text-xs'
   },

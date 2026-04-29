@@ -72,7 +72,7 @@ export function SEOHead({
   title,
   description,
   keywords,
-  ogImage = 'https://open-interview.github.io/opengraph.jpg',
+  ogImage = 'https://open-interview.github.io/opengraph.webp',
   ogType = 'website',
   canonical,
   noindex = false,

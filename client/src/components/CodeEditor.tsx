@@ -202,7 +202,7 @@ export function CodeEditor({
         loading={
           <div className="flex items-center justify-center h-full bg-[#0F0F0F]">
             <div className="flex flex-col items-center gap-3">
-              <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+              <div className="animate-spin min-w-[48px] w-8 min-h-[48px] h-8 border-2 border-primary border-t-transparent rounded-full" />
               <span className="text-sm text-muted-foreground font-mono">Loading editor...</span>
             </div>
           </div>

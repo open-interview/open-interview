@@ -26,7 +26,7 @@ export function AuthorCard({ author, variant = "full", className }: AuthorCardPr
   if (variant === "compact") {
     return (
       <div className={cn("flex items-center gap-3", className)}>
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--color-accent)]/20 to-[var(--color-accent)]/5 flex items-center justify-center text-[var(--color-accent)] font-bold text-xs shrink-0">
+        <div className="min-w-[48px] w-8 min-h-[48px] h-8 rounded-full bg-gradient-to-br from-[var(--color-accent)]/20 to-[var(--color-accent)]/5 flex items-center justify-center text-[var(--color-accent)] font-bold text-xs shrink-0">
           {author.avatarUrl ? (
             <img src={author.avatarUrl} alt={author.name} className="w-full h-full rounded-full object-cover" loading="lazy" decoding="async" />
           ) : (

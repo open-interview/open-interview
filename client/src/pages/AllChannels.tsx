@@ -2,7 +2,7 @@
  * All Channels — Browse & subscribe to topics
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
@@ -145,7 +145,7 @@ function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSub
         {/* Header row */}
         <div className="flex items-start gap-3">
           {/* Icon with SVG ring */}
-          <div className="relative w-10 h-10 flex-shrink-0">
+          <div className="relative min-w-[48px] w-10 min-h-[48px] h-10 flex-shrink-0">
             {subscribed && progress > 0 && (
               <div className="absolute -inset-1 flex items-center justify-center pointer-events-none">
                 <ProgressRing progress={progress} size={48} stroke={3} />
@@ -191,14 +191,14 @@ function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSub
               <motion.button
                 whileTap={{ scale: 0.96 }}
                 onClick={e => { e.stopPropagation(); navigate(`/channel/${channel.id}`); }}
-                className="flex-1 min-h-[44px] rounded-2xl text-base font-bold transition-all duration-150 ease-out flex items-center justify-center gap-1.5 text-primary-foreground bg-primary cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
+                className="flex-1 min-h-[48px] rounded-2xl text-base font-bold transition-all duration-150 ease-out flex items-center justify-center gap-1.5 text-primary-foreground bg-primary cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
               >
                 Continue <ChevronRight className="w-3.5 h-3.5" />
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={e => { e.stopPropagation(); toggleSubscription(channel.id); }}
-                className="px-3 min-h-[44px] rounded-2xl transition-all duration-150 ease-out hover:bg-muted/80 border border-border text-foreground/70 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
+                className="px-3 min-h-[48px] rounded-2xl transition-all duration-150 ease-out hover:bg-muted/80 border border-border text-foreground/70 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
                 title="Unsubscribe"
               >
                 <X className="w-3.5 h-3.5" />
@@ -208,7 +208,7 @@ function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSub
             <motion.button
               whileTap={{ scale: 0.96 }}
               onClick={e => { e.stopPropagation(); toggleSubscription(channel.id); }}
-              className="flex-1 min-h-[44px] rounded-2xl text-base font-bold transition-all duration-150 ease-out flex items-center justify-center gap-1.5 text-primary-foreground bg-primary cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
+              className="flex-1 min-h-[48px] rounded-2xl text-base font-bold transition-all duration-150 ease-out flex items-center justify-center gap-1.5 text-primary-foreground bg-primary cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
             >
               <Plus className="w-3.5 h-3.5" />Subscribe
             </motion.button>
@@ -234,7 +234,7 @@ function CategorySection({ categoryKey, channels, questionCounts, navigate, isSu
 
     return (
       <div className="mb-6">
-        <button onClick={() => setOpen(o => !o)} className="w-full min-h-[44px] flex items-center justify-between px-1 py-2 mb-3 group cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none">
+        <button onClick={() => setOpen(o => !o)} className="w-full min-h-[48px] flex items-center justify-between px-1 py-2 mb-3 group cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none">
           <div className="flex items-center gap-2.5">
             <span className="text-xl">{meta.emoji}</span>
             <div className="text-left">
@@ -349,7 +349,7 @@ function ChannelDetail({ channel, questionCount, isSubscribed: subscribed, onTog
         <div className="flex gap-2">
           <button
             onClick={onToggle}
-            className={`flex-1 min-h-[44px] rounded-xl text-base font-bold transition-all duration-150 ease-out flex items-center justify-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none ${
+            className={`flex-1 min-h-[48px] rounded-xl text-base font-bold transition-all duration-150 ease-out flex items-center justify-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none ${
               subscribed ? 'bg-muted border border-border hover:bg-muted/80 text-foreground' : 'text-primary-foreground bg-primary hover:opacity-90'
             }`}
           >
@@ -358,7 +358,7 @@ function ChannelDetail({ channel, questionCount, isSubscribed: subscribed, onTog
           {subscribed && (
             <button
               onClick={onNavigate}
-              className="flex-1 min-h-[44px] rounded-xl text-base font-bold text-primary-foreground bg-primary hover:opacity-90 transition-all duration-150 ease-out flex items-center justify-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
+              className="flex-1 min-h-[48px] rounded-xl text-base font-bold text-primary-foreground bg-primary hover:opacity-90 transition-all duration-150 ease-out flex items-center justify-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
             >
               Go to Channel <ChevronRight className="w-4 h-4" />
             </button>
@@ -370,17 +370,116 @@ function ChannelDetail({ channel, questionCount, isSubscribed: subscribed, onTog
 }
 
 export default function AllChannels() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { isSubscribed, toggleSubscription, preferences } = useUserPreferences();
   const { stats } = useChannelStats();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>('');
   const [sortKey, setSortKey] = useState<SortKey>('az');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [progressFilter, setProgressFilter] = useState<'all' | 'not-started' | 'in-progress' | 'completed'>('all');
   const [subscribedOnly, setSubscribedOnly] = useState(() =>
     preferences.subscribedChannels.length > 0
   );
   const [selectedChannel, setSelectedChannel] = useState<ChannelConfig | null>(null);
+  const isInitialMount = useRef(true);
+
+  // Parse URL params on mount and when URL changes
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlCategory = params.get('category');
+    const urlSort = params.get('sort') as SortKey | null;
+    const urlOrder = params.get('order') as 'asc' | 'desc' | null;
+    const urlSearch = params.get('search');
+    const urlProgress = params.get('progress') as 'all' | 'not-started' | 'in-progress' | 'completed' | null;
+    const urlSubscribed = params.get('subscribed');
+
+    if (urlCategory !== null) {
+      setSelectedCategory(urlCategory === '' ? null : urlCategory);
+    }
+    if (urlSort && ['az', 'count', 'progress'].includes(urlSort)) {
+      setSortKey(urlSort as SortKey);
+    }
+    if (urlOrder && ['asc', 'desc'].includes(urlOrder)) {
+      setSortOrder(urlOrder);
+    }
+    if (urlSearch !== null) {
+      setSearchQuery(urlSearch);
+    }
+    if (urlProgress && ['all', 'not-started', 'in-progress', 'completed'].includes(urlProgress)) {
+      setProgressFilter(urlProgress);
+    }
+    if (urlSubscribed !== null) {
+      setSubscribedOnly(urlSubscribed === 'true');
+    }
+    isInitialMount.current = false;
+  }, []);
+
+  // Update URL when filters change (skip initial mount)
+  useEffect(() => {
+    if (isInitialMount.current) return;
+
+    const params = new URLSearchParams();
+    if (selectedCategory) params.set('category', selectedCategory);
+    if (sortKey !== 'az') params.set('sort', sortKey);
+    if (sortOrder !== 'asc') params.set('order', sortOrder);
+    if (searchQuery) params.set('search', searchQuery);
+    if (progressFilter !== 'all') params.set('progress', progressFilter);
+    if (subscribedOnly) params.set('subscribed', 'true');
+
+    const queryString = params.toString();
+    const newUrl = queryString ? `/channels?${queryString}` : '/channels';
+
+    // Use wouter's navigate with replace to update URL without adding to history
+    window.history.replaceState(null, '', newUrl);
+  }, [selectedCategory, sortKey, sortOrder, searchQuery, progressFilter, subscribedOnly]);
+
+  // Handle browser back/forward
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlCategory = params.get('category');
+      const urlSort = params.get('sort') as SortKey | null;
+      const urlOrder = params.get('order') as 'asc' | 'desc' | null;
+      const urlSearch = params.get('search');
+      const urlProgress = params.get('progress') as 'all' | 'not-started' | 'in-progress' | 'completed' | null;
+      const urlSubscribed = params.get('subscribed');
+
+      if (urlCategory !== null) {
+        setSelectedCategory(urlCategory === '' ? null : urlCategory);
+      } else {
+        setSelectedCategory('');
+      }
+      if (urlSort && ['az', 'count', 'progress'].includes(urlSort)) {
+        setSortKey(urlSort as SortKey);
+      } else {
+        setSortKey('az');
+      }
+      if (urlOrder && ['asc', 'desc'].includes(urlOrder)) {
+        setSortOrder(urlOrder);
+      } else {
+        setSortOrder('asc');
+      }
+      if (urlSearch !== null) {
+        setSearchQuery(urlSearch);
+      } else {
+        setSearchQuery('');
+      }
+      if (urlProgress && ['all', 'not-started', 'in-progress', 'completed'].includes(urlProgress)) {
+        setProgressFilter(urlProgress);
+      } else {
+        setProgressFilter('all');
+      }
+      if (urlSubscribed !== null) {
+        setSubscribedOnly(urlSubscribed === 'true');
+      } else {
+        setSubscribedOnly(false);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const subscribedIds = new Set(preferences.subscribedChannels);
   const hasSubscriptions = subscribedIds.size > 0;
@@ -409,9 +508,21 @@ export default function AllChannels() {
       done > 0 && done >= total;
     return matchSearch && matchCat && matchProgress;
   }).sort((a, b) => {
-    if (sortKey === 'az') return a.name.localeCompare(b.name);
-    if (sortKey === 'count') return (questionCounts[b.id] || 0) - (questionCounts[a.id] || 0);
-    return 0;
+    let comparison = 0;
+    if (sortKey === 'az') {
+      comparison = a.name.localeCompare(b.name);
+    } else if (sortKey === 'count') {
+      comparison = (questionCounts[a.id] || 0) - (questionCounts[b.id] || 0);
+    } else if (sortKey === 'progress') {
+      const doneA = getCompletedCount(a.id);
+      const doneB = getCompletedCount(b.id);
+      const totalA = questionCounts[a.id] || 0;
+      const totalB = questionCounts[b.id] || 0;
+      const progressA = totalA > 0 ? doneA / totalA : 0;
+      const progressB = totalB > 0 ? doneB / totalB : 0;
+      comparison = progressA - progressB;
+    }
+    return sortOrder === 'asc' ? comparison : -comparison;
   });
 
   // Stats bar values (shown when subscribedIds has entries)
@@ -605,18 +716,27 @@ export default function AllChannels() {
               <div className="flex gap-3 flex-wrap">
                 <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search channels…" />
                 <select value={progressFilter} onChange={e => setProgressFilter(e.target.value as typeof progressFilter)}
-                  className="min-h-[44px] px-3 py-2.5 rounded-xl text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 bg-muted border border-border text-foreground cursor-pointer">
+                  className="min-h-[48px] px-3 py-2.5 rounded-xl text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 bg-muted border border-border text-foreground cursor-pointer">
                   <option value="all">All Progress</option>
                   <option value="not-started">Not Started</option>
                   <option value="in-progress">In Progress</option>
                   <option value="completed">Completed</option>
                 </select>
                 <select value={sortKey} onChange={e => setSortKey(e.target.value as SortKey)}
-                  className="min-h-[44px] px-3 py-2.5 rounded-xl text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 bg-muted border border-border text-foreground cursor-pointer">
+                  className="min-h-[48px] px-3 py-2.5 rounded-xl text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 bg-muted border border-border text-foreground cursor-pointer">
                   <option value="az">A–Z</option>
                   <option value="count">Most Questions</option>
                   <option value="progress">Progress</option>
                 </select>
+                {sortKey !== 'az' && (
+                  <button
+                    onClick={() => setSortOrder(o => o === 'asc' ? 'desc' : 'asc')}
+                    className="min-h-[48px] px-3 py-2.5 rounded-xl text-base font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 bg-muted border border-border text-foreground cursor-pointer hover:bg-muted/80 transition-colors"
+                    title={`Sort ${sortOrder === 'asc' ? 'Ascending' : 'Descending'}`}
+                  >
+                    {sortOrder === 'asc' ? '↑' : '↓'}
+                  </button>
+                )}
               </div>
               <FilterPills options={[{id:'',label:'All'}, ...categories.map(c=>({id:c.id,label:c.name}))]}
                 active={selectedCategory||''} onChange={id => setSelectedCategory(id||null)} />

@@ -19,10 +19,11 @@ import {
   getChannelTheme, checkTestExpiration
 } from '../lib/tests';
 import { mascotEvents } from '../components/PixelMascot';
+import { useABTest, abTestButtonText } from '../hooks/use-ab-test';
 
 type SessionState = 'loading' | 'ready' | 'in-progress' | 'review';
 
-// ── Confetti burst ────────────────────────────────────────────────────────────
+// ── Confetti burst (decorative only, respects reduced motion) ─────────────────
 function Confetti() {
   const pieces = Array.from({ length: 32 }, (_, i) => ({
     id: i,
@@ -32,13 +33,13 @@ function Confetti() {
     duration: 1.2 + Math.random() * 0.8,
   }));
   return (
-    <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+    <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden" aria-hidden="true">
       {pieces.map(p => (
         <motion.div
           key={p.id}
-          initial={{ x: `${p.x}vw`, y: '-5vh', rotate: 0, opacity: 1 }}
-          animate={{ y: '110vh', rotate: 720, opacity: 0 }}
-          transition={{ duration: p.duration, delay: p.delay, ease: 'easeIn' }}
+          initial={{ x: `${p.x}vw`, y: '-5vh', opacity: 1 }}
+          animate={{ y: '110vh', opacity: 0 }}
+          transition={{ duration: p.duration, delay: p.delay, ease: 'cubic-bezier(0.2, 0, 0, 1)' }}
           className="absolute w-2 h-2 rounded-sm"
           style={{ backgroundColor: p.color }}
         />
@@ -61,13 +62,21 @@ function CircularTimer({ seconds, total }: { seconds: number; total: number }) {
   const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
   const ss = String(seconds % 60).padStart(2, '0');
 
+  const minutes = Math.floor(seconds / 60);
+  const ariaLabel = `${minutes} minute${minutes !== 1 ? 's' : ''} ${seconds % 60} seconds remaining`;
+
   return (
     <motion.div
-      animate={isLow ? { scale: [1, 1.06, 1] } : { scale: 1 }}
-      transition={isLow ? { repeat: Infinity, duration: 0.8 } : {}}
+      animate={isLow ? { scale: [1, 1.03, 1] } : { scale: 1 }}
+      transition={isLow ? { repeat: Infinity, duration: 0.35, ease: 'linear' } : {}}
       className="relative w-16 h-16 flex items-center justify-center"
+      role="timer"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-label={ariaLabel}
+      data-testid="test-timer"
     >
-      <svg width="64" height="64" className="-rotate-90">
+      <svg width="64" height="64" className="-rotate-90" aria-hidden="true">
         <circle cx="32" cy="32" r={TIMER_RADIUS} fill="none" stroke="currentColor" strokeOpacity="0.1" strokeWidth="4" />
         <circle
           cx="32" cy="32" r={TIMER_RADIUS}
@@ -77,7 +86,7 @@ function CircularTimer({ seconds, total }: { seconds: number; total: number }) {
           strokeLinecap="round"
           strokeDasharray={TIMER_CIRC}
           strokeDashoffset={offset}
-          style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.5s ease' }}
+          style={{ transition: `stroke-dashoffset var(--md-sys-motion-duration-medium2, 300ms) var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1)), stroke var(--md-sys-motion-duration-medium1, 250ms) var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1))` }}
         />
       </svg>
       <span className="absolute text-xs font-bold tabular-nums" style={{ color }}>{mm}:{ss}</span>
@@ -99,7 +108,7 @@ function OptionButton({
         onClick={onClick}
         disabled={disabled}
         data-testid={testId}
-        className={`w-full p-4 text-left rounded-xl border-2 transition duration-150 ease-out focus-visible:ring-2 focus-visible:ring-primary/50 ${
+        className={`w-full p-4 text-left rounded-lg border-2 transition duration-150 ease-out focus-visible:ring-2 focus-visible:ring-primary/50 ${
           showCorrect
           ? 'border-[var(--color-success)] bg-[var(--color-success)]/15'
           : showWrong
@@ -107,10 +116,11 @@ function OptionButton({
           : selected
           ? 'border-[var(--color-accent-violet)] bg-[var(--color-accent-violet)]/15'
           : 'border-[var(--color-border)] hover:border-[var(--color-accent-violet)]/50 bg-card'
-      } ${disabled ? 'cursor-default' : 'cursor-pointer'}`}
+        } ${disabled ? 'cursor-default opacity-[0.38]' : 'cursor-pointer'}`}
+        aria-disabled={disabled}
     >
       <div className="flex items-center gap-3">
-        <span className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0 border-2 ${
+        <span            className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-medium flex-shrink-0 border-2 ${
           showCorrect ? 'border-[var(--color-success)] bg-[var(--color-success)] text-white'
           : showWrong ? 'border-[var(--color-error)] bg-[var(--color-error)] text-white'
           : selected ? 'border-[var(--color-accent-violet)] bg-[var(--color-accent-violet)] text-white'
@@ -221,6 +231,19 @@ export default function TestSessionPage() {
     setSessionState('in-progress');
   }, [test]);
 
+  const { value: buttonText, trackExposure } = useABTest({
+    testName: abTestButtonText.testName,
+    variants: abTestButtonText.variants,
+    featureFlagKey: abTestButtonText.featureFlagKey,
+    enableTracking: true,
+  });
+
+  useEffect(() => {
+    if (sessionState === 'ready' && buttonText) {
+      trackExposure();
+    }
+  }, [sessionState, buttonText, trackExposure]);
+
   const handleOptionSelect = (optionId: string) => {
     if (!currentQuestion || showFeedback) return;
     const current = answers[currentQuestion.id] || [];
@@ -238,7 +261,7 @@ export default function TestSessionPage() {
           // Focus next question heading after state update
           setTimeout(() => questionHeadingRef.current?.focus(), 50);
         }
-      }, 700);
+      }, 400);
     } else {
       setAnswers(prev => ({
         ...prev,
@@ -263,7 +286,7 @@ export default function TestSessionPage() {
         setCurrentIndex(i => i + 1);
         setTimeout(() => questionHeadingRef.current?.focus(), 50);
       }
-    }, 800);
+    }, 400);
   };
 
   const submitTest = useCallback(() => {
@@ -301,7 +324,7 @@ export default function TestSessionPage() {
             </div>
             <div className="flex items-center justify-center py-20">
               <div className="text-center">
-                <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+                <div className="animate-spin min-w-[48px] w-8 min-h-[48px] h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" role="status" aria-label={!test ? 'No test available for this channel yet' : 'Loading test'} />
                 <p className="text-foreground/70 text-sm">{!test ? 'No test available for this channel yet' : 'Loading...'}</p>
                 <Button onClick={() => setLocation('/')} className="mt-4">Go home</Button>
               </div>
@@ -340,20 +363,20 @@ export default function TestSessionPage() {
                        ['Time Limit', `${test.timeLimit ?? 20} minutes`],
                        ['Passing Score', `${test.passingScore}%`],
                      ].map(([k, v]) => (
-                       <div key={k} className="flex justify-between p-2.5 rounded-xl bg-muted/40">
+                        <div key={k} className="flex justify-between p-2.5 rounded-lg bg-muted/40">
                         <span className="text-foreground/70">{k}</span>
                         <span className="font-semibold">{v}</span>
                       </div>
                     ))}
                     {progress && !isExpired && (
-                      <div className="flex justify-between p-2.5 rounded-xl bg-[var(--color-success)]/10 border border-[var(--color-success)]/20">
+                       <div className="flex justify-between p-2.5 rounded-lg bg-[var(--color-success)]/10 border border-[var(--color-success)]/20">
                         <span className="text-foreground/70">Your Best</span>
                         <span className="font-bold text-[var(--color-success)]">{progress.bestScore}%</span>
                       </div>
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Button onClick={startTest} className="w-full"><Zap className="w-4 h-4 mr-2" />Start Test</Button>
+                    <Button onClick={startTest} className="w-full"><Zap className="w-4 h-4 mr-2" />{buttonText}</Button>
                     <Button variant="secondary" onClick={() => setLocation(`/channel/${channelId}`)} className="w-full">Back to Channel</Button>
                   </div>
                 </Card>
@@ -366,18 +389,18 @@ export default function TestSessionPage() {
             <div className="min-h-screen flex flex-col">
               {/* Header */}
               <header className="border-b border-border px-4 py-2 flex items-center justify-between gap-3">
-                <button onClick={() => setLocation('/')} className="min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer text-foreground/70 hover:text-foreground transition duration-150 ease-out focus-visible:ring-2 focus-visible:ring-primary/50 rounded-xl">
+                <button onClick={() => setLocation('/')} className="min-h-[48px] min-w-[48px] flex items-center justify-center cursor-pointer text-foreground/70 hover:text-foreground transition duration-150 ease-out focus-visible:ring-2 focus-visible:ring-primary/50 rounded-xl">
                   <Home className="w-4 h-4" />
                 </button>
 
                 {/* Progress bar + counter */}
-                <div className="flex-1 flex items-center gap-2">
+                <div className="flex-1 flex items-center gap-2" role="progressbar" aria-valuenow={currentIndex + 1} aria-valuemin={1} aria-valuemax={questions.length} aria-label="Test progress">
                   <span className="text-xs font-semibold tabular-nums text-foreground/70">{currentIndex + 1} / {questions.length}</span>
                   <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                     <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)]"
-                      animate={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
-                      transition={{ duration: 0.3 }}
+                      className="h-full rounded-full bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] origin-left"
+                      animate={{ scaleX: (currentIndex + 1) / questions.length }}
+                      transition={{ duration: 0.25, ease: 'easeOut' }}
                     />
                   </div>
                 </div>
@@ -445,6 +468,8 @@ export default function TestSessionPage() {
                           <motion.div
                             ref={feedbackRef}
                             tabIndex={-1}
+                            role="alert"
+                            aria-live="assertive"
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0 }}
@@ -466,7 +491,7 @@ export default function TestSessionPage() {
 
               {/* Footer nav */}
               <footer className="border-t border-border p-3">
-                <div className="max-w-2xl mx-auto flex items-center justify-between gap-2 min-h-[44px]">
+                <div className="max-w-2xl mx-auto flex items-center justify-between gap-2 min-h-[48px]">
                   <Button size="sm" variant="secondary" onClick={() => setCurrentIndex(i => i - 1)} disabled={currentIndex === 0}>
                     <ArrowLeft className="w-3.5 h-3.5 mr-1" />Prev
                   </Button>
@@ -515,7 +540,7 @@ export default function TestSessionPage() {
                       <span
                         ref={resultsHeadingRef}
                         tabIndex={-1}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold border ${
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border ${
                         result.passed
                           ? 'bg-[var(--color-success)]/15 text-[var(--color-success)] border-[var(--color-success)]/30'
                           : 'bg-[var(--color-error)]/15 text-[var(--color-error)] border-[var(--color-error)]/30'

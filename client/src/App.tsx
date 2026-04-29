@@ -6,18 +6,17 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { StagingBanner } from "./components/StagingBanner";
+import { useUnifiedToast } from "@/hooks/use-unified-toast";
 import NotFound from "@/pages/not-found";
 import { InterviewLoader } from "@/components/ui/InterviewLoader";
 
 // Lazy loaded pages with React.lazy for code splitting
 const Home = React.lazy(() => import("@/pages/HomeGoogle"));
-const AnswerHistory = React.lazy(() => import("@/pages/AnswerHistory"));
 const About = React.lazy(() => import("@/pages/About"));
 const WhatsNew = React.lazy(() => import("@/pages/WhatsNew"));
 const QuestionViewer = React.lazy(() => import("@/pages/QuestionViewer"));
 const Profile = React.lazy(() => import("@/pages/Profile"));
 const BotActivity = React.lazy(() => import("@/pages/BotActivity"));
-const Badges = React.lazy(() => import("@/pages/Badges"));
 const TestSession = React.lazy(() => import("@/pages/TestSession"));
 const Tests = React.lazy(() => import("@/pages/Tests"));
 const CodingChallenge = React.lazy(() => import("@/pages/CodingChallenge"));
@@ -25,7 +24,7 @@ const CodeChallengesIndex = React.lazy(() => import("@/pages/CodeChallengesIndex
 const Channels = React.lazy(() => import("@/pages/AllChannels"));
 const Notifications = React.lazy(() => import("@/pages/Notifications"));
 const Bookmarks = React.lazy(() => import("@/pages/Bookmarks"));
-const ReviewSession = React.lazy(() => import("@/pages/ReviewSession").catch(() => import("@/pages/ReviewSessionOptimized")));
+const ReviewSession = React.lazy(() => import("@/pages/ReviewSession"));
 const Flashcards = React.lazy(() => import("@/pages/Flashcards"));
 const VoicePractice = React.lazy(() => import("@/pages/VoicePractice"));
 const VoiceSession = React.lazy(() => import("@/pages/VoiceSession"));
@@ -33,13 +32,13 @@ const Certifications = React.lazy(() => import("@/pages/Certifications"));
 const CertificationPractice = React.lazy(() => import("@/pages/CertificationPractice"));
 const CertificationExam = React.lazy(() => import("@/pages/CertificationExam"));
 const Documentation = React.lazy(() => import("@/pages/Documentation"));
-const ExtremeQuestionViewer = React.lazy(() => import("@/pages/ExtremeQuestionViewer"));
 const LearningPaths = React.lazy(() => import("@/pages/UnifiedLearningPaths"));
-const MyPath = React.lazy(() => import("@/pages/UnifiedLearningPaths"));
 const PersonalizedPath = React.lazy(() => import("@/pages/PersonalizedPath"));
-import { ProgressiveOnboarding } from "./components/ProgressiveOnboarding";
+import { Onboarding } from "./components/google/Onboarding";
 import { SubscriptionGate } from "./components/SubscriptionGate";
 const ManageSubscriptions = React.lazy(() => import("@/pages/ManageSubscriptions"));
+const Practice = React.lazy(() => import("@/pages/Practice"));
+const Progress = React.lazy(() => import("@/pages/Progress"));
 import { ThemeProvider } from "./context/ThemeContext";
 import { UserPreferencesProvider, useUserPreferences } from "./context/UserPreferencesContext";
 import { BadgeProvider } from "./context/BadgeContext";
@@ -115,7 +114,6 @@ function useSearchParamRedirect() {
   return isRedirecting;
 }
 
-const StatsRedirect = React.lazy(() => import('@/pages/StatsRedirect'));
 const GoogleStats = React.lazy(() => import('@/pages/GoogleStats'));
 const ChallengeHome = React.lazy(() => import('@/pages/ChallengeHome'));
 const ChallengeWorkspace = React.lazy(() => import('@/pages/ChallengeWorkspace'));
@@ -128,53 +126,69 @@ const BlogSearchPage = React.lazy(() => import('@/pages/blog/BlogSearchPage'));
 const AboutBlogPage = React.lazy(() => import('@/pages/blog/AboutBlogPage'));
 
 function Router() {
+  const [, setLocation] = useLocation();
   return (
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><InterviewLoader message="Loading..." showTip={false} /></div>}>
       <Switch>
         <Route path="/" component={Home} />
-        <Route path="/history" component={AnswerHistory} />
         <Route path="/about" component={About} />
         <Route path="/whats-new" component={WhatsNew} />
-        <Route path="/stats" component={GoogleStats} />
-        <Route path="/badges" component={Badges} />
+        <Route path="/docs" component={Documentation} />
+        <Route path="/bot-activity" component={BotActivity} />
+        <Route path="/notifications" component={Notifications} />
+        <Route path="/manage-subscriptions" component={ManageSubscriptions} />
+
+        {/* Learn */}
+        <Route path="/channels/:category">{(params) => <Channels category={params.category} />}</Route>
+        <Route path="/channels" component={Channels} />
+        <Route path="/channel/:id" component={QuestionViewer} />
+        <Route path="/channel/:id/:index" component={QuestionViewer} />
+        <Route path="/certifications" component={Certifications} />
+        <Route path="/certification/:id/exam" component={CertificationExam} />
+        <Route path="/certification/:id/:questionIndex" component={CertificationPractice} />
+        <Route path="/certification/:id" component={CertificationPractice} />
+        <Route path="/learning-paths/:pathId">{(params) => <LearningPaths pathId={params.pathId} />}</Route>
+        <Route path="/learning-paths" component={LearningPaths} />
+        <Route path="/personalized-path" component={PersonalizedPath} />
+
+        {/* Practice hub + modes */}
+        <Route path="/practice" component={Practice} />
+        <Route path="/voice-interview" component={VoicePractice} />
+        <Route path="/voice-session" component={VoiceSession} />
+        <Route path="/voice-session/:questionId" component={VoiceSession} />
         <Route path="/tests" component={Tests} />
         <Route path="/test/:channelId" component={TestSession} />
         <Route path="/coding" component={CodeChallengesIndex} />
         <Route path="/coding/:id" component={CodingChallenge} />
-        <Route path="/code" component={CodeChallengesIndex} />
-        <Route path="/code/challenges">{() => { window.location.replace('/code'); return null; }}</Route>
-        <Route path="/code/challenges/:id" component={CodingChallenge} />
-        <Route path="/bot-activity" component={BotActivity} />
-        <Route path="/channels" component={Channels} />
-        <Route path="/learning-paths" component={LearningPaths} />
-        <Route path="/my-path" component={MyPath} />
-        <Route path="/personalized-path" component={PersonalizedPath} />
-        <Route path="/profile" component={Profile} />
-        <Route path="/notifications" component={Notifications} />
-        <Route path="/bookmarks" component={Bookmarks} />
+        <Route path="/challenge/:topic/:id">{(params) => <ChallengeWorkspace topic={params.topic} id={params.id} />}</Route>
+        <Route path="/challenge/:topic">{(params) => <ChallengeHome topic={params.topic} />}</Route>
         <Route path="/review" component={ReviewSession} />
         <Route path="/flashcards" component={Flashcards} />
-        <Route path="/voice-interview" component={VoicePractice} />
-        <Route path="/training" component={VoicePractice} />
-        <Route path="/voice-session" component={VoiceSession} />
-        <Route path="/voice-session/:questionId" component={VoiceSession} />
-        <Route path="/docs" component={Documentation} />
-        <Route path="/certifications" component={Certifications} />
-        <Route path="/manage-subscriptions" component={ManageSubscriptions} />
-        <Route path="/certification/:id" component={CertificationPractice} />
-        <Route path="/certification/:id/exam" component={CertificationExam} />
-        <Route path="/certification/:id/:questionIndex" component={CertificationPractice} />
-        <Route path="/extreme/channel/:id" component={ExtremeQuestionViewer} />
-        <Route path="/extreme/channel/:id/:questionId" component={ExtremeQuestionViewer} />
-        <Route path="/channel/:id" component={QuestionViewer} />
-        <Route path="/channel/:id/:index" component={QuestionViewer} />
-        {/* Blog routes */}
+
+        {/* Progress */}
+        <Route path="/progress" component={Progress} />
+        <Route path="/stats">{() => { setLocation('/progress'); return null; }}</Route>
+        <Route path="/badges">{() => { setLocation('/progress?tab=badges'); return null; }}</Route>
+        <Route path="/history">{() => { setLocation('/progress?tab=history'); return null; }}</Route>
+
+        {/* Profile & account */}
+        <Route path="/profile" component={Profile} />
+        <Route path="/bookmarks/:topic">{(params) => <Bookmarks topic={params.topic} />}</Route>
+        <Route path="/bookmarks" component={Bookmarks} />
+
+        {/* Redirects for removed duplicate routes */}
+        <Route path="/code">{() => { setLocation('/coding'); return null; }}</Route>
+        <Route path="/training">{() => { setLocation('/voice-interview'); return null; }}</Route>
+        <Route path="/my-path">{() => { setLocation('/learning-paths'); return null; }}</Route>
+
+        {/* Blog */}
         <Route path="/blog" component={BlogHomePage} />
         <Route path="/blog/search" component={BlogSearchPage} />
         <Route path="/blog/category/:slug">{(params) => <BlogListPage categorySlug={params.slug} />}</Route>
         <Route path="/blog/tag/:tag">{(params) => <BlogListPage tag={params.tag} />}</Route>
         <Route path="/blog/:slug">{(params) => <PostDetailPage slug={params.slug} />}</Route>
         <Route path="/about-blog" component={AboutBlogPage} />
+
         <Route component={NotFound} />
       </Switch>
     </Suspense>
@@ -207,7 +221,28 @@ function AppContent() {
     preloadQuestions().catch(console.error);
   }, []);
   
-  const { needsOnboarding } = useUserPreferences();
+  const { needsOnboarding, skipOnboarding } = useUserPreferences();
+  const { toast } = useUnifiedToast();
+  
+  // Listen for service worker update
+  useEffect(() => {
+    const handleSWUpdate = () => {
+      toast({
+        title: 'Update Available',
+        description: 'A new version is available. Reload to update.',
+      });
+      // Show a separate toast with action
+      setTimeout(() => {
+        toast({
+          title: 'Reload',
+          description: 'Click to update to the latest version',
+        });
+      }, 100);
+    };
+    
+    window.addEventListener('sw-update-available', handleSWUpdate);
+    return () => window.removeEventListener('sw-update-available', handleSWUpdate);
+  }, [toast]);
   
   // Don't render anything while redirecting
   if (isSearchRedirecting) {
@@ -221,8 +256,16 @@ function AppContent() {
       </SubscriptionGate>
       <GlobalCreditSplash />
       <AchievementNotificationManager />
-      {/* Progressive onboarding - DISABLED */}
-      {/* {needsOnboarding && <ProgressiveOnboarding />} */}
+      
+      {/* Global ARIA live regions for screen reader announcements */}
+      <div id="live-region-polite" aria-live="polite" aria-atomic="true" className="sr-only" />
+      <div id="live-region-assertive" aria-live="assertive" aria-atomic="true" className="sr-only" />
+      
+      {needsOnboarding && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <Onboarding onComplete={skipOnboarding} onSkip={skipOnboarding} />
+        </div>
+      )}
     </>
   );
 }

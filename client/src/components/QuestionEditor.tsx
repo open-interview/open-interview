@@ -362,7 +362,7 @@ export const QuestionEditor: React.FC<QuestionEditorProps> = ({
             <button
               onClick={handleSave}
               disabled={!formData.question?.trim() || !formData.answer?.trim()}
-              className="px-4 py-1.5 text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-1.5 text-sm bg-primary hover:bg-primary/90 text-primary-foreground rounded-md transition-colors disabled:opacity-[0.38] disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4 mr-1.5" />
               Save
@@ -786,7 +786,7 @@ const ValidationTab: React.FC<ValidationTabProps> = ({
         />
       ) : (
         <div className="text-center text-muted-foreground py-8">
-          <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-[0.38]" />
           <p>Enter an answer to see validation results</p>
         </div>
       )}

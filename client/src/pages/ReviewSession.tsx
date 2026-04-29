@@ -206,10 +206,10 @@ In practice, partition tolerance is mandatory for distributed systems, so you ch
 ];
 
 const confidenceLevels = [
-  { id: 'again', label: 'Again', cls: 'bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30', icon: <RotateCcw className="w-3 h-3" />, interval: 1 },
-  { id: 'hard',  label: 'Hard',  cls: 'bg-orange-500/20 border-orange-500/30 text-orange-400 hover:bg-orange-500/30', icon: <Brain className="w-3 h-3" />, interval: 2 },
-  { id: 'good',  label: 'Good',  cls: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30', icon: <Check className="w-3 h-3" />, interval: 4 },
-  { id: 'easy',  label: 'Easy',  cls: 'bg-blue-500/20 border-blue-500/30 text-blue-400 hover:bg-blue-500/30', icon: <Zap className="w-3 h-3" />, interval: 7 }
+  { id: 'again', label: 'Again', cls: 'bg-gradient-to-r from-red-500 to-red-600 border-red-500/30 text-red-400 hover:opacity-90', icon: <RotateCcw className="w-3 h-3" />, interval: 1 },
+  { id: 'hard',  label: 'Hard',  cls: 'bg-gradient-to-r from-orange-500 to-orange-600 border-orange-500/30 text-orange-400 hover:opacity-90', icon: <Brain className="w-3 h-3" />, interval: 2 },
+  { id: 'good',  label: 'Good',  cls: 'bg-gradient-to-r from-emerald-500 to-emerald-600 border-emerald-500/30 text-emerald-400 hover:opacity-90', icon: <Check className="w-3 h-3" />, interval: 4 },
+  { id: 'easy',  label: 'Easy',  cls: 'bg-gradient-to-r from-blue-500 to-blue-600 border-blue-500/30 text-blue-400 hover:opacity-90', icon: <Zap className="w-3 h-3" />, interval: 7 }
 ];
 
 // Diagram section with error handling
@@ -428,7 +428,7 @@ export default function ReviewSession() {
                 <Brain className="w-16 h-16 text-muted-foreground/30 mx-auto" />
                 <h2 className="text-2xl font-bold">No cards due</h2>
                 <p className="text-muted-foreground text-sm max-w-xs mx-auto">Add questions to your SRS deck by tapping "Add to SRS" while reviewing questions.</p>
-                <button onClick={() => setLocation('/channels')} className="px-4 py-2.5 min-h-[40px] h-10 bg-primary text-primary-foreground rounded-lg font-medium text-sm">Browse Questions</button>
+                <button onClick={() => setLocation('/channels')} className="px-4 py-2.5 min-h-[48px] min-h-[48px] h-10 bg-primary text-primary-foreground rounded-lg font-medium text-sm">Browse Questions</button>
               </div>
             </div>
           </div>
@@ -447,7 +447,7 @@ export default function ReviewSession() {
             <p className="text-muted-foreground mb-6">You've reviewed all cards for today</p>
             <button
               onClick={() => setLocation('/')}
-              className="min-h-[40px] h-10 cursor-pointer px-4 py-2.5 bg-gradient-to-r from-primary to-primary rounded-lg font-medium text-sm"
+              className="min-h-[48px] min-h-[48px] h-10 cursor-pointer px-4 py-2.5 bg-gradient-to-r from-primary to-primary rounded-lg font-medium text-sm"
             >
               Back to Home
             </button>
@@ -480,34 +480,37 @@ export default function ReviewSession() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {!selectedChannel && (
-                    <button
-                      onClick={() => handleChannelSelect(null)}
-                      className="min-h-[40px] h-10 px-4 py-2.5 rounded-full text-sm font-medium bg-gradient-to-r from-primary to-primary text-foreground"
-                    >
+                   <button
+                       onClick={() => handleChannelSelect(null)}
+                       aria-label="Show all channels"
+                       className="min-h-[48px] min-w-[48px] h-10 px-4 py-2.5 rounded-full text-sm font-medium bg-gradient-to-r from-primary to-primary text-foreground"
+                     >
                       All ({allCards.length})
                     </button>
                   )}
-                  {channelList.map(({ channel, count }) => (
-                    <button
-                      key={channel}
-                      onClick={() => handleChannelSelect(channel)}
-                       className={`min-h-[40px] h-10 px-4 py-2.5 rounded-full text-sm font-medium border transition-all ${
-                         selectedChannel === channel
-                           ? 'bg-primary text-foreground border-primary'
-                           : `bg-gradient-to-br ${getChannelColor(channel)} border-transparent hover:opacity-80`
-                       }`}
-                    >
-                      {channel} ({count})
-                    </button>
-                  ))}
-                  {selectedChannel && (
-                    <button
-                      onClick={() => handleChannelSelect(null)}
-                      className="min-h-[44px] px-4 py-2 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground"
-                    >
-                      Show all
-                    </button>
-                  )}
+                   {channelList.map(({ channel, count }) => (
+                     <button
+                       key={channel}
+                       onClick={() => handleChannelSelect(channel)}
+                       aria-label={`Select ${channel} channel with ${count} cards due`}
+                        className={`min-h-[48px] min-w-[48px] h-10 px-4 py-2.5 rounded-full text-sm font-medium border transition-all ${
+                          selectedChannel === channel
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : `bg-gradient-to-br ${getChannelColor(channel)} border-transparent hover:opacity-80`
+                        }`}
+                     >
+                       {channel} ({count})
+                     </button>
+                   ))}
+                   {selectedChannel && (
+                     <button
+                       onClick={() => handleChannelSelect(null)}
+                       aria-label="Show all channels"
+                       className="min-h-[48px] min-w-[48px] px-4 py-2 rounded-full text-sm font-medium text-muted-foreground hover:text-foreground"
+                     >
+                       Show all
+                     </button>
+                   )}
                 </div>
               </div>
             )}
@@ -517,6 +520,9 @@ export default function ReviewSession() {
               <div className="flex items-center gap-3 mb-6">
                 <button
                   onClick={() => setFocusMyTopics(v => !v)}
+                  role="switch"
+                  aria-checked={focusMyTopics}
+                  aria-label="Focus on my topics"
                   className={`relative inline-flex h-6 w-11 items-center rounded-full cursor-pointer transition duration-150 ease-out ${focusMyTopics ? 'bg-primary' : 'bg-muted'}`}
                 >
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${focusMyTopics ? 'translate-x-6' : 'translate-x-1'}`} />
@@ -527,13 +533,14 @@ export default function ReviewSession() {
 
             {/* Session Controls */}
             <div className="flex items-center justify-between mb-8">
-              <button
-                onClick={() => setLocation('/')}
-                className="flex items-center gap-2 min-h-[44px] cursor-pointer text-muted-foreground hover:text-foreground transition duration-150 ease-out"
-              >
-                <ChevronLeft className="w-5 h-5" />
-                <span>Back</span>
-              </button>
+               <button
+                 onClick={() => setLocation('/')}
+                 aria-label="Return to home page"
+                 className="flex items-center gap-2 min-h-[48px] min-w-[48px] cursor-pointer text-muted-foreground hover:text-foreground transition duration-150 ease-out"
+               >
+                 <ChevronLeft className="w-5 h-5" />
+                 <span>Back</span>
+               </button>
 
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
@@ -553,13 +560,14 @@ export default function ReviewSession() {
                 <span className="text-muted-foreground">Progress</span>
                 <span className="font-bold">{progress}%</span>
               </div>
-              <div className="h-3 bg-muted rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progress}%` }}
-                  className="h-full bg-gradient-to-r from-primary to-primary"
-                />
-              </div>
+              <div className="h-3 bg-muted rounded-full overflow-hidden" role="progressbar" aria-valuenow={parseInt(progress)} aria-valuemin={0} aria-valuemax={100} aria-label={`Review progress: ${progress}%`}>
+                 <motion.div
+                   initial={{ width: 0 }}
+                   animate={{ width: `${progress}%` }}
+                   transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
+                   className="h-full bg-gradient-to-r from-primary to-primary"
+                 />
+               </div>
             </div>
 
             {/* Card */}
@@ -572,59 +580,59 @@ export default function ReviewSession() {
                 transition={{ duration: 0.3 }}
                 className="relative w-full overflow-hidden"
               >
-                {/* Question Card */}
-                <div className="p-6 rounded-xl min-h-[400px] flex flex-col w-full overflow-hidden"
-                  style={{
-                    background: 'color-mix(in srgb, var(--color-surface-2, #1e293b) 60%, transparent)',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)'
-                  }}>
+                 {/* Question Card */}
+                 <div className="p-6 rounded-xl min-h-[400px] flex flex-col w-full overflow-hidden"
+                   style={{
+                     background: 'color-mix(in srgb, hsl(var(--surface-2, 220 20% 15%) / 0.6), transparent)',
+                   }}>
                   {/* Tags */}
                   <div className="flex items-center justify-between gap-2 mb-6">
                     <div className="flex items-center gap-2">
-                      <span className="px-3 py-1 bg-[#00ff88]/20 text-primary rounded-full text-xs font-bold uppercase">
-                        {currentCard.channel}
-                      </span>
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                        currentCard.difficulty === 'beginner' ? 'bg-green-500/20 text-green-500' :
-                        currentCard.difficulty === 'intermediate' ? 'bg-yellow-500/20 text-yellow-500' :
-                        'bg-red-500/20 text-red-500'
-                      }`}>
-                        {currentCard.difficulty}
-                      </span>
+                       <span className="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs font-bold uppercase">
+                         {currentCard.channel}
+                       </span>
+                       <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                         currentCard.difficulty === 'beginner' ? 'bg-emerald-500/20 text-emerald-400' :
+                         currentCard.difficulty === 'intermediate' ? 'bg-yellow-500/20 text-yellow-400' :
+                         'bg-red-500/20 text-red-400'
+                       }`} aria-label={`Difficulty: ${currentCard.difficulty}`}>
+                         {currentCard.difficulty}
+                       </span>
                     </div>
                     <button
                       onClick={handleDelete}
-                      title="Remove from SRS"
-                      className="min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition duration-150 ease-out"
+                      aria-label="Remove card from SRS"
+                      className="min-h-[48px] min-w-[48px] flex items-center justify-center cursor-pointer rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition duration-150 ease-out"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
 
                   {/* Question */}
-                  <div className="flex-1 flex items-center justify-center">
-                    <h2 className="text-lg font-semibold text-center leading-relaxed">
-                      {currentCard.question}
-                    </h2>
-                  </div>
+                   <div className="flex-1 flex items-center justify-center">
+                     <h3 className="text-lg font-semibold text-center leading-relaxed">
+                       {currentCard.question}
+                     </h3>
+                   </div>
 
                   {/* Answer (Hidden/Shown) */}
                   <AnimatePresence>
                     {showAnswer && (
                       <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
                         className="mt-6 space-y-4"
                       >
                         {/* TLDR */}
-                        {currentCard.tldr && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="p-4 bg-gradient-to-br from-primary/10 to-blue-500/10 border border-primary/30 rounded-[20px] backdrop-blur-sm"
-                          >
+                         {currentCard.tldr && (
+                           <motion.div
+                             initial={{ opacity: 0, y: 10 }}
+                             animate={{ opacity: 1, y: 0 }}
+                             transition={{ duration: 0.3, ease: [0.2, 0, 0, 1], delay: 0.1 }}
+                             className="p-4 bg-primary/10 border border-primary/30 rounded-[20px] backdrop-blur-sm"
+                           >
                             <div className="flex items-center gap-2 mb-2">
                               <Zap className="w-4 h-4 text-primary" />
                               <span className="text-xs font-bold text-primary uppercase">TL;DR</span>
@@ -634,12 +642,12 @@ export default function ReviewSession() {
                         )}
 
                         {/* Answer */}
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.15 }}
-                          className="p-6 bg-muted/50 backdrop-blur-xl rounded-xl border border-border"
-                        >
+                         <motion.div
+                           initial={{ opacity: 0, y: 10 }}
+                           animate={{ opacity: 1, y: 0 }}
+                           transition={{ duration: 0.3, ease: [0.2, 0, 0, 1], delay: 0.15 }}
+                           className="p-6 bg-muted/50 backdrop-blur-xl rounded-xl border border-border"
+                         >
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
                               <Sparkles className="w-5 h-5 text-primary" />
@@ -834,7 +842,7 @@ export default function ReviewSession() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={handleRevealAnswer}
-                       className="w-full min-h-[40px] h-10 cursor-pointer px-4 py-2.5 bg-gradient-to-r from-primary to-primary rounded-lg font-medium text-sm flex items-center justify-center gap-3"
+                       className="w-full min-h-[48px] min-h-[48px] h-10 cursor-pointer px-4 py-2.5 bg-gradient-to-r from-primary to-primary rounded-lg font-medium text-sm flex items-center justify-center gap-3"
                     >
                       <Eye className="w-6 h-6" />
                       Tap to reveal answer
@@ -852,13 +860,13 @@ export default function ReviewSession() {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.92 }}
                             onClick={() => handleConfidence(level.id)}
-                            className={`min-h-[40px] h-10 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all duration-150 flex items-center gap-1.5 ${level.cls}`}
+                            className={`min-h-[48px] min-h-[48px] h-10 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all duration-150 flex items-center gap-1.5 ${level.cls}`}
                             style={{
                               background: level.id === 'again' ? 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)' :
                                          level.id === 'hard' ? 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)' :
                                          level.id === 'good' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' :
                                          'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                              
                               border: 'none'
                             }}
                           >
@@ -876,7 +884,7 @@ export default function ReviewSession() {
                 <div className="mt-4 text-center">
                   <button
                     onClick={handleSkip}
-                    className="min-h-[44px] px-4 cursor-pointer text-sm text-muted-foreground hover:text-foreground transition duration-150 ease-out"
+                    className="min-h-[48px] px-4 cursor-pointer text-sm text-muted-foreground hover:text-foreground transition duration-150 ease-out"
                   >
                     Skip this card
                   </button>
@@ -887,7 +895,7 @@ export default function ReviewSession() {
                   <button
                     onClick={() => { setCurrentIndex(i => i - 1); setShowAnswer(false); }}
                     disabled={currentIndex === 0}
-                    className="min-h-[44px] px-3 cursor-pointer flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition duration-150 ease-out disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="min-h-[48px] px-3 cursor-pointer flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition duration-150 ease-out disabled:opacity-[0.38] disabled:cursor-not-allowed"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     Prev
@@ -896,7 +904,7 @@ export default function ReviewSession() {
                   <button
                     onClick={() => { setCurrentIndex(i => i + 1); setShowAnswer(false); }}
                     disabled={currentIndex === cards.length - 1}
-                    className="min-h-[44px] px-3 cursor-pointer flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition duration-150 ease-out disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="min-h-[48px] px-3 cursor-pointer flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition duration-150 ease-out disabled:opacity-[0.38] disabled:cursor-not-allowed"
                   >
                     Next
                     <ChevronRight className="w-4 h-4" />

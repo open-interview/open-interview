@@ -36,7 +36,7 @@ export function RecallGate({ onReveal }: RecallGateProps) {
         </p>
         <button
           onClick={onReveal}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 24px', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', background: '#1a73e8', color: '#fff', border: 'none', boxShadow: '0 1px 2px rgba(0,0,0,0.1)', transition: 'opacity 0.2s' }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 24px', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', background: '#1a73e8', color: '#fff', border: 'none', transition: 'opacity 0.2s' }}
           onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
           onMouseLeave={e => e.currentTarget.style.opacity = '1'}
         >

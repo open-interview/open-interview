@@ -31,11 +31,16 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
           // New version available
           console.log('[SW] New version available');
           
-          // Optionally notify user about update
-          if (window.confirm('A new version is available. Reload to update?')) {
+          // Notify user about update via custom event
+          window.dispatchEvent(new CustomEvent('sw-update-available'));
+          
+          // Listen for user's decision
+          const handleUpdate = () => {
             newWorker.postMessage('skipWaiting');
             window.location.reload();
-          }
+          };
+          
+          window.addEventListener('sw-update-confirmed', handleUpdate, { once: true });
         }
       });
     });

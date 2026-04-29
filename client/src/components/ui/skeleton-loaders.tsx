@@ -18,7 +18,7 @@ export function SkeletonText({ className, lines = 1 }: { className?: string; lin
 }
 
 export function SkeletonAvatar({ className }: { className?: string }) {
-  return <Skeleton className={cn("h-10 w-10 rounded-full", className)} />;
+  return <Skeleton className={cn("min-h-[48px] h-10 min-w-[48px] w-10 rounded-full", className)} />;
 }
 
 export function SkeletonCard({ className }: { className?: string }) {
@@ -76,7 +76,7 @@ export function ChannelCardSkeleton({ className }: { className?: string }) {
   return (
     <div className={cn("rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 space-y-3", className)}>
       <div className="flex items-center gap-3">
-        <Skeleton className="h-10 w-10 rounded-lg" />
+        <Skeleton className="min-h-[48px] h-10 min-w-[48px] w-10 rounded-lg" />
         <div className="flex-1 space-y-2">
           <Skeleton className="h-4 w-2/3" />
           <Skeleton className="h-3 w-1/3" />
@@ -118,7 +118,7 @@ export function StatCardSkeleton({ className }: { className?: string }) {
   return (
     <div className={cn("rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-4 space-y-2", className)}>
       <Skeleton className="h-3 w-20" />
-      <Skeleton className="h-8 w-16" />
+      <Skeleton className="min-h-[48px] h-8 w-16" />
       <Skeleton className="h-3 w-24" />
     </div>
   );

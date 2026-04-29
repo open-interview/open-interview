@@ -105,3 +105,14 @@ export {
   trackUserEngagement,
   trackError,
 };
+
+// ============================================
+// HEART Framework Metrics
+// ============================================
+export {
+  useHEARTMetrics,
+  useNPSSurvey,
+  useHEARTSessionTracking,
+} from './use-heart-metrics';
+
+export type { HEARTMetrics };

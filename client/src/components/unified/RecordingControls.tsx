@@ -39,7 +39,7 @@ export function RecordingControls({
         <button
           onClick={onStart}
           disabled={disabled}
-          className="flex items-center gap-2 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors disabled:opacity-[0.38] disabled:cursor-not-allowed"
         >
           <Mic className="w-5 h-5" />
           Start Recording
@@ -82,7 +82,7 @@ export function RecordingControls({
             <button
               onClick={onSubmit}
               disabled={disabled}
-              className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-semibold transition-colors disabled:opacity-[0.38] disabled:cursor-not-allowed"
             >
               <CheckCircle className="w-5 h-5" />
               {submitLabel}

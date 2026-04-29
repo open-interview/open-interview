@@ -80,7 +80,8 @@ interface ToastProps extends HTMLAttributes<HTMLDivElement> {
 
 export const Toast = forwardRef<HTMLDivElement, ToastProps>(
   ({ toast, onDismiss, className = "", ...props }, ref) => {
-    const { type, message, action, duration = 5000 } = toast;
+    // M3 Snackbar: 4000ms auto-dismiss, optional 1 action, no action = 4000ms
+    const { type, message, action, duration = 4000 } = toast;
 
     useEffect(() => {
       if (duration > 0) {
@@ -91,27 +92,29 @@ export const Toast = forwardRef<HTMLDivElement, ToastProps>(
       }
     }, [duration, onDismiss]);
 
+    // Use role="alert" for errors, role="status" for others (polite announcement)
+    const ariaRole = type === 'error' ? 'alert' : 'status';
+
     return (
       <div
         ref={ref}
-        className={`google-toast google-toast--${type} ${className}`}
-        role="alert"
+        className={`google-snackbar google-snackbar--${type} ${className}`}
+        role={ariaRole}
+        aria-live={type === 'error' ? 'assertive' : 'polite'}
+        aria-atomic="true"
         {...props}
       >
-        <span className={`google-toast__icon google-toast__icon--${type}`}>
-          {icons[type]}
-        </span>
-        <span className="google-toast__message">{message}</span>
+        <span className="google-snackbar__message">{message}</span>
         {action && (
           <button
-            className={`google-toast__action google-toast__action--${type}`}
+            className={`google-snackbar__action google-snackbar__action--${type}`}
             onClick={action.onClick}
           >
             {action.label}
           </button>
         )}
         <button
-          className="google-toast__dismiss"
+          className="google-snackbar__dismiss"
           onClick={onDismiss}
           aria-label="Dismiss"
         >
@@ -122,7 +125,7 @@ export const Toast = forwardRef<HTMLDivElement, ToastProps>(
   }
 );
 
-Toast.displayName = "Toast";
+Snackbar.displayName = "Snackbar";
 
 interface ToastContainerProps {
   position?: "bottom-left" | "bottom-right" | "bottom-center";

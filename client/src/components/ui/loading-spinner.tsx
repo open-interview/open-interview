@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-const sizeMap = { sm: "h-4 w-4", md: "h-6 w-6", lg: "h-8 w-8" };
+const sizeMap = { sm: "h-4 w-4", md: "h-6 w-6", lg: "min-h-[48px] h-8 w-8" };
 const colorMap = {
   default: "text-[var(--color-accent-violet)]",
   white: "text-white",

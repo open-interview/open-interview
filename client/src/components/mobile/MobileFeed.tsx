@@ -406,7 +406,7 @@ function RecommendedCard({ channel, onClick }: { channel: any; onClick: () => vo
       onClick={onClick}
       className="flex-shrink-0 w-32 p-3 bg-muted/50 rounded-xl hover:bg-muted transition-colors text-left"
     >
-      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-2">
+      <div className="min-w-[48px] w-10 min-h-[48px] h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-2">
         {iconMap[channel.icon] || <Code className="w-5 h-5" />}
       </div>
       <h4 className="font-medium text-xs truncate">{channel.name}</h4>

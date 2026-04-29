@@ -129,7 +129,7 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
 
           {/* Enhanced Sidebar */}
           <aside className="hidden lg:block space-y-8">
-            <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-raised)]">
+              <div className="p-5 rounded-xl bg-[var(--color-surface-raised)]">
               <h2 className="text-sm font-semibold text-[var(--color-ink)] mb-3 flex items-center gap-2">
                 <TrendingUp size={14} strokeWidth={1.5} className="text-[var(--color-accent)]" />
                 Categories
@@ -152,7 +152,7 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
               </ul>
             </div>
             {tags.length > 0 && (
-              <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-raised)]">
+            <div className="p-5 rounded-xl bg-[var(--color-surface-raised)]">
                 <h2 className="text-sm font-semibold text-[var(--color-ink)] mb-3 flex items-center gap-2">
                   <Filter size={14} strokeWidth={1.5} className="text-[var(--color-accent)]" />
                   Popular Tags

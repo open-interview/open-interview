@@ -29,6 +29,7 @@ import { SITEMAP_RAG, searchRoutes, findRoutesByKeywords, getRouteByPath } from 
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { AICompanionMessages } from './AICompanionMessages';
 import { AICompanionInput } from './AICompanionInput';
+import { GoogleDialog } from './google/GoogleDialog';
 
 interface AICompanionProps {
   pageContent?: {
@@ -57,6 +58,8 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: number;
+  confidence?: number;
+  isAIGenerated?: boolean;
 }
 
 const LANGUAGES = [
@@ -75,6 +78,7 @@ export function AICompanion({ pageContent, onNavigate, onAction, availableAction
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showClearDialog, setShowClearDialog] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -88,7 +92,20 @@ export function AICompanion({ pageContent, onNavigate, onAction, availableAction
   const [isLoadingModel, setIsLoadingModel] = useState(false);
   const [modelLoadProgress, setModelLoadProgress] = useState<string>('');
   
-  // Settings
+  // Graceful degradation states (Section 9.5)
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [aiEnabled, setAiEnabled] = useState(() => {
+    const saved = localStorage.getItem('ai-companion-ai-enabled');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  const [retryCount, setRetryCount] = useState(0);
+  const [retryAfter, setRetryAfter] = useState<number | null>(null); // Rate limit wait time
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [fallbackMode, setFallbackMode] = useState(false); // Server error fallback
+  const [lastResponseConfidence, setLastResponseConfidence] = useState<number | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+   // Settings
   const [provider, setProvider] = useState<AIProvider>('groq'); // Default to Groq (more reliable)
   const [ttsProvider, setTTSProvider] = useState<TTSProvider>('webspeech'); // Default to Web Speech (no API key needed)
   const [language, setLanguage] = useState<Language>('en');
@@ -101,6 +118,10 @@ export function AICompanion({ pageContent, onNavigate, onAction, availableAction
   const [cohereKey, setCohereKey] = useState('');
   const [huggingfaceKey, setHuggingfaceKey] = useState('');
   const [elevenlabsKey, setElevenlabsKey] = useState('');
+  
+  // Settings validation errors
+  const [settingsErrors, setSettingsErrors] = useState<Record<string, string>>({});
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
   
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [isInterrupting, setIsInterrupting] = useState(false);
@@ -124,6 +145,44 @@ export function AICompanion({ pageContent, onNavigate, onAction, availableAction
       initializeWebLLM();
     }
   }, [provider]);
+
+  // Network status detection (offline/online)
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      setLastError(null);
+      setRetryAfter(null);
+      // Reset retry count on reconnection
+      setRetryCount(0);
+      toast({
+        title: "🌐 Back Online",
+        description: "AI features are now available",
+      });
+    };
+    
+    const handleOffline = () => {
+      setIsOffline(true);
+      setFallbackMode(true);
+      toast({
+        title: "📴 Offline Mode",
+        description: "AI features unavailable offline. Using static content.",
+      });
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    // Check initial state
+    setIsOffline(!navigator.onLine);
+    if (!navigator.onLine) {
+      setFallbackMode(true);
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const initializeWebLLM = async () => {
     try {
@@ -230,9 +289,9 @@ export function AICompanion({ pageContent, onNavigate, onAction, availableAction
         setAutoSpeak(settings.autoSpeak || false);
         setSelectedVoice(settings.selectedVoice || '');
         setSpeechRate(settings.speechRate || 0.95);
-        setGeminiKey(settings.geminiKey || '');
-        setOpenaiKey(settings.openaiKey || '');
-        setGroqKey(settings.groqKey || '');
+        setGeminiKey('');  // API keys removed - use backend proxy
+        setOpenaiKey('');  // API keys removed - use backend proxy
+        setGroqKey('');  // API keys removed - use backend proxy
         setCohereKey(settings.cohereKey || '');
         setHuggingfaceKey(settings.huggingfaceKey || '');
         setElevenlabsKey(settings.elevenlabsKey || '');
@@ -267,8 +326,99 @@ export function AICompanion({ pageContent, onNavigate, onAction, availableAction
     }
   }, [isOpen, isMinimized]);
 
+  // Helper functions for settings validation
+  const getProviderKeyError = () => {
+    const key = `${provider}Key`;
+    return settingsErrors[key];
+  };
+
+  const getProviderKeyValue = () => {
+    switch (provider) {
+      case 'gemini': return geminiKey;
+      case 'openai': return openaiKey;
+      case 'groq': return groqKey;
+      case 'cohere': return cohereKey;
+      case 'huggingface': return huggingfaceKey;
+      default: return '';
+    }
+  };
+
+  const handleProviderKeyChange = (value: string) => {
+    switch (provider) {
+      case 'gemini': setGeminiKey(value); break;
+      case 'openai': setOpenaiKey(value); break;
+      case 'groq': setGroqKey(value); break;
+      case 'cohere': setCohereKey(value); break;
+      case 'huggingface': setHuggingfaceKey(value); break;
+    }
+    setSettingsErrors(prev => ({ ...prev, [`${provider}Key`]: '' }));
+  };
+
+  const getTTSError = () => {
+    if (ttsProvider === 'elevenlabs') return settingsErrors['elevenlabsKey'];
+    return settingsErrors['openaiTTSKey'];
+  };
+
+  const getTTSValue = () => {
+    if (ttsProvider === 'elevenlabs') return elevenlabsKey;
+    return openaiKey;
+  };
+
+  const handleTTSKeyChange = (value: string) => {
+    if (ttsProvider === 'elevenlabs') {
+      setElevenlabsKey(value);
+      setSettingsErrors(prev => ({ ...prev, elevenlabsKey: '' }));
+    } else {
+      setOpenaiKey(value);
+      setSettingsErrors(prev => ({ ...prev, openaiTTSKey: '' }));
+    }
+  };
+
+  // Validate settings
+  const validateSettings = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    // Validate API keys if provider requires them
+    if (provider === 'gemini' && !geminiKey.trim()) {
+      errors.geminiKey = 'Gemini API key is required for this provider';
+    }
+    if (provider === 'openai' && !openaiKey.trim()) {
+      errors.openaiKey = 'OpenAI API key is required for this provider';
+    }
+    if (provider === 'groq' && !groqKey.trim()) {
+      errors.groqKey = 'Groq API key is required for this provider';
+    }
+    if (provider === 'cohere' && !cohereKey.trim()) {
+      errors.cohereKey = 'Cohere API key is required for this provider';
+    }
+    if (provider === 'huggingface' && !huggingfaceKey.trim()) {
+      errors.huggingfaceKey = 'HuggingFace API key is required for this provider';
+    }
+    
+    // Validate TTS API keys if provider requires them
+    if (ttsProvider === 'elevenlabs' && !elevenlabsKey.trim()) {
+      errors.elevenlabsKey = 'ElevenLabs API key is required for TTS';
+    }
+    if (ttsProvider === 'openai' && !openaiKey.trim()) {
+      errors.openaiTTSKey = 'OpenAI API key is required for TTS';
+    }
+    
+    setSettingsErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Handle settings field blur
+  const handleSettingsBlur = (field: string) => {
+    setTouchedFields(prev => ({ ...prev, [field]: true }));
+    validateSettings();
+  };
+
   // Save settings
   const saveSettings = () => {
+    if (!validateSettings()) {
+      return; // Don't save if validation fails
+    }
+    
     localStorage.setItem('ai-companion-settings', JSON.stringify({
       provider,
       ttsProvider,
@@ -283,7 +433,36 @@ export function AICompanion({ pageContent, onNavigate, onAction, availableAction
       huggingfaceKey,
       elevenlabsKey,
     }));
+    localStorage.setItem('ai-companion-ai-enabled', JSON.stringify(aiEnabled));
     setShowSettings(false);
+  };
+
+  // Toggle AI features
+  const toggleAI = () => {
+    const newState = !aiEnabled;
+    setAiEnabled(newState);
+    localStorage.setItem('ai-companion-ai-enabled', JSON.stringify(newState));
+    
+    if (!newState) {
+      setFallbackMode(true);
+      // Clear any pending retries
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+      toast({
+        title: "🤖 AI Disabled",
+        description: "AI features turned off. App will use static content.",
+      });
+    } else {
+      setFallbackMode(false);
+      setLastError(null);
+      setRetryCount(0);
+      toast({
+        title: "🤖 AI Enabled",
+        description: "AI features are now active.",
+      });
+    }
   };
 
   // Start listening
@@ -967,22 +1146,48 @@ Assistant (in ${languageName}):`;
     
     if (!messageToSend || isGenerating) return;
 
-    // Browser provider doesn't need API key
-    if (provider === 'browser') {
-      console.log('Using browser LLM (no API key needed)');
-      setCurrentModel('Browser LLM');
-    } else {
-      const apiKey = provider === 'gemini' ? geminiKey : 
-                     provider === 'openai' ? openaiKey :
-                     provider === 'groq' ? groqKey :
-                     provider === 'cohere' ? cohereKey :
-                     huggingfaceKey;
-      
-      if (!apiKey) {
-        // Use browser fallback instead of blocking
-        console.log('No API key, using browser fallback');
-        setCurrentModel('Browser LLM (No API Key)');
-      }
+    // Check if AI is disabled by user (Section 9.5: AI disabled → Remove AI UI entirely)
+    if (!aiEnabled) {
+      const offlineMsg: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: "AI features are currently disabled. Enable them in settings to chat.",
+        timestamp: Date.now(),
+        confidence: 1.0,
+        isAIGenerated: false,
+      };
+      setMessages(prev => [...prev, offlineMsg]);
+      return;
+    }
+
+    // Check if offline (Section 9.5: AI unavailable offline → Fall back silently)
+    if (isOffline) {
+      const offlineMsg: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: "You're offline. AI features aren't available right now. Here's what I can tell you: This app works best online for AI-powered conversations. Your question is saved below - try again when you're back online!",
+        timestamp: Date.now(),
+        confidence: 0.6,
+        isAIGenerated: false,
+      };
+      setMessages(prev => [...prev, offlineMsg]);
+      setFallbackMode(true);
+      return;
+    }
+
+    // Check rate limiting
+    if (retryAfter && Date.now() < retryAfter) {
+      const waitSecs = Math.ceil((retryAfter - Date.now()) / 1000);
+      const rateLimitMsg: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `Rate limit active. Please wait ${waitSecs} seconds before trying again. Your message is preserved below.`,
+        timestamp: Date.now(),
+        confidence: 0.9,
+        isAIGenerated: false,
+      };
+      setMessages(prev => [...prev, rateLimitMsg]);
+      return;
     }
 
     const userMsg: Message = {
@@ -1010,7 +1215,7 @@ Assistant (in ${languageName}):`;
     try {
       const prompt = buildPrompt(messageToSend);
       const apiKey = provider === 'browser' ? '' : 
-                     provider === 'gemini' ? geminiKey : 
+                     provider === 'gemini' ? geminiKey :
                      provider === 'openai' ? openaiKey :
                      provider === 'groq' ? groqKey :
                      provider === 'cohere' ? cohereKey :
@@ -1023,15 +1228,26 @@ Assistant (in ${languageName}):`;
         const cleanResponse = executeAgentActions(response);
         response = cleanResponse || response;
       }
-      
+
+      // Analyze confidence and add disclaimer if needed
+      const { content: analyzedContent, confidence } = analyzeConfidence(response);
+      setLastResponseConfidence(confidence);
+
       const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: response,
+        content: analyzedContent,
         timestamp: Date.now(),
+        confidence,
+        isAIGenerated: true,
       };
 
       setMessages(prev => [...prev, assistantMsg]);
+
+      // Reset retry count on success
+      setRetryCount(0);
+      setLastError(null);
+      setFallbackMode(false);
 
       // Auto-speak in voice mode OR if auto-speak is enabled
       if ((voiceMode || autoSpeak) && !isInterrupting) {
@@ -1052,14 +1268,111 @@ Assistant (in ${languageName}):`;
         console.log('Generation interrupted by user');
         return;
       }
+      
       console.error('AI Companion error:', error);
-      const errorMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: `Sorry, I encountered an error: ${error.message || 'Please try again'}`,
-        timestamp: Date.now(),
-      };
-      setMessages(prev => [...prev, errorMsg]);
+      setLastError(error.message || 'Unknown error');
+      
+      // Determine error type and handle accordingly (Section 9.5)
+      const status = error.status || error.response?.status;
+      const errorBody = error.response?.data || error.body;
+      
+      // Rate limiting (429)
+      if (status === 429) {
+        const retryAfterSec = error.response?.headers?.['retry-after'] || 60;
+        const retryTime = Date.now() + (retryAfterSec * 1000);
+        setRetryAfter(retryTime);
+        setRetryCount(prev => prev + 1);
+        
+        // PRESERVE USER INPUT - don't lose their question
+        setInputMessage(messageToSend);
+        
+        const rateLimitMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: `Rate limit reached. Please wait ${retryAfterSec} seconds before trying again. Your message is saved below.`,
+          timestamp: Date.now(),
+          confidence: 0.9,
+          isAIGenerated: false,
+        };
+        setMessages(prev => [...prev, rateLimitMsg]);
+        
+        // Auto-clear rate limit after time
+        if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = setTimeout(() => {
+          setRetryAfter(null);
+          toast({
+            title: "✅ Ready",
+            description: "You can send messages again.",
+          });
+        }, retryAfterSec * 1000);
+        
+      // Network errors → retry with exponential backoff
+      } else if (!navigator.onLine || error.code === 'NETWORK_ERROR' || status === 0) {
+        setIsOffline(true);
+        setRetryCount(prev => prev + 1);
+        
+        // PRESERVE USER INPUT
+        setInputMessage(messageToSend);
+        
+        const backoffMs = Math.min(1000 * Math.pow(2, retryCount), 30000); // Max 30s
+        
+        const networkErrMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: `🌐 Network error. Retrying in ${Math.ceil(backoffMs / 1000)} seconds... (Attempt ${retryCount + 1})`,
+          timestamp: Date.now(),
+          confidence: 0.5,
+          isAIGenerated: false,
+        };
+        setMessages(prev => [...prev, networkErrMsg]);
+        
+        // Auto-retry with exponential backoff
+        if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = setTimeout(() => {
+          if (navigator.onLine) {
+            setIsOffline(false);
+            // Retry the same message
+            setInputMessage(messageToSend);
+            toast({
+              title: "🔄 Retrying...",
+              description: "Attempting to send your message.",
+            });
+          }
+        }, backoffMs);
+        
+      // Server errors (5xx) → fallback to non-AI mode
+      } else if (status >= 500 && status < 600) {
+        setFallbackMode(true);
+        setRetryCount(prev => prev + 1);
+        
+        // PRESERVE USER INPUT
+        setInputMessage(messageToSend);
+        
+        const serverErrMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: "⚠️ AI service is temporarily unavailable. Switching to offline mode with static content. Your message is saved below.",
+          timestamp: Date.now(),
+          confidence: 0.3,
+          isAIGenerated: false,
+        };
+        setMessages(prev => [...prev, serverErrMsg]);
+        
+      // Generic error
+      } else {
+        // PRESERVE USER INPUT
+        setInputMessage(messageToSend);
+        
+        const errorMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: `Sorry, I encountered an error: ${error.message || 'Please try again'}. Your question is preserved below.`,
+          timestamp: Date.now(),
+          confidence: 0.4,
+          isAIGenerated: false,
+        };
+        setMessages(prev => [...prev, errorMsg]);
+      }
     } finally {
       clearTimeout(timeoutId); // Clear timeout
       setIsGenerating(false);
@@ -1592,6 +1905,62 @@ Assistant (in ${languageName}):`;
     return map[lang] || 'en-US';
   };
 
+  // Analyze response confidence and add disclaimer if needed
+  const analyzeConfidence = (response: string): { content: string; confidence: number } => {
+    const lowerResponse = response.toLowerCase();
+    let confidence = 0.9;
+    let disclaimer = '';
+
+    const uncertainPhrases = [
+      'i\'m not sure', 'i don\'t know', 'uncertain', 'might be', 'could be',
+      'possibly', 'probably', 'likely', 'i think', 'i believe',
+      'not certain', 'unclear', 'depends', 'it varies', 'may differ',
+      'i\'m not 100% sure', 'i\'m not completely certain', 'hard to say',
+    ];
+
+    const confidentPhrases = [
+      'definitely', 'absolutely', 'certainly', 'always', 'never',
+      'required', 'must', 'guaranteed', 'exactly', 'precisely',
+    ];
+
+    for (const phrase of uncertainPhrases) {
+      if (lowerResponse.includes(phrase)) {
+        confidence = Math.min(confidence, 0.5 + Math.random() * 0.2);
+        break;
+      }
+    }
+
+    for (const phrase of confidentPhrases) {
+      if (lowerResponse.includes(phrase)) {
+        confidence = Math.max(confidence, 0.85);
+        break;
+      }
+    }
+
+    if (response.length < 20) confidence = Math.min(confidence, 0.6);
+    if (response.length > 500) confidence = Math.max(confidence, confidence + 0.1);
+
+    if (confidence < 0.7) {
+      disclaimer = '\n\n💡 Note: I\'m not entirely certain about this. Please verify with official documentation.';
+    }
+
+    return { content: response + disclaimer, confidence };
+  };
+
+  // Get confidence label color
+  const getConfidenceColor = (confidence: number): string => {
+    if (confidence >= 0.85) return 'bg-green-500';
+    if (confidence >= 0.7) return 'bg-yellow-500';
+    return 'bg-orange-500';
+  };
+
+  // Get confidence label
+  const getConfidenceLabel = (confidence: number): string => {
+    if (confidence >= 0.85) return 'High';
+    if (confidence >= 0.7) return 'Medium';
+    return 'Low';
+  };
+
   // Copy message
   const copyMessage = async (content: string, id: string) => {
     await navigator.clipboard.writeText(content);
@@ -1601,10 +1970,18 @@ Assistant (in ${languageName}):`;
 
   // Clear conversation
   const clearConversation = () => {
-    if (confirm('Clear all conversation history?')) {
-      setMessages([]);
-      localStorage.removeItem('ai-companion-messages');
-    }
+    // Use custom GoogleDialog instead of native confirm()
+    setShowClearDialog(true);
+  };
+
+  const confirmClearConversation = () => {
+    setMessages([]);
+    localStorage.removeItem('ai-companion-messages');
+    setShowClearDialog(false);
+  };
+
+  const cancelClearConversation = () => {
+    setShowClearDialog(false);
   };
 
   // Quick actions
@@ -1682,8 +2059,8 @@ Assistant (in ${languageName}):`;
         }
       `}</style>
 
-      {/* Floating Button - FIXED: Higher position to avoid nav bar overlap */}
-      {!isOpen && (
+      {/* Floating Button - Only show when AI is enabled */}
+      {!isOpen && aiEnabled && (
         <motion.button
           onClick={() => setIsOpen(true)}
           whileHover={{ scale: 1.05 }}
@@ -1695,9 +2072,9 @@ Assistant (in ${languageName}):`;
         </motion.button>
       )}
 
-      {/* Companion Window */}
+      {/* Companion Window - Only render when AI is enabled */}
       <AnimatePresence>
-        {isOpen && (
+        {isOpen && aiEnabled && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1712,7 +2089,7 @@ Assistant (in ${languageName}):`;
              <div className="p-4 border-b border-border bg-gradient-to-r from-primary/10 to-pink-500/10 rounded-t-xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-r from-primary to-pink-500 rounded-full flex items-center justify-center">
+                  <div className="min-w-[48px] w-10 min-h-[48px] h-10 bg-gradient-to-r from-primary to-pink-500 rounded-full flex items-center justify-center">
                     <Sparkles className="w-5 h-5 text-white" />
                   </div>
                   <div>
@@ -1825,24 +2202,26 @@ Assistant (in ${languageName}):`;
                         {/* API Key (only if not browser) */}
                         {provider !== 'browser' && (
                           <div>
-                            <label className="text-xs font-semibold mb-1 block">API Key</label>
+                            <label className="text-xs font-semibold mb-1 block">
+                              API Key {touchedFields[`${provider}Key`] && getProviderKeyError() ? '(Required)' : ''}
+                            </label>
                             <input
                               type="password"
-                              value={provider === 'gemini' ? geminiKey : 
-                                     provider === 'openai' ? openaiKey :
-                                     provider === 'groq' ? groqKey :
-                                     provider === 'cohere' ? cohereKey :
-                                     huggingfaceKey}
-                              onChange={(e) => {
-                                if (provider === 'gemini') setGeminiKey(e.target.value);
-                                else if (provider === 'openai') setOpenaiKey(e.target.value);
-                                else if (provider === 'groq') setGroqKey(e.target.value);
-                                else if (provider === 'cohere') setCohereKey(e.target.value);
-                                else setHuggingfaceKey(e.target.value);
-                              }}
+                              value={getProviderKeyValue()}
+                              onChange={(e) => handleProviderKeyChange(e.target.value)}
+                              onBlur={() => handleSettingsBlur(`${provider}Key`)}
                               placeholder="Enter API key"
-                              className="w-full px-3 py-1.5 text-sm bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
+                              aria-invalid={!!getProviderKeyError()}
+                              aria-describedby={getProviderKeyError() ? `${provider}-key-error` : undefined}
+                              className={`w-full px-3 py-1.5 text-sm bg-background border rounded-lg focus:outline-none focus:border-primary ${
+                                getProviderKeyError() ? 'border-red-500' : 'border-border'
+                              }`}
                             />
+                            {getProviderKeyError() && (
+                              <p id={`${provider}-key-error`} role="alert" className="mt-1 text-xs text-red-500">
+                                {getProviderKeyError()}
+                              </p>
+                            )}
                           </div>
                         )}
 
@@ -1892,17 +2271,25 @@ Assistant (in ${languageName}):`;
                           <div>
                             <label className="text-xs font-semibold mb-1 block">
                               {ttsProvider === 'elevenlabs' ? 'ElevenLabs' : 'OpenAI'} TTS API Key
+                              {touchedFields[`${ttsProvider}TTSKey`] && getTTSError() ? ' (Required)' : ''}
                             </label>
                             <input
                               type="password"
-                              value={ttsProvider === 'elevenlabs' ? elevenlabsKey : openaiKey}
-                              onChange={(e) => {
-                                if (ttsProvider === 'elevenlabs') setElevenlabsKey(e.target.value);
-                                else setOpenaiKey(e.target.value);
-                              }}
+                              value={getTTSValue()}
+                              onChange={(e) => handleTTSKeyChange(e.target.value)}
+                              onBlur={() => handleSettingsBlur(`${ttsProvider}TTSKey`)}
                               placeholder="Enter TTS API key"
-                              className="w-full px-3 py-1.5 text-sm bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
+                              aria-invalid={!!getTTSError()}
+                              aria-describedby={getTTSError() ? `${ttsProvider}-tts-error` : undefined}
+                              className={`w-full px-3 py-1.5 text-sm bg-background border rounded-lg focus:outline-none focus:border-primary ${
+                                getTTSError() ? 'border-red-500' : 'border-border'
+                              }`}
                             />
+                            {getTTSError() && (
+                              <p id={`${ttsProvider}-tts-error`} role="alert" className="mt-1 text-xs text-red-500">
+                                {getTTSError()}
+                              </p>
+                            )}
                           </div>
                         )}
 
@@ -1966,12 +2353,34 @@ Assistant (in ${languageName}):`;
                           </label>
                         </div>
 
+                        {/* AI Enable/Disable Toggle */}
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id="ai-enabled"
+                            checked={aiEnabled}
+                            onChange={toggleAI}
+                            className="rounded"
+                          />
+                          <label htmlFor="ai-enabled" className="text-xs">
+                            Enable AI features
+                          </label>
+                        </div>
+
                         <button
                           onClick={saveSettings}
-                          className="w-full px-3 py-1.5 bg-gradient-to-r from-primary to-pink-500 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                          className="w-full px-3 py-1.5 bg-gradient-to-r from-primary to-pink-500 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                          disabled={Object.keys(settingsErrors).length > 0}
+                          aria-describedby={Object.keys(settingsErrors).length > 0 ? 'settings-error-summary' : undefined}
                         >
                           Save Settings
                         </button>
+                        {Object.keys(settingsErrors).length > 0 && (
+                          <p id="settings-error-summary" role="alert" className="mt-1 text-xs text-red-500">
+                            Please fix the errors above before saving
+                          </p>
+                        )}
+                        <div aria-live="polite" className="sr-only" id="settings-status" />
                       </div>
                     </motion.div>
                   )}
@@ -2013,6 +2422,36 @@ Assistant (in ${languageName}):`;
       
       {/* Hidden audio element for TTS playback */}
       <audio ref={audioRef} className="hidden" />
+
+      {/* Clear Conversation Dialog */}
+      {showClearDialog && (
+        <GoogleDialog
+          title="Clear Conversation"
+          description="This will permanently delete all messages in this conversation. This action cannot be undone."
+          open={showClearDialog}
+          onClose={cancelClearConversation}
+          actions={
+            <>
+              <button
+                onClick={cancelClearConversation}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmClearConversation}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md"
+              >
+                Clear
+              </button>
+            </>
+          }
+        >
+          <p className="text-sm text-gray-600">
+            Are you sure you want to clear all conversation history?
+          </p>
+        </GoogleDialog>
+      )}
     </>
   );
 }
