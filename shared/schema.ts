@@ -307,6 +307,21 @@ export type Flashcard = typeof flashcards.$inferSelect;
 export type InsertTest = z.infer<typeof insertTestSchema>;
 export type Test = typeof tests.$inferSelect;
 
+export const githubAnalytics = pgTable("github_analytics", {
+  id: serial("id").primaryKey(),
+  repoOwner: text("repo_owner").notNull(),
+  repoName: text("repo_name").notNull(),
+  stars: integer("stars").default(0),
+  forks: integer("forks").default(0),
+  openIssues: integer("open_issues").default(0),
+  watchers: integer("watchers").default(0),
+  collectedAt: text("collected_at").$defaultFn(() => new Date().toISOString()),
+});
+
+export const insertGithubAnalyticsSchema = createInsertSchema(githubAnalytics);
+export type InsertGithubAnalytics = z.infer<typeof insertGithubAnalyticsSchema>;
+export type GithubAnalytics = typeof githubAnalytics.$inferSelect;
+
 export const linkedinPublishLog = pgTable("linkedin_publish_log", {
   id: serial("id").primaryKey(),
   blogPostId: text("blog_post_id"),

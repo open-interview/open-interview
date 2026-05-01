@@ -10,7 +10,7 @@
  */
 
 import 'dotenv/config';
-import { dbClient as db } from './db/pg-client.js';
+import { dbClient as db, getPool } from './db/pg-client.js';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
 const REPO_OWNER = process.env.REPO_OWNER || 'satishkumar-dhule';
 const REPO_NAME = process.env.REPO_NAME || 'code-reels';
@@ -150,14 +150,42 @@ async function collectRepoStats(repo) {
   return data;
 }
 
+async function testDbConnection() {
+  try {
+    const pool = getPool();
+    const client = await pool.connect();
+    client.release();
+  } catch (err) {
+    if (err.code === 'ECONNREFUSED') {
+      console.error('❌ Database connection refused. Ensure the PostgreSQL service is running.');
+      console.error('   In GitHub Actions: add a postgres service container to your workflow.');
+      console.error(`   Connection target: ${process.env.DATABASE_URL || `${process.env.PGHOST || 'localhost'}:${process.env.PGPORT || 5432}`}`);
+    } else {
+      console.error(`❌ Database connection failed: ${err.message}`);
+    }
+    process.exit(1);
+  }
+}
+
 async function main() {
   console.log('🚀 GitHub Analytics Bot Starting...\n');
-  
+
+  // Validate required env vars before doing anything
   if (!GITHUB_TOKEN) {
     console.error('❌ GITHUB_TOKEN or GH_TOKEN is required');
     process.exit(1);
   }
-  
+
+  const hasDbConfig = process.env.DATABASE_URL ||
+    (process.env.PGHOST && process.env.PGDATABASE);
+  if (!hasDbConfig) {
+    console.error('❌ Database configuration missing. Set DATABASE_URL or PGHOST+PGDATABASE+PGUSER+PGPASSWORD.');
+    process.exit(1);
+  }
+
+  await testDbConnection();
+  console.log('✓ Database connection verified');
+
   try {
     await initializeTable();
     
