@@ -92,6 +92,79 @@ const poorBlogContent = {
   tags: ["microservices"]
 };
 
+/**
+ * Check for missing meta descriptions in blog content objects.
+ * @param {object} content
+ * @returns {{ passed: boolean, message: string }}
+ */
+function checkMetaDescription(content) {
+  const desc = content.metaDescription?.trim() ?? '';
+  if (!desc) return { passed: false, message: 'Missing meta description' };
+  if (desc.length < 50) return { passed: false, message: `Meta description too short (${desc.length} chars, min 50)` };
+  if (desc.length > 160) return { passed: false, message: `Meta description too long (${desc.length} chars, max 160)` };
+  return { passed: true, message: `Meta description OK (${desc.length} chars)` };
+}
+
+/**
+ * Check that a post has a valid reading time.
+ * @param {object} content - blog content object (may include readingTimeMinutes)
+ * @returns {{ passed: boolean, message: string }}
+ */
+function checkReadingTime(content) {
+  const rt = content.readingTimeMinutes;
+  if (rt === undefined || rt === null) return { passed: false, message: 'Missing readingTimeMinutes field' };
+  if (typeof rt !== 'number' || rt <= 0) return { passed: false, message: `Invalid readingTimeMinutes: ${rt}` };
+  return { passed: true, message: `Reading time OK (${rt} min)` };
+}
+
+/**
+ * Check for broken internal links in sources and content.
+ * Internal links are those starting with '/' (relative) or matching the site domain.
+ * @param {object} content
+ * @param {string} [siteDomain]
+ * @returns {{ passed: boolean, message: string, brokenLinks: string[] }}
+ */
+function checkBrokenInternalLinks(content, siteDomain = '') {
+  const brokenLinks = [];
+  const sources = content.sources ?? [];
+
+  for (const source of sources) {
+    const url = source.url ?? '';
+    const isInternal = url.startsWith('/') || (siteDomain && url.startsWith(siteDomain));
+    if (!isInternal) continue;
+
+    // Internal links must not be empty and must start with /
+    if (!url.startsWith('/')) {
+      brokenLinks.push(url);
+      continue;
+    }
+    // Flag obviously malformed internal links (e.g. double slashes, spaces)
+    if (/\s/.test(url) || url.includes('//') && !url.startsWith('//')) {
+      brokenLinks.push(url);
+    }
+  }
+
+  // Also scan section content for markdown links [text](/path)
+  const allText = [
+    content.introduction ?? '',
+    ...(content.sections ?? []).map((s) => s.content ?? ''),
+    content.conclusion ?? '',
+  ].join('\n');
+
+  const mdLinkRe = /\[([^\]]*)\]\(([^)]+)\)/g;
+  let match;
+  while ((match = mdLinkRe.exec(allText)) !== null) {
+    const url = match[2];
+    if (!url.startsWith('/')) continue;
+    if (/\s/.test(url)) brokenLinks.push(url);
+  }
+
+  if (brokenLinks.length > 0) {
+    return { passed: false, message: `Found ${brokenLinks.length} broken internal link(s): ${brokenLinks.join(', ')}`, brokenLinks };
+  }
+  return { passed: true, message: 'No broken internal links found', brokenLinks: [] };
+}
+
 async function testQualityGates() {
   console.log('=== 🧪 Testing Blog Quality Gates ===\n');
   
@@ -149,6 +222,23 @@ async function testQualityGates() {
   console.log(`First-Person Violations   | ${goodResults.readability.firstPersonViolations.toString().padEnd(12)} | ${poorResults.readability.firstPersonViolations}`);
   console.log(`Transition Words          | ${goodResults.coherence.transitionCount.toString().padEnd(12)} | ${poorResults.coherence.transitionCount}`);
   
+  // --- Additional quality gate checks ---
+  console.log('\n\n🔍 Additional Quality Gate Checks:');
+  console.log('─'.repeat(60));
+
+  for (const [label, content] of [['Good content', goodBlogContent], ['Poor content', poorBlogContent]]) {
+    console.log(`\n[${label}]`);
+
+    const metaResult = checkMetaDescription(content);
+    console.log(`  Meta description:    ${metaResult.passed ? '✅' : '❌'} ${metaResult.message}`);
+
+    const rtResult = checkReadingTime(content);
+    console.log(`  Reading time:        ${rtResult.passed ? '✅' : '❌'} ${rtResult.message}`);
+
+    const linksResult = checkBrokenInternalLinks(content);
+    console.log(`  Internal links:      ${linksResult.passed ? '✅' : '❌'} ${linksResult.message}`);
+  }
+
   console.log('\n✅ Quality gates test complete!\n');
 }
 

@@ -294,11 +294,11 @@ async function generateBlogNode(state) {
     // Run 5 quality enhancement agents in parallel
     console.log(`   🤖 Running 5 quality enhancement agents in parallel...`);
     const [caseValidation, vectorEnrichment, sourceQuality, codeExamples, practicalContent] = await Promise.all([
-      import('../agents/case-validator-agent.js').then(m => m.validateCase(state.realWorldCase)),
-      import('../agents/vector-enrichment-agent.js').then(m => m.enrichContent(result, state.question, state.channel)),
-      import('../agents/source-quality-agent.js').then(m => m.filterSources(result.sources || [])),
-      import('../agents/code-example-agent.js').then(m => m.generateCodeExamples(result, state.channel)),
-      import('../agents/practical-content-agent.js').then(m => m.addPracticalSections(result, state.channel))
+      import('../../agents/case-validator-agent.js').then(m => m.validateCase(state.realWorldCase)),
+      import('../../agents/vector-enrichment-agent.js').then(m => m.enrichContent(result, state.question, state.channel)),
+      import('../../agents/source-quality-agent.js').then(m => m.filterSources(result.sources || [])),
+      import('../../agents/code-example-agent.js').then(m => m.generateCodeExamples(result, state.channel)),
+      import('../../agents/practical-content-agent.js').then(m => m.addPracticalSections(result, state.channel))
     ]);
     
     console.log(`   ✅ Case validation: ${caseValidation.valid ? 'PASS' : 'FAIL'} (score: ${caseValidation.score})`);

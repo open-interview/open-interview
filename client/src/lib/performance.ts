@@ -334,3 +334,32 @@ export function clearPerformanceMarks(name?: string) {
     performance.clearMeasures();
   }
 }
+
+/**
+ * Measure blog post load time to first meaningful paint.
+ * Call at the top of the post page to mark start, then call the returned
+ * function once the post content is rendered to record the duration.
+ *
+ * Uses the User Timing API (performance.mark / performance.measure) so
+ * results appear in DevTools Performance panel and PerformanceObserver.
+ */
+export function measureBlogPostLoad(slug: string): () => void {
+  const markStart = `blog-post-start:${slug}`;
+  const markEnd = `blog-post-end:${slug}`;
+  const measureName = `blog-post-fmp:${slug}`;
+
+  performance.mark(markStart);
+
+  return () => {
+    performance.mark(markEnd);
+    try {
+      performance.measure(measureName, markStart, markEnd);
+      const [entry] = performance.getEntriesByName(measureName);
+      if (entry) {
+        trackMobilePerformance('blog_post_fmp', entry.duration, slug);
+      }
+    } catch {
+      // Unsupported browser — silently ignore
+    }
+  };
+}

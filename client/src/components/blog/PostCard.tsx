@@ -2,6 +2,9 @@ import { Link } from "wouter";
 import { Clock, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const cardTransition = "transition-all duration-200 ease-out";
+const cardHover = "hover:scale-[1.02] hover:shadow-xl hover:border-[var(--color-accent)]";
+
 export interface PostCardData {
   slug: string;
   title: string;
@@ -31,19 +34,22 @@ function formatDate(dateStr: string) {
 export function PostCard({ post, variant = "grid" }: PostCardProps) {
   if (variant === "featured") {
     return (
-      <Link href={`/blog/${post.slug}`} className="group block">
-        <article className="grid grid-cols-1 md:grid-cols-2 gap-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] overflow-hidden hover:shadow-lg transition-shadow duration-150">
-          <div className="aspect-video bg-[var(--color-border)] overflow-hidden">
+      <Link href={`/blog/${post.slug}`} className="group block" aria-label={`Read article: ${post.title}`}>
+        <article className={cn("grid grid-cols-1 md:grid-cols-2 gap-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] overflow-hidden", cardTransition, cardHover)}>
+          <div className="aspect-video bg-[var(--color-border)] overflow-hidden relative">
             {post.coverImage ? (
-              <img
-                src={post.coverImage}
-                alt={post.title}
-                className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-150"
-                loading="eager"
-                decoding="async"
-                width={600}
-                height={338}
-              />
+              <>
+                <img
+                  src={post.coverImage}
+                  alt={post.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  loading="eager"
+                  decoding="async"
+                  width={600}
+                  height={338}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+              </>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-[var(--color-ink-muted)] text-sm">
                 {post.category}
@@ -67,7 +73,7 @@ export function PostCard({ post, variant = "grid" }: PostCardProps) {
 
   if (variant === "list") {
     return (
-      <Link href={`/blog/${post.slug}`} className="group block">
+      <Link href={`/blog/${post.slug}`} className="group block" aria-label={`Read article: ${post.title}`}>
         <article className="flex gap-4 py-4 border-b border-[var(--color-border)] last:border-0">
           <div className="flex-1 min-w-0">
             <CategoryBadge category={post.category} />
@@ -80,7 +86,7 @@ export function PostCard({ post, variant = "grid" }: PostCardProps) {
             <div className="w-20 h-16 shrink-0 rounded overflow-hidden bg-[var(--color-border)]">
               <img
                 src={post.coverImage}
-                alt=""
+                alt={`Cover image for ${post.title}`}
                 className="w-full h-full object-cover"
                 loading="lazy"
                 decoding="async"
@@ -96,19 +102,22 @@ export function PostCard({ post, variant = "grid" }: PostCardProps) {
 
   // grid (default)
   return (
-    <Link href={`/blog/${post.slug}`} className="group block">
-      <article className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] overflow-hidden hover:shadow-md transition-shadow duration-150 h-full flex flex-col">
-        <div className="aspect-video bg-[var(--color-border)] overflow-hidden">
+    <Link href={`/blog/${post.slug}`} className="group block" aria-label={`Read article: ${post.title}`}>
+      <article className={cn("rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] overflow-hidden h-full flex flex-col", cardTransition, cardHover)}>
+        <div className="aspect-video bg-[var(--color-border)] overflow-hidden relative">
           {post.coverImage ? (
-            <img
-              src={post.coverImage}
-              alt={post.title}
-              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-150"
-              loading="lazy"
-              decoding="async"
-              width={400}
-              height={225}
-            />
+            <>
+              <img
+                src={post.coverImage}
+                alt={post.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                loading="lazy"
+                decoding="async"
+                width={400}
+                height={225}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+            </>
           ) : (
             <div className="w-full h-full flex items-center justify-center text-[var(--color-ink-muted)] text-xs">
               {post.category}
@@ -138,8 +147,8 @@ function PostMeta({ post, className }: { post: PostCardData; className?: string 
         <Calendar size={12} strokeWidth={1.5} aria-hidden />
         {formatDate(post.publishedAt)}
       </span>
-      <span className="flex items-center gap-1">
-        <Clock size={12} strokeWidth={1.5} aria-hidden />
+      <span className="flex items-center gap-1 rounded-full bg-[var(--color-accent)]/10 px-2 py-0.5 text-[var(--color-accent)] font-medium">
+        <Clock size={11} strokeWidth={2} aria-hidden />
         {post.readingTimeMinutes} min
       </span>
     </div>

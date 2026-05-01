@@ -50,7 +50,7 @@ export function TableOfContents({ contentRef }: TableOfContentsProps) {
   if (headings.length === 0) return null;
 
   return (
-    <nav aria-label="Table of contents">
+    <nav aria-label="Table of contents" className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto">
       <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-muted)] mb-3">
         On this page
       </p>

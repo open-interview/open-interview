@@ -7,10 +7,30 @@ interface SEOProps {
   ogType?: "website" | "article";
   canonicalUrl?: string;
   publishedAt?: string;
+  author?: string;
+  tags?: string[];
+}
+
+export interface BlogPostingStructuredData {
+  "@context": "https://schema.org";
+  "@type": "BlogPosting";
+  headline: string;
+  description: string;
+  image?: string;
+  datePublished?: string;
+  author: { "@type": "Person"; name: string };
+  publisher: { "@type": "Organization"; name: string };
+  url?: string;
+  keywords?: string;
 }
 
 const SITE_NAME = "OpenInterview Blog";
 const DEFAULT_OG_IMAGE = "/opengraph.jpg";
+
+function truncate(text: string, max: number) {
+  if (text.length <= max) return text;
+  return text.slice(0, max - 1).trimEnd() + "…";
+}
 
 function setMeta(name: string, content: string, property = false) {
   const attr = property ? "property" : "name";
@@ -42,20 +62,43 @@ function setLink(rel: string, href: string) {
   el.href = href;
 }
 
-export function useBlogSEO({ title, description, ogImage, ogType = "website", canonicalUrl, publishedAt }: SEOProps) {
+export function useBlogSEO({ title, description, ogImage, ogType = "website", canonicalUrl, publishedAt, author, tags }: SEOProps) {
+  const metaDescription = description ? truncate(description, 155) : undefined;
+  const keywords = tags?.length ? tags.join(", ") : undefined;
+
+  const structuredData: BlogPostingStructuredData | null =
+    ogType === "article" && title
+      ? {
+          "@context": "https://schema.org",
+          "@type": "BlogPosting",
+          headline: title,
+          description: metaDescription ?? "",
+          ...(ogImage ? { image: ogImage } : {}),
+          ...(publishedAt ? { datePublished: publishedAt } : {}),
+          author: { "@type": "Person", name: author ?? "OpenInterview" },
+          publisher: { "@type": "Organization", name: SITE_NAME },
+          ...(canonicalUrl ? { url: canonicalUrl } : {}),
+          ...(keywords ? { keywords } : {}),
+        }
+      : null;
+
   useEffect(() => {
     const fullTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME;
     document.title = fullTitle;
 
-    if (description) {
-      setMeta("description", description);
-      setMeta("og:description", description, true);
-      setMeta("twitter:description", description);
+    if (metaDescription) {
+      setMeta("description", metaDescription);
+      setMeta("og:description", metaDescription, true);
+      setMeta("twitter:description", metaDescription);
     }
+
+    if (keywords) setMeta("keywords", keywords);
 
     setMeta("og:title", fullTitle, true);
     setMeta("og:type", ogType, true);
     setMeta("og:image", ogImage ?? DEFAULT_OG_IMAGE, true);
+    setMeta("og:image:width", "1200", true);
+    setMeta("og:image:height", "630", true);
     setMeta("twitter:card", "summary_large_image");
     setMeta("twitter:title", fullTitle);
     setMeta("twitter:image", ogImage ?? DEFAULT_OG_IMAGE);
@@ -65,8 +108,20 @@ export function useBlogSEO({ title, description, ogImage, ogType = "website", ca
       setLink("canonical", canonicalUrl);
     }
 
-    if (publishedAt) {
-      setMeta("article:published_time", publishedAt, true);
+    if (publishedAt) setMeta("article:published_time", publishedAt, true);
+    if (author) setMeta("article:author", author, true);
+
+    // JSON-LD structured data
+    const id = "blog-jsonld";
+    let script = document.getElementById(id) as HTMLScriptElement | null;
+    if (structuredData) {
+      if (!script) {
+        script = document.createElement("script");
+        script.id = id;
+        script.type = "application/ld+json";
+        document.head.appendChild(script);
+      }
+      script.textContent = JSON.stringify(structuredData);
     }
 
     return () => {
@@ -84,6 +139,10 @@ export function useBlogSEO({ title, description, ogImage, ogType = "website", ca
       const canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
       if (canonical) canonical.href = "";
       resetMeta("article:published_time", true);
+      resetMeta("article:author", true);
+      document.getElementById(id)?.remove();
     };
-  }, [title, description, ogImage, ogType, canonicalUrl, publishedAt]);
+  }, [title, metaDescription, keywords, ogImage, ogType, canonicalUrl, publishedAt, author, structuredData]);
+
+  return { structuredData };
 }

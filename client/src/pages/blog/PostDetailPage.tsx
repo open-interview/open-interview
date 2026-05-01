@@ -1,13 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { BlogLayout, ArticleLayout } from "@/components/blog/BlogLayout";
 import { TableOfContents } from "@/components/blog/TableOfContents";
 import { ReadingProgressBar } from "@/components/blog/ReadingProgressBar";
 import { PostCard, CategoryBadge, TagPill, type PostCardData } from "@/components/blog/PostCard";
-import { MarkdownRenderer } from "@/components/blog/MarkdownRenderer";
 import { BlogKnowledgeCheck } from "@/components/blog/BlogKnowledgeCheck";
 import { blogQuizzes } from "@/data/blog-quizzes";
-import { Calendar, Clock, Twitter, Linkedin, Link2, ArrowLeft, ArrowRight } from "lucide-react";
+import { measureBlogPostLoad } from "@/lib/performance";
+import { Calendar, Clock, Twitter, Linkedin, Link2, Check, ArrowLeft, ArrowRight } from "lucide-react";
+
+const MarkdownRenderer = lazy(() =>
+  import("@/components/blog/MarkdownRenderer").then((m) => ({ default: m.MarkdownRenderer }))
+);
 
 interface PostDetailPageProps {
   slug: string;
@@ -25,6 +29,11 @@ function formatDate(dateStr: string) {
   });
 }
 
+function calcReadingTime(content: string): number {
+  const words = content.trim().split(/\s+/).length;
+  return Math.max(1, Math.round(words / 200));
+}
+
 export default function PostDetailPage({ slug }: PostDetailPageProps) {
   const [post, setPost] = useState<PostData | null>(null);
   const [related, setRelated] = useState<PostCardData[]>([]);
@@ -32,10 +41,12 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
   const [nextPost, setNextPost] = useState<PostCardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const articleRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     setLoading(true);
+    const markFMP = measureBlogPostLoad(slug);
     fetch(`/api/blog/posts/${slug}`)
       .then((r) => {
         if (r.status === 404) { setNotFound(true); return null; }
@@ -47,11 +58,16 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
         setRelated(data.related || []);
         setPrevPost(data.prev || null);
         setNextPost(data.next || null);
+        markFMP();
       })
       .finally(() => setLoading(false));
   }, [slug]);
 
-  const copyLink = () => navigator.clipboard.writeText(window.location.href);
+  const copyLink = async () => {
+    await navigator.clipboard.writeText(window.location.href);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
 
   if (notFound) {
     return (
@@ -83,6 +99,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
     );
   }
 
+  const readingTime = post.readingTimeMinutes ?? calcReadingTime(post.content);
   const toc = <TableOfContents contentRef={articleRef as React.RefObject<HTMLElement>} />;
 
   return (
@@ -126,17 +143,53 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
           {post.title}
         </h1>
 
-        {/* Meta */}
-        <div className="flex flex-wrap items-center gap-4 text-sm text-[var(--color-ink-muted)] mb-8 pb-8 border-b border-[var(--color-border)]">
-          <span className="font-medium text-[var(--color-ink)]">{post.author}</span>
-          <span className="flex items-center gap-1">
-            <Calendar size={14} strokeWidth={1.5} aria-hidden />
-            {formatDate(post.publishedAt)}
-          </span>
-          <span className="flex items-center gap-1">
-            <Clock size={14} strokeWidth={1.5} aria-hidden />
-            {post.readingTimeMinutes} min read
-          </span>
+        {/* Meta + Share */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8 pb-8 border-b border-[var(--color-border)]">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-[var(--color-ink-muted)]">
+            <span className="font-medium text-[var(--color-ink)]">{post.author}</span>
+            <span className="flex items-center gap-1">
+              <Calendar size={14} strokeWidth={1.5} aria-hidden />
+              {formatDate(post.publishedAt)}
+            </span>
+            <span className="flex items-center gap-1.5 font-semibold text-[var(--color-ink)] bg-[var(--color-surface-raised)] border border-[var(--color-border)] rounded-full px-2.5 py-0.5">
+              <Clock size={13} strokeWidth={1.5} aria-hidden />
+              {readingTime} min read
+            </span>
+          </div>
+          {/* Share buttons */}
+          <div className="flex items-center gap-2">
+            <a
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.title)}&url=${encodeURIComponent(window.location.href)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] px-2.5 py-1.5 text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-surface-raised)] transition-colors"
+              aria-label="Share on Twitter"
+            >
+              <Twitter size={13} strokeWidth={1.5} />
+            </a>
+            <a
+              href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] px-2.5 py-1.5 text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-surface-raised)] transition-colors"
+              aria-label="Share on LinkedIn"
+            >
+              <Linkedin size={13} strokeWidth={1.5} />
+            </a>
+            <button
+              onClick={copyLink}
+              className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors ${
+                linkCopied
+                  ? "border-green-400/50 bg-green-50 text-green-600 dark:bg-green-950/20 dark:text-green-400"
+                  : "border-[var(--color-border)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-surface-raised)]"
+              }`}
+              aria-label="Copy link"
+            >
+              {linkCopied
+                ? <><Check size={13} strokeWidth={1.5} /> Copied!</>
+                : <><Link2 size={13} strokeWidth={1.5} /> Copy link</>}
+            </button>
+          </div>
         </div>
 
         {/* Article body */}
@@ -145,7 +198,15 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
           className="min-w-0"
           style={{ maxWidth: "68ch", lineHeight: "1.75" }}
         >
-          <MarkdownRenderer content={post.content} />
+          <Suspense fallback={
+            <div className="animate-pulse space-y-2">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="h-4 rounded bg-[var(--color-border)]" style={{ width: `${60 + (i * 7) % 40}%` }} />
+              ))}
+            </div>
+          }>
+            <MarkdownRenderer content={post.content} />
+          </Suspense>
         </article>
 
         {/* Knowledge Check */}
@@ -160,42 +221,10 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
           </div>
         )}
 
-        {/* Share */}
-        <div className="mt-8 pt-6 border-t border-[var(--color-border)]">
-          <p className="text-sm font-medium text-[var(--color-ink)] mb-3">Share this post</p>
-          <div className="flex gap-3">
-            <a
-              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.title)}&url=${encodeURIComponent(window.location.href)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-surface-raised)] transition-colors"
-              aria-label="Share on Twitter"
-            >
-              <Twitter size={14} strokeWidth={1.5} /> Twitter
-            </a>
-            <a
-              href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-surface-raised)] transition-colors"
-              aria-label="Share on LinkedIn"
-            >
-              <Linkedin size={14} strokeWidth={1.5} /> LinkedIn
-            </a>
-            <button
-              onClick={copyLink}
-              className="flex items-center gap-2 rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-surface-raised)] transition-colors"
-              aria-label="Copy link"
-            >
-              <Link2 size={14} strokeWidth={1.5} /> Copy link
-            </button>
-          </div>
-        </div>
-
         {/* Author bio */}
         <div className="mt-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] p-6">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-full bg-[var(--color-accent)]/20 flex items-center justify-center text-[var(--color-accent)] font-bold text-lg shrink-0">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-accent)]/30 to-[var(--color-accent)]/10 flex items-center justify-center text-[var(--color-accent)] font-bold text-lg shrink-0 ring-2 ring-[var(--color-accent)]/20">
               {post.author[0]}
             </div>
             <div>

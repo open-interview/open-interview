@@ -5,10 +5,16 @@ interface SEOHeadProps {
   description: string;
   keywords?: string;
   ogImage?: string;
+  ogImageWidth?: string;
+  ogImageHeight?: string;
   ogType?: string;
   canonical?: string;
   noindex?: boolean;
   structuredData?: object;
+  // Blog post specific
+  publishedAt?: string;
+  author?: string;
+  tags?: string[];
 }
 
 // Default structured data for the site
@@ -73,10 +79,15 @@ export function SEOHead({
   description,
   keywords,
   ogImage = 'https://open-interview.github.io/opengraph.jpg',
+  ogImageWidth = '1200',
+  ogImageHeight = '630',
   ogType = 'website',
   canonical,
   noindex = false,
-  structuredData
+  structuredData,
+  publishedAt,
+  author,
+  tags,
 }: SEOHeadProps) {
   useEffect(() => {
     // Update title
@@ -96,7 +107,8 @@ export function SEOHead({
 
     // Basic meta tags
     updateMeta('description', description);
-    if (keywords) updateMeta('keywords', keywords);
+    const allKeywords = [keywords, ...(tags ?? [])].filter(Boolean).join(', ');
+    if (allKeywords) updateMeta('keywords', allKeywords);
     updateMeta('robots', noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
     
     // Mobile optimization
@@ -107,7 +119,7 @@ export function SEOHead({
     updateMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
     
     // Additional SEO meta tags
-    updateMeta('author', 'Satishkumar Dhule');
+    updateMeta('author', author ?? 'Satishkumar Dhule');
     updateMeta('generator', 'Code Reels v2.3.0');
     updateMeta('rating', 'General');
     updateMeta('revisit-after', '1 days');
@@ -119,9 +131,17 @@ export function SEOHead({
     updateMeta('og:title', title, true);
     updateMeta('og:description', description, true);
     updateMeta('og:image', ogImage, true);
+    updateMeta('og:image:width', ogImageWidth, true);
+    updateMeta('og:image:height', ogImageHeight, true);
     updateMeta('og:type', ogType, true);
     updateMeta('og:site_name', 'Code Reels', true);
     if (canonical) updateMeta('og:url', canonical, true);
+
+    // Article-specific Open Graph meta tags
+    if (ogType === 'article') {
+      if (publishedAt) updateMeta('article:published_time', publishedAt, true);
+      if (author) updateMeta('article:author', author, true);
+    }
 
     // Twitter Card
     updateMeta('twitter:card', 'summary_large_image');
@@ -141,7 +161,28 @@ export function SEOHead({
     }
 
     // Structured Data (JSON-LD)
-    const jsonLdData = structuredData || defaultStructuredData;
+    // If it's a blog post and no custom structuredData provided, generate BlogPosting schema
+    const blogPostingSchema =
+      ogType === 'article' && !structuredData
+        ? {
+            "@context": "https://schema.org",
+            "@type": "BlogPosting",
+            headline: title,
+            description,
+            image: ogImage,
+            ...(publishedAt ? { datePublished: publishedAt } : {}),
+            author: { "@type": "Person", name: author ?? "Satishkumar Dhule" },
+            publisher: {
+              "@type": "Organization",
+              name: "Code Reels",
+              logo: { "@type": "ImageObject", url: "https://open-interview.github.io/favicon.svg" },
+            },
+            ...(canonical ? { url: canonical } : {}),
+            ...(allKeywords ? { keywords: allKeywords } : {}),
+          }
+        : null;
+
+    const jsonLdData = structuredData ?? blogPostingSchema ?? defaultStructuredData;
     let scriptElement = document.querySelector('script[type="application/ld+json"]');
     if (!scriptElement) {
       scriptElement = document.createElement('script');
@@ -150,11 +191,10 @@ export function SEOHead({
     }
     scriptElement.textContent = JSON.stringify(jsonLdData);
 
-    // Cleanup function to remove dynamic elements when component unmounts
     return () => {
       // Keep essential meta tags, only clean up page-specific ones if needed
     };
-  }, [title, description, keywords, ogImage, ogType, canonical, noindex, structuredData]);
+  }, [title, description, keywords, ogImage, ogImageWidth, ogImageHeight, ogType, canonical, noindex, structuredData, publishedAt, author, tags]);
 
   return null;
 }

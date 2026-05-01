@@ -1,6 +1,47 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 
+// Minimal token-based syntax highlighting
+function highlight(code: string, lang: string): React.ReactNode[] {
+  if (!lang || lang === "text" || lang === "plaintext") return [code];
+
+  // Token patterns ordered by priority
+  const patterns: { re: RegExp; cls: string }[] = [
+    { re: /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*)/g, cls: "text-slate-500 italic" },           // comments
+    { re: /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)/g, cls: "text-emerald-400" }, // strings
+    { re: /\b(true|false|null|undefined|nil|None|True|False)\b/g, cls: "text-orange-400" },    // literals
+    { re: /\b(\d+\.?\d*)\b/g, cls: "text-amber-400" },                                         // numbers
+    { re: /\b(const|let|var|function|class|return|if|else|for|while|import|export|from|default|async|await|new|typeof|instanceof|extends|implements|interface|type|enum|public|private|protected|static|void|def|lambda|yield|pass|break|continue|try|catch|finally|throw|in|of|do|switch|case|with|as|is|not|and|or|package|struct|func|go|chan|select|defer|map|range|make|append|len|cap|delete|copy|close|panic|recover|print|println)\b/g, cls: "text-violet-400 font-medium" }, // keywords
+    { re: /\b([A-Z][a-zA-Z0-9_]*)\b/g, cls: "text-sky-300" },                                  // types/classes
+    { re: /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g, cls: "text-blue-300" },                     // function calls
+  ];
+
+  // Split code into tokens
+  type Token = { text: string; cls?: string };
+  const tokens: Token[] = [{ text: code }];
+
+  for (const { re, cls } of patterns) {
+    const next: Token[] = [];
+    for (const tok of tokens) {
+      if (tok.cls) { next.push(tok); continue; }
+      let last = 0;
+      let m: RegExpExecArray | null;
+      re.lastIndex = 0;
+      while ((m = re.exec(tok.text)) !== null) {
+        if (m.index > last) next.push({ text: tok.text.slice(last, m.index) });
+        next.push({ text: m[0], cls });
+        last = m.index + m[0].length;
+      }
+      if (last < tok.text.length) next.push({ text: tok.text.slice(last) });
+    }
+    tokens.splice(0, tokens.length, ...next);
+  }
+
+  return tokens.map((t, i) =>
+    t.cls ? <span key={i} className={t.cls}>{t.text}</span> : t.text
+  );
+}
+
 interface CodeBlockProps {
   code: string;
   language?: string;
@@ -16,21 +57,24 @@ function CodeBlock({ code, language }: CodeBlockProps) {
   };
 
   return (
-    <div className="relative group my-6 rounded-lg overflow-hidden border border-[var(--color-border)] bg-[#0f172a]">
-      {language && (
-        <div className="absolute top-2 left-3 text-xs text-slate-400 font-mono select-none">
-          {language}
-        </div>
-      )}
-      <button
-        onClick={copy}
-        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity rounded p-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300"
-        aria-label="Copy code"
-      >
-        {copied ? <Check size={14} strokeWidth={1.5} /> : <Copy size={14} strokeWidth={1.5} />}
-      </button>
-      <pre className={`overflow-x-auto p-4 text-sm text-slate-200 font-mono leading-relaxed ${language ? "pt-8" : ""}`}>
-        <code>{code}</code>
+    <div className="relative group my-6 rounded-lg overflow-hidden border border-slate-700/60 bg-[#0d1117]">
+      {/* Header bar */}
+      <div className="flex items-center justify-between px-4 py-2 bg-[#161b22] border-b border-slate-700/60">
+        <span className="text-xs text-slate-400 font-mono select-none">
+          {language || "code"}
+        </span>
+        <button
+          onClick={copy}
+          className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors rounded px-2 py-1 hover:bg-slate-700/50"
+          aria-label="Copy code"
+        >
+          {copied
+            ? <><Check size={12} strokeWidth={1.5} className="text-green-400" /><span className="text-green-400">Copied!</span></>
+            : <><Copy size={12} strokeWidth={1.5} /> Copy</>}
+        </button>
+      </div>
+      <pre className="overflow-x-auto p-4 text-sm font-mono leading-relaxed">
+        <code>{language ? highlight(code, language) : code}</code>
       </pre>
     </div>
   );
