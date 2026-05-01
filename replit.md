@@ -15,6 +15,12 @@ Each GitHub Actions workflow (ci-cd.yml, social.yml, content.yml) calls `node sc
 ### Event types tracked
 `deploy`, `bot_run`, `question_added`, `blog_published`, `linkedin_post`, `linkedin_poll`, `analytics`, `maintenance`, `community`, `quality`, `learning_path`, `certification`, `voice_session`, `flashcard`, `challenge`
 
+### v1.1 upgrades
+- Each event now carries a `links: [{label, url}]` array with direct references to outputs (blog post, LinkedIn activity, live site, GH Actions run, data files, question channels)
+- `script/log-event.js` accepts `--links` JSON flag; auto-appends GitHub Actions run link from `GITHUB_RUN_ID`
+- `EventsDashboard.tsx` now has two views: **Timeline** (event cards with inline link chips) and **Audit Table** (full sortable table with CSV export, pagination, expandable detail rows)
+- All workflow event hooks updated to pass real resource URLs as links
+
 ## Active Recall System
 
 Active recall is embedded across all major learning surfaces. New files added:
