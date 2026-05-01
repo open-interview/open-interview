@@ -22,7 +22,7 @@ async function isUrlLive(postUrl, timeout = 8000) {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
-    const response = await fetch(postUrl, { method: 'HEAD', signal: controller.signal });
+    const response = await fetch(postUrl, { signal: controller.signal });
     clearTimeout(timeoutId);
     return response.ok;
   } catch {
@@ -31,15 +31,15 @@ async function isUrlLive(postUrl, timeout = 8000) {
 }
 
 async function getLatestUnsharedPost() {
-  // If specific URL provided, extract question_id and find that post
+  // If specific URL provided, extract post id and find that post
   if (specificUrl) {
-    // URL format: /posts/{question_id}/{slug}/
+    // URL format: /posts/{id}/{slug}/
     const match = specificUrl.match(/\/posts\/([^\/]+)\/([^\/]+)/);
     if (match) {
-      const questionId = match[1];
+      const postId = match[1];
       const result = await client.execute({
-        sql: `SELECT * FROM blog_posts WHERE question_id = ? LIMIT 1`,
-        args: [questionId]
+        sql: `SELECT * FROM blog_posts WHERE id = ? LIMIT 1`,
+        args: [postId]
       });
       if (result.rows.length > 0) {
         return result.rows[0];
@@ -57,12 +57,12 @@ async function getLatestUnsharedPost() {
   `);
 
   for (const post of result.rows) {
-    const postUrl = `${BLOG_BASE_URL}/posts/${post.question_id}/${post.slug}/`;
+    const postUrl = `${BLOG_BASE_URL}/posts/${post.id}/${post.slug}/`;
     const live = await isUrlLive(postUrl);
     if (live) {
       return post;
     }
-    console.log(`   ⚠️  Skipping ${post.question_id} — URL not live: ${postUrl}`);
+    console.log(`   ⚠️  Skipping ${post.id} — URL not live: ${postUrl}`);
   }
 
   return null;
@@ -158,8 +158,8 @@ async function main() {
     return;
   }
   
-  // URL structure: /posts/{question_id}/{slug}/
-  const postUrl = `${BLOG_BASE_URL}/posts/${post.question_id}/${post.slug}/`;
+  // URL structure: /posts/{id}/{slug}/
+  const postUrl = `${BLOG_BASE_URL}/posts/${post.id}/${post.slug}/`;
   const excerpt = generateExcerpt(post.introduction);
   const tags = formatTags(post.tags, post.channel, post.title, excerpt);
   
@@ -211,7 +211,7 @@ async function main() {
       }
     };
     writeOutput('has_post', 'true');
-    writeOutput('post_id', post.question_id);
+    writeOutput('post_id', post.id);
     writeOutput('title', post.title);
     writeOutput('url', postUrl);
     writeOutput('excerpt', excerpt);
