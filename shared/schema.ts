@@ -213,7 +213,7 @@ export const codingChallenges = pgTable("coding_challenges", {
 
 export const blogPosts = pgTable("blog_posts", {
   id: text("id").primaryKey(),
-  questionId: text("question_id").references(() => questions.id).unique(),
+  questionId: text("question_id").references(() => questions.id),
   title: text("title").notNull(),
   slug: text("slug").notNull().unique(),
   summary: text("summary"),
