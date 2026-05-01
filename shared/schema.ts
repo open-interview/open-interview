@@ -1,4 +1,4 @@
-import { pgTable, text, integer, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, serial, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -243,6 +243,8 @@ export const blogPosts = pgTable("blog_posts", {
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
   lastUpdated: text("last_updated"),
 });
+
+export const blogPostsQuestionIdIdx = uniqueIndex("blog_posts_question_id_idx").on(blogPosts.questionId);
 
 export const flashcards = pgTable("flashcards", {
   id: text("id").primaryKey(),

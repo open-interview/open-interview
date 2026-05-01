@@ -10,6 +10,7 @@
 
 import 'dotenv/config';
 import { dbClient as db } from './db/pg-client.js';
+import opencode from './ai/providers/opencode.js';
 // Channels suitable for voice interviews
 const VOICE_CHANNELS = [
   'behavioral', 'system-design', 'sre', 'devops', 
@@ -112,14 +113,6 @@ async function main() {
 }
 
 async function generateVoiceKeywords(content) {
-  // Use OpenAI or Anthropic API
-  const apiKey = process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY;
-  
-  if (!apiKey) {
-    console.error('No API key found. Set OPENAI_API_KEY or ANTHROPIC_API_KEY');
-    return null;
-  }
-  
   const prompt = `Analyze this interview question for voice interview practice.
 
 Question: "${content.question}"
@@ -138,72 +131,15 @@ Guidelines for keywords:
 - Be comprehensive - a candidate mentioning these keywords demonstrates understanding
 
 Return ONLY valid JSON (no markdown, no explanation):
-{
-  "suitable": true,
-  "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5", "keyword6", "keyword7", "keyword8"]
-}`;
+{"suitable": true, "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5", "keyword6", "keyword7", "keyword8"]}`;
 
   try {
-    let response;
-    
-    if (process.env.OPENAI_API_KEY) {
-      response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.3,
-          max_tokens: 500
-        })
-      });
-      
-      const data = await response.json();
-      const text = data.choices?.[0]?.message?.content || '';
-      return parseJson(text);
-      
-    } else if (process.env.ANTHROPIC_API_KEY) {
-      response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': process.env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: 'claude-3-haiku-20240307',
-          max_tokens: 500,
-          messages: [{ role: 'user', content: prompt }]
-        })
-      });
-      
-      const data = await response.json();
-      const text = data.content?.[0]?.text || '';
-      return parseJson(text);
-    }
-    
+    const raw = await opencode.call(prompt);
+    return opencode.parseResponse(raw);
   } catch (err) {
-    console.error('API error:', err.message);
+    console.error('OpenCode error:', err.message);
     return null;
   }
-  
-  return null;
-}
-
-function parseJson(text) {
-  try {
-    // Try to extract JSON from the response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-  } catch (e) {
-    // Ignore parse errors
-  }
-  return null;
 }
 
 function sleep(ms) {

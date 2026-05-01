@@ -1320,12 +1320,13 @@ graph LR
 `;
 
   const envVars = [
-    { name: 'SQLITE_URL', desc: 'SQLite database file URL (e.g. file:local.db)', required: false },
-    { name: 'QDRANT_URL', desc: 'Qdrant vector database URL', required: true },
-    { name: 'QDRANT_API_KEY', desc: 'Qdrant API key', required: true },
-    { name: 'OPENAI_API_KEY', desc: 'OpenAI API key for AI features', required: true },
-    { name: 'ANTHROPIC_API_KEY', desc: 'Anthropic API key (Claude)', required: false },
-    { name: 'GA_MEASUREMENT_ID', desc: 'Google Analytics ID', required: false },
+    { name: 'DATABASE_URL', desc: 'PostgreSQL connection string', required: true },
+    { name: 'QDRANT_URL', desc: 'Qdrant vector database URL', required: false },
+    { name: 'QDRANT_API_KEY', desc: 'Qdrant API key', required: false },
+    { name: 'BLOG_BASE_URL', desc: 'Base URL for the blog (e.g. https://open-interview.github.io)', required: false },
+    { name: 'LINKEDIN_ACCESS_TOKEN', desc: 'LinkedIn OAuth token for publishing', required: false },
+    { name: 'LINKEDIN_PERSON_URN', desc: 'LinkedIn person URN (urn:li:person:...)', required: false },
+    { name: 'GA_MEASUREMENT_ID', desc: 'Google Analytics measurement ID', required: false },
   ];
 
   return (

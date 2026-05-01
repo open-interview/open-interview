@@ -349,7 +349,7 @@ async function getAllBlogPosts() {
 
 // Save blog post as MDX file
 function savePostAsMDX(post) {
-  const outDir = path.join(path.dirname(new URL(import.meta.url).pathname), '../content/posts');
+  const outDir = path.join(process.cwd(), 'content/posts');
   fs.mkdirSync(outDir, { recursive: true });
 
   const frontmatterObj = {
@@ -389,66 +389,6 @@ function savePostAsMDX(post) {
 
   const filename = `${post.id}--${post.blogSlug}.mdx`;
   fs.writeFileSync(path.join(outDir, filename), fullFrontmatter + '\n' + body, 'utf8');
-}
-    return s;
-  }
-
-  const lines = ['---'];
-  lines.push(`id: ${post.id}`);
-  lines.push(`title: ${yamlStr(post.blogTitle)}`);
-  lines.push(`slug: ${post.blogSlug}`);
-  lines.push(`channel: ${post.channel}`);
-  lines.push(`difficulty: ${post.difficulty}`);
-  const tags = (post.tags || []).map(t => JSON.stringify(t)).join(', ');
-  lines.push(`tags: [${tags}]`);
-  lines.push(`createdAt: ${post.createdAt}`);
-  if (post.funFact) lines.push(`funFact: ${yamlStr(post.funFact)}`);
-  if (post.diagram) {
-    lines.push('diagram: |');
-    post.diagram.split('\n').forEach(l => lines.push('  ' + l));
-  }
-  if (post.images && post.images.length) {
-    lines.push('images:');
-    post.images.forEach(img => {
-      lines.push(`  - url: ${img.url}`);
-      lines.push(`    alt: ${yamlStr(img.alt || '')}`);
-    });
-  } else {
-    lines.push('images: []');
-  }
-  if (post.sources && post.sources.length) {
-    lines.push('sources:');
-    post.sources.forEach(s => {
-      lines.push(`  - title: ${yamlStr(s.title)}`);
-      lines.push(`    url: ${s.url}`);
-      lines.push(`    type: ${s.type}`);
-    });
-  } else {
-    lines.push('sources: []');
-  }
-  lines.push('---');
-  const frontmatter = lines.join('\n');
-
-  const parts = [];
-  if (post.blogIntro) parts.push(`> **Picture this:** ${post.blogIntro}\n`);
-  (post.blogSections || []).forEach(sec => {
-    parts.push(`## ${sec.heading}\n`);
-    parts.push(sec.content + '\n');
-  });
-  if (post.funFact) parts.push(`> 💡 **Did you know?** ${post.funFact}\n`);
-  if (post.sources && post.sources.length) {
-    parts.push('## References\n');
-    post.sources.forEach((s, i) => parts.push(`${i + 1}. [${s.title}](${s.url})`));
-    parts.push('');
-  }
-  if (post.blogConclusion) {
-    parts.push('## Wrapping Up\n');
-    parts.push(post.blogConclusion + '\n');
-  }
-  const body = parts.join('\n');
-
-  const filename = `${post.id}--${post.blogSlug}.mdx`;
-  fs.writeFileSync(path.join(outDir, filename), frontmatter + '\n\n' + body, 'utf8');
 }
 
 async function saveBlogPost(questionId, blogContent, question, svgContent = {}) {
@@ -1759,14 +1699,7 @@ async function main() {
   console.log('=== 🚀 Blog Generator (LangGraph) ===\n');
   if (dryRun) console.log('🔍 DRY RUN MODE - no DB writes\n');
 
-  if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY && !process.env.OPENROUTER_API_KEY) {
-    console.error('❌ No AI API key configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or OPENROUTER_API_KEY.');
-    process.exit(1);
-  }
-  
-  const aiProvider = process.env.ANTHROPIC_API_KEY ? 'Anthropic' : 
-                     process.env.OPENROUTER_API_KEY ? 'OpenRouter' : 'OpenAI';
-  console.log(`🤖 AI Provider: ${aiProvider}`);
+  console.log('🤖 AI Provider: OpenCode (no API key required)');
 
   if (htmlOnly && !process.env.DATABASE_URL) {
     // Fallback: load from MDX files in content/posts/, then data/blog-posts.json

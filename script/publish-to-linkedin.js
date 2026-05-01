@@ -495,17 +495,7 @@ async function main() {
   // Validate environment
   validateEnvironment();
   
-  // Check AI API key
-  if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY && !process.env.OPENROUTER_API_KEY) {
-    console.error('❌ No AI API key configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or OPENROUTER_API_KEY.');
-    writeGitHubOutput('posted', 'false');
-    writeGitHubOutput('error', 'No AI API key configured');
-    process.exit(1);
-  }
-  
-  const aiProvider = process.env.ANTHROPIC_API_KEY ? 'Anthropic' : 
-                     process.env.OPENROUTER_API_KEY ? 'OpenRouter' : 'OpenAI';
-  console.log(`🤖 AI Provider: ${aiProvider}`);
+  console.log('🤖 AI Provider: OpenCode (no API key required)');
   
   // Validate token
   await validateToken();
