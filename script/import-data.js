@@ -96,8 +96,10 @@ async function main() {
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
         ON CONFLICT (id) DO NOTHING`,
         [
-          p.id, p.questionId, p.title, p.slug, p.introduction, p.sections, p.conclusion,
-          p.metaDescription, p.channel, p.difficulty, p.tags, p.diagram, p.quickReference,
+          p.id, p.questionId, p.blogTitle || p.title, p.blogSlug || p.slug, 
+          p.blogIntro || p.introduction, p.blogSections || p.sections, 
+          p.blogConclusion || p.conclusion, p.blogMeta || p.metaDescription, 
+          p.channel, p.difficulty, p.tags, p.diagram, p.quickReference,
           p.glossary, p.realWorldExample, p.funFact, p.sources, p.socialSnippet,
           p.diagramType, p.diagramLabel, p.images, p.svgContent,
           p.createdAt, p.publishedAt ?? null,

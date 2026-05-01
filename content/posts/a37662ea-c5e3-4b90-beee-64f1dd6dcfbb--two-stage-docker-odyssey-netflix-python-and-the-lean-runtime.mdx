@@ -1,0 +1,141 @@
+---
+id: a37662ea-c5e3-4b90-beee-64f1dd6dcfbb
+title: 'Two-Stage Docker Odyssey: Netflix, Python, and the Lean Runtime'
+slug: two-stage-docker-odyssey-netflix-python-and-the-lean-runtime
+channel: devops
+difficulty: beginner
+tags:
+  - dockerfile
+  - compose
+  - multi-stage
+createdAt: '2026-05-01T09:18:19.416Z'
+funFact: 'Battle scars: hidden build artifacts can sneak into final images if COPY paths mis-specify; always validate paths between builder and runtime stages.'
+diagram: |-
+  flowchart TD
+    A[Source Code] --> B[Builder Stage: compile C extension]
+    B --> C[Artifacts output to /out]
+    C --> D[Runtime Stage: lean image]
+    D --> E[Final image with app and deps]
+    E --> F[Docker Compose: web + redis]
+    F --> G[HEALTHCHECK verifies /health]
+images:
+  - url: /images/pixel-q-23254.svg
+    alt: 'Two-Stage Docker Odyssey: Netflix, Python, and the Lean Runtime - Pixel Art Illustration'
+    caption: Pixel art illustration
+    placement: after-intro
+sources:
+  - title: Netflix VMAF Dockerfile
+    url: https://github.com/Netflix/vmaf/blob/master/Dockerfile
+    type: article
+  - title: 'Docker: HEALTHCHECK'
+    url: https://docs.docker.com/engine/reference/builder/#healthcheck
+    type: documentation
+  - title: Docker Compose getting started
+    url: https://docs.docker.com/compose/gettingstarted/
+    type: documentation
+  - title: Dockerfile Best Practices
+    url: https://docs.docker.com/develop/develop-images/dockerfile_best-practices/
+    type: documentation
+  - title: Python 3.11 docs
+    url: https://docs.python.org/3.11/
+    type: documentation
+  - title: Extending Python
+    url: https://docs.python.org/3/extending/extending.html
+    type: documentation
+  - title: Redis getting started
+    url: https://redis.io/docs/getting-started/
+    type: documentation
+  - title: Docker (Wikipedia)
+    url: https://en.wikipedia.org/wiki/Docker_(software)
+    type: documentation
+  - title: 'Kubernetes: Service'
+    url: https://kubernetes.io/docs/concepts/services-networking/service/
+    type: documentation
+  - title: 'AWS ECS: Docker basics'
+    url: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/docker-basics.html
+    type: documentation
+---
+> **Picture this:** It was 3am when Netflix faced a brutal wake-up call: shipping a Python app with a demanding C extension without bloating the container. The answer was a two-stage Dockerfile that builds the C core in a builder stage and then copies only the artifacts into a lean runtime image — a pattern Netflix documented in the Netflix VMAF Dockerfile [1]. This approach becomes a blueprint for modern containers: build heavy stuff once, ship a tiny battle-tested runtime [2]. You’ll see how this idea translates to a Python 3.11 Flask app, with a docker-compose setup that runs alongside Redis, exposes port 5000, and keeps security tight by running as a non-root user [3].
+
+## Foundation from Netflix
+
+Building on Netflix’s approach, multi-stage builds separate build-time artifacts from the final runtime, dramatically reducing image size and attack surface while preserving reproducibility [2]. In practice, the builder stage installs compilers, compiles the C extension, and exports artifacts to a shared location for the runtime stage to consume. The runtime stage then installs just the necessary Python dependencies, copies the pre-built artifacts, switches to a non-root user for security, and configures a HEALTHCHECK to verify the app health in production [3].
+
+```dockerfile
+FROM python:3.11-slim AS builder
+RUN apt-get update && apt-get install -y build-essential
+WORKDIR /app
+COPY . /app
+RUN python setup.py build_ext --inplace
+
+FROM python:3.11-slim AS runtime
+RUN useradd -m appuser
+WORKDIR /app
+COPY --from=builder /app /app
+RUN pip install --no-cache-dir -r requirements.txt
+USER appuser
+ENV PORT=5000
+HEALTHCHECK --interval=30s --timeout=5s CMD curl -fs http://localhost:5000/health || exit 1
+CMD ["python", "app.py"]
+```
+
+```yaml
+version: '3.8'
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis:6379
+  redis:
+    image: redis:6-alpine
+```
+
+Reproducibility and isolation matter here: the builder artifacts are independent of the runtime, so upgrades to the C extension or Python tooling don’t drag the entire runtime image up in size [2].
+
+## A Practical Flask + C Extension
+
+This pattern shines when a Flask app depends on a C extension for performance. The story translates to a clean two-stage Dockerfile: the builder stage compiles the C code and collects artifacts in /out, while the runtime stage copies those artifacts, installs Python deps, and runs the app as a non-root user on port 5000 with a HEALTHCHECK. The docker-compose setup ensures Redis is available for caching or session storage, mirroring real-world microservice deployments where a lightweight API container coexists with data stores [4].
+
+Code highlights:
+- Build-time isolation: build tools and compilers live only in the builder stage [2]
+- Runtime lean: final image excludes build tools, reducing surface area [2]
+- Non-root security: app runs as a dedicated non-root user [5]
+- Observability: HEALTHCHECK ensures quick detection of issues in production [3]
+
+Questions you’ll validate locally include: Can the C extension compile in the builder stage? Does the Flask app respond on port 5000? Is Redis reachable from the web container? Can the health endpoint report status reliably through the HEALTHCHECK? These are the kinds of checks Docker Compose and container health checks are designed to govern [4][3].
+
+## Verification, Testing, and Caveats
+
+Verification and testing become ritual: build, run, observe, adjust. Start by building and bringing up the stack with docker-compose. Then verify containers are reachable, and the health endpoint reports healthy [4]. If the C extension isn’t found at runtime, confirm the /out path was populated in the builder stage and that COPY --from=builder /out /app in the runtime stage actually brings those artifacts into the final image [2].
+
+Key commands:
+- docker-compose build
+- docker-compose up -d
+- docker-compose ps
+- curl -sS http://localhost:5000/health
+- docker exec -u appuser web-app pytest || true  # if tests exist in container
+
+For production-grade pipelines, also consider caching strategies to speed up rebuilds and separating testing into a dedicated stage to avoid leaking test artifacts into the final image [2][5].
+
+> 💡 **Did you know?** Battle scars: hidden build artifacts can sneak into final images if COPY paths mis-specify; always validate paths between builder and runtime stages.
+
+## References
+
+1. [Netflix VMAF Dockerfile](https://github.com/Netflix/vmaf/blob/master/Dockerfile)
+2. [Docker: HEALTHCHECK](https://docs.docker.com/engine/reference/builder/#healthcheck)
+3. [Docker Compose getting started](https://docs.docker.com/compose/gettingstarted/)
+4. [Dockerfile Best Practices](https://docs.docker.com/develop/develop-images/dockerfile_best-practices/)
+5. [Python 3.11 docs](https://docs.python.org/3.11/)
+6. [Extending Python](https://docs.python.org/3/extending/extending.html)
+7. [Redis getting started](https://redis.io/docs/getting-started/)
+8. [Docker (Wikipedia)](https://en.wikipedia.org/wiki/Docker_(software))
+9. [Kubernetes: Service](https://kubernetes.io/docs/concepts/services-networking/service/)
+10. [AWS ECS: Docker basics](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/docker-basics.html)
+
+## Wrapping Up
+
+Netflix’s two-stage Docker trick isn’t just clever; it’s a practical discipline. Build heavy, ship light, secure, and observable. Apply the same rhythm to your Flask apps and C extensions, and the deployment dance becomes predictable, fast, and resilient.

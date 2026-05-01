@@ -1,0 +1,177 @@
+---
+id: 236d78e6-75aa-4bd2-a8b3-d4714dca9618
+title: 'Drift, Gates, and Cross-Account Terraform: A Real-World Journey'
+slug: drift-gates-and-cross-account-terraform-a-real-world-journey
+channel: terraform
+difficulty: advanced
+tags:
+  - terraform
+createdAt: '2026-05-01T09:04:19.485Z'
+funFact: Chaos engineering originated as a way to learn from failures by injecting faults into production-like environments (Netflix helped popularize the approach).
+diagram: |-
+  flowchart TD
+    A[Two AWS providers: dev & prod] --> B[Central EKS module]
+    B --> C[Plan Dev (terraform plan -var-file dev.tfvars)]
+    B --> D[Plan Prod (terraform plan -var-file prod.tfvars)]
+    C --> E[Export plan to JSON]
+    D --> E
+    E --> F[OPA evaluate]
+    F -- Deny --> G[Plan blocked]
+    F -- Allow --> H[Apply changes per account]
+    H --> I[Drift checks across accounts]
+    I --> J[Reporting & remediation]
+images:
+  - url: /images/pixel-q-3437.svg
+    alt: 'Drift, Gates, and Cross-Account Terraform: A Real-World Journey - Pixel Art Illustration'
+    caption: Pixel art illustration
+    placement: after-intro
+  - url: /images/pixel-q-3437-3.svg
+    alt: 'Drift, Gates, and Cross-Account Terraform: A Real-World Journey - Illustration'
+    caption: Pixel art illustration
+    placement: mid-content
+sources:
+  - title: Reduce security risks from IaC drift in multi-Region AWS deployments with Terraform
+    url: https://aws.amazon.com/blogs/infrastructure-and-automation/reduce-security-risks-from-iac-drift-in-multi-region-aws-deployments-with-terraform/
+    type: article
+  - title: Provider alias - Terraform by HashiCorp
+    url: https://www.terraform.io/language/providers/configuration#alias
+    type: documentation
+  - title: Getting started with Amazon EKS
+    url: https://docs.aws.amazon.com/eks/latest/userguide/getting-started.html
+    type: documentation
+  - title: Open Policy Agent - Policy Language (rego)
+    url: https://www.openpolicyagent.org/docs/latest/policy-language/
+    type: documentation
+  - title: Simian Army
+    url: https://github.com/Netflix/SimianArmy
+    type: documentation
+  - title: Chaos engineering
+    url: https://en.wikipedia.org/wiki/Chaos_engineering
+    type: documentation
+  - title: Terraform  AWS EBS Volume
+    url: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ebs_volume
+    type: documentation
+  - title: Terraform Modules
+    url: https://registry.terraform.io/docs/modules/index.html
+    type: documentation
+  - title: Multiple Providers in Terraform
+    url: https://www.terraform.io/language/providers/configuration#multiple-providers
+    type: documentation
+  - title: DigitalOcean Community Tutorials
+    url: https://www.digitalocean.com/community/tutorials
+    type: documentation
+  - title: Drift detection in AWS CloudFormation
+    url: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/drift-detection.html
+    type: documentation
+---
+> **Picture this:** In a world of multi-account AWS deployments, IaC drift threatens security and reliability. AWS itself wrestled drift across accounts and regions, a wake‑up call that echoes for any team managing Terraform across environments [1]. Picture this: plans slip past gates, environments diverge, and the control plane starts to look like a broken compass. This tale traces how a cross-account provisioning approach evolves from a risky experiment into a governed, observable pattern. Readers will watch governance gates, modular boundaries, and drift checks converge into a practical playbook. [1]
+
+## Hook: AWS’s Wake‑Up Call
+
+Building on this real-world pressure, consider the moment when drift was no longer a theoretical risk but a concrete threat to security and compliance. AWS’s experiences with multi-account, multi-region deployments highlight how cross-account drift can undermine governance if left unchecked [1]. The takeaway isn’t fear; it's a call to design for visibility, repeatability, and auditable changes across accounts. This sets the stage for a journey from scattered configurations to a disciplined deployment pattern. [1]
+
+## Discovery: Two Accounts, One Framework
+
+The journey begins with a design that embraces separation of concerns without fragmenting control. Terraform provider aliases enable targeting two AWS accounts (dev and prod) within a single configuration. This lets teams apply the same module or workflow to different accounts while keeping credentials and state isolated. A central EKS module can consume these aliases, then be instantiated per account. See provider aliases documentation for guidance on configuring multiple providers within one repo [2].
+
+Code sketch:
+
+```hcl
+provider "aws" {
+  alias  = "dev"
+  region = "us-west-2"
+}
+provider "aws" {
+  alias  = "prod"
+  region = "us-west-2"
+}
+
+module "eks_dev" {
+  source    = "./modules/eks"
+  providers = { aws = aws.dev }
+  cluster_name = "dev-eks"
+}
+
+module "eks_prod" {
+  source    = "./modules/eks"
+  providers = { aws = aws.prod }
+  cluster_name = "prod-eks"
+}
+```
+
+Backends, state isolation, and explicit module boundaries ensure drift doesn’t silently migrate into production. [2] [3]
+
+## Bridge: Policy as Code Gate
+
+With two accounts, policy gates become essential. An OPA policy can gate plans before they reach apply, blocking unencrypted EBS volumes or privileged pods. This is a concrete embodiment of “policy as code” that enforces encryption and least privilege across both dev and prod migrations. The core idea: if a plan attempts to create an unencrypted AWS EBS volume or a privileged container, deny the plan. OPA’srego language provides a flexible mechanism to implement this gate [5].
+
+OPA snippet (unchanged for clarity):
+
+```rego
+package terraform.policy
+
+deny[msg] {
+  vol := input.resource_changes[_]
+  vol.resource_type == "aws_ebs_volume"
+  vol.change.after.encrypted == false
+  msg = "EBS volumes must be encrypted"
+}
+
+deny[msg] {
+  pod := input.resource_changes[_]
+  pod.resource_type == "kubernetes_pod"
+  pod.change.after.spec.containers[_].security_context.privileged == true
+  msg = "Privileged containers are not allowed"
+}
+```
+
+Implement CI steps that emit a JSON plan, feed it to OPA, and fail early if either rule is violated. [5]
+
+## Momentum: CI Plan + Policy Execution
+
+Translate plans into a policy‑checkable form, then gate before apply. A practical CI flow runs plan for each alias, exports a JSON plan, and feeds it into OPA. If any deny verdicts appear, the pipeline stops, preventing drift into prod. The pipeline typically includes:
+- terraform init and plan for dev and prod in parallel [2]
+- terraform show -json to produce plan.json
+- opa eval with the policy against plan.json [5]
+- if allowed, terraform apply per account; otherwise, fail fast and surface remediation guidance [3][4]
+
+This approach complements drift detection across accounts by weaving policy checks into the deployment lifecycle. [2][5]
+
+## Twist: Counterintuitive Insight
+
+The strongest gate isn’t merely encryption or privilege checks; it’s the visibility and feedback loop across accounts. Centralizing drift reporting and policy evaluation reduces blast radius and speeds remediation by surfacing misconfigurations before they become incidents. In practice, many teams discover that rules enforcing encryption appear in early development, but drift emerges later through untracked resources or unscoped modules. The twist: early, strict module boundaries and auditable provider configurations reduce later friction when gates actually catch drift. [7][8]
+
+## Real-World Proof
+
+Real companies have long wrestled with drift and resilience. Netflix, a pioneer in chaos engineering, open-sourced early tooling to simulate failures and stress test systems under controlled conditions, highlighting the necessity of intentional failure testing and governance in large-scale systems [6]. The broader chaos‑engineering movement emphasizes building resilience by exposing systems to fault in a measured way, a mindset that dovetails with policy‑driven IaC governance. See Netflix Simian Army repository for historical context and evolution of chaos tooling [6], and the broader discussion of chaos engineering for governance implications [7]. [6][7]
+
+## Payoff: What to Do Next
+
+Takeaway steps blend governance with practical deployment patterns:
+- Introduce provider aliases for dev/prod with explicit backends [2][3]
+- Centralize reusable modules and enforce clear module boundaries [9]
+- Wire OPA policy checks into CI to gate plans before apply [5]
+- Add drift detection and centralized reporting across accounts to close the loop [1]
+- Document battle scars and lessons learned to accelerate future iterations [7]
+
+The journey ends with a deployment cadence that treats drift as a first‑class concern, not a passing risk.
+
+> 💡 **Did you know?** Chaos engineering originated as a way to learn from failures by injecting faults into production-like environments (Netflix helped popularize the approach).
+
+## References
+
+1. [Reduce security risks from IaC drift in multi-Region AWS deployments with Terraform](https://aws.amazon.com/blogs/infrastructure-and-automation/reduce-security-risks-from-iac-drift-in-multi-region-aws-deployments-with-terraform/)
+2. [Provider alias - Terraform by HashiCorp](https://www.terraform.io/language/providers/configuration#alias)
+3. [Getting started with Amazon EKS](https://docs.aws.amazon.com/eks/latest/userguide/getting-started.html)
+4. [Open Policy Agent - Policy Language (rego)](https://www.openpolicyagent.org/docs/latest/policy-language/)
+5. [Simian Army](https://github.com/Netflix/SimianArmy)
+6. [Chaos engineering](https://en.wikipedia.org/wiki/Chaos_engineering)
+7. [Terraform  AWS EBS Volume](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ebs_volume)
+8. [Terraform Modules](https://registry.terraform.io/docs/modules/index.html)
+9. [Multiple Providers in Terraform](https://www.terraform.io/language/providers/configuration#multiple-providers)
+10. [DigitalOcean Community Tutorials](https://www.digitalocean.com/community/tutorials)
+11. [Drift detection in AWS CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/drift-detection.html)
+
+## Wrapping Up
+
+Drift becomes manageable when governance is baked into the deployment lifecycle. Gate plans early, share visibility widely, and treat cross-account drift as an operational risk to be owned by the whole team.

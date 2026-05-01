@@ -255,6 +255,7 @@ async function generateBlogNode(state) {
   // Find related questions using Vector DB for content enrichment
   let relatedQuestions = [];
   try {
+    await vectorDB.init();
     const searchQuery = `${state.question} ${state.tags?.join(' ') || ''}`;
     relatedQuestions = await vectorDB.findSimilar(searchQuery, {
       limit: 5,
@@ -290,9 +291,29 @@ async function generateBlogNode(state) {
     console.log(`   Sections: ${result.sections?.length || 0}`);
     console.log(`   Sources: ${result.sources?.length || 0}`);
     
+    // Run 5 quality enhancement agents in parallel
+    console.log(`   🤖 Running 5 quality enhancement agents in parallel...`);
+    const [caseValidation, vectorEnrichment, sourceQuality, codeExamples, practicalContent] = await Promise.all([
+      import('../agents/case-validator-agent.js').then(m => m.validateCase(state.realWorldCase)),
+      import('../agents/vector-enrichment-agent.js').then(m => m.enrichContent(result, state.question, state.channel)),
+      import('../agents/source-quality-agent.js').then(m => m.filterSources(result.sources || [])),
+      import('../agents/code-example-agent.js').then(m => m.generateCodeExamples(result, state.channel)),
+      import('../agents/practical-content-agent.js').then(m => m.addPracticalSections(result, state.channel))
+    ]);
+    
+    console.log(`   ✅ Case validation: ${caseValidation.valid ? 'PASS' : 'FAIL'} (score: ${caseValidation.score})`);
+    console.log(`   ✅ Vector enrichment: ${vectorEnrichment.enriched ? vectorEnrichment.relatedCount + ' additions' : 'none'}`);
+    console.log(`   ✅ Source quality: ${sourceQuality.filtered.length}/${result.sources?.length || 0} sources (avg: ${sourceQuality.avgScore})`);
+    console.log(`   ✅ Code examples: ${codeExamples.generated ? codeExamples.examples.length + ' generated' : 'none'}`);
+    console.log(`   ✅ Practical content: ${practicalContent.added ? practicalContent.additions.length + ' sections' : 'none'}`);
+    
+    // Merge enhancements into blog content
+    const enhancedSources = sourceQuality.filtered.length > 0 ? sourceQuality.filtered : result.sources;
+    
     return {
       blogContent: {
         ...result,
+        sources: enhancedSources,
         // Ensure real-world example uses our discovered case
         realWorldExample: state.realWorldCase ? {
           company: state.realWorldCase.company,
@@ -397,89 +418,45 @@ async function qualityGatesNode(state) {
  * Uses AI-powered scene selection for dynamic, contextual illustrations
  */
 async function validateImagesNode(state) {
-  console.log('\n🖼️ [GENERATE_IMAGES] Creating pixel art illustrations...');
+  console.log('\n🖼️ [GENERATE_IMAGES] Preparing image metadata...');
   
   if (!state.blogContent) {
     return { error: 'No blog content to validate' };
   }
+
+  // Skip actual image generation during content creation
+  // Images will be generated during static site generation
+  const images = [];
   
-  let images = state.blogContent.images || [];
-  console.log(`   Found ${images.length} existing images`);
+  // Add main hero image metadata
+  images.push({
+    url: `/images/pixel-${state.questionId || 'main'}.svg`,
+    alt: `${state.blogContent.title} - Pixel Art Illustration`,
+    caption: `Pixel art illustration`,
+    placement: 'after-intro'
+  });
   
-  // Filter to only keep local images (already generated SVGs)
-  let validImages = images.filter(img => img?.url && (img.url.startsWith('/images/') || img.url.startsWith('http')));
-  
-  // Generate new pixel art SVG images
-  console.log(`   🎮 Generating pixel art SVG illustrations...`);
-  
-  try {
-    // Main hero illustration (after intro)
-    const mainContent = [
-      state.blogContent.introduction || '',
-      ...(state.blogContent.sections || []).map(s => `${s.title || ''}\n${s.content || ''}`),
-      state.blogContent.conclusion || ''
-    ].join('\n');
-    
-    // Generate main pixel art illustration
-    const mainResult = await generatePixelIllustration(
-      state.blogContent.title || state.question,
-      mainContent,
-      `pixel-${state.questionId || 'main'}`,
-      { channel: state.channel }
-    );
-    
-    if (!mainResult?.filename) {
-      console.log(`   ❌ No filename generated for main result`);
-      return { error: 'Failed to generate output filename', qualityPassed: false };
-    }
-    
-    if (mainResult && mainResult.filename) {
-      validImages.push({
-        url: `/images/${mainResult.filename}`,
-        alt: `${state.blogContent.title} - Pixel Art Illustration`,
-        caption: `${mainResult.scene} scene (16-bit pixel art)`,
-        placement: 'after-intro'
+  // Add section image metadata for longer posts
+  const sections = state.blogContent.sections || [];
+  if (sections.length >= 4) {
+    const midIndex = Math.floor(sections.length / 2);
+    const midSection = sections[midIndex];
+    if (midSection) {
+      images.push({
+        url: `/images/pixel-${state.questionId || 'section'}-${midIndex}.svg`,
+        alt: `${midSection.title || state.blogContent.title} - Illustration`,
+        caption: `Pixel art illustration`,
+        placement: 'mid-content'
       });
-      console.log(`      - ${mainResult.filename}: ${mainResult.scene} scene`);
     }
-    
-    // Generate section-specific illustrations for longer posts
-    const sections = state.blogContent.sections || [];
-    if (sections.length >= 4) {
-      // Add illustration for the middle section
-      const midIndex = Math.floor(sections.length / 2);
-      const midSection = sections[midIndex];
-      if (midSection) {
-        const midResult = await generatePixelIllustration(
-          midSection.title || state.blogContent.title,
-          midSection.content || '',
-          `pixel-${state.questionId || 'section'}-${midIndex}`,
-          { channel: state.channel }
-        );
-        
-        if (midResult && midResult.filename) {
-          validImages.push({
-            url: `/images/${midResult.filename}`,
-            alt: `${midSection.title || state.blogContent.title} - Illustration`,
-            caption: `${midResult.scene} scene (16-bit pixel art)`,
-            placement: 'mid-content'
-          });
-          console.log(`      - ${midResult.filename}: ${midResult.scene} scene`);
-        }
-      }
-    }
-    
-    console.log(`   ✅ Generated ${validImages.length} pixel art illustrations`);
-    
-  } catch (error) {
-    console.log(`   ⚠️ Pixel art generation failed: ${error.message}`);
-    console.log(`   Stack: ${error.stack}`);
   }
+  
+  console.log(`   ✅ Prepared ${images.length} image placeholders (generation deferred)`);
   
   return {
     blogContent: {
       ...state.blogContent,
-      images: validImages
+      images
     }
   };
 }

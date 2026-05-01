@@ -94,32 +94,35 @@ async function validateSources(sources) {
   
   console.log(`   🔍 Validating ${sources.length} sources...`);
   
-  const validatedSources = [];
-  
-  for (const source of sources) {
-    if (!source.url || !source.title) continue;
-    
-    const isValid = await validateUrl(source.url);
-    if (isValid) {
-      validatedSources.push(source);
-      console.log(`   ✅ ${source.title.substring(0, 40)}...`);
-    } else {
-      // Determine reason: blocked (403/405) vs missing (404/other)
-      try {
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 3000);
-        const resp = await fetch(source.url, { method: 'HEAD', signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BlogBot/1.0)' } });
-        clearTimeout(tid);
-        if (resp.status === 403 || resp.status === 405) {
-          console.log(`   🚫 Removed (blocked): ${source.url}`);
-        } else {
-          console.log(`   ❌ Removed (404): ${source.url}`);
+  const validationResults = await Promise.all(
+    sources.map(async (source) => {
+      if (!source.url || !source.title) return null;
+      
+      const isValid = await validateUrl(source.url);
+      if (isValid) {
+        console.log(`   ✅ ${source.title.substring(0, 40)}...`);
+        return source;
+      } else {
+        // Determine reason: blocked (403/405) vs missing (404/other)
+        try {
+          const ctrl = new AbortController();
+          const tid = setTimeout(() => ctrl.abort(), 3000);
+          const resp = await fetch(source.url, { method: 'HEAD', signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BlogBot/1.0)' } });
+          clearTimeout(tid);
+          if (resp.status === 403 || resp.status === 405) {
+            console.log(`   🚫 Removed (blocked): ${source.url}`);
+          } else {
+            console.log(`   ❌ Removed (404): ${source.url}`);
+          }
+        } catch {
+          console.log(`   ❌ Removed (unreachable): ${source.url}`);
         }
-      } catch {
-        console.log(`   ❌ Removed (unreachable): ${source.url}`);
+        return null;
       }
-    }
-  }
+    })
+  );
+  
+  const validatedSources = validationResults.filter(s => s !== null);
   
   console.log(`   📊 Valid sources: ${validatedSources.length}/${sources.length}`);
   return validatedSources;
@@ -317,30 +320,42 @@ function loadPostsFromMDX() {
 // Get all existing blog posts
 async function getAllBlogPosts() {
   const result = await client.execute(`SELECT * FROM blog_posts ORDER BY created_at DESC`);
-  const dbPosts = result.rows.map(row => ({
-    id: row.id,
-    blogTitle: row.title,
-    blogSlug: row.slug,
-    blogIntro: row.introduction,
-    blogSections: row.sections ? JSON.parse(row.sections) : [],
-    blogConclusion: row.conclusion,
-    blogMeta: row.meta_description,
-    channel: row.channel,
-    difficulty: row.difficulty,
-    tags: row.tags ? JSON.parse(row.tags) : [],
-    diagram: row.diagram,
-    diagramType: row.diagram_type,
-    diagramLabel: row.diagram_label,
-    quickReference: row.quick_reference ? JSON.parse(row.quick_reference) : [],
-    glossary: row.glossary ? JSON.parse(row.glossary) : [],
-    realWorldExample: row.real_world_example ? JSON.parse(row.real_world_example) : null,
-    funFact: row.fun_fact,
-    sources: row.sources ? JSON.parse(row.sources) : [],
-    images: row.images ? JSON.parse(row.images) : [],
-    svgContent: row.svg_content ? JSON.parse(row.svg_content) : {},
-    socialSnippet: row.social_snippet ? JSON.parse(row.social_snippet) : null,
-    createdAt: row.created_at
-  }));
+  const dbPosts = result.rows.map(row => {
+    const safeJsonParse = (str, fallback) => {
+      if (!str) return fallback;
+      try {
+        return JSON.parse(str);
+      } catch (e) {
+        console.warn(`Failed to parse JSON for post ${row.id}:`, e.message);
+        return fallback;
+      }
+    };
+    
+    return {
+      id: row.id,
+      blogTitle: row.title,
+      blogSlug: row.slug,
+      blogIntro: row.introduction,
+      blogSections: safeJsonParse(row.sections, []),
+      blogConclusion: row.conclusion,
+      blogMeta: row.meta_description,
+      channel: row.channel,
+      difficulty: row.difficulty,
+      tags: safeJsonParse(row.tags, []),
+      diagram: row.diagram,
+      diagramType: row.diagram_type,
+      diagramLabel: row.diagram_label,
+      quickReference: safeJsonParse(row.quick_reference, []),
+      glossary: safeJsonParse(row.glossary, []),
+      realWorldExample: safeJsonParse(row.real_world_example, null),
+      funFact: row.fun_fact,
+      sources: safeJsonParse(row.sources, []),
+      images: safeJsonParse(row.images, []),
+      svgContent: safeJsonParse(row.svg_content, {}),
+      socialSnippet: safeJsonParse(row.social_snippet, null),
+      createdAt: row.created_at
+    };
+  });
   const dbIds = new Set(dbPosts.map(p => p.id));
   const mdxPosts = loadPostsFromMDX().filter(p => !dbIds.has(p.id));
   if (mdxPosts.length) console.log(`📂 Merged ${mdxPosts.length} MDX-only posts into DB results`);
@@ -1444,7 +1459,7 @@ function generateArticlePage(article, allArticles) {
     .slice(0, 3);
   
   // Images by placement
-  const images = article.images || [];
+  const images = Array.isArray(article.images) ? article.images : [];
   const imagesByPlacement = {};
   images.forEach(img => {
     if (img && img.url && img.placement) {
@@ -1754,7 +1769,7 @@ Sitemap: https://open-interview.github.io/sitemap.xml
 `);
     const sitemapUrlsFb = [
       `<url><loc>https://open-interview.github.io/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,
-      ...articles.map(a => `<url><loc>https://open-interview.github.io/posts/${a.id}/${a.blogSlug}/</loc><lastmod>${(a.createdAt||'').substring(0,10)}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>`)
+      ...articles.map(a => `<url><loc>https://open-interview.github.io/posts/${a.id}/${a.blogSlug}/</loc><lastmod>${String(a.createdAt||'').substring(0,10)}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>`)
     ].join('\n');
     fs.writeFileSync(path.join(OUTPUT_DIR, 'sitemap.xml'),
 `<?xml version="1.0" encoding="UTF-8"?>
@@ -1831,23 +1846,10 @@ ${sitemapUrlsFb}
           
           console.log(`   ✅ ${validatedSources.length} valid sources`);
           
-          // Images are now generated as SVGs in the blog-graph pipeline
+          // Images are deferred - metadata only, actual generation happens during static site build
           const svgContent = {};
           if (blogContent.images && blogContent.images.length > 0) {
-            console.log(`🖼️ ${blogContent.images.length} cartoon illustrations generated`);
-            for (const img of blogContent.images) {
-              if (img && img.url && img.url.startsWith('/images/') && img.url.endsWith('.svg')) {
-                const filename = img.url.replace('/images/', '');
-                const svgPath = path.join(OUTPUT_DIR, 'images', filename);
-                try {
-                  if (fs.existsSync(svgPath)) {
-                    svgContent[filename] = fs.readFileSync(svgPath, 'utf-8');
-                  }
-                } catch (err) {
-                  console.log(`   ⚠️ Could not read SVG ${filename}: ${err.message}`);
-                }
-              }
-            }
+            console.log(`🖼️ ${blogContent.images.length} image placeholders prepared (generation deferred)`);
           }
           
           console.log('💾 Saving to database...');
@@ -2008,7 +2010,7 @@ Sitemap: https://open-interview.github.io/sitemap.xml
 `);
   const sitemapUrls = [
     `<url><loc>https://open-interview.github.io/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,
-    ...articles.map(a => `<url><loc>https://open-interview.github.io/posts/${a.id}/${a.blogSlug}/</loc><lastmod>${(a.createdAt||'').substring(0,10)}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>`)
+    ...articles.map(a => `<url><loc>https://open-interview.github.io/posts/${a.id}/${a.blogSlug}/</loc><lastmod>${String(a.createdAt||'').substring(0,10)}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>`)
   ].join('\n');
   fs.writeFileSync(path.join(OUTPUT_DIR, 'sitemap.xml'),
 `<?xml version="1.0" encoding="UTF-8"?>

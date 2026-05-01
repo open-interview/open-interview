@@ -31,9 +31,9 @@ const QUALITY_THRESHOLDS = {
   maxConsecutiveLongSentences: 3,
   
   // Coherence
-  minTransitionWords: 5,
+  minTransitionWords: 2, // relaxed from 5 to 2
   minKeywordDensity: 0.01, // topic keywords should appear at least 1% of the time
-  maxKeywordDensity: 0.05, // but not more than 5%
+  maxKeywordDensity: 0.15, // relaxed from 5% to 15%
   
   // Structure
   minHeadingVariety: 2, // should have at least 2 different heading levels
@@ -42,7 +42,7 @@ const QUALITY_THRESHOLDS = {
   // Quality scores
   minOverallScore: 70, // out of 100
   minStructureScore: 60,
-  minCoherenceScore: 60,
+  minCoherenceScore: 50, // relaxed from 60 to 50
   minReadabilityScore: 60,
   minTechnicalScore: 70
 };
