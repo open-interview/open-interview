@@ -1,5 +1,20 @@
 # code-reels — Interview Prep Platform
 
+## Events Dashboard
+
+A static events tracking system for all GitHub Actions activity:
+
+- **`client/public/data/events.json`** — Static event log (committed to repo, served as static file)
+- **`script/log-event.js`** — Node.js script called by GitHub Actions after each significant step
+- **`client/src/pages/EventsDashboard.tsx`** — React page at `/events` with timeline + stats + chart
+- Route registered in `App.tsx` at `/events`; nav link added to Sidebar.tsx "Progress" section
+
+### How it works
+Each GitHub Actions workflow (ci-cd.yml, social.yml, content.yml) calls `node script/log-event.js` at the end of key jobs with `--type`, `--title`, `--status`, `--workflow`, `--description`, `--meta` flags. The script appends to events.json and the workflow commits it with `[skip ci]`. The static site is rebuilt on the next real push, picking up all events.
+
+### Event types tracked
+`deploy`, `bot_run`, `question_added`, `blog_published`, `linkedin_post`, `linkedin_poll`, `analytics`, `maintenance`, `community`, `quality`, `learning_path`, `certification`, `voice_session`, `flashcard`, `challenge`
+
 ## Active Recall System
 
 Active recall is embedded across all major learning surfaces. New files added:

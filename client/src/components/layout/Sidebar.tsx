@@ -14,7 +14,7 @@ import {
   Home, BookOpen, Award, Mic, Code, Target, Flame,
   Trophy, Bookmark, Brain, Coins, Layers,
   GraduationCap, BarChart3, ChevronLeft, ChevronRight,
-  Search, User, Info, Settings, Zap
+  Search, User, Info, Settings, Zap, Activity
 } from 'lucide-react';
 
 interface NavItem {
@@ -53,6 +53,7 @@ const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] =
     items: [
       { id: 'badges',    label: 'Badges',     icon: Trophy,    path: '/badges' },
       { id: 'bookmarks', label: 'Bookmarks',  icon: Bookmark,  path: '/bookmarks' },
+      { id: 'events',    label: 'Events Log', icon: Activity,  path: '/events' },
       { id: 'profile',   label: 'Profile',    icon: User,      path: '/profile' },
       { id: 'manage-subscriptions', label: 'My Subscriptions', icon: Settings, path: '/manage-subscriptions' },
       { id: 'about',     label: 'About',      icon: Info,      path: '/about' },

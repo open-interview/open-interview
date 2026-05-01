@@ -169,6 +169,28 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
         run: pnpm run vector:sync -- --mode=incremental || true
 
+      - name: Log quick-generate event
+        if: always()
+        run: |
+          STATUS=$([ "${{ job.status }}" = "success" ] && echo "success" || echo "failed")
+          TYPE="bot_run"
+          case "${{ matrix.task }}" in
+            questions)      TYPE="question_added" ;;
+            flashcards)     TYPE="flashcard" ;;
+            voice-sessions) TYPE="voice_session" ;;
+          esac
+          node script/log-event.js \
+            --type="$TYPE" \
+            --title="Quick-generate: ${{ matrix.task }}" \
+            --status="$STATUS" \
+            --workflow="content.yml" \
+            --description="Hourly quick-generate run for ${{ matrix.task }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main || true
+          git add client/public/data/events.json
+          git diff --cached --quiet || (git commit -m "chore: log quick-generate event [skip ci]" && git push)
+
   # ── Daily 2AM: ingest bots (all start from same baseline) ───────────────────
   ingest:
     name: 📥 Ingest (${{ matrix.bot }})
@@ -483,6 +505,25 @@ jobs:
             sleep 5; git reset --hard origin/main
           done
           echo "❌ Failed to push after $MAX_RETRIES attempts"; exit 1
+      - name: Log content pipeline event
+        if: always()
+        run: |
+          STATUS=$([ "${{ job.status }}" = "success" ] && echo "success" || echo "failed")
+          INGEST="${{ needs.ingest.result }}"
+          ENRICH="${{ needs.enrich.result }}"
+          node script/log-event.js \
+            --type=bot_run \
+            --title="Content pipeline completed" \
+            --status="$STATUS" \
+            --workflow="content.yml" \
+            --description="Full pipeline: ingest=$INGEST, enrich=$ENRICH — static data files updated" \
+            --meta="{\"ingest\":\"$INGEST\",\"enrich\":\"$ENRICH\",\"trigger\":\"${{ github.event_name }}\"}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main || true
+          git add client/public/data/events.json
+          git diff --cached --quiet || (git commit -m "chore: log content pipeline event [skip ci]" && git push)
+
       - name: Pipeline summary
         if: always()
         run: |
@@ -595,6 +636,23 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openinterview
         run: pnpm run generate:rss
+      - name: Log manual intake event
+        if: always()
+        run: |
+          STATUS=$([ "${{ job.status }}" = "success" ] && echo "success" || echo "failed")
+          node script/log-event.js \
+            --type=question_added \
+            --title="Manual question intake" \
+            --status="$STATUS" \
+            --workflow="content.yml" \
+            --description="Manual question added via workflow dispatch" \
+            --meta="{\"mode\":\"manual-intake\"}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main || true
+          git add client/public/data/events.json
+          git diff --cached --quiet || (git commit -m "chore: log intake event [skip ci]" && git push)
+
       - name: Trigger deploy
         uses: actions/github-script@v7
         with:

@@ -17,6 +17,7 @@ const WhatsNew = React.lazy(() => import("@/pages/WhatsNew"));
 const QuestionViewer = React.lazy(() => import("@/pages/QuestionViewer"));
 const Profile = React.lazy(() => import("@/pages/Profile"));
 const BotActivity = React.lazy(() => import("@/pages/BotActivity"));
+const EventsDashboard = React.lazy(() => import("@/pages/EventsDashboard"));
 const Badges = React.lazy(() => import("@/pages/Badges"));
 const TestSession = React.lazy(() => import("@/pages/TestSession"));
 const Tests = React.lazy(() => import("@/pages/Tests"));
@@ -144,6 +145,7 @@ function Router() {
         <Route path="/code/challenges">{() => { window.location.replace('/code'); return null; }}</Route>
         <Route path="/code/challenges/:id" component={ChallengeWorkspace} />
         <Route path="/bot-activity" component={BotActivity} />
+        <Route path="/events" component={EventsDashboard} />
         <Route path="/channels" component={Channels} />
         <Route path="/learning-paths" component={LearningPaths} />
         <Route path="/my-path" component={MyPath} />
