@@ -22,8 +22,44 @@ import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { generateLinkedInPost } from './ai/graphs/linkedin-graph.js';
+import pg from 'pg';
+
+const { Pool } = pg;
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  host: process.env.PGHOST,
+  port: process.env.PGPORT ? parseInt(process.env.PGPORT) : undefined,
+  user: process.env.PGUSER,
+  password: process.env.PGPASSWORD,
+  database: process.env.PGDATABASE,
+  connectionTimeoutMillis: 10000,
+});
+
+function convertPlaceholders(sql) {
+  let i = 0;
+  return sql.replace(/\?/g, () => `$${++i}`);
+}
+
+const client = {
+  execute: async (sqlOrObj) => {
+    const { sql, args } = typeof sqlOrObj === 'string'
+      ? { sql: sqlOrObj, args: [] }
+      : { sql: sqlOrObj.sql, args: sqlOrObj.args ?? [] };
+    let pgSql = convertPlaceholders(sql);
+    const normalised = pgSql.trim().toUpperCase();
+    const isInsert = normalised.startsWith('INSERT');
+    const hasReturning = normalised.includes('RETURNING');
+    if (isInsert && !hasReturning) {
+      pgSql = pgSql.replace(/;\s*$/, '') + ' RETURNING id';
+    }
+    const result = await pool.query(pgSql, args);
+    return { rows: result.rows, lastInsertRowid: result.rows[0]?.id ?? null };
+  },
+};
 
 // Constants
+const LINKEDIN_API_VERSION = process.env.LINKEDIN_API_VERSION || '202506';
 const LINKEDIN_API_URL = 'https://api.linkedin.com/rest/posts';
 const LINKEDIN_UPLOAD_URL = 'https://api.linkedin.com/rest/images?action=initializeUpload';
 const MAX_CONTENT_LENGTH = 3000;
@@ -91,6 +127,47 @@ function validateEnvironment() {
   }
   
   console.log('✅ Environment validation passed');
+}
+
+/**
+ * Validate LinkedIn access token
+ */
+async function validateToken() {
+  console.log('🔑 Validating LinkedIn access token...');
+  
+  const response = await fetch('https://api.linkedin.com/v2/userinfo', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'LinkedIn-Version': LINKEDIN_API_VERSION
+    }
+  });
+  
+  if (response.status === 401) {
+    console.error('❌ LinkedIn token expired. Generate a new token at: https://www.linkedin.com/developers/apps');
+    writeGitHubOutput('posted', 'false');
+    writeGitHubOutput('error', 'LinkedIn token expired');
+    process.exit(2);
+  }
+  
+  if (!response.ok) {
+    console.error(`⚠️ Token validation returned ${response.status}`);
+    return false;
+  }
+  
+  const data = await response.json();
+  console.log(`   ✅ Token valid for: ${data.name || 'user'}`);
+  
+  // Check expiry warning if env var is set
+  if (process.env.LINKEDIN_TOKEN_EXPIRY) {
+    const expiryDate = new Date(process.env.LINKEDIN_TOKEN_EXPIRY);
+    const daysLeft = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+    if (daysLeft <= 7) {
+      console.log(`   ⚠️ Token expires in ${daysLeft} days!`);
+    }
+  }
+  
+  return true;
 }
 
 /**
@@ -239,7 +316,7 @@ async function registerImageUpload() {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
-      'LinkedIn-Version': '202506'
+      'LinkedIn-Version': LINKEDIN_API_VERSION
     },
     body: JSON.stringify(payload)
   });
@@ -314,7 +391,7 @@ async function publishToLinkedInWithImage(content, imageAsset) {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
-      'LinkedIn-Version': '202506'
+      'LinkedIn-Version': LINKEDIN_API_VERSION
     },
     body: JSON.stringify(payload)
   });
@@ -354,7 +431,7 @@ async function publishToLinkedInArticle(content) {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
-      'LinkedIn-Version': '202506'
+      'LinkedIn-Version': LINKEDIN_API_VERSION
     },
     body: JSON.stringify(payload)
   });
@@ -391,10 +468,23 @@ function writeGitHubOutput(key, value) {
   }
 }
 
+async function logToPublishLog(postId, linkedInResult, publishedWithImage, error) {
+  try {
+    const now = new Date().toISOString();
+    await client.execute({
+      sql: `INSERT INTO linkedin_publish_log (blog_post_id, linkedin_post_id, published_at, with_image, post_type, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [postId, linkedInResult?.id || null, now, publishedWithImage ? 1 : 0, 'article', error?.message || null, now]
+    });
+  } catch (logErr) {
+    console.warn(`   ⚠️ Failed to log to publish log: ${logErr.message}`);
+  }
+}
+
 async function main() {
   console.log('═'.repeat(60));
   console.log('📢 LinkedIn Post Publisher');
   console.log('═'.repeat(60));
+  console.log(`LinkedIn API Version: ${LINKEDIN_API_VERSION}`);
   console.log(`Title: ${postTitle?.substring(0, 50)}...`);
   console.log(`URL: ${postUrl}`);
   console.log(`Channel: ${postChannel || 'N/A'}`);
@@ -404,6 +494,21 @@ async function main() {
   
   // Validate environment
   validateEnvironment();
+  
+  // Check AI API key
+  if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY && !process.env.OPENROUTER_API_KEY) {
+    console.error('❌ No AI API key configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or OPENROUTER_API_KEY.');
+    writeGitHubOutput('posted', 'false');
+    writeGitHubOutput('error', 'No AI API key configured');
+    process.exit(1);
+  }
+  
+  const aiProvider = process.env.ANTHROPIC_API_KEY ? 'Anthropic' : 
+                     process.env.OPENROUTER_API_KEY ? 'OpenRouter' : 'OpenAI';
+  console.log(`🤖 AI Provider: ${aiProvider}`);
+  
+  // Validate token
+  await validateToken();
   
   // Generate content using LangGraph pipeline
   console.log('\n🔄 Generating LinkedIn post content...');
@@ -425,6 +530,7 @@ async function main() {
     console.error('❌ Content generation failed:', genError.message);
     writeGitHubOutput('posted', 'false');
     writeGitHubOutput('error', genError.message);
+    await logToPublishLog(postUrl, null, false, genError);
     process.exit(1);
   }
   
@@ -432,6 +538,7 @@ async function main() {
     console.error('❌ Failed to generate LinkedIn post:', result.error);
     writeGitHubOutput('posted', 'false');
     writeGitHubOutput('error', result.error);
+    await logToPublishLog(postUrl, null, false, new Error(result.error));
     process.exit(1);
   }
   
@@ -444,6 +551,7 @@ async function main() {
     console.error('❌ Content validation failed:', contentValidation.reason);
     writeGitHubOutput('posted', 'false');
     writeGitHubOutput('error', contentValidation.reason);
+    await logToPublishLog(postUrl, null, false, new Error(contentValidation.reason));
     process.exit(1);
   }
   
@@ -471,6 +579,7 @@ async function main() {
     console.log('\n🏃 DRY RUN - Skipping actual publish');
     writeGitHubOutput('posted', 'false');
     writeGitHubOutput('dry_run', 'true');
+    await logToPublishLog(postUrl, null, false, null);
     console.log('\n✅ Dry run complete');
     return;
   }
@@ -491,10 +600,13 @@ async function main() {
       linkedInResult = await publishToLinkedInWithImage(content, asset);
       publishedWithImage = true;
       console.log('\n✅ Successfully published to LinkedIn with image!');
+      console.log('   📊 with_image=true recorded in publish output');
     } catch (imageError) {
       console.error('\n⚠️ Image upload failed:', imageError.message);
-      console.log('   Falling back to article link...');
-      
+      console.error('   Reason:', imageError.cause || 'Unknown');
+      console.log('   📝 Falling back to article link format (no image)');
+      console.log('   📊 with_image=false recorded in publish output');
+
       try {
         linkedInResult = await publishToLinkedInArticle(content);
         console.log('\n✅ Successfully published to LinkedIn (without image)');
@@ -502,6 +614,7 @@ async function main() {
         console.error('❌ Fallback publish also failed:', fallbackError.message);
         writeGitHubOutput('posted', 'false');
         writeGitHubOutput('error', fallbackError.message);
+        await logToPublishLog(postUrl, null, false, fallbackError);
         process.exit(1);
       }
     }
@@ -514,6 +627,7 @@ async function main() {
       console.error('❌ Publish failed:', publishError.message);
       writeGitHubOutput('posted', 'false');
       writeGitHubOutput('error', publishError.message);
+      await logToPublishLog(postUrl, null, false, publishError);
       process.exit(1);
     }
   }
@@ -521,6 +635,8 @@ async function main() {
   // Success output
   console.log(`   Post ID: ${linkedInResult.id}`);
   console.log(`   With Image: ${publishedWithImage}`);
+
+  await logToPublishLog(postUrl, linkedInResult, publishedWithImage, null);
   
   writeGitHubOutput('posted', 'true');
   writeGitHubOutput('linkedin_post_id', linkedInResult.id);
@@ -531,12 +647,13 @@ async function main() {
   console.log('═'.repeat(60));
 }
 
-main().catch(error => {
+main().catch(async error => {
   console.error('\n❌ Unexpected error:', error.message);
   if (error.stack) {
     console.error(error.stack);
   }
   writeGitHubOutput('posted', 'false');
   writeGitHubOutput('error', error.message);
+  await logToPublishLog(postUrl, null, false, error);
   process.exit(1);
 });

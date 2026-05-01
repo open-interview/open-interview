@@ -19,7 +19,6 @@ import 'dotenv/config';
 import fs from 'node:fs';
 import { dbClient } from './utils.js';
 import ai from './ai/index.js';
-import { generateBlogPost } from './ai/graphs/blog-graph.js';
 
 function writeGitHubOutput(key, value) {
   if (process.env.GITHUB_OUTPUT) {
@@ -35,6 +34,7 @@ function writeGitHubOutput(key, value) {
 }
 
 // Constants
+const LINKEDIN_API_VERSION = process.env.LINKEDIN_API_VERSION || '202506';
 const LINKEDIN_API_URL = 'https://api.linkedin.com/rest/posts';
 const API_TIMEOUT = 30000; // 30 seconds
 const MAX_RETRIES = 3;
@@ -137,7 +137,14 @@ async function fetchQuestion() {
     await dbClient.execute("ALTER TABLE questions ADD COLUMN status TEXT DEFAULT 'active'");
   }
 
-  let sql = "SELECT * FROM questions WHERE status = 'active'";
+  // Ensure linkedin_poll_at column exists
+  const hasLinkedinPollAt = cols.rows.some(r => r.name === 'linkedin_poll_at');
+  if (!hasLinkedinPollAt) {
+    console.log('⚠️ Adding missing linkedin_poll_at column to questions table...');
+    await dbClient.execute("ALTER TABLE questions ADD COLUMN linkedin_poll_at TEXT");
+  }
+
+  let sql = "SELECT * FROM questions WHERE status = 'active' AND linkedin_poll_at IS NULL";
   const args = [];
 
   if (questionId) {
@@ -146,31 +153,61 @@ async function fetchQuestion() {
   }
 
   if (channel) {
-    // Explicit channel override
     sql += ' AND channel = ?';
     args.push(channel);
   } else {
-    // Default: rotate across core topic channels
     const placeholders = DEFAULT_CHANNELS.map(() => '?').join(', ');
     sql += ` AND channel IN (${placeholders})`;
     args.push(...DEFAULT_CHANNELS);
   }
 
   if (difficulty) {
-    // Explicit difficulty override
     sql += ' AND difficulty = ?';
     args.push(difficulty);
   } else {
-    // Default: beginner or intermediate only
     const dPlaceholders = DEFAULT_DIFFICULTIES.map(() => '?').join(', ');
     sql += ` AND difficulty IN (${dPlaceholders})`;
     args.push(...DEFAULT_DIFFICULTIES);
   }
-  
-  // Get random question
+
   sql += ' ORDER BY RANDOM() LIMIT 1';
-  
-  const result = await dbClient.execute({ sql, args });
+
+  let result = await dbClient.execute({ sql, args });
+
+  // Fallback: if no unposted questions, reset those posted > 90 days ago
+  if (result.rows.length === 0) {
+    console.log('⚠️ No unposted questions found, falling back to questions posted > 90 days ago...');
+    sql = "SELECT * FROM questions WHERE status = 'active' AND linkedin_poll_at IS NOT NULL AND linkedin_poll_at < ?";
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const fallbackArgs = [ninetyDaysAgo];
+
+    if (questionId) {
+      sql += ' AND id = ?';
+      fallbackArgs.push(questionId);
+    }
+
+    if (channel) {
+      sql += ' AND channel = ?';
+      fallbackArgs.push(channel);
+    } else {
+      const placeholders = DEFAULT_CHANNELS.map(() => '?').join(', ');
+      sql += ` AND channel IN (${placeholders})`;
+      fallbackArgs.push(...DEFAULT_CHANNELS);
+    }
+
+    if (difficulty) {
+      sql += ' AND difficulty = ?';
+      fallbackArgs.push(difficulty);
+    } else {
+      const dPlaceholders = DEFAULT_DIFFICULTIES.map(() => '?').join(', ');
+      sql += ` AND difficulty IN (${dPlaceholders})`;
+      fallbackArgs.push(...DEFAULT_DIFFICULTIES);
+    }
+
+    sql += ' ORDER BY RANDOM() LIMIT 1';
+
+    result = await dbClient.execute({ sql, args: fallbackArgs });
+  }
   
   if (result.rows.length === 0) {
     throw new Error('No questions found matching criteria');
@@ -185,85 +222,19 @@ async function fetchQuestion() {
   return question;
 }
 
-function generateSlug(title) {
-  return title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').substring(0, 80);
-}
-
-/**
- * Look up a blog post for this question, generating one if missing
- */
 async function fetchBlogPostUrl(question) {
-  const qId = question.id;
-
-  // Check if blog post already exists
   try {
     const result = await dbClient.execute({
       sql: 'SELECT slug FROM blog_posts WHERE question_id = ? LIMIT 1',
-      args: [qId]
+      args: [question.id]
     });
     if (result.rows.length > 0 && result.rows[0].slug) {
-      console.log(`   ✅ Blog post found: ${qId}`);
-      return { url: `https://openstackdaily.github.io/posts/${qId}/${result.rows[0].slug}/`, isNew: false };
+      return { url: `${process.env.BLOG_BASE_URL || 'https://open-interview.github.io'}/posts/${question.id}/${result.rows[0].slug}/`, isNew: false };
     }
   } catch {
-    // blog_posts table query failed — continue to generate
+    // blog_posts table query failed — continue without URL
   }
-
-  // No blog post — generate one now
-  console.log('   📝 No blog post found — generating one...');
-  try {
-    const blogResult = await generateBlogPost(question);
-
-    if (!blogResult.success || !blogResult.blogContent) {
-      console.log('   ⚠️ Blog generation skipped or failed:', blogResult.skipReason || blogResult.error);
-      return { url: null, isNew: false };
-    }
-
-    const { blogContent } = blogResult;
-    const slug = generateSlug(blogContent.title);
-    const now = new Date().toISOString();
-
-    await dbClient.execute({
-      sql: `INSERT INTO blog_posts
-            (question_id, title, slug, introduction, sections, conclusion,
-             meta_description, channel, difficulty, tags, diagram, quick_reference,
-             glossary, real_world_example, fun_fact, sources, social_snippet,
-             diagram_type, diagram_label, images, svg_content, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT DO NOTHING`,
-      args: [
-        qId,
-        blogContent.title,
-        slug,
-        blogContent.introduction,
-        JSON.stringify(blogContent.sections || []),
-        blogContent.conclusion,
-        blogContent.metaDescription || null,
-        question.channel,
-        question.difficulty,
-        JSON.stringify(question.tags || []),
-        question.diagram || null,
-        JSON.stringify(blogContent.quickReference || []),
-        JSON.stringify(blogContent.glossary || []),
-        JSON.stringify(blogContent.realWorldExample || null),
-        blogContent.funFact || null,
-        JSON.stringify(blogContent.sources || []),
-        JSON.stringify(blogContent.socialSnippet || null),
-        blogContent.diagramType || null,
-        blogContent.diagramLabel || null,
-        JSON.stringify(blogContent.images || []),
-        JSON.stringify({}),
-        now
-      ]
-    });
-
-    console.log(`   ✅ Blog post saved: "${blogContent.title}"`);
-    const url = `https://openstackdaily.github.io/posts/${qId}/${slug}/`;
-    return { url, isNew: true };
-  } catch (err) {
-    console.warn('   ⚠️ Blog generation error:', err.message);
-    return { url: null, isNew: false };
-  }
+  return { url: null, isNew: false };
 }
 
 /**
@@ -286,7 +257,29 @@ async function generatePollContent(question) {
 
   // Enforce length limits
   const pollQuestion = result.pollQuestion.substring(0, MAX_POLL_QUESTION_LENGTH);
-  const options = result.options.slice(0, MAX_POLL_OPTIONS).map(o => String(o).substring(0, 30));
+  const rawOptions = result.options.slice(0, MAX_POLL_OPTIONS);
+  const options = [];
+  let truncated = 0;
+
+  for (const opt of rawOptions) {
+    const text = String(opt);
+    if (text.length > 30) {
+      options.push(text.substring(0, 27) + '...');
+      truncated++;
+    } else {
+      options.push(text);
+    }
+  }
+
+  if (truncated > 0) {
+    console.log(`   ⚠️ Truncated ${truncated} option(s) to fit 30-char limit`);
+  }
+
+  // Validation before API call
+  const invalidOptions = options.filter(o => o.length > 30);
+  if (invalidOptions.length > 0) {
+    throw new Error(`Poll options exceed 30 chars: ${invalidOptions.map(o => `"${o}" (${o.length} chars)`).join(', ')}`);
+  }
 
   console.log(`   Poll question: ${pollQuestion}`);
   options.forEach((o, i) => console.log(`   ${i + 1}. ${o}${i === result.correctIndex ? ' (correct)' : ''}`));
@@ -354,7 +347,17 @@ async function parseLinkedInError(response) {
  */
 /**
  * Map poll duration hours to LinkedIn Posts API duration enum
+ * LinkedIn supports: ONE_DAY (24h), THREE_DAYS (72h), SEVEN_DAYS (168h), FOURTEEN_DAYS (336h)
  */
+const POLL_DURATION_MAP = {
+  ONE_DAY: 24,
+  THREE_DAYS: 72,
+  SEVEN_DAYS: 168,
+  FOURTEEN_DAYS: 336,
+};
+
+const VALID_DURATIONS = Object.keys(POLL_DURATION_MAP);
+
 function pollDurationEnum(hours) {
   if (hours <= 24) return 'ONE_DAY';
   if (hours <= 72) return 'THREE_DAYS';
@@ -362,8 +365,22 @@ function pollDurationEnum(hours) {
   return 'FOURTEEN_DAYS';
 }
 
+function validatePollDurationEnum(durationEnum) {
+  if (!VALID_DURATIONS.includes(durationEnum)) {
+    console.warn(`   ⚠️ Invalid poll duration: ${durationEnum}, defaulting to ONE_WEEK`);
+    return 'SEVEN_DAYS';
+  }
+  return durationEnum;
+}
+
 async function publishPollToLinkedIn(content) {
   console.log('\n📤 Publishing poll to LinkedIn...');
+
+  // Validate all option lengths before API call
+  const invalidOptions = content.options.filter(o => o.length > 30);
+  if (invalidOptions.length > 0) {
+    throw new Error(`Poll options exceed LinkedIn 30-char limit: ${invalidOptions.map(o => `"${o}" (${o.length} chars)`).join(', ')}`);
+  }
 
   // LinkedIn Posts API (/rest/posts) supports POLL; UGC API does not
   const payload = {
@@ -380,7 +397,7 @@ async function publishPollToLinkedIn(content) {
         question: content.question,
         options: content.options.map(option => ({ text: option })),
         settings: {
-          duration: pollDurationEnum(pollDuration)
+          duration: validatePollDurationEnum(pollDurationEnum(pollDuration))
         }
       }
     },
@@ -396,7 +413,7 @@ async function publishPollToLinkedIn(content) {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
-      'LinkedIn-Version': '202506',
+      'LinkedIn-Version': LINKEDIN_API_VERSION,
       'X-Restli-Protocol-Version': '2.0.0'
     },
     body: JSON.stringify(payload)
@@ -425,25 +442,38 @@ async function main() {
   console.log('═'.repeat(60));
   console.log('📊 LinkedIn Poll Publisher');
   console.log('═'.repeat(60));
+  console.log(`LinkedIn API Version: ${LINKEDIN_API_VERSION}`);
   console.log(`Question ID: ${questionId || 'Random'}`);
   const channelLabel = channel || 'Default (' + DEFAULT_CHANNELS.length + ' core channels)';
   const difficultyLabel = difficulty || 'Default (' + DEFAULT_DIFFICULTIES.join('/') + ')';
   console.log(`Channel: ${channelLabel}`);
   console.log(`Difficulty: ${difficultyLabel}`);
-  console.log(`Poll Duration: ${pollDuration} hours`);
+  console.log(`Poll Duration: ${pollDuration}h -> ${pollDurationEnum(pollDuration)} (${validatePollDurationEnum(pollDurationEnum(pollDuration))})`);
   console.log(`Dry Run: ${dryRun}`);
   console.log('─'.repeat(60));
   
   // Validate environment
   validateEnvironment();
   
+  // Check AI API key
+  if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY && !process.env.OPENROUTER_API_KEY) {
+    console.error('❌ No AI API key configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or OPENROUTER_API_KEY.');
+    writeGitHubOutput('posted', 'false');
+    writeGitHubOutput('error', 'No AI API key configured');
+    process.exit(1);
+  }
+  
+  const aiProvider = process.env.ANTHROPIC_API_KEY ? 'Anthropic' : 
+                     process.env.OPENROUTER_API_KEY ? 'OpenRouter' : 'OpenAI';
+  console.log(`🤖 AI Provider: ${aiProvider}`);
+  
   // Fetch question
   const question = await fetchQuestion();
 
-  // Look up or generate blog post for this question
+  // Look up blog post for this question
   const { url: blogUrl, isNew: blogIsNew } = await fetchBlogPostUrl(question);
   if (blogUrl) {
-    console.log(`   Blog post${blogIsNew ? ' (newly generated)' : ''}: ${blogUrl}`);
+    console.log(`   Blog post: ${blogUrl}`);
   }
 
   // Generate MCQ poll content via AI
@@ -457,10 +487,9 @@ async function main() {
 
   // Append links to commentary
   const PRACTICE_URL = 'https://open-interview.github.io/';
+  const deepDiveUrl = blogUrl || `https://open-interview.github.io/channels/${question.channel}/`;
   let links = '\n\n🎯 Practice more: ' + PRACTICE_URL;
-  if (blogUrl) {
-    links += '\n📖 Deep dive: ' + blogUrl;
-  }
+  links += '\n📖 Deep dive: ' + deepDiveUrl;
   pollContent.text = pollContent.text + links;
 
   console.log('\n📋 Poll content:');
@@ -488,6 +517,12 @@ async function main() {
     
     // Mark question as shared
     await markQuestionShared(question.id, linkedInResult.id);
+
+    // Mark question as posted on LinkedIn
+    await dbClient.execute({
+      sql: 'UPDATE questions SET linkedin_poll_at = ? WHERE id = ?',
+      args: [new Date().toISOString(), question.id]
+    });
 
     writeGitHubOutput('posted', 'true');
     writeGitHubOutput('linkedin_post_id', linkedInResult.id);

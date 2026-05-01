@@ -8,6 +8,8 @@
 import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
+import yaml from 'js-yaml';
+import { marked } from 'marked';
 import { generateBlogPost } from './ai/graphs/blog-graph.js';
 import { generateIllustration, generatePixelIllustration } from './ai/utils/blog-illustration-generator.js';
 import { dbClient as client } from './db/pg-client.js';
@@ -46,26 +48,41 @@ async function validateUrl(url, timeout = 5000) {
     });
     
     clearTimeout(timeoutId);
-    return response.ok || response.status === 403 || response.status === 405; // Some sites block HEAD but page exists
-  } catch (error) {
-    // Try GET as fallback for sites that don't support HEAD
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        signal: controller.signal,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; BlogBot/1.0)'
-        }
-      });
-      
-      clearTimeout(timeoutId);
-      return response.ok;
-    } catch {
-      return false;
+    
+    // 410 Gone is always invalid
+    if (response.status === 410) return false;
+    
+    // Direct success
+    if (response.ok) return true;
+    
+    // 403/405 likely means Cloudflare/WAF blocking - try GET with real UA
+    if (response.status === 403 || response.status === 405) {
+      return await validateUrlWithGet(url, timeout);
     }
+    
+    return false;
+  } catch {
+    return await validateUrlWithGet(url, timeout);
+  }
+}
+
+async function validateUrlWithGet(url, timeout = 5000) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+    
+    clearTimeout(timeoutId);
+    return response.ok && response.status !== 410;
+  } catch {
+    return false;
   }
 }
 
@@ -87,7 +104,20 @@ async function validateSources(sources) {
       validatedSources.push(source);
       console.log(`   ✅ ${source.title.substring(0, 40)}...`);
     } else {
-      console.log(`   ❌ Removed (404): ${source.url}`);
+      // Determine reason: blocked (403/405) vs missing (404/other)
+      try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 3000);
+        const resp = await fetch(source.url, { method: 'HEAD', signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BlogBot/1.0)' } });
+        clearTimeout(tid);
+        if (resp.status === 403 || resp.status === 405) {
+          console.log(`   🚫 Removed (blocked): ${source.url}`);
+        } else {
+          console.log(`   ❌ Removed (404): ${source.url}`);
+        }
+      } catch {
+        console.log(`   ❌ Removed (unreachable): ${source.url}`);
+      }
     }
   }
   
@@ -155,63 +185,11 @@ const categoryMap = {
 };
 
 
-// Initialize blog_posts table
+// DEPRECATED: Schema is now managed by Drizzle ORM migrations.
+// Run `pnpm db:push` to apply schema changes.
+// This function is kept for backwards compatibility only.
 async function initBlogPostsTable() {
-  console.log('📦 Ensuring blog_posts table exists...');
-  await writeClient.execute(`
-    CREATE TABLE IF NOT EXISTS blog_posts (
-      id SERIAL PRIMARY KEY,
-      question_id TEXT UNIQUE NOT NULL,
-      title TEXT NOT NULL,
-      slug TEXT NOT NULL,
-      introduction TEXT,
-      sections TEXT,
-      conclusion TEXT,
-      meta_description TEXT,
-      channel TEXT,
-      difficulty TEXT,
-      tags TEXT,
-      diagram TEXT,
-      created_at TEXT,
-      published_at TEXT
-    )
-  `);
-  await writeClient.execute(`CREATE INDEX IF NOT EXISTS idx_blog_question ON blog_posts(question_id)`);
-  
-  // Add new columns if they don't exist (migration)
-  const newColumns = [
-    { name: 'introduction', type: 'TEXT' },
-    { name: 'sections', type: 'TEXT' },
-    { name: 'conclusion', type: 'TEXT' },
-    { name: 'meta_description', type: 'TEXT' },
-    { name: 'channel', type: 'TEXT' },
-    { name: 'difficulty', type: 'TEXT' },
-    { name: 'tags', type: 'TEXT' },
-    { name: 'diagram', type: 'TEXT' },
-    { name: 'created_at', type: 'TEXT' },
-    { name: 'published_at', type: 'TEXT' },
-    { name: 'quick_reference', type: 'TEXT' },
-    { name: 'glossary', type: 'TEXT' },
-    { name: 'real_world_example', type: 'TEXT' },
-    { name: 'fun_fact', type: 'TEXT' },
-    { name: 'sources', type: 'TEXT' },
-    { name: 'social_snippet', type: 'TEXT' },
-    { name: 'diagram_type', type: 'TEXT' },
-    { name: 'diagram_label', type: 'TEXT' },
-    { name: 'images', type: 'TEXT' },
-    { name: 'svg_content', type: 'TEXT' }
-  ];
-  
-  for (const col of newColumns) {
-    try {
-      await writeClient.execute(`ALTER TABLE blog_posts ADD COLUMN ${col.name} ${col.type}`);
-      console.log(`   Added column: ${col.name}`);
-    } catch (e) {
-      // Column already exists, ignore
-    }
-  }
-  
-  console.log('✅ Table ready\n');
+  console.log('📦 Blog schema managed by Drizzle ORM. Run `pnpm db:push` for migrations.');
 }
 
 // Allowed channels for blog generation
@@ -242,7 +220,7 @@ async function getNextQuestionForBlog(limit = 1) {
            q.difficulty, q.tags, q.channel, q.sub_channel, q.companies
     FROM questions q
     LEFT JOIN blog_posts bp ON q.id = bp.question_id
-    WHERE bp.id IS NULL
+    WHERE bp.question_id IS NULL
       AND q.explanation IS NOT NULL 
       AND LENGTH(q.explanation) > 100
       AND q.channel IN (${channelFilter})
@@ -270,77 +248,15 @@ async function getNextQuestionForBlog(limit = 1) {
   }));
 }
 
-// Parse YAML frontmatter from MDX files (no external deps)
-function parseYamlFrontmatter(yaml) {
-  const result = {};
-  const lines = yaml.split('\n');
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
-    // Block scalar (diagram: |)
-    const blockMatch = line.match(/^(\w+):\s*\|(.*)$/);
-    if (blockMatch) {
-      const key = blockMatch[1];
-      const blockLines = [];
-      let indent = null;
-      i++;
-      while (i < lines.length) {
-        const bl = lines[i];
-        if (bl.trim() !== '' && /^[\w-]+:/.test(bl)) break;
-        if (indent === null) indent = bl.match(/^(\s+)/)?.[1]?.length || 0;
-        blockLines.push(bl.slice(indent));
-        i++;
-      }
-      result[key] = blockLines.join('\n');
-      continue;
-    }
-    // Array block (key:\n  - item)
-    const arrayKeyMatch = line.match(/^(\w+):\s*$/);
-    if (arrayKeyMatch && lines[i + 1] && /^\s+-/.test(lines[i + 1])) {
-      const key = arrayKeyMatch[1];
-      const items = [];
-      i++;
-      while (i < lines.length && /^\s+-/.test(lines[i])) {
-        const itemLine = lines[i].replace(/^\s+-\s*/, '');
-        // Nested object (- key: val\n    key2: val2)
-        if (/^\w+:/.test(itemLine)) {
-          const obj = {};
-          const parseKV = (s) => {
-            const m = s.match(/^(\w+):\s*(.*)$/);
-            if (m) obj[m[1]] = m[2].replace(/^["']|["']$/g, '');
-          };
-          parseKV(itemLine);
-          i++;
-          while (i < lines.length && /^\s{4,}\w+:/.test(lines[i])) {
-            parseKV(lines[i].trim());
-            i++;
-          }
-          items.push(obj);
-        } else {
-          items.push(itemLine.replace(/^["']|["']$/g, ''));
-          i++;
-        }
-      }
-      result[key] = items;
-      continue;
-    }
-    // Inline array: key: [a, b, c]
-    const inlineArrayMatch = line.match(/^(\w+):\s*\[(.+)\]$/);
-    if (inlineArrayMatch) {
-      result[inlineArrayMatch[1]] = inlineArrayMatch[2]
-        .split(',')
-        .map(s => s.trim().replace(/^["']|["']$/g, ''));
-      i++;
-      continue;
-    }
-    // Key: "quoted value" or key: plain value
-    const kvMatch = line.match(/^(\w+):\s*(.+)$/);
-    if (kvMatch) {
-      result[kvMatch[1]] = kvMatch[2].replace(/^["']|["']$/g, '');
-    }
-    i++;
+// Parse YAML frontmatter from MDX files using js-yaml
+function parseYamlFrontmatter(content) {
+  try {
+    const parsed = yaml.load(content);
+    return parsed || {};
+  } catch (e) {
+    console.error('Failed to parse YAML frontmatter:', e.message);
+    return {};
   }
-  return result;
 }
 
 function loadPostsFromMDX() {
@@ -402,7 +318,7 @@ function loadPostsFromMDX() {
 async function getAllBlogPosts() {
   const result = await client.execute(`SELECT * FROM blog_posts ORDER BY created_at DESC`);
   const dbPosts = result.rows.map(row => ({
-    id: row.question_id,
+    id: row.id,
     blogTitle: row.title,
     blogSlug: row.slug,
     blogIntro: row.introduction,
@@ -431,17 +347,49 @@ async function getAllBlogPosts() {
   return [...dbPosts, ...mdxPosts];
 }
 
-// Save blog post to database
+// Save blog post as MDX file
 function savePostAsMDX(post) {
   const outDir = path.join(path.dirname(new URL(import.meta.url).pathname), '../content/posts');
   fs.mkdirSync(outDir, { recursive: true });
 
-  function yamlStr(val) {
-    if (!val) return '""';
-    const s = String(val);
-    if (/[:#\[\]{}&*!|>'"%@`,]/.test(s) || s.includes('\n') || s.startsWith(' ') || s.endsWith(' ')) {
-      return '"' + s.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
-    }
+  const frontmatterObj = {
+    id: post.id,
+    title: post.blogTitle,
+    slug: post.blogSlug,
+    channel: post.channel,
+    difficulty: post.difficulty,
+    tags: post.tags || [],
+    createdAt: post.createdAt,
+  };
+  if (post.funFact) frontmatterObj.funFact = post.funFact;
+  if (post.diagram) frontmatterObj.diagram = post.diagram;
+  frontmatterObj.images = (post.images && post.images.length) ? post.images : [];
+  frontmatterObj.sources = (post.sources && post.sources.length) ? post.sources : [];
+
+  const frontmatter = yaml.dump(frontmatterObj, { lineWidth: -1 });
+  const fullFrontmatter = `---\n${frontmatter}---`;
+
+  const parts = [];
+  if (post.blogIntro) parts.push(`> **Picture this:** ${post.blogIntro}\n`);
+  (post.blogSections || []).forEach(sec => {
+    parts.push(`## ${sec.heading}\n`);
+    parts.push(sec.content + '\n');
+  });
+  if (post.funFact) parts.push(`> 💡 **Did you know?** ${post.funFact}\n`);
+  if (post.sources && post.sources.length) {
+    parts.push('## References\n');
+    post.sources.forEach((s, i) => parts.push(`${i + 1}. [${s.title}](${s.url})`));
+    parts.push('');
+  }
+  if (post.blogConclusion) {
+    parts.push('## Wrapping Up\n');
+    parts.push(post.blogConclusion + '\n');
+  }
+  const body = parts.join('\n');
+
+  const filename = `${post.id}--${post.blogSlug}.mdx`;
+  fs.writeFileSync(path.join(outDir, filename), fullFrontmatter + '\n' + body, 'utf8');
+}
     return s;
   }
 
@@ -507,6 +455,7 @@ async function saveBlogPost(questionId, blogContent, question, svgContent = {}) 
   const now = new Date().toISOString();
   const diagram = blogContent.diagram || question.diagram;
   const id = crypto.randomUUID();
+  const slug = await generateUniqueSlug(blogContent.title, writeClient);
   await writeClient.execute({
     sql: `INSERT INTO blog_posts 
           (id, question_id, title, slug, introduction, sections, conclusion, 
@@ -518,7 +467,7 @@ async function saveBlogPost(questionId, blogContent, question, svgContent = {}) 
       id,
       questionId,
       blogContent.title,
-      generateSlug(blogContent.title),
+      slug,
       blogContent.introduction,
       JSON.stringify(blogContent.sections),
       blogContent.conclusion,
@@ -543,7 +492,7 @@ async function saveBlogPost(questionId, blogContent, question, svgContent = {}) 
   savePostAsMDX({
     id,
     blogTitle: blogContent.title,
-    blogSlug: generateSlug(blogContent.title),
+    blogSlug: slug,
     channel: question.channel,
     difficulty: question.difficulty,
     tags: question.tags,
@@ -559,10 +508,10 @@ async function saveBlogPost(questionId, blogContent, question, svgContent = {}) 
 }
 
 // Update SVG content for existing blog post
-async function updateSvgContent(questionId, svgContent) {
+async function updateSvgContent(blogPostId, svgContent) {
   await writeClient.execute({
-    sql: `UPDATE blog_posts SET svg_content = ? WHERE question_id = ?`,
-    args: [JSON.stringify(svgContent), questionId]
+    sql: `UPDATE blog_posts SET svg_content = ? WHERE id = ?`,
+    args: [JSON.stringify(svgContent), blogPostId]
   });
 }
 
@@ -587,8 +536,18 @@ function formatChannelName(channel) {
   return channel.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 }
 
-function generateSlug(title) {
-  return title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').substring(0, 80);
+async function generateUniqueSlug(title, client) {
+  const base = title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').substring(0, 80);
+  const result = await client.execute({ sql: 'SELECT COUNT(*) as count FROM blog_posts WHERE slug LIKE ?', args: [base] });
+  const count = parseInt(result.rows[0]?.count || '0', 10);
+  if (count === 0) return base;
+  let suffix = 2;
+  while (true) {
+    const slug = `${base}-${suffix}`;
+    const r = await client.execute({ sql: 'SELECT COUNT(*) as count FROM blog_posts WHERE slug = ?', args: [slug] });
+    if (parseInt(r.rows[0]?.count || '0', 10) === 0) return slug;
+    suffix++;
+  }
 }
 
 function escapeHtml(text) {
@@ -609,131 +568,38 @@ function escapeHtmlWithCitations(text) {
 
 function markdownToHtml(md, glossary = []) {
   if (!md) return '';
-  let html = md;
   
-  // Preserve code blocks first - replace with placeholders
-  const codeBlocks = [];
-  html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (match, lang, code) => {
-    const index = codeBlocks.length;
-    const escaped = lang === 'mermaid' ? code.trim() : escapeHtml(code.trim());
-    codeBlocks.push({ lang: lang || '', code: escaped });
-    return `\n__CODE_BLOCK_${index}__\n`;
-  });
+  // Configure marked with custom renderer
+  const renderer = new marked.Renderer();
   
-  // Inline code - preserve with placeholder
-  const inlineCodes = [];
-  html = html.replace(/`([^`]+)`/g, (match, code) => {
-    const index = inlineCodes.length;
-    inlineCodes.push(escapeHtml(code));
-    return `__INLINE_CODE_${index}__`;
-  });
-  
-  // Headers - close paragraph before, open after
-  html = html.replace(/^### (.*$)/gm, '</p>\n<h3>$1</h3>\n<p>');
-  html = html.replace(/^## (.*$)/gm, '</p>\n<h2>$1</h2>\n<p>');
-  html = html.replace(/^# (.*$)/gm, '</p>\n<h1>$1</h1>\n<p>');
-  
-  // Callout boxes - must run BEFORE bold/italic so **title** is still raw markdown
-  html = html.replace(/^>\s*(💡|⚠️|✅|🔥|🎯|❌|ℹ️)\s*\*\*([^*]+)\*\*:?\s*(.*)$/gm,
-    '</p>\n<div class="callout"><span class="callout-icon">$1</span><div><strong>$2</strong><p>$3</p></div></div>\n<p>');
-
-  // Bold and italic
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  html = html.replace(/^>\s*(.*)$/gm, '</p>\n<blockquote>$1</blockquote>\n<p>');
-  
-  // Tables - close paragraph before, open after
-  html = html.replace(/\|(.+)\|\n\|[-:\s|]+\|\n((?:\|.+\|\n?)+)/g, (match, header, body) => {
-    const headers = header.split('|').filter(h => h.trim()).map(h => '<th>' + h.trim() + '</th>').join('');
-    const rows = body.trim().split('\n').map(row => {
-      const cells = row.split('|').filter(c => c.trim()).map(c => '<td>' + c.trim() + '</td>').join('');
-      return '<tr>' + cells + '</tr>';
-    }).join('');
-    return '</p>\n<table><thead><tr>' + headers + '</tr></thead><tbody>' + rows + '</tbody></table>\n<p>';
-  });
-  
-  // Process lists line by line for proper grouping
-  const lines = html.split('\n');
-  const processedLines = [];
-  let inList = false;
-  let listType = null;
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const unorderedMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
-    const orderedMatch = line.match(/^(\s*)(\d+)\.\s+(.*)$/);
-    
-    if (unorderedMatch) {
-      if (!inList || listType !== 'ul') {
-        if (inList) processedLines.push(`</${listType}>`);
-        processedLines.push('</p>\n<ul>');
-        inList = true;
-        listType = 'ul';
-      }
-      processedLines.push(`<li>${unorderedMatch[2]}</li>`);
-    } else if (orderedMatch) {
-      if (!inList || listType !== 'ol') {
-        if (inList) processedLines.push(`</${listType}>`);
-        processedLines.push('</p>\n<ol>');
-        inList = true;
-        listType = 'ol';
-      }
-      processedLines.push(`<li>${orderedMatch[3]}</li>`);
-    } else {
-      if (inList) {
-        processedLines.push(`</${listType}>\n<p>`);
-        inList = false;
-        listType = null;
-      }
-      processedLines.push(line);
+  // Custom code block renderer (preserve mermaid diagrams)
+  renderer.code = (code, language) => {
+    if (language === 'mermaid') {
+      return `<div class="mermaid">${code.trim()}</div>`;
     }
-  }
+    const langClass = language ? ` class="language-${language}"` : '';
+    return `<pre><code${langClass}>${code}</code></pre>`;
+  };
   
-  // Close any remaining list
-  if (inList) {
-    processedLines.push(`</${listType}>\n<p>`);
-  }
+  // Custom link renderer for citations
+  renderer.link = (href, title, text) => {
+    return `<a href="${href}"${title ? ` title="${title}"` : ''}>${text}</a>`;
+  };
   
-  html = processedLines.join('\n');
+  marked.setOptions({ renderer, gfm: true, breaks: true });
   
-  // Paragraphs - double newlines become paragraph breaks
-  html = html.replace(/\n\n+/g, '</p>\n<p>');
+  let html = marked.parse(md);
   
-  // Single line breaks within paragraphs become spaces (not <br>)
-  html = html.replace(/([^>])\n([^<\n])/g, '$1 $2');
-  
-  // Clean up empty paragraphs and fix nesting issues
-  html = html.replace(/<p>\s*<\/p>/g, '');
-  html = html.replace(/<\/p>\s*<\/p>/g, '</p>');
-  html = html.replace(/<p>\s*<p>/g, '<p>');
-  html = html.replace(/<p>\s*<(ul|ol|table|div|blockquote|pre|h[1-6])/g, '<$1');
-  html = html.replace(/<\/(ul|ol|table|div|blockquote|pre|h[1-6])>\s*<\/p>/g, '</$1>');
-  html = html.replace(/<\/p>\s*<(ul|ol|table|div|blockquote|pre|h[1-6])/g, '<$1');
-  html = html.replace(/<\/(ul|ol|table|div|blockquote|pre|h[1-6])>\s*<p>/g, '</$1>');
-
-  // Convert inline citations [1], [2], etc. to clickable links
+  // Convert inline citations [1], [2] to clickable links
   html = html.replace(/\[(\d+)\]/g, '<a href="#source-$1" class="citation" title="View source">$1</a>');
   
-  // Restore code blocks
-  codeBlocks.forEach((block, index) => {
-    let replacement;
-    if (block.lang === 'mermaid') {
-      replacement = `<div class="mermaid">${block.code}</div>`;
-    } else {
-      const langClass = block.lang ? ` class="language-${block.lang}"` : '';
-      replacement = `<pre><code${langClass}>${block.code}</code></pre>`;
+  // Add glossary tooltips
+  if (glossary && glossary.length > 0) {
+    for (const term of glossary) {
+      const regex = new RegExp(`\\b(${term.term})\\b`, 'gi');
+      html = html.replace(regex, `<span class="glossary-term" data-tooltip="${term.definition}">$1</span>`);
     }
-    html = html.replace(`__CODE_BLOCK_${index}__`, replacement);
-  });
-  
-  // Restore inline code
-  inlineCodes.forEach((code, index) => {
-    html = html.replace(`__INLINE_CODE_${index}__`, `<code>${code}</code>`);
-  });
-  
-  // Final cleanup - remove leading/trailing empty paragraphs
-  html = html.replace(/^<\/p>\s*/, '').replace(/\s*<p>$/, '');
-  html = html.replace(/^<p>\s*<\/p>/, '').replace(/<p>\s*<\/p>$/, '');
+  }
   
   return html;
 }
@@ -1745,7 +1611,7 @@ function generateArticlePage(article, allArticles) {
     const hashtags = socialSnippet.hashtags || '';
     const snippetText = `${socialSnippet.hook}\n\n${socialSnippet.body}\n\n${socialSnippet.cta}${hashtags ? '\n\n' + hashtags : ''}`;
     const encodedText = encodeURIComponent(snippetText + `\n\n🔗 `);
-    const articleUrl = `${process.env.BLOG_BASE_URL || 'https://openstackdaily.github.io'}/posts/${article.id}/${article.blogSlug}/`;
+    const articleUrl = `${process.env.BLOG_BASE_URL || 'https://open-interview.github.io'}/posts/${article.id}/${article.blogSlug}/`;
     const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(articleUrl)}`;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodeURIComponent(articleUrl)}`;
     
@@ -1893,6 +1759,15 @@ async function main() {
   console.log('=== 🚀 Blog Generator (LangGraph) ===\n');
   if (dryRun) console.log('🔍 DRY RUN MODE - no DB writes\n');
 
+  if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY && !process.env.OPENROUTER_API_KEY) {
+    console.error('❌ No AI API key configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or OPENROUTER_API_KEY.');
+    process.exit(1);
+  }
+  
+  const aiProvider = process.env.ANTHROPIC_API_KEY ? 'Anthropic' : 
+                     process.env.OPENROUTER_API_KEY ? 'OpenRouter' : 'OpenAI';
+  console.log(`🤖 AI Provider: ${aiProvider}`);
+
   if (htmlOnly && !process.env.DATABASE_URL) {
     // Fallback: load from MDX files in content/posts/, then data/blog-posts.json
     let articles = loadPostsFromMDX();
@@ -1942,11 +1817,11 @@ async function main() {
     fs.writeFileSync(path.join(OUTPUT_DIR, 'robots.txt'),
 `User-agent: *
 Disallow: /admin/
-Sitemap: https://openstackdaily.github.io/sitemap.xml
+Sitemap: https://open-interview.github.io/sitemap.xml
 `);
     const sitemapUrlsFb = [
-      `<url><loc>https://openstackdaily.github.io/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,
-      ...articles.map(a => `<url><loc>https://openstackdaily.github.io/posts/${a.id}/${a.blogSlug}/</loc><lastmod>${(a.createdAt||'').substring(0,10)}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>`)
+      `<url><loc>https://open-interview.github.io/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+      ...articles.map(a => `<url><loc>https://open-interview.github.io/posts/${a.id}/${a.blogSlug}/</loc><lastmod>${(a.createdAt||'').substring(0,10)}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>`)
     ].join('\n');
     fs.writeFileSync(path.join(OUTPUT_DIR, 'sitemap.xml'),
 `<?xml version="1.0" encoding="UTF-8"?>
@@ -1967,7 +1842,8 @@ ${sitemapUrlsFb}
     process.exit(0);
   }
 
-  await initBlogPostsTable();
+  // Schema managed by Drizzle ORM migrations (drizzle-kit generate)
+  // Run: pnpm db:push to apply schema changes
   
   const stats = await getBlogStats();
   console.log(`📊 Current blog posts: ${stats.total}`);
@@ -2011,11 +1887,12 @@ ${sitemapUrlsFb}
           const validatedSources = await validateSources(blogContent.sources || []);
           blogContent.sources = validatedSources;
           
-          // Check minimum sources requirement
+          // Enforce minimum sources requirement
           if (validatedSources.length < MIN_SOURCES) {
-            console.log(`   ⚠️ Only ${validatedSources.length} valid sources (need ${MIN_SOURCES})`);
-            console.log(`   🔄 Skipping - insufficient sources`);
+            blogContent.skipped = true;
+            blogContent.skipReason = `insufficient sources (${validatedSources.length}/${MIN_SOURCES})`;
             skippedCount++;
+            console.log(`   ⏭️ Skipping question: ${blogContent.skipReason}`);
             continue;
           }
           
@@ -2194,11 +2071,11 @@ ${sitemapUrlsFb}
   fs.writeFileSync(path.join(OUTPUT_DIR, 'robots.txt'),
 `User-agent: *
 Disallow: /admin/
-Sitemap: https://openstackdaily.github.io/sitemap.xml
+Sitemap: https://open-interview.github.io/sitemap.xml
 `);
   const sitemapUrls = [
-    `<url><loc>https://openstackdaily.github.io/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,
-    ...articles.map(a => `<url><loc>https://openstackdaily.github.io/posts/${a.id}/${a.blogSlug}/</loc><lastmod>${(a.createdAt||'').substring(0,10)}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>`)
+    `<url><loc>https://open-interview.github.io/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+    ...articles.map(a => `<url><loc>https://open-interview.github.io/posts/${a.id}/${a.blogSlug}/</loc><lastmod>${(a.createdAt||'').substring(0,10)}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>`)
   ].join('\n');
   fs.writeFileSync(path.join(OUTPUT_DIR, 'sitemap.xml'),
 `<?xml version="1.0" encoding="UTF-8"?>

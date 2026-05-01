@@ -33,6 +33,7 @@ export const questions = pgTable("questions", {
   isNew: integer("is_new").default(1),
   lastUpdated: text("last_updated"),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+  linkedinPollAt: text("linkedin_poll_at"),
 });
 
 export const channelMappings = pgTable("channel_mappings", {
@@ -238,6 +239,7 @@ export const blogPosts = pgTable("blog_posts", {
   status: text("status").default("published"),
   publishedAt: text("published_at"),
   linkedinSharedAt: text("linkedin_shared_at"),
+  linkedinPostId: text("linkedin_post_id"),
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
   lastUpdated: text("last_updated"),
 });
@@ -304,6 +306,17 @@ export type InsertFlashcard = z.infer<typeof insertFlashcardSchema>;
 export type Flashcard = typeof flashcards.$inferSelect;
 export type InsertTest = z.infer<typeof insertTestSchema>;
 export type Test = typeof tests.$inferSelect;
+
+export const linkedinPublishLog = pgTable("linkedin_publish_log", {
+  id: serial("id").primaryKey(),
+  blogPostId: text("blog_post_id"),
+  linkedinPostId: text("linkedin_post_id"),
+  publishedAt: text("published_at"),
+  withImage: integer("with_image"),
+  postType: text("post_type"),
+  error: text("error"),
+  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+});
 
 export const blogAuthors = pgTable("blog_authors", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),

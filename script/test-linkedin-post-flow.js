@@ -13,7 +13,7 @@ const testPosts = [
   {
     postId: 'test-1',
     title: 'Multi-Cloud Kubernetes: Build Resilient Clusters Across Clouds',
-    url: 'https://openstackdaily.github.io/posts/blog-1767709186611-mflfq9/multi-cloud-kubernetes-build-resilient-clusters-across-clouds/',
+    url: 'https://open-interview.github.io/posts/blog-1767709186611-mflfq9/multi-cloud-kubernetes-build-resilient-clusters-across-clouds/',
     excerpt: 'Learn how to build resilient Kubernetes clusters that span multiple cloud providers for maximum availability and disaster recovery.',
     channel: 'kubernetes',
     tags: '#Kubernetes #MultiCloud #DevOps #CloudNative #SRE #Infrastructure'
@@ -21,7 +21,7 @@ const testPosts = [
   {
     postId: 'test-2', 
     title: 'Database Sharding Strategies for High-Scale Applications',
-    url: 'https://openstackdaily.github.io/posts/q-553/the-mysterious-case-of-the-oom-killer-how-to-diagnose-a-production-outage-you-ca/',
+    url: 'https://open-interview.github.io/posts/q-553/the-mysterious-case-of-the-oom-killer-how-to-diagnose-a-production-outage-you-ca/',
     excerpt: 'Deep dive into database sharding patterns, when to use them, and how to implement them correctly.',
     channel: 'database',
     tags: '#Database #Sharding #SystemDesign #Backend #Scalability'

@@ -124,6 +124,7 @@ const BlogListPage = React.lazy(() => import('@/pages/blog/BlogListPage'));
 const PostDetailPage = React.lazy(() => import('@/pages/blog/PostDetailPage'));
 const BlogSearchPage = React.lazy(() => import('@/pages/blog/BlogSearchPage'));
 const AboutBlogPage = React.lazy(() => import('@/pages/blog/AboutBlogPage'));
+const AdminBlogPage = React.lazy(() => import('@/pages/admin/AdminBlogPage'));
 
 function Router() {
   return (
@@ -173,6 +174,7 @@ function Router() {
         <Route path="/blog/tag/:tag">{(params) => <BlogListPage tag={params.tag} />}</Route>
         <Route path="/blog/:slug">{(params) => <PostDetailPage slug={params.slug} />}</Route>
         <Route path="/about-blog" component={AboutBlogPage} />
+        <Route path="/admin/blog" component={AdminBlogPage} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>

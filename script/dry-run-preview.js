@@ -19,7 +19,7 @@ const args = process.argv.slice(2).reduce((acc, arg, i, arr) => {
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 const PRACTICE_URL = 'https://open-interview.github.io/';
-const BLOG_BASE    = 'https://openstackdaily.github.io';
+const BLOG_BASE    = 'https://open-interview.github.io';
 
 function slug(title) {
   return title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').slice(0, 60);
