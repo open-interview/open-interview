@@ -164,54 +164,52 @@ function reformatInlineMermaid(raw: string): string {
 function preprocessDocument(raw: string): string {
   let text = raw;
 
-  // ── 1. Remove duplicate "## Conclusion" section ───────────────────────────
-  // 121/121 posts have "## Wrapping Up"; 109/121 also have identical "## Conclusion"
+  // ── 1. Wrap raw single-line mermaid diagrams in code fences FIRST ───────
+  // Must happen before any noise-stripping so regexes can't eat diagram content.
+  const MERMAID_START = /^(graph\s+(?:TD|LR|RL|BT|TB)|flowchart(?:\s+(?:TD|LR|RL|BT|TB))?|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|gitGraph|erDiagram|gantt|pie\s+title|mindmap)/;
+  {
+    const lines = text.split('\n');
+    const output: string[] = [];
+    let inFence = false;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.startsWith('```')) {
+        inFence = !inFence;
+        output.push(line);
+        continue;
+      }
+      if (!inFence && MERMAID_START.test(line.trim())) {
+        // Trim trailing noise (these markers appear on the same raw line)
+        const noiseIdx = line.search(/\b(Did you know|Key Takeaways|References\s+\d|Share This)\b/);
+        const mermaidRaw = noiseIdx > 0 ? line.substring(0, noiseIdx).trim() : line.trim();
+        const reformatted = reformatInlineMermaid(mermaidRaw);
+        output.push('```mermaid');
+        output.push(reformatted);
+        output.push('```');
+      } else {
+        output.push(line);
+      }
+    }
+    text = output.join('\n');
+  }
+
+  // ── 2. Remove duplicate "## Conclusion" section ────────────────────────────
   if (text.includes('## Wrapping Up') && text.includes('## Conclusion')) {
     text = text.replace(/\n## Conclusion\n[\s\S]*?(?=\n## |$)/, '');
   }
 
-  // ── 2. Strip "Share This" blobs ───────────────────────────────────────────
-  // These end with hashtag clusters or URLs and span to end of paragraph
-  text = text.replace(/Share This[\s\S]*?(?:#[A-Z][a-zA-Z]+(?: #[A-Z][a-zA-Z]+)*|https?:\/\/\S+)[^\n]*/g, '');
+  // ── 3. Strip noise patterns — line-scoped only (never cross ``` fences) ───
+  // "Share This …" — always ends on the same line
+  text = text.replace(/Share This[^\n]*/g, '');
+  // "Real-World Case Study … Key Takeaway: …" — inline on one line
+  text = text.replace(/Real-World Case Study[^\n]*Key Takeaway:[^\n]*/g, '');
+  // "References 1 title …" — rest of the line
+  text = text.replace(/\bReferences\s+\d[^\n]*/g, '');
+  // "Did you know? …" — to end of sentence on same line
+  text = text.replace(/Did you know\?[^\n]*/g, '');
 
-  // ── 3. Strip "Real-World Case Study...Key Takeaway:..." inline blobs ───────
-  text = text.replace(/Real-World Case Study\s+\S+[\s\S]{0,1000}?Key Takeaway:[^\n]+/g, '');
-
-  // ── 4. Strip inline "References N title type..." lists ────────────────────
-  text = text.replace(/\bReferences\s+\d[\s\S]{0,3000}?(?=\n## |\n\n|\nShare This|\nDid you know|$)/g, '');
-
-  // ── 5. Strip "Did you know?" blurbs ──────────────────────────────────────
-  text = text.replace(/Did you know\?[^\n.]*\.?/g, '');
-
-  // ── 6. Detect raw single-line mermaid diagrams and wrap in code fences ────
-  const MERMAID_START = /^(graph\s+(?:TD|LR|RL|BT|TB)|flowchart(?:\s+(?:TD|LR|RL|BT|TB))?|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|gitGraph|erDiagram|gantt|pie\s+title|mindmap)/;
-  const lines = text.split('\n');
-  const output: string[] = [];
-  let inFence = false;
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.startsWith('```')) {
-      inFence = !inFence;
-      output.push(line);
-      continue;
-    }
-    if (!inFence && MERMAID_START.test(line.trim())) {
-      // Extract mermaid portion (stop before trailing noise)
-      const noiseIdx = line.search(/\b(Did you know|Key Takeaways|References\s+\d|Share This)\b/);
-      const mermaidRaw = noiseIdx > 0 ? line.substring(0, noiseIdx).trim() : line.trim();
-      const reformatted = reformatInlineMermaid(mermaidRaw);
-      output.push('```mermaid');
-      output.push(reformatted);
-      output.push('```');
-    } else {
-      output.push(line);
-    }
-  }
-  text = output.join('\n');
-
-  // ── 7. Convert "Key Takeaways Item1 Item2 Item3" run-on text to bullets ───
+  // ── 4. Convert "Key Takeaways Item1 Item2 …" run-on text to bullets ───────
   text = text.replace(/\bKey Takeaways\b([^\n]+)/g, (_match, items: string) => {
-    // Split on capital-letter sentence starts
     const parts = items.trim()
       .split(/(?<=[a-z])\s+(?=[A-Z])/)
       .map((s: string) => s.trim())
