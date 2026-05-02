@@ -90,18 +90,17 @@ async function main() {
 
   // ── Coding Challenges ──────────────────────────────────────────────────────
   try {
-    const ccRows = (await client.execute('SELECT * FROM coding_challenges ORDER BY category, difficulty, id')).rows;
+    const ccRows = (await client.execute('SELECT * FROM coding_challenges ORDER BY difficulty, id')).rows;
     const challenges = ccRows.map(r => ({
       id: r.id, title: r.title, description: r.description,
-      difficulty: r.difficulty, category: r.category,
+      difficulty: r.difficulty, language: r.language || 'python',
+      channel: r.channel,
       tags: r.tags ? JSON.parse(r.tags) : [],
-      companies: r.companies ? JSON.parse(r.companies) : [],
-      starterCode: { javascript: r.starter_code_js, python: r.starter_code_py },
+      starterCode: r.starter_code || '',
+      solution: r.solution || '',
       testCases: r.test_cases ? JSON.parse(r.test_cases) : [],
       hints: r.hints ? JSON.parse(r.hints) : [],
-      solution: { javascript: r.solution_js, python: r.solution_py },
-      complexity: { time: r.complexity_time, space: r.complexity_space, explanation: r.complexity_explanation },
-      timeLimit: r.time_limit || 15, createdAt: r.created_at,
+      createdAt: r.created_at,
     }));
     write('data/coding-challenges.json', challenges);
     console.log(`  ✓ coding-challenges.json (${challenges.length})`);

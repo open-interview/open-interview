@@ -200,7 +200,7 @@ async function saveNode(state) {
       // Dedup: check if session with same sorted question_ids already exists
       const sortedIds = JSON.stringify([...session.questionIds].sort());
       const existing = await db.execute({
-        sql: `SELECT id FROM voice_sessions WHERE json(question_ids) = json(?)`,
+        sql: `SELECT id FROM voice_sessions WHERE question_ids = $1`,
         args: [sortedIds]
       });
       // Fallback: manual check if json() not supported
