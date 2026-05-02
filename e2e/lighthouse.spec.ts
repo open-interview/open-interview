@@ -16,7 +16,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { chromium } from 'playwright';
 
-const BASE_URL = process.env.LIGHTHOUSE_URL ?? 'http://localhost:5002';
+const BASE_URL = process.env.LIGHTHOUSE_URL ?? 'http://localhost:5000';
 
 const THRESHOLDS = {
   performance: 0.5,   // prod build served statically; CI containers score lower
