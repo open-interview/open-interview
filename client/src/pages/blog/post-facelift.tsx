@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
+import { getPostWithContext } from "@/lib/blog-loader";
 import { BlogLayout, ArticleLayout } from "@/components/blog/BlogLayout";
 import { TableOfContents } from "@/components/blog/TableOfContents";
 import { ReadingProgressBar } from "@/components/blog/ReadingProgressBar";
@@ -98,38 +99,31 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
   useEffect(() => {
     setLoading(true);
     const markFMP = measureBlogPostLoad(slug);
-    fetch(`/api/blog/posts/${slug}`)
-      .then((r) => {
-        if (r.status === 404) { setNotFound(true); return null; }
-        return r.json();
-      })
+    getPostWithContext(slug)
       .then((data) => {
-        if (!data) return;
-
-        // Transform API response to match PostData interface
-        // API may return blogTitle/markdown or title/content
+        if (!data) { setNotFound(true); return; }
         const apiPost = data.data;
         const transformedPost: PostData = {
           slug: apiPost.slug,
-          title: apiPost.blogTitle || apiPost.title,
+          title: apiPost.title,
           excerpt: apiPost.excerpt || '',
-          content: apiPost.markdown || apiPost.content,
-          subtitle: apiPost.subtitle,
-          coverImage: apiPost.coverImage || apiPost.cover || apiPost.image,
+          content: apiPost.content,
+          subtitle: undefined,
+          coverImage: apiPost.coverImage,
           category: apiPost.category || 'Uncategorized',
           tags: apiPost.tags || [],
           difficulty: apiPost.difficulty,
           author: apiPost.author || 'Anonymous',
-          publishedAt: apiPost.publishedAt || apiPost.date || new Date().toISOString(),
-          readingTimeMinutes: apiPost.readingTimeMinutes || apiPost.readingTime || 0,
+          publishedAt: apiPost.publishedAt || new Date().toISOString(),
+          readingTimeMinutes: apiPost.readingTimeMinutes || 0,
         };
-
         setPost(transformedPost);
         setRelated(data.related || []);
         setPrevPost(data.prev || null);
         setNextPost(data.next || null);
         markFMP();
       })
+      .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [slug]);
 

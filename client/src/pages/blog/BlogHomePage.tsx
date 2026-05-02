@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "wouter";
+import { getFeaturedPosts, getPosts, getCategories } from "@/lib/blog-loader";
 import { BlogLayout } from "@/components/blog/BlogLayout";
 import { ArticleCard, ArticleCardSkeleton, type ArticleCardData, type ArticleDifficulty } from "@/components/facelift/article-card";
 import { FeaturedCard, FeaturedCardSkeleton } from "@/components/facelift/featured-card";
@@ -69,25 +70,25 @@ export default function BlogHomePage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/blog/posts/featured").then((r) => r.json()),
-      fetch("/api/blog/posts?limit=12").then((r) => r.json()),
-      fetch("/api/blog/categories").then((r) => r.json()),
+      getFeaturedPosts(3),
+      getPosts({ limit: 12 }),
+      getCategories(),
     ])
-      .then(([feat, posts, cats]) => {
+      .then(([featData, postsRes, catsData]) => {
         const mapPost = (p: any): ArticleCardData => ({
           ...p,
           difficulty: p.difficulty || getDifficultyFromCategory(p.category),
         });
-        setFeatured((feat.data || []).map(mapPost));
-        setRecent((posts.data || []).map(mapPost));
-        setCategories((cats.data || []).map((c: Category) => ({
+        setFeatured(featData.map(mapPost));
+        setRecent((postsRes.data || []).map(mapPost));
+        setCategories(catsData.map((c: Category) => ({
           ...c,
           count: Math.floor(Math.random() * 20) + 5,
         })));
         setStats([
-          { label: "Published Articles", value: posts.meta?.total || 48, icon: <BookOpen size={18} />, accent: 'violet' as const, trend: 12, trendLabel: 'vs last month' },
+          { label: "Published Articles", value: postsRes.meta?.total || 48, icon: <BookOpen size={18} />, accent: 'violet' as const, trend: 12, trendLabel: 'vs last month' },
           { label: "Active Readers", value: "2.4K", prefix: "", icon: <TrendingUp size={18} />, accent: 'cyan' as const, trend: 8, trendLabel: 'growth' },
-          { label: "Topics Covered", value: (cats.data || []).length || 14, icon: <Grid3x3 size={18} />, accent: 'emerald' as const },
+          { label: "Topics Covered", value: catsData.length || 14, icon: <Grid3x3 size={18} />, accent: 'emerald' as const },
           { label: "Reading Time", value: "120+", suffix: " hrs", icon: <Clock size={18} />, accent: 'amber' as const },
         ]);
       })

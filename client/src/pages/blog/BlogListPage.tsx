@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useLocation } from "wouter";
+import { getPosts, getCategories, getTags } from "@/lib/blog-loader";
 import { BlogLayout } from "@/components/blog/BlogLayout";
 import { ArticleCard, ArticleCardSkeleton, type ArticleCardData, type ArticleDifficulty } from "@/components/facelift/article-card";
 import { motion } from "framer-motion";
@@ -147,17 +148,12 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
   // Fetch posts when filters or page changes
   useEffect(() => {
     setLoading(true);
-    const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(page) });
-    if (categorySlug) params.set("category", categorySlug);
-    if (tag) params.set("tag", tag);
-
     Promise.all([
-      fetch(`/api/blog/posts?${params}`).then((r) => r.json()),
-      fetch("/api/blog/categories").then((r) => r.json()),
-      fetch("/api/blog/tags").then((r) => r.json()),
+      getPosts({ category: categorySlug, tag, limit: PAGE_SIZE, page }),
+      getCategories(),
+      getTags(),
     ])
-      .then(([postsRes, catsRes, tagsRes]) => {
-        // Map API response to ArticleCardData format
+      .then(([postsRes, catsData, tagsData]) => {
         const mappedPosts = (postsRes.data || []).map((post: any) => ({
           slug: post.slug,
           title: post.title,
@@ -173,8 +169,8 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
         }));
         setPosts(mappedPosts);
         setTotal(postsRes.meta?.total || 0);
-        setCategories(catsRes.data || []);
-        setTags(tagsRes.data || []);
+        setCategories(catsData);
+        setTags(tagsData);
       })
       .finally(() => setLoading(false));
   }, [categorySlug, tag, page]);

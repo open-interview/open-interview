@@ -5,6 +5,7 @@ import { PostCard, PostCardSkeleton, type PostCardData } from "@/components/blog
 import { SearchInput } from "@/components/blog/SearchInput";
 import { EmptyState } from "@/components/blog/EmptyState";
 import { BookOpen } from "lucide-react";
+import { searchPosts } from "@/lib/blog-loader";
 
 export default function BlogSearchPage() {
   const search = useSearch();
@@ -23,9 +24,8 @@ export default function BlogSearchPage() {
     }
     setLoading(true);
     setSearched(true);
-    fetch(`/api/blog/search?q=${encodeURIComponent(query)}`)
-      .then((r) => r.json())
-      .then((data) => setResults(data.data || []))
+    searchPosts(query)
+      .then((data) => setResults(data))
       .finally(() => setLoading(false));
   }, [query]);
 
