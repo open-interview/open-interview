@@ -6703,6 +6703,32 @@
     "createdAt": "2026-04-13T09:28:07.091Z"
   },
   {
+    "id": "q-30538",
+    "question": "Implement a lock-free slab allocator on a fixed 2MB arena consisting of 64-byte blocks. Use a single atomic 64-bit head where lower 32 bits hold the index of the first free block and upper 32 bits hold a version counter to mitigate ABA. Each free block stores the next-free index. Provide C11 code for init, alloc, and free, including alignment and error handling, and a small test where 8 threads perform interleaved alloc/free of blocks. Explain memory ordering choices and ABA mitigation?",
+    "answer": "Use a lock-free free-list encoded in a 64-bit head: lower 32 bits for the head block index, upper 32 bits for a version counter to defeat ABA. Initialize the arena into a singly linked free list. allo",
+    "explanation": "## How It Works\n\nA 2MB arena is divided into 64-byte blocks, yielding 32768 blocks. The free list is a single atomic head packed into a 64-bit value: [ version (upper 32 bits) | head index (lower 32 bits) ]. A free block stores the index of the next free block. On init, all blocks form a chain starting at 0, ending with a sentinel (0xFFFFFFFF).\n\nThe allocator uses a lock-free approach:\n- Alloc: read the head with acquire, compute the next pointer, CAS to update head to next and increment version. Return the block corresponding to the popped index.\n- Free: write the freed block’s next pointer to current head, CAS to push it back and increment version.\n\nABA is mitigated by the version counter; each successful CAS increments the version, so a stale head cannot be mistaken for a newer one.\n\nMemory order choices:\n- Loads use memory_order_acquire to synchronize with the producer/consumer.\n- Stores use memory_order_release or memory_order_acq_rel to ensure visibility of the updated head and block linkage.\n\n### Key Points\n- **64-bit head encoding**: version guards against ABA by differentiating sequential head values.\n- **Block linkage stored in arena**: next indices reside in the block headers themselves.\n- **Initialization**: pre-link 32768 blocks and set head to 0 with version 1.\n- **Threading model**: works with many producers/consumers with minimal contention due to CAS on a single head.\n\n### Example\n```c\n#include <stdatomic.h>\n#include <stdint.h>\n#include <stddef.h>\n\n#define ARENA_SIZE (2*1024*1024)\n#define BLOCK_SIZE 64\n#define BLOCKS (ARENA_SIZE / BLOCK_SIZE)\n\ntypedef struct { uint32_t next; } Block;\nstatic uint8_t arena[ARENA_SIZE];\nstatic _Atomic uint64_t head; // [version:upper32 | index:lower32]\n\nstatic inline void init_slab(void) {\n  for (uint32_t i = 0; i < BLOCKS-1; ++i) ((Block*)arena)[i].next = i+1;\n  ((Block*)arena)[BLOCKS-1].next = 0xFFFFFFFFu;\n  atomic_store_explicit(&head, ((uint64_t)1 << 32) | 0u, memory_order_relaxed);\n}\n\nvoid* slab_alloc(void) {\n  uint64_t oldv, newv;\n  uint32_t idx, ver, next;\n  while (1) {\n    oldv = atomic_load_explicit(&head, memory_order_acquire);\n    idx = (uint32_t)(oldv & 0xFFFFFFFFu);\n    ver = (uint32_t)(oldv >> 32);\n    if (idx == 0xFFFFFFFFu) return NULL;\n    next = ((Block*)arena)[idx].next;\n    newv = ((uint64_t)(ver+1) << 32) | (uint64_t)next;\n    if (atomic_compare_exchange_weak_explicit(&head, &oldv, newv,\n                                            memory_order_acquire, memory_order_relaxed))\n      return (void*)(arena + (size_t)idx * BLOCK_SIZE);\n  }\n}\n\nvoid slab_free(void* p) {\n  if (!p) return;\n  uint32_t idx = ((uint8_t*)p - arena) / BLOCK_SIZE;\n  uint64_t oldv, newv;\n  while (1) {\n    oldv = atomic_load_explicit(&head, memory_order_acquire);\n    uint32_t ver = (uint32_t)(oldv >> 32);\n    ((Block*)arena)[idx].next = (uint32_t)(oldv & 0xFFFFFFFFu);\n    newv = ((uint64_t)(ver+1) << 32) | idx;\n    if (atomic_compare_exchange_weak_explicit(&head, &oldv, newv,\n                                            memory_order_release, memory_order_relaxed))\n      break;\n  }\n}\n\n/* Simple multithreaded test omitted for brevity; see test harness in real usage */\n```\n\n## Diagram\n\nflowchart TD\n  A[Initialize arena] --> B[Link free blocks]\n  B --> C[Alloc path: CAS pop head]\n  C --> D[Return pointer]\n  B --> E[Free path: CAS push block onto head]\n  E --> F[Head updated]",
+    "diagram": null,
+    "difficulty": "intermediate",
+    "tags": [
+      "low-level"
+    ],
+    "channel": "low-level",
+    "subChannel": "general",
+    "sourceUrl": null,
+    "videos": null,
+    "companies": [
+      "Meta",
+      "Snap",
+      "Stripe"
+    ],
+    "eli5": null,
+    "voiceKeywords": null,
+    "voiceSuitable": null,
+    "isNew": 1,
+    "lastUpdated": "2026-05-02T10:10:35.872Z",
+    "createdAt": "2026-05-02T10:10:35.872Z"
+  },
+  {
     "id": "q-3079",
     "question": "Design a cross-process, lock-free bounded queue in shared memory for two processes on a NUMA system, with 1<<18 slots of 128 bytes. Use per-slot 64-bit sequence numbers and head/tail indices. Producers spin until slot.seq==tail, write payload, and publish slot.seq=tail+1 with a release; consumers read with acquire, validate, and advance head. Reclaim via epoch-based scheme across both processes. Microbenchmark: vary producers/consumers, report p95/p99 latency and sustained throughput; check data integrity under contention?",
     "answer": "Implement a cross-process lock-free bounded queue with N=1<<18 slots of 128 bytes each, utilizing per-slot 64-bit sequence numbers for synchronization. Maintain padded head and tail indices to prevent false sharing on NUMA systems. Producers spin until `slot.seq == tail`, write the payload, then publish with `slot.seq = tail + 1` using a release fence. Consumers read with an acquire fence, validate the sequence number, and advance the head index. Reclaim slots using an epoch-based reclamation scheme coordinated across both processes.",
