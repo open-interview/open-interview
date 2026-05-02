@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { BlogLayout } from "@/components/blog/BlogLayout";
-import { PostCard, PostCardSkeleton, TagPill, type PostCardData } from "@/components/blog/PostCard";
-import { SearchInput } from "@/components/blog/SearchInput";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ArticleCard, ArticleCardSkeleton, type ArticleCardData, type ArticleDifficulty } from "@/components/facelift/article-card";
+import { motion } from "framer-motion";
+import { useReducedMotion, getSpringTransition, staggerConfig } from "@/hooks/use-reduced-motion";
+import { ChevronRight, ArrowLeft, Filter, BookOpen, Tag, Loader2, Grid3x3 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface Category {
   id: string;
@@ -16,19 +19,36 @@ interface BlogListPageProps {
   tag?: string;
 }
 
+const difficulties: ArticleDifficulty[] = ['beginner', 'intermediate', 'advanced'];
+
+const difficultyLabels: Record<ArticleDifficulty, string> = {
+  beginner: 'Beginner',
+  intermediate: 'Intermediate',
+  advanced: 'Advanced',
+};
+
 export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
-  const [posts, setPosts] = useState<PostCardData[]>([]);
+  const [posts, setPosts] = useState<ArticleCardData[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<ArticleDifficulty | 'all'>('all');
   const [, navigate] = useLocation();
   const PAGE_SIZE = 12;
+  const prefersReducedMotion = useReducedMotion();
+  const spring = getSpringTransition(prefersReducedMotion);
+
+  const filteredPosts = selectedDifficulty === 'all'
+    ? posts
+    : posts.filter(p => p.difficulty === selectedDifficulty);
 
   useEffect(() => {
     setLoading(true);
-    const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(page) });
+    setPage(1);
+    setSelectedDifficulty('all');
+    const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: '1' });
     if (categorySlug) params.set("category", categorySlug);
     if (tag) params.set("tag", tag);
 
@@ -44,115 +64,317 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
         setTags(tagsRes.data || []);
       })
       .finally(() => setLoading(false));
-  }, [categorySlug, tag, page]);
+  }, [categorySlug, tag]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
+
   const pageTitle = categorySlug
     ? categories.find((c) => c.slug === categorySlug)?.name || categorySlug
     : tag
     ? `#${tag}`
     : "All Posts";
 
+  const pageIcon = categorySlug ? (
+    <BookOpen size={20} className="text-violet-400" />
+  ) : tag ? (
+    <Tag size={20} className="text-cyan-400" />
+  ) : (
+    <Grid3x3 size={20} className="text-violet-400" />
+  );
+
+  const handlePageChange = useCallback((newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion ? 'instant' : 'smooth' });
+  }, [prefersReducedMotion]);
+
   return (
     <BlogLayout>
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-        {/* Page header */}
-        <div className="mb-8">
-          {(categorySlug || tag) && (
-            <nav aria-label="Breadcrumb" className="mb-3 text-sm text-[var(--color-ink-muted)]">
-              <ol className="flex items-center gap-1">
-                <li><a href="/blog" className="hover:text-[var(--color-accent)]">Blog</a></li>
-                <li aria-hidden>/</li>
-                <li className="text-[var(--color-ink)]">{pageTitle}</li>
-              </ol>
-            </nav>
-          )}
-          <h1 className="text-3xl font-bold text-[var(--color-ink)]">{pageTitle}</h1>
-          {total > 0 && (
-            <p className="mt-1 text-sm text-[var(--color-ink-muted)]">{total} post{total !== 1 ? "s" : ""}</p>
-          )}
-        </div>
+      {/* Subtle dot pattern background */}
+      <div className="pointer-events-none fixed inset-0 z-0 opacity-[0.03]" aria-hidden="true">
+        <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle, #888 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-10">
-          {/* Posts grid */}
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+        {/* Breadcrumb */}
+        <motion.nav
+          initial={{ opacity: 0, x: -8 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={spring}
+          aria-label="Breadcrumb"
+          className="mb-6"
+        >
+          <ol className="flex items-center gap-2 text-sm text-muted-foreground">
+            <li>
+              <Button
+                variant="link"
+                size="sm"
+                className="p-0 h-auto text-muted-foreground hover:text-violet-400"
+                onClick={() => navigate('/blog')}
+              >
+                <ArrowLeft size={14} className="mr-1" />
+                Blog
+              </Button>
+            </li>
+            <li><ChevronRight size={12} /></li>
+            <li className="text-foreground font-medium">{pageTitle}</li>
+          </ol>
+        </motion.nav>
+
+        {/* Page Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...spring, delay: prefersReducedMotion ? 0 : 0.1 }}
+          className="mb-8"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10">
+              {pageIcon}
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">{pageTitle}</h1>
+              {total > 0 && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {filteredPosts.length} article{filteredPosts.length !== 1 ? 's' : ''}
+                  {selectedDifficulty !== 'all' && ` · ${difficultyLabels[selectedDifficulty]} level`}
+                </p>
+              )}
+            </div>
+          </div>
+        </motion.div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-10">
+          {/* Main Content */}
           <div>
+            {/* Difficulty Filter Bar */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ ...spring, delay: prefersReducedMotion ? 0 : 0.2 }}
+              className="flex flex-wrap items-center gap-2 mb-8 p-4 rounded-xl border border-border/50 bg-card/50 backdrop-blur"
+            >
+              <div className="flex items-center gap-2 mr-2">
+                <Filter size={14} className="text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Level</span>
+              </div>
+
+              <Button
+                variant={selectedDifficulty === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedDifficulty('all')}
+                className={selectedDifficulty === 'all' ? 'bg-violet-600 hover:bg-violet-700' : ''}
+              >
+                All
+              </Button>
+              {difficulties.map((level) => (
+                <Button
+                  key={level}
+                  variant={selectedDifficulty === level ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedDifficulty(level)}
+                  className={selectedDifficulty === level ? 'bg-violet-600 hover:bg-violet-700' : ''}
+                >
+                  {difficultyLabels[level]}
+                </Button>
+              ))}
+            </motion.div>
+
             {loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {Array.from({ length: 6 }).map((_, i) => <PostCardSkeleton key={i} />)}
+                {Array.from({ length: 6 }).map((_, i) => <ArticleCardSkeleton key={i} />)}
               </div>
-            ) : posts.length === 0 ? (
-              <div className="text-center py-16">
-                <p className="text-[var(--color-ink-muted)]">No posts found.</p>
-                <a href="/blog" className="mt-4 inline-block text-sm text-[var(--color-accent)] hover:underline">
-                  Browse all posts
-                </a>
-              </div>
+            ) : filteredPosts.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-16"
+              >
+                <div className="mx-auto h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+                  <BookOpen size={24} className="text-muted-foreground" />
+                </div>
+                <p className="text-foreground font-medium">No posts found</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {selectedDifficulty !== 'all'
+                    ? `No ${difficultyLabels[selectedDifficulty].toLowerCase()} articles in this category.`
+                    : 'Try a different category or check back later.'}
+                </p>
+                {(selectedDifficulty !== 'all' || categorySlug || tag) && (
+                  <Button
+                    variant="link"
+                    onClick={() => {
+                      setSelectedDifficulty('all');
+                      if (categorySlug || tag) navigate('/blog');
+                    }}
+                    className="mt-4 text-violet-400"
+                  >
+                    Clear filters
+                  </Button>
+                )}
+              </motion.div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {posts.map((post) => <PostCard key={post.slug} post={post} variant="grid" />)}
-                </div>
+                <motion.div
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-6"
+                  variants={staggerConfig}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  {filteredPosts.map((post, i) => (
+                    <motion.div
+                      key={post.slug}
+                      variants={{
+                        hidden: { opacity: 0, y: 12 },
+                        visible: { opacity: 1, y: 0 },
+                      }}
+                      transition={{ ...spring, delay: prefersReducedMotion ? 0 : i * 0.06 }}
+                    >
+                      <ArticleCard article={post} href={`/blog/${post.slug}`} />
+                    </motion.div>
+                  ))}
+                </motion.div>
+
+                {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="mt-10 flex items-center justify-center gap-2">
-                    <button
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ ...spring, delay: 0.3 }}
+                    className="mt-10 flex items-center justify-center gap-2"
+                  >
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(Math.max(1, page - 1))}
                       disabled={page === 1}
-                      className="rounded-md border border-[var(--color-border)] p-2 disabled:opacity-40 hover:bg-[var(--color-surface-raised)] transition-colors"
+                      className="border-border/50 hover:border-violet-500/50 disabled:opacity-40"
                       aria-label="Previous page"
                     >
-                      <ChevronLeft size={16} strokeWidth={1.5} />
-                    </button>
-                    <span className="text-sm text-[var(--color-ink-muted)]">
-                      Page {page} of {totalPages}
-                    </span>
-                    <button
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      <ChevronRight size={14} className="rotate-180" />
+                    </Button>
+
+                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                      let pageNum: number;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (page <= 3) {
+                        pageNum = i + 1;
+                      } else if (page >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = page - 2 + i;
+                      }
+
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={page === pageNum ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNum)}
+                          className={page === pageNum ? 'bg-violet-600 hover:bg-violet-700' : 'border-border/50 hover:border-violet-500/50'}
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
                       disabled={page === totalPages}
-                      className="rounded-md border border-[var(--color-border)] p-2 disabled:opacity-40 hover:bg-[var(--color-surface-raised)] transition-colors"
+                      className="border-border/50 hover:border-violet-500/50 disabled:opacity-40"
                       aria-label="Next page"
                     >
-                      <ChevronRight size={16} strokeWidth={1.5} />
-                    </button>
-                  </div>
+                      <ChevronRight size={14} />
+                    </Button>
+                  </motion.div>
                 )}
               </>
             )}
           </div>
 
           {/* Sidebar */}
-          <aside className="hidden lg:block space-y-8">
-            <div>
-              <h2 className="text-sm font-semibold text-[var(--color-ink)] mb-3">Search</h2>
-              <SearchInput />
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold text-[var(--color-ink)] mb-3">Categories</h2>
+          <motion.aside
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ ...spring, delay: prefersReducedMotion ? 0 : 0.3 }}
+            className="hidden lg:block space-y-8"
+          >
+            {/* Categories */}
+            <div className="rounded-xl border border-border/50 bg-card p-5">
+              <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                <BookOpen size={14} className="text-violet-400" />
+                Categories
+              </h2>
               <ul className="space-y-1.5">
-                {categories.map((cat) => (
-                  <li key={cat.id}>
-                    <a
-                      href={`/blog/category/${cat.slug}`}
-                      className={`text-sm transition-colors hover:text-[var(--color-accent)] ${
-                        categorySlug === cat.slug
-                          ? "font-semibold text-[var(--color-accent)]"
-                          : "text-[var(--color-ink-muted)]"
-                      }`}
-                    >
-                      {cat.name}
-                    </a>
-                  </li>
-                ))}
+                {loading
+                  ? Array.from({ length: 5 }).map((_, i) => (
+                      <li key={i} className="h-6 rounded bg-muted/50 animate-pulse" />
+                    ))
+                  : categories.map((cat) => (
+                      <li key={cat.id}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`w-full justify-start text-sm transition-colors ${
+                            categorySlug === cat.slug
+                              ? "text-violet-400 bg-violet-500/10"
+                              : "text-muted-foreground hover:text-violet-400 hover:bg-violet-500/5"
+                          }`}
+                          onClick={() => navigate(`/blog/category/${cat.slug}`)}
+                        >
+                          {cat.name}
+                        </Button>
+                      </li>
+                    ))}
               </ul>
             </div>
+
+            {/* Tags */}
             {tags.length > 0 && (
-              <div>
-                <h2 className="text-sm font-semibold text-[var(--color-ink)] mb-3">Tags</h2>
+              <div className="rounded-xl border border-border/50 bg-card p-5">
+                <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <Tag size={14} className="text-cyan-400" />
+                  Popular Tags
+                </h2>
                 <div className="flex flex-wrap gap-2">
-                  {tags.map((t) => <TagPill key={t} tag={t} />)}
+                  {loading
+                    ? Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="h-6 w-16 rounded-full bg-muted/50 animate-pulse" />
+                      ))
+                    : tags.slice(0, 12).map((t) => (
+                        <Badge
+                          key={t}
+                          variant={tag === t ? 'default' : 'outline'}
+                          className={`cursor-pointer transition-colors ${
+                            tag === t
+                              ? 'bg-violet-600 hover:bg-violet-700'
+                              : 'hover:border-violet-500/50 hover:text-violet-400'
+                          }`}
+                          onClick={() => navigate(`/blog/tag/${t}`)}
+                        >
+                          #{t}
+                        </Badge>
+                      ))}
                 </div>
               </div>
             )}
-          </aside>
+
+            {/* Stats */}
+            <div className="rounded-xl border border-border/50 bg-card p-5">
+              <h2 className="text-sm font-semibold text-foreground mb-4">This Category</h2>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Articles</span>
+                  <span className="font-semibold text-foreground">{total}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Showing</span>
+                  <span className="font-semibold text-violet-400">{filteredPosts.length}</span>
+                </div>
+              </div>
+            </div>
+          </motion.aside>
         </div>
       </div>
     </BlogLayout>

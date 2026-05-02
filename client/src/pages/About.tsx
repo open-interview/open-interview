@@ -11,6 +11,7 @@ import {
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion';
 import { SEOHead } from '../components/SEOHead';
 import { AppLayout } from '../components/layout/AppLayout';
+import { FaceliftFooter } from '../components/facelift-footer';
 import { trackEasterEggUnlocked } from '../hooks/use-analytics';
 import { getAllQuestions, channels } from '../lib/data';
 import { cn } from '../lib/utils';
@@ -815,28 +816,7 @@ git push origin feature/awesome-feature`} />
             </AnimatePresence>
           </div>
 
-          {/* Footer */}
-          <footer className="border-t border-border py-8 mt-12">
-            <div className="max-w-4xl mx-auto text-center">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4"
-              >
-                Made with <Heart className="w-4 h-4 text-red-500 animate-pulse" /> and <Coffee className="w-4 h-4 text-amber-500" /> by developers, for developers
-              </motion.div>
-              <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-                <span>Open Source</span>
-                <span>•</span>
-                <span>MIT License</span>
-                <span>•</span>
-                <a href="https://github.com/open-interview/open-interview" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors duration-150 cursor-pointer">
-                  GitHub
-                </a>
-              </div>
-            </div>
-          </footer>
+          <FaceliftFooter />
         </div>
       </AppLayout>
     </>

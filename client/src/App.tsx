@@ -10,7 +10,7 @@ import NotFound from "@/pages/not-found";
 import { InterviewLoader } from "@/components/ui/InterviewLoader";
 
 // Lazy loaded pages with React.lazy for code splitting
-const Home = React.lazy(() => import("@/pages/HomeRedesigned"));
+const Home = React.lazy(() => import("@/pages/home-facelift"));
 const AnswerHistory = React.lazy(() => import("@/pages/AnswerHistory"));
 const About = React.lazy(() => import("@/pages/About"));
 const WhatsNew = React.lazy(() => import("@/pages/WhatsNew"));
@@ -123,6 +123,7 @@ const ChallengeWorkspace = React.lazy(() => import('@/pages/ChallengeWorkspace')
 const BlogHomePage = React.lazy(() => import('@/pages/blog/BlogHomePage'));
 const BlogListPage = React.lazy(() => import('@/pages/blog/BlogListPage'));
 const PostDetailPage = React.lazy(() => import('@/pages/blog/PostDetailPage'));
+const PostFaceliftPage = React.lazy(() => import('@/pages/blog/post-facelift'));
 const BlogSearchPage = React.lazy(() => import('@/pages/blog/BlogSearchPage'));
 const AboutBlogPage = React.lazy(() => import('@/pages/blog/AboutBlogPage'));
 const AdminBlogPage = React.lazy(() => import('@/pages/admin/AdminBlogPage'));
@@ -174,7 +175,7 @@ function Router() {
         <Route path="/blog/search" component={BlogSearchPage} />
         <Route path="/blog/category/:slug">{(params) => <BlogListPage categorySlug={params.slug} />}</Route>
         <Route path="/blog/tag/:tag">{(params) => <BlogListPage tag={params.tag} />}</Route>
-        <Route path="/blog/:slug">{(params) => <PostDetailPage slug={params.slug} />}</Route>
+        <Route path="/blog/:slug">{(params) => <PostFaceliftPage slug={params.slug} />}</Route>
         <Route path="/about-blog" component={AboutBlogPage} />
         <Route path="/admin/blog" component={AdminBlogPage} />
         <Route component={NotFound} />

@@ -10,6 +10,7 @@ import { Sidebar } from './Sidebar';
 import { MobileBottomNav } from './UnifiedNav';
 import { MobileHeader } from './MobileHeader';
 import { UnifiedSearch } from '../UnifiedSearch';
+import { FaceliftNavbar } from '../facelift-navbar';
 import { useSidebar } from '../../context/SidebarContext';
 
 interface AppLayoutProps {
@@ -18,6 +19,7 @@ interface AppLayoutProps {
   fullWidth?: boolean;
   hideNav?: boolean;
   showBackOnMobile?: boolean;
+  useFacelift?: boolean;
 }
 
 const pageVariants = {
@@ -38,6 +40,7 @@ export function AppLayout({
   fullWidth = false,
   hideNav = false,
   showBackOnMobile = false,
+  useFacelift = true,
 }: AppLayoutProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [location] = useLocation();
@@ -79,17 +82,31 @@ export function AppLayout({
         '--safe-right': 'env(safe-area-inset-right, 0px)',
       } as React.CSSProperties}
     >
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:block">
-        <Sidebar />
-      </div>
+      {/* Facelift Navbar (top header for all breakpoints) */}
+      {useFacelift && <FaceliftNavbar onSearchOpen={() => setSearchOpen(true)} />}
 
-      {/* Mobile Header */}
-      <MobileHeader
-        title={title}
-        showBack={showBackOnMobile}
-        onSearchClick={() => setSearchOpen(true)}
-      />
+      {/* Desktop Sidebar — offset below the facelift navbar */}
+      {useFacelift && (
+        <div className="hidden lg:block" style={{ paddingTop: '64px' }}>
+          <Sidebar />
+        </div>
+      )}
+
+      {/* Desktop Sidebar (legacy mode, full-height) */}
+      {!useFacelift && (
+        <div className="hidden lg:block">
+          <Sidebar />
+        </div>
+      )}
+
+      {/* Mobile Header (legacy mode) */}
+      {!useFacelift && (
+        <MobileHeader
+          title={title}
+          showBack={showBackOnMobile}
+          onSearchClick={() => setSearchOpen(true)}
+        />
+      )}
 
       {/* Content area — offset by sidebar on desktop */}
       <motion.div
@@ -115,7 +132,7 @@ export function AppLayout({
       </motion.div>
 
       {/* Mobile content — below header, above bottom nav */}
-      <div className="lg:hidden">
+      <div className="lg:hidden" style={{ paddingTop: useFacelift ? '64px' : undefined }}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.main
             key={location}
