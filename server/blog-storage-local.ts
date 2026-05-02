@@ -8,6 +8,53 @@ let cachedPosts: BlogPost[] = [];
 let cachedCategories: BlogCategory[] = [];
 let cachedTags: string[] = [];
 
+interface RawImage {
+  url?: string;
+  alt?: string;
+  caption?: string;
+  placement?: string;
+}
+
+function buildContent(entry: Record<string, unknown>): string {
+  const blogIntro   = (entry.blogIntro   as string) || '';
+  const blogSections = (entry.blogSections as Array<{ heading?: string; content?: string }>) || [];
+  const blogConclusion = (entry.blogConclusion as string) || '';
+  const diagram     = (entry.diagram     as string) || '';
+  const images      = (entry.images      as RawImage[]) || [];
+
+  const contentParts: string[] = [];
+
+  // 1. Intro
+  if (blogIntro) contentParts.push(blogIntro);
+
+  // 2. After-intro images
+  const afterIntroImgs = images.filter((img) => img.placement === 'after-intro' && img.url);
+  for (const img of afterIntroImgs) {
+    const alt = img.alt || img.caption || '';
+    contentParts.push(`![${alt}](${img.url})`);
+    if (img.caption) contentParts.push(`*${img.caption}*`);
+  }
+
+  // 3. Sections
+  for (const section of blogSections) {
+    const heading = section.heading ? `## ${section.heading}\n\n` : '';
+    const sectionContent = section.content || '';
+    contentParts.push(`${heading}${sectionContent}`);
+  }
+
+  // 4. Architecture diagram (Mermaid)
+  if (diagram && diagram.trim().length > 10) {
+    contentParts.push(`## Architecture Diagram\n\n\`\`\`mermaid\n${diagram.trim()}\n\`\`\``);
+  }
+
+  // 5. Conclusion
+  if (blogConclusion && blogConclusion.trim().length > 10) {
+    contentParts.push(`## Conclusion\n\n${blogConclusion.trim()}`);
+  }
+
+  return contentParts.join('\n\n');
+}
+
 function loadLocalData() {
   try {
     if (!fs.existsSync(DATA_PATH)) {
@@ -23,9 +70,9 @@ function loadLocalData() {
       const blogTitle = (entry.blogTitle as string) || '';
       const blogSlug = (entry.blogSlug as string) || '';
       const blogIntro = (entry.blogIntro as string) || '';
-      const blogSections = (entry.blogSections as Array<{ heading?: string; content?: string }>) || [];
       const channel = (entry.channel as string) || 'General';
       const tagsRaw = entry.tags as string[] | string | undefined;
+      const difficulty = (entry.difficulty as string) || undefined;
 
       // Parse tags (handle JSON string or array)
       let tags: string[] = [];
@@ -39,15 +86,8 @@ function loadLocalData() {
         }
       }
 
-      // Build content from intro + sections
-      const contentParts: string[] = [];
-      if (blogIntro) contentParts.push(blogIntro);
-      for (const section of blogSections) {
-        const heading = section.heading ? `## ${section.heading}\n\n` : '';
-        const sectionContent = section.content || '';
-        contentParts.push(`${heading}${sectionContent}`);
-      }
-      const content = contentParts.join('\n\n');
+      // Build full content: intro + images + sections + diagram + conclusion
+      const content = buildContent(entry);
 
       // PublishedAt from blog ID timestamp (format: blog-<timestamp>-<random>)
       let publishedAt = '';
@@ -59,17 +99,18 @@ function loadLocalData() {
         }
       }
       if (!publishedAt) {
-        publishedAt = new Date().toISOString();
+        const createdAt = entry.createdAt as string | undefined;
+        publishedAt = createdAt || new Date().toISOString();
       }
 
-      // Reading time: 1 min per 1000 chars of content
+      // Reading time: ~200 words/min, ~5 chars/word
       const readingTimeMinutes = Math.max(1, Math.ceil(content.length / 1000));
 
       return {
         id,
         slug: blogSlug,
         title: blogTitle,
-        excerpt: blogIntro || '',
+        excerpt: blogIntro ? blogIntro.slice(0, 250) : '',
         content,
         coverImage: undefined,
         author: 'TechExpert AI',
@@ -79,6 +120,7 @@ function loadLocalData() {
         readingTimeMinutes,
         featured: false,
         status: 'published',
+        difficulty: difficulty as BlogPost['difficulty'],
       } as BlogPost;
     });
 
@@ -190,16 +232,13 @@ export const localBlogStorage = {
     };
   },
 
-  // Admin methods (stubs for local storage)
   async getAdminPosts(): Promise<BlogPost[]> {
     return cachedPosts;
   },
 
   async updateLinkedInInfo(id: string, _linkedinPostId: string | null, _sharedAt: string): Promise<void> {
-    // Local storage doesn't persist LinkedIn info
     console.log(`LinkedIn info update skipped for local storage: ${id}`);
   },
 };
 
-// Also export as blogStorage for compatibility with routes.ts
 export { localBlogStorage as blogStorage };

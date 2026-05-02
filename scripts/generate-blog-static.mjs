@@ -18,14 +18,55 @@ const OUTPUT = path.join(ROOT, 'client', 'public', 'blog-data.json');
 
 const rawData = JSON.parse(fs.readFileSync(INPUT, 'utf-8'));
 
-// ── Process posts (mirrors server/blog-storage-local.ts) ─────────────────────
+// ── Content builder (mirrors server/blog-storage-local.ts) ────────────────────
+function buildContent(entry) {
+  const blogIntro      = entry.blogIntro      || '';
+  const blogSections   = entry.blogSections   || [];
+  const blogConclusion = entry.blogConclusion || '';
+  const diagram        = entry.diagram        || '';
+  const images         = entry.images         || [];
+
+  const parts = [];
+
+  // 1. Intro
+  if (blogIntro) parts.push(blogIntro);
+
+  // 2. After-intro images
+  for (const img of images) {
+    if (img.placement === 'after-intro' && img.url) {
+      const alt = img.alt || img.caption || '';
+      parts.push(`![${alt}](${img.url})`);
+      if (img.caption) parts.push(`*${img.caption}*`);
+    }
+  }
+
+  // 3. Sections
+  for (const section of blogSections) {
+    const heading = section.heading ? `## ${section.heading}\n\n` : '';
+    parts.push(`${heading}${section.content || ''}`);
+  }
+
+  // 4. Architecture diagram (Mermaid)
+  if (diagram && diagram.trim().length > 10) {
+    parts.push(`## Architecture Diagram\n\n\`\`\`mermaid\n${diagram.trim()}\n\`\`\``);
+  }
+
+  // 5. Conclusion
+  if (blogConclusion && blogConclusion.trim().length > 10) {
+    parts.push(`## Conclusion\n\n${blogConclusion.trim()}`);
+  }
+
+  return parts.join('\n\n');
+}
+
+// ── Process posts ─────────────────────────────────────────────────────────────
 const posts = rawData.map((entry) => {
   const id          = entry.id || '';
   const blogTitle   = entry.blogTitle || '';
   const blogSlug    = entry.blogSlug || '';
   const blogIntro   = entry.blogIntro || '';
-  const blogSections = entry.blogSections || [];
   const channel     = entry.channel || 'General';
+  const difficulty  = entry.difficulty || undefined;
 
   let tags = [];
   if (Array.isArray(entry.tags)) {
@@ -34,14 +75,7 @@ const posts = rawData.map((entry) => {
     try { tags = JSON.parse(entry.tags); } catch { tags = []; }
   }
 
-  // Build content identical to how the server does it
-  const contentParts = [];
-  if (blogIntro) contentParts.push(blogIntro);
-  for (const section of blogSections) {
-    const heading = section.heading ? `## ${section.heading}\n\n` : '';
-    contentParts.push(`${heading}${section.content || ''}`);
-  }
-  const content = contentParts.join('\n\n');
+  const content = buildContent(entry);
 
   let publishedAt = '';
   const idMatch = id.match(/^blog-(\d+)-/);
@@ -49,7 +83,7 @@ const posts = rawData.map((entry) => {
     const ts = parseInt(idMatch[1], 10);
     if (!isNaN(ts)) publishedAt = new Date(ts).toISOString();
   }
-  if (!publishedAt) publishedAt = new Date().toISOString();
+  if (!publishedAt) publishedAt = entry.createdAt || new Date().toISOString();
 
   const readingTimeMinutes = Math.max(1, Math.ceil(content.length / 1000));
 
@@ -57,9 +91,9 @@ const posts = rawData.map((entry) => {
     id,
     slug: blogSlug,
     title: blogTitle,
-    excerpt: blogIntro || '',
+    excerpt: blogIntro ? blogIntro.slice(0, 250) : '',
     content,
-    coverImage: undefined,
+    coverImage: null,
     author: 'TechExpert AI',
     category: channel,
     tags,
@@ -67,6 +101,7 @@ const posts = rawData.map((entry) => {
     readingTimeMinutes,
     featured: false,
     status: 'published',
+    difficulty: difficulty || null,
   };
 });
 
@@ -95,4 +130,4 @@ const output = { posts, categories, tags };
 fs.writeFileSync(OUTPUT, JSON.stringify(output));
 
 const kb = Math.round(fs.statSync(OUTPUT).size / 1024);
-console.log(`✓ Generated ${OUTPUT} (${kb} KB, ${posts.length} posts)`);
+console.log(`✓ Generated ${OUTPUT} (${kb} KB, ${posts.length} posts, ${categories.length} categories, ${tags.length} tags)`);

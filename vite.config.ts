@@ -19,33 +19,64 @@ function blogStaticDataPlugin() {
         if (!fs.existsSync(input)) return;
 
         const rawData: Array<Record<string, unknown>> = JSON.parse(fs.readFileSync(input, 'utf-8'));
+
+        function buildContent(entry: Record<string, unknown>): string {
+          const blogIntro      = (entry.blogIntro      as string) || '';
+          const blogSections   = (entry.blogSections   as Array<{ heading?: string; content?: string }>) || [];
+          const blogConclusion = (entry.blogConclusion as string) || '';
+          const diagram        = (entry.diagram        as string) || '';
+          const images         = (entry.images         as Array<{ url?: string; alt?: string; caption?: string; placement?: string }>) || [];
+
+          const parts: string[] = [];
+
+          if (blogIntro) parts.push(blogIntro);
+
+          for (const img of images) {
+            if (img.placement === 'after-intro' && img.url) {
+              const alt = img.alt || img.caption || '';
+              parts.push(`![${alt}](${img.url})`);
+              if (img.caption) parts.push(`*${img.caption}*`);
+            }
+          }
+
+          for (const s of blogSections) {
+            const h = s.heading ? `## ${s.heading}\n\n` : '';
+            parts.push(`${h}${s.content || ''}`);
+          }
+
+          if (diagram && diagram.trim().length > 10) {
+            parts.push(`## Architecture Diagram\n\n\`\`\`mermaid\n${diagram.trim()}\n\`\`\``);
+          }
+
+          if (blogConclusion && blogConclusion.trim().length > 10) {
+            parts.push(`## Conclusion\n\n${blogConclusion.trim()}`);
+          }
+
+          return parts.join('\n\n');
+        }
+
         const posts = rawData.map((entry) => {
-          const id           = (entry.id as string) || '';
-          const blogIntro    = (entry.blogIntro as string) || '';
-          const blogSections = (entry.blogSections as Array<{ heading?: string; content?: string }>) || [];
-          const channel      = (entry.channel as string) || 'General';
+          const id      = (entry.id      as string) || '';
+          const blogIntro = (entry.blogIntro as string) || '';
+          const channel = (entry.channel as string) || 'General';
+          const difficulty = (entry.difficulty as string) || null;
 
           let tags: string[] = [];
           if (Array.isArray(entry.tags)) tags = entry.tags as string[];
           else if (typeof entry.tags === 'string') { try { tags = JSON.parse(entry.tags); } catch { tags = []; } }
 
-          const contentParts: string[] = [];
-          if (blogIntro) contentParts.push(blogIntro);
-          for (const s of blogSections) {
-            const h = s.heading ? `## ${s.heading}\n\n` : '';
-            contentParts.push(`${h}${s.content || ''}`);
-          }
-          const content = contentParts.join('\n\n');
+          const content = buildContent(entry);
 
           let publishedAt = '';
           const m = id.match(/^blog-(\d+)-/);
           if (m) { const ts = parseInt(m[1], 10); if (!isNaN(ts)) publishedAt = new Date(ts).toISOString(); }
-          if (!publishedAt) publishedAt = new Date().toISOString();
+          if (!publishedAt) publishedAt = (entry.createdAt as string) || new Date().toISOString();
 
-          return { id, slug: entry.blogSlug, title: entry.blogTitle, excerpt: blogIntro,
-            content, author: 'TechExpert AI', category: channel, tags,
+          return { id, slug: entry.blogSlug, title: entry.blogTitle,
+            excerpt: blogIntro ? (blogIntro as string).slice(0, 250) : '',
+            content, coverImage: null, author: 'TechExpert AI', category: channel, tags,
             publishedAt, readingTimeMinutes: Math.max(1, Math.ceil(content.length / 1000)),
-            featured: false, status: 'published' };
+            featured: false, status: 'published', difficulty };
         });
 
         posts.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());

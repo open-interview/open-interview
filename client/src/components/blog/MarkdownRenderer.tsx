@@ -1,5 +1,27 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Check, Copy } from "lucide-react";
+
+// ─── Mermaid / Diagram Block ──────────────────────────────────────────────────
+
+const InteractiveDiagram = lazy(() =>
+  import("@/components/InteractiveDiagram").then((m) => ({ default: m.InteractiveDiagram }))
+);
+
+function MermaidBlock({ code }: { code: string }) {
+  return (
+    <div className="my-8 not-prose">
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center rounded-xl border border-slate-700/60 bg-[#0d1117] p-10 text-slate-400 text-sm">
+            Loading diagram…
+          </div>
+        }
+      >
+        <InteractiveDiagram chart={code} />
+      </Suspense>
+    </div>
+  );
+}
 
 // ─── Syntax Highlighting ─────────────────────────────────────────────────────
 
@@ -366,7 +388,12 @@ export function MarkdownRenderer({ content }: { content: string }) {
         codeLines.push(lines[i]);
         i++;
       }
-      elements.push(<CodeBlock key={k()} code={codeLines.join("\n")} language={lang || undefined} />);
+      const codeContent = codeLines.join("\n");
+      if (lang === "mermaid") {
+        elements.push(<MermaidBlock key={k()} code={codeContent} />);
+      } else {
+        elements.push(<CodeBlock key={k()} code={codeContent} language={lang || undefined} />);
+      }
       i++; continue;
     }
 
