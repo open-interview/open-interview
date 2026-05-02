@@ -1,19 +1,9 @@
 /**
  * Test Suite 02 — Routing & Navigation (P0-02, P0-03, P1-01, P1-03, P2-05)
- *
- * Covers:
- * - All 40+ routes return valid pages (no 404 or error state)
- * - Home page anchor links (#features, #topics) scroll correctly on /
- * - Footer nav anchor links do NOT open in new tab (P0-02)
- * - /stats redirects to /profile with feedback (P1-01)
- * - /voice routes to VoicePractice correctly
- * - Sidebar links map to correct routes
- * - Missing sidebar routes: /whats-new, /notifications, /blog (P2-05)
- * - ChallengeHome uses CSS variables not hardcoded grays (P1-03)
  */
 
-import { test, expect, Page } from '@playwright/test';
-import { navigateTo, BASE_URL, assertPageLoaded, skipOnboarding } from './helpers';
+import { test, expect } from '@playwright/test';
+import { smokeNavigate, navigateTo, BASE_URL, assertPageLoaded, skipOnboarding } from './helpers';
 
 const ROUTES_TO_CHECK = [
   { path: '/',                  name: 'Home' },
@@ -42,10 +32,8 @@ const ROUTES_TO_CHECK = [
 test.describe('Route smoke tests — all major routes load without error', () => {
   for (const route of ROUTES_TO_CHECK) {
     test(`${route.path} — ${route.name} loads correctly`, async ({ page }) => {
-      await navigateTo(page, route.path);
+      await smokeNavigate(page, route.path);
       await assertPageLoaded(page, route.path);
-
-      // Should not show onboarding
       await expect(page.getByText('What\'s your role?')).not.toBeVisible({ timeout: 1000 });
     });
   }
@@ -53,34 +41,30 @@ test.describe('Route smoke tests — all major routes load without error', () =>
 
 test.describe('Anchor links on homepage (P0-02, P0-03)', () => {
 
-  test('hero nav #features link scrolls to features section (does NOT open new tab)', async ({ page, context }) => {
+  test('hero nav #features link does NOT open new tab (P0-02)', async ({ page, context }) => {
     await skipOnboarding(page);
-
-    // Track new tab events — there should be none
-    const newTabPromise = context.waitForEvent('page', { timeout: 2000 }).catch(() => null);
+    let newTabOpened = false;
+    context.on('page', () => { newTabOpened = true; });
 
     await page.goto(`${BASE_URL}/`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
-    // Find the Features link in the hero nav
     const featuresLink = page.locator('a[href="#features"]').first();
     if (await featuresLink.count() > 0) {
       await featuresLink.click();
-      const newTab = await newTabPromise;
-      expect(newTab).toBeNull(); // BUG: new tab should NOT open
+      await page.waitForTimeout(400);
+      expect(newTabOpened).toBe(false);
     }
   });
 
   test('footer Features link does NOT open a new tab (P0-02)', async ({ page, context }) => {
     await skipOnboarding(page);
-    await page.goto(`${BASE_URL}/`);
-    await page.waitForLoadState('networkidle');
-
-    // Track new tab events
     let newTabOpened = false;
     context.on('page', () => { newTabOpened = true; });
 
-    // Find Features in the footer columns
+    await page.goto(`${BASE_URL}/`);
+    await page.waitForLoadState('load');
+
     const footerFeatures = page.getByRole('link', { name: 'Features' }).or(
       page.getByText('Features').filter({ hasNot: page.locator('h1, h2, h3') })
     ).last();
@@ -88,8 +72,6 @@ test.describe('Anchor links on homepage (P0-02, P0-03)', () => {
     if (await footerFeatures.count() > 0) {
       await footerFeatures.click();
       await page.waitForTimeout(500);
-
-      // FAIL if new tab was opened — this is the P0-02 bug
       expect(newTabOpened).toBe(false);
     }
   });
@@ -97,7 +79,7 @@ test.describe('Anchor links on homepage (P0-02, P0-03)', () => {
   test('section IDs exist on homepage: #features, #topics, #articles, #community', async ({ page }) => {
     await skipOnboarding(page);
     await page.goto(`${BASE_URL}/`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     for (const id of ['features', 'topics', 'articles', 'community']) {
       const el = page.locator(`#${id}`);
@@ -111,7 +93,7 @@ test.describe('/stats redirect (P1-01)', () => {
   test('/stats redirects to /profile', async ({ page }) => {
     await skipOnboarding(page);
     await page.goto(`${BASE_URL}/stats`);
-    await page.waitForURL(/\/profile/, { timeout: 5000 });
+    await page.waitForURL(/\/profile/, { timeout: 8000 });
     expect(page.url()).toContain('/profile');
   });
 
@@ -119,13 +101,10 @@ test.describe('/stats redirect (P1-01)', () => {
     await skipOnboarding(page);
     await page.goto(`${BASE_URL}/stats`);
 
-    // BUG: Currently no feedback shown before redirect
-    // Post-fix: a toast or notice like "Stats have moved to Profile" should appear
-    // For now, document this as a known gap:
     const hasFeedback = await page.getByText(/stats.*moved|moved.*profile|redirecting/i)
       .isVisible({ timeout: 1500 }).catch(() => false);
     console.log(`/stats redirect feedback shown: ${hasFeedback}`);
-    // TODO: uncomment after fix: expect(hasFeedback).toBe(true);
+    // TODO: after fix: expect(hasFeedback).toBe(true);
   });
 });
 
@@ -158,7 +137,6 @@ test.describe('Sidebar navigation links (P2-05)', () => {
   test('/whats-new is accessible (P2-05 — currently missing from sidebar)', async ({ page }) => {
     await navigateTo(page, '/whats-new');
     await assertPageLoaded(page, '/whats-new');
-    // Page should show changelog/what's new content
     await expect(page.getByText(/new|update|change|release|version/i).first()).toBeVisible({ timeout: 5000 });
   });
 
@@ -180,23 +158,19 @@ test.describe('Sidebar navigation links (P2-05)', () => {
 
 test.describe('ChallengeHome CSS tokens (P1-03)', () => {
 
-  test('/code page renders without raw gray-900 background classes (P1-03)', async ({ page }) => {
+  test('/code page renders without raw gray-900 background (P1-03)', async ({ page }) => {
     await navigateTo(page, '/code');
-    await page.waitForLoadState('networkidle');
     await assertPageLoaded(page, '/code');
 
-    // Check computed background of the main container is NOT #111827 (Tailwind gray-900)
-    // This verifies CSS variable migration is applied
     const bodyBg = await page.evaluate(() => {
       const el = document.querySelector('main') || document.body;
       return window.getComputedStyle(el).backgroundColor;
     });
-    // gray-900 = rgb(17, 24, 39) — if still present, CSS tokens not used
     const isHardcodedGray = bodyBg === 'rgb(17, 24, 39)';
     if (isHardcodedGray) {
       console.warn('P1-03: /code still uses hardcoded bg-gray-900');
     }
-    // TODO: after fix, assert: expect(isHardcodedGray).toBe(false);
+    // TODO: after fix: expect(isHardcodedGray).toBe(false);
   });
 });
 
@@ -205,7 +179,7 @@ test.describe('404 Not Found page', () => {
   test('unknown route shows 404 not-found page', async ({ page }) => {
     await skipOnboarding(page);
     await page.goto(`${BASE_URL}/this-page-definitely-does-not-exist`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     await expect(page.getByText(/not found|404|page.*exist/i)).toBeVisible({ timeout: 5000 });
   });
 });

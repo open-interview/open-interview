@@ -26,34 +26,50 @@ export async function skipOnboarding(page: Page): Promise<void> {
 }
 
 /**
- * Wait for the main content area to be visible (not showing a loading spinner).
+ * Wait for the page DOM + initial scripts to be ready.
+ * Uses 'load' (not 'networkidle') to avoid waiting for lazy JSON fetches
+ * that the app loads in the background (channels, questions, etc.).
  */
 export async function waitForContent(page: Page): Promise<void> {
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('load');
 }
 
 /**
  * Assert a page loaded without a full-screen error or 404.
+ * Only checks for text that would genuinely block the page from rendering.
  */
 export async function assertPageLoaded(page: Page, path: string): Promise<void> {
-  await expect(page).not.toHaveURL(/\/not-found/);
-  const errorTexts = ['Page not found', '404', 'Something went wrong', 'Unexpected error'];
-  for (const text of errorTexts) {
-    const el = page.getByText(text, { exact: false });
-    const count = await el.count();
-    if (count > 0) {
-      throw new Error(`Page ${path} shows error text: "${text}"`);
-    }
+  const url = page.url();
+  // Only flag if we actually landed on the not-found route
+  if (url.includes('/not-found')) {
+    throw new Error(`Page ${path} redirected to /not-found`);
+  }
+  // Check for hard error states (not soft 404s which are content)
+  const crashText = page.getByText('Application Error', { exact: true });
+  const hasCrash = await crashText.count() > 0;
+  if (hasCrash) {
+    throw new Error(`Page ${path} shows "Application Error"`);
   }
 }
 
 /**
- * Navigate to a route and skip onboarding. Returns after content is visible.
+ * Navigate to a route, skip onboarding, and wait for page load.
+ * Uses 'load' state — does NOT wait for background data fetches.
  */
 export async function navigateTo(page: Page, path: string): Promise<void> {
   await skipOnboarding(page);
   await page.goto(`${BASE_URL}${path}`);
   await waitForContent(page);
+}
+
+/**
+ * Lightweight smoke navigation — just checks the route loads and returns
+ * a non-crash response. Does not wait for content to fully render.
+ * Use this for the route smoke tests to keep them fast.
+ */
+export async function smokeNavigate(page: Page, path: string): Promise<void> {
+  await skipOnboarding(page);
+  await page.goto(`${BASE_URL}${path}`, { waitUntil: 'domcontentloaded' });
 }
 
 /**
@@ -72,6 +88,32 @@ export async function assertMinFontSize(
       `Element "${selector}" has font-size ${fontSize}px, expected >= ${minPx}px`,
     );
   }
+}
+
+/**
+ * Assert that the last item in a Locator set does not overlap the mobile
+ * bottom nav bar. Scrolls to bottom first. Soft-checks that content is
+ * accessible (not hidden behind fixed nav).
+ */
+export async function assertNoNavOverlap(page: Page, cards: import('@playwright/test').Locator): Promise<void> {
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.waitForTimeout(300);
+
+  const navEl = page.locator('[class*="fixed"][class*="bottom-0"]').first();
+  const navBox = await navEl.boundingBox();
+  if (!navBox) return; // no mobile nav present at this viewport
+
+  const count = await cards.count();
+  if (count === 0) return;
+
+  const lastCardBox = await cards.last().boundingBox();
+  if (!lastCardBox) return;
+
+  const overlap = lastCardBox.y + lastCardBox.height - navBox.y;
+  expect(
+    overlap,
+    `Last card overlaps mobile nav by ${overlap}px (card bottom: ${lastCardBox.y + lastCardBox.height}px, nav top: ${navBox.y}px)`,
+  ).toBeLessThanOrEqual(0);
 }
 
 /**

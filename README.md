@@ -46,10 +46,30 @@
 
 ## Getting Started
 
+This is a **static site** deployed to GitHub Pages. The correct way to build and preview it locally mirrors exactly what CI does:
+
 ```bash
 pnpm install
-pnpm dev
+
+# Build the static site (fetches data, generates tests, builds with Vite)
+pnpm run build:static
+
+# Preview the built output at http://localhost:3333
+pnpm run preview
 ```
+
+`pnpm dev` starts a Vite dev server with HMR — useful for component work, but it skips the data pipeline (`tests.json`, `learning-paths.json`, etc.) so pages like Quick Tests and Learning Paths will appear empty.
+
+### Why not `pnpm dev`?
+
+| | `pnpm dev` | `pnpm build:static && pnpm preview` |
+|---|---|---|
+| Data pipeline runs | ❌ | ✅ |
+| Tests / Learning Paths populated | ❌ | ✅ |
+| Matches GitHub Pages output | ❌ | ✅ |
+| Hot module reload | ✅ | ❌ |
+
+Use `pnpm dev` only when iterating on UI components where you don't need real data.
 
 ## License
 
