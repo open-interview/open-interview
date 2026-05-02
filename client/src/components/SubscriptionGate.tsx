@@ -14,7 +14,36 @@ interface Props {
   children: React.ReactNode;
 }
 
-const UNBLOCKED_PREFIXES = ['/', '/blog', '/learning-paths'];
+const UNBLOCKED_PREFIXES = [
+  '/',
+  '/blog',
+  '/channels',
+  '/channel/',
+  '/certifications',
+  '/certification/',
+  '/learning-paths',
+  '/my-path',
+  '/voice-interview',
+  '/voice-session',
+  '/training',
+  '/tests',
+  '/test/',
+  '/code',
+  '/coding',
+  '/review',
+  '/flashcards',
+  '/badges',
+  '/bookmarks',
+  '/profile',
+  '/about',
+  '/docs',
+  '/whats-new',
+  '/manage-subscriptions',
+  '/history',
+  '/stats',
+  '/events',
+  '/bot-activity',
+];
 
 function isUnblocked(path: string): boolean {
   if (path === '/') return true;

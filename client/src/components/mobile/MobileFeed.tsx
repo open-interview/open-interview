@@ -132,7 +132,7 @@ export function MobileFeed() {
 
       {/* Quick Actions */}
       <QuickActionsCard 
-        onCoding={() => setLocation('/coding')}
+        onCoding={() => setLocation('/code')}
         onTests={() => setLocation('/tests')}
         onBadges={() => setLocation('/badges')}
       />

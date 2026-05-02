@@ -864,7 +864,7 @@ function LandingFooter() {
               title: "Company",
               links: [
                 { label: "About", href: "/about" },
-                { label: "GitHub", href: "https://github.com/openstackdaily" },
+                { label: "GitHub", href: "https://github.com/open-interview" },
                 { label: "Contact", href: "/about" },
               ],
             },
@@ -901,7 +901,7 @@ function LandingFooter() {
           </p>
           <div className="flex items-center gap-4">
             <button
-              onClick={() => window.open("https://github.com/openstackdaily", "_blank")}
+              onClick={() => window.open("https://github.com/open-interview", "_blank")}
               className="text-white/20 hover:text-white/60 transition-colors"
             >
               <Github className="w-5 h-5" />
@@ -920,7 +920,7 @@ export default function HomeFacelift() {
       <SEOHead
         title="DevInsights — Master Engineering Interviews with AI"
         description="Practice system design, algorithms, and behavioral interviews with AI-powered feedback. 1500+ questions across 30+ topics. Join 12,000+ engineers who landed their dream roles."
-        canonical="https://openstackdaily.github.io/"
+        canonical="https://open-interview.github.io/"
       />
 
       <div className="min-h-screen bg-[#0a0e1a] text-white overflow-x-hidden">

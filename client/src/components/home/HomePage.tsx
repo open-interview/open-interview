@@ -569,7 +569,7 @@ export function HomePage() {
               className="flex gap-3 overflow-x-auto pb-1 custom-scrollbar -mx-4 px-4">
               <StatPill icon={Zap} value={questionsToday} label="Answered Today" color="text-yellow-400" onClick={() => setLocation('/training')} />
               <StatPill icon={BookOpen} value={topicsMastered} label="Topics Mastered" color="text-cyan-400" onClick={() => setLocation('/channels')} />
-              <StatPill icon={Trophy} value={totalCompleted} label="Solved" color="text-amber-400" onClick={() => setLocation('/progress')} />
+              <StatPill icon={Trophy} value={totalCompleted} label="Solved" color="text-amber-400" onClick={() => setLocation('/profile')} />
             </motion.div>
           </div>
 

@@ -72,7 +72,7 @@ const practiceLinks = [
 const quickLinks = [
   { label: "Home", href: "/" },
   { label: "All Channels", href: "/channels" },
-  { label: "Learning Paths", href: "/my-path" },
+  { label: "Learning Paths", href: "/learning-paths" },
   { label: "Blog", href: "/blog" },
   { label: "Documentation", href: "/docs" },
   { label: "About", href: "/about" },

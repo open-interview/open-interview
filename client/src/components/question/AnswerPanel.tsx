@@ -202,7 +202,7 @@ export function AnswerPanel({ question, isCompleted }: {
             </a>
           )}
           {blogPost && (
-            <a href={`https://openstackdaily.github.io${blogPost.url}`} target="_blank" rel="noopener noreferrer"
+            <a href={blogPost.slug ? `/blog/${blogPost.slug}` : (blogPost.url || '#')}
               className="inline-flex items-center gap-1.5 text-xs font-medium text-primary border border-primary/30 rounded-lg px-3 py-1.5 hover:bg-primary/5 transition-colors">
               <FileText className="w-3.5 h-3.5" /> Read Blog
             </a>

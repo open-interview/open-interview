@@ -214,7 +214,7 @@ export function MobileHomeFocused() {
               <TrainingModeCardCompact onStart={() => setLocation('/training')} />
               
               {/* Practice CTAs */}
-              <CodingChallengeCardCompact onStart={() => setLocation('/coding')} />
+              <CodingChallengeCardCompact onStart={() => setLocation('/code')} />
               <CertificationCardCompact onStart={() => setLocation('/certifications')} />
               
               {/* Quick Links - Compact inline */}

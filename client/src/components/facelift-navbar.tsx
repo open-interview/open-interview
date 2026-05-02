@@ -27,7 +27,7 @@ const NAV_LINKS: NavLink[] = [
   { id: 'home', label: 'Home', href: '/', icon: Home },
   { id: 'topics', label: 'Topics', href: '/channels', icon: BookOpen },
   { id: 'blog', label: 'Blog', href: '/blog', icon: BookOpen },
-  { id: 'practice', label: 'Practice', href: '/voice-interview', icon: Mic, external: true },
+  { id: 'practice', label: 'Practice', href: '/voice-interview', icon: Mic },
 ];
 
 // ─── Scroll threshold constants ──────────────────────────────────────────────

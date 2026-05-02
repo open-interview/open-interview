@@ -616,9 +616,7 @@ export function ExtremeAnswerPanel({ question }: ExtremeAnswerPanelProps) {
             )}
             {blogPost && (
               <motion.a 
-                href={`https://openstackdaily.github.io${blogPost.url}`} 
-                target="_blank" 
-                rel="noopener noreferrer"
+                href={blogPost.slug ? `/blog/${blogPost.slug}` : (blogPost.url || '#')}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-xl text-sm backdrop-blur-xl transition-colors"
                 whileHover={{ scale: 1.05 }}
               >
