@@ -1,33 +1,32 @@
 # Workflow Orchestration Status
 
-> Last updated: 2026-05-02T09:54 UTC  
-> Tracking test run triggered at 09:32 UTC
+> Last updated: 2026-05-02T09:56 UTC
 
 ---
 
-## Run Summary
+## Current Runs (Round 2 — post-fix)
 
-| Run ID | Workflow | Job/Mode | Status | Duration | Notes |
-|--------|----------|----------|--------|----------|-------|
-| [25248967860](https://github.com/open-interview/open-interview/actions/runs/25248967860) | 🤖 Content Pipeline | `quick` | ❌ failure | 7m28s | |
-| [25248968173](https://github.com/open-interview/open-interview/actions/runs/25248968173) | 🤖 Content Pipeline | `full-pipeline` | 🔄 in_progress | 21m+ | |
-| [25248968521](https://github.com/open-interview/open-interview/actions/runs/25248968521) | 🤖 Content Pipeline | `intake` | ✅ success | 4m27s | |
-| [25248968873](https://github.com/open-interview/open-interview/actions/runs/25248968873) | 🤖 Content Pipeline | `blog` | ❌ failure | 7m14s | |
-| [25248969204](https://github.com/open-interview/open-interview/actions/runs/25248969204) | 📣 Social & Analytics | `linkedin-post` (dry_run) | ❌ failure | 1m11s | |
-| [25248969525](https://github.com/open-interview/open-interview/actions/runs/25248969525) | 📣 Social & Analytics | `poll` (dry_run) | ❌ failure | 1m13s | |
-| [25248969872](https://github.com/open-interview/open-interview/actions/runs/25248969872) | 📣 Social & Analytics | `analytics` | ❌ failure | 1m7s | |
+| Run ID | Workflow | Mode | Status |
+|--------|----------|------|--------|
+| [25249348215](https://github.com/open-interview/open-interview/actions/runs/25249348215) | 🤖 Content | `quick` | 🔄 in_progress |
+| [25249348486](https://github.com/open-interview/open-interview/actions/runs/25249348486) | 🤖 Content | `blog` | 🔄 in_progress |
+| [25249348753](https://github.com/open-interview/open-interview/actions/runs/25249348753) | 📣 Social | `linkedin-post` dry_run | 🔄 in_progress |
+| [25249349092](https://github.com/open-interview/open-interview/actions/runs/25249349092) | 📣 Social | `poll` dry_run | 🔄 in_progress |
+| [25249349422](https://github.com/open-interview/open-interview/actions/runs/25249349422) | 📣 Social | `analytics` | 🔄 in_progress |
+| [25248968173](https://github.com/open-interview/open-interview/actions/runs/25248968173) | 🤖 Content | `full-pipeline` | 🔄 in_progress (long-running) |
 
 ---
 
-## Pending Investigation
+## Round 1 Results (09:32 UTC)
 
-- [ ] `25248967860` — content `quick` failure
-- [ ] `25248968873` — content `blog` failure
-- [ ] `25248969204` — social `linkedin-post` failure
-- [ ] `25248969525` — social `poll` failure
-- [ ] `25248969872` — social `analytics` failure
-- [ ] `25248968173` — content `full-pipeline` still running
-- [ ] CI/CD pipeline failures on recent pushes
+| Run ID | Mode | Result | Root Cause |
+|--------|------|--------|------------|
+| [25248967860](https://github.com/open-interview/open-interview/actions/runs/25248967860) | content `quick` | ❌ | `403` git push — missing `permissions: contents: write` |
+| [25248968521](https://github.com/open-interview/open-interview/actions/runs/25248968521) | content `intake` | ✅ | — |
+| [25248968873](https://github.com/open-interview/open-interview/actions/runs/25248968873) | content `blog` | ❌ | `TypeError: article.images?.find is not a function` |
+| [25248969204](https://github.com/open-interview/open-interview/actions/runs/25248969204) | social `linkedin-post` | ❌ | `403` git push — missing `permissions: contents: write` |
+| [25248969525](https://github.com/open-interview/open-interview/actions/runs/25248969525) | social `poll` | ❌ | `No questions found` (empty DB) + `403` on log push |
+| [25248969872](https://github.com/open-interview/open-interview/actions/runs/25248969872) | social `analytics` | ❌ | `403` git push — missing `permissions: contents: write` |
 
 ---
 
@@ -35,12 +34,16 @@
 
 | Time | Fix | Commit |
 |------|-----|--------|
-| 09:25 | `git add -f` for gitignored `client/public/data/events.json` in `social.yml` | `07e1540d` |
+| 09:25 | `git add -f` for gitignored `client/public/data/` in `social.yml` | `07e1540d` |
 | 09:28 | `git add -f` for gitignored paths in `content.yml`, `ci-cd.yml`, `maintenance.yml` | `54d3e34e` |
-| 09:32 | Export + commit generated content back to repo in `quick-generate`, `manual-intake`, `maintenance` jobs | `0e72b188` |
+| 09:32 | Export + commit generated content in `quick-generate`, `manual-intake`, `maintenance` | `0e72b188` |
+| 09:56 | `permissions: contents: write` on `quick-generate`, `linkedin-post`, `poll`, `analytics` | `284c998f` |
+| 09:56 | Fix `article.images?.find` crash in `generate-blog.js` — normalize to array | `284c998f` |
 
 ---
 
-## Debug Log
+## Pending
 
-<!-- Entries added as jobs complete -->
+- [ ] Verify Round 2 runs pass
+- [ ] `full-pipeline` `25248968173` — check when complete
+- [ ] `poll` dry_run — may still show `No questions found` (empty DB is expected in dry-run without seed)
