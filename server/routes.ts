@@ -6,6 +6,7 @@ import * as SRepo from './repositories/sessions';
 import { db } from './db';
 import { learningPaths, userSessions, flashcards, voiceSessions, tests, blogPosts, linkedinPublishLog } from '@shared/schema';
 import { eq, sql, desc, asc, and, ne, like } from 'drizzle-orm';
+import { localBlogStorage as blogStorage } from "./blog-storage-local";
 
 // Helper to parse JSON fields from DB
 function parseQuestion(row: any) {
@@ -859,7 +860,26 @@ export async function registerRoutes(
   });
 
   // ── Blog API Routes ────────────────────────────────────────────────────────
-  const { blogStorage } = await import("./blog-storage");
+
+  // Health check endpoint
+  app.get("/api/blog/health", async (_req, res) => {
+    try {
+      const posts = await blogStorage.getAllPosts();
+      res.json({
+        status: posts.length > 0 ? "healthy" : "degraded",
+        postCount: posts.length,
+        source: "json",
+      });
+    } catch (error) {
+      console.error("Blog health check failed:", error);
+      res.json({
+        status: "degraded",
+        postCount: 0,
+        source: "json",
+        error: "Failed to load blog data",
+      });
+    }
+  });
 
   app.get("/api/blog/posts", async (req, res) => {
     try {
@@ -888,7 +908,11 @@ export async function registerRoutes(
       const post = await blogStorage.getPostBySlug(req.params.slug);
       if (!post) return res.status(404).json({ error: "Post not found" });
       const related = await blogStorage.getRelatedPosts(post.id, 3);
-      res.json({ data: post, related });
+      const allPosts = await blogStorage.getAllPosts();
+      const currentIndex = allPosts.findIndex(p => p.slug === req.params.slug);
+      const prev = currentIndex > 0 ? allPosts[currentIndex - 1] : null;
+      const next = currentIndex < allPosts.length - 1 ? allPosts[currentIndex + 1] : null;
+      res.json({ data: post, related, prev, next });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch post" });
     }
@@ -926,20 +950,17 @@ export async function registerRoutes(
 
   app.get("/api/admin/blog", async (_req, res) => {
     try {
-      const posts = await db
-        .select({
-          id: blogPosts.id,
-          title: blogPosts.title,
-          slug: blogPosts.slug,
-          channel: blogPosts.channel,
-          status: blogPosts.status,
-          linkedinSharedAt: blogPosts.linkedinSharedAt,
-          publishedAt: blogPosts.publishedAt,
-          createdAt: blogPosts.createdAt,
-        })
-        .from(blogPosts)
-        .orderBy(desc(blogPosts.createdAt));
-      res.json(posts);
+      const posts = await blogStorage.getAdminPosts();
+      res.json(posts.map(p => ({
+        id: p.id,
+        title: p.title,
+        slug: p.slug,
+        channel: p.category,
+        status: p.status || "published",
+        linkedinSharedAt: (p as any).linkedinSharedAt || null,
+        publishedAt: p.publishedAt,
+        createdAt: p.publishedAt,
+      })));
     } catch (error) {
       console.error("Error fetching admin blog posts:", error);
       res.status(500).json({ error: "Failed to fetch blog posts" });
@@ -955,14 +976,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "sharedAt is required" });
       }
 
-      await db
-        .update(blogPosts)
-        .set({
-          linkedinPostId: linkedinPostId || null,
-          linkedinSharedAt: sharedAt,
-          lastUpdated: new Date().toISOString(),
-        })
-        .where(eq(blogPosts.id, id));
+      await blogStorage.updateLinkedInInfo(id, linkedinPostId || null, sharedAt);
 
       res.json({ success: true });
     } catch (error) {

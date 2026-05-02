@@ -6,7 +6,7 @@ import { FeaturedCard, FeaturedCardSkeleton } from "@/components/facelift/featur
 import { StatGrid, StatCard, StatCardSkeleton, type StatCardData } from "@/components/facelift/stat-card";
 import { TopicCard, TopicCardSkeleton, type TopicCardData } from "@/components/facelift/topic-card";
 import { motion } from "framer-motion";
-import { useReducedMotion, getSpringTransition, staggerConfig } from "@/hooks/use-reduced-motion";
+import { useReducedMotion, getSpringTransition } from "@/hooks/use-reduced-motion";
 import { BookOpen, Clock, TrendingUp, Filter, ChevronDown, Grid3x3, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,12 +19,33 @@ interface Category {
   count?: number;
 }
 
+function getDifficultyFromCategory(category: string): ArticleDifficulty {
+  const advancedCategories = ['system-design', 'algorithms', 'ai-ml', 'security', 'database'];
+  const intermediateCategories = ['frontend', 'backend', 'react', 'javascript', 'python', 'aws', 'kubernetes'];
+  const slug = category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  if (advancedCategories.includes(slug)) return 'advanced';
+  if (intermediateCategories.includes(slug)) return 'intermediate';
+  return 'beginner';
+}
+
 const difficulties: ArticleDifficulty[] = ['beginner', 'intermediate', 'advanced'];
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0,
+    },
+  },
+};
 
 const difficultyLabels: Record<ArticleDifficulty, string> = {
   beginner: 'Beginner',
   intermediate: 'Intermediate',
   advanced: 'Advanced',
+  expert: 'Expert',
 };
 
 export default function BlogHomePage() {
@@ -53,8 +74,12 @@ export default function BlogHomePage() {
       fetch("/api/blog/categories").then((r) => r.json()),
     ])
       .then(([feat, posts, cats]) => {
-        setFeatured(feat.data || []);
-        setRecent(posts.data || []);
+        const mapPost = (p: any): ArticleCardData => ({
+          ...p,
+          difficulty: p.difficulty || getDifficultyFromCategory(p.category),
+        });
+        setFeatured((feat.data || []).map(mapPost));
+        setRecent((posts.data || []).map(mapPost));
         setCategories((cats.data || []).map((c: Category) => ({
           ...c,
           count: Math.floor(Math.random() * 20) + 5,
@@ -324,7 +349,7 @@ export default function BlogHomePage() {
               <>
                 <motion.div
                   className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-                  variants={staggerConfig}
+                  variants={containerVariants}
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true }}

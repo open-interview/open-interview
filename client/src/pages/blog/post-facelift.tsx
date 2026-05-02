@@ -105,7 +105,26 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
       })
       .then((data) => {
         if (!data) return;
-        setPost(data.data);
+
+        // Transform API response to match PostData interface
+        // API may return blogTitle/markdown or title/content
+        const apiPost = data.data;
+        const transformedPost: PostData = {
+          slug: apiPost.slug,
+          title: apiPost.blogTitle || apiPost.title,
+          excerpt: apiPost.excerpt || '',
+          content: apiPost.markdown || apiPost.content,
+          subtitle: apiPost.subtitle,
+          coverImage: apiPost.coverImage || apiPost.cover || apiPost.image,
+          category: apiPost.category || 'Uncategorized',
+          tags: apiPost.tags || [],
+          difficulty: apiPost.difficulty,
+          author: apiPost.author || 'Anonymous',
+          publishedAt: apiPost.publishedAt || apiPost.date || new Date().toISOString(),
+          readingTimeMinutes: apiPost.readingTimeMinutes || apiPost.readingTime || 0,
+        };
+
+        setPost(transformedPost);
         setRelated(data.related || []);
         setPrevPost(data.prev || null);
         setNextPost(data.next || null);

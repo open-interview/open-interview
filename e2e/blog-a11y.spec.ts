@@ -21,14 +21,24 @@ import {
 } from './helpers/accessibility-helpers';
 
 // ---------------------------------------------------------------------------
-// Blog page URLs
+// Blog page URLs (excluding category - tested separately with dynamic URL)
 // ---------------------------------------------------------------------------
 const BLOG_PAGES = [
   { name: 'Blog Home', url: '/blog' },
   { name: 'Blog Search', url: '/blog/search' },
-  { name: 'Blog Category', url: '/blog/category/engineering' },
   { name: 'About Blog', url: '/about-blog' },
 ];
+
+/**
+ * Helper: Get a valid category URL from the blog home page
+ */
+async function getCategoryUrl(page: import('@playwright/test').Page): Promise<string | null> {
+  await gotoBlogPage(page, "/blog");
+  await page.waitForSelector('a[href^="/blog/category/"]', { timeout: 5000 }).catch(() => {});
+  const categoryLink = page.locator('a[href^="/blog/category/"]').first();
+  const href = await categoryLink.getAttribute('href').catch(() => null);
+  return href;
+}
 
 // ---------------------------------------------------------------------------
 // Breakpoint fixtures
@@ -108,7 +118,7 @@ test.describe('Image Alt Text', () => {
       }
 
       test('cover images on post cards use meaningful alt text', async ({ page }) => {
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         // Featured cards and grid cards should have alt on cover images
         const coverImages = page.locator('article img');
         const count = await coverImages.count();
@@ -141,7 +151,7 @@ test.describe('Accessible Link Names', () => {
       }
 
       test('navigation links have descriptive text', async ({ page }) => {
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         const navLinks = page.locator('nav a[href]');
         const count = await navLinks.count();
         for (let i = 0; i < count; i++) {
@@ -153,13 +163,13 @@ test.describe('Accessible Link Names', () => {
       });
 
       test('search link has accessible name', async ({ page }) => {
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         const searchLink = page.getByRole('link', { name: /search/i });
         await expect(searchLink).toBeVisible();
       });
 
       test('theme toggle button has accessible name', async ({ page }) => {
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         const themeToggle = page.getByRole('button', {
           name: /switch to (dark|light) mode/i,
         });
@@ -167,7 +177,7 @@ test.describe('Accessible Link Names', () => {
       });
 
       test('mobile menu button has accessible name', async ({ page }) => {
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         const menuBtn = page.getByRole('button', { name: /open menu|close menu/i });
         const isVisible = await menuBtn.isVisible().catch(() => false);
         if (isVisible) {
@@ -197,7 +207,7 @@ test.describe('Color Contrast', () => {
   }
 
   test('dark mode contrast passes', async ({ page }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     // Switch to dark mode
     const themeToggle = page.getByRole('button', {
       name: /switch to dark mode/i,
@@ -230,7 +240,7 @@ test.describe('Keyboard Navigation', () => {
       test('can tab through all interactive elements on blog home', async ({
         page,
       }) => {
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         const interactiveCount = await page
           .locator(
             'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -251,7 +261,7 @@ test.describe('Keyboard Navigation', () => {
       test('can tab through all interactive elements on blog list', async ({
         page,
       }) => {
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         const interactiveCount = await page
           .locator(
             'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -282,7 +292,7 @@ test.describe('Keyboard Navigation', () => {
         page,
       }) => {
         // Navigate to a real post
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         await page.waitForSelector('a[href^="/blog/"]', { timeout: 10000 }).catch(() => {});
         const postLink = page
           .locator('a[href^="/blog/"]')
@@ -307,7 +317,7 @@ test.describe('Keyboard Navigation', () => {
 
       test('can tab through knowledge check quiz', async ({ page }) => {
         // Find a post that has a knowledge check
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         await page.waitForSelector('a[href^="/blog/"]', { timeout: 10000 }).catch(() => {});
         const postLink = page
           .locator('a[href^="/blog/"]')
@@ -351,7 +361,7 @@ test.describe('Keyboard Navigation', () => {
       });
 
       test('Escape closes mobile menu', async ({ page }) => {
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         const menuBtn = page.getByRole('button', { name: /open menu/i });
         if (await menuBtn.isVisible().catch(() => false)) {
           await menuBtn.click();
@@ -376,7 +386,7 @@ test.describe('Focus Indicators', () => {
   test.use({ viewport: VIEWPORTS.desktop });
 
   test('focused elements show visible focus ring', async ({ page }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
 
     const focusableElements = page.locator(
       'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled])'
@@ -410,7 +420,7 @@ test.describe('Focus Indicators', () => {
   });
 
   test('skip link shows focus when tabbed to', async ({ page }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     await page.keyboard.press('Tab');
 
     const skipLink = page.locator('a.skip-to-content, a[href="#main-content"]').first();
@@ -454,7 +464,7 @@ test.describe('Heading Hierarchy', () => {
       });
 
       test('post detail page — exactly one h1', async ({ page }) => {
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         await page.waitForSelector('a[href^="/blog/"]', { timeout: 10000 }).catch(() => {});
         const postLink = page
           .locator('a[href^="/blog/"]')
@@ -470,7 +480,7 @@ test.describe('Heading Hierarchy', () => {
       });
 
       test('no skipped heading levels', async ({ page }) => {
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         const headings = await page.evaluate(() => {
           const els = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6'));
           return els.map((el) => parseInt(el.tagName.substring(1)));
@@ -480,6 +490,81 @@ test.describe('Heading Hierarchy', () => {
           const diff = headings[i] - headings[i - 1];
           expect(diff).toBeLessThanOrEqual(1);
         }
+      });
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 7.5 Category Page (dynamic URL)
+// ---------------------------------------------------------------------------
+test.describe('Category Page (Dynamic)', () => {
+  for (const vp of ['mobile', 'tablet', 'desktop'] as ViewportKey[]) {
+    test.describe(`${vp} (${VIEWPORTS[vp].width}px)`, () => {
+      test.use({ viewport: VIEWPORTS[vp] });
+
+      test('category page — required landmarks are present', async ({ page }) => {
+        const categoryUrl = await getCategoryUrl(page);
+        if (!categoryUrl) {
+          test.skip();
+          return;
+        }
+        await gotoBlogPage(page, categoryUrl);
+        const landmarks = await checkLandmarks(page);
+        expect(landmarks.hasMain).toBe(true);
+        expect(landmarks.hasNav).toBe(true);
+        expect(landmarks.hasFooter).toBe(true);
+      });
+
+      test('category page — heading hierarchy is correct', async ({ page }) => {
+        const categoryUrl = await getCategoryUrl(page);
+        if (!categoryUrl) {
+          test.skip();
+          return;
+        }
+        await gotoBlogPage(page, categoryUrl);
+        const hierarchy = await checkHeadingHierarchy(page);
+        expect(hierarchy.isValid).toBe(true);
+      });
+
+      test('category page — exactly one h1', async ({ page }) => {
+        const categoryUrl = await getCategoryUrl(page);
+        if (!categoryUrl) {
+          test.skip();
+          return;
+        }
+        await gotoBlogPage(page, categoryUrl);
+        const h1Count = await page.locator('h1').count();
+        expect(h1Count).toBe(1);
+      });
+
+      test('category page — breadcrumb has aria-label', async ({ page }) => {
+        const categoryUrl = await getCategoryUrl(page);
+        if (!categoryUrl) {
+          test.skip();
+          return;
+        }
+        await gotoBlogPage(page, categoryUrl);
+        const breadcrumb = page.locator('nav[aria-label="Breadcrumb"]');
+        const exists = await breadcrumb.count() > 0;
+        if (exists) {
+          const ariaLabel = await breadcrumb.getAttribute('aria-label');
+          expect(ariaLabel).toBe('Breadcrumb');
+        }
+      });
+
+      test('category page — no axe violations', async ({ page }) => {
+        const categoryUrl = await getCategoryUrl(page);
+        if (!categoryUrl) {
+          test.skip();
+          return;
+        }
+        await gotoBlogPage(page, categoryUrl);
+        const results = await runAxeAudit(page);
+        const criticalOrSerious = results.violations.filter(
+          (v) => v.impact === 'critical' || v.impact === 'serious'
+        );
+        expect(criticalOrSerious).toEqual([]);
       });
     });
   }
@@ -513,14 +598,14 @@ test.describe('Landmark Roles', () => {
       });
 
       test('main content area has id="main-content"', async ({ page }) => {
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         const mainContent = page.locator('main#main-content, [id="main-content"]');
         await expect(mainContent).toBeVisible();
       });
 
       test('desktop layout has aside for TOC', async ({ page }) => {
         // Navigate to a post to check for aside
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         await page.waitForSelector('a[href^="/blog/"]', { timeout: 10000 }).catch(() => {});
         const postLink = page
           .locator('a[href^="/blog/"]')
@@ -537,7 +622,7 @@ test.describe('Landmark Roles', () => {
       });
 
       test('navigation landmarks have accessible labels', async ({ page }) => {
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         const navs = page.locator('nav');
         const count = await navs.count();
         for (let i = 0; i < count; i++) {
@@ -568,7 +653,7 @@ test.describe('ARIA Attributes', () => {
   test.use({ viewport: VIEWPORTS.desktop });
 
   test('active nav link has aria-current="page"', async ({ page }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     const activeLink = page.locator('nav a[aria-current="page"]');
     await expect(activeLink.first()).toBeVisible();
     const currentPage = await activeLink.first().getAttribute('aria-current');
@@ -577,7 +662,7 @@ test.describe('ARIA Attributes', () => {
 
   test('reading progress bar has correct ARIA', async ({ page }) => {
     // Go to a post and scroll to trigger progress bar
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     await page.waitForSelector('a[href^="/blog/"]', { timeout: 10000 }).catch(() => {});
     const postLink = page
       .locator('a[href^="/blog/"]')
@@ -610,7 +695,7 @@ test.describe('ARIA Attributes', () => {
   });
 
   test('mobile menu button has aria-expanded', async ({ page }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     const menuBtn = page.getByRole('button', { name: /open menu/i });
     if (await menuBtn.isVisible().catch(() => false)) {
       const ariaExpanded = await menuBtn.getAttribute('aria-expanded');
@@ -625,7 +710,7 @@ test.describe('ARIA Attributes', () => {
   test('icon-only buttons have aria-hidden on decorative icons', async ({
     page,
   }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     // Check that decorative icons within buttons have aria-hidden
     const decorativeIcons = page.locator('button svg[aria-hidden="true"]');
     const count = await decorativeIcons.count();
@@ -634,7 +719,7 @@ test.describe('ARIA Attributes', () => {
   });
 
   test('share buttons on post detail have aria-labels', async ({ page }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     await page.waitForSelector('a[href^="/blog/"]', { timeout: 10000 }).catch(() => {});
     const postLink = page
       .locator('a[href^="/blog/"]')
@@ -656,7 +741,7 @@ test.describe('ARIA Attributes', () => {
   });
 
   test('post navigation has aria-label', async ({ page }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     await page.waitForSelector('a[href^="/blog/"]', { timeout: 10000 }).catch(() => {});
     const postLink = page
       .locator('a[href^="/blog/"]')
@@ -677,7 +762,7 @@ test.describe('ARIA Attributes', () => {
   });
 
   test('breadcrumb nav has aria-label', async ({ page }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     await page.waitForSelector('a[href^="/blog/"]', { timeout: 10000 }).catch(() => {});
     const postLink = page
       .locator('a[href^="/blog/"]')
@@ -698,7 +783,7 @@ test.describe('ARIA Attributes', () => {
   });
 
   test('related posts section is linked to its heading', async ({ page }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     await page.waitForSelector('a[href^="/blog/"]', { timeout: 10000 }).catch(() => {});
     const postLink = page
       .locator('a[href^="/blog/"]')
@@ -729,7 +814,7 @@ test.describe('Reduced Motion', () => {
     page,
   }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
 
     const animatedElements = page.locator('[class*="animate-"]');
     const count = await animatedElements.count();
@@ -745,7 +830,7 @@ test.describe('Reduced Motion', () => {
 
   test('transitions are instant with reduced motion', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
 
     const interactiveElements = page.locator(
       'button, a, [role="button"]'
@@ -764,7 +849,7 @@ test.describe('Reduced Motion', () => {
   test('loading skeleton respects reduced motion', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     // Skeletons only appear briefly during loading; this tests the class pattern
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
 
     // If any skeleton elements exist, they should not animate
     const skeletons = page.locator('.animate-pulse');
@@ -783,7 +868,7 @@ test.describe('Reduced Motion', () => {
   test('normal animations work when reduced motion is NOT preferred', async ({
     page,
   }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
 
     const animatedElements = page.locator('[class*="animate-"]');
     const count = await animatedElements.count();
@@ -816,7 +901,7 @@ test.describe('No Nested Interactive Elements', () => {
       test.use({ viewport: VIEWPORTS[vp] });
 
       test('no buttons inside links', async ({ page }) => {
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         const nestedButtons = await page.evaluate(() => {
           const links = Array.from(document.querySelectorAll('a'));
           const nested: string[] = [];
@@ -832,7 +917,7 @@ test.describe('No Nested Interactive Elements', () => {
       });
 
       test('no links inside buttons', async ({ page }) => {
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         const nestedLinks = await page.evaluate(() => {
           const buttons = Array.from(document.querySelectorAll('button'));
           const nested: string[] = [];
@@ -866,7 +951,7 @@ test.describe('No Nested Interactive Elements', () => {
       });
 
       test('no nested interactive elements on post detail', async ({ page }) => {
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         await page.waitForSelector('a[href^="/blog/"]', { timeout: 10000 }).catch(() => {});
         const postLink = page
           .locator('a[href^="/blog/"]')
@@ -915,7 +1000,7 @@ test.describe('Form Label Association', () => {
   test.use({ viewport: VIEWPORTS.desktop });
 
   test('newsletter form input has associated label', async ({ page }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     const emailInput = page.locator('#newsletter-email');
     const inputExists = await emailInput.count() > 0;
     if (inputExists) {
@@ -929,7 +1014,7 @@ test.describe('Form Label Association', () => {
   test('newsletter form label is visually hidden but accessible', async ({
     page,
   }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     const label = page.locator('label[for="newsletter-email"]');
     const exists = await label.count() > 0;
     if (exists) {
@@ -951,7 +1036,7 @@ test.describe('Form Label Association', () => {
   test('newsletter error message is associated with input via aria-describedby', async ({
     page,
   }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     const emailInput = page.locator('#newsletter-email');
     const inputExists = await emailInput.count() > 0;
     if (inputExists) {
@@ -976,7 +1061,7 @@ test.describe('Form Label Association', () => {
   });
 
   test('error messages have role="alert"', async ({ page }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     const emailInput = page.locator('#newsletter-email');
     const inputExists = await emailInput.count() > 0;
     if (inputExists) {
@@ -995,7 +1080,7 @@ test.describe('Form Label Association', () => {
   });
 
   test('knowledge check textareas have accessible names', async ({ page }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     await page.waitForSelector('a[href^="/blog/"]', { timeout: 10000 }).catch(() => {});
     const postLink = page
       .locator('a[href^="/blog/"]')
@@ -1059,7 +1144,7 @@ test.describe('Axe-core Comprehensive Audit', () => {
       }
 
       test('post detail page — no axe violations', async ({ page }) => {
-        await gotoBlogPage(page, '/blog');
+        await gotoBlogPage(page, "/blog");
         await page.waitForSelector('a[href^="/blog/"]', { timeout: 10000 }).catch(() => {});
         const postLink = page
           .locator('a[href^="/blog/"]')
@@ -1088,21 +1173,21 @@ test.describe('WCAG 2.1 AA — Additional Checks', () => {
   test.use({ viewport: VIEWPORTS.desktop });
 
   test('page has lang attribute', async ({ page }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     const lang = await page.locator('html').getAttribute('lang');
     expect(lang).toBeTruthy();
     expect(lang?.length).toBeGreaterThan(0);
   });
 
   test('page title is descriptive', async ({ page }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     const title = await page.title();
     expect(title.length).toBeGreaterThan(0);
     expect(title.toLowerCase()).toMatch(/blog|openinterview/i);
   });
 
   test('no auto-playing media', async ({ page }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     const autoPlayingMedia = await page.evaluate(() => {
       const media = Array.from(
         document.querySelectorAll('video[autoplay], audio[autoplay]')
@@ -1114,7 +1199,7 @@ test.describe('WCAG 2.1 AA — Additional Checks', () => {
 
   test('links open in new tabs have warning', async ({ page }) => {
     // On post detail page, share links open in new tabs
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     await page.waitForSelector('a[href^="/blog/"]', { timeout: 10000 }).catch(() => {});
     const postLink = page
       .locator('a[href^="/blog/"]')
@@ -1145,7 +1230,7 @@ test.describe('WCAG 2.1 AA — Additional Checks', () => {
 
   test('no horizontal scroll at mobile viewport', async ({ page }) => {
     await page.setViewportSize(VIEWPORTS.mobile);
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     const hasOverflow = await page.evaluate(
       () => document.body.scrollWidth > window.innerWidth + 5
     );
@@ -1153,7 +1238,7 @@ test.describe('WCAG 2.1 AA — Additional Checks', () => {
   });
 
   test('focus order follows visual order', async ({ page }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     // Collect tab order
     const tabOrder: string[] = [];
     const interactiveCount = await page
@@ -1191,7 +1276,7 @@ test.describe('WCAG 2.1 AA — Additional Checks', () => {
   });
 
   test('category pills are keyboard accessible buttons', async ({ page }) => {
-    await gotoBlogPage(page, '/blog');
+    await gotoBlogPage(page, "/blog");
     const categoryPills = page.locator('article button');
     const count = await categoryPills.count();
     if (count > 0) {

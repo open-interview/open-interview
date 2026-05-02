@@ -196,6 +196,7 @@ function CoverImage({ coverImage, title, category, variant = 'grid', imageError,
           alt={`Cover image for ${title}`}
           category={category}
           className="w-full h-full object-cover"
+          onError={onImageError}
           fallback={<div className="w-full h-full bg-gradient-to-br from-muted/50 to-muted/30" />}
         />
       </div>
@@ -212,6 +213,7 @@ function CoverImage({ coverImage, title, category, variant = 'grid', imageError,
             alt={title}
             category={category}
             className="h-full w-full object-cover"
+            onError={onImageError}
             fallback={
               <div className={cn('flex h-full w-full items-center justify-center bg-gradient-to-br', gradient)}>
                 {imageError ? (

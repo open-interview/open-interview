@@ -61,27 +61,37 @@ function getCategoryIcon(category: string): React.ComponentType<{ className?: st
 }
 
 export interface ImageWithFallbackProps {
-  src: string;
+  src?: string;
   alt: string;
   className?: string;
   category?: string;
   fallback?: React.ReactNode;
+  onError?: () => void;
 }
 
-export function ImageWithFallback({ src, alt, className, category, fallback }: ImageWithFallbackProps) {
-  const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+export function ImageWithFallback({ src, alt, className, category, fallback, onError }: ImageWithFallbackProps) {
+  const hasValidSrc = src && src.trim() !== "";
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">(
+    hasValidSrc ? "loading" : "error"
+  );
 
   useEffect(() => {
+    if (!hasValidSrc) return;
+
     const img = new Image();
     img.src = src;
     img.onload = () => setStatus("loaded");
-    img.onerror = () => setStatus("error");
+    img.onerror = () => {
+      setStatus("error");
+      onError?.();
+    };
     if (img.complete && img.naturalWidth > 0) {
       setStatus("loaded");
     } else if (img.complete && img.naturalWidth === 0) {
       setStatus("error");
+      onError?.();
     }
-  }, [src]);
+  }, [src, hasValidSrc, onError]);
 
   if (status === "error") {
     if (fallback) {
