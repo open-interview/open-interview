@@ -8,6 +8,7 @@ import { BlogKnowledgeCheck } from "@/components/blog/BlogKnowledgeCheck";
 import { blogQuizzes } from "@/data/blog-quizzes";
 import { measureBlogPostLoad } from "@/lib/performance";
 import { Calendar, Clock, Twitter, Linkedin, Link2, Check, ArrowLeft, ArrowRight } from "lucide-react";
+import { ImageWithFallback } from "@/components/blog/ImageWithFallback";
 
 const MarkdownRenderer = lazy(() =>
   import("@/components/blog/MarkdownRenderer").then((m) => ({ default: m.MarkdownRenderer }))
@@ -109,14 +110,11 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
       {/* Cover image */}
       {post.coverImage && (
         <div className="w-full aspect-[21/9] overflow-hidden bg-[var(--color-border)]">
-          <img
+          <ImageWithFallback
             src={post.coverImage}
             alt={post.title}
+            category={post.category}
             className="w-full h-full object-cover"
-            fetchPriority="high"
-            decoding="async"
-            width={1400}
-            height={600}
           />
         </div>
       )}
@@ -139,7 +137,7 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
         </nav>
 
         {/* Title */}
-        <h1 className="text-3xl sm:text-4xl font-bold text-[var(--color-ink)] leading-tight mb-4" style={{ fontFamily: "var(--font-blog-heading)" }}>
+        <h1 className="text-3xl sm:text-4xl font-bold text-[var(--color-ink)] leading-tight mb-4 font-blog-heading">
           {post.title}
         </h1>
 
@@ -220,21 +218,6 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
             {post.tags.map((tag) => <TagPill key={tag} tag={tag} />)}
           </div>
         )}
-
-        {/* Author bio */}
-        <div className="mt-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] p-6">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-accent)]/30 to-[var(--color-accent)]/10 flex items-center justify-center text-[var(--color-accent)] font-bold text-lg shrink-0 ring-2 ring-[var(--color-accent)]/20">
-              {post.author[0]}
-            </div>
-            <div>
-              <p className="font-semibold text-[var(--color-ink)]">{post.author}</p>
-              <p className="text-sm text-[var(--color-ink-muted)] mt-1">
-                Software engineer and technical writer sharing insights on engineering, cloud, and career growth.
-              </p>
-            </div>
-          </div>
-        </div>
 
         {/* Prev/Next navigation */}
         {(prevPost || nextPost) && (

@@ -134,7 +134,7 @@ export default function ChallengeHome() {
           <h1 className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
             Code. Learn. Level Up.
           </h1>
-          <p className="text-gray-400 text-lg">Practice coding challenges in your browser. No login required.</p>
+          <p className="text-muted-foreground text-lg">Practice coding challenges in your browser. No login required.</p>
           {hasProgress && (
             <div className="flex justify-center gap-6 pt-1">
               {[
@@ -145,7 +145,7 @@ export default function ChallengeHome() {
               ].map(({ icon, val, label }) => (
                 <div key={label} className="flex flex-col items-center gap-0.5">
                   <div className="flex items-center gap-1 text-sm font-bold">{icon}{val}</div>
-                  <span className="text-xs text-gray-500">{label}</span>
+                  <span className="text-xs text-muted-foreground/70">{label}</span>
                 </div>
               ))}
             </div>
@@ -163,14 +163,14 @@ export default function ChallengeHome() {
                 <button
                   key={c.id}
                   onClick={() => navigate(`/code/challenges/${c.id}`)}
-                  className="text-left bg-gray-900 border border-amber-800/30 hover:border-amber-600/60 rounded-xl p-4 space-y-2 transition-colors duration-150 cursor-pointer min-h-[44px]"
+                  className="text-left bg-card border border-amber-800/30 hover:border-amber-600/60 rounded-xl p-4 space-y-2 transition-colors duration-150 cursor-pointer min-h-[44px]"
                 >
-                  <p className="font-medium text-white text-sm leading-snug">{c.title}</p>
+                  <p className="font-medium text-foreground text-sm leading-snug">{c.title}</p>
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded border text-xs font-medium ${DIFF_BADGE[c.difficulty]}`}>
                       {c.difficulty}
                     </span>
-                    <span className="flex items-center gap-1 text-gray-400 text-xs">
+                    <span className="flex items-center gap-1 text-muted-foreground text-xs">
                       <Clock className="w-3 h-3" />{c.estimatedMinutes}m
                     </span>
                   </div>
@@ -183,7 +183,7 @@ export default function ChallengeHome() {
         {/* ── Featured + Rex side-by-side ── */}
         <div className="grid sm:grid-cols-2 gap-4">
           {featured && (
-            <div className="bg-gray-900 border border-indigo-800/50 rounded-2xl p-5 space-y-3">
+            <div className="bg-card border border-indigo-800/50 rounded-2xl p-5 space-y-3">
               <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold uppercase tracking-wide">
                 <Zap className="w-3.5 h-3.5" /> Challenge of the Day
               </div>
@@ -192,13 +192,13 @@ export default function ChallengeHome() {
                 <span className={`px-2 py-0.5 rounded border text-xs font-medium ${DIFF_BADGE[featured.difficulty]}`}>
                   {featured.difficulty}
                 </span>
-                <span className="flex items-center gap-1 text-gray-400 text-xs">
+                <span className="flex items-center gap-1 text-muted-foreground text-xs">
                   <Clock className="w-3 h-3" />{featured.estimatedMinutes}m
                 </span>
               </div>
               <button
                 onClick={() => navigate(`/code/challenges/${featured.id}`)}
-                className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors duration-150 cursor-pointer min-h-[44px]"
+                className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-foreground text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors duration-150 cursor-pointer min-h-[44px]"
               >
                 Solve Now <ArrowRight className="w-3.5 h-3.5" />
               </button>
@@ -223,8 +223,8 @@ export default function ChallengeHome() {
               onClick={() => setActiveTag(activeTag === tag ? null : tag)}
               className={`flex items-center gap-1.5 px-3 py-2.5 rounded-full text-xs font-medium border transition-colors duration-150 cursor-pointer min-h-[44px] ${
                 activeTag === tag
-                  ? 'bg-indigo-600 text-white border-indigo-500'
-                  : 'bg-gray-900 text-gray-400 border-gray-700 hover:border-indigo-600'
+                  ? 'bg-indigo-600 text-foreground border-indigo-500'
+                  : 'bg-card text-muted-foreground border-border hover:border-indigo-600'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />{label}
@@ -233,7 +233,7 @@ export default function ChallengeHome() {
           {activeTag && !CATEGORIES.find(c => c.tag === activeTag) && (
             <button
               onClick={() => setActiveTag(null)}
-              className="px-3 py-2.5 rounded-full text-xs font-medium border bg-indigo-600 text-white border-indigo-500 cursor-pointer min-h-[44px]"
+              className="px-3 py-2.5 rounded-full text-xs font-medium border bg-indigo-600 text-foreground border-indigo-500 cursor-pointer min-h-[44px]"
             >
               {activeTag} ×
             </button>
@@ -243,12 +243,12 @@ export default function ChallengeHome() {
         {/* ── Search + Difficulty ── */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
             <Input
               placeholder="Search challenges…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-9 bg-gray-900 border-gray-700 text-white placeholder:text-gray-500"
+              className="pl-9 bg-card border-border text-foreground placeholder:text-muted-foreground/70"
             />
           </div>
           <div className="flex gap-2">
@@ -258,8 +258,8 @@ export default function ChallengeHome() {
                 onClick={() => setDifficulty(d)}
                 className={`px-3 py-2.5 rounded-full text-xs font-medium border transition-colors duration-150 cursor-pointer min-h-[44px] ${
                   difficulty === d
-                    ? 'bg-white text-gray-900 border-white'
-                    : 'bg-gray-900 text-gray-400 border-gray-700 hover:border-gray-500'
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'bg-card text-muted-foreground border-border hover:border-muted-foreground/50'
                 }`}
               >
                 {d === 'All' ? 'All' : d.charAt(0).toUpperCase() + d.slice(1)}
@@ -270,18 +270,18 @@ export default function ChallengeHome() {
 
         {/* ── Challenge table ── */}
         {loading ? (
-          <div className="flex justify-center py-16"><Spinner className="size-8 text-gray-500" /></div>
+          <div className="flex justify-center py-16"><Spinner className="size-8 text-muted-foreground/70" /></div>
         ) : error ? (
           <div className="text-center py-16 text-red-400">{error}</div>
         ) : (
           <>
-            <p className="text-sm text-gray-500">{solvedCount} / {challenges.length} solved · showing {filtered.length}</p>
+            <p className="text-sm text-muted-foreground/70">{solvedCount} / {challenges.length} solved · showing {filtered.length}</p>
             
             {/* Desktop table */}
-            <div className="hidden sm:block rounded-xl border border-gray-800 overflow-x-auto">
+            <div className="hidden sm:block rounded-xl border border-border overflow-x-auto">
               <table className="w-full text-sm min-w-[480px]">
                 <thead>
-                  <tr className="border-b border-gray-800 bg-gray-900/60 text-gray-400 text-left">
+                  <tr className="border-b border-border bg-card/60 text-muted-foreground text-left">
                     <th className="px-4 py-3 w-10">#</th>
                     <th className="px-4 py-3">Title</th>
                     <th className="px-4 py-3 w-28">Difficulty</th>
@@ -294,10 +294,10 @@ export default function ChallengeHome() {
                   {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="text-center py-16">
-                        <p className="text-gray-500 mb-3">No challenges match.</p>
+                        <p className="text-muted-foreground/70 mb-3">No challenges match.</p>
                         <button
                           onClick={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
-                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors duration-150 cursor-pointer"
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-foreground text-sm font-medium transition-colors duration-150 cursor-pointer"
                         >
                           Clear filters
                         </button>
@@ -309,10 +309,10 @@ export default function ChallengeHome() {
                       <tr
                         key={c.id}
                         onClick={() => navigate(`/code/challenges/${c.id}`)}
-                        className="border-b border-gray-800/60 last:border-0 hover:bg-gray-800/40 cursor-pointer transition-colors duration-150"
+                        className="border-b border-border/60 last:border-0 hover:bg-muted/40 cursor-pointer transition-colors duration-150"
                       >
-                        <td className="px-4 py-3 text-gray-500">{i + 1}</td>
-                        <td className="px-4 py-3 font-medium text-white">{c.title}</td>
+                        <td className="px-4 py-3 text-muted-foreground/70">{i + 1}</td>
+                        <td className="px-4 py-3 font-medium text-foreground">{c.title}</td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex px-2 py-0.5 rounded border text-xs font-medium ${DIFF_BADGE[c.difficulty]}`}>
                             {c.difficulty.charAt(0).toUpperCase() + c.difficulty.slice(1)}
@@ -321,9 +321,9 @@ export default function ChallengeHome() {
                         <td className="px-4 py-3 hidden sm:table-cell">
                           <div className="flex gap-1 flex-wrap">
                             {c.tags.slice(0, 3).map(t => (
-                              <span key={t} className="px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 text-xs border border-gray-700">{t}</span>
+                              <span key={t} className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs border border-border">{t}</span>
                             ))}
-                            {c.tags.length > 3 && <span className="text-gray-500 text-xs">+{c.tags.length - 3}</span>}
+                            {c.tags.length > 3 && <span className="text-muted-foreground/70 text-xs">+{c.tags.length - 3}</span>}
                           </div>
                         </td>
                         <td className="px-4 py-3">
@@ -331,7 +331,7 @@ export default function ChallengeHome() {
                             {STATUS_LABEL[status]}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-gray-400 hidden sm:table-cell">{c.estimatedMinutes}m</td>
+                        <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">{c.estimatedMinutes}m</td>
                       </tr>
                     );
                   })}
@@ -343,10 +343,10 @@ export default function ChallengeHome() {
             <div className="sm:hidden space-y-2">
               {filtered.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-500 mb-3">No challenges match.</p>
+                  <p className="text-muted-foreground/70 mb-3">No challenges match.</p>
                   <button
                     onClick={() => { setSearch(''); setDifficulty('All'); setActiveTag(null); }}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors duration-150 cursor-pointer"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-foreground text-sm font-medium transition-colors duration-150 cursor-pointer"
                   >
                     Clear filters
                   </button>
@@ -357,32 +357,32 @@ export default function ChallengeHome() {
                   <button
                     key={c.id}
                     onClick={() => navigate(`/code/challenges/${c.id}`)}
-                    className="w-full text-left p-3 rounded-lg border border-gray-800 bg-gray-900/40 hover:bg-gray-800/60 cursor-pointer transition-colors duration-150"
+                    className="w-full text-left p-3 rounded-lg border border-border bg-card/40 hover:bg-muted/60 cursor-pointer transition-colors duration-150"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs text-gray-500">#{i + 1}</span>
+                          <span className="text-xs text-muted-foreground/70">#{i + 1}</span>
                           <span className={`inline-flex px-1.5 py-0.5 rounded border text-xs font-medium ${DIFF_BADGE[c.difficulty]}`}>
                             {c.difficulty.charAt(0).toUpperCase() + c.difficulty.slice(1)}
                           </span>
                         </div>
-                        <h3 className="font-medium text-white truncate">{c.title}</h3>
+                        <h3 className="font-medium text-foreground truncate">{c.title}</h3>
                         <div className="flex items-center gap-2 mt-2">
                           <span className={`inline-flex px-2 py-0.5 rounded border text-xs ${STATUS_STYLE[status]}`}>
                             {STATUS_LABEL[status]}
                           </span>
-                          <span className="text-xs text-gray-500">{c.estimatedMinutes}m</span>
+                          <span className="text-xs text-muted-foreground/70">{c.estimatedMinutes}m</span>
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-gray-500 shrink-0 mt-1" />
+                      <ChevronRight className="w-4 h-4 text-muted-foreground/70 shrink-0 mt-1" />
                     </div>
                     {c.tags.length > 0 && (
                       <div className="flex gap-1 flex-wrap mt-2">
                         {c.tags.slice(0, 2).map(t => (
-                          <span key={t} className="px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 text-xs border border-gray-700">{t}</span>
+                          <span key={t} className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs border border-border">{t}</span>
                         ))}
-                        {c.tags.length > 2 && <span className="text-gray-500 text-xs">+{c.tags.length - 2}</span>}
+                        {c.tags.length > 2 && <span className="text-muted-foreground/70 text-xs">+{c.tags.length - 2}</span>}
                       </div>
                     )}
                   </button>

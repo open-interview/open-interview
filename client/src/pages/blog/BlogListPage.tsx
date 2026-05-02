@@ -4,14 +4,106 @@ import { BlogLayout } from "@/components/blog/BlogLayout";
 import { ArticleCard, ArticleCardSkeleton, type ArticleCardData, type ArticleDifficulty } from "@/components/facelift/article-card";
 import { motion } from "framer-motion";
 import { useReducedMotion, getSpringTransition, staggerConfig } from "@/hooks/use-reduced-motion";
-import { ChevronRight, ArrowLeft, Filter, BookOpen, Tag, Loader2, Grid3x3 } from "lucide-react";
+import { ChevronRight, ArrowLeft, Filter, BookOpen, Tag, Loader2, Grid3x3, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import { Breadcrumb } from "@/components/blog/Breadcrumb";
+import { EmptyState } from "@/components/blog/EmptyState";
 
 interface Category {
   id: string;
   name: string;
   slug: string;
+}
+
+interface SidebarContentProps {
+  categories: Category[];
+  tags: string[];
+  total: number;
+  filteredPosts: ArticleCardData[];
+  categorySlug?: string;
+  tag?: string;
+  loading: boolean;
+  onNavigate: (url: string) => void;
+}
+
+function SidebarContent({ categories, tags, total, filteredPosts, categorySlug, tag, loading, onNavigate }: SidebarContentProps) {
+  return (
+    <>
+      <div className="rounded-xl border border-border/50 bg-card p-5">
+        <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+          <BookOpen size={14} className="text-violet-400" />
+          Categories
+        </h2>
+        <ul className="space-y-1.5">
+          {loading
+            ? Array.from({ length: 5 }).map((_, i) => (
+                <li key={i} className="h-6 rounded bg-muted/50 animate-pulse" />
+              ))
+            : categories.map((cat) => (
+                <li key={cat.id}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`w-full justify-start text-sm transition-colors ${
+                      categorySlug === cat.slug
+                        ? "text-violet-400 bg-violet-500/10"
+                        : "text-muted-foreground hover:text-violet-400 hover:bg-violet-500/5"
+                    }`}
+                    onClick={() => onNavigate(`/blog/category/${cat.slug}`)}
+                  >
+                    {cat.name}
+                  </Button>
+                </li>
+              ))}
+        </ul>
+      </div>
+
+      {tags.length > 0 && (
+        <div className="rounded-xl border border-border/50 bg-card p-5">
+          <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Tag size={14} className="text-cyan-400" />
+            Popular Tags
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {loading
+              ? Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-6 w-16 rounded-full bg-muted/50 animate-pulse" />
+                ))
+              : tags.slice(0, 12).map((t) => (
+                  <Badge
+                    key={t}
+                    variant={tag === t ? 'default' : 'outline'}
+                    className={`cursor-pointer transition-colors ${
+                      tag === t
+                        ? 'bg-violet-600 hover:bg-violet-700'
+                        : 'hover:border-violet-500/50 hover:text-violet-400'
+                    }`}
+                    onClick={() => onNavigate(`/blog/tag/${t}`)}
+                  >
+                    #{t}
+                  </Badge>
+                ))}
+          </div>
+        </div>
+      )}
+
+      <div className="rounded-xl border border-border/50 bg-card p-5">
+        <h2 className="text-sm font-semibold text-foreground mb-4">This Category</h2>
+        <div className="space-y-3">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-muted-foreground">Articles</span>
+            <span className="font-semibold text-foreground">{total}</span>
+          </div>
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-muted-foreground">Showing</span>
+            <span className="font-semibold text-violet-400">{filteredPosts.length}</span>
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
 
 interface BlogListPageProps {
@@ -35,6 +127,7 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [selectedDifficulty, setSelectedDifficulty] = useState<ArticleDifficulty | 'all'>('all');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [, navigate] = useLocation();
   const PAGE_SIZE = 12;
   const prefersReducedMotion = useReducedMotion();
@@ -100,24 +193,13 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={spring}
-          aria-label="Breadcrumb"
-          className="mb-6"
         >
-          <ol className="flex items-center gap-2 text-sm text-muted-foreground">
-            <li>
-              <Button
-                variant="link"
-                size="sm"
-                className="p-0 h-auto text-muted-foreground hover:text-violet-400"
-                onClick={() => navigate('/blog')}
-              >
-                <ArrowLeft size={14} className="mr-1" />
-                Blog
-              </Button>
-            </li>
-            <li><ChevronRight size={12} /></li>
-            <li className="text-foreground font-medium">{pageTitle}</li>
-          </ol>
+          <Breadcrumb
+            items={[
+              { label: "Blog", href: "/blog" },
+              { label: pageTitle, isCurrent: true },
+            ]}
+          />
         </motion.nav>
 
         {/* Page Header */}
@@ -146,7 +228,7 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-10">
           {/* Main Content */}
           <div>
-            {/* Difficulty Filter Bar */}
+            {/* Filter Bar - with responsive Filters button for tablet/mobile */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -177,6 +259,49 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
                   {difficultyLabels[level]}
                 </Button>
               ))}
+
+              {/* Filters button for tablet/mobile - hidden on lg+ */}
+              <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="ml-auto lg:hidden border-border/50 hover:border-violet-500/50"
+                  >
+                    <Filter size={14} className="mr-1.5" />
+                    Filters
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[300px] sm:w-[340px] p-0 flex flex-col">
+                  <SheetHeader className="px-5 pt-5 pb-0">
+                    <div className="flex items-center justify-between">
+                      <SheetTitle className="flex items-center gap-2">
+                        <Filter size={16} className="text-violet-400" />
+                        Filters
+                      </SheetTitle>
+                      <SheetClose className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                        <X size={16} />
+                        <span className="sr-only">Close</span>
+                      </SheetClose>
+                    </div>
+                  </SheetHeader>
+                  <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-6 mt-4">
+                    <SidebarContent
+                      categories={categories}
+                      tags={tags}
+                      total={total}
+                      filteredPosts={filteredPosts}
+                      categorySlug={categorySlug}
+                      tag={tag}
+                      loading={loading}
+                      onNavigate={(url) => {
+                        navigate(url);
+                        setSidebarOpen(false);
+                      }}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
             </motion.div>
 
             {loading ? (
@@ -187,29 +312,27 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="text-center py-16"
               >
-                <div className="mx-auto h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-                  <BookOpen size={24} className="text-muted-foreground" />
-                </div>
-                <p className="text-foreground font-medium">No posts found</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {selectedDifficulty !== 'all'
-                    ? `No ${difficultyLabels[selectedDifficulty].toLowerCase()} articles in this category.`
-                    : 'Try a different category or check back later.'}
-                </p>
-                {(selectedDifficulty !== 'all' || categorySlug || tag) && (
-                  <Button
-                    variant="link"
-                    onClick={() => {
-                      setSelectedDifficulty('all');
-                      if (categorySlug || tag) navigate('/blog');
-                    }}
-                    className="mt-4 text-violet-400"
-                  >
-                    Clear filters
-                  </Button>
-                )}
+                <EmptyState
+                  icon={<BookOpen size={24} className="text-[var(--color-ink-muted)]" />}
+                  title="Nothing here yet"
+                  description={
+                    selectedDifficulty !== 'all'
+                      ? `No ${difficultyLabels[selectedDifficulty].toLowerCase()} articles in this category — try a different level or browse all posts.`
+                      : 'This category is still growing. Explore other topics or check back soon.'
+                  }
+                  action={
+                    (selectedDifficulty !== 'all' || categorySlug || tag)
+                      ? {
+                          label: "View all articles",
+                          onClick: () => {
+                            setSelectedDifficulty('all');
+                            if (categorySlug || tag) navigate('/blog');
+                          },
+                        }
+                      : undefined
+                  }
+                />
               </motion.div>
             ) : (
               <>
@@ -293,87 +416,23 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
             )}
           </div>
 
-          {/* Sidebar */}
+          {/* Sidebar - hidden on mobile/tablet, visible on lg+ */}
           <motion.aside
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ ...spring, delay: prefersReducedMotion ? 0 : 0.3 }}
-            className="hidden lg:block space-y-8"
+            className="hidden lg:block space-y-6"
           >
-            {/* Categories */}
-            <div className="rounded-xl border border-border/50 bg-card p-5">
-              <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                <BookOpen size={14} className="text-violet-400" />
-                Categories
-              </h2>
-              <ul className="space-y-1.5">
-                {loading
-                  ? Array.from({ length: 5 }).map((_, i) => (
-                      <li key={i} className="h-6 rounded bg-muted/50 animate-pulse" />
-                    ))
-                  : categories.map((cat) => (
-                      <li key={cat.id}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={`w-full justify-start text-sm transition-colors ${
-                            categorySlug === cat.slug
-                              ? "text-violet-400 bg-violet-500/10"
-                              : "text-muted-foreground hover:text-violet-400 hover:bg-violet-500/5"
-                          }`}
-                          onClick={() => navigate(`/blog/category/${cat.slug}`)}
-                        >
-                          {cat.name}
-                        </Button>
-                      </li>
-                    ))}
-              </ul>
-            </div>
-
-            {/* Tags */}
-            {tags.length > 0 && (
-              <div className="rounded-xl border border-border/50 bg-card p-5">
-                <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <Tag size={14} className="text-cyan-400" />
-                  Popular Tags
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {loading
-                    ? Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="h-6 w-16 rounded-full bg-muted/50 animate-pulse" />
-                      ))
-                    : tags.slice(0, 12).map((t) => (
-                        <Badge
-                          key={t}
-                          variant={tag === t ? 'default' : 'outline'}
-                          className={`cursor-pointer transition-colors ${
-                            tag === t
-                              ? 'bg-violet-600 hover:bg-violet-700'
-                              : 'hover:border-violet-500/50 hover:text-violet-400'
-                          }`}
-                          onClick={() => navigate(`/blog/tag/${t}`)}
-                        >
-                          #{t}
-                        </Badge>
-                      ))}
-                </div>
-              </div>
-            )}
-
-            {/* Stats */}
-            <div className="rounded-xl border border-border/50 bg-card p-5">
-              <h2 className="text-sm font-semibold text-foreground mb-4">This Category</h2>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Articles</span>
-                  <span className="font-semibold text-foreground">{total}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Showing</span>
-                  <span className="font-semibold text-violet-400">{filteredPosts.length}</span>
-                </div>
-              </div>
-            </div>
+            <SidebarContent
+              categories={categories}
+              tags={tags}
+              total={total}
+              filteredPosts={filteredPosts}
+              categorySlug={categorySlug}
+              tag={tag}
+              loading={loading}
+              onNavigate={navigate}
+            />
           </motion.aside>
         </div>
       </div>

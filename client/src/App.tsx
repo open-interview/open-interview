@@ -122,7 +122,6 @@ const ChallengeWorkspace = React.lazy(() => import('@/pages/ChallengeWorkspace')
 // Blog pages
 const BlogHomePage = React.lazy(() => import('@/pages/blog/BlogHomePage'));
 const BlogListPage = React.lazy(() => import('@/pages/blog/BlogListPage'));
-const PostDetailPage = React.lazy(() => import('@/pages/blog/PostDetailPage'));
 const PostFaceliftPage = React.lazy(() => import('@/pages/blog/post-facelift'));
 const BlogSearchPage = React.lazy(() => import('@/pages/blog/BlogSearchPage'));
 const AboutBlogPage = React.lazy(() => import('@/pages/blog/AboutBlogPage'));

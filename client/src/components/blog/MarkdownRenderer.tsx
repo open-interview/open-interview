@@ -116,12 +116,12 @@ export function MarkdownRenderer({ content }: { content: string }) {
     if (line.startsWith("## ")) {
       const text = line.slice(3);
       const id = text.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      elements.push(<h2 key={i} id={id} className="text-2xl font-bold text-[var(--color-ink)] mt-10 mb-4" style={{ fontFamily: "var(--font-blog-heading)" }}>{renderInline(text)}</h2>);
+      elements.push(<h2 key={i} id={id} className="text-2xl font-bold text-[var(--color-ink)] mt-10 mb-4 font-blog-heading">{renderInline(text)}</h2>);
       i++; continue;
     }
     if (line.startsWith("# ")) {
       const text = line.slice(2);
-      elements.push(<h1 key={i} className="text-3xl font-bold text-[var(--color-ink)] mt-8 mb-4" style={{ fontFamily: "var(--font-blog-heading)" }}>{renderInline(text)}</h1>);
+      elements.push(<h1 key={i} className="text-3xl font-bold text-[var(--color-ink)] mt-8 mb-4 font-blog-heading">{renderInline(text)}</h1>);
       i++; continue;
     }
 

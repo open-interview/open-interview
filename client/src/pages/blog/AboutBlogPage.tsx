@@ -6,16 +6,16 @@ export default function AboutBlogPage() {
   return (
     <BlogLayout>
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-16">
-        <h1 className="text-4xl font-bold text-[var(--color-ink)] mb-6" style={{ fontFamily: "var(--font-blog-heading)" }}>
-          About This Blog
+        <h1 className="text-4xl font-bold text-[var(--color-ink)] mb-6 font-blog-heading">
+          Built by Engineers, for Engineers
         </h1>
 
         <div className="prose max-w-none text-[var(--color-ink-muted)] leading-relaxed space-y-6">
           <p>
-            The OpenInterview Blog is a resource for software engineers preparing for technical interviews and growing their careers. We publish practical guides, deep dives, and career advice covering system design, cloud platforms, DevOps, frontend, backend, and AI/ML.
+            The OpenInterview Blog helps software engineers crack technical interviews at top tech companies. We publish practical guides, system design breakdowns, and real-world coding patterns — not theory you'll forget by interview day.
           </p>
           <p>
-            Our content is written by engineers who have been through the interview process at top tech companies and want to share what they've learned.
+            Every article is written by engineers who've sat on both sides of the interview table. We cover system design, cloud platforms, DevOps, frontend, backend, and AI/ML — the topics that actually come up in interviews.
           </p>
         </div>
 
@@ -28,7 +28,7 @@ export default function AboutBlogPage() {
             <div>
               <h2 className="text-xl font-bold text-[var(--color-ink)]">OpenInterview Team</h2>
               <p className="mt-2 text-sm text-[var(--color-ink-muted)] leading-relaxed">
-                We're a team of engineers passionate about making technical interview prep accessible to everyone. Our platform has helped thousands of engineers land jobs at top tech companies.
+                We're engineers who've interviewed at FAANG, funded startups, and everything in between. Our platform has helped thousands of developers land offers — and we're sharing everything we know to help you do the same.
               </p>
               <div className="mt-4 flex gap-4">
                 <a href="https://github.com/open-interview" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors">
@@ -47,9 +47,9 @@ export default function AboutBlogPage() {
 
         {/* Newsletter */}
         <div className="mt-12 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] p-8">
-          <h2 className="text-xl font-bold text-[var(--color-ink)] mb-2">Stay Updated</h2>
+          <h2 className="text-xl font-bold text-[var(--color-ink)] mb-2">Never Miss a Post</h2>
           <p className="text-sm text-[var(--color-ink-muted)] mb-6">
-            Subscribe to get new posts delivered to your inbox.
+            Get the best interview tips, system design breakdowns, and coding patterns delivered weekly. No spam, unsubscribe anytime.
           </p>
           <NewsletterForm />
         </div>

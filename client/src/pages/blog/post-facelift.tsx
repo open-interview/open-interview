@@ -9,8 +9,13 @@ import { blogQuizzes } from "@/data/blog-quizzes";
 import { measureBlogPostLoad } from "@/lib/performance";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { ArrowLeft, ArrowRight, Twitter, Linkedin, Link2, Check, Calendar, Clock, List, Share2, BookmarkPlus, ThumbsUp } from "lucide-react";
+import { ArrowLeft, ArrowRight, Twitter, Linkedin, Link2, Check, Calendar, Clock, List, Share2, BookmarkPlus, ThumbsUp, ImageIcon, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ImageWithFallback } from "@/components/blog/ImageWithFallback";
+import { AuthorCard } from "@/components/blog/AuthorCard";
+import { Breadcrumb } from "@/components/blog/Breadcrumb";
+import { EmptyState } from "@/components/blog/EmptyState";
+import { exportBlogPdf } from "@/utils/exportBlogPdf";
 
 const MarkdownRenderer = lazy(() =>
   import("@/components/blog/MarkdownRenderer").then((m) => ({ default: m.MarkdownRenderer }))
@@ -128,18 +133,16 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
   if (notFound) {
     return (
       <BlogLayout>
-        <div className="mx-auto max-w-3xl px-4 py-24 text-center">
-          <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-surface-raised)] border border-[var(--color-border)]">
+        <EmptyState
+          icon={
             <svg className="h-8 w-8 text-[var(--color-ink-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75v10.5m0 0l-3-3m3 3l3-3M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
             </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-[var(--color-ink)]">Post not found</h1>
-          <p className="mt-3 text-[var(--color-ink-muted)]">The article you're looking for doesn't exist or has been moved.</p>
-          <Link href="/blog" className="mt-8 inline-flex items-center gap-2 text-[var(--color-accent)] hover:underline font-medium">
-            <ArrowLeft size={16} strokeWidth={1.5} /> Back to Blog
-          </Link>
-        </div>
+          }
+          title="Post not found"
+          description="The article you're looking for doesn't exist or has been moved."
+          action={{ label: "Back to Blog", href: "/blog" }}
+        />
       </BlogLayout>
     );
   }
@@ -171,6 +174,77 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
   const readingTime = post.readingTimeMinutes ?? calcReadingTime(post.content);
   const toc = <TableOfContents contentRef={articleRef as React.RefObject<HTMLElement>} />;
 
+  const shareSidebar = (
+    <div className="flex flex-col gap-1.5 bg-[var(--color-surface)]/90 backdrop-blur-md border border-[var(--color-border)] rounded-2xl p-2 shadow-lg share-sidebar">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={shareTwitter}
+        className="h-10 w-10 rounded-xl text-[var(--color-ink-muted)] hover:text-[#1DA1F2] hover:bg-[#1DA1F2]/10 transition-colors"
+        aria-label="Share on Twitter"
+      >
+        <Twitter size={16} strokeWidth={1.5} />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={shareLinkedIn}
+        className="h-10 w-10 rounded-xl text-[var(--color-ink-muted)] hover:text-[#0A66C2] hover:bg-[#0A66C2]/10 transition-colors"
+        aria-label="Share on LinkedIn"
+      >
+        <Linkedin size={16} strokeWidth={1.5} />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={copyLink}
+        className={cn(
+          "h-10 w-10 rounded-xl text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 transition-colors",
+          linkCopied && "text-green-500"
+        )}
+        aria-label="Copy link"
+      >
+        {linkCopied ? <Check size={16} strokeWidth={1.5} /> : <Link2 size={16} strokeWidth={1.5} />}
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => {
+          const original = document.title;
+          document.title = `${post?.title || "Blog Post"} — ${post?.author || ""} (${formatDate(post?.publishedAt || "")})`;
+          exportBlogPdf();
+          setTimeout(() => { document.title = original; }, 1000);
+        }}
+        className="h-10 w-10 rounded-xl text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 transition-colors"
+        aria-label="Download as PDF"
+      >
+        <Printer size={16} strokeWidth={1.5} />
+      </Button>
+      <div className="w-full h-px bg-[var(--color-border)] my-1" />
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setIsBookmarked(!isBookmarked)}
+        className={cn(
+          "h-10 w-10 rounded-xl transition-colors",
+          isBookmarked
+            ? "text-[var(--color-accent)] bg-[var(--color-accent)]/10"
+            : "text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
+        )}
+        aria-label={isBookmarked ? "Remove bookmark" : "Bookmark this article"}
+      >
+        <BookmarkPlus size={16} strokeWidth={isBookmarked ? 2.5 : 1.5} />
+      </Button>
+    </div>
+  );
+
+  const sidebar = (
+    <div className="flex flex-col gap-6">
+      {toc}
+      {shareSidebar}
+    </div>
+  );
+
   return (
     <BlogLayout>
       <ReadingProgressBar />
@@ -178,33 +252,28 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
       {/* Cover image with gradient overlay */}
       {post.coverImage && (
         <div className="relative w-full aspect-[21/9] overflow-hidden bg-[var(--color-border)]">
-          <img
+          <ImageWithFallback
             src={post.coverImage}
             alt={post.title}
+            category={post.category}
             className="w-full h-full object-cover"
-            fetchPriority="high"
-            decoding="async"
-            width={1400}
-            height={600}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-surface)] via-[var(--color-surface)]/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-surface)] via-[var(--color-surface)]/30 to-transparent pointer-events-none" />
         </div>
       )}
 
-      <ArticleLayout sidebar={toc}>
+      <ArticleLayout sidebar={sidebar}>
         {/* Back navigation + breadcrumb */}
-        <nav className="mb-6" aria-label="Breadcrumb">
-          <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors mb-4">
-            <ArrowLeft size={14} strokeWidth={1.5} /> Back to Blog
-          </Link>
-          <ol className="flex items-center gap-1.5 text-xs text-[var(--color-ink-muted)]">
-            <li><Link href="/blog" className="hover:text-[var(--color-accent)] transition-colors">Blog</Link></li>
-            <li aria-hidden="true" className="text-[var(--color-border)]">/</li>
-            <li><CategoryBadge category={post.category} /></li>
-            <li aria-hidden="true" className="text-[var(--color-border)]">/</li>
-            <li className="text-[var(--color-ink)] truncate max-w-[200px] font-medium">{post.title}</li>
-          </ol>
-        </nav>
+        <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors mb-4">
+          <ArrowLeft size={14} strokeWidth={1.5} /> Back to Blog
+        </Link>
+        <Breadcrumb
+          items={[
+            { label: "Blog", href: "/blog" },
+            { label: post.category },
+            { label: post.title, isCurrent: true },
+          ]}
+        />
 
         {/* Article header */}
         <header className="mb-10">
@@ -215,7 +284,7 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
           </div>
 
           {/* Title */}
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[var(--color-ink)] leading-tight tracking-tight" style={{ fontFamily: "var(--font-blog-heading)" }}>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[var(--color-ink)] leading-tight tracking-tight font-blog-heading">
             {post.title}
           </h1>
 
@@ -348,27 +417,12 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
         )}
 
         {/* Author bio */}
-        <div className="mt-10 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] p-6 sm:p-8">
-          <div className="flex items-start gap-4 sm:gap-6">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-[var(--color-accent)]/30 to-[var(--color-accent)]/10 flex items-center justify-center text-[var(--color-accent)] font-bold text-xl shrink-0 ring-2 ring-[var(--color-accent)]/20">
-              {post.author[0]}
-            </div>
-            <div>
-              <p className="font-semibold text-[var(--color-ink)] text-lg">{post.author}</p>
-              <p className="mt-1.5 text-sm text-[var(--color-ink-muted)] leading-relaxed">
-                Software engineer and technical writer sharing insights on engineering, cloud, and career growth.
-              </p>
-              <div className="mt-3 flex gap-3">
-                <a href={`https://twitter.com/${post.author.toLowerCase().replace(' ', '')}`} target="_blank" rel="noopener noreferrer" className="text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors">
-                  <Twitter size={16} strokeWidth={1.5} />
-                </a>
-                <a href={`https://linkedin.com/in/${post.author.toLowerCase().replace(' ', '-')}`} target="_blank" rel="noopener noreferrer" className="text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] transition-colors">
-                  <Linkedin size={16} strokeWidth={1.5} />
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
+        <AuthorCard
+          author={{ name: post.author }}
+          publishedAt={post.publishedAt}
+          readingTime={readingTime}
+          className="mt-10"
+        />
 
         {/* Prev/Next navigation */}
         {(prevPost || nextPost) && (
@@ -403,7 +457,7 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
         {/* Related posts */}
         {related.length > 0 && (
           <section className="mt-16 pt-8 border-t border-[var(--color-border)]" aria-labelledby="related-heading">
-            <h2 id="related-heading" className="text-2xl font-bold text-[var(--color-ink)] mb-8" style={{ fontFamily: "var(--font-blog-heading)" }}>
+            <h2 id="related-heading" className="text-2xl font-bold text-[var(--color-ink)] mb-8 font-blog-heading">
               Related Articles
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -415,56 +469,6 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
         )}
       </ArticleLayout>
 
-      {/* Floating share sidebar - desktop only */}
-      <div className="hidden lg:block fixed left-4 top-1/2 -translate-y-1/2 z-40">
-        <div className="flex flex-col gap-1.5 bg-[var(--color-surface)]/90 backdrop-blur-md border border-[var(--color-border)] rounded-2xl p-2 shadow-lg">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={shareTwitter}
-            className="h-10 w-10 rounded-xl text-[var(--color-ink-muted)] hover:text-[#1DA1F2] hover:bg-[#1DA1F2]/10 transition-colors"
-            aria-label="Share on Twitter"
-          >
-            <Twitter size={16} strokeWidth={1.5} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={shareLinkedIn}
-            className="h-10 w-10 rounded-xl text-[var(--color-ink-muted)] hover:text-[#0A66C2] hover:bg-[#0A66C2]/10 transition-colors"
-            aria-label="Share on LinkedIn"
-          >
-            <Linkedin size={16} strokeWidth={1.5} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={copyLink}
-            className={cn(
-              "h-10 w-10 rounded-xl text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 transition-colors",
-              linkCopied && "text-green-500"
-            )}
-            aria-label="Copy link"
-          >
-            {linkCopied ? <Check size={16} strokeWidth={1.5} /> : <Link2 size={16} strokeWidth={1.5} />}
-          </Button>
-          <div className="w-full h-px bg-[var(--color-border)] my-1" />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsBookmarked(!isBookmarked)}
-            className={cn(
-              "h-10 w-10 rounded-xl transition-colors",
-              isBookmarked
-                ? "text-[var(--color-accent)] bg-[var(--color-accent)]/10"
-                : "text-[var(--color-ink-muted)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10"
-            )}
-            aria-label={isBookmarked ? "Remove bookmark" : "Bookmark this article"}
-          >
-            <BookmarkPlus size={16} strokeWidth={isBookmarked ? 2.5 : 1.5} />
-          </Button>
-        </div>
-      </div>
     </BlogLayout>
   );
 }

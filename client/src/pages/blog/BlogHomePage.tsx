@@ -10,6 +10,7 @@ import { useReducedMotion, getSpringTransition, staggerConfig } from "@/hooks/us
 import { BookOpen, Clock, TrendingUp, Filter, ChevronDown, Grid3x3, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/blog/EmptyState";
 
 interface Category {
   id: string;
@@ -85,7 +86,8 @@ export default function BlogHomePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: prefersReducedMotion ? 0.01 : 0.6 }}
-          className="relative overflow-hidden border-b border-border/50 bg-gradient-to-br from-background via-background to-violet-500/5"
+          className="relative overflow-hidden border-b border-border/50"
+          style={{ background: 'var(--gradient-primary-subtle)' }}
         >
           <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]" />
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 text-center relative">
@@ -94,9 +96,9 @@ export default function BlogHomePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...spring, delay: prefersReducedMotion ? 0 : 0.1 }}
             >
-              <Badge variant="outline" className="mb-6 border-violet-500/30 text-violet-400 bg-violet-500/10">
+              <Badge variant="outline" className="mb-6" style={{ borderColor: 'rgba(124, 58, 237, 0.25)', color: 'var(--brand-violet-300)', background: 'rgba(124, 58, 237, 0.12)' }}>
                 <TrendingUp size={14} className="mr-1.5" />
-                Fresh insights weekly
+                New articles every week
               </Badge>
             </motion.div>
 
@@ -106,9 +108,9 @@ export default function BlogHomePage() {
               transition={{ ...spring, delay: prefersReducedMotion ? 0 : 0.2 }}
               className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-tight"
             >
-              Engineering Insights &<br />
-              <span className="bg-gradient-to-r from-violet-400 via-cyan-400 to-violet-400 bg-clip-text text-transparent">
-                Interview Prep
+              Land Your Dream Role with<br />
+              <span className="gradient-text">
+                Expert Interview Prep
               </span>
             </motion.h1>
 
@@ -118,7 +120,7 @@ export default function BlogHomePage() {
               transition={{ ...spring, delay: prefersReducedMotion ? 0 : 0.3 }}
               className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed"
             >
-              Practical guides, deep dives, and career advice for software engineers preparing for top tech interviews.
+              Battle-tested strategies, system design breakdowns, and coding patterns from engineers who've passed interviews at FAANG and top startups.
             </motion.p>
 
             <motion.div
@@ -127,14 +129,17 @@ export default function BlogHomePage() {
               transition={{ ...spring, delay: prefersReducedMotion ? 0 : 0.4 }}
               className="mt-8 flex flex-wrap gap-4 justify-center"
             >
-              <Button asChild size="lg" className="bg-violet-600 hover:bg-violet-700 text-white">
+              <Button asChild size="lg" className="text-white transition-all duration-200" style={{ background: 'var(--gradient-primary)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--gradient-primary-hover)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--gradient-primary)')}
+              >
                 <Link href="/blog">
-                  Browse All Posts <Grid3x3 size={16} className="ml-2" />
+                  Explore All Articles <Grid3x3 size={16} className="ml-2" />
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg">
                 <Link href="/blog/search">
-                  Search Articles
+                  Find What You Need
                 </Link>
               </Button>
             </motion.div>
@@ -176,9 +181,9 @@ export default function BlogHomePage() {
               aria-labelledby="featured-heading"
             >
               <div className="flex items-center gap-2 mb-6">
-                <TrendingUp size={18} className="text-violet-400" />
+                <TrendingUp size={18} style={{ color: 'var(--brand-violet-400)' }} />
                 <h2 id="featured-heading" className="text-xl font-bold text-foreground">
-                  Featured Article
+                  Editor's Pick
                 </h2>
               </div>
               {loading ? <FeaturedCardSkeleton /> : featured[0] && <FeaturedCard article={featured[0]} href={`/blog/${featured[0].slug}`} />}
@@ -242,7 +247,8 @@ export default function BlogHomePage() {
               variant={selectedDifficulty === 'all' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setSelectedDifficulty('all')}
-              className={selectedDifficulty === 'all' ? 'bg-violet-600 hover:bg-violet-700' : ''}
+              className={selectedDifficulty === 'all' ? '' : ''}
+              style={selectedDifficulty === 'all' ? { background: 'var(--gradient-primary)', color: '#fff' } : undefined}
             >
               All Levels
             </Button>
@@ -252,7 +258,8 @@ export default function BlogHomePage() {
                 variant={selectedDifficulty === level ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setSelectedDifficulty(level)}
-                className={selectedDifficulty === level ? 'bg-violet-600 hover:bg-violet-700' : ''}
+                className={selectedDifficulty === level ? '' : ''}
+                style={selectedDifficulty === level ? { background: 'var(--gradient-primary)', color: '#fff' } : undefined}
               >
                 {difficultyLabels[level]}
               </Button>
@@ -265,7 +272,8 @@ export default function BlogHomePage() {
                   <Badge
                     key={cat.id}
                     variant={selectedCategory === cat.slug ? 'default' : 'outline'}
-                    className={`cursor-pointer transition-colors ${selectedCategory === cat.slug ? 'bg-violet-600 hover:bg-violet-700' : 'hover:border-violet-500/50'}`}
+                    className={`cursor-pointer transition-colors ${selectedCategory === cat.slug ? '' : ''}`}
+                    style={selectedCategory === cat.slug ? { background: 'var(--gradient-primary)', color: '#fff', border: 'none' } : { borderColor: 'rgba(124, 58, 237, 0.25)' }}
                     onClick={() => setSelectedCategory(selectedCategory === cat.slug ? null : cat.slug)}
                   >
                     {cat.name}
@@ -290,7 +298,10 @@ export default function BlogHomePage() {
                   ({filteredRecent.length})
                 </span>
               </h2>
-              <Link href="/blog" className="text-sm text-violet-400 hover:text-violet-300 flex items-center gap-1 transition-colors">
+              <Link href="/blog" className="text-sm flex items-center gap-1 transition-colors" style={{ color: 'var(--brand-violet-400)' }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--brand-violet-300)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--brand-violet-400)')}
+              >
                 View all <ChevronDown size={14} className="rotate-[-90deg]" />
               </Link>
             </div>
@@ -300,16 +311,15 @@ export default function BlogHomePage() {
                 {Array.from({ length: 6 }).map((_, i) => <ArticleCardSkeleton key={i} />)}
               </div>
             ) : displayedArticles.length === 0 ? (
-              <div className="text-center py-16">
-                <p className="text-muted-foreground">No articles match your filters.</p>
-                <Button
-                  variant="link"
-                  onClick={() => { setSelectedDifficulty('all'); setSelectedCategory(null); }}
-                  className="mt-2 text-violet-400"
-                >
-                  Clear filters
-                </Button>
-              </div>
+              <EmptyState
+                icon={<BookOpen size={24} className="text-[var(--color-ink-muted)]" />}
+                title="No articles match those filters"
+                description="Try broadening your search to find what you're looking for."
+                action={{
+                  label: "Reset to all articles",
+                  onClick: () => { setSelectedDifficulty('all'); setSelectedCategory(null); },
+                }}
+              />
             ) : (
               <>
                 <motion.div
@@ -344,7 +354,8 @@ export default function BlogHomePage() {
                       onClick={handleLoadMore}
                       variant="outline"
                       size="lg"
-                      className="border-violet-500/30 hover:border-violet-500/50 hover:bg-violet-500/5"
+                      className="transition-colors"
+                    style={{ borderColor: 'rgba(124, 58, 237, 0.25)', background: 'rgba(124, 58, 237, 0.05)' }}
                     >
                       <Loader2 size={16} className="mr-2" />
                       Load More ({filteredRecent.length - displayCount} remaining)

@@ -7,9 +7,9 @@ export default function BlogNotFoundPage() {
     <BlogLayout>
       <div className="mx-auto max-w-2xl px-4 py-24 text-center">
         <p className="text-6xl font-bold text-[var(--color-accent)]">404</p>
-        <h1 className="mt-4 text-2xl font-bold text-[var(--color-ink)]">Page not found</h1>
+        <h1 className="mt-4 text-2xl font-bold text-[var(--color-ink)]">This page went missing</h1>
         <p className="mt-3 text-[var(--color-ink-muted)]">
-          The page you're looking for doesn't exist or has been moved.
+          The article or page you're looking for may have been moved, renamed, or never existed. But there's plenty more to read.
         </p>
         <div className="mt-8 flex flex-wrap gap-4 justify-center">
           <Link

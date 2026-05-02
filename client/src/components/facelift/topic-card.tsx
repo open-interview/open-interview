@@ -122,7 +122,8 @@ export function TopicCard({ topic, className, index = 0 }: TopicCardProps) {
     >
       <div className="flex items-start gap-4">
         <div className={cn('flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl transition-transform duration-300 group-hover:scale-110', iconBg)}>
-          {topic.icon || <span>{defaultIcons[topic.slug] || '📁'}</span>}
+          {topic.icon || <span aria-hidden="true">{defaultIcons[topic.slug] || '📁'}</span>}
+          <span className="sr-only">{topic.name}</span>
         </div>
 
         <div className="flex-1 min-w-0">

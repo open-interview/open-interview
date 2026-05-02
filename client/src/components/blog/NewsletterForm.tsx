@@ -24,7 +24,7 @@ export function NewsletterForm() {
     return (
       <div className="flex items-center gap-2 text-[var(--color-success)] text-sm">
         <CheckCircle size={16} strokeWidth={1.5} aria-hidden />
-        <span>You're subscribed! Check your inbox.</span>
+        <span>You're in! Check your inbox for a confirmation email.</span>
       </div>
     );
   }
@@ -55,7 +55,7 @@ export function NewsletterForm() {
           {status === "loading" ? (
             <Loader2 size={14} strokeWidth={1.5} className="animate-spin" aria-hidden />
           ) : null}
-          Subscribe
+          Get Updates
         </button>
       </div>
       {status === "error" && errorMsg && (

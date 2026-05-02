@@ -9,7 +9,7 @@ interface SearchInputProps {
   autoFocus?: boolean;
 }
 
-export function SearchInput({ defaultValue = "", onSearch, placeholder = "Search posts…", autoFocus }: SearchInputProps) {
+export function SearchInput({ defaultValue = "", onSearch, placeholder = "Search articles, topics, or concepts…", autoFocus }: SearchInputProps) {
   const [value, setValue] = useState(defaultValue);
   const [, navigate] = useLocation();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);

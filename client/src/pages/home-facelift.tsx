@@ -875,11 +875,15 @@ function LandingFooter() {
                 {col.links.map((link) => (
                   <li key={link.label}>
                     <button
-                      onClick={() =>
-                        link.href.startsWith("http")
-                          ? window.open(link.href, "_blank")
-                          : setLocation(link.href)
-                      }
+                      onClick={() => {
+                        if (link.href.startsWith("http")) {
+                          window.open(link.href, "_blank");
+                        } else if (link.href.startsWith("#")) {
+                          document.getElementById(link.href.slice(1))?.scrollIntoView({ behavior: "smooth" });
+                        } else {
+                          setLocation(link.href);
+                        }
+                      }}
                       className="text-sm text-white/30 hover:text-white/70 transition-colors"
                     >
                       {link.label}

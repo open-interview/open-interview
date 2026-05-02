@@ -1123,22 +1123,36 @@ function generateHead(title, description, includeMermaid = false, options = {}) 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>${escapeHtml(titleText)}</title>
   <meta name="description" content="${escapeHtml(description)}">
-  <meta name="robots" content="index, follow">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="language" content="English">
+  <meta name="rating" content="General">
   <meta property="og:title" content="${escapeHtml(title)}">
   <meta property="og:description" content="${escapeHtml(description)}">
   <meta property="og:type" content="${isArticle ? 'article' : 'website'}">${ogTags}
   <meta name="twitter:title" content="${escapeHtml(title)}">
   <meta name="twitter:description" content="${escapeHtml(description)}">${twitterTags}
   <meta name="theme-color" content="#0d1117">${canonicalLink}${gaScript}
+  <!-- DNS prefetch for external resources -->
   <link rel="dns-prefetch" href="https://www.googletagmanager.com">
   <link rel="dns-prefetch" href="https://unpkg.com">
   <link rel="dns-prefetch" href="https://illustrations.popsy.co">
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+  <!-- Preconnect to font CDNs -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>${mermaidScript}${jsonLd}
+  <!-- Font preloads for critical fonts (Playfair Display + Plus Jakarta Sans + Inter) -->
+  <link rel="preload" as="font" href="https://fonts.gstatic.com/s/inter/v18/UcCo3FwrK3iLTcviYwY.woff2" type="font/woff2" crossorigin>
+  <link rel="preload" as="font" href="https://fonts.gstatic.com/s/playfairdisplay/v30/nuFiD-vYSZviVYUb_rj3ij__anPXDTjYgFE_.woff2" type="font/woff2" crossorigin>
+  <link rel="preload" as="font" href="https://fonts.gstatic.com/s/plusjakartasans/v8/LDI1apSQOBt_Y29UFOc681ylDyT4X4C2zIEE14db.woff2" type="font/woff2" crossorigin>
+  <!-- Google Fonts (non-blocking load) -->
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>${mermaidScript}${jsonLd}
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <link rel="stylesheet" href="/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◆</text></svg>">
@@ -1409,12 +1423,25 @@ function generateIndexPage(articles) {
   }
   
   const baseUrl = process.env.BLOG_BASE_URL || 'https://open-interview.github.io';
+
+  // Build blog post references for Blog schema
+  const blogPostItems = recentArticles.slice(0, 10).map(a => ({
+    "@type": "BlogPosting",
+    "headline": a.blogTitle,
+    "url": `${baseUrl}/posts/${a.id}/${a.blogSlug}/`,
+    "datePublished": a.createdAt ? new Date(a.createdAt).toISOString().split('T')[0] : '',
+    "author": { "@type": "Person", "name": AUTHOR.name }
+  }));
+
   const orgJsonLd = `
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"Organization","name":"DevInsights","url":"${baseUrl}","description":"Real-world engineering insights for developers building at scale","founder":{"@type":"Person","name":"${AUTHOR.name}","url":"${AUTHOR.github}"},"sameAs":["${AUTHOR.github}","${AUTHOR.linkedin}"]}
   </script>
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"WebSite","name":"DevInsights","url":"${baseUrl}","potentialAction":{"@type":"SearchAction","target":"${baseUrl}/?q={search_term_string}","query-input":"required name=search_term_string"}}
+  </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"Blog","name":"DevInsights","url":"${baseUrl}","description":"Real-world engineering insights for developers building at scale. Deep dives into production systems, architecture patterns, and battle-tested practices from FAANG and startup engineers.","publisher":{"@type":"Organization","name":"DevInsights","url":"${baseUrl}"},"author":{"@type":"Person","name":"${AUTHOR.name}","url":"${AUTHOR.github}"},"blogPost":${JSON.stringify(blogPostItems)}}
   </script>`;
   
   return `${generateHead('DevInsights - Engineering Knowledge That Ships', 'Real-world engineering insights for developers building at scale', false)}
@@ -1518,7 +1545,7 @@ function getCategoryEmoji(category) {
 function generateCategoryPage(category, articles, allArticles) {
   const channels = categoryMap[category] || [];
   const categoryArticles = articles.filter(a => channels.includes(a.channel));
-  
+
   let articleCards = categoryArticles.map(a => {
     const tags = a.tags || [];
     const displayTags = tags.slice(0, 3);
@@ -1538,8 +1565,16 @@ function generateCategoryPage(category, articles, allArticles) {
       </div>
     </div>`;
   }).join('');
-  
+
+  const baseUrl = process.env.BLOG_BASE_URL || 'https://open-interview.github.io';
+  const categorySlug = category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const collectionJsonLd = `
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"CollectionPage","name":"${escapeHtml(category)} - DevInsights","url":"${baseUrl}/categories/${categorySlug}/","description":"${categoryArticles.length} articles about ${category}. Real-world engineering insights for developers.","isPartOf":{"@type":"Blog","name":"DevInsights","url":"${baseUrl}"},"author":{"@type":"Person","name":"${AUTHOR.name}"}}
+  </script>`;
+
   return `${generateHead(category, `${categoryArticles.length} articles about ${category}`)}
+${collectionJsonLd}
 ${generateHeader()}
 <main><section class="article-list" style="padding-top:7rem"><div class="container">
   <a href="/" style="color:var(--text-muted);text-decoration:none;font-size:0.8125rem;display:inline-flex;align-items:center;gap:0.25rem"><i data-lucide="arrow-left"></i> Back</a>
@@ -1561,10 +1596,66 @@ function generateArticlePage(article, allArticles) {
   const publishedDate = article.createdAt ? new Date(article.createdAt).toISOString() : '';
   const formattedDate = article.createdAt ? new Date(article.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
   
+  // Estimated read time (needed for JSON-LD)
+  const wordCount = [
+    article.blogIntro || '',
+    ...(article.blogSections || []).map(s => s.content || ''),
+    article.blogConclusion || ''
+  ].join(' ').split(/\s+/).length;
+  const readMins = Math.max(1, Math.round(wordCount / 200));
+
+  // Featured image URL for JSON-LD (handle both absolute and relative URLs)
+  const featuredImg = article.images?.find(i => i.placement === 'hero' || i.placement === 'after-intro');
+  const featuredImageUrl = featuredImg?.url
+    ? (featuredImg.url.startsWith('http') ? featuredImg.url : `${baseUrl}${featuredImg.url}`)
+    : `${baseUrl}/opengraph.jpg`;
+
   // Breadcrumb JSON-LD
   const breadcrumbJsonLd = `
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"${baseUrl}/"},{"@type":"ListItem","position":2,"name":"Topics","item":"${baseUrl}/categories/"},{"@type":"ListItem","position":3,"name":"${escapeHtml(category)}","item":"${baseUrl}/categories/${categorySlug}/"},{"@type":"ListItem","position":4,"name":"${escapeHtml(article.blogTitle)}","item":"${articleUrl}"}]}
+  </script>`;
+
+  // BlogPosting JSON-LD structured data for SEO
+  const blogPostingJsonLd = `
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": "${articleUrl}"
+    },
+    "headline": "${escapeHtml(article.blogTitle)}",
+    "description": "${escapeHtml((article.blogMeta || article.blogIntro || '').substring(0, 500))}",
+    "image": "${featuredImageUrl}",
+    "author": {
+      "@type": "Person",
+      "name": "${AUTHOR.name}",
+      "url": "${AUTHOR.github}",
+      "image": "${AUTHOR.avatar}"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "DevInsights",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "${baseUrl}/opengraph.jpg"
+      }
+    },
+    "datePublished": "${publishedDate ? new Date(article.createdAt).toISOString().split('T')[0] : ''}",
+    "dateModified": "${publishedDate ? new Date(article.createdAt).toISOString().split('T')[0] : ''}",
+    "articleSection": "${escapeHtml(category)}",
+    "keywords": "${(article.tags || []).map(t => escapeHtml(t)).join(', ')}",
+    "wordCount": ${wordCount},
+    "inLanguage": "en",
+    "url": "${articleUrl}",
+    "isPartOf": {
+      "@type": "Blog",
+      "name": "DevInsights",
+      "url": "${baseUrl}"
+    }
+  }
   </script>`;
   
   // Related articles (same channel, different article)
@@ -1784,14 +1875,6 @@ function generateArticlePage(article, allArticles) {
     </ul>
   </aside>` : '';
 
-  // Estimated read time
-  const wordCount = [
-    article.blogIntro || '',
-    ...(article.blogSections || []).map(s => s.content || ''),
-    article.blogConclusion || ''
-  ].join(' ').split(/\s+/).length;
-  const readMins = Math.max(1, Math.round(wordCount / 200));
-
   // Patch section headings with IDs for TOC
   let sectionIdx = 0;
   const origSections = article.blogSections || [];
@@ -1804,6 +1887,7 @@ function generateArticlePage(article, allArticles) {
     authorName: AUTHOR.name
   })}
 ${breadcrumbJsonLd}
+${blogPostingJsonLd}
 ${generateHeader()}
 <main>
 <div class="article-layout">
@@ -1856,8 +1940,15 @@ function generateCategoriesIndexPage(articles) {
     const slug = category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     return `<div class="category-card"><h3>${category}</h3><p>${count} articles</p><a href="/categories/${slug}/">Explore</a></div>`;
   }).join('');
-  
+
+  const baseUrl = process.env.BLOG_BASE_URL || 'https://open-interview.github.io';
+  const categoriesJsonLd = `
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"CollectionPage","name":"All Topics - DevInsights","url":"${baseUrl}/categories/","description":"Browse all engineering topics. ${articles.length} deep dives across the engineering stack.","isPartOf":{"@type":"Blog","name":"DevInsights","url":"${baseUrl}"},"author":{"@type":"Person","name":"${AUTHOR.name}"}}
+  </script>`;
+
   return `${generateHead('All Topics', 'Browse all engineering topics')}
+${categoriesJsonLd}
 ${generateHeader()}
 <main><section class="categories" style="padding-top:7rem"><div class="container">
   <h1 style="margin-bottom:0.5rem;font-size:2rem;font-weight:700;letter-spacing:-0.03em">All Topics</h1>
@@ -1956,16 +2047,89 @@ ${generateFooter(articles)}
 <style>.not-found{padding:10rem 0 6rem;text-align:center;min-height:80vh;display:flex;align-items:center}.not-found-content{max-width:500px;margin:0 auto}.not-found-code{font-size:8rem;font-weight:700;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;margin-bottom:1rem}.not-found-content h1{font-size:2rem;font-weight:600;margin-bottom:1rem}.not-found-content p{color:var(--text-secondary);margin-bottom:2rem;font-size:1.125rem}.not-found-actions{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}.not-found-btn{display:inline-flex;align-items:center;gap:0.5rem;background:var(--accent);color:var(--bg);padding:0.875rem 1.5rem;border-radius:100px;text-decoration:none;font-weight:600;transition:all 0.3s}.not-found-btn:hover{transform:translateY(-2px);box-shadow:0 0 25px rgba(88,166,255,0.4)}.not-found-btn.secondary{background:var(--bg-elevated);color:var(--text);border:1px solid var(--border)}.not-found-btn.secondary:hover{border-color:var(--accent);color:var(--accent)}</style>`;
     fs.writeFileSync(path.join(OUTPUT_DIR, '404.html'), notFoundHtml);
 
-    // RSS feed
-    const rssArticles = articles.slice(0, 20);
-    const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>DevInsights</title><link>${baseUrl}</link><description>Real-world engineering insights for developers building at scale</description><language>en-us</language><lastBuildDate>${new Date().toUTCString()}</lastBuildDate><atom:link href="${baseUrl}/feed.xml" rel="self" type="application/rss+xml"/>
-${rssArticles.map(a => {
+    // RSS feed - full feed with all posts, content summaries, enclosures, and categories
+    const allRssArticlesFb = [...articles];
+    const rssXmlFb = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+  xmlns:atom="http://www.w3.org/2005/Atom"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:dc="http://purl.org/dc/elements/1.1/"
+  xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>DevInsights - Engineering Knowledge That Ships</title>
+    <link>${baseUrl}</link>
+    <description>Real-world engineering insights for developers building at scale. Deep dives into production systems, architecture patterns, and battle-tested practices.</description>
+    <language>en-us</language>
+    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+    <pubDate>${articles[0]?.createdAt ? new Date(articles[0].createdAt).toUTCString() : new Date().toUTCString()}</pubDate>
+    <atom:link href="${baseUrl}/feed.xml" rel="self" type="application/rss+xml"/>
+    <generator>DevInsights Blog Generator</generator>
+    <managingEditor>${AUTHOR.name} (${AUTHOR.name})</managingEditor>
+    <webMaster>${AUTHOR.name} (${AUTHOR.name})</webMaster>
+    <copyright>Copyright ${new Date().getFullYear()} ${AUTHOR.name}</copyright>
+    <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
+    <ttl>60</ttl>
+    <image>
+      <url>${baseUrl}/opengraph.jpg</url>
+      <title>DevInsights</title>
+      <link>${baseUrl}</link>
+      <width>1200</width>
+      <height>630</height>
+    </image>
+${allRssArticlesFb.map(a => {
       const pubDate = a.createdAt ? new Date(a.createdAt).toUTCString() : new Date().toUTCString();
-      return `<item><title>${escapeHtml(a.blogTitle)}</title><link>${baseUrl}/posts/${a.id}/${a.blogSlug}/</link><guid>${baseUrl}/posts/${a.id}/${a.blogSlug}/</guid><pubDate>${pubDate}</pubDate><description>${escapeHtml((a.blogMeta || a.blogIntro || '').substring(0, 300))}</description><category>${formatChannelName(a.channel)}</category></item>`;
+      const articleLink = `${baseUrl}/posts/${a.id}/${a.blogSlug}/`;
+      const description = escapeHtml((a.blogMeta || a.blogIntro || '').substring(0, 500));
+      const category = formatChannelName(a.channel);
+
+      let contentEncoded = `<p>${escapeHtml(a.blogIntro || '')}</p>`;
+      if (a.blogSections && a.blogSections.length > 0) {
+        const previewSections = a.blogSections.slice(0, 2);
+        for (const sec of previewSections) {
+          contentEncoded += `<h2>${escapeHtml(sec.heading)}</h2>`;
+          const preview = sec.content.substring(0, 300);
+          contentEncoded += `<p>${escapeHtml(preview)}${sec.content.length > 300 ? '...' : ''}</p>`;
+        }
+        if (a.blogSections.length > 2) {
+          contentEncoded += `<p><a href="${articleLink}">Read the full article →</a></p>`;
+        }
+      }
+      contentEncoded += `<hr/><p><em>Read the full article at <a href="${articleLink}">${escapeHtml(a.blogTitle)}</a></em></p>`;
+
+      const featuredImage = a.images && a.images.length > 0 ? a.images.find(img => img.placement === 'hero' || img.placement === 'after-intro') : null;
+      let enclosure = '';
+      if (featuredImage && featuredImage.url) {
+        const imageUrl = featuredImage.url.startsWith('http') ? featuredImage.url : `${baseUrl}${featuredImage.url}`;
+        const isSvg = featuredImage.url.endsWith('.svg');
+        enclosure = `\n      <enclosure url="${imageUrl}" type="${isSvg ? 'image/svg+xml' : 'image/jpeg'}" />`;
+      } else {
+        enclosure = `\n      <enclosure url="${baseUrl}/opengraph.jpg" type="image/jpeg" />`;
+      }
+
+      const imageUrl = featuredImage && featuredImage.url
+        ? (featuredImage.url.startsWith('http') ? featuredImage.url : `${baseUrl}${featuredImage.url}`)
+        : `${baseUrl}/opengraph.jpg`;
+      const mediaThumbnail = `\n      <media:thumbnail url="${imageUrl}" />`;
+
+      const tags = (a.tags || []).slice(0, 5).map(t => `      <category domain="tag">${escapeHtml(t)}</category>`).join('\n');
+
+      return `    <item>
+      <title>${escapeHtml(a.blogTitle)}</title>
+      <link>${articleLink}</link>
+      <guid isPermaLink="true">${articleLink}</guid>
+      <pubDate>${pubDate}</pubDate>
+      <dc:creator>${AUTHOR.name}</dc:creator>
+      <author>${AUTHOR.name}</author>
+      <description>${description}</description>
+      <content:encoded><![CDATA[${contentEncoded}]]></content:encoded>
+      <category domain="channel">${category}</category>
+${tags}
+      <source url="${baseUrl}/feed.xml">DevInsights</source>${enclosure}${mediaThumbnail}
+    </item>`;
     }).join('\n')}
-</channel></rss>`;
-    fs.writeFileSync(path.join(OUTPUT_DIR, 'feed.xml'), rssXml);
+  </channel>
+</rss>`;
+    fs.writeFileSync(path.join(OUTPUT_DIR, 'feed.xml'), rssXmlFb);
 
     fs.writeFileSync(path.join(OUTPUT_DIR, '.nojekyll'), '');
     fs.writeFileSync(path.join(OUTPUT_DIR, 'robots.txt'),
@@ -2315,40 +2479,102 @@ if (typeof lucide !== 'undefined') lucide.createIcons();
     fs.writeFileSync(path.join(dir, 'index.html'), generateArticlePage(article, articles));
   }
   
-  // Generate RSS/Atom feed
+  // Generate RSS/Atom feed with all posts, full content summaries, enclosures, and categories
   const baseUrl = process.env.BLOG_BASE_URL || 'https://open-interview.github.io';
-  const rssArticles = articles.slice(0, 20); // Last 20 articles
+  const allRssArticles = [...articles]; // Include ALL posts for complete feed
+
   const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+<rss version="2.0"
+  xmlns:atom="http://www.w3.org/2005/Atom"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:dc="http://purl.org/dc/elements/1.1/"
+  xmlns:media="http://search.yahoo.com/mrss/">
   <channel>
     <title>DevInsights - Engineering Knowledge That Ships</title>
     <link>${baseUrl}</link>
-    <description>Real-world engineering insights for developers building at scale</description>
+    <description>Real-world engineering insights for developers building at scale. Deep dives into production systems, architecture patterns, and battle-tested practices from FAANG and startup engineers.</description>
     <language>en-us</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+    <pubDate>${articles[0]?.createdAt ? new Date(articles[0].createdAt).toUTCString() : new Date().toUTCString()}</pubDate>
     <atom:link href="${baseUrl}/feed.xml" rel="self" type="application/rss+xml"/>
     <generator>DevInsights Blog Generator</generator>
+    <managingEditor>${AUTHOR.name} (${AUTHOR.name})</managingEditor>
+    <webMaster>${AUTHOR.name} (${AUTHOR.name})</webMaster>
+    <copyright>Copyright ${new Date().getFullYear()} ${AUTHOR.name}. All rights reserved.</copyright>
+    <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
+    <ttl>60</ttl>
     <image>
       <url>${baseUrl}/opengraph.jpg</url>
-      <title>DevInsights</title>
+      <title>DevInsights - Engineering Knowledge That Ships</title>
       <link>${baseUrl}</link>
+      <width>1200</width>
+      <height>630</height>
     </image>
-${rssArticles.map(a => {
+${allRssArticles.map(a => {
     const pubDate = a.createdAt ? new Date(a.createdAt).toUTCString() : new Date().toUTCString();
+    const articleLink = `${baseUrl}/posts/${a.id}/${a.blogSlug}/`;
+    const description = escapeHtml((a.blogMeta || a.blogIntro || '').substring(0, 500));
+    const category = formatChannelName(a.channel);
+
+    // Build content:encoded with summary (intro + key sections preview)
+    let contentEncoded = `<p>${escapeHtml(a.blogIntro || '')}</p>`;
+    if (a.blogSections && a.blogSections.length > 0) {
+      const previewSections = a.blogSections.slice(0, 2);
+      for (const sec of previewSections) {
+        contentEncoded += `<h2>${escapeHtml(sec.heading)}</h2>`;
+        const preview = sec.content.substring(0, 300);
+        contentEncoded += `<p>${escapeHtml(preview)}${sec.content.length > 300 ? '...' : ''}</p>`;
+      }
+      if (a.blogSections.length > 2) {
+        contentEncoded += `<p><a href="${articleLink}">Read the full article →</a></p>`;
+      }
+    }
+    if (a.realWorldExample) {
+      contentEncoded += `<p><strong>Case Study:</strong> ${escapeHtml(a.realWorldExample.company)} - ${escapeHtml(a.realWorldExample.scenario.substring(0, 200))}</p>`;
+    }
+    contentEncoded += `<hr/><p><em>Read the full article at <a href="${articleLink}">${escapeHtml(a.blogTitle)}</a></em></p>`;
+
+    // Build enclosure for featured image
+    const featuredImage = a.images && a.images.length > 0 ? a.images.find(img => img.placement === 'hero' || img.placement === 'after-intro') : null;
+    let enclosure = '';
+    if (featuredImage && featuredImage.url) {
+      const imageUrl = featuredImage.url.startsWith('http') ? featuredImage.url : `${baseUrl}${featuredImage.url}`;
+      const isSvg = featuredImage.url.endsWith('.svg');
+      enclosure = `
+      <enclosure url="${imageUrl}" type="${isSvg ? 'image/svg+xml' : 'image/jpeg'}" />`;
+    } else {
+      // Default og:image as enclosure
+      enclosure = `
+      <enclosure url="${baseUrl}/opengraph.jpg" type="image/jpeg" />`;
+    }
+
+    // Media thumbnail for the featured image
+    const mediaThumbUrl = featuredImage && featuredImage.url
+      ? (featuredImage.url.startsWith('http') ? featuredImage.url : `${baseUrl}${featuredImage.url}`)
+      : `${baseUrl}/opengraph.jpg`;
+    const mediaThumbnail = `\n    <media:thumbnail url="${mediaThumbUrl}" />`;
+
+    // Multiple category elements (channel + tags)
+    const tags = (a.tags || []).slice(0, 5).map(t => `    <category domain="tag">${escapeHtml(t)}</category>`).join('\n');
+
     return `    <item>
       <title>${escapeHtml(a.blogTitle)}</title>
-      <link>${baseUrl}/posts/${a.id}/${a.blogSlug}/</link>
-      <guid>${baseUrl}/posts/${a.id}/${a.blogSlug}/</guid>
+      <link>${articleLink}</link>
+      <guid isPermaLink="true">${articleLink}</guid>
       <pubDate>${pubDate}</pubDate>
-      <description>${escapeHtml((a.blogMeta || a.blogIntro || '').substring(0, 300))}</description>
-      <category>${formatChannelName(a.channel)}</category>
+      <dc:creator>${AUTHOR.name}</dc:creator>
       <author>${AUTHOR.name}</author>
+      <description>${description}</description>
+      <content:encoded><![CDATA[${contentEncoded}]]></content:encoded>
+      <category domain="channel">${category}</category>
+${tags}
+      <source url="${baseUrl}/feed.xml">DevInsights</source>${enclosure}${mediaThumbnail}
     </item>`;
   }).join('\n')}
   </channel>
 </rss>`;
   fs.writeFileSync(path.join(OUTPUT_DIR, 'feed.xml'), rssXml);
-  console.log('   ✓ RSS feed generated (feed.xml)');
+  console.log(`   ✓ RSS feed generated (feed.xml) - ${allRssArticles.length} posts`);
 
   // Generate 404 page for GitHub Pages
   const notFoundHtml = `${generateHead('Page Not Found', 'The page you are looking for does not exist')}

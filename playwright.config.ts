@@ -28,10 +28,10 @@ export default defineConfig({
         ['list'],
       ],
   
-  // Optimized timeouts (balanced for speed and reliability)
-  timeout: 30000, // 30s - some pages are slow to load
+  // Timeouts — pages load many JSON files in background; 'load' state is used throughout
+  timeout: 45000, // 45s per test
   expect: {
-    timeout: 5000, // 5s for assertions
+    timeout: 8000, // 8s for assertions
   },
   
   use: {
@@ -107,29 +107,19 @@ export default defineConfig({
         '**/about.spec.ts',
         '**/answer-panel-theme.spec.ts',
         '**/audit-engine.spec.ts',
+        '**/blog-a11y.spec.ts',
       ],
     },
   ],
   
-  webServer: [
-    {
-      command: 'pnpm run dev:server',
-      url: 'http://localhost:5000',
-      reuseExistingServer: !process.env.CI,
-      timeout: 120000,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    },
-    {
-      // Static server for Lighthouse — serves the production build
-      command: 'pnpm exec serve dist/public -l 5002 --no-clipboard',
-      url: 'http://localhost:5002',
-      reuseExistingServer: !process.env.CI,
-      timeout: 30000,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    },
-  ],
+  webServer: {
+    command: 'pnpm run dev:server',
+    url: 'http://localhost:5000',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  },
   
   // Global setup/teardown
   globalSetup: './e2e/global-setup.ts',

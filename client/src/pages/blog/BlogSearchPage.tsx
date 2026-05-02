@@ -3,6 +3,8 @@ import { useSearch } from "wouter";
 import { BlogLayout } from "@/components/blog/BlogLayout";
 import { PostCard, PostCardSkeleton, type PostCardData } from "@/components/blog/PostCard";
 import { SearchInput } from "@/components/blog/SearchInput";
+import { EmptyState } from "@/components/blog/EmptyState";
+import { BookOpen } from "lucide-react";
 
 export default function BlogSearchPage() {
   const search = useSearch();
@@ -30,36 +32,40 @@ export default function BlogSearchPage() {
   return (
     <BlogLayout>
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-12">
-        <h1 className="text-3xl font-bold text-[var(--color-ink)] mb-6">Search</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Search Articles</h1>
+        <p className="text-muted-foreground mb-6">Find system design breakdowns, coding patterns, and interview strategies.</p>
         <SearchInput defaultValue={query} autoFocus />
 
         <div className="mt-8">
           {loading && (
-            <div className="space-y-4">
+            <div className="space-y-0">
               {Array.from({ length: 3 }).map((_, i) => <PostCardSkeleton key={i} />)}
             </div>
           )}
 
           {!loading && searched && results.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-[var(--color-ink-muted)]">
-                No results for <strong className="text-[var(--color-ink)]">"{query}"</strong>
-              </p>
-              <p className="mt-2 text-sm text-[var(--color-ink-muted)]">
-                Try different keywords or{" "}
-                <a href="/blog" className="text-[var(--color-accent)] hover:underline">
-                  browse all posts
-                </a>
-                .
-              </p>
-            </div>
+            <EmptyState
+              icon={<BookOpen size={24} className="text-[var(--color-ink-muted)]" />}
+              title="No results found"
+              description={
+                <>
+                  No results for <strong className="text-[var(--color-ink)]">"{query}"</strong>
+                  <br />
+                  Try broader terms like &quot;system design&quot; or &quot;dynamic programming&quot;, or{" "}
+                  <a href="/blog" className="text-[var(--color-accent)] hover:underline">
+                    browse all articles
+                  </a>
+                  .
+                </>
+              }
+            />
           )}
 
           {!loading && results.length > 0 && (
             <>
-              <p className="text-sm text-[var(--color-ink-muted)] mb-6">
+              <p className="text-sm text-muted-foreground mb-6">
                 {results.length} result{results.length !== 1 ? "s" : ""} for{" "}
-                <strong className="text-[var(--color-ink)]">"{query}"</strong>
+                <strong className="text-foreground">"{query}"</strong>
               </p>
               <div className="space-y-0">
                 {results.map((post) => (
@@ -70,8 +76,8 @@ export default function BlogSearchPage() {
           )}
 
           {!searched && (
-            <p className="text-center text-sm text-[var(--color-ink-muted)] py-8">
-              Type at least 2 characters to search.
+            <p className="text-center text-sm text-muted-foreground py-8">
+              Search across all articles — try a topic, technology, or concept.
             </p>
           )}
         </div>

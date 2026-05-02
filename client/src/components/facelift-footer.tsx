@@ -120,9 +120,9 @@ export function FaceliftFooter() {
                     <Mic className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg leading-tight">DevInsights</h3>
+                    <h3 className="font-bold text-lg leading-tight">OpenInterview</h3>
                     <p className="text-[10px] text-muted-foreground tracking-wider uppercase">
-                      Interview Prep
+                      Technical Blog
                     </p>
                   </div>
                 </div>
@@ -156,10 +156,10 @@ export function FaceliftFooter() {
                 <div className="mt-6 p-4 rounded-xl bg-muted/30 border border-border/50">
                   <div className="flex items-center gap-2 mb-2">
                     <Mail size={14} className="text-muted-foreground" />
-                    <h4 className="text-sm font-medium">Stay Updated</h4>
+                    <h4 className="text-sm font-medium">Weekly Interview Tips</h4>
                   </div>
                   <p className="text-xs text-muted-foreground mb-3">
-                    Get new questions and features delivered to your inbox.
+                    New questions, strategies, and insights — straight to your inbox.
                   </p>
                   <form onSubmit={handleSubscribe} className="flex gap-2">
                     <input
@@ -179,7 +179,7 @@ export function FaceliftFooter() {
                           : "bg-primary/15 text-primary border border-primary/20 hover:bg-primary/25 hover:border-primary/40"
                       }`}
                     >
-                      {subscribed ? "Subscribed!" : "Subscribe"}
+                      {subscribed ? "You're in!" : "Subscribe"}
                     </button>
                   </form>
                 </div>
@@ -272,7 +272,7 @@ export function FaceliftFooter() {
           <div className="py-6 border-t border-border/50">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex flex-col sm:flex-row items-center gap-3 text-xs text-muted-foreground">
-                <span>&copy; {new Date().getFullYear()} DevInsights. All rights reserved.</span>
+                <span>&copy; {new Date().getFullYear()} OpenInterview. All rights reserved.</span>
                 <span className="hidden sm:inline text-border">|</span>
                 <span>Open Source</span>
                 <span className="hidden sm:inline text-border">&middot;</span>

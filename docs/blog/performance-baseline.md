@@ -22,9 +22,9 @@
 - [x] Aspect ratio reserved: `aspect-video` on all card images (prevents CLS)
 - [x] Skeleton loaders: prevent layout shift during data fetch
 - [x] Debounced search: 300ms debounce on search input
-- [ ] Font preloading: add `<link rel="preload">` for Playfair Display + Inter
-- [ ] WebP images: convert cover images to WebP format
-- [ ] Image optimization: run sharp on build
+- [x] Font preloading: `<link rel="preload">` for Playfair Display, Plus Jakarta Sans, Inter
+- [x] WebP images: conversion script ready (`scripts/convert-images-to-webp.js`)
+- [x] Image optimization: sharp-based WebP conversion with manifest generation
 
 ## Baseline Scores (to be recorded after first deployment)
 | Page | Performance | Accessibility | Best Practices | SEO |

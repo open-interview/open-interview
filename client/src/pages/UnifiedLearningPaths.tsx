@@ -573,29 +573,30 @@ export default function UnifiedLearningPaths() {
 
             {/* For You */}
             {view === 'for-you' && (() => {
-              const forYouPaths = curatedPaths.filter(p => isRelevantPath(p, role ?? '', subscribedChannels));
-              return forYouPaths.length === 0 ? (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16">
-                  <Sparkles className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--text-tertiary)' }} />
-                  <p className="text-base mb-4" style={{ color: 'var(--text-secondary)' }}>No paths match your topics yet.</p>
-                  <button onClick={() => setLocation('/channels')}
-                    className="px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-150 ease-out hover:opacity-90 cursor-pointer"
-                    style={{ background: 'var(--gradient-primary)' }}>
-                    Update Subscriptions
-                  </button>
-                </motion.div>
-              ) : (
-                <PathSection
-                  title="For You"
-                  emoji="✨"
-                  paths={forYouPaths}
-                  activePaths={activePaths}
-                  getPathProgress={getPathProgress}
-                  onSelect={path => openPathModal(path, 'view')}
-                  onContinue={path => path.channels?.[0] && setLocation(`/channel/${path.channels[0]}`)}
-                  onDeactivate={deactivateCustomPath}
-                  onActivate={activateCustomPath}
-                />
+              const matched = curatedPaths.filter(p => isRelevantPath(p, role ?? '', subscribedChannels));
+              // Fall back to all curated paths so the tab is never empty
+              const forYouPaths = matched.length > 0 ? matched : curatedPaths;
+              const isFallback = matched.length === 0 && curatedPaths.length > 0;
+              return (
+                <>
+                  {isFallback && (
+                    <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-muted/40 border border-border text-sm text-muted-foreground">
+                      <Sparkles className="w-4 h-4 shrink-0" />
+                      <span>No paths match your subscribed topics yet — showing all paths. <button onClick={() => setLocation('/channels')} className="underline text-primary cursor-pointer">Update subscriptions</button> to personalise.</span>
+                    </div>
+                  )}
+                  <PathSection
+                    title={isFallback ? 'All Paths' : 'For You'}
+                    emoji="✨"
+                    paths={forYouPaths}
+                    activePaths={activePaths}
+                    getPathProgress={getPathProgress}
+                    onSelect={path => openPathModal(path, 'view')}
+                    onContinue={path => path.channels?.[0] && setLocation(`/channel/${path.channels[0]}`)}
+                    onDeactivate={deactivateCustomPath}
+                    onActivate={activateCustomPath}
+                  />
+                </>
               );
             })()}
 
