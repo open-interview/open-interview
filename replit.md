@@ -1,3 +1,43 @@
+# Open Interview — Technical Interview Prep Platform
+
+## Blog Post Transformation (121 posts)
+
+All 121 blog posts in `client/public/blog-data.json` have been batch-transformed into clean, structured markdown.
+
+### Pipeline
+- **Script**: `scripts/transform-blog-posts.mjs` — 20 parallel workers, idempotency-guarded
+- **Validation**: `scripts/validate-posts.mjs` — 0 errors, 27 minor warnings
+- **Original data checkpoint**: git `45530b4d9ee6259dcb0b33f564883560f5fd07c9`
+
+### Stats (final run)
+- 121/121 transformed successfully
+- 121/121 fully noise-free (no Share This / References / Did you know?)
+- 104/121 have bullet lists (term:def paragraphs → `- **Term:** def`)
+- 97/121 have `## Key Takeaways` sections
+- 119/121 have properly-fenced mermaid diagrams
+- 0 errors
+
+### Template structure
+```
+intro paragraph(s)
+## Section Name
+prose or - **Term:** definition bullet lists
+## <Section> Flow
+\`\`\`mermaid ... \`\`\`
+## Key Takeaways
+- bullet items
+## Wrapping Up
+conclusion
+```
+
+### MarkdownRenderer enhancements (`client/src/components/blog/MarkdownRenderer.tsx`)
+- **`## Key Takeaways`** — renders as accent-colored heading with decorative dividers (✦)
+- **`> **Case Study —`** blockquotes** — render as teal card callouts with header/body layout
+- **Citation removal** — handles comma-separated patterns `2 , 4 .` and `1 , 2 , 6 ,.`
+- **`preprocessBlogContent`** — safety-net preprocessing still runs as no-op on clean data
+
+---
+
 # code-reels — Interview Prep Platform
 
 ## Events Dashboard

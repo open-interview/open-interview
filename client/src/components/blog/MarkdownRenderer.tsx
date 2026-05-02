@@ -114,16 +114,18 @@ function detectLang(code: string): string {
  * Removes citation superscripts like " 1 .", " 3 " or clusters " 1 2 3 4 " between sentences.
  */
 function removeCitations(text: string): string {
-  // Remove clusters of numbers at end of sentences: "word 1 2 3 ." → "word."
-  text = text.replace(/(\w)(\s+\d{1,2})+\s*\./g, '$1.');
-  // Remove clusters of numbers between words: "word 1 2 3 Word" → "word Word"
-  text = text.replace(/(\w)(\s+\d{1,2})+\s+(?=[A-Z])/g, '$1 ');
-  // Remove single citation " 1 . " → ". "
-  text = text.replace(/\s+\d{1,2}\s+\.\s*/g, '. ');
-  // Remove citation between lowercase/uppercase word boundary
+  // Comma-separated clusters "word 1 , 2 , 6 ." → "word."
+  text = text.replace(/(\w|\))(\s+\d{1,2}\s*,?\s*)+\./g, '$1.');
+  // Clusters before capital word "word 1 , 2 , 3 NextWord" → "word NextWord"
+  text = text.replace(/(\w|\))(\s+\d{1,2}\s*,?\s*)+(?=\s+[A-Z])/g, '$1');
+  // Orphaned "2 ,." → "."
+  text = text.replace(/\s+\d{1,2}\s*,\./g, '.');
+  // Remove citation between word boundaries
   text = text.replace(/([a-z,;])\s+\d{1,2}\s+([A-Z])/g, '$1 $2');
-  // Remove trailing citations at end of line
-  text = text.replace(/(\s+\d{1,2})+\s*$/g, '');
+  // Remove trailing citations: " 6 , 2 ," at end of line
+  text = text.replace(/(\s+\d{1,2}\s*,?\s*)+$/gm, '');
+  // "[N]" style
+  text = text.replace(/\s*\[\d+\]/g, '');
   return text;
 }
 
@@ -515,7 +517,20 @@ export function MarkdownRenderer({ content }: { content: string }) {
     if (line.startsWith("## ")) {
       const text = line.slice(3);
       const id = text.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      elements.push(<h2 key={k()} id={id} className="text-2xl font-bold text-[var(--color-ink)] mt-10 mb-4 font-blog-heading tracking-tight">{renderInline(text)}</h2>);
+      const isKeyTakeaways = text.trim() === "Key Takeaways";
+      if (isKeyTakeaways) {
+        elements.push(
+          <div key={k()} className="flex items-center gap-3 mt-10 mb-4">
+            <div className="h-px flex-1 bg-[var(--color-accent)]/20" />
+            <h2 id={id} className="text-xl font-bold text-[var(--color-accent)] font-blog-heading tracking-tight shrink-0">
+              ✦ Key Takeaways
+            </h2>
+            <div className="h-px flex-1 bg-[var(--color-accent)]/20" />
+          </div>
+        );
+      } else {
+        elements.push(<h2 key={k()} id={id} className="text-2xl font-bold text-[var(--color-ink)] mt-10 mb-4 font-blog-heading tracking-tight">{renderInline(text)}</h2>);
+      }
       i++; continue;
     }
     if (line.startsWith("# ")) {
@@ -524,17 +539,37 @@ export function MarkdownRenderer({ content }: { content: string }) {
     }
 
     // ── Blockquote ────────────────────────────────────────────────────────────
-    if (line.startsWith("> ")) {
+    if (line.startsWith("> ") || line === ">") {
       const quoteLines: string[] = [];
-      while (i < lines.length && lines[i].startsWith("> ")) {
-        quoteLines.push(lines[i].slice(2));
+      while (i < lines.length && (lines[i].startsWith("> ") || lines[i] === ">")) {
+        quoteLines.push(lines[i].startsWith("> ") ? lines[i].slice(2) : "");
         i++;
       }
-      elements.push(
-        <blockquote key={k()} className="border-l-4 border-[var(--color-accent)]/60 pl-5 my-5 py-2 text-[var(--color-ink-muted)] italic bg-[var(--color-surface-raised)]/40 rounded-r-lg">
-          {quoteLines.map((ql, j) => <p key={j} className="my-0.5">{renderInline(ql)}</p>)}
-        </blockquote>
-      );
+      // Detect Case Study callout: "> **Case Study — Company**"
+      const isCaseStudy = quoteLines[0]?.startsWith("**Case Study");
+      if (isCaseStudy) {
+        const header = quoteLines[0];
+        const bodyLines = quoteLines.slice(1).filter(l => l.trim());
+        elements.push(
+          <div key={k()} className="my-6 rounded-xl border border-[var(--color-accent)]/25 bg-[var(--color-accent)]/5 overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-[var(--color-accent)]/20 flex items-center gap-2">
+              <span className="text-[var(--color-accent)] text-xs font-semibold uppercase tracking-widest">Case Study</span>
+            </div>
+            <div className="px-4 py-3 space-y-1.5">
+              <div className="font-semibold text-[var(--color-ink)] text-sm">{renderInline(header.replace(/\*\*Case Study[—–-]+\s*/, '').replace(/\*\*$/, '').trim())}</div>
+              {bodyLines.map((bl, j) => (
+                <p key={j} className="text-sm text-[var(--color-ink-muted)] leading-relaxed">{renderInline(bl)}</p>
+              ))}
+            </div>
+          </div>
+        );
+      } else {
+        elements.push(
+          <blockquote key={k()} className="border-l-4 border-[var(--color-accent)]/60 pl-5 my-5 py-2 text-[var(--color-ink-muted)] italic bg-[var(--color-surface-raised)]/40 rounded-r-lg">
+            {quoteLines.map((ql, j) => <p key={j} className="my-0.5">{renderInline(ql)}</p>)}
+          </blockquote>
+        );
+      }
       continue;
     }
 
