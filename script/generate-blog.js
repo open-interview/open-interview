@@ -1605,7 +1605,7 @@ function generateArticlePage(article, allArticles) {
   const readMins = Math.max(1, Math.round(wordCount / 200));
 
   // Featured image URL for JSON-LD (handle both absolute and relative URLs)
-  const featuredImg = article.images?.find(i => i.placement === 'hero' || i.placement === 'after-intro');
+  const featuredImg = (Array.isArray(article.images) ? article.images : []).find(i => i.placement === 'hero' || i.placement === 'after-intro');
   const featuredImageUrl = featuredImg?.url
     ? (featuredImg.url.startsWith('http') ? featuredImg.url : `${baseUrl}${featuredImg.url}`)
     : `${baseUrl}/opengraph.jpg`;
