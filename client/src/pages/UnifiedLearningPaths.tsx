@@ -495,7 +495,6 @@ export default function UnifiedLearningPaths() {
     .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.provider.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const filterCuratedPaths = (paths: any[]) => paths.filter(path => {
-    if (hasSubscriptions && path.channels?.length > 0 && !path.channels.some((c: string) => subscribedSet.has(c))) return false;
     const q = curatedSearchQuery.toLowerCase();
     const matchesSearch = !q || path.name.toLowerCase().includes(q) || path.description.toLowerCase().includes(q)
       || (path.targetCompany && path.targetCompany.toLowerCase().includes(q))
