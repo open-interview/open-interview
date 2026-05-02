@@ -1,49 +1,44 @@
-# Workflow Orchestration Status
+# Workflow Status — COMPLETE ✅
 
-> Last updated: 2026-05-02T10:07 UTC
+Last updated: 2026-05-02T11:02 UTC
 
----
+## All 6 Job Types Passed ✅
 
-## Current Runs (Round 3)
+| Job Type | Run ID | Result | Duration |
+|----------|--------|--------|----------|
+| content quick | 25249538292 | ✅ success | ~10m |
+| content blog | 25249538622 | ✅ success | ~5m |
+| content full-pipeline | 25249830021 | ✅ success | ~35m |
+| social linkedin-post | 25249612151 | ✅ success | ~2m |
+| social poll | 25249611649 | ✅ success | ~2m |
+| social analytics | 25249829709 | ✅ success | ~1m |
+| CI/CD push | 25249946419 | ✅ success | ~5m |
 
-| Run ID | Workflow | Mode | Status |
-|--------|----------|------|--------|
-| [25249538292](https://github.com/open-interview/open-interview/actions/runs/25249538292) | 🤖 Content | `quick` | 🔄 in_progress |
-| [25249538622](https://github.com/open-interview/open-interview/actions/runs/25249538622) | 🤖 Content | `blog` | 🔄 in_progress |
-| [25249538996](https://github.com/open-interview/open-interview/actions/runs/25249538996) | 📣 Social | `linkedin-post` dry_run | 🔄 in_progress |
-| [25249539349](https://github.com/open-interview/open-interview/actions/runs/25249539349) | 📣 Social | `poll` dry_run | 🔄 queued |
-| [25249539704](https://github.com/open-interview/open-interview/actions/runs/25249539704) | 📣 Social | `analytics` | 🔄 in_progress |
+## Fixes Applied This Session
 
----
+### 1. playwright testDir (commit: `194ba24d`)
+- **File**: `playwright.config.ts`
+- **Change**: `testDir: './tests/e2e'` → `testDir: './e2e'`
+- **Root cause**: Tests live in `./e2e/` but config pointed to `./tests/e2e/`, causing "No tests found"
 
-## All Fixes Applied (cumulative)
+### 2. E2E sidebar tests (commit: `f63ef0c6`)
+- **File**: `e2e/core.spec.ts`
+- **Change**: `sidebar visible on desktop` and `navigate to profile via credits` now navigate to `/channels` instead of `/`
+- **Root cause**: Home page (`/`) uses `home-facelift.tsx` which has no `AppLayout`/sidebar. Tests expecting `aside` element must use a page with `AppLayout` (e.g., `/channels`)
 
-| Commit | Fix |
-|--------|-----|
-| `07e1540d` | `git add -f` for gitignored `client/public/data/` in `social.yml` |
-| `54d3e34e` | `git add -f` for gitignored paths in `content.yml`, `ci-cd.yml`, `maintenance.yml` |
-| `0e72b188` | Export + commit generated content in `quick-generate`, `manual-intake`, `maintenance` |
-| `284c998f` | `permissions: contents: write` on `quick-generate`, `linkedin-post`, `poll`, `analytics` |
-| `284c998f` | Fix `article.images?.find` crash — normalize to array in `generate-blog.js` |
-| `67c96c51` | Fix SQLite `json()` → PostgreSQL `=` in `session-builder-bot.js` |
-| `67c96c51` | Fix `coding_challenges` export — remove non-existent columns (`category`, `companies`, etc.) |
-| `67c96c51` | Fix `fetch-bot-monitor-data.js` — `main()` was called but never defined |
-| `67c96c51` | Fix `git pull --rebase` "unstaged changes" — add `git stash && ... && git stash pop` in all 10 log event steps across 4 workflows |
+### 3. Lighthouse port (commit: `0e04e9f7`)
+- **File**: `e2e/lighthouse.spec.ts`
+- **Change**: Default `BASE_URL` from `localhost:5002` → `localhost:5000`
+- **Root cause**: webServer in playwright.config.ts starts on port 5000, but Lighthouse spec defaulted to 5002, causing all scores to be 0 (connection failure)
 
----
+## Previously Applied Fixes (prior sessions)
 
-## Round History
-
-| Round | Trigger | Key Failures |
-|-------|---------|--------------|
-| 1 (09:32) | Manual test | `git add` gitignored, `403` push, `images.find` crash |
-| 2 (09:55) | Post-fix | `403` push (permissions missing), `unstaged changes` on pull |
-| 3 (10:07) | Post-fix | Pending results |
-
----
-
-## Known Non-Errors (expected)
-
-- `poll` dry_run → `No questions found` — empty DB in dry-run, not a bug
-- Vector DB unavailable → `ℹ️ No related questions found` — Qdrant not in CI, gracefully handled
-- `NOTICE: trigger does not exist, skipping` — harmless SCHEMA.sql idempotency notices
+1. `git add -f` for gitignored `client/public/data/` paths
+2. `permissions: contents: write` on all jobs that push
+3. Export + commit generated content in quick-generate, manual-intake, maintenance
+4. `article.images?.find` → `Array.isArray` normalize in generate-blog.js
+5. SQLite `json()` → PostgreSQL `=` in session-builder-bot.js
+6. coding_challenges export fixed to match actual schema
+7. fetch-bot-monitor-data.js main() function implemented
+8. `git checkout -- . && git pull --rebase` instead of stash in all log steps
+9. `data:import` added to poll and linkedin-post jobs
