@@ -48,9 +48,7 @@ async function getLatestUnsharedPost() {
   }
 
   // Fetch a batch of candidates and return the first one whose URL is live.
-  // Set SKIP_URL_CHECK=true to bypass (e.g. blog deployed to non-served branch).
-  const skipUrlCheck = process.env.SKIP_URL_CHECK === 'true';
-
+  // This skips posts that exist in the DB but were never deployed to GitHub Pages.
   const result = await client.execute(`
     SELECT * FROM blog_posts
     WHERE linkedin_shared_at IS NULL
@@ -59,7 +57,6 @@ async function getLatestUnsharedPost() {
   `);
 
   for (const post of result.rows) {
-    if (skipUrlCheck) return post;
     const postUrl = `${BLOG_BASE_URL}/posts/${post.id}/${post.slug}/`;
     const live = await isUrlLive(postUrl);
     if (live) {
