@@ -763,17 +763,14 @@ export default function UnifiedLearningPaths() {
         <AnimatePresence>
           {showPathModal && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-6"
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
               style={{ background: 'var(--surface-overlay, rgba(0,0,0,0.6))', backdropFilter: 'blur(8px)' }}
               onClick={closePathModal}>
-              <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 12 }}
+                transition={{ type: 'spring', damping: 28, stiffness: 320 }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-3xl h-[90vh] md:h-auto md:max-h-[85vh] flex flex-col overflow-hidden md:mb-0 mb-16"
-                style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-3xl) var(--radius-3xl) 0 0' }}>
-                <div className="flex justify-center pt-3 pb-1 md:hidden">
-                  <div className="w-10 h-1 rounded-full" style={{ background: 'var(--color-border-strong)' }} />
-                </div>
+                className="w-full max-w-3xl max-h-[88vh] flex flex-col overflow-hidden"
+                style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-2xl, 1rem)' }}>
                 <div className="px-5 py-4 border-b flex-shrink-0" style={{ borderColor: 'var(--color-border)' }}>
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-lg font-bold truncate pr-2">
