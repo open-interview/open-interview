@@ -160,12 +160,12 @@ export default function BlogHomePage() {
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--gradient-primary)')}
               >
                 <Link href="/blog">
-                  Explore All Articles <Grid3x3 size={16} className="ml-2" />
+                  <span className="inline-flex items-center gap-2">Explore All Articles <Grid3x3 size={16} /></span>
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg">
                 <Link href="/blog/search">
-                  Find What You Need
+                  <span>Find What You Need</span>
                 </Link>
               </Button>
             </motion.div>
