@@ -25,7 +25,7 @@ test.describe('Navigation', () => {
 
   test('sidebar visible on desktop', async ({ page, isMobile }) => {
     test.skip(isMobile, 'Desktop only');
-    await page.goto('/');
+    await page.goto('/channels');
     await waitForPageReady(page);
     await expect(page.locator('aside').first()).toBeVisible();
   });
@@ -60,7 +60,7 @@ test.describe('Navigation', () => {
   });
 
   test('navigate to profile via credits', async ({ page, isMobile }) => {
-    await page.goto('/');
+    await page.goto('/channels');
     await waitForPageReady(page);
     await hideMascot(page);
     
