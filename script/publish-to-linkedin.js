@@ -401,13 +401,20 @@ async function publishToLinkedInWithImage(content, imageAsset) {
     throw new Error(`LinkedIn API error (${response.status}): ${errorMsg}`);
   }
   
-  const id = response.headers.get('x-restli-id');
+  const id = response.headers.get('x-restli-id') || response.headers.get('x-linkedin-id');
+  if (id) return { id };
+
+  // Newer API versions may return ID in body
+  try {
+    const body = await response.json();
+    const bodyId = body?.id || body?.postId || body?.urn;
+    if (bodyId) return { id: bodyId };
+  } catch {}
+
+  // 201 Created with no ID is still a success — generate a placeholder
+  if (response.status === 201) return { id: `posted-${Date.now()}` };
   
-  if (!id) {
-    throw new Error('Invalid response: missing post ID');
-  }
-  
-  return { id };
+  throw new Error('Invalid response: missing post ID');
 }
 
 /**
@@ -441,13 +448,18 @@ async function publishToLinkedInArticle(content) {
     throw new Error(`LinkedIn API error (${response.status}): ${errorMsg}`);
   }
   
-  const id = response.headers.get('x-restli-id');
+  const id = response.headers.get('x-restli-id') || response.headers.get('x-linkedin-id');
+  if (id) return { id };
+
+  try {
+    const body = await response.json();
+    const bodyId = body?.id || body?.postId || body?.urn;
+    if (bodyId) return { id: bodyId };
+  } catch {}
+
+  if (response.status === 201) return { id: `posted-${Date.now()}` };
   
-  if (!id) {
-    throw new Error('Invalid response: missing post ID');
-  }
-  
-  return { id };
+  throw new Error('Invalid response: missing post ID');
 }
 
 /**

@@ -556,3 +556,14 @@ FOR EACH ROW EXECUTE FUNCTION trg_user_sessions_access_fn();
 -- ============================================================================
 -- END OF SCHEMA
 -- ============================================================================
+
+CREATE TABLE IF NOT EXISTS linkedin_publish_log (
+    id SERIAL PRIMARY KEY,
+    blog_post_id TEXT,
+    linkedin_post_id TEXT,
+    published_at TEXT,
+    with_image INTEGER DEFAULT 0,
+    post_type TEXT DEFAULT 'article',
+    error TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
