@@ -25,15 +25,11 @@ async function markAsShared() {
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const result = await client.execute({
+      await client.execute({
         sql: `UPDATE blog_posts SET linkedin_shared_at = ?, linkedin_post_id = COALESCE(?, linkedin_post_id) WHERE question_id = ? AND linkedin_shared_at IS NULL`,
         args: [now, linkedInId || null, postId]
       });
-      if (result && result.rows && result.rows.length === 0 && result.affectedRows === 0) {
-        console.log('⚠️  Post already marked as shared (no rows updated)');
-      } else {
-        console.log('✅ Post marked as shared');
-      }
+      console.log('✅ Post marked as shared');
       break;
     } catch (e) {
       if (attempt === MAX_RETRIES) throw e;

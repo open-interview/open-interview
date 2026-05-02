@@ -31,6 +31,7 @@ const SUBTOPIC = args.subtopic || process.env.SUBTOPIC || 'deployment';
 const CONCEPT = args.concept || process.env.CONCEPT || 'canary deployments';
 const CHANNEL = args.channel || process.env.CHANNEL || TOPIC;
 const DRY_RUN = process.env.DRY_RUN === 'true' || args.dry === true;
+const LINKEDIN_API_VERSION = process.env.LINKEDIN_API_VERSION || '202506';
 
 function writeGitHubOutput(key, value) {
   if (process.env.GITHUB_OUTPUT) {
@@ -107,7 +108,7 @@ async function postToLinkedIn(pollContent, durationEnum = 'TWO_WEEKS') {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
-      'LinkedIn-Version': '202506',
+      'LinkedIn-Version': LINKEDIN_API_VERSION,
       'X-Restli-Protocol-Version': '2.0.0'
     },
     body: JSON.stringify(payload)

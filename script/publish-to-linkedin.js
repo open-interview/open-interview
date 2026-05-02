@@ -22,41 +22,7 @@ import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { generateLinkedInPost } from './ai/graphs/linkedin-graph.js';
-import pg from 'pg';
-
-const { Pool } = pg;
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  host: process.env.PGHOST,
-  port: process.env.PGPORT ? parseInt(process.env.PGPORT) : undefined,
-  user: process.env.PGUSER,
-  password: process.env.PGPASSWORD,
-  database: process.env.PGDATABASE,
-  connectionTimeoutMillis: 10000,
-});
-
-function convertPlaceholders(sql) {
-  let i = 0;
-  return sql.replace(/\?/g, () => `$${++i}`);
-}
-
-const client = {
-  execute: async (sqlOrObj) => {
-    const { sql, args } = typeof sqlOrObj === 'string'
-      ? { sql: sqlOrObj, args: [] }
-      : { sql: sqlOrObj.sql, args: sqlOrObj.args ?? [] };
-    let pgSql = convertPlaceholders(sql);
-    const normalised = pgSql.trim().toUpperCase();
-    const isInsert = normalised.startsWith('INSERT');
-    const hasReturning = normalised.includes('RETURNING');
-    if (isInsert && !hasReturning) {
-      pgSql = pgSql.replace(/;\s*$/, '') + ' RETURNING id';
-    }
-    const result = await pool.query(pgSql, args);
-    return { rows: result.rows, lastInsertRowid: result.rows[0]?.id ?? null };
-  },
-};
+import { dbClient as client } from './db/pg-client.js';
 
 // Constants
 const LINKEDIN_API_VERSION = process.env.LINKEDIN_API_VERSION || '202506';
@@ -74,6 +40,7 @@ const RETRY_DELAY = 2000; // 2 seconds
 // Environment variables
 const accessToken = process.env.LINKEDIN_ACCESS_TOKEN?.trim();
 const personUrn = process.env.LINKEDIN_PERSON_URN?.trim();
+const postId = process.env.POST_ID?.trim();
 const postTitle = process.env.POST_TITLE?.trim();
 const postUrl = process.env.POST_URL?.trim();
 const postExcerpt = process.env.POST_EXCERPT?.trim();
@@ -485,7 +452,7 @@ async function logToPublishLog(postId, linkedInResult, publishedWithImage, error
     const now = new Date().toISOString();
     await client.execute({
       sql: `INSERT INTO linkedin_publish_log (blog_post_id, linkedin_post_id, published_at, with_image, post_type, error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      args: [postId, linkedInResult?.id || null, now, publishedWithImage ? 1 : 0, 'article', error?.message || null, now]
+      args: [postId || postUrl, linkedInResult?.id || null, now, publishedWithImage ? 1 : 0, 'article', error?.message || null, now]
     });
   } catch (logErr) {
     console.warn(`   ⚠️ Failed to log to publish log: ${logErr.message}`);

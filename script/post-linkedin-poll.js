@@ -129,21 +129,6 @@ function parseQuestionRow(row) {
 async function fetchQuestion() {
   console.log('🔍 Fetching question from database...');
 
-  // Ensure status column exists (older DBs may not have it)
-  const cols = await dbClient.execute({ sql: "SELECT column_name as name FROM information_schema.columns WHERE table_name = 'questions'", args: [] });
-  const hasStatus = cols.rows.some(r => r.name === 'status');
-  if (!hasStatus) {
-    console.log('⚠️ Adding missing status column to questions table...');
-    await dbClient.execute("ALTER TABLE questions ADD COLUMN status TEXT DEFAULT 'active'");
-  }
-
-  // Ensure linkedin_poll_at column exists
-  const hasLinkedinPollAt = cols.rows.some(r => r.name === 'linkedin_poll_at');
-  if (!hasLinkedinPollAt) {
-    console.log('⚠️ Adding missing linkedin_poll_at column to questions table...');
-    await dbClient.execute("ALTER TABLE questions ADD COLUMN linkedin_poll_at TEXT");
-  }
-
   let sql = "SELECT * FROM questions WHERE status = 'active' AND linkedin_poll_at IS NULL";
   const args = [];
 
@@ -430,14 +415,6 @@ async function publishPollToLinkedIn(content) {
   return { id: postUrn };
 }
 
-/**
- * Mark question as shared
- */
-async function markQuestionShared(questionId, postId) {
-  // You could add a 'shared_on_linkedin' column to track this
-  console.log(`   📝 Question ${questionId} shared as poll ${postId}`);
-}
-
 async function main() {
   console.log('═'.repeat(60));
   console.log('📊 LinkedIn Poll Publisher');
@@ -505,9 +482,6 @@ async function main() {
     console.log('\n✅ Successfully published poll to LinkedIn!');
     console.log(`   Post ID: ${linkedInResult.id}`);
     
-    // Mark question as shared
-    await markQuestionShared(question.id, linkedInResult.id);
-
     // Mark question as posted on LinkedIn
     await dbClient.execute({
       sql: 'UPDATE questions SET linkedin_poll_at = ? WHERE id = ?',
