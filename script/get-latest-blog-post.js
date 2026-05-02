@@ -88,7 +88,8 @@ function generateExcerpt(intro, maxLength = 200) {
 }
 
 function formatTags(tags, channel, title = '', excerpt = '') {
-  const tagList = tags ? JSON.parse(tags) : [];
+  let tagList = [];
+  try { tagList = tags ? JSON.parse(tags) : []; } catch { tagList = []; }
   
   // Channel-specific hashtags for better reach
   const channelHashtags = {
