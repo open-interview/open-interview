@@ -111,12 +111,115 @@ function detectLang(code: string): string {
 }
 
 /**
- * Removes citation superscripts like " 1 .", " 3 " between sentences.
+ * Removes citation superscripts like " 1 .", " 3 " or clusters " 1 2 3 4 " between sentences.
  */
 function removeCitations(text: string): string {
-  text = text.replace(/\s+(\d{1,2})\s+\.\s*/g, '. ');
-  text = text.replace(/([a-z,;])\s+(\d{1,2})\s+([A-Z])/g, '$1 $3');
-  text = text.replace(/\s+(\d{1,2})\s*$/g, '');
+  // Remove clusters of numbers at end of sentences: "word 1 2 3 ." → "word."
+  text = text.replace(/(\w)(\s+\d{1,2})+\s*\./g, '$1.');
+  // Remove clusters of numbers between words: "word 1 2 3 Word" → "word Word"
+  text = text.replace(/(\w)(\s+\d{1,2})+\s+(?=[A-Z])/g, '$1 ');
+  // Remove single citation " 1 . " → ". "
+  text = text.replace(/\s+\d{1,2}\s+\.\s*/g, '. ');
+  // Remove citation between lowercase/uppercase word boundary
+  text = text.replace(/([a-z,;])\s+\d{1,2}\s+([A-Z])/g, '$1 $2');
+  // Remove trailing citations at end of line
+  text = text.replace(/(\s+\d{1,2})+\s*$/g, '');
+  return text;
+}
+
+/**
+ * Reformats an inline (single-line, space-separated) mermaid diagram string
+ * by inserting proper newlines so mermaid can parse it correctly.
+ */
+function reformatInlineMermaid(raw: string): string {
+  let t = raw.trim().replace(/  +/g, ' ');
+  // After the diagram header, put first node on new line
+  t = t.replace(/^((?:graph|flowchart)\s+\w+)\s+([A-Z(])/m, '$1\n  $2');
+  t = t.replace(/^(sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|gitGraph|erDiagram|gantt)\s+/m, '$1\n  ');
+  // After ] when followed by a node ID starting a new statement
+  t = t.replace(/\]\s+([A-Z][a-zA-Z0-9_]*\s*\[)/g, ']\n  $1');
+  // After ] when followed by plain node + arrow
+  t = t.replace(/\]\s+([A-Z][a-zA-Z0-9_]*)\s+(-->|->|--)/g, ']\n  $1 $2');
+  // Plain node followed by new statement (e.g. "D --> E E --> F")
+  t = t.replace(/\b([A-Z][a-zA-Z0-9_]*)\s+([A-Z][a-zA-Z0-9_]*\s+-->)/g, '$1\n  $2');
+  // subgraph and end on their own lines
+  t = t.replace(/\s+subgraph\s+/g, '\n  subgraph ');
+  t = t.replace(/\s+end\b/g, '\n  end');
+  return t;
+}
+
+/**
+ * Document-level preprocessor — strips auto-generated content noise that
+ * affects all 121 blog posts before the markdown parser sees the content.
+ *
+ * Handles:
+ *  1. Removes duplicate "## Conclusion" (always mirrors "## Wrapping Up")
+ *  2. Strips inline "Share This [emoji] ... #hashtags" social blobs
+ *  3. Strips "Real-World Case Study ... Key Takeaway: ..." inline blobs
+ *  4. Strips inline "References N title type..." lists
+ *  5. Strips "Did you know?" blurbs
+ *  6. Wraps raw single-line mermaid diagrams in proper ```mermaid code fences
+ *  7. Converts "Key Takeaways Item1 Item2" run-on text to bullet lists
+ */
+function preprocessDocument(raw: string): string {
+  let text = raw;
+
+  // ── 1. Remove duplicate "## Conclusion" section ───────────────────────────
+  // 121/121 posts have "## Wrapping Up"; 109/121 also have identical "## Conclusion"
+  if (text.includes('## Wrapping Up') && text.includes('## Conclusion')) {
+    text = text.replace(/\n## Conclusion\n[\s\S]*?(?=\n## |$)/, '');
+  }
+
+  // ── 2. Strip "Share This" blobs ───────────────────────────────────────────
+  // These end with hashtag clusters or URLs and span to end of paragraph
+  text = text.replace(/Share This[\s\S]*?(?:#[A-Z][a-zA-Z]+(?: #[A-Z][a-zA-Z]+)*|https?:\/\/\S+)[^\n]*/g, '');
+
+  // ── 3. Strip "Real-World Case Study...Key Takeaway:..." inline blobs ───────
+  text = text.replace(/Real-World Case Study\s+\S+[\s\S]{0,1000}?Key Takeaway:[^\n]+/g, '');
+
+  // ── 4. Strip inline "References N title type..." lists ────────────────────
+  text = text.replace(/\bReferences\s+\d[\s\S]{0,3000}?(?=\n## |\n\n|\nShare This|\nDid you know|$)/g, '');
+
+  // ── 5. Strip "Did you know?" blurbs ──────────────────────────────────────
+  text = text.replace(/Did you know\?[^\n.]*\.?/g, '');
+
+  // ── 6. Detect raw single-line mermaid diagrams and wrap in code fences ────
+  const MERMAID_START = /^(graph\s+(?:TD|LR|RL|BT|TB)|flowchart(?:\s+(?:TD|LR|RL|BT|TB))?|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|gitGraph|erDiagram|gantt|pie\s+title|mindmap)/;
+  const lines = text.split('\n');
+  const output: string[] = [];
+  let inFence = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.startsWith('```')) {
+      inFence = !inFence;
+      output.push(line);
+      continue;
+    }
+    if (!inFence && MERMAID_START.test(line.trim())) {
+      // Extract mermaid portion (stop before trailing noise)
+      const noiseIdx = line.search(/\b(Did you know|Key Takeaways|References\s+\d|Share This)\b/);
+      const mermaidRaw = noiseIdx > 0 ? line.substring(0, noiseIdx).trim() : line.trim();
+      const reformatted = reformatInlineMermaid(mermaidRaw);
+      output.push('```mermaid');
+      output.push(reformatted);
+      output.push('```');
+    } else {
+      output.push(line);
+    }
+  }
+  text = output.join('\n');
+
+  // ── 7. Convert "Key Takeaways Item1 Item2 Item3" run-on text to bullets ───
+  text = text.replace(/\bKey Takeaways\b([^\n]+)/g, (_match, items: string) => {
+    // Split on capital-letter sentence starts
+    const parts = items.trim()
+      .split(/(?<=[a-z])\s+(?=[A-Z])/)
+      .map((s: string) => s.trim())
+      .filter(Boolean);
+    if (parts.length === 0) return '';
+    return '\n**Key Takeaways:**\n' + parts.map((s: string) => `- ${s}`).join('\n');
+  });
+
   return text;
 }
 
@@ -277,8 +380,11 @@ function addParagraphBreaks(text: string): string {
  * Master preprocessor: converts raw flat blog content to clean markdown.
  */
 export function preprocessBlogContent(raw: string): string {
+  // 0. Document-level cleanup: strip noise, wrap raw mermaid, remove duplicates
+  let text = preprocessDocument(raw);
+
   // 1. Decode HTML entities (most impactful — fixes &quot;, &lt;, &gt;, etc.)
-  let text = decodeEntities(raw);
+  text = decodeEntities(text);
 
   // 2. Remove citation superscripts like " 1 ." between sentences
   text = removeCitations(text);
