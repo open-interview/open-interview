@@ -84,6 +84,56 @@ This wrapper:
 - Auto-appends `RETURNING id` to bare INSERT statements for `lastInsertRowid` compat
 - Works with `DATABASE_URL` or individual `PG*` env vars
 
+## Blog — Astro Static Site (blog/)
+
+The public engineering blog is a separate Astro v5 workspace that generates a fully static site from the MDX posts in `content/posts/`.
+
+### Structure
+```
+blog/
+  astro.config.mjs       — Astro config (outDir: ../blog-output, mdx, sitemap)
+  postcss.config.js      — Empty PostCSS config (avoids picking up root Tailwind)
+  src/
+    content/config.ts    — Astro Content Layer schema (glob loader → content/posts/*.mdx)
+    styles/global.css    — GitHub-dark theme, CSS variables, full dark/light mode
+    layouts/
+      Layout.astro       — Base layout (dark mode, GA4, Mermaid CDN, OG/Twitter/JSON-LD)
+      BlogPost.astro     — Article layout (progress bar, TOC, sources, sharing)
+    components/
+      Header.astro       — Site header with nav and theme toggle
+      ArticleCard.astro  — Post card for index/channel pages
+      TableOfContents.astro — TOC extracted from headings
+    pages/
+      index.astro        — Homepage (hero, filter bar, client-side search)
+      404.astro          — Custom 404 page
+      feed.xml.js        — RSS 2.0 feed (no @astrojs/rss dep — generates raw XML)
+      posts/[id]/[slug]/index.astro — 150 static post routes
+      channels/index.astro          — All channels listing
+      channels/[channel]/index.astro — Per-channel post list
+```
+
+### Content schema (content/posts/*.mdx)
+Required: `title`, `slug` | Optional: `id`, `channel`, `category`, `difficulty`, `tags`, `publishedAt`, `createdAt`, `excerpt`, `funFact`, `images[]`, `sources[]`, `author`, `coverImage`, `featured`, `readingTimeMinutes`
+
+The schema uses `.transform()` to derive `id` from `slug` and `channel` from `category` when missing (handles 5 legacy posts).
+
+### MDX content sanitization
+150 MDX posts may contain bare prose with `<placeholder>`, `{expression}`, `<=` patterns. A Python sanitization pass at write-time (+ `mdxProseSanitizer` Vite plugin in astro.config.mjs as safety net) escapes all of these in prose sections, preserving fenced code blocks and inline code spans verbatim.
+
+### Build commands
+```bash
+pnpm blog:build       # Build static site → blog-output/
+pnpm blog:dev         # Dev server on port 4321
+```
+
+### Output
+- **`blog-output/`** — 188 static HTML files (150 posts + 36 channels + index + feeds)
+- URL structure: `/posts/{id}/{slug}/` — identical to the old SSG
+- CSS: Bundled into `_astro/*.css` (18KB, linked from every page)
+- Node.js requirement: >= 18.17.1 (Astro 5; NOT Astro 6 which needs Node 22)
+
+---
+
 ## GitHub Actions
 
 All workflows (content.yml, community.yml, maintenance.yml, social.yml, deploy-blog.yml) use:
