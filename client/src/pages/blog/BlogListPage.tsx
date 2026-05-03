@@ -4,10 +4,9 @@ import { getPosts, getCategories, getTags } from "@/lib/blog-loader";
 import { BlogLayout } from "@/components/blog/BlogLayout";
 import { ArticleCard, ArticleCardSkeleton, type ArticleCardData, type ArticleDifficulty } from "@/components/facelift/article-card";
 import { motion } from "framer-motion";
-import { useReducedMotion, getSpringTransition, staggerConfig } from "@/hooks/use-reduced-motion";
-import { ChevronRight, ArrowLeft, Filter, BookOpen, Tag, Loader2, Grid3x3, X } from "lucide-react";
+import { useReducedMotion, getSpringTransition } from "@/hooks/use-reduced-motion";
+import { ChevronRight, Filter, BookOpen, Tag, Grid3x3, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { Breadcrumb } from "@/components/blog/Breadcrumb";
 import { EmptyState } from "@/components/blog/EmptyState";
@@ -73,18 +72,19 @@ function SidebarContent({ categories, tags, total, filteredPosts, categorySlug, 
                   <div key={i} className="h-6 w-16 rounded-full bg-muted/50 animate-pulse" />
                 ))
               : tags.slice(0, 12).map((t) => (
-                  <Badge
+                  <button
                     key={t}
-                    variant={tag === t ? 'default' : 'outline'}
-                    className={`cursor-pointer transition-colors ${
+                    type="button"
+                    aria-pressed={tag === t}
+                    className={`cursor-pointer rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors ${
                       tag === t
-                        ? 'bg-violet-600 hover:bg-violet-700'
-                        : 'hover:border-violet-500/50 hover:text-violet-400'
+                        ? 'bg-violet-600 text-white border-transparent hover:bg-violet-700'
+                        : 'border-border/50 text-muted-foreground hover:border-violet-500/50 hover:text-violet-400'
                     }`}
                     onClick={() => onNavigate(`/blog/tag/${t}`)}
                   >
                     #{t}
-                  </Badge>
+                  </button>
                 ))}
           </div>
         </div>
@@ -205,7 +205,7 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
         {/* Breadcrumb */}
-        <motion.nav
+        <motion.div
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={spring}
@@ -216,7 +216,7 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
               { label: pageTitle, isCurrent: true },
             ]}
           />
-        </motion.nav>
+        </motion.div>
 
         {/* Page Header */}
         <motion.div

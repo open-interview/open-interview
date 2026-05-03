@@ -120,7 +120,7 @@ export function FaceliftFooter() {
                     <Mic className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg leading-tight">OpenInterview</h3>
+                    <h2 className="font-bold text-lg leading-tight">OpenInterview</h2>
                     <p className="text-[10px] text-muted-foreground tracking-wider uppercase">
                       Technical Blog
                     </p>
@@ -157,7 +157,7 @@ export function FaceliftFooter() {
                 <div className="mt-6 p-4 rounded-xl bg-muted/30 border border-border/50">
                   <div className="flex items-center gap-2 mb-2">
                     <Mail size={14} className="text-muted-foreground" />
-                    <h4 className="text-sm font-medium">Weekly Interview Tips</h4>
+                    <h3 className="text-sm font-medium">Weekly Interview Tips</h3>
                   </div>
                   <p className="text-xs text-muted-foreground mb-3">
                     New questions, strategies, and insights — straight to your inbox.

@@ -290,9 +290,9 @@ function CardContent({ article, variant, imageError, onImageError }: {
       <div className="flex gap-4 py-4 border-b border-border/50 last:border-0">
         <div className="flex-1 min-w-0">
           <CategoryBadge category={article.category} />
-          <h3 className="mt-1 font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
+          <h2 className="mt-1 text-base font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
             {article.title}
-          </h3>
+          </h2>
           <ArticleMeta article={article} />
         </div>
         <CoverImage
@@ -384,9 +384,9 @@ function CardContent({ article, variant, imageError, onImageError }: {
             {article.difficulty && <DifficultyBadge level={article.difficulty} />}
           </div>
 
-          <h3 className="text-base font-semibold leading-snug text-foreground line-clamp-2 transition-colors group-hover:text-primary">
+          <h2 className="text-base font-semibold leading-snug text-foreground line-clamp-2 transition-colors group-hover:text-primary">
             {article.title}
-          </h3>
+          </h2>
 
           {article.excerpt && (
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground line-clamp-3 flex-1">

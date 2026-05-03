@@ -297,16 +297,17 @@ export default function BlogHomePage() {
               <>
                 <div className="h-6 w-px bg-border mx-2" />
                 {categories.slice(0, 5).map((cat) => (
-                  <Badge
+                  <button
                     key={cat.id}
-                    variant={selectedCategory === cat.slug ? 'default' : 'outline'}
-                    className={`cursor-pointer transition-colors ${selectedCategory === cat.slug ? '' : ''}`}
-                    style={selectedCategory === cat.slug ? { background: 'var(--gradient-primary)', color: '#fff', border: 'none' } : { borderColor: 'rgba(124, 58, 237, 0.25)' }}
+                    type="button"
+                    aria-pressed={selectedCategory === cat.slug}
+                    className={`cursor-pointer rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors ${selectedCategory === cat.slug ? 'text-white border-transparent' : 'border-border/50 text-muted-foreground hover:text-foreground hover:border-primary/40'}`}
+                    style={selectedCategory === cat.slug ? { background: 'var(--gradient-primary)', border: 'none' } : { borderColor: 'rgba(124, 58, 237, 0.25)' }}
                     onClick={() => setSelectedCategory(selectedCategory === cat.slug ? null : cat.slug)}
                     data-testid={`button-category-${cat.slug}`}
                   >
                     {cat.name}
-                  </Badge>
+                  </button>
                 ))}
               </>
             )}
