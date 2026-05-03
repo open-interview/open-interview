@@ -75,7 +75,13 @@ export default function BlogSearchPage() {
             </>
           )}
 
-          {!searched && (
+          {!searched && query.trim().length > 0 && query.trim().length < 2 && (
+            <p className="text-center text-sm text-muted-foreground py-8">
+              Type at least 2 characters to search.
+            </p>
+          )}
+
+          {!searched && query.trim().length === 0 && (
             <p className="text-center text-sm text-muted-foreground py-8">
               Search across all articles — try a topic, technology, or concept.
             </p>

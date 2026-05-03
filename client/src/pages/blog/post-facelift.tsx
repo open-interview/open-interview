@@ -336,26 +336,26 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
 
             {/* Top share buttons */}
             <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={shareTwitter}
-                className="h-8 px-3 text-xs gap-1.5 border-[var(--color-border)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+              <a
+                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post?.title || "")}&url=${encodeURIComponent(typeof window !== "undefined" ? window.location.href : "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label="Share on Twitter"
-              data-testid="button-share-twitter"
+                data-testid="button-share-twitter"
+                className="inline-flex items-center gap-1.5 h-8 px-3 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-ink-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors bg-transparent"
               >
                 <Twitter size={13} strokeWidth={1.5} /> Twitter
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={shareLinkedIn}
-                className="h-8 px-3 text-xs gap-1.5 border-[var(--color-border)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+              </a>
+              <a
+                href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(typeof window !== "undefined" ? window.location.href : "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label="Share on LinkedIn"
-              data-testid="button-share-linkedin"
+                data-testid="button-share-linkedin"
+                className="inline-flex items-center gap-1.5 h-8 px-3 text-xs rounded-md border border-[var(--color-border)] text-[var(--color-ink-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors bg-transparent"
               >
                 <Linkedin size={13} strokeWidth={1.5} /> LinkedIn
-              </Button>
+              </a>
               <Button
                 variant="outline"
                 size="sm"
@@ -365,7 +365,7 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
                   linkCopied && "border-green-400/50 bg-green-50 text-green-600 dark:bg-green-950/20 dark:text-green-400"
                 )}
                 aria-label="Copy link"
-              data-testid="button-copy-link"
+                data-testid="button-copy-link"
               >
                 {linkCopied
                   ? <><Check size={13} strokeWidth={1.5} /> Copied!</>
@@ -474,7 +474,7 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
         {related.length > 0 && (
           <section className="mt-16 pt-8 border-t border-[var(--color-border)]" aria-labelledby="related-heading">
             <h2 id="related-heading" className="text-2xl font-bold text-[var(--color-ink)] mb-8 font-blog-heading">
-              Related Articles
+              Related Posts
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {related.map((p) => (
