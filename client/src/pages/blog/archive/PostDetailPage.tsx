@@ -48,20 +48,17 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
   useEffect(() => {
     setLoading(true);
     const markFMP = measureBlogPostLoad(slug);
-    fetch(`/api/blog/posts/${slug}`)
-      .then((r) => {
-        if (r.status === 404) { setNotFound(true); return null; }
-        return r.json();
-      })
-      .then((data) => {
-        if (!data) return;
-        setPost(data.data);
-        setRelated(data.related || []);
-        setPrevPost(data.prev || null);
-        setNextPost(data.next || null);
-        markFMP();
-      })
-      .finally(() => setLoading(false));
+    import('@/lib/blog-loader').then(({ getPostWithContext }) =>
+      getPostWithContext(slug)
+    ).then((data) => {
+      if (!data) { setNotFound(true); return; }
+      setPost(data.data as any);
+      setRelated((data.related || []) as any[]);
+      setPrevPost((data.prev || null) as any);
+      setNextPost((data.next || null) as any);
+      markFMP();
+    }).catch(() => setNotFound(true))
+    .finally(() => setLoading(false));
   }, [slug]);
 
   const copyLink = async () => {

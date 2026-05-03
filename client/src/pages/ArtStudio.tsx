@@ -453,15 +453,24 @@ function ArtworkTab() {
   const handleImgError = () => setLoading(false);
 
   const downloadImage = async (url: string, label: string) => {
+    const filename = `artwork-${label.toLowerCase().replace(/\s+/g, '-')}.png`;
     try {
-      const res = await fetch(`/api/generate/download?url=${encodeURIComponent(url)}`);
+      // Direct CORS fetch — Pollinations serves images with Access-Control-Allow-Origin: *
+      // so this works as a pure static/GitHub-Pages deployment with no backend needed.
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) throw new Error(`status ${res.status}`);
       const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `artwork-${label.toLowerCase().replace(/\s+/g, '-')}.png`;
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
     } catch {
-      window.open(url, '_blank');
+      // Fallback: open in new tab so user can right-click → Save As
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
 
