@@ -1,0 +1,94 @@
+name: 🚀 Deploy Astro Blog
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      clean:
+        description: 'Clean export dir before exporting'
+        type: boolean
+        default: false
+
+  # Auto-trigger after content pipeline
+  workflow_run:
+    workflows: ['🤖 Content Pipeline']
+    types: [completed]
+    branches: [main]
+
+  # Also trigger on direct pushes that change blog data or the Astro project
+  push:
+    branches: [main]
+    paths:
+      - 'client/public/blog-data.json'
+      - 'data/blog-posts.json'
+      - 'scripts/export-to-astro.mjs'
+      - 'scripts/transform-blog-posts.mjs'
+      - 'blog-astro/**'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: 'astro-blog-deploy'
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Astro Blog
+    runs-on: ubuntu-latest
+    # Skip if triggered by a failed workflow_run
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: blog-astro/package-lock.json
+
+      # ── Export JSON → Markdown ─────────────────────────────────────────────
+      # export-to-astro.mjs uses only Node.js built-ins (fs, path, url)
+      # so no npm install is required for this step.
+      - name: Export blog posts to Astro content
+        run: node scripts/export-to-astro.mjs ${{ inputs.clean == true && '--clean' || '' }}
+
+      - name: Count exported posts
+        run: |
+          COUNT=$(ls blog-astro/src/content/blog/*.md 2>/dev/null | wc -l)
+          echo "✅ Exported $COUNT posts to blog-astro/src/content/blog/"
+          echo "POST_COUNT=$COUNT" >> "$GITHUB_ENV"
+
+      # ── Astro build ────────────────────────────────────────────────────────
+      - name: Install Astro dependencies
+        working-directory: blog-astro
+        run: npm ci
+
+      - name: Build Astro site
+        working-directory: blog-astro
+        run: npm run build
+
+      # ── Upload artifact for Pages ──────────────────────────────────────────
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: blog-astro/dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

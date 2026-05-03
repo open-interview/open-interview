@@ -1,5 +1,66 @@
 # Open Interview — Technical Interview Prep Platform
 
+## Astro Blog — GitHub Pages Static Site
+
+A standalone Astro v4 blog at `blog-astro/` that publishes all 121 transformed posts to `https://open-interview.github.io`.
+
+### Stack
+- **Astro v4** — static site generator (`blog-astro/`)
+- **Tailwind CSS v4** — via `@tailwindcss/vite` Vite plugin (no `tailwind.config.js` needed)
+- **`@tailwindcss/typography`** — prose styling for markdown content
+- **Shiki** — syntax highlighting (`github-dark` theme)
+- **Mermaid.js** — architecture diagrams rendered client-side
+- **`@astrojs/rss`** — RSS 2.0 feed at `/rss.xml`
+- Manual sitemap at `/sitemap.xml` (replaces `@astrojs/sitemap` which had a v4 incompatibility)
+
+### Key files
+| Path | Purpose |
+|------|---------|
+| `blog-astro/astro.config.mjs` | Astro config: Tailwind v4 Vite plugin, Shiki |
+| `blog-astro/postcss.config.mjs` | Overrides workspace root PostCSS config (prevents Tailwind v3 conflict) |
+| `blog-astro/src/content/config.ts` | Content collection schema (Zod) |
+| `blog-astro/src/layouts/BaseLayout.astro` | HTML shell, SEO meta, fonts |
+| `blog-astro/src/layouts/BlogPost.astro` | Post layout: TOC, reading progress bar, Mermaid, prev/next |
+| `blog-astro/src/pages/index.astro` | Blog listing with client-side category filter |
+| `blog-astro/src/pages/blog/[slug].astro` | Static post pages |
+| `blog-astro/src/pages/tag/[tag].astro` | Per-tag listing pages |
+| `blog-astro/src/pages/sitemap.xml.ts` | Auto-generated XML sitemap |
+| `blog-astro/src/pages/rss.xml.ts` | RSS 2.0 feed |
+| `blog-astro/src/styles/global.css` | Tailwind v4 CSS (`@import "tailwindcss"`, prose overrides) |
+| `scripts/export-to-astro.mjs` | JSON → Markdown export (121 posts, Node.js built-ins only) |
+| `.github/workflows/deploy-astro-blog.yml` | CI/CD: export → build → GitHub Pages |
+
+### Build pipeline (CI)
+```
+push to main (blog data or blog-astro/**)
+  → node scripts/export-to-astro.mjs          # JSON → 121 .md files
+  → cd blog-astro && npm ci && npm run build   # Astro static build (325 pages)
+  → upload dist/ → actions/deploy-pages@v4
+```
+
+### Local workflow
+```bash
+# Export posts (re-run after blog-data.json changes)
+node scripts/export-to-astro.mjs
+
+# Preview the blog locally
+cd blog-astro && npm run dev        # http://localhost:4321
+cd blog-astro && npm run build      # produces dist/
+cd blog-astro && npm run preview    # serve the dist/
+```
+
+### Tailwind v4 / PostCSS conflict fix
+The workspace root has a `postcss.config.js` that uses `tailwindcss: {}` (v3 PostCSS syntax).
+`blog-astro/postcss.config.mjs` is an intentional empty override that prevents Vite from
+picking up the workspace PostCSS config. Tailwind v4 CSS is processed by `@tailwindcss/vite`
+(Vite plugin), not PostCSS.
+
+### Generated files (gitignored)
+- `blog-astro/src/content/blog/*.md` — rebuilt from `client/public/blog-data.json` in CI
+- `blog-astro/dist/` — Astro build output, uploaded to GitHub Pages
+
+---
+
 ## Blog Post Transformation (121 posts)
 
 All 121 blog posts in `client/public/blog-data.json` have been batch-transformed into clean, structured markdown.
