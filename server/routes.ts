@@ -995,5 +995,28 @@ export async function registerRoutes(
     }
   });
 
+  // ── Art Studio: image proxy for cross-origin downloads ───────────────────
+  app.get("/api/generate/download", async (req, res) => {
+    try {
+      const url = req.query.url as string;
+      if (!url || !url.startsWith("https://image.pollinations.ai/")) {
+        return res.status(400).json({ error: "Invalid URL" });
+      }
+      const response = await fetch(url);
+      if (!response.ok) {
+        return res.status(502).json({ error: "Upstream fetch failed" });
+      }
+      const contentType = response.headers.get("content-type") || "image/png";
+      res.set("Content-Type", contentType);
+      res.set("Content-Disposition", `attachment; filename="artwork.png"`);
+      res.set("Cache-Control", "public, max-age=86400");
+      const buf = Buffer.from(await response.arrayBuffer());
+      res.send(buf);
+    } catch (error) {
+      console.error("Art Studio proxy error:", error);
+      res.status(500).json({ error: "Proxy failed" });
+    }
+  });
+
   return httpServer;
 }

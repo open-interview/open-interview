@@ -43,6 +43,7 @@ const UNBLOCKED_PREFIXES = [
   '/stats',
   '/events',
   '/bot-activity',
+  '/generate',
 ];
 
 function isUnblocked(path: string): boolean {

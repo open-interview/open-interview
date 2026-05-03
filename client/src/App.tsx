@@ -119,6 +119,9 @@ const StatsRedirect = React.lazy(() => import('@/pages/StatsRedirect'));
 const ChallengeHome = React.lazy(() => import('@/pages/ChallengeHome'));
 const ChallengeWorkspace = React.lazy(() => import('@/pages/ChallengeWorkspace'));
 
+// Tools
+const ArtStudio = React.lazy(() => import('@/pages/ArtStudio'));
+
 // Blog pages
 const BlogHomePage = React.lazy(() => import('@/pages/blog/BlogHomePage'));
 const BlogListPage = React.lazy(() => import('@/pages/blog/BlogListPage'));
@@ -169,6 +172,8 @@ function Router() {
         <Route path="/extreme/channel/:id/:questionId" component={ExtremeQuestionViewer} />
         <Route path="/channel/:id" component={QuestionViewer} />
         <Route path="/channel/:id/:index" component={QuestionViewer} />
+        {/* Tools */}
+        <Route path="/generate" component={ArtStudio} />
         {/* Blog routes */}
         <Route path="/blog" component={BlogHomePage} />
         <Route path="/blog/search" component={BlogSearchPage} />
