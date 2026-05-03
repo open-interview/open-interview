@@ -3,6 +3,8 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { closePool } from "./db";
+import path from "path";
+import fs from "fs";
 
 const app = express();
 const httpServer = createServer(app);
@@ -61,6 +63,23 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Serve built Astro blog at /blog-preview/
+  const blogOutputPath = path.resolve(process.cwd(), "blog-output");
+  if (fs.existsSync(blogOutputPath)) {
+    app.use("/blog-preview", express.static(blogOutputPath));
+    // SPA-style fallback for Astro trailing-slash routes
+    app.use("/blog-preview/*", (_req, res, next) => {
+      // Try the path with /index.html appended
+      const reqPath = _req.params[0] || "";
+      const candidate = path.join(blogOutputPath, reqPath, "index.html");
+      if (fs.existsSync(candidate)) {
+        res.sendFile(candidate);
+      } else {
+        next();
+      }
+    });
+  }
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

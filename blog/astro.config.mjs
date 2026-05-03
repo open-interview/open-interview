@@ -84,10 +84,17 @@ function mdxProseSanitizer() {
   };
 }
 
+const BASE = process.env.BLOG_BASE_PATH || '';
+
 export default defineConfig({
   site: SITE,
+  base: BASE,
   outDir: '../blog-output',
   trailingSlash: 'always',
+  server: {
+    port: 3000,
+    host: true,
+  },
   vite: {
     plugins: [mdxProseSanitizer()],
   },
