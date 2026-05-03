@@ -69,7 +69,7 @@ export async function navigateTo(page: Page, path: string): Promise<void> {
  */
 export async function smokeNavigate(page: Page, path: string): Promise<void> {
   await skipOnboarding(page);
-  await page.goto(`${BASE_URL}${path}`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${BASE_URL}${path}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
 }
 
 /**
