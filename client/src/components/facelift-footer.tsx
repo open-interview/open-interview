@@ -74,6 +74,8 @@ const quickLinks = [
   { label: "All Channels", href: "/channels" },
   { label: "Learning Paths", href: "/learning-paths" },
   { label: "Blog", href: "/blog" },
+  { label: "Blog Search", href: "/blog/search" },
+  { label: "About Blog", href: "/about-blog" },
   { label: "Documentation", href: "/docs" },
   { label: "About", href: "/about" },
 ];
