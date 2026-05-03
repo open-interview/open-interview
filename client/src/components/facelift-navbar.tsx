@@ -287,6 +287,8 @@ export function FaceliftNavbar({ onSearchOpen }: FaceliftNavbarProps) {
             className="flex items-center gap-2.5 shrink-0"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
+            aria-label="Go to home page"
+            data-testid="button-logo-home"
           >
             <motion.div
               className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center relative overflow-hidden"
@@ -339,6 +341,7 @@ export function FaceliftNavbar({ onSearchOpen }: FaceliftNavbarProps) {
                       ? 'text-primary'
                       : 'text-muted-foreground hover:text-foreground'
                   )}
+                  data-testid={`button-nav-${link.id}`}
                 >
                   {/* Active indicator - animated underline */}
                   {isActive && (
@@ -382,6 +385,8 @@ export function FaceliftNavbar({ onSearchOpen }: FaceliftNavbarProps) {
                 'bg-muted/40 hover:bg-muted/70 border border-border/50',
                 'transition-colors text-sm text-muted-foreground min-w-[180px]'
               )}
+              aria-label="Open search"
+              data-testid="button-search-open"
             >
               <Search className="w-4 h-4" strokeWidth={2} />
               <span className="flex-1 text-left text-xs">Search...</span>
@@ -396,6 +401,8 @@ export function FaceliftNavbar({ onSearchOpen }: FaceliftNavbarProps) {
               whileTap={{ scale: 0.95 }}
               onClick={onSearchOpen}
               className="sm:hidden w-10 h-10 rounded-xl flex items-center justify-center bg-muted/50 hover:bg-muted transition-colors"
+              aria-label="Open search"
+              data-testid="button-search-open-mobile"
             >
               <Search className="w-[18px] h-[18px]" strokeWidth={2} />
             </motion.button>
@@ -408,6 +415,8 @@ export function FaceliftNavbar({ onSearchOpen }: FaceliftNavbarProps) {
               whileTap={{ scale: 0.9 }}
               onClick={() => setMobileOpen(true)}
               className="lg:hidden w-10 h-10 rounded-xl flex items-center justify-center bg-muted/50 hover:bg-muted transition-colors relative overflow-hidden"
+              aria-label="Open menu"
+              data-testid="button-menu-open"
             >
               <AnimatePresence mode="wait" initial={false}>
                 {mobileOpen ? (

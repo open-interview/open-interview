@@ -142,8 +142,8 @@ export function AppLayout({
             exit="exit"
             transition={pageTransition}
             className={fullWidth
-              ? 'w-full overflow-x-hidden pb-[calc(56px+env(safe-area-inset-bottom,0px))]'
-              : 'max-w-7xl mx-auto px-3 py-3 w-full overflow-x-hidden pb-[calc(56px+env(safe-area-inset-bottom,0px))]'
+              ? 'w-full overflow-x-hidden pb-[calc(72px+env(safe-area-inset-bottom,0px))]'
+              : 'max-w-7xl mx-auto px-3 py-3 w-full overflow-x-hidden pb-[calc(72px+env(safe-area-inset-bottom,0px))]'
             }
           >
             {children}

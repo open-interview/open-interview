@@ -142,6 +142,7 @@ export function FaceliftFooter() {
                       rel="noopener noreferrer"
                       aria-label={label}
                       className="group flex items-center justify-center w-9 h-9 rounded-lg bg-muted/50 border border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-all duration-200"
+                      data-testid={`link-social-${label.toLowerCase()}`}
                     >
                       <Icon
                         size={16}
@@ -169,6 +170,7 @@ export function FaceliftFooter() {
                       placeholder="you@email.com"
                       className="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-lg bg-background/80 border border-border/50 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
                       aria-label="Email for newsletter"
+                      data-testid="input-newsletter-email"
                     />
                     <button
                       type="submit"
@@ -178,6 +180,7 @@ export function FaceliftFooter() {
                           ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                           : "bg-primary/15 text-primary border border-primary/20 hover:bg-primary/25 hover:border-primary/40"
                       }`}
+                      data-testid="button-newsletter-subscribe"
                     >
                       {subscribed ? "You're in!" : "Subscribe"}
                     </button>
@@ -196,6 +199,7 @@ export function FaceliftFooter() {
                       <Link
                         href={href}
                         className="group text-sm text-muted-foreground hover:text-primary transition-colors duration-150 flex items-center gap-1.5"
+                        data-testid={`link-quick-${label.toLowerCase().replace(/\s+/g, '-')}`}
                       >
                         <span className="w-0 group-hover:w-1.5 h-px bg-primary transition-all duration-200" />
                         {label}
@@ -216,6 +220,7 @@ export function FaceliftFooter() {
                       <Link
                         href={href}
                         className="group text-sm text-muted-foreground hover:text-primary transition-colors duration-150 flex items-center gap-2"
+                        data-testid={`link-practice-${label.toLowerCase().replace(/\s+/g, '-')}`}
                       >
                         <Icon
                           size={14}
@@ -254,6 +259,7 @@ export function FaceliftFooter() {
                             <Link
                               href={href}
                               className="group text-sm text-muted-foreground hover:text-primary transition-colors duration-150 flex items-center gap-1.5"
+                              data-testid={`link-topic-${label.toLowerCase().replace(/\s+/g, '-')}`}
                             >
                               <span className="w-0 group-hover:w-1.5 h-px bg-primary transition-all duration-200" />
                               {label}
@@ -292,6 +298,7 @@ export function FaceliftFooter() {
                 onClick={scrollToTop}
                 className="group flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors duration-150"
                 aria-label="Back to top"
+                data-testid="button-back-to-top"
               >
                 <span>Back to top</span>
                 <ArrowUp
