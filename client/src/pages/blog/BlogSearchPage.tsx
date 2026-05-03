@@ -36,7 +36,7 @@ export default function BlogSearchPage() {
         <p className="text-muted-foreground mb-6">Find system design breakdowns, coding patterns, and interview strategies.</p>
         <SearchInput defaultValue={query} autoFocus />
 
-        <div className="mt-8">
+        <div className="mt-8" data-testid="search-results-container" data-loading={loading ? "true" : "false"} data-searched={searched ? "true" : "false"}>
           {loading && (
             <div className="space-y-0">
               {Array.from({ length: 3 }).map((_, i) => <PostCardSkeleton key={i} />)}
@@ -75,7 +75,7 @@ export default function BlogSearchPage() {
             </>
           )}
 
-          {!searched && query.trim().length > 0 && query.trim().length < 2 && (
+          {!searched && query.trim().length === 1 && (
             <p className="text-center text-sm text-muted-foreground py-8">
               Type at least 2 characters to search.
             </p>
