@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { BlogHeader } from "./BlogHeader";
 import { BlogFooter } from "./BlogFooter";
 import { BlogThemeProvider } from "./ThemeProvider";
@@ -7,6 +8,14 @@ interface BlogLayoutProps {
 }
 
 export function BlogLayout({ children }: BlogLayoutProps) {
+  useEffect(() => {
+    const prev = document.title;
+    if (!prev.toLowerCase().includes("blog") && !prev.toLowerCase().includes("openinterview")) {
+      document.title = "OpenInterview Blog — Technical Articles & Interview Tips";
+    }
+    return () => { document.title = prev; };
+  }, []);
+
   return (
     <BlogThemeProvider>
       <div className="min-h-dvh flex flex-col bg-[var(--color-surface)] text-[var(--color-ink)]">

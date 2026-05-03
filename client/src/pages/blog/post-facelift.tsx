@@ -128,7 +128,11 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
   }, [slug]);
 
   const copyLink = async () => {
-    await navigator.clipboard.writeText(window.location.href);
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+    } catch {
+      // clipboard may be unavailable in some environments
+    }
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   };
@@ -283,7 +287,7 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
         <Breadcrumb
           items={[
             { label: "Blog", href: "/blog" },
-            { label: post.category },
+            { label: post.category, href: `/blog/category/${post.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` },
             { label: post.title, isCurrent: true },
           ]}
         />
