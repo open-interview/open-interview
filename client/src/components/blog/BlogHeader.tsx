@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, Sun, Moon, Menu, X } from "lucide-react";
 import { useBlogTheme } from "./ThemeProvider";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,10 @@ export function BlogHeader() {
   const [location] = useLocation();
   const { theme, toggle } = useBlogTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location]);
 
   return (
     <header role="banner" className="sticky top-0 z-50 w-full border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur-md shadow-sm">
@@ -67,6 +71,7 @@ export function BlogHeader() {
             onClick={() => setMobileOpen((v) => !v)}
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileOpen}
+            aria-controls="mobile-navigation"
           >
             {mobileOpen ? <X size={18} strokeWidth={1.5} /> : <Menu size={18} strokeWidth={1.5} />}
           </button>
@@ -76,6 +81,7 @@ export function BlogHeader() {
       {/* Mobile drawer */}
       {mobileOpen && (
         <nav
+          id="mobile-navigation"
           className="md:hidden border-t border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4"
           aria-label="Mobile navigation"
         >
