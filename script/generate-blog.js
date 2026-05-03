@@ -527,22 +527,21 @@ function markdownToHtml(md, glossary = []) {
   // Configure marked with custom renderer
   const renderer = new marked.Renderer();
   
-  // Custom code block renderer (preserve mermaid diagrams, fix [object Object])
-  renderer.code = (code, language) => {
-    if (!code || typeof code !== 'string') {
-      // Handle non-string code (objects, arrays, etc.)
-      const safeCode = typeof code === 'object' ? JSON.stringify(code, null, 2) : String(code || '');
-      return `<pre><code>${escapeHtml(safeCode)}</code></pre>`;
-    }
+  // marked v15+ passes token objects instead of (code, language) / (href, title, text)
+  renderer.code = (token) => {
+    const code = typeof token === 'object' ? (token.text || '') : String(token || '');
+    const language = typeof token === 'object' ? (token.lang || '') : '';
     if (language === 'mermaid') {
       return `<div class="mermaid">${code.trim()}</div>`;
     }
     const langClass = language ? ` class="language-${language}"` : '';
     return `<pre><code${langClass}>${escapeHtml(code)}</code></pre>`;
   };
-  
-  // Custom link renderer for citations
-  renderer.link = (href, title, text) => {
+
+  renderer.link = (token) => {
+    const href = typeof token === 'object' ? (token.href || '#') : String(token || '#');
+    const title = typeof token === 'object' ? (token.title || '') : '';
+    const text = typeof token === 'object' ? (token.text || '') : '';
     return `<a href="${href}"${title ? ` title="${title}"` : ''}>${text}</a>`;
   };
   
