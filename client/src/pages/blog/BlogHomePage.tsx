@@ -275,6 +275,7 @@ export default function BlogHomePage() {
               onClick={() => setSelectedDifficulty('all')}
               className={selectedDifficulty === 'all' ? '' : ''}
               style={selectedDifficulty === 'all' ? { background: 'var(--gradient-primary)', color: '#fff' } : undefined}
+              data-testid="button-filter-all"
             >
               All Levels
             </Button>
@@ -286,6 +287,7 @@ export default function BlogHomePage() {
                 onClick={() => setSelectedDifficulty(level)}
                 className={selectedDifficulty === level ? '' : ''}
                 style={selectedDifficulty === level ? { background: 'var(--gradient-primary)', color: '#fff' } : undefined}
+                data-testid={`button-filter-${level}`}
               >
                 {difficultyLabels[level]}
               </Button>
@@ -301,6 +303,7 @@ export default function BlogHomePage() {
                     className={`cursor-pointer transition-colors ${selectedCategory === cat.slug ? '' : ''}`}
                     style={selectedCategory === cat.slug ? { background: 'var(--gradient-primary)', color: '#fff', border: 'none' } : { borderColor: 'rgba(124, 58, 237, 0.25)' }}
                     onClick={() => setSelectedCategory(selectedCategory === cat.slug ? null : cat.slug)}
+                    data-testid={`button-category-${cat.slug}`}
                   >
                     {cat.name}
                   </Badge>
@@ -382,6 +385,7 @@ export default function BlogHomePage() {
                       size="lg"
                       className="transition-colors"
                     style={{ borderColor: 'rgba(124, 58, 237, 0.25)', background: 'rgba(124, 58, 237, 0.05)' }}
+                      data-testid="button-load-more"
                     >
                       <Loader2 size={16} className="mr-2" />
                       Load More ({filteredRecent.length - displayCount} remaining)

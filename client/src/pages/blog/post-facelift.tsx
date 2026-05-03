@@ -112,7 +112,7 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
           coverImage: apiPost.coverImage,
           category: apiPost.category || 'Uncategorized',
           tags: apiPost.tags || [],
-          difficulty: apiPost.difficulty,
+          difficulty: (apiPost as PostData).difficulty,
           author: apiPost.author || 'Anonymous',
           publishedAt: apiPost.publishedAt || new Date().toISOString(),
           readingTimeMinutes: apiPost.readingTimeMinutes || 0,
@@ -342,6 +342,7 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
                 onClick={shareTwitter}
                 className="h-8 px-3 text-xs gap-1.5 border-[var(--color-border)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
                 aria-label="Share on Twitter"
+              data-testid="button-share-twitter"
               >
                 <Twitter size={13} strokeWidth={1.5} /> Twitter
               </Button>
@@ -351,6 +352,7 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
                 onClick={shareLinkedIn}
                 className="h-8 px-3 text-xs gap-1.5 border-[var(--color-border)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
                 aria-label="Share on LinkedIn"
+              data-testid="button-share-linkedin"
               >
                 <Linkedin size={13} strokeWidth={1.5} /> LinkedIn
               </Button>
@@ -363,6 +365,7 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
                   linkCopied && "border-green-400/50 bg-green-50 text-green-600 dark:bg-green-950/20 dark:text-green-400"
                 )}
                 aria-label="Copy link"
+              data-testid="button-copy-link"
               >
                 {linkCopied
                   ? <><Check size={13} strokeWidth={1.5} /> Copied!</>

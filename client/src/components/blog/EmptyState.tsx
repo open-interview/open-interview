@@ -28,9 +28,11 @@ export function EmptyState({ icon, title, description, action, className }: Empt
       )}
       {action && (
         action.href ? (
-          <Button variant="link" className="mt-4 text-[var(--color-accent)]" asChild>
-            <a href={action.href}>{action.label}</a>
-          </Button>
+          <a href={action.href} className="inline-flex mt-4">
+            <Button variant="link" className="text-[var(--color-accent)]">
+              {action.label}
+            </Button>
+          </a>
         ) : (
           <Button
             variant="link"
