@@ -10,9 +10,13 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import { marked } from 'marked';
+import { fileURLToPath } from 'url';
 import { generateBlogPost } from './ai/graphs/blog-graph.js';
 import { generateIllustration, generatePixelIllustration } from './ai/utils/blog-illustration-generator.js';
 import { dbClient as client } from './db/pg-client.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Author info for credits
 const AUTHOR = {
@@ -324,33 +328,36 @@ async function getAllBlogPosts() {
     const safeJsonParse = (str, fallback) => {
       if (!str) return fallback;
       try {
-        return JSON.parse(str);
+        const parsed = JSON.parse(str);
+        return parsed;
       } catch (e) {
         console.warn(`Failed to parse JSON for post ${row.id}:`, e.message);
         return fallback;
       }
     };
     
+    const ensureArray = (val) => Array.isArray(val) ? val : [];
+    
     return {
       id: row.id,
       blogTitle: row.title,
       blogSlug: row.slug,
       blogIntro: row.introduction,
-      blogSections: safeJsonParse(row.sections, []),
+      blogSections: ensureArray(safeJsonParse(row.sections, [])),
       blogConclusion: row.conclusion,
       blogMeta: row.meta_description,
       channel: row.channel,
       difficulty: row.difficulty,
-      tags: safeJsonParse(row.tags, []),
+      tags: ensureArray(safeJsonParse(row.tags, [])),
       diagram: row.diagram,
       diagramType: row.diagram_type,
       diagramLabel: row.diagram_label,
-      quickReference: safeJsonParse(row.quick_reference, []),
-      glossary: safeJsonParse(row.glossary, []),
+      quickReference: ensureArray(safeJsonParse(row.quick_reference, [])),
+      glossary: ensureArray(safeJsonParse(row.glossary, [])),
       realWorldExample: safeJsonParse(row.real_world_example, null),
       funFact: row.fun_fact,
-      sources: safeJsonParse(row.sources, []),
-      images: safeJsonParse(row.images, []),
+      sources: ensureArray(safeJsonParse(row.sources, [])),
+      images: ensureArray(safeJsonParse(row.images, [])),
       svgContent: safeJsonParse(row.svg_content, {}),
       socialSnippet: safeJsonParse(row.social_snippet, null),
       createdAt: row.created_at
@@ -1972,6 +1979,20 @@ async function main() {
 
   console.log('🤖 AI Provider: OpenCode (no API key required)');
 
+  const channelToPixelSvg = (channel) => {
+    const c = (channel || '').toLowerCase();
+    if (/kubernetes|devops|sre|docker/.test(c)) return 'pixel-devops.svg';
+    if (/aws|cloud|gcp|azure/.test(c)) return 'pixel-cloud.svg';
+    if (/security/.test(c)) return 'pixel-security.svg';
+    if (/database|sql/.test(c)) return 'pixel-database.svg';
+    if (/api|backend|nodejs/.test(c)) return 'pixel-api.svg';
+    if (/frontend|react|css/.test(c)) return 'pixel-coding.svg';
+    if (/machine.learning|ai\b|ml\b/.test(c)) return 'pixel-analytics.svg';
+    if (/testing/.test(c)) return 'pixel-testing.svg';
+    if (/system.design|architecture/.test(c)) return 'pixel-architecture.svg';
+    return 'pixel-default.svg';
+  };
+
   if (htmlOnly && !process.env.DATABASE_URL) {
     // Fallback: load from MDX files in content/posts/, then data/blog-posts.json
     let articles = loadPostsFromMDX();
@@ -1998,6 +2019,24 @@ async function main() {
       const svgContent = article.svgContent || {};
       for (const [filename, svg] of Object.entries(svgContent)) {
         fs.writeFileSync(path.join(OUTPUT_DIR, 'images', filename), svg);
+      }
+    }
+    // Fallback: copy generic pixel SVG for any post whose image has no cached svgContent
+    const PIXEL_SVG_DIR = path.join(__dirname, '..', 'test-svg-output', 'pixel');
+    for (const article of articles) {
+      const svgContent = article.svgContent || {};
+      for (const img of (article.images || [])) {
+        if (img && img.url && img.url.startsWith('/images/') && img.url.endsWith('.svg')) {
+          const filename = img.url.replace('/images/', '');
+          if (!svgContent[filename]) {
+            const genericSvg = channelToPixelSvg(article.channel);
+            const srcPath = path.join(PIXEL_SVG_DIR, genericSvg);
+            const destPath = path.join(OUTPUT_DIR, 'images', filename);
+            if (fs.existsSync(srcPath)) {
+              fs.copyFileSync(srcPath, destPath);
+            }
+          }
+        }
       }
     }
     fs.writeFileSync(path.join(OUTPUT_DIR, 'style.css'), generateCSS());
@@ -2029,6 +2068,15 @@ if(typeof lucide!=='undefined')lucide.createIcons();
     for (const category of Object.keys(categoryMap)) {
       const slug = category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
       const dir = path.join(OUTPUT_DIR, 'categories', slug);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'index.html'), generateCategoryPage(category, articles, articles));
+    }
+    // Mirror to channels/
+    fs.mkdirSync(path.join(OUTPUT_DIR, 'channels'), { recursive: true });
+    fs.writeFileSync(path.join(OUTPUT_DIR, 'channels', 'index.html'), generateCategoriesIndexPage(articles));
+    for (const category of Object.keys(categoryMap)) {
+      const slug = category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const dir = path.join(OUTPUT_DIR, 'channels', slug);
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, 'index.html'), generateCategoryPage(category, articles, articles));
     }
@@ -2323,6 +2371,14 @@ ${sitemapEntriesFb}
               generatedCount++;
             } catch (err) {
               console.log(`   ⚠️ Failed to generate ${img.url}: ${err.message}`);
+              // Fallback: copy generic pixel SVG so the image slot is never empty
+              if (!svgContent[filename]) {
+                const genericSvg = channelToPixelSvg(article.channel);
+                const srcPath = path.join(__dirname, '..', 'test-svg-output', 'pixel', genericSvg);
+                if (fs.existsSync(srcPath)) {
+                  fs.copyFileSync(srcPath, outputPath);
+                }
+              }
             }
           }
         }
@@ -2456,6 +2512,16 @@ if (typeof lucide !== 'undefined') lucide.createIcons();
   for (const category of Object.keys(categoryMap)) {
     const slug = category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const dir = path.join(OUTPUT_DIR, 'categories', slug);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'index.html'), generateCategoryPage(category, articles, articles));
+  }
+  
+  // Mirror to channels/
+  fs.mkdirSync(path.join(OUTPUT_DIR, 'channels'), { recursive: true });
+  fs.writeFileSync(path.join(OUTPUT_DIR, 'channels', 'index.html'), generateCategoriesIndexPage(articles));
+  for (const category of Object.keys(categoryMap)) {
+    const slug = category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const dir = path.join(OUTPUT_DIR, 'channels', slug);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'index.html'), generateCategoryPage(category, articles, articles));
   }
