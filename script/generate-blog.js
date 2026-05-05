@@ -1169,7 +1169,7 @@ function generateHeader() {
     </a>
     <nav id="mainNav">
       <a href="/"><i data-lucide="home"></i> Home</a>
-      <a href="/categories/"><i data-lucide="layers"></i> Topics</a>
+      <a href="/channels/"><i data-lucide="layers"></i> Topics</a>
       <button class="search-btn" onclick="openSearch()"><i data-lucide="search"></i> Search<kbd>⌘K</kbd></button>
       <a href="https://open-interview.github.io" target="_blank" class="nav-cta"><i data-lucide="play"></i> Practice</a>
     </nav>
@@ -1237,7 +1237,7 @@ const searchData = ${JSON.stringify(searchData)};
     </div>
     <div class="footer-links">
       <a href="/">Home</a>
-      <a href="/categories/">Topics</a>
+      <a href="/channels/">Topics</a>
       <a href="https://open-interview.github.io" target="_blank">Practice</a>
       <a href="${AUTHOR.github}" target="_blank">GitHub</a>
     </div>
@@ -1356,7 +1356,7 @@ function generateIndexPage(articles) {
     const count = articles.filter(a => channels.includes(a.channel)).length;
     if (count === 0) continue;
     const slug = category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    categoryPills += `<a href="/categories/${slug}/" class="category-pill">${category}<span class="count">${count}</span></a>`;
+    categoryPills += `<a href="/channels/${slug}/" class="category-pill">${category}<span class="count">${count}</span></a>`;
   }
   
   // Stats
@@ -1453,7 +1453,7 @@ ${generateHeader()}
     <p>Battle-tested insights from production systems. Learn what actually works at scale.</p>
     <div class="hero-actions">
       <a href="#articles" class="hero-cta"><i data-lucide="book-open"></i> Browse Articles</a>
-      <a href="/categories/" class="hero-cta-secondary"><i data-lucide="grid-3x3"></i> All Topics</a>
+      <a href="/channels/" class="hero-cta-secondary"><i data-lucide="grid-3x3"></i> All Topics</a>
     </div>
   </div></section>
   
@@ -1569,7 +1569,7 @@ function generateCategoryPage(category, articles, allArticles) {
   const categorySlug = category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const collectionJsonLd = `
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"CollectionPage","name":"${escapeHtml(category)} - DevInsights","url":"${baseUrl}/categories/${categorySlug}/","description":"${categoryArticles.length} articles about ${category}. Real-world engineering insights for developers.","isPartOf":{"@type":"Blog","name":"DevInsights","url":"${baseUrl}"},"author":{"@type":"Person","name":"${AUTHOR.name}"}}
+  {"@context":"https://schema.org","@type":"CollectionPage","name":"${escapeHtml(category)} - DevInsights","url":"${baseUrl}/channels/${categorySlug}/","description":"${categoryArticles.length} articles about ${category}. Real-world engineering insights for developers.","isPartOf":{"@type":"Blog","name":"DevInsights","url":"${baseUrl}"},"author":{"@type":"Person","name":"${AUTHOR.name}"}}
   </script>`;
 
   return `${generateHead(category, `${categoryArticles.length} articles about ${category}`)}
@@ -1612,7 +1612,7 @@ function generateArticlePage(article, allArticles) {
   // Breadcrumb JSON-LD
   const breadcrumbJsonLd = `
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"${baseUrl}/"},{"@type":"ListItem","position":2,"name":"Topics","item":"${baseUrl}/categories/"},{"@type":"ListItem","position":3,"name":"${escapeHtml(category)}","item":"${baseUrl}/categories/${categorySlug}/"},{"@type":"ListItem","position":4,"name":"${escapeHtml(article.blogTitle)}","item":"${articleUrl}"}]}
+  {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"${baseUrl}/"},{"@type":"ListItem","position":2,"name":"Topics","item":"${baseUrl}/channels/"},{"@type":"ListItem","position":3,"name":"${escapeHtml(category)}","item":"${baseUrl}/channels/${categorySlug}/"},{"@type":"ListItem","position":4,"name":"${escapeHtml(article.blogTitle)}","item":"${articleUrl}"}]}
   </script>`;
 
   // BlogPosting JSON-LD structured data for SEO
@@ -1758,9 +1758,11 @@ function generateArticlePage(article, allArticles) {
   // Sources with numbered references
   const sources = article.sources || [];
   if (sources.length > 0) {
-    const sourceItems = sources.map((s, idx) => 
-      `<li id="source-${idx + 1}"><span class="source-num">${idx + 1}</span><a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.title)}</a><span class="source-type">${s.type || 'article'}</span></li>`
-    ).join('');
+    const sourceItems = sources.map((s, idx) => {
+      const url = typeof s.url === 'string' ? s.url : (s.url?.href || s.url?.url || '#');
+      const title = typeof s.title === 'string' ? s.title : (s.title?.text || s.title?.name || String(s.title || ''));
+      return `<li id="source-${idx + 1}"><span class="source-num">${idx + 1}</span><a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(title)}</a><span class="source-type">${s.type || 'article'}</span></li>`;
+    }).join('');
     sectionsHtml += `<div class="sources"><h3><i data-lucide="book-open"></i> References</h3><ul>${sourceItems}</ul></div>`;
   }
   
@@ -1894,8 +1896,8 @@ ${generateHeader()}
     <nav aria-label="Breadcrumb" class="breadcrumb-nav">
       <ol class="breadcrumb" itemscope itemtype="https://schema.org/BreadcrumbList">
         <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem"><a href="/" itemprop="item"><span itemprop="name">Home</span></a><meta itemprop="position" content="1"></li>
-        <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem"><a href="/categories/" itemprop="item"><span itemprop="name">Topics</span></a><meta itemprop="position" content="2"></li>
-        <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem"><a href="/categories/${categorySlug}/" itemprop="item"><span itemprop="name">${escapeHtml(category)}</span></a><meta itemprop="position" content="3"></li>
+        <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem"><a href="/channels/" itemprop="item"><span itemprop="name">Topics</span></a><meta itemprop="position" content="2"></li>
+        <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem"><a href="/channels/${categorySlug}/" itemprop="item"><span itemprop="name">${escapeHtml(category)}</span></a><meta itemprop="position" content="3"></li>
         <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem" aria-current="page"><span itemprop="name">${escapeHtml(article.blogTitle)}</span><meta itemprop="position" content="4"></li>
       </ol>
     </nav>
@@ -1937,13 +1939,13 @@ function generateCategoriesIndexPage(articles) {
     const count = articles.filter(a => channels.includes(a.channel)).length;
     if (count === 0) return '';
     const slug = category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    return `<div class="category-card"><h3>${category}</h3><p>${count} articles</p><a href="/categories/${slug}/">Explore</a></div>`;
+    return `<div class="category-card"><h3>${category}</h3><p>${count} articles</p><a href="/channels/${slug}/">Explore</a></div>`;
   }).join('');
 
   const baseUrl = process.env.BLOG_BASE_URL || 'https://open-interview.github.io';
   const categoriesJsonLd = `
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"CollectionPage","name":"All Topics - DevInsights","url":"${baseUrl}/categories/","description":"Browse all engineering topics. ${articles.length} deep dives across the engineering stack.","isPartOf":{"@type":"Blog","name":"DevInsights","url":"${baseUrl}"},"author":{"@type":"Person","name":"${AUTHOR.name}"}}
+  {"@context":"https://schema.org","@type":"CollectionPage","name":"All Topics - DevInsights","url":"${baseUrl}/channels/","description":"Browse all engineering topics. ${articles.length} deep dives across the engineering stack.","isPartOf":{"@type":"Blog","name":"DevInsights","url":"${baseUrl}"},"author":{"@type":"Person","name":"${AUTHOR.name}"}}
   </script>`;
 
   return `${generateHead('All Topics', 'Browse all engineering topics')}
@@ -2041,7 +2043,7 @@ if(typeof lucide!=='undefined')lucide.createIcons();
     // Generate 404 page
     const notFoundHtml = `${generateHead('Page Not Found', 'The page you are looking for does not exist')}
 ${generateHeader()}
-<main><section class="not-found"><div class="container"><div class="not-found-content"><div class="not-found-code">404</div><h1>Page Not Found</h1><p>The article you're looking for doesn't exist or has been moved.</p><div class="not-found-actions"><a href="/" class="not-found-btn"><i data-lucide="home"></i> Back to Home</a><a href="/categories/" class="not-found-btn secondary"><i data-lucide="layers"></i> Browse Topics</a></div></div></div></section></main>
+<main><section class="not-found"><div class="container"><div class="not-found-content"><div class="not-found-code">404</div><h1>Page Not Found</h1><p>The article you're looking for doesn't exist or has been moved.</p><div class="not-found-actions"><a href="/" class="not-found-btn"><i data-lucide="home"></i> Back to Home</a><a href="/channels/" class="not-found-btn secondary"><i data-lucide="layers"></i> Browse Topics</a></div></div></div></section></main>
 ${generateFooter(articles)}
 <style>.not-found{padding:10rem 0 6rem;text-align:center;min-height:80vh;display:flex;align-items:center}.not-found-content{max-width:500px;margin:0 auto}.not-found-code{font-size:8rem;font-weight:700;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;margin-bottom:1rem}.not-found-content h1{font-size:2rem;font-weight:600;margin-bottom:1rem}.not-found-content p{color:var(--text-secondary);margin-bottom:2rem;font-size:1.125rem}.not-found-actions{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}.not-found-btn{display:inline-flex;align-items:center;gap:0.5rem;background:var(--accent);color:var(--bg);padding:0.875rem 1.5rem;border-radius:100px;text-decoration:none;font-weight:600;transition:all 0.3s}.not-found-btn:hover{transform:translateY(-2px);box-shadow:0 0 25px rgba(88,166,255,0.4)}.not-found-btn.secondary{background:var(--bg-elevated);color:var(--text);border:1px solid var(--border)}.not-found-btn.secondary:hover{border-color:var(--accent);color:var(--accent)}</style>`;
     fs.writeFileSync(path.join(OUTPUT_DIR, '404.html'), notFoundHtml);
@@ -2140,7 +2142,7 @@ Sitemap: https://open-interview.github.io/sitemap.xml
 `);
     const sitemapEntriesFb = [
       `<url><loc>${baseUrl}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,
-      `<url><loc>${baseUrl}/categories/</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>`,
+      `<url><loc>${baseUrl}/channels/</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>`,
       ...articles.map(a => `<url><loc>${baseUrl}/posts/${a.id}/${a.blogSlug}/</loc><lastmod>${a.createdAt ? new Date(a.createdAt).toISOString().substring(0,10) : new Date().toISOString().substring(0,10)}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>`)
     ].join('\n');
     fs.writeFileSync(path.join(OUTPUT_DIR, 'sitemap.xml'),
@@ -2587,7 +2589,7 @@ ${generateHeader()}
       <p>The article you're looking for doesn't exist or has been moved.</p>
       <div class="not-found-actions">
         <a href="/" class="not-found-btn"><i data-lucide="home"></i> Back to Home</a>
-        <a href="/categories/" class="not-found-btn secondary"><i data-lucide="layers"></i> Browse Topics</a>
+        <a href="/channels/" class="not-found-btn secondary"><i data-lucide="layers"></i> Browse Topics</a>
       </div>
     </div>
   </div>
@@ -2621,7 +2623,7 @@ Sitemap: https://open-interview.github.io/sitemap.xml
   // Generate sitemap with categories and proper dates
   const sitemapEntries = [
     `<url><loc>${baseUrl}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,
-    `<url><loc>${baseUrl}/categories/</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>`
+    `<url><loc>${baseUrl}/channels/</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>`
   ];
   
   // Add category pages
@@ -2629,7 +2631,7 @@ Sitemap: https://open-interview.github.io/sitemap.xml
     const slug = category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const count = articles.filter(a => categoryMap[category].includes(a.channel)).length;
     if (count > 0) {
-      sitemapEntries.push(`<url><loc>${baseUrl}/categories/${slug}/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`);
+      sitemapEntries.push(`<url><loc>${baseUrl}/channels/${slug}/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`);
     }
   }
   

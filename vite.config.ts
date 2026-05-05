@@ -74,7 +74,7 @@ function blogStaticDataPlugin() {
 
           return { id, slug: entry.blogSlug, title: entry.blogTitle,
             excerpt: blogIntro ? (blogIntro as string).slice(0, 250) : '',
-            content, coverImage: null, author: 'TechExpert AI', category: channel, tags,
+            content, coverImage: (entry.images as Array<{ url?: string }>)?.[0]?.url ?? null, author: 'TechExpert AI', category: channel, tags,
             publishedAt, readingTimeMinutes: Math.max(1, Math.ceil(content.length / 1000)),
             featured: false, status: 'published', difficulty };
         });
