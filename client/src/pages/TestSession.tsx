@@ -191,15 +191,19 @@ export default function TestSessionPage() {
     });
   }, [channelId]);
 
-  // Timer countdown
+  // Keep a stable ref to submitTest so the interval always calls the latest version
+  const submitTestRef = useRef(submitTest);
+  useEffect(() => { submitTestRef.current = submitTest; }, [submitTest]);
+
+  // Timer countdown — only depends on sessionState so a single interval runs per session
   useEffect(() => {
-    if (sessionState !== 'in-progress' || timeLeft <= 0) return;
+    if (sessionState !== 'in-progress') return;
     const id = setInterval(() => setTimeLeft(s => {
-      if (s <= 1) { clearInterval(id); submitTest(); return 0; }
+      if (s <= 1) { clearInterval(id); submitTestRef.current(); return 0; }
       return s - 1;
     }), 1000);
     return () => clearInterval(id);
-  }, [sessionState, timeLeft]);
+  }, [sessionState]);
 
   const currentQuestion = questions[currentIndex];
   const progress = getTestProgress(test?.id || '');
@@ -421,7 +425,7 @@ export default function TestSessionPage() {
                           const showWrong = showFeedback === 'incorrect' && isSelected && !opt.isCorrect;
                           return (
                             <OptionButton
-                              key={opt.id}
+                              key={`${currentIndex}-${opt.id}`}
                               label={OPTION_LABELS[idx]}
                               text={opt.text}
                               selected={isSelected}

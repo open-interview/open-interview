@@ -400,6 +400,22 @@ export default function VoicePractice() {
                 <p className="text-muted-foreground">Speak your answers aloud. Get instant feedback on length and delivery.</p>
               </div>
 
+              {/* Browser compatibility warning */}
+              {!isSpeechSupported && (
+                <div className="w-full rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400 flex flex-col gap-2">
+                  <p className="font-semibold">Microphone not available in this browser</p>
+                  <p className="text-amber-400/70 text-xs">Voice recording requires Chrome or Edge. Open this page in a new tab or switch browsers to use this feature.</p>
+                  <a
+                    href={window.location.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="self-start text-xs underline underline-offset-2 text-amber-300 hover:text-amber-200 transition-colors"
+                  >
+                    Open in new tab →
+                  </a>
+                </div>
+              )}
+
               {/* Mode selector */}
               <div className="grid grid-cols-2 gap-4 w-full">
                 {([

@@ -189,6 +189,7 @@ export default defineConfig({
     swBuildStampPlugin(),
   ],
   resolve: {
+    dedupe: ['react', 'react-dom', 'react-dom/client'],
     conditions: ['import', 'require'],
     alias: {
       "@": path.resolve(__dirname, "client", "src"),
