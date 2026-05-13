@@ -386,8 +386,25 @@ export default function VoicePractice() {
           canonical="https://open-interview.github.io/voice-practice"
         />
         <AppLayout fullWidth hideNav>
-          <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-4">
-            <div className="w-full max-w-md flex flex-col items-center gap-8">
+          <div className="min-h-screen bg-background text-foreground">
+            <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
+              <div className="max-w-4xl mx-auto px-4 h-14 flex items-center gap-3">
+                <button
+                  onClick={() => setLocation('/voice-interview')}
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-muted rounded-lg transition-colors duration-150 ease-out cursor-pointer"
+                  aria-label="Go back"
+                  style={{ touchAction: 'manipulation' }}
+                >
+                  <ArrowLeft className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <div>
+                  <h1 className="font-semibold text-foreground text-sm">Voice Practice</h1>
+                  <p className="text-[10px] text-muted-foreground">Practice answering interview questions</p>
+                </div>
+              </div>
+            </header>
+            <div className="flex items-center justify-center px-4 py-12">
+              <div className="w-full max-w-md flex flex-col items-center gap-8">
               {/* Icon */}
               <div className="w-24 h-24 rounded-full flex items-center justify-center"
                 style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)' }}>
@@ -457,6 +474,7 @@ export default function VoicePractice() {
                 Start Practicing
               </button>
             </div>
+          </div>
           </div>
         </AppLayout>
       </>

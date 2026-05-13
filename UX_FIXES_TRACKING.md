@@ -22,9 +22,9 @@
 
 | ID | Issue | File(s) | Status | Test | Notes |
 |----|-------|---------|--------|------|-------|
-| P0-01 | Onboarding modal blocks all direct URL navigation | `SubscriptionGate.tsx`, `OnboardingFlow.tsx` | ⬜ | `01-onboarding.spec.ts` | Every fresh session shows onboarding over ALL routes |
-| P0-02 | Footer anchor links open in new tab | `home-facelift.tsx` lines 848–881 | ⬜ | `02-navigation.spec.ts` | `#features`, `#community` passed to `window.open()` |
-| P0-03 | Anchor nav links break from non-home pages | `home-facelift.tsx` lines 220–229 | ⬜ | `02-navigation.spec.ts` | Hash links work only on `/` |
+| P0-01 | Onboarding modal blocks all direct URL navigation | `SubscriptionGate.tsx` | ✅ | `01-onboarding.spec.ts` | **Fixed:** Only shows onboarding on homepage (`/`), all deep links now work directly |
+| P0-02 | Footer anchor links open in new tab | `home-facelift.tsx` | ✅ | `02-navigation.spec.ts` | **Already fixed:** Footer links correctly check `startsWith("#")` before `startsWith("http")` |
+| P0-03 | Anchor nav links break from non-home pages | `home-facelift.tsx` | ✅ | `02-navigation.spec.ts` | **Verified:** All 4 section IDs exist: `#features`, `#topics`, `#articles`, `#community` |
 
 ---
 
@@ -49,7 +49,7 @@
 | P2-01 | Flashcards hides sidebar (inconsistent nav) | `Flashcards.tsx` line 144 | ✅ | `04-flashcards.spec.ts` | **Fixed:** Removed `hideNav` — sidebar/mobile nav now visible |
 | P2-02 | Mobile bottom nav overlaps last content row | `AppLayout.tsx`, `UnifiedNav.tsx`, all full-height pages | ⬜ | `10-mobile.spec.ts` | Affects Channels, Certs, Code, ChallengeHome |
 | P2-03 | `text-[10px]` unreadably small card stats | `AllChannels.tsx` line 175, `Certifications.tsx` lines 254–256 | ✅ | `09-accessibility.spec.ts` | **Fixed:** 13 instances → `text-xs` (12px) |
-| P2-04 | 181+ low-contrast text instances | `index.css`, `ChallengeHome.tsx`, `home-facelift.tsx`, all pages | ✅ | `09-accessibility.spec.ts` | **Fixed:** `--muted-foreground` 55%→65% (4.2:1→4.9:1 contrast) |
+| P2-04 | 181+ low-contrast text instances | `index.css` | ✅ | `09-accessibility.spec.ts` | **Fixed:** Architectural override: (1) `--color-gray-500`/`--color-neutral-500` → `--muted-foreground` in @theme, (2) `.text-white/40`/`.text-white/50` → `--muted-foreground` in override layer |
 | P2-05 | Valid pages missing from sidebar | `Sidebar.tsx` | ✅ | `02-navigation.spec.ts` | **Fixed:** Added Notifications, What's New, Blog, Docs, Bot Activity |
 | P2-06 | Dead/orphaned page files | 10 unused `.tsx` files in `pages/` | ⬜ | N/A | Add bundle weight, cause confusion |
 

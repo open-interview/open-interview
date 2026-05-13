@@ -2,7 +2,7 @@
  * All Channels — Browse & subscribe to topics
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
@@ -392,11 +392,25 @@ export default function AllChannels() {
     preferences.subscribedChannels.length > 0
   );
   const [selectedChannel, setSelectedChannel] = useState<ChannelConfig | null>(null);
+  const [fallbackCounts, setFallbackCounts] = useState<Record<string, number>>({});
 
   const subscribedIds = new Set(preferences.subscribedChannels);
   const hasSubscriptions = subscribedIds.size > 0;
 
-  const questionCounts: Record<string, number> = {};
+  useEffect(() => {
+    if (!loading && stats.length === 0) {
+      fetch('/data/channels.json')
+        .then(r => r.json())
+        .then((channels: any[]) => {
+          const counts: Record<string, number> = {};
+          channels.forEach((ch: any) => { counts[ch.id] = ch.total || ch.questionCount || 0; });
+          setFallbackCounts(counts);
+        })
+        .catch(() => {});
+    }
+  }, [loading, stats]);
+
+  const questionCounts: Record<string, number> = { ...fallbackCounts };
   stats.forEach(s => { questionCounts[s.id] = s.total; });
 
   const getCompletedCount = (channelId: string): number => {

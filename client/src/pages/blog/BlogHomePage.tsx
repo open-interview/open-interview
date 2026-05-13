@@ -81,15 +81,23 @@ export default function BlogHomePage() {
         });
         setFeatured(featData.map(mapPost));
         setRecent((postsRes.data || []).map(mapPost));
+        const countByCategory: Record<string, number> = {};
+        (postsRes.data || []).forEach((p: any) => {
+          const cat = (p.category || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          countByCategory[cat] = (countByCategory[cat] || 0) + 1;
+        });
         setCategories(catsData.map((c: Category) => ({
           ...c,
-          count: Math.floor(Math.random() * 20) + 5,
+          count: countByCategory[c.slug] || 0,
         })));
+        const totalArticles = postsRes.data?.length || 0;
+        const totalReadingTime = (postsRes.data || []).reduce((sum: number, p: any) => sum + (p.readingTimeMinutes || 0), 0);
+        const avgReadTime = totalArticles > 0 ? Math.round(totalReadingTime / totalArticles) : 0;
         setStats([
-          { label: "Published Articles", value: postsRes.meta?.total || 48, icon: <BookOpen size={18} />, accent: 'violet' as const, trend: 12, trendLabel: 'vs last month' },
-          { label: "Active Readers", value: "2.4K", prefix: "", icon: <TrendingUp size={18} />, accent: 'cyan' as const, trend: 8, trendLabel: 'growth' },
-          { label: "Topics Covered", value: catsData.length || 14, icon: <Grid3x3 size={18} />, accent: 'emerald' as const },
-          { label: "Reading Time", value: "120+", suffix: " hrs", icon: <Clock size={18} />, accent: 'amber' as const },
+          { label: "Published Articles", value: totalArticles, icon: <BookOpen size={18} />, accent: 'violet' as const },
+          { label: "Topics Covered", value: catsData.length || 0, icon: <Grid3x3 size={18} />, accent: 'emerald' as const },
+          { label: "Avg Read Time", value: avgReadTime, suffix: " min", icon: <Clock size={18} />, accent: 'amber' as const },
+          { label: "Newest Article", value: "Latest", icon: <TrendingUp size={18} />, accent: 'cyan' as const },
         ]);
       })
       .finally(() => setLoading(false));

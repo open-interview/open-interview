@@ -6,10 +6,10 @@ import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "/blog", label: "Blog" },
-  { href: "/blog/category/engineering", label: "Engineering" },
+  { href: "/blog/category/system-design", label: "System Design" },
   { href: "/blog/category/devops", label: "DevOps" },
-  { href: "/blog/category/cloud", label: "Cloud" },
-  { href: "/about-blog", label: "About" },
+  { href: "/blog/category/machine-learning", label: "ML / AI" },
+  { href: "/blog/category/aws", label: "AWS" },
 ];
 
 export function BlogHeader() {

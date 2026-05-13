@@ -1,11 +1,11 @@
 /**
- * DevInsights Home Facelift — Premium Landing Page
+ * Open Interview Home Facelift — Premium Landing Page
  * Inspired by Linear.app / Vercel.com aesthetic
  * Features: Aurora hero, scroll animations, feature highlights, newsletter signup
  */
 
 import { useState, useEffect, useRef } from "react";
-import { motion, useScroll, useTransform, useInView, AnimatePresence } from "framer-motion";
+import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { useLocation } from "wouter";
 import {
   Zap,
@@ -22,10 +22,7 @@ import {
   Shield,
   Layers,
   Clock,
-  Users,
-  Star,
   CheckCircle2,
-  Mail,
   Github,
   Play,
   ArrowUpRight,
@@ -216,23 +213,23 @@ function LandingNavbar() {
             <Zap className="w-4 h-4 text-white" />
           </div>
           <span className="text-lg font-bold text-white tracking-tight">
-            Dev<span className="gradient-text">Insights</span>
+            Open<span className="gradient-text">Interview</span>
           </span>
         </button>
 
         <div className="hidden md:flex items-center gap-8">
-          <a href="#features" className="text-sm text-white/60 hover:text-white transition-colors">
+          <button onClick={() => document.getElementById('features')?.scrollIntoView({behavior:'smooth'})} className="text-sm text-white/60 hover:text-white transition-colors">
             Features
-          </a>
-          <a href="#topics" className="text-sm text-white/60 hover:text-white transition-colors">
+          </button>
+          <button onClick={() => document.getElementById('topics')?.scrollIntoView({behavior:'smooth'})} className="text-sm text-white/60 hover:text-white transition-colors">
             Topics
-          </a>
-          <a href="#articles" className="text-sm text-white/60 hover:text-white transition-colors">
+          </button>
+          <button onClick={() => document.getElementById('articles')?.scrollIntoView({behavior:'smooth'})} className="text-sm text-white/60 hover:text-white transition-colors">
             Articles
-          </a>
-          <a href="#community" className="text-sm text-white/60 hover:text-white transition-colors">
+          </button>
+          <button onClick={() => document.getElementById('community')?.scrollIntoView({behavior:'smooth'})} className="text-sm text-white/60 hover:text-white transition-colors">
             Community
-          </a>
+          </button>
         </div>
 
         <div className="flex items-center gap-3">
@@ -243,7 +240,7 @@ function LandingNavbar() {
             Blog
           </button>
           <button
-            onClick={() => setLocation("/learning-paths")}
+            onClick={() => setLocation("/channels")}
             className="text-sm font-medium text-white bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.1] px-4 py-2 rounded-lg transition-all"
           >
             Get Started
@@ -279,7 +276,7 @@ function HeroSection() {
         >
           <Sparkles className="w-3.5 h-3.5 text-violet-400" />
           <span className="text-xs font-medium text-white/70">
-            Trusted by 12,000+ engineers worldwide
+            Proven by the numbers
           </span>
           <ChevronRight className="w-3 h-3 text-white/30" />
         </motion.div>
@@ -317,7 +314,7 @@ function HeroSection() {
           <motion.button
             whileHover={{ scale: 1.02, boxShadow: "0 0 40px rgba(124,58,237,0.4)" }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => setLocation("/learning-paths")}
+            onClick={() => setLocation("/channels")}
             className="group relative px-8 py-3.5 rounded-xl text-white font-semibold text-base overflow-hidden transition-all"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-indigo-500 to-cyan-500" />
@@ -348,10 +345,10 @@ function HeroSection() {
           className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl mx-auto"
         >
           {[
-            { label: "Practice Questions", value: 1500, suffix: "+" },
-            { label: "Engineers Helped", value: 12, suffix: "K+" },
-            { label: "Topics Covered", value: 30, suffix: "+" },
-            { label: "Success Rate", value: 85, suffix: "%" },
+            { label: "Practice Questions", value: 30533, suffix: "+" },
+            { label: "Learning Channels",  value: 93,    suffix: "" },
+            { label: "In-depth Articles",  value: 126,   suffix: "+" },
+            { label: "Coding Challenges",  value: 30,    suffix: "" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <div className="text-2xl sm:text-3xl font-bold text-white mb-1">
@@ -533,23 +530,49 @@ function FeaturedArticles() {
 }
 
 // ─── Trending Topics Section ──────────────────────────────────────────────────
-const TRENDING_TOPICS = [
-  { name: "System Design", count: 234, icon: "🏗️", color: "from-violet-500/20 to-violet-600/10", border: "border-violet-500/20" },
-  { name: "React", count: 189, icon: "⚛️", color: "from-cyan-500/20 to-cyan-600/10", border: "border-cyan-500/20" },
-  { name: "Algorithms", count: 312, icon: "🧮", color: "from-emerald-500/20 to-emerald-600/10", border: "border-emerald-500/20" },
-  { name: "Docker", count: 98, icon: "🐳", color: "from-blue-500/20 to-blue-600/10", border: "border-blue-500/20" },
-  { name: "Kubernetes", count: 76, icon: "☸️", color: "from-indigo-500/20 to-indigo-600/10", border: "border-indigo-500/20" },
-  { name: "Node.js", count: 145, icon: "🟢", color: "from-green-500/20 to-green-600/10", border: "border-green-500/20" },
-  { name: "PostgreSQL", count: 87, icon: "🐘", color: "from-sky-500/20 to-sky-600/10", border: "border-sky-500/20" },
-  { name: "Redis", count: 54, icon: "🔴", color: "from-red-500/20 to-red-600/10", border: "border-red-500/20" },
-  { name: "AWS", count: 167, icon: "☁️", color: "from-amber-500/20 to-amber-600/10", border: "border-amber-500/20" },
-  { name: "Microservices", count: 123, icon: "🔗", color: "from-purple-500/20 to-purple-600/10", border: "border-purple-500/20" },
-  { name: "GraphQL", count: 65, icon: "📊", color: "from-pink-500/20 to-pink-600/10", border: "border-pink-500/20" },
-  { name: "CI/CD", count: 89, icon: "🔄", color: "from-teal-500/20 to-teal-600/10", border: "border-teal-500/20" },
+const CHANNEL_ICONS: Record<string, string> = {
+  'algorithms': '\u{1F9EE}',
+  'system-design': '\u{1F3D7}\uFE0F',
+  'react': '\u269B\uFE0F',
+  'javascript': '\u{1F7E8}',
+  'python': '\u{1F40D}',
+  'docker': '\u{1F433}',
+  'kubernetes': '\u2638\uFE0F',
+  'aws': '\u2601\uFE0F',
+  'node-js': '\u{1F7E2}',
+  'postgresql': '\u{1F418}',
+  'redis': '\u{1F534}',
+  'graphql': '\u{1F4CA}',
+};
+
+const CHANNEL_COLORS = [
+  { color: "from-violet-500/20 to-violet-600/10", border: "border-violet-500/20" },
+  { color: "from-cyan-500/20 to-cyan-600/10", border: "border-cyan-500/20" },
+  { color: "from-emerald-500/20 to-emerald-600/10", border: "border-emerald-500/20" },
+  { color: "from-blue-500/20 to-blue-600/10", border: "border-blue-500/20" },
+  { color: "from-indigo-500/20 to-indigo-600/10", border: "border-indigo-500/20" },
+  { color: "from-green-500/20 to-green-600/10", border: "border-green-500/20" },
+  { color: "from-sky-500/20 to-sky-600/10", border: "border-sky-500/20" },
+  { color: "from-red-500/20 to-red-600/10", border: "border-red-500/20" },
+  { color: "from-amber-500/20 to-amber-600/10", border: "border-amber-500/20" },
+  { color: "from-purple-500/20 to-purple-600/10", border: "border-purple-500/20" },
+  { color: "from-pink-500/20 to-pink-600/10", border: "border-pink-500/20" },
+  { color: "from-teal-500/20 to-teal-600/10", border: "border-teal-500/20" },
 ];
 
 function TrendingTopics() {
   const [, setLocation] = useLocation();
+  const [channels, setChannels] = useState<{ id: string; total: number }[]>([]);
+
+  useEffect(() => {
+    fetch("/data/channels.json")
+      .then((r) => r.json())
+      .then((data: { id: string; total: number }[]) => {
+        const sorted = [...data].sort((a, b) => b.total - a.total).slice(0, 12);
+        setChannels(sorted);
+      })
+      .catch(() => setChannels([]));
+  }, []);
 
   return (
     <section id="topics" className="py-24 relative">
@@ -573,20 +596,20 @@ function TrendingTopics() {
         </AnimatedSection>
 
         <AnimatedSection className="flex flex-wrap justify-center gap-3 max-w-4xl mx-auto">
-          {TRENDING_TOPICS.map((topic, i) => (
+          {channels.map((ch, i) => (
             <motion.button
-              key={topic.name}
+              key={ch.id}
               variants={scaleFade}
               whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.97 }}
-              onClick={() => setLocation(`/channel/${topic.name.toLowerCase().replace(/[^a-z]/g, "-")}`)}
-              className={`group relative flex items-center gap-2.5 px-5 py-3 rounded-xl bg-gradient-to-br ${topic.color} border ${topic.border} hover:border-white/20 transition-all`}
+              onClick={() => setLocation(`/channel/${ch.id}`)}
+              className={`group relative flex items-center gap-2.5 px-5 py-3 rounded-xl bg-gradient-to-br ${CHANNEL_COLORS[i % CHANNEL_COLORS.length].color} border ${CHANNEL_COLORS[i % CHANNEL_COLORS.length].border} hover:border-white/20 transition-all`}
             >
-              <span className="text-base">{topic.icon}</span>
+              <span className="text-base">{CHANNEL_ICONS[ch.id] || '\u{1F4DA}'}</span>
               <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">
-                {topic.name}
+                {ch.id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
               </span>
-              <span className="text-xs text-white/30">{topic.count}</span>
+              <span className="text-xs text-white/30">{ch.total}</span>
             </motion.button>
           ))}
         </AnimatedSection>
@@ -595,7 +618,7 @@ function TrendingTopics() {
   );
 }
 
-// ─── Why DevInsights Section ──────────────────────────────────────────────────
+// ─── Why Open Interview Section ──────────────────────────────────────────────────
 const FEATURES = [
   {
     icon: <Mic className="w-5 h-5" />,
@@ -639,15 +662,15 @@ const FEATURES = [
   },
   {
     icon: <Shield className="w-5 h-5" />,
-    title: "1500+ Questions",
+    title: "30,000+ Questions",
     description:
-      "Comprehensive question bank across 30+ topics curated by senior engineers from FAANG companies.",
+      "Comprehensive question bank across 93 topics curated by senior engineers from FAANG companies.",
     gradient: "from-purple-600 to-violet-600",
     shadow: "shadow-purple-500/20",
   },
 ];
 
-function WhyDevInsights() {
+function WhyOpenInterview() {
   return (
     <section id="features" className="py-24 relative">
       <div className="max-w-7xl mx-auto px-6">
@@ -655,7 +678,7 @@ function WhyDevInsights() {
           <div className="text-center mb-16">
             <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] mb-4">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-xs font-medium text-white/60">Why DevInsights</span>
+              <span className="text-xs font-medium text-white/60">Why Open Interview</span>
             </motion.div>
             <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-bold text-white mb-4">
               Everything you need to <span className="gradient-text">ace the interview</span>
@@ -692,26 +715,12 @@ function WhyDevInsights() {
   );
 }
 
-// ─── Testimonial / Social Proof ───────────────────────────────────────────────
-const TESTIMONIALS = [
-  {
-    quote: "Landed my dream job at a FAANG company after 3 months of daily practice. The AI voice interviews were a game changer.",
-    name: "Sarah K.",
-    role: "Senior SWE @ Meta",
-    avatar: "S",
-  },
-  {
-    quote: "The spaced repetition system helped me retain concepts I hadn't touched since college. Absolutely brilliant.",
-    name: "Alex M.",
-    role: "Staff Engineer @ Stripe",
-    avatar: "A",
-  },
-  {
-    quote: "Went from failing phone screens to getting 5 onsite interviews in a month. The practice questions are spot-on.",
-    name: "Priya R.",
-    role: "SWE II @ Google",
-    avatar: "P",
-  },
+// ─── Social Proof / By the Numbers ─────────────────────────────────────────────
+const STATS = [
+  { value: "93", label: "Learning Channels" },
+  { value: "30,533+", label: "Practice Questions" },
+  { value: "126", label: "In-depth Articles" },
+  { value: "93", label: "Knowledge Tests" },
 ];
 
 function SocialProof() {
@@ -723,37 +732,24 @@ function SocialProof() {
         <AnimatedSection>
           <div className="text-center mb-16">
             <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-bold text-white mb-4">
-              Loved by <span className="gradient-text">engineers</span>
+              By the <span className="gradient-text">numbers</span>
             </motion.h2>
             <motion.p variants={fadeUp} className="text-white/40 max-w-xl mx-auto">
-              Hear from developers who transformed their interview performance.
+              Real platform metrics that speak for themselves.
             </motion.p>
           </div>
         </AnimatedSection>
 
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {TESTIMONIALS.map((t, i) => (
+        <div className="grid md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+          {STATS.map((s) => (
             <motion.div
-              key={t.name}
+              key={s.label}
               variants={scaleFade}
               whileHover={{ y: -4 }}
-              className="relative p-6 rounded-2xl bg-[#0f1629] border border-white/[0.06] hover:border-white/[0.12] transition-colors"
+              className="relative p-6 rounded-2xl bg-[#0f1629] border border-white/[0.06] hover:border-white/[0.12] transition-colors text-center"
             >
-              <div className="flex gap-1 mb-4">
-                {[...Array(5)].map((_, j) => (
-                  <Star key={j} className="w-4 h-4 fill-amber-400 text-amber-400" />
-                ))}
-              </div>
-              <p className="text-sm text-white/60 leading-relaxed mb-6 italic">"{t.quote}"</p>
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-sm font-bold">
-                  {t.avatar}
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-white">{t.name}</div>
-                  <div className="text-xs text-white/40">{t.role}</div>
-                </div>
-              </div>
+              <div className="text-3xl font-bold gradient-text mb-2">{s.value}</div>
+              <div className="text-sm text-white/50">{s.label}</div>
             </motion.div>
           ))}
         </div>
@@ -764,12 +760,12 @@ function SocialProof() {
           className="flex flex-wrap items-center justify-center gap-8 mt-16 pt-16 border-t border-white/[0.06]"
         >
           {[
-            { icon: <Users className="w-5 h-5" />, label: "12K+ Active Users" },
-            { icon: <CheckCircle2 className="w-5 h-5" />, label: "500K+ Questions Solved" },
-            { icon: <Trophy className="w-5 h-5" />, label: "85% Success Rate" },
+            { label: "Open Source" },
+            { label: "Community Driven" },
+            { label: "Free Forever" },
           ].map((badge) => (
             <div key={badge.label} className="flex items-center gap-2 text-white/30">
-              {badge.icon}
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
               <span className="text-sm font-medium">{badge.label}</span>
             </div>
           ))}
@@ -779,92 +775,7 @@ function SocialProof() {
   );
 }
 
-// ─── Newsletter Signup Section ────────────────────────────────────────────────
-function NewsletterSection() {
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    setSubmitted(true);
-  };
-
-  return (
-    <section className="py-24 relative">
-      <AnimatedSection>
-        <div className="max-w-3xl mx-auto px-6">
-          <motion.div
-            variants={scaleFade}
-            className="relative p-[1px] rounded-3xl overflow-hidden"
-          >
-            {/* Gradient border */}
-            <div className="absolute inset-0 bg-gradient-to-r from-violet-600/50 via-indigo-500/50 to-cyan-500/50" />
-            <div className="relative p-8 sm:p-12 rounded-3xl bg-[#0a0e1a]">
-              <div className="text-center">
-                <motion.div variants={fadeUp} className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600/30 to-cyan-500/20 mb-6">
-                  <Mail className="w-6 h-6 text-violet-400" />
-                </motion.div>
-
-                <motion.h2 variants={fadeUp} className="text-2xl sm:text-3xl font-bold text-white mb-3">
-                  Stay ahead of the curve
-                </motion.h2>
-                <motion.p variants={fadeUp} className="text-white/40 mb-8 max-w-md mx-auto">
-                  Get weekly engineering interview tips, new question drops, and exclusive content
-                  delivered to your inbox.
-                </motion.p>
-
-                <AnimatePresence mode="wait">
-                  {!submitted ? (
-                    <motion.form
-                      key="form"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      onSubmit={handleSubmit}
-                      className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto"
-                    >
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@example.com"
-                        required
-                        className="flex-1 px-4 py-3 rounded-xl bg-white/[0.06] border border-white/[0.1] text-white placeholder:text-white/30 text-sm focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
-                      />
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        type="submit"
-                        className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 text-white font-semibold text-sm whitespace-nowrap hover:shadow-lg hover:shadow-violet-500/20 transition-shadow"
-                      >
-                        Subscribe
-                      </motion.button>
-                    </motion.form>
-                  ) : (
-                    <motion.div
-                      key="success"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="flex items-center justify-center gap-2 text-emerald-400"
-                    >
-                      <CheckCircle2 className="w-5 h-5" />
-                      <span className="text-sm font-medium">You're in! Check your inbox.</span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <motion.p variants={fadeUp} className="text-xs text-white/20 mt-4">
-                  No spam, ever. Unsubscribe anytime.
-                </motion.p>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </AnimatedSection>
-    </section>
-  );
-}
 
 // ─── Footer ───────────────────────────────────────────────────────────────────
 function LandingFooter() {
@@ -881,7 +792,7 @@ function LandingFooter() {
                 <Zap className="w-4 h-4 text-white" />
               </div>
               <span className="text-lg font-bold text-white">
-                Dev<span className="gradient-text">Insights</span>
+                Open<span className="gradient-text">Interview</span>
               </span>
             </div>
             <p className="text-sm text-white/30 leading-relaxed max-w-xs">
@@ -905,9 +816,7 @@ function LandingFooter() {
               title: "Resources",
               links: [
                 { label: "Blog", href: "/blog" },
-                { label: "Documentation", href: "/docs" },
                 { label: "Community", href: "#community" },
-                { label: "Changelog", href: "/whats-new" },
               ],
             },
             {
@@ -947,7 +856,7 @@ function LandingFooter() {
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-white/[0.06]">
           <p className="text-xs text-white/20">
-            &copy; {new Date().getFullYear()} DevInsights. All rights reserved.
+            &copy; {new Date().getFullYear()} Open Interview. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
             <button
@@ -968,8 +877,8 @@ export default function HomeFacelift() {
   return (
     <>
       <SEOHead
-        title="DevInsights — Master Engineering Interviews with AI"
-        description="Practice system design, algorithms, and behavioral interviews with AI-powered feedback. 1500+ questions across 30+ topics. Join 12,000+ engineers who landed their dream roles."
+        title="Open Interview — Master Engineering Interviews with AI"
+        description="Practice system design, algorithms, and behavioral interviews with AI-powered feedback. 30,000+ questions across 93 learning channels. Join thousands of engineers who landed their dream roles."
         canonical="https://open-interview.github.io/"
       />
 
@@ -978,9 +887,8 @@ export default function HomeFacelift() {
         <HeroSection />
         <FeaturedArticles />
         <TrendingTopics />
-        <WhyDevInsights />
+        <WhyOpenInterview />
         <SocialProof />
-        <NewsletterSection />
         <LandingFooter />
       </div>
     </>

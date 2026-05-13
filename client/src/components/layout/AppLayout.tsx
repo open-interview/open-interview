@@ -12,6 +12,7 @@ import { MobileHeader } from './MobileHeader';
 import { UnifiedSearch } from '../UnifiedSearch';
 import { FaceliftNavbar } from '../facelift-navbar';
 import { useSidebar } from '../../context/SidebarContext';
+import { cn } from '../../lib/utils';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -46,6 +47,15 @@ export function AppLayout({
   const [location] = useLocation();
   const { isCollapsed } = useSidebar();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   // Keyboard shortcut: ⌘K / Ctrl+K
   useEffect(() => {
@@ -108,12 +118,10 @@ export function AppLayout({
         />
       )}
 
-      {/* Content area — offset by sidebar on desktop */}
+      {/* Content area — single render with sidebar-aware padding */}
       <motion.div
-        animate={{ paddingLeft: sidebarWidth }}
+        animate={{ paddingLeft: isMobile ? 0 : sidebarWidth }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="hidden lg:block"
-        style={{ paddingLeft: sidebarWidth }}
       >
         <AnimatePresence mode="wait" initial={false}>
           <motion.main
@@ -124,32 +132,19 @@ export function AppLayout({
             exit="exit"
             transition={pageTransition}
             ref={scrollRef as React.RefObject<HTMLElement>}
-            className={fullWidth ? 'w-full overflow-x-hidden' : 'max-w-6xl mx-auto px-6 py-4 w-full overflow-x-hidden'}
+            className={cn(
+              'w-full overflow-x-hidden',
+              fullWidth
+                ? ''
+                : 'mx-auto px-4 py-4 max-w-6xl',
+              isMobile && useFacelift && 'pt-16',
+              isMobile && 'pb-[calc(72px+env(safe-area-inset-bottom,0px))]',
+            )}
           >
             {children}
           </motion.main>
         </AnimatePresence>
       </motion.div>
-
-      {/* Mobile content — below header, above bottom nav */}
-      <div className="lg:hidden" style={{ paddingTop: useFacelift ? '64px' : undefined }}>
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.main
-            key={location}
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={pageTransition}
-            className={fullWidth
-              ? 'w-full overflow-x-hidden pb-[calc(72px+env(safe-area-inset-bottom,0px))]'
-              : 'max-w-7xl mx-auto px-3 py-3 w-full overflow-x-hidden pb-[calc(72px+env(safe-area-inset-bottom,0px))]'
-            }
-          >
-            {children}
-          </motion.main>
-        </AnimatePresence>
-      </div>
 
       {/* Mobile Bottom Nav */}
       <MobileBottomNav />
