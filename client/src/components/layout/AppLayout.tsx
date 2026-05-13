@@ -92,6 +92,13 @@ export function AppLayout({
         '--safe-right': 'env(safe-area-inset-right, 0px)',
       } as React.CSSProperties}
     >
+      {/* Skip to main content — keyboard accessibility */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:text-sm focus:font-medium"
+      >
+        Skip to main content
+      </a>
       {/* Facelift Navbar (top header for all breakpoints) */}
       {useFacelift && <div className="lg:hidden"><FaceliftNavbar onSearchOpen={() => setSearchOpen(true)} /></div>}
 
@@ -126,6 +133,7 @@ export function AppLayout({
         <AnimatePresence mode="wait" initial={false}>
           <motion.main
             key={location}
+            id="main-content"
             variants={pageVariants}
             initial="initial"
             animate="animate"

@@ -145,7 +145,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
     try { Object.keys(localStorage).forEach(k => { data[k] = localStorage.getItem(k); }); } catch {}
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'code-reels-data.json'; a.click();
+    const a = document.createElement('a'); a.href = url; a.download = 'open-interview-data.json'; a.click();
     URL.revokeObjectURL(url);
   };
 

@@ -406,7 +406,7 @@ export default function AllChannels() {
           channels.forEach((ch: any) => { counts[ch.id] = ch.total || ch.questionCount || 0; });
           setFallbackCounts(counts);
         })
-        .catch(() => {});
+        .catch(() => { console.warn('Failed to load channel counts'); });
     }
   }, [stats]);
 

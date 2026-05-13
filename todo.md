@@ -1618,7 +1618,7 @@ The combined analysis found **93 issues total** (17 critical, 26 high, 31 modera
 - [ ] **SS8**: Remove independent localStorage scanning from BadgeContext
 - [ ] **SS9/SS11**: Create StorageService wrapper with error handling and quota detection
 - [ ] **SS10**: Reduce provider nesting from 9 to 6
-- [ ] **SS12**: Remove artificial 1s delay in BadgeContext
+- [x] **SS12**: Remove artificial 1s delay in BadgeContext
 
 ---
 
@@ -1626,7 +1626,7 @@ The combined analysis found **93 issues total** (17 critical, 26 high, 31 modera
 - [ ] **SA1**: Add visible labels to 15+ input fields and selects
 - [ ] **SA2**: Add `aria-label` to 17+ icon-only buttons
 - [ ] **SA3**: Fix low-contrast text on home-facelift.tsx (`text-white/20/30/40`)
-- [ ] **SA4**: Add skip-to-content link to AppLayout
+- [x] **SA4**: Add skip-to-content link to AppLayout
 - [ ] **SA5**: Fix `focus-visible` styles on 10+ elements
 - [ ] **SA6**: Add `aria-current="page"` to navigation items
 - [ ] **SA7**: Add `aria-expanded`/`aria-controls` to collapsible sections
@@ -1655,7 +1655,7 @@ The combined analysis found **93 issues total** (17 critical, 26 high, 31 modera
 - [x] **M3/M1**: Replace all old brand names ("Code_Reels", "Reel-LearnHub") with "Open Interview"
 - [x] **SU5/M2**: Hide admin sidebar items behind admin flag
 - [x] **SU8/P4**: Create or remove the Settings link
-- [ ] **SU10/SU11**: Fix GitHub URL and download filename with old repo name
+- [x] **SU10/SU11**: Fix GitHub URL and download filename with old repo name
 - [ ] **P1/P2/P3/P8**: Complete existing UI consistency items
 
 ---

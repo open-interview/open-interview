@@ -87,13 +87,8 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('question-completed', handleQuestionCompleted);
   }, []);
   
-  // Wait a bit for questions to load before calculating badges
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsReady(true);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
+  // Mark ready immediately — no artificial delay needed
+  useEffect(() => { setIsReady(true); }, []);
 
   // Calculate user stats from localStorage
   const userStats = useMemo(() => {
