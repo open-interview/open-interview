@@ -13,6 +13,7 @@ import { useChannelStats } from '../hooks/use-stats';
 import { useProgress } from '../hooks/use-progress';
 import { SEOHead } from '../components/SEOHead';
 import { PageHeader, SearchBar, FilterPills } from '@/components/ui/page';
+import { ChannelCardSkeleton } from '@/components/ui/skeleton-loaders';
 import {
   Plus, Sparkles, TrendingUp, ChevronRight, ChevronDown, X, Check,
   BookOpen, BarChart2,
@@ -382,7 +383,7 @@ function ChannelDetail({ channel, questionCount, isSubscribed: subscribed, onTog
 export default function AllChannels() {
   const [, navigate] = useLocation();
   const { isSubscribed, toggleSubscription, preferences } = useUserPreferences();
-  const { stats } = useChannelStats();
+  const { stats, loading } = useChannelStats();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>('');
   const [sortKey, setSortKey] = useState<SortKey>('az');
@@ -632,7 +633,13 @@ export default function AllChannels() {
                 active={selectedCategory||''} onChange={id => setSelectedCategory(id||null)} />
             </motion.div>
 
-            {renderContent()}
+            {loading && stats.length === 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <ChannelCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : renderContent()}
 
           </div>
         </div>

@@ -29,8 +29,12 @@ import {
   Github,
   Play,
   ArrowUpRight,
+  Server,
+  Terminal,
+  Cloud,
 } from "lucide-react";
 import { SEOHead } from "../components/SEOHead";
+import { getFeaturedPosts } from "@/lib/blog-loader";
 
 // ─── Animation variants ───────────────────────────────────────────────────────
 const fadeUp = {
@@ -368,44 +372,75 @@ function HeroSection() {
 }
 
 // ─── Featured Articles Section ────────────────────────────────────────────────
-const FEATURED_ARTICLES = [
-  {
-    title: "System Design: Building a URL Shortener at Scale",
-    description:
-      "Learn how to design and implement a URL shortening service that handles millions of requests per day with low latency.",
-    category: "System Design",
-    readTime: "8 min",
-    icon: <Layers className="w-5 h-5" />,
-    gradient: "from-violet-500/20 to-indigo-500/20",
-    borderColor: "border-violet-500/20",
-    href: "/blog/system-design-url-shortener",
-  },
-  {
-    title: "React Reconciliation: How the Virtual DOM Really Works",
-    description:
-      "Deep dive into React's diffing algorithm and understand why your components re-render the way they do.",
-    category: "Frontend",
-    readTime: "6 min",
-    icon: <Code2 className="w-5 h-5" />,
-    gradient: "from-cyan-500/20 to-blue-500/20",
-    borderColor: "border-cyan-500/20",
-    href: "/blog/react-reconciliation",
-  },
-  {
-    title: "The CAP Theorem Explained with Real-World Examples",
-    description:
-      "Understanding consistency, availability, and partition tolerance through practical distributed systems scenarios.",
-    category: "Database",
-    readTime: "10 min",
-    icon: <Brain className="w-5 h-5" />,
-    gradient: "from-amber-500/20 to-orange-500/20",
-    borderColor: "border-amber-500/20",
-    href: "/blog/cap-theorem-explained",
-  },
-];
+
+interface FeaturedArticle {
+  title: string;
+  description: string;
+  category: string;
+  readTime: string;
+  icon: React.ReactNode;
+  gradient: string;
+  borderColor: string;
+  href: string;
+}
+
+const categoryCardConfig: Record<string, { icon: React.ReactNode; gradient: string; borderColor: string }> = {
+  'System Design': { icon: <Layers className="w-5 h-5" />, gradient: 'from-violet-500/20 to-indigo-500/20', borderColor: 'border-violet-500/20' },
+  'Frontend': { icon: <Code2 className="w-5 h-5" />, gradient: 'from-cyan-500/20 to-blue-500/20', borderColor: 'border-cyan-500/20' },
+  'Database': { icon: <Brain className="w-5 h-5" />, gradient: 'from-amber-500/20 to-orange-500/20', borderColor: 'border-amber-500/20' },
+  'Backend': { icon: <Server className="w-5 h-5" />, gradient: 'from-emerald-500/20 to-teal-500/20', borderColor: 'border-emerald-500/20' },
+  'DevOps': { icon: <Terminal className="w-5 h-5" />, gradient: 'from-red-500/20 to-rose-500/20', borderColor: 'border-red-500/20' },
+  'AI': { icon: <Brain className="w-5 h-5" />, gradient: 'from-pink-500/20 to-purple-500/20', borderColor: 'border-pink-500/20' },
+  'Cloud': { icon: <Cloud className="w-5 h-5" />, gradient: 'from-sky-500/20 to-blue-500/20', borderColor: 'border-sky-500/20' },
+  'Security': { icon: <Shield className="w-5 h-5" />, gradient: 'from-red-500/20 to-orange-500/20', borderColor: 'border-red-500/20' },
+};
+
+const defaultCardConfig = { icon: <BookOpen className="w-5 h-5" />, gradient: 'from-violet-500/20 to-purple-500/20', borderColor: 'border-violet-500/20' };
+
+function getCardConfig(category: string) {
+  return categoryCardConfig[category] || defaultCardConfig;
+}
+
+function FeaturedArticleSkeleton() {
+  return (
+    <div className="group relative p-[1px] rounded-2xl overflow-hidden animate-pulse">
+      <div className="relative h-full p-6 rounded-2xl bg-[#0f1629] border border-white/[0.06]">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-white/10" />
+          <div className="h-3 w-20 bg-white/10 rounded" />
+          <div className="h-3 w-3 bg-white/10 rounded-full" />
+          <div className="h-3 w-12 bg-white/10 rounded" />
+        </div>
+        <div className="h-5 w-full bg-white/10 rounded mb-2" />
+        <div className="h-4 w-3/4 bg-white/10 rounded mb-4" />
+        <div className="h-3 w-full bg-white/10 rounded mb-1" />
+        <div className="h-3 w-2/3 bg-white/10 rounded mb-4" />
+        <div className="h-4 w-24 bg-white/10 rounded" />
+      </div>
+    </div>
+  );
+}
 
 function FeaturedArticles() {
   const [, setLocation] = useLocation();
+  const [articles, setArticles] = useState<FeaturedArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getFeaturedPosts(3)
+      .then(posts => {
+        setArticles(posts.map(p => ({
+          title: p.title,
+          description: p.excerpt,
+          category: p.category,
+          readTime: `${p.readingTimeMinutes} min`,
+          href: `/blog/${p.slug}`,
+          ...getCardConfig(p.category),
+        })));
+      })
+      .catch(() => setArticles([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <section id="articles" className="py-24 relative">
@@ -426,46 +461,61 @@ function FeaturedArticles() {
         </AnimatedSection>
 
         <div className="grid md:grid-cols-3 gap-6">
-          {FEATURED_ARTICLES.map((article, i) => (
-            <motion.div
-              key={article.title}
-              variants={scaleFade}
-              whileHover={{ y: -4 }}
-              className="group relative p-[1px] rounded-2xl overflow-hidden"
-            >
-              <div
-                className={`absolute inset-0 bg-gradient-to-br ${article.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
-              />
-              <div className="relative h-full p-6 rounded-2xl bg-[#0f1629] border border-white/[0.06] group-hover:border-white/[0.12] transition-colors">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${article.gradient} flex items-center justify-center`}>
-                    {article.icon}
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <motion.div key={i} variants={scaleFade}>
+                <FeaturedArticleSkeleton />
+              </motion.div>
+            ))
+          ) : articles.length === 0 ? (
+            <div className="col-span-full text-center py-12">
+              <p className="text-white/40 text-sm">No featured articles available right now.</p>
+              <button onClick={() => setLocation("/blog")} className="mt-3 text-sm text-violet-400 hover:text-violet-300 transition-colors">
+                Browse all articles <ArrowRight className="w-3 h-3 inline" />
+              </button>
+            </div>
+          ) : (
+            articles.map((article, i) => (
+              <motion.div
+                key={article.title}
+                variants={scaleFade}
+                whileHover={{ y: -4 }}
+                className="group relative p-[1px] rounded-2xl overflow-hidden"
+              >
+                <div
+                  className={`absolute inset-0 bg-gradient-to-br ${article.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
+                />
+                <div className="relative h-full p-6 rounded-2xl bg-[#0f1629] border border-white/[0.06] group-hover:border-white/[0.12] transition-colors">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${article.gradient} flex items-center justify-center`}>
+                      {article.icon}
+                    </div>
+                    <span className="text-xs font-medium text-white/40">{article.category}</span>
+                    <span className="text-xs text-white/20">·</span>
+                    <span className="text-xs text-white/30 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {article.readTime}
+                    </span>
                   </div>
-                  <span className="text-xs font-medium text-white/40">{article.category}</span>
-                  <span className="text-xs text-white/20">·</span>
-                  <span className="text-xs text-white/30 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {article.readTime}
-                  </span>
+
+                  <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-violet-300 transition-colors leading-snug">
+                    {article.title}
+                  </h3>
+                  <p className="text-sm text-white/40 leading-relaxed mb-4 line-clamp-3">
+                    {article.description}
+                  </p>
+
+                  <button
+                    onClick={() => setLocation(article.href)}
+                    className="flex items-center gap-1.5 text-sm font-medium text-violet-400 group-hover:text-violet-300 transition-colors"
+                  >
+                    Read article
+                    <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                  </button>
                 </div>
-
-                <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-violet-300 transition-colors leading-snug">
-                  {article.title}
-                </h3>
-                <p className="text-sm text-white/40 leading-relaxed mb-4 line-clamp-3">
-                  {article.description}
-                </p>
-
-                <button
-                  onClick={() => setLocation(article.href)}
-                  className="flex items-center gap-1.5 text-sm font-medium text-violet-400 group-hover:text-violet-300 transition-colors"
-                >
-                  Read article
-                  <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                </button>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            ))
+          )}
         </div>
 
         <motion.div variants={fadeUp} className="text-center mt-10">

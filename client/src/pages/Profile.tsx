@@ -125,14 +125,16 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
     const codeKw = ['algorithm','coding','frontend','backend'];
     let topicsStudied = 0, certsPracticed = 0, codingDone = 0;
     channels.forEach(ch => {
-      const s = localStorage.getItem(`progress-${ch.id}`);
-      if (!s) return;
-      const completed = JSON.parse(s) as string[];
-      if (!completed.length) return;
-      topicsStudied++;
-      const id = ch.id.toLowerCase();
-      if (certKw.some(k => id.includes(k))) certsPracticed++;
-      if (codeKw.some(k => id.includes(k))) codingDone += completed.length;
+      try {
+        const s = localStorage.getItem(`progress-${ch.id}`);
+        if (!s) return;
+        const completed = JSON.parse(s) as string[];
+        if (!completed.length) return;
+        topicsStudied++;
+        const id = ch.id.toLowerCase();
+        if (certKw.some(k => id.includes(k))) certsPracticed++;
+        if (codeKw.some(k => id.includes(k))) codingDone += completed.length;
+      } catch { /* corrupted data */ }
     });
     return { topicsStudied, certsPracticed, codingDone };
   }, []);
@@ -359,8 +361,11 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
   const { moduleProgress, certCount, voiceSessions } = useMemo(() => {
     const modProgress = channels.map(ch => {
       const questions = getQuestions(ch.id);
-      const stored = localStorage.getItem(`progress-${ch.id}`);
-      const completedIds = stored ? new Set(JSON.parse(stored)) : new Set();
+      let completedIds = new Set<string>();
+      try {
+        const stored = localStorage.getItem(`progress-${ch.id}`);
+        if (stored) completedIds = new Set(JSON.parse(stored));
+      } catch { /* corrupted data */ }
       const valid = Math.min(completedIds.size, questions.length);
       const pct = questions.length > 0 ? Math.min(100, Math.round((valid / questions.length) * 100)) : 0;
       return { id: ch.id, name: ch.name, completed: valid, total: questions.length, pct };
@@ -642,13 +647,19 @@ export default function ProfilePage() {
 
   const [totalCompleted, setTotalCompleted] = useState(0);
   useEffect(() => {
-    const allQ = getAllQuestions();
-    const ids = new Set<string>();
-    allQ.forEach(q => {
-      const s = localStorage.getItem(`progress-${q.channel}`);
-      if (s && new Set(JSON.parse(s)).has(q.id)) ids.add(q.id);
-    });
-    setTotalCompleted(ids.size);
+    try {
+      const allQ = getAllQuestions();
+      const ids = new Set<string>();
+      allQ.forEach(q => {
+        try {
+          const s = localStorage.getItem(`progress-${q.channel}`);
+          if (s && new Set(JSON.parse(s)).has(q.id)) ids.add(q.id);
+        } catch { /* corrupted data */ }
+      });
+      setTotalCompleted(ids.size);
+    } catch {
+      setTotalCompleted(0);
+    }
   }, []);
 
   return (

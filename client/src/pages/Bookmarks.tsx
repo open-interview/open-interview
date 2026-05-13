@@ -66,33 +66,39 @@ export default function Bookmarks() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
-    const subscribedChannels = getSubscribedChannels();
-    const allQuestions = getAllQuestions();
-    const bookmarked: BookmarkedQuestion[] = [];
+    try {
+      const subscribedChannels = getSubscribedChannels();
+      const allQuestions = getAllQuestions();
+      const bookmarked: BookmarkedQuestion[] = [];
 
-    const channelIds = new Set<string>();
-    subscribedChannels.forEach(c => channelIds.add(c.id));
+      const channelIds = new Set<string>();
+      subscribedChannels.forEach(c => channelIds.add(c.id));
 
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith(STORAGE_KEYS.MARKED_PREFIX)) {
-        channelIds.add(key.replace(STORAGE_KEYS.MARKED_PREFIX, ''));
-      }
-    }
-
-    channelIds.forEach(channelId => {
-      const markedIds = ProgressStorage.getMarked(channelId);
-      markedIds.forEach(questionId => {
-        const question = allQuestions.find(q => q.id === questionId);
-        if (question) {
-          const savedKey = `bookmark-ts-${channelId}-${questionId}`;
-          const storedTs = localStorage.getItem(savedKey);
-          bookmarked.push({ ...question, channelId, savedAt: storedTs ? parseInt(storedTs, 10) : Date.now() });
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(STORAGE_KEYS.MARKED_PREFIX)) {
+          channelIds.add(key.replace(STORAGE_KEYS.MARKED_PREFIX, ''));
         }
-      });
-    });
+      }
 
-    setBookmarkedQuestions(bookmarked);
+      channelIds.forEach(channelId => {
+        try {
+          const markedIds = ProgressStorage.getMarked(channelId);
+          markedIds.forEach(questionId => {
+            const question = allQuestions.find(q => q.id === questionId);
+            if (question) {
+              const savedKey = `bookmark-ts-${channelId}-${questionId}`;
+              const storedTs = localStorage.getItem(savedKey);
+              bookmarked.push({ ...question, channelId, savedAt: storedTs ? parseInt(storedTs, 10) : Date.now() });
+            }
+          });
+        } catch { /* skip channel with corrupted data */ }
+      });
+
+      setBookmarkedQuestions(bookmarked);
+    } catch {
+      setBookmarkedQuestions([]);
+    }
   }, []);
 
   const channelsWithBookmarks = useMemo(() => {

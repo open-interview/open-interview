@@ -33,7 +33,7 @@
 | ID | Issue | File(s) | Status | Test | Notes |
 |----|-------|---------|--------|------|-------|
 | P1-01 | `/stats` silently redirects, no user feedback | `StatsRedirect.tsx` | ✅ | `02-navigation.spec.ts` | **Fixed:** Added toast notification + inline message |
-| P1-02 | Home page hardcodes 3 specific blog article slugs | `home-facelift.tsx` lines 381–403 | ⬜ | `07-blog.spec.ts` | Static slugs may 404 after content changes |
+| P1-02 | Home page hardcodes 3 specific blog article slugs | `home-facelift.tsx` lines 381–403 | ✅ | `07-blog.spec.ts` | Fixed: dynamic fetch via getFeaturedPosts with skeleton loading |
 | P1-03 | ChallengeHome uses hardcoded Tailwind gray palette | `ChallengeHome.tsx` (20+ instances) | ✅ | `02-navigation.spec.ts` | **Already fixed:** Uses `bg-card`, `bg-muted`, `text-muted-foreground` |
 | P1-04 | Blog pages use separate CSS variable system | `blog/*.tsx` | ⬜ | `07-blog.spec.ts` | `--color-ink-muted` etc. not shared with main app |
 | P1-05 | AllChannels has no loading skeleton | `AllChannels.tsx` | ⬜ | `03-channels.spec.ts` | Empty screen while data loads |
