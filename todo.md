@@ -1589,25 +1589,25 @@ The combined analysis found **93 issues total** (17 critical, 26 high, 31 modera
 ### Phase 0 — Emergency Fixes (30 min)
 *Fix things that are broken now*
 
-- [ ] **C2**: Fix `/review` page infinite loading spinner
-- [ ] **C3**: Fix nested `<a>` in Documentation
-- [ ] **PF5/SS5**: Fix `useLevel` 1-second polling (change to 30s or event-driven)
-- [ ] **SU7**: Fix git conflict markers in BlogListPage.tsx
-- [ ] **SPF2**: Add `loading="lazy"` to ArtStudio images
-- [ ] **SR1**: Add basic admin guard to `/bot-activity`, `/events`, `/admin/docs`, `/admin/blog`
+- [x] **C2**: Fix `/review` page infinite loading spinner
+- [x] **C3**: Fix nested `<a>` in Documentation
+- [x] **PF5/SS5**: Fix `useLevel` 1-second polling (change to 30s or event-driven)
+- [x] **SU7**: Fix git conflict markers in BlogListPage.tsx
+- [x] **SPF2**: Add `loading="lazy"` to ArtStudio images
+- [x] **SR1**: Add basic admin guard to `/bot-activity`, `/events`, `/admin/docs`, `/admin/blog`
 
 ---
 
 ### Phase 1 — Routing Fixes (1–2 hours)
-- [ ] **C1**: Remove ProgressiveOnboarding, keep OnboardingFlow only
-- [ ] **C4**: Add `/questions` redirect to `/channels`
-- [ ] **SR2**: Fix mobile bottom nav Profile tab active state
-- [ ] **SR3**: Remove dead `LearningPaths` lazy import
-- [ ] **SR4**: Audit/delete orphaned VoiceInterview.tsx
-- [ ] **SR5**: Fix `getActiveSection` checks in UnifiedNav
-- [ ] **SR6**: Fix blog route render-props to support Suspense
-- [ ] **SR8**: Delete or consolidate 6 orphaned page files
-- [ ] **M4/R1**: Consolidate duplicate routes (`/coding` vs `/code`, `/my-path` vs `/learning-paths`)
+- [x] **C1**: Remove ProgressiveOnboarding, keep OnboardingFlow only
+- [x] **C4**: Add `/questions` redirect to `/channels`
+- [x] **SR2**: Fix mobile bottom nav Profile tab active state
+- [x] **SR3**: Remove dead `LearningPaths` lazy import
+- [x] **SR4**: Audit/delete orphaned VoiceInterview.tsx
+- [x] **SR5**: Fix `getActiveSection` checks in UnifiedNav
+- [x] **SR6**: Fix blog route render-props to support Suspense
+- [x] **SR8**: Delete or consolidate 6 orphaned page files
+- [x] **M4/R1**: Consolidate duplicate routes (`/coding` vs `/code`, `/my-path` vs `/learning-paths`)
 
 ---
 
@@ -1650,11 +1650,11 @@ The combined analysis found **93 issues total** (17 critical, 26 high, 31 modera
 
 ### Phase 5 — Brand & Visual Consistency (1–2 hours)
 - [ ] **SU3**: Define primary tagline ("Ace your next tech interview"), remove all variants
-- [ ] **SU6/SR7**: Replace "DevInsights" with "Open Interview" in facelift-navbar
+- [x] **SU6/SR7**: Replace "DevInsights" with "Open Interview" in facelift-navbar
 - [ ] **SU4/P6**: Create unified PageHeader component, apply to all pages
-- [ ] **M3/M1**: Replace all old brand names ("Code_Reels", "Reel-LearnHub") with "Open Interview"
-- [ ] **SU5/M2**: Hide admin sidebar items behind admin flag
-- [ ] **SU8/P4**: Create or remove the Settings link
+- [x] **M3/M1**: Replace all old brand names ("Code_Reels", "Reel-LearnHub") with "Open Interview"
+- [x] **SU5/M2**: Hide admin sidebar items behind admin flag
+- [x] **SU8/P4**: Create or remove the Settings link
 - [ ] **SU10/SU11**: Fix GitHub URL and download filename with old repo name
 - [ ] **P1/P2/P3/P8**: Complete existing UI consistency items
 
@@ -2136,7 +2136,7 @@ The answer panel (AnswerPanel / UnifiedAnswerPanel) sits below the question card
 
 ## High Priority (P1)
 
-- [ ] **`use-level` hook runs every second** — `setInterval(1000)` causes constant re-renders across the entire component tree. Replace with event-driven updates or reduce polling interval
+- [x] **`use-level` hook runs every second** — `setInterval(1000)` causes constant re-renders across the entire component tree. Replace with event-driven updates or reduce polling interval
 - [ ] **10 orphaned page files consuming bundle** — Files exist in `client/src/pages/` but are not imported in `App.tsx` router. Delete or re-register them
 - [ ] **Dual onboarding systems conflict** — Both `SubscriptionGate` and `ProgressiveOnboarding` handle first-user experience. Consolidate into one system
 - [ ] **`/stats` silently redirects** — No toast, no feedback, no explanation. User is confused why navigation happened
