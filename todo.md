@@ -1624,12 +1624,12 @@ The combined analysis found **93 issues total** (17 critical, 26 high, 31 modera
 
 ### Phase 3 — Accessibility (2–3 hours)
 - [ ] **SA1**: Add visible labels to 15+ input fields and selects
-- [ ] **SA2**: Add `aria-label` to 17+ icon-only buttons
+- [x] **SA2**: Add `aria-label` to 17+ icon-only buttons
 - [ ] **SA3**: Fix low-contrast text on home-facelift.tsx (`text-white/20/30/40`)
 - [x] **SA4**: Add skip-to-content link to AppLayout
 - [ ] **SA5**: Fix `focus-visible` styles on 10+ elements
-- [ ] **SA6**: Add `aria-current="page"` to navigation items
-- [ ] **SA7**: Add `aria-expanded`/`aria-controls` to collapsible sections
+- [x] **SA6**: Add `aria-current="page"` to navigation items
+- [x] **SA7**: Add `aria-expanded`/`aria-controls` to collapsible sections
 - [ ] **A1/A2/A3/A4**: Complete existing accessibility checklist items
 - [ ] **SA10**: Wire `useAnnouncer` into form validation
 
@@ -1649,7 +1649,7 @@ The combined analysis found **93 issues total** (17 critical, 26 high, 31 modera
 ---
 
 ### Phase 5 — Brand & Visual Consistency (1–2 hours)
-- [ ] **SU3**: Define primary tagline ("Ace your next tech interview"), remove all variants
+- [x] **SU3**: Define primary tagline ("Ace your next tech interview"), remove all variants
 - [x] **SU6/SR7**: Replace "DevInsights" with "Open Interview" in facelift-navbar
 - [ ] **SU4/P6**: Create unified PageHeader component, apply to all pages
 - [x] **M3/M1**: Replace all old brand names ("Code_Reels", "Reel-LearnHub") with "Open Interview"
@@ -1662,9 +1662,9 @@ The combined analysis found **93 issues total** (17 critical, 26 high, 31 modera
 
 ### Phase 6 — Blog Integration & Polish (1–2 hours)
 - [ ] **SU2/M6**: Visually align blog with main app or add clear navigation bridge
-- [ ] **SD4**: Fix blog article count stat (showing 9 instead of 121+)
+- [x] **SD4**: Fix blog article count stat (showing 9 instead of 121+)
 - [ ] **SD1**: Fix E2E tests that reference old branding
-- [ ] **P5**: Remove skeleton loaders from Channels (sync data)
+- [x] **P5**: Remove skeleton loaders from Channels (sync data)
 - [ ] **M5**: Rewrite Voice Interview empty state
 - [ ] **D1-D8**: Complete all minor polish items
 

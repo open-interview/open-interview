@@ -100,6 +100,11 @@ export function Sidebar() {
       : location === path || location.startsWith(path.replace(/\/$/, '') + '/');
 
   const isAdmin = localStorage.getItem('admin') === 'true' || window.location.search.includes('admin=true');
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(sections.map(s => [s.label, true]))
+  );
+  const toggleSection = (label: string) =>
+    setExpandedSections(prev => ({ ...prev, [label]: !prev[label] }));
 
   const filteredSections = sections.map(s => {
     if (s.label === 'Learn' && preferences.hideCertifications) {
@@ -124,6 +129,7 @@ export function Sidebar() {
           onMouseLeave={() => setHovered(null)}
           whileTap={{ scale: 0.96 }}
           transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+          aria-current={active ? 'page' : undefined}
           className={cn(
             'w-full flex items-center gap-3 rounded-[24px] transition-all duration-150 group relative overflow-hidden',
             isCollapsed ? 'justify-center p-2' : 'px-3 py-2',
@@ -252,13 +258,22 @@ export function Sidebar() {
             {isCollapsed
               ? <div className="h-px bg-border/50 my-2 mx-1" />
               : (
-                <div className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+                <button
+                  onClick={() => toggleSection(section.label)}
+                  aria-expanded={expandedSections[section.label]}
+                  aria-controls={`section-${section.label}`}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors"
+                >
                   <section.icon className="w-3 h-3" />
                   <span>{section.label}</span>
-                </div>
+                </button>
               )
             }
-            {section.items.map(item => <NavItemEl key={item.id} item={item} />)}
+            {(isCollapsed || expandedSections[section.label]) && (
+              <div id={`section-${section.label}`}>
+                {section.items.map(item => <NavItemEl key={item.id} item={item} />)}
+              </div>
+            )}
           </div>
         ))}
       </nav>

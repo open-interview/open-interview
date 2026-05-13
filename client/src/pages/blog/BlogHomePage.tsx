@@ -91,7 +91,7 @@ export default function BlogHomePage() {
           ...c,
           count: countByCategory[c.slug] || 0,
         })));
-        const totalArticles = postsRes.data?.length || 0;
+        const totalArticles = postsRes.meta?.total ?? postsRes.data?.length ?? 0;
         const totalReadingTime = (postsRes.data || []).reduce((sum: number, p: any) => sum + (p.readingTimeMinutes || 0), 0);
         const avgReadTime = totalArticles > 0 ? Math.round(totalReadingTime / totalArticles) : 0;
         setStats([

@@ -337,7 +337,7 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
                   data-testid="search-input-mobile"
                 />
                 {query && (
-                  <button onClick={() => setQuery('')} className="p-1.5 hover:bg-muted/80 rounded-full flex-shrink-0">
+                  <button onClick={() => setQuery('')} aria-label="Clear search" className="p-1.5 hover:bg-muted/80 rounded-full flex-shrink-0">
                     <X className="w-4 h-4 text-muted-foreground" />
                   </button>
                 )}
@@ -452,7 +452,7 @@ export function SearchModal({ isOpen, onClose, initialQuery }: SearchModalProps)
                   data-testid="search-input-desktop"
                 />
                 {query && (
-                  <button onClick={() => setQuery('')} className="p-1.5 hover:bg-muted rounded-full">
+                  <button onClick={() => setQuery('')} aria-label="Clear search" className="p-1.5 hover:bg-muted rounded-full">
                     <X className="w-4 h-4 text-muted-foreground" />
                   </button>
                 )}
