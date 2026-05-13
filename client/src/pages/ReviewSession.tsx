@@ -20,7 +20,7 @@ import {
   Brain, ChevronLeft, ChevronRight, Eye, Flame, Sparkles, Zap, Check, CheckCircle, RotateCcw, Trash2
 } from 'lucide-react';
 import { getDueCards, getDueCardsByChannel, getChannelsWithDueCards, recordReview, removeFromSRS, type ReviewCard } from '../lib/spaced-repetition';
-import { getQuestionByIdAsync } from '../lib/questions-loader';
+import { getQuestionByIdAsync, preloadQuestions } from '../lib/questions-loader';
 import { useUserPreferences } from '../hooks/use-user-preferences';
 import { isPersonalized } from '../lib/personalization';
 
@@ -306,7 +306,7 @@ export default function ReviewSession() {
     
     const dueCards = getDueCards();
     if (dueCards.length === 0) { setLoadingCards(false); return; }
-    Promise.all(
+    preloadQuestions().then(() => Promise.all(
       dueCards.map(async card => {
         const question = await getQuestionByIdAsync(card.questionId);
         return question ? {
@@ -321,13 +321,20 @@ export default function ReviewSession() {
           codeInterpretation: undefined,
         } : null;
       })
-    ).then(results => {
+    )).then(results => {
       setAllCards(results.filter(Boolean));
       setLoadingCards(false);
     }).catch(() => {
       setLoadingCards(false);
     });
   }, []);
+
+  // Safety net: if loadingCards is still true after 5s, force it false
+  useEffect(() => {
+    if (!loadingCards) return;
+    const timer = setTimeout(() => setLoadingCards(false), 5000);
+    return () => clearTimeout(timer);
+  }, [loadingCards]);
 
   // Filter cards by selected channel
   const filteredCards = selectedChannel 

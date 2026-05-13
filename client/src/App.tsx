@@ -33,7 +33,6 @@ const Certifications = React.lazy(() => import("@/pages/Certifications"));
 const CertificationPractice = React.lazy(() => import("@/pages/CertificationPractice"));
 const CertificationExam = React.lazy(() => import("@/pages/CertificationExam"));
 const Documentation = React.lazy(() => import("@/pages/Documentation"));
-const LearningPaths = React.lazy(() => import("@/pages/UnifiedLearningPaths"));
 const MyPath = React.lazy(() => import("@/pages/UnifiedLearningPaths"));
 const PersonalizedPath = React.lazy(() => import("@/pages/PersonalizedPath"));
 const ManageSubscriptions = React.lazy(() => import("@/pages/ManageSubscriptions"));
@@ -184,9 +183,21 @@ function Router() {
         {/* Blog routes */}
         <Route path="/blog" component={BlogHomePage} />
         <Route path="/blog/search" component={BlogSearchPage} />
-        <Route path="/blog/category/:slug">{(params) => <BlogListPage categorySlug={params.slug} />}</Route>
-        <Route path="/blog/tag/:tag">{(params) => <BlogListPage tag={params.tag} />}</Route>
-        <Route path="/blog/:slug">{(params) => <PostFaceliftPage slug={params.slug} />}</Route>
+        <Route path="/blog/category/:slug">{(params) => (
+          <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><InterviewLoader message="Loading..." showTip={false} /></div>}>
+            <BlogListPage categorySlug={params.slug} />
+          </Suspense>
+        )}</Route>
+        <Route path="/blog/tag/:tag">{(params) => (
+          <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><InterviewLoader message="Loading..." showTip={false} /></div>}>
+            <BlogListPage tag={params.tag} />
+          </Suspense>
+        )}</Route>
+        <Route path="/blog/:slug">{(params) => (
+          <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><InterviewLoader message="Loading..." showTip={false} /></div>}>
+            <PostFaceliftPage slug={params.slug} />
+          </Suspense>
+        )}</Route>
         <Route path="/about-blog" component={AboutBlogPage} />
         <Route path="/admin/blog" component={AdminBlogPage} />
         <Route component={NotFound} />

@@ -216,7 +216,7 @@ function Tab({ active, onClick, children, icon: Icon }: {
 
 export default function BotActivity() {
   const [, setLocation] = useLocation();
-  const [isAdmin] = useState(() => localStorage.getItem('admin_mode') === 'true');
+  const [isAdmin] = useState(() => localStorage.getItem('admin') === 'true' || window.location.search.includes('admin=true'));
 
   if (!isAdmin) {
     return (

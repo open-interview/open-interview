@@ -51,18 +51,8 @@ const difficultyLabels: Record<ArticleDifficulty, string> = {
 };
 
 export default function BlogHomePage() {
-<<<<<<< Updated upstream
   const [featured, setFeatured] = useState<ArticleCardData[]>([]);
   const [recent, setRecent] = useState<ArticleCardData[]>([]);
-=======
-  useBlogSEO({
-    title: "Engineering Insights & Interview Prep",
-    description: "Practical guides, deep dives, and career advice for software engineers preparing for top tech interviews.",
-    canonicalUrl: "https://open-interview.dev/blog",
-  });
-  const [featured, setFeatured] = useState<PostCardData[]>([]);
-  const [recent, setRecent] = useState<PostCardData[]>([]);
->>>>>>> Stashed changes
   const [categories, setCategories] = useState<Category[]>([]);
   const [stats, setStats] = useState<StatCardData[]>([]);
   const [loading, setLoading] = useState(true);

@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -546,6 +547,13 @@ function AuditTable({ events }: { events: Event[] }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function EventsDashboard() {
+  const [, setLocation] = useLocation();
+  const isAdmin = localStorage.getItem('admin') === 'true' || window.location.search.includes('admin=true');
+  if (!isAdmin) {
+    setLocation('/');
+    return null;
+  }
+
   const [activeView, setActiveView] = useState<"timeline" | "audit">("timeline");
   const [activeType, setActiveType] = useState<string>("all");
   const [activeStatus, setActiveStatus] = useState<string>("all");

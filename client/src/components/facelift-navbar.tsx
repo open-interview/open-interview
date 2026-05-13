@@ -194,7 +194,7 @@ function MobileMenu({ isOpen, onClose, onSearchOpen, activeLink, onNavigate }: M
                 <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center">
                   <Brain className="w-3.5 h-3.5 text-white" />
                 </div>
-                <span>DevInsights v1.0</span>
+                <span>Open Interview v1.0</span>
               </div>
             </div>
           </motion.div>
@@ -305,9 +305,9 @@ export function FaceliftNavbar({ onSearchOpen }: FaceliftNavbarProps) {
 
             <div className="hidden sm:block">
               <div className="font-bold text-base leading-tight tracking-tight">
-                <span className="text-foreground">Dev</span>
+                <span className="text-foreground">Open </span>
                 <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">
-                  Insights
+                  Interview
                 </span>
               </div>
               <div className="text-[10px] text-muted-foreground leading-none mt-0.5 -tracking-wide">

@@ -846,6 +846,7 @@ function ArtworkTab() {
                 alt={current.prompt}
                 onLoad={handleImgLoad}
                 onError={handleImgError}
+                loading="lazy"
                 className="w-full object-contain max-h-[520px]"
               />
             ) : (
@@ -881,7 +882,7 @@ function ArtworkTab() {
                     current?.id === img.id ? 'border-[#388bfd] shadow-md shadow-[#388bfd]/20' : 'border-transparent hover:border-[#30363d]'
                   )}
                 >
-                  <img src={img.url} alt={img.prompt} className="w-full h-full object-cover" />
+                  <img src={img.url} alt={img.prompt} loading="lazy" className="w-full h-full object-cover" />
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-1.5 py-1">
                     <p className="text-[8px] text-white/80 truncate leading-tight">{img.style}</p>
                   </div>

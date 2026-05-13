@@ -1,3 +1,4 @@
+// ORPHANED: not registered in router, use VoicePractice.tsx instead
 /**
  * Voice Interview Practice Page - Redesigned
  * Modern GitHub-inspired dark theme with polished UI
