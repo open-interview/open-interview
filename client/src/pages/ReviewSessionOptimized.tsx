@@ -182,7 +182,7 @@ export default function ReviewSessionOptimized() {
   return (
     <>
       <SEOHead
-        title="Review Session | Code Reels"
+        title="Review Session | Open Interview"
         description="Spaced repetition review with checkpoint tests"
       />
 

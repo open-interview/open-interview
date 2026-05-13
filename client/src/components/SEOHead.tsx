@@ -21,7 +21,7 @@ interface SEOHeadProps {
 const defaultStructuredData = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  "name": "Code Reels",
+  "name": "Open Interview",
   "alternateName": "CodeReels Interview Prep",
   "description": "Free interactive platform for practicing technical interview questions across 30+ channels. Master system design, algorithms, frontend, backend, DevOps, and AI interview prep with voice practice, spaced repetition, and gamified learning.",
   "url": "https://open-interview.github.io/",
@@ -42,7 +42,7 @@ const defaultStructuredData = {
   },
   "publisher": {
     "@type": "Organization",
-    "name": "Code Reels",
+    "name": "Open Interview",
     "logo": {
       "@type": "ImageObject",
       "url": "https://open-interview.github.io/favicon.svg"
@@ -120,7 +120,7 @@ export function SEOHead({
     
     // Additional SEO meta tags
     updateMeta('author', author ?? 'Satishkumar Dhule');
-    updateMeta('generator', 'Code Reels v2.3.0');
+    updateMeta('generator', 'Open Interview v2.3.0');
     updateMeta('rating', 'General');
     updateMeta('revisit-after', '1 days');
     updateMeta('language', 'English');
@@ -134,7 +134,7 @@ export function SEOHead({
     updateMeta('og:image:width', ogImageWidth, true);
     updateMeta('og:image:height', ogImageHeight, true);
     updateMeta('og:type', ogType, true);
-    updateMeta('og:site_name', 'Code Reels', true);
+    updateMeta('og:site_name', 'Open Interview', true);
     if (canonical) updateMeta('og:url', canonical, true);
 
     // Article-specific Open Graph meta tags
@@ -174,7 +174,7 @@ export function SEOHead({
             author: { "@type": "Person", name: author ?? "Satishkumar Dhule" },
             publisher: {
               "@type": "Organization",
-              name: "Code Reels",
+              name: "Open Interview",
               logo: { "@type": "ImageObject", url: "https://open-interview.github.io/favicon.svg" },
             },
             ...(canonical ? { url: canonical } : {}),

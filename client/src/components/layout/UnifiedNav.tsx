@@ -306,7 +306,7 @@ export function UnifiedMobileHeader({ title, showBack, onSearchClick }: UnifiedM
                 style={{ boxShadow: '0 0 12px rgba(124,58,237,0.3)' }}>
                 <Brain className="w-4 h-4 text-white" strokeWidth={2.5} />
               </div>
-              <span className="font-bold text-sm">Code Reels</span>
+              <span className="font-bold text-sm">Open Interview</span>
             </button>
           )}
           {title && <h1 className="font-bold text-sm truncate ml-2">{title}</h1>}

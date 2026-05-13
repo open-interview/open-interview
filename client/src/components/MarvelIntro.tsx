@@ -168,7 +168,7 @@ export function MarvelIntro({ onComplete }: MarvelIntroProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              A Code Reels Original
+              An Open Interview Original
             </motion.p>
 
             {/* Main title with Netflix-style reveal */}
@@ -302,7 +302,7 @@ export function MarvelIntro({ onComplete }: MarvelIntroProps) {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
       >
-        Code Reels
+        Open Interview
       </motion.div>
     </motion.div>
   );

@@ -319,7 +319,7 @@ export default function TestSessionPage() {
   return (
     <>
       <SEOHead
-        title={`${test.title} | Code Reels`}
+        title={`${test.title} | Open Interview`}
         description={test.description}
         canonical={`https://open-interview.github.io/test/${channelId}`}
       />
@@ -578,7 +578,7 @@ export default function TestSessionPage() {
                       <Button
                         variant="secondary"
                         onClick={() => {
-                          const text = `I scored ${result.score}% on the ${test.title} test on Code Reels! 🎉`;
+                          const text = `I scored ${result.score}% on the ${test.title} test on Open Interview! 🎉`;
                           if (navigator.share) navigator.share({ text, url: window.location.href });
                           else navigator.clipboard.writeText(text);
                         }}

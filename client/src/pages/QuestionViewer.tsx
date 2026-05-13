@@ -282,7 +282,7 @@ export default function QuestionViewer() {
     <>
       <AppLayout fullWidth>
         <SEOHead
-          title={currentQuestion ? `${currentQuestion.question.slice(0, 60)} | Code Reels` : 'Questions | Code Reels'}
+          title={currentQuestion ? `${currentQuestion.question.slice(0, 60)} | Open Interview` : 'Questions | Open Interview'}
           description={currentQuestion?.tldr ?? currentQuestion?.answer?.slice(0, 160) ?? 'Practice technical interview questions'}
           canonical={`https://open-interview.github.io/channel/${channelId}/${currentQuestion.id}`}
         />

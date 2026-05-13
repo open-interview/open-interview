@@ -136,7 +136,7 @@ export default function Bookmarks() {
   return (
     <>
       <SEOHead
-        title="Bookmarked Questions - Code Reels"
+        title="Bookmarked Questions - Open Interview"
         description="View and manage your bookmarked interview questions"
       />
       <AppLayout fullWidth>

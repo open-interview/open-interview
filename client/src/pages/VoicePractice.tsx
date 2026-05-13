@@ -297,14 +297,18 @@ export default function VoicePractice() {
             <PageHeader title="Voice Practice" subtitle="Speak your answers out loud and get instant feedback" />
             <div className="flex items-center justify-center py-20">
               <div className="text-center max-w-md">
-                <h2 className="text-xl font-bold mb-2">No Questions Available</h2>
-                <p className="text-muted-foreground mb-4">Subscribe to channels to access voice practice questions</p>
-                <ul className="text-sm text-muted-foreground text-left space-y-1 mb-6">
-                  <li>• Subscribe to at least one channel</li>
-                  <li>• Channels with voice-suitable questions will appear here</li>
-                  <li>• Try AWS, System Design, or Behavioral channels</li>
-                </ul>
-                <Button onClick={() => setLocation('/channels')} className="cursor-pointer">Browse Channels</Button>
+                <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                  <Mic className="w-10 h-10 text-primary" />
+                </div>
+                <h2 className="text-2xl font-bold mb-3">Ready to Practice?</h2>
+                <p className="text-muted-foreground mb-6">Pick a topic to start practicing your interview answers out loud. We recommend starting with one of these popular topics:</p>
+                <div className="flex flex-wrap justify-center gap-2 mb-6">
+                  <button onClick={() => setLocation('/voice-session/system-design')} className="px-4 py-2 rounded-full bg-purple-500/20 text-purple-400 text-sm font-semibold hover:bg-purple-500/30 transition-colors">System Design</button>
+                  <button onClick={() => setLocation('/voice-session/aws')} className="px-4 py-2 rounded-full bg-orange-500/20 text-orange-400 text-sm font-semibold hover:bg-orange-500/30 transition-colors">AWS</button>
+                  <button onClick={() => setLocation('/voice-session/behavioral')} className="px-4 py-2 rounded-full bg-pink-500/20 text-pink-400 text-sm font-semibold hover:bg-pink-500/30 transition-colors">Behavioral</button>
+                </div>
+                <div className="text-sm text-muted-foreground mb-6">Or browse all available topics to find what you need.</div>
+                <Button onClick={() => setLocation('/channels')} className="cursor-pointer">Browse All Topics</Button>
               </div>
             </div>
           </div>
@@ -381,7 +385,7 @@ export default function VoicePractice() {
     return (
       <>
         <SEOHead
-          title="Voice Practice | Code Reels"
+          title="Voice Practice | Open Interview"
           description="Practice answering interview questions with voice recording and feedback"
           canonical="https://open-interview.github.io/voice-practice"
         />
@@ -484,7 +488,7 @@ export default function VoicePractice() {
   return (
     <>
       <SEOHead
-        title="Voice Practice | Code Reels"
+        title="Voice Practice | Open Interview"
         description="Practice answering interview questions with voice recording and feedback"
         canonical="https://open-interview.github.io/voice-practice"
       />

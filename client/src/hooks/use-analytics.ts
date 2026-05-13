@@ -29,7 +29,7 @@ export function usePageViewTracking() {
       previousLocationRef.current = location;
       
       // Extract page title from location
-      let pageTitle = 'Code Reels';
+      let pageTitle = 'Open Interview';
       if (location === '/') pageTitle = 'Home';
       else if (location === '/about') pageTitle = 'About';
       else if (location === '/stats') pageTitle = 'Stats';

@@ -1,5 +1,5 @@
 /**
- * Home Page — Code Reels UI/UX Pro Max Revamp
+ * Home Page — Open Interview
  * Addictive, beautiful, conversion-focused
  */
 

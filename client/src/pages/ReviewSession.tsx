@@ -324,6 +324,8 @@ export default function ReviewSession() {
     ).then(results => {
       setAllCards(results.filter(Boolean));
       setLoadingCards(false);
+    }).catch(() => {
+      setLoadingCards(false);
     });
   }, []);
 

@@ -420,7 +420,7 @@ export default function VoiceSession() {
 
     return (
       <>
-        <SEOHead title="Voice Sessions | Code Reels" description="Practice interview topics with focused question sessions" />
+        <SEOHead title="Voice Sessions | Open Interview" description="Practice interview topics with focused question sessions" />
         <AppLayout fullWidth>
           <div className="min-h-screen bg-background text-foreground">
           <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
@@ -783,9 +783,9 @@ export default function VoiceSession() {
     const topMissed = Object.entries(missedCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k]) => k);
 
     const handleShare = () => {
-      const text = `I scored ${avgScore}% on a ${sessionResult.topic} interview session on Code Reels! 🎤`;
+      const text = `I scored ${avgScore}% on a ${sessionResult.topic} interview session on Open Interview! 🎤`;
       if (navigator.share) {
-        navigator.share({ title: 'Code Reels Voice Session', text }).catch(() => {});
+        navigator.share({ title: 'Open Interview Voice Session', text }).catch(() => {});
       } else {
         navigator.clipboard.writeText(text).catch(() => {});
       }

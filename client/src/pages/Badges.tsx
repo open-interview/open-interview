@@ -284,7 +284,7 @@ function BadgeModal({
               {bp.isUnlocked && (
                 <button
                   onClick={() => {
-                    const text = `I just earned the "${bp.achievement.name}" badge on Code Reels! 🏆`;
+                    const text = `I just earned the "${bp.achievement.name}" badge on Open Interview! 🏆`;
                     if (navigator.share) {
                       navigator.share({ text, url: 'https://open-interview.github.io/' });
                     } else {

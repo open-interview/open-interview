@@ -583,8 +583,8 @@ export default function VoiceInterview() {
     const topMissed = Object.entries(missedCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k]) => k);
 
     const handleShare = () => {
-      const text = `I scored ${avg}% on a Voice Interview session on Code Reels! 🎤`;
-      if (navigator.share) navigator.share({ title: 'Code Reels Voice Interview', text }).catch(() => {});
+      const text = `I scored ${avg}% on a Voice Interview session on Open Interview! 🎤`;
+      if (navigator.share) navigator.share({ title: 'Open Interview Voice Interview', text }).catch(() => {});
       else navigator.clipboard.writeText(text).catch(() => {});
     };
 
@@ -658,7 +658,7 @@ export default function VoiceInterview() {
   return (
     <>
       <SEOHead
-        title="Voice Interview Practice | Code Reels"
+        title="Voice Interview Practice | Open Interview"
         description="Practice answering interview questions out loud with AI-powered feedback"
         canonical="https://open-interview.github.io/voice-interview"
       />
