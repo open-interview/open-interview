@@ -289,7 +289,7 @@ export default function UnifiedLearningPaths() {
   };
 
   const personalized = isPersonalized(onboardingComplete, subscribedChannels);
-  const defaultTab = location.startsWith('/my-path') ? 'custom' : personalized ? 'for-you' : 'all';
+  const defaultTab = location.startsWith('/my-path') ? 'all' : personalized ? 'for-you' : 'all';
   const [view, setView] = useState<'all' | 'custom' | 'curated' | 'for-you'>(defaultTab as any);
   const [customPaths, setCustomPaths] = useState<CustomPath[]>([]);
   const [certifications, setCertifications] = useState<Certification[]>([]);

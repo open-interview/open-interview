@@ -36,7 +36,6 @@ const Documentation = React.lazy(() => import("@/pages/Documentation"));
 const LearningPaths = React.lazy(() => import("@/pages/UnifiedLearningPaths"));
 const MyPath = React.lazy(() => import("@/pages/UnifiedLearningPaths"));
 const PersonalizedPath = React.lazy(() => import("@/pages/PersonalizedPath"));
-import { ProgressiveOnboarding } from "./components/ProgressiveOnboarding";
 import { SubscriptionGate } from "./components/SubscriptionGate";
 const ManageSubscriptions = React.lazy(() => import("@/pages/ManageSubscriptions"));
 import { ThemeProvider } from "./context/ThemeContext";
@@ -149,7 +148,8 @@ function Router() {
         <Route path="/bot-activity" component={BotActivity} />
         <Route path="/events" component={EventsDashboard} />
         <Route path="/channels" component={Channels} />
-        <Route path="/learning-paths" component={LearningPaths} />
+        <Route path="/questions">{() => { window.location.replace('/channels'); return null; }}</Route>
+        <Route path="/learning-paths">{() => { window.location.replace('/my-path'); return null; }}</Route>
         <Route path="/my-path" component={MyPath} />
         <Route path="/personalized-path" component={PersonalizedPath} />
         <Route path="/profile" component={Profile} />
@@ -158,7 +158,7 @@ function Router() {
         <Route path="/review" component={ReviewSession} />
         <Route path="/flashcards" component={Flashcards} />
         <Route path="/voice-interview" component={VoicePractice} />
-        <Route path="/training" component={VoicePractice} />
+        <Route path="/training">{() => { window.location.replace('/voice-interview'); return null; }}</Route>
         <Route path="/voice-session" component={VoiceSession} />
         <Route path="/voice-session/:questionId" component={VoiceSession} />
         <Route path="/docs" component={Documentation} />
@@ -223,7 +223,6 @@ function AppContent() {
       </SubscriptionGate>
       <GlobalCreditSplash />
       <AchievementNotificationManager />
-      <ProgressiveOnboarding />
     </>
   );
 }

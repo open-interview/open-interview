@@ -261,7 +261,7 @@ export default function About() {
       'sudo': '🔐 Nice try! You need root access for that.',
       'whoami': '👨‍💻 A developer preparing to ace their next interview!',
       'ls': 'questions/  channels/  badges/  stats/  profile/',
-      'cat readme': 'Code Reels: Your AI-powered interview prep companion',
+      'cat readme': 'Open Interview: Your AI-powered interview prep companion',
       'npm install success': '✅ Success installed! Now go crush that interview!',
       'git commit -m "hired"': '🎉 Commit successful! You\'re hired!',
     };
@@ -309,9 +309,9 @@ export default function About() {
   return (
     <>
       <SEOHead
-        title="About Code Reels - AI-Powered Interview Prep for Developers"
-        description="Code Reels is a free, open-source platform with 1000+ technical interview questions. Features AI-generated content, voice practice, progress tracking, and FAANG-style prep."
-        keywords="about code reels, interview prep, ai learning, technical interviews, FAANG prep, software engineer interview, coding practice"
+        title="About Open Interview - AI-Powered Interview Prep for Developers"
+        description="Open Interview is a free, open-source platform with 1000+ technical interview questions. Features AI-generated content, voice practice, progress tracking, and FAANG-style prep."
+        keywords="about open interview, interview prep, ai learning, technical interviews, FAANG prep, software engineer interview, coding practice"
         canonical="https://open-interview.github.io/about"
       />
       <AppLayout title="About" showBackOnMobile fullWidth>
@@ -346,7 +346,7 @@ export default function About() {
                   transition={{ delay: 0.2 }}
                 >
                   <h1 className="text-4xl sm:text-6xl font-bold mb-4">
-                    <span className="text-primary">&gt;</span> <GlitchText>Code_Reels</GlitchText>
+                    <span className="text-primary">&gt;</span> <GlitchText>Open Interview</GlitchText>
                   </h1>
                 </motion.div>
                 
@@ -413,10 +413,10 @@ export default function About() {
                 <div className="bg-background rounded-xl border border-green-500/30 overflow-hidden">
                   <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border-b border-green-500/30">
                     <Terminal className="w-4 h-4 text-green-400" />
-                    <span className="text-xs text-green-400 font-mono">code-reels@terminal ~ </span>
+                    <span className="text-xs text-green-400 font-mono">open-interview@terminal ~ </span>
                   </div>
                   <div className="p-4 font-mono text-sm max-h-64 overflow-y-auto">
-                    <div className="text-green-400 mb-2">Welcome to Code Reels Terminal! Type 'help' for commands.</div>
+                    <div className="text-green-400 mb-2">Welcome to Open Interview Terminal! Type 'help' for commands.</div>
                     {commandHistory.map((line, i) => (
                       <div key={i} className={cn("mb-1", line.startsWith('$') ? 'text-cyan-400' : 'text-green-400/80')}>
                         {line}
@@ -476,7 +476,7 @@ export default function About() {
                       </h2>
                       <p className="text-muted-foreground text-lg leading-relaxed mb-6">
                         We believe every developer deserves access to high-quality interview preparation. 
-                        Code Reels democratizes technical interview prep by providing <span className="text-primary font-bold">free, AI-powered practice</span> that 
+                        Open Interview democratizes technical interview prep by providing <span className="text-primary font-bold">free, AI-powered practice</span> that 
                         adapts to your learning style.
                       </p>
                       <div className="flex flex-wrap gap-3">
@@ -486,7 +486,7 @@ export default function About() {
                       </div>
                     </div>
 
-                    {/* Why Code Reels */}
+                    {/* Why Open Interview */}
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div className="p-5 border border-border rounded-xl bg-card hover:border-primary/50 transition-colors duration-150">
                         <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center mb-4">
@@ -637,7 +637,7 @@ pnpm dev
                       <Users className="w-5 h-5 text-primary" /> Join the Community
                     </h3>
                     <p className="text-muted-foreground mb-6">
-                      Code Reels is built by the community, for the community. Contribute questions, report bugs, or help improve the platform!
+                      Open Interview is built by the community, for the community. Contribute questions, report bugs, or help improve the platform!
                     </p>
                     <div className="flex flex-wrap gap-3">
                       <a href="https://github.com/open-interview/open-interview" target="_blank" rel="noopener noreferrer"
@@ -753,7 +753,7 @@ git push origin feature/awesome-feature`} />
                     </h3>
                     <p className="text-muted-foreground mb-6">
                       Passionate software engineer with expertise in building scalable applications and developer tools. 
-                      Created Code Reels to help developers prepare for technical interviews in a modern, engaging way.
+                      Created Open Interview to help developers prepare for technical interviews in a modern, engaging way.
                       Believes in open source and giving back to the developer community.
                     </p>
                     <div className="flex flex-wrap gap-3">
@@ -790,7 +790,7 @@ git push origin feature/awesome-feature`} />
                       <Heart className="w-5 h-5 text-amber-500" /> Support the Project
                     </h3>
                     <p className="text-muted-foreground mb-4">
-                      If Code Reels has helped you in your interview prep journey, consider supporting the project!
+                      If Open Interview has helped you in your interview prep journey, consider supporting the project!
                     </p>
                     <div className="flex flex-wrap gap-3">
                       <a

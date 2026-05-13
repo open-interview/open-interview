@@ -367,3 +367,208 @@ The `OnboardingFlow` left panel (logo, features list, testimonial carousel) is h
 - D4: Remove non-functional search bar from Docs
 - D7: Rename/hide Events Log
 - D1: Fix 404 console error on asset load
+
+---
+
+---
+
+# Single-Page Content Rule
+
+> **Scope:** Applies to questions, answers, flashcards, voice sessions, and certification questions. Does NOT apply to blog posts.
+
+## Principle
+
+Every piece of content shown to a user in a question viewer, flashcard, or voice session must be fully readable on a single screen without any vertical scrolling. The goal is zero cognitive overhead from layout — the user's full attention stays on understanding, not navigating.
+
+"One screen" is defined as the visible content area on a standard laptop (1280×800) with the sidebar open, which gives approximately **600px of usable vertical height**. At a comfortable reading size (16px, 1.6 line height), that is roughly **120–150 words of prose** before scrolling begins.
+
+---
+
+## Content Audit Findings
+
+This is based on a full statistical scan of all content data files.
+
+### Questions — `explanation` field
+
+| File | Total | Avg words | Max words | Over 150 words | Over 300 words |
+|------|-------|-----------|-----------|----------------|----------------|
+| `algorithms.json` | 329 | 173 | 435 | 183 (56%) | 28 (9%) |
+| `aws.json` | sampled | ~130 | 500+ | ~40% | ~15% |
+| `system-design.json` | sampled | ~200 | 600+ | ~65% | ~25% |
+| All other channel files | est. ~3,000+ | ~150–200 | 600+ | est. 50%+ | est. 15%+ |
+
+**Verdict: FAIL.** The `explanation` field is the primary offender. It is multi-paragraph prose, often with `##` markdown section headers, numbered implementation steps, and occasionally full code blocks (Lua, Python, etc.) embedded inline. These render to 3–5 scrollable screens on a laptop.
+
+### Questions — `answer` field (the TL;DR)
+
+| Metric | Value |
+|--------|-------|
+| Average words | 25–50 |
+| Maximum words (algorithms sample) | ~100 |
+| Items over 100 words | 34 of 329 (10%) |
+
+**Verdict: MOSTLY PASS.** The `answer` field is the short TL;DR sentence (1–3 sentences). Most answers are concise. The ~10% that exceed 100 words need trimming.
+
+### Flashcards — `back` field
+
+| Metric | Value |
+|--------|-------|
+| Total cards | 323 |
+| Average words | 40 |
+| Maximum words | 63 |
+| Cards over 80 words | 0 |
+
+**Verdict: PASS.** Flashcard backs are already within the 1-page limit. The longest cards (57–63 words) are edge cases with complex algorithm descriptions that may feel dense but technically fit.
+
+### Voice Sessions
+
+Voice practice questions pull from the same channel question files (filtered by `voiceSuitable: 1`). The voice UI shows `voiceKeywords` as chips and the `question` text — not the `explanation`. The keyword chips are already compact.
+
+**Verdict: PASS on the current voice UI.** If the voice session ever shows a full answer/explanation, the same limits as questions apply.
+
+### Certifications
+
+`data/certifications.json` contains only certification metadata (exam name, provider, domains, passing score). Actual certification practice questions are served from the channel-specific files (e.g., `aws-saa.json`, `azure-administrator.json`). These are regular `Question` objects and follow the same `answer` + `explanation` structure.
+
+**Verdict: Subject to same rules as Questions above.**
+
+### Coding Challenges — `description` field
+
+| Metric | Value |
+|--------|-------|
+| Average words | 40–60 |
+| Sample max | ~60 |
+
+**Verdict: PASS.** Challenge descriptions are already brief problem statements.
+
+---
+
+## Rewrite Plan
+
+### SP1 — Define Official Word Limits Per Content Type
+
+**What:** Establish and document the exact word-count target for each content field so writers and scripts have a clear, enforceable standard.
+
+| Content field | Current avg | Target max | Notes |
+|--------------|-------------|-----------|-------|
+| `explanation` | 150–200 words | **120 words** | Must drop all `##` section headers and inline code blocks; diagrams go in the `diagram` field |
+| `answer` (TL;DR) | 30–50 words | **50 words** | One to two sentences maximum |
+| Flashcard `back` | 40 words | **60 words** | Already passing; ceiling to prevent regressions |
+| Voice `voiceKeywords` | N/A (chips) | **15 keywords max** | Already fine |
+| Cert question `explanation` | same as question | **120 words** | Same rule |
+| Coding challenge `description` | 40–60 words | **80 words** | Already passing |
+
+**Skill to use:** `think` — use this skill to pressure-test the word limits above against real examples, reason through edge cases (e.g., is 120 words always enough for a distributed systems answer?), and produce a final, justified limits document before any rewriting begins.
+
+---
+
+### SP2 — Audit Script: Identify Every Over-Limit Item
+
+**What:** Write a Node.js script (`scripts/audit-content-length.mjs`) that reads every question JSON file in `data/questions/`, every flashcard in `data/flashcards/`, and produces a report:
+- Total items per file
+- Count and percentage over the word limit
+- Top 20 longest items (id, channel, word count, first 100 chars of explanation)
+- A machine-readable output (`audit-content-length-report.json`) for the rewrite script to consume
+
+This gives an exact list of every item that needs rewriting, channel by channel.
+
+**Skill to use:** No special skill — pure Node.js scripting with `fs` and JSON. Run with `node scripts/audit-content-length.mjs` and commit the report.
+
+---
+
+### SP3 — Rewrite Question `explanation` Fields (Primary Task)
+
+**What:** Every question `explanation` that exceeds 120 words must be rewritten to fit within the limit. The rewrite must:
+- Preserve the technical accuracy of the original
+- Keep the most important concept or mechanism from the original
+- Remove `##` sub-section headers — explanations must be flowing prose, not mini-articles
+- Move any diagrams described in prose to the `diagram` field (Mermaid syntax)
+- Move code examples to the `diagram` field or cut entirely if not essential to the core answer
+- End with one concrete, practical takeaway
+
+**Scale:** Estimated 1,500–2,500 questions across all channel files need rewriting (based on ~50% failure rate across ~3,000+ questions).
+
+**Approach:** Batch rewriting via LLM. Write a script (`scripts/rewrite-explanations.mjs`) that:
+1. Reads the audit report from SP2 to get the list of over-limit items
+2. For each item, sends the original `explanation` to an LLM with a strict prompt: "Rewrite this technical explanation in 120 words or fewer. Keep it accurate. No section headers. No code blocks. One clear takeaway."
+3. Writes the rewritten `explanation` back to the source JSON file in-place
+4. Logs every rewrite to `scripts/rewrite-log.json` with original word count, new word count, and a diff preview
+
+**Skill to use:** `agent-tools` — use the inference.sh CLI to call a capable LLM (Claude Sonnet or GPT-4o) for each rewrite. The `agent-tools` skill documents the exact CLI syntax for piping prompts and getting text back. Process in batches of 20 with a delay to avoid rate limits. Estimate: ~2 hours of automated runtime.
+
+---
+
+### SP4 — Rewrite Question `answer` Fields That Exceed 50 Words
+
+**What:** The ~10% of `answer` (TL;DR) fields that exceed 50 words need trimming. The TL;DR must be exactly that — one or two sentences that a user can read in under 5 seconds.
+
+**Scale:** Estimated 300–400 items across all files.
+
+**Approach:** Same batch-rewrite script as SP3, or a second pass in the same script targeting the `answer` field. Prompt: "Rewrite this answer as a single sentence of 50 words or fewer that captures the core idea."
+
+**Skill to use:** `copywriting` — use this skill to craft the rewrite prompt. The copywriting skill specializes in concise, high-impact writing. Apply its principles (active voice, no filler words, single strong claim per sentence) to the LLM prompt template used in the rewrite script.
+
+---
+
+### SP5 — Review and Quality-Check Rewritten Content
+
+**What:** After the automated rewrites, a human review pass is needed to catch cases where the LLM oversimplified a nuanced answer or introduced an inaccuracy. Focus the review on:
+- Questions tagged `difficulty: "advanced"` (most likely to be oversimplified)
+- Questions with `voiceSuitable: 1` (these are read aloud — flow and naturalness matter)
+- Any rewrite where the word count dropped by more than 60% (aggressive cuts may lose key facts)
+
+The review can be done in the UI itself — navigate to each question, read the explanation, and manually edit if needed.
+
+**Skill to use:** `doc-coauthoring` — use this skill's structured review workflow to systematically co-author improved versions of any flagged explanations. It provides a workflow for iteratively refining content with clear accept/reject cycles.
+
+---
+
+### SP6 — Validate All Content Meets Limits After Rewrite
+
+**What:** Register a validation command that re-runs the audit script after rewrites are complete and asserts zero items over the limit. This becomes a repeatable check to run any time new content is added.
+
+The validation command:
+```bash
+node scripts/audit-content-length.mjs --assert
+```
+
+With `--assert` flag, the script exits with code 1 if any field exceeds its limit, and prints a table of violations. Exit code 0 means full compliance.
+
+**Skill to use:** `validation` — use this skill to register the audit script as a named validation step ("Content Length Compliance"). The skill documents how to register shell commands as CI-style checks that can be re-triggered at any time.
+
+---
+
+### SP7 — Prevent Future Regressions: Content Authoring Guide
+
+**What:** Write a short content authoring guide (`docs/content-standards.md`) that any contributor (human or bot script) must follow when adding new questions, flashcards, or voice sessions. It must include:
+- The word limits table from SP1
+- Bad/good examples for each content type
+- The rule that diagrams and code go in dedicated fields, not inline in `explanation`
+- A note that blogs are explicitly exempt from these limits
+
+**Skill to use:** `content-strategy` — use this skill to structure the guide. It covers how to define content rules, what topics to cover, and how to write guidelines that are actually followed rather than ignored.
+
+---
+
+## Single-Page Content Rule — Summary Table
+
+| ID | Task | Scope | Skill |
+|----|------|-------|-------|
+| SP1 | Define official word limits per content type | Planning | `think` |
+| SP2 | Audit script to identify every over-limit item | Scripts | Node.js only |
+| SP3 | Rewrite `explanation` fields > 120 words (~1,500–2,500 items) | Content data | `agent-tools` |
+| SP4 | Rewrite `answer` TL;DR fields > 50 words (~300–400 items) | Content data | `copywriting` |
+| SP5 | Human review pass on advanced/voice questions | Content QA | `doc-coauthoring` |
+| SP6 | Register validation command for ongoing compliance | CI/tooling | `validation` |
+| SP7 | Write content authoring guide to prevent regressions | Documentation | `content-strategy` |
+
+---
+
+## Recommended Execution Order for Single-Page Rule
+
+1. **SP1** first — lock the limits before any rewriting starts
+2. **SP2** — run the audit to get exact numbers and the item list
+3. **SP3 + SP4** in parallel — both use the same script, can run simultaneously across different channel files
+4. **SP5** — manual review of flagged items after automated rewrites
+5. **SP6** — register validation and run it to confirm zero violations
+6. **SP7** — write the guide so the work doesn't have to be repeated

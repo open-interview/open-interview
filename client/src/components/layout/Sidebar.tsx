@@ -12,7 +12,7 @@ import { cn } from '../../lib/utils';
 import { useState } from 'react';
 import {
   Home, BookOpen, Award, Mic, Code, Target, Flame,
-  Trophy, Bookmark, Brain, Coins, Layers,
+  Trophy, Bookmark, Brain, Layers,
   GraduationCap, BarChart3, ChevronLeft, ChevronRight,
   Search, User, Info, Settings, Zap, Activity, Palette,
   Bell, Sparkles, FileText, Bot
@@ -34,18 +34,18 @@ const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] =
     items: [
       { id: 'channels',       label: 'Channels',       icon: BookOpen, path: '/channels',       shortcut: 'C' },
       { id: 'certifications', label: 'Certifications', icon: Award,    path: '/certifications', shortcut: 'E' },
-      { id: 'my-path',        label: 'My Path',        icon: Brain,    path: '/my-path',        badge: 'NEW' },
+      { id: 'my-path',        label: 'My Path',        icon: Brain,    path: '/my-path' },
     ],
   },
   {
     label: 'Practice',
     icon: Mic,
     items: [
-      { id: 'voice',      label: 'Voice Interview', icon: Mic,    path: '/voice-interview', badge: '+10', shortcut: 'V' },
+      { id: 'voice',      label: 'Voice Interview', icon: Mic,    path: '/voice-interview', shortcut: 'V' },
       { id: 'tests',      label: 'Quick Tests',     icon: Target, path: '/tests',           shortcut: 'T' },
-      { id: 'coding',     label: 'Code Challenges', icon: Code,   path: '/code',           shortcut: 'X', badge: 'NEW' },
+      { id: 'coding',     label: 'Code Challenges', icon: Code,   path: '/code',           shortcut: 'X' },
       { id: 'review',     label: 'SRS Review',      icon: Flame,  path: '/review',          shortcut: 'R' },
-      { id: 'flashcards', label: 'Flashcards',      icon: Layers, path: '/flashcards',      badge: 'NEW' },
+      { id: 'flashcards', label: 'Flashcards',      icon: Layers, path: '/flashcards' },
     ],
   },
   {
@@ -54,7 +54,6 @@ const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] =
     items: [
       { id: 'badges',    label: 'Badges',       icon: Trophy,    path: '/badges' },
       { id: 'bookmarks', label: 'Bookmarks',    icon: Bookmark,  path: '/bookmarks' },
-      { id: 'events',    label: 'Events Log',   icon: Activity,  path: '/events' },
       { id: 'notifications', label: 'Notifications', icon: Bell, path: '/notifications' },
       { id: 'whats-new', label: "What's New",   icon: Sparkles,  path: '/whats-new' },
       { id: 'profile',   label: 'Profile',      icon: User,      path: '/profile' },
@@ -73,7 +72,16 @@ const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] =
     label: 'Tools',
     icon: Palette,
     items: [
-      { id: 'art-studio', label: 'Art Studio', icon: Palette, path: '/generate', badge: 'NEW' },
+      { id: 'art-studio', label: 'Art Studio', icon: Palette, path: '/generate' },
+    ],
+  },
+  {
+    label: 'Admin',
+    icon: Activity,
+    items: [
+      { id: 'bot-activity', label: 'Bot Activity', icon: Bot, path: '/bot-activity' },
+      { id: 'events',       label: 'Activity Log', icon: Activity, path: '/events' },
+      { id: 'settings',     label: 'Settings',     icon: Settings,  path: '/profile' },
     ],
   },
 ];
@@ -87,7 +95,9 @@ export function Sidebar() {
   const [hovered, setHovered] = useState<string | null>(null);
 
   const isActive = (path: string) =>
-    location === path || location.startsWith(path.replace(/\/$/, '') + '/');
+    path === '/'
+      ? location === '/'
+      : location === path || location.startsWith(path.replace(/\/$/, '') + '/');
 
   const filteredSections = sections.map(s =>
     s.label === 'Learn' && preferences.hideCertifications
@@ -247,21 +257,28 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Bottom: credits + XP + settings */}
-      <div className={cn('border-t border-border shrink-0 p-2', isCollapsed && 'p-1.5')}>
-        {/* XP / Level row */}
-        {!isCollapsed && (
-          <button
-            onClick={() => setLocation('/profile')}
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 mb-1.5 rounded-lg bg-primary/8 hover:bg-primary/12 border border-primary/15 transition-colors overflow-hidden"
-          >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-violet-400 flex items-center justify-center shrink-0">
-              <Zap className="w-4 h-4 text-white" />
-            </div>
-            <div className="flex-1 text-left min-w-0">
+      {/* Bottom: Level/XP + Credits + settings */}
+      <div className={cn('border-t border-border shrink-0', isCollapsed ? 'p-1.5' : 'p-2')}>
+        <button
+          onClick={() => setLocation('/profile')}
+          className={cn(
+            'w-full flex items-center rounded-lg hover:bg-muted/50 transition-colors overflow-hidden',
+            isCollapsed ? 'justify-center p-2' : 'gap-2 px-2.5 py-2'
+          )}
+        >
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-violet-400 shrink-0">
+            <Zap className="w-4 h-4 text-white" />
+          </div>
+          {isCollapsed ? (
+            <span className="text-[10px] text-amber-500 font-bold">🪙 {formatCredits(balance)}</span>
+          ) : (
+            <div className="flex-1 min-w-0 text-left">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground">Level {level}</span>
-                <span className="text-[10px] text-primary font-semibold">{totalXP.toLocaleString()} XP</span>
+                <span className="text-xs font-medium">Lvl {level}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground">{totalXP.toLocaleString()} XP</span>
+                  <span className="text-xs font-bold text-amber-500">🪙 {formatCredits(balance)}</span>
+                </div>
               </div>
               <div className="mt-1 h-1 rounded-full bg-primary/20 overflow-hidden">
                 <div
@@ -269,33 +286,6 @@ export function Sidebar() {
                   style={{ width: `${((totalXP % 1000) / 1000) * 100}%` }}
                 />
               </div>
-            </div>
-          </button>
-        )}
-        {isCollapsed && (
-          <button
-            onClick={() => setLocation('/profile')}
-            className="w-full flex items-center justify-center p-2 mb-1 rounded-lg bg-primary/8 hover:bg-primary/12 transition-colors"
-            title={`Level ${level} · ${totalXP} XP`}
-          >
-            <Zap className="w-4 h-4 text-primary" />
-          </button>
-        )}
-
-        <button
-          onClick={() => setLocation('/profile')}
-          className={cn(
-            'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 transition-colors overflow-hidden',
-            isCollapsed && 'justify-center px-1.5'
-          )}
-        >
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shrink-0">
-            <Coins className="w-4 h-4 text-white" />
-          </div>
-          {!isCollapsed && (
-            <div className="flex-1 text-left min-w-0">
-              <div className="text-[10px] text-muted-foreground">Credits</div>
-              <div className="text-sm font-bold text-amber-500 truncate">{formatCredits(balance)}</div>
             </div>
           )}
         </button>

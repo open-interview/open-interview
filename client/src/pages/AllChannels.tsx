@@ -13,7 +13,7 @@ import { useChannelStats } from '../hooks/use-stats';
 import { useProgress } from '../hooks/use-progress';
 import { SEOHead } from '../components/SEOHead';
 import { PageHeader, SearchBar, FilterPills } from '@/components/ui/page';
-import { ChannelCardSkeleton } from '@/components/ui/skeleton-loaders';
+
 import {
   Plus, Sparkles, TrendingUp, ChevronRight, ChevronDown, X, Check,
   BookOpen, BarChart2,
@@ -383,7 +383,7 @@ function ChannelDetail({ channel, questionCount, isSubscribed: subscribed, onTog
 export default function AllChannels() {
   const [, navigate] = useLocation();
   const { isSubscribed, toggleSubscription, preferences } = useUserPreferences();
-  const { stats, loading } = useChannelStats();
+  const { stats } = useChannelStats();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>('');
   const [sortKey, setSortKey] = useState<SortKey>('az');
@@ -398,7 +398,7 @@ export default function AllChannels() {
   const hasSubscriptions = subscribedIds.size > 0;
 
   useEffect(() => {
-    if (!loading && stats.length === 0) {
+    if (stats.length === 0) {
       fetch('/data/channels.json')
         .then(r => r.json())
         .then((channels: any[]) => {
@@ -408,7 +408,7 @@ export default function AllChannels() {
         })
         .catch(() => {});
     }
-  }, [loading, stats]);
+  }, [stats]);
 
   const questionCounts: Record<string, number> = { ...fallbackCounts };
   stats.forEach(s => { questionCounts[s.id] = s.total; });
@@ -469,7 +469,6 @@ export default function AllChannels() {
     mobile:        { label: 'Mobile',       icon: Smartphone,  color: 'var(--color-accent-violet)' },
     fundamentals:  { label: 'Fundamentals', icon: Layers,      color: 'var(--text-secondary)' },
     management:    { label: 'Management',   icon: Users,       color: 'var(--accent-gold)' },
-    certification: { label: 'Certification',icon: Award,       color: 'var(--accent-gold)' },
   };
 
   const renderContent = () => {
@@ -524,6 +523,7 @@ export default function AllChannels() {
     // Grouped by category (default)
     const grouped: Record<string, ChannelConfig[]> = {};
     channels.forEach(ch => {
+      if (ch.category === 'certification') return;
       const cat = ch.category || 'other';
       if (!grouped[cat]) grouped[cat] = [];
       grouped[cat].push(ch);
@@ -574,6 +574,25 @@ export default function AllChannels() {
             </div>
           );
         })}
+
+        {/* Certifications CTA */}
+        <div
+          onClick={() => navigate('/certifications')}
+          className="group relative p-6 rounded-2xl border border-[var(--accent-gold)]/30 bg-gradient-to-br from-[var(--accent-gold)]/10 to-transparent cursor-pointer hover:border-[var(--accent-gold)]/60 transition-all duration-200"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-[var(--accent-gold)]/20 border border-[var(--accent-gold)]/30">
+              <Award className="w-6 h-6" style={{ color: 'var(--accent-gold)' }} />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-bold">Certification Tracks</h3>
+              <p className="text-sm text-muted-foreground">Prepare for AWS, Kubernetes, GCP, Azure, and more</p>
+            </div>
+            <div className="flex items-center gap-1 text-sm font-semibold" style={{ color: 'var(--accent-gold)' }}>
+              Browse<ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   };
@@ -643,17 +662,11 @@ export default function AllChannels() {
                   <option value="progress">Progress</option>
                 </select>
               </div>
-              <FilterPills options={[{id:'',label:'All'}, ...categories.map(c=>({id:c.id,label:c.name}))]}
+              <FilterPills options={[{id:'',label:'All'}, ...categories.filter(c=>c.id!=='certification').map(c=>({id:c.id,label:c.name}))]}
                 active={selectedCategory||''} onChange={id => setSelectedCategory(id||null)} />
             </motion.div>
 
-            {loading && stats.length === 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <ChannelCardSkeleton key={i} />
-                ))}
-              </div>
-            ) : renderContent()}
+            {renderContent()}
 
           </div>
         </div>

@@ -11,7 +11,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { 
-  Bot, Sparkles, CheckCircle, RefreshCw,
+  Bot, Sparkles, CheckCircle, RefreshCw, Lock,
   Activity, Clock, Trash2, FileText, ListTodo, History, Zap, Eye, Wrench,
   ExternalLink, Code, HelpCircle, Mic
 } from "lucide-react";
@@ -215,6 +215,28 @@ function Tab({ active, onClick, children, icon: Icon }: {
 
 
 export default function BotActivity() {
+  const [, setLocation] = useLocation();
+  const [isAdmin] = useState(() => localStorage.getItem('admin_mode') === 'true');
+
+  if (!isAdmin) {
+    return (
+      <AppLayout fullWidth>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center max-w-md px-6 py-12">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h1 className="text-2xl font-bold mb-2">Access Restricted</h1>
+            <p className="text-muted-foreground mb-6">This page contains internal bot pipeline metrics and is only available in admin mode.</p>
+            <button onClick={() => setLocation('/')} className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold">
+              Back to Home
+            </button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   const [activeTab, setActiveTab] = useState<'overview' | 'queue' | 'ledger'>('overview');
   const [botStats, setBotStats] = useState<BotStats[]>([]);
   const [recentRuns, setRecentRuns] = useState<BotRun[]>([]);

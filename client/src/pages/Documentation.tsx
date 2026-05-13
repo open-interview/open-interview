@@ -8,7 +8,7 @@ import {
   BookOpen, Code, Database, Cpu, Layers, GitBranch, 
   Zap, Shield, BarChart3, Palette, ChevronLeft, ChevronRight, ChevronDown,
   Terminal, Server, Globe, Brain, FileCode, Copy, Check,
-  ExternalLink, Search, Menu, X, Home, Sparkles, Box
+  ExternalLink, Menu, X, Home, Sparkles, Box
 } from 'lucide-react';
 import { EnhancedMermaid } from '@/components/EnhancedMermaid';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -28,7 +28,6 @@ const sections = [
 export default function Documentation() {
   const [activeSection, setActiveSection] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Close sidebar on section change (mobile)
   useEffect(() => {
@@ -37,7 +36,7 @@ export default function Documentation() {
 
   return (
     <AppLayout fullWidth>
-      <SEOHead title="Documentation | Code Reels" description="Technical documentation, architecture overview, AI pipeline, API reference, and deployment guides for Code Reels." />
+      <SEOHead title="Documentation | Open Interview" description="Technical documentation, architecture overview, AI pipeline, API reference, and deployment guides for Open Interview." />
     <div className="min-h-screen bg-background text-foreground pt-14 lg:pt-0 overflow-x-hidden">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
@@ -49,36 +48,21 @@ export default function Documentation() {
             >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
-            <Link href="/">
-              <a className="flex items-center gap-3 hover:opacity-80 transition-opacity duration-150 ease-out cursor-pointer">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#58a6ff] to-[#a371f7] flex items-center justify-center">
-                  <BookOpen className="w-5 h-5 text-white" />
-                </div>
-                <div className="hidden sm:block">
-                  <div className="font-semibold text-foreground">Documentation</div>
-                  <div className="text-xs text-muted-foreground">Reel-LearnHub</div>
-                </div>
-              </a>
+            <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity duration-150 ease-out cursor-pointer">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#58a6ff] to-[#a371f7] flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-white" />
+              </div>
+              <div className="hidden sm:block">
+                <div className="font-semibold text-foreground">Documentation</div>
+                <div className="text-xs text-muted-foreground">Open Interview</div>
+              </div>
             </Link>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-[#21262d] rounded-lg border border-[#30363d]">
-              <Search className="w-4 h-4 text-[#8b949e]" />
-              <input
-                type="text"
-                placeholder="Search docs..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-transparent text-sm w-40 focus:w-56 transition-all outline-none placeholder:text-[#6e7681]"
-              />
-              <kbd className="text-[10px] text-[#6e7681] bg-[#161b22] px-1.5 py-0.5 rounded border border-[#30363d]">⌘K</kbd>
-            </div>
-            <Link href="/">
-              <a className="flex items-center gap-2 px-3 py-1.5 text-sm text-[#8b949e] hover:text-white hover:bg-[#21262d] rounded-lg transition-colors duration-150 ease-out cursor-pointer min-h-[44px]">
-                <Home className="w-4 h-4" />
-                <span className="hidden sm:inline">Back to App</span>
-              </a>
+            <Link href="/" className="flex items-center gap-2 px-3 py-1.5 text-sm text-[#8b949e] hover:text-white hover:bg-[#21262d] rounded-lg transition-colors duration-150 ease-out cursor-pointer min-h-[44px]">
+              <Home className="w-4 h-4" />
+              <span className="hidden sm:inline">Back to App</span>
             </Link>
           </div>
         </div>

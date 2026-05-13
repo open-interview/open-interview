@@ -4,7 +4,7 @@
  */
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronRight, X, Sparkles, AlertTriangle } from 'lucide-react';
+import { Check, ChevronRight, X, Sparkles, AlertTriangle, Mic } from 'lucide-react';
 import { allChannelsConfig, getRecommendedChannels, categories } from '../lib/channels-config';
 import { certificationsConfig } from '../lib/certifications-config';
 import { useUserPreferences } from '../context/UserPreferencesContext';
@@ -259,6 +259,17 @@ export function OnboardingFlow({ onComplete }: Props) {
             className="flex items-center gap-1 text-xs text-white/30 hover:text-white/60 transition-colors px-2 py-1">
             Skip <X className="w-3 h-3" />
           </button>
+        </div>
+
+        {/* Mobile brand header */}
+        <div className="lg:hidden flex items-center gap-3 px-4 sm:px-8 pt-6 sm:pt-10 max-w-2xl w-full mx-auto">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center shadow-lg shadow-primary/25">
+            <Mic className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <div className="font-bold text-sm text-white">Open Interview</div>
+            <div className="text-[10px] text-muted-foreground">Interview Prep</div>
+          </div>
         </div>
 
         {/* Step content */}
