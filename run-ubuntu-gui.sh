@@ -4,18 +4,19 @@ set -e
 ROOTFS="$HOME/ubuntu-rootfs"
 ROOTFS_TAR="$ROOTFS/rootfs.tar.xz"
 WORKSPACE="/home/runner/workspace"
-VNC_PORT=15900
+VNC_PORT=5901
 WEB_PORT=16080
 DISPLAY_NUM=99
+KIRO_DIR="/home/runner/.local/share/kiro"
 
 echo "=== Ubuntu GUI via proot ==="
 
 # 0. Full cleanup
 echo "Cleaning up..."
-for p in $(ps aux | grep -E "Xvfb|x11vnc|fluxbox|websockify|rfbproxy" | grep -v grep | awk '{print $2}'); do
+for p in $(ps aux | grep -E "Xvfb|x11vnc|x0vnc|fluxbox|websockify|rfbproxy" | grep -v grep | awk '{print $2}'); do
   kill -9 "$p" 2>/dev/null || true
 done
-pkill -f "rfbproxy.*--rfb-server.*15900" 2>/dev/null || true
+pkill -f "proot.*start-gui.sh" 2>/dev/null || true
 sleep 2
 rm -f /tmp/.X${DISPLAY_NUM}-lock /tmp/.X11-unix/X${DISPLAY_NUM}
 
@@ -33,23 +34,26 @@ if [ ! -d "$ROOTFS/bin" ]; then
   mkdir -p "$ROOTFS/dev"
 fi
 
-# 3. Write startup script inside rootfs
+# 3. Write startup script inside rootfs (Xvfb + fluxbox + kiro only, no x11vnc)
 cat > "$ROOTFS/root/start-gui.sh" << 'SCRIPT'
 #!/bin/sh
-unset PORT
-export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH=/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export DISPLAY=:99
 
 rm -f /tmp/.X99-lock /tmp/.X11-unix/X99
-
 Xvfb :99 -screen 0 1280x720x24 &
 sleep 2
 fluxbox &
 sleep 1
-x11vnc -display :99 -forever -nopw -noxdamage -rfbport 15900 &
+websockify --web /usr/share/novnc 16080 localhost:5901 &
 sleep 1
-websockify --web /usr/share/novnc 16080 localhost:15900 &
-sleep 2
+
+if [ -x /usr/local/bin/kiro ]; then
+  export LD_LIBRARY_PATH=/opt/kiro-ide
+  export GDK_PIXBUF_MODULE_FILE=/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders.cache
+  export GDK_PIXBUF_MODULEDIR=/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders
+  nohup /usr/local/bin/kiro --no-sandbox --disable-gpu > /tmp/kiro-ide.log 2>&1 &
+fi
 
 echo "READY"
 tail -f /dev/null
@@ -69,21 +73,27 @@ nix shell nixpkgs#proot --command \
 # 5. Start GUI services in background
 echo "Starting GUI services..."
 nix shell nixpkgs#proot --command \
-  proot -S "$ROOTFS" -b /nix:/nix -b "$WORKSPACE:/workspace" -b /home/runner/.local/share/kiro:/opt/kiro-ide -w /root \
+  proot -S "$ROOTFS" -b /nix:/nix -b "$WORKSPACE:/workspace" -b "$KIRO_DIR:/opt/kiro-ide" -w /root \
   /bin/sh /root/start-gui.sh &
 PROOT_PID=$!
 
-# 6. Wait and check
-sleep 7
+# 6. Wait for Xvfb to be ready
+sleep 6
 
-# 6b. Start rfbproxy for Replit VNC tab (on host, proxies to x11vnc inside proot)
-echo "Starting rfbproxy for Replit VNC tab..."
-kill_rfbproxy() {
-  pkill -f "rfbproxy.*--rfb-server.*15900" 2>/dev/null || true
-}
-kill_rfbproxy
-nohup rfbproxy --rfb-server 127.0.0.1:15900 --address 0.0.0.0:5900 > /tmp/rfbproxy.log 2>&1 &
+# 6a. Start x0vncserver on host (connects to Xvfb :99, no port conflict)
+echo "Starting x0vncserver..."
+pkill -f "x0vncserver" 2>/dev/null || true
 sleep 1
+x0vncserver -display :99 -rfbport 5901 -localhost -SecurityTypes=None &
+sleep 1
+
+# 6b. Start rfbproxy for Replit VNC tab
+echo "Starting rfbproxy for Replit VNC tab..."
+pkill -f "rfbproxy" 2>/dev/null || true
+sleep 1
+rfbproxy --rfb-server 127.0.0.1:5901 --address 0.0.0.0:5900 &
+sleep 1
+
 echo ""
 echo "=== Health checks ==="
 
@@ -110,7 +120,7 @@ else
   echo "[WEB] port $WEB_PORT: FAIL"
 fi
 
-ss -tlnp 2>/dev/null | grep -E "$VNC_PORT|$WEB_PORT" | while read line; do
+ss -tlnp 2>/dev/null | grep -E "$VNC_PORT|$WEB_PORT|5900" | while read line; do
   echo "  $line"
 done
 
@@ -121,12 +131,12 @@ echo "============================================"
 echo ""
 echo "  noVNC Web UI: http://localhost:$WEB_PORT/vnc.html"
 echo "  VNC direct:   localhost:$VNC_PORT"
-echo "  Replit VNC:   Use the 'VNC' tab in Replit (rfbproxy :5900 -> :15900)"
+echo "  Replit VNC:   Use the 'VNC' tab (rfbproxy :5900 -> :5901)"
 echo "  Display:      :$DISPLAY_NUM"
 echo ""
 echo "  Run GUI apps:"
 echo "    nix shell nixpkgs#proot --command \\"
-echo "      proot -S $ROOTFS -b /nix:/nix -b $WORKSPACE:/workspace -b /opt/kiro-ide -w /root \\"
+echo "      proot -S $ROOTFS -b /nix:/nix -b $WORKSPACE:/workspace -b $KIRO_DIR:/opt/kiro-ide -w /root \\"
 echo '      /bin/sh -c "unset PORT; export PATH=/usr/sbin:/usr/bin:/sbin:/bin; export DISPLAY=:99; cd /workspace; xeyes &"'
 echo ""
 echo "  Install apps:"
