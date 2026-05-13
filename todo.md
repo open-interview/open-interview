@@ -1642,7 +1642,7 @@ The combined analysis found **93 issues total** (17 critical, 26 high, 31 modera
 - [ ] **SPF5**: Add `useReducedMotion` wrapper to framer-motion components
 - [ ] **SPF6**: Extract inline arrow functions in Sidebar, facelift-navbar, MobileHeader
 - [ ] **SPF7**: Begin splitting largest page files (Documentation, CertificationExam)
-- [ ] **SPF8**: Cache `useGlobalStats` to avoid full localStorage scan on every refresh
+- [x] **SPF8**: Cache `useGlobalStats` to avoid full localStorage scan on every refresh
 - [ ] **SPF9**: Debounce high-frequency event listeners
 - [ ] **PF1/PF2/PF3**: Complete existing performance checklist
 

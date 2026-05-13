@@ -109,14 +109,24 @@ export function trackActivity() {
   localStorage.setItem(activityKey, JSON.stringify(filtered));
 }
 
+// Module-level cache so multiple components don't each scan localStorage
+let _globalStatsCache: { data: { date: string; count: number }[]; ts: number } | null = null;
+const CACHE_TTL = 30_000; // 30 seconds
+
 export function useGlobalStats() {
   const [stats, setStats] = useState<{ date: string; count: number }[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Function to refresh stats
-  const refreshStats = () => setRefreshKey(k => k + 1);
+  const refreshStats = () => { _globalStatsCache = null; setRefreshKey(k => k + 1); };
 
   useEffect(() => {
+    // Return cached result if fresh
+    if (_globalStatsCache && Date.now() - _globalStatsCache.ts < CACHE_TTL) {
+      setStats(_globalStatsCache.data);
+      return;
+    }
+
     // Load global activity
     const activityKey = 'global-activity';
     const saved = localStorage.getItem(activityKey);
@@ -158,6 +168,7 @@ export function useGlobalStats() {
       .map(([date, count]) => ({ date, count }))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+    _globalStatsCache = { data: chartData, ts: Date.now() };
     setStats(chartData);
   }, [refreshKey]);
 
