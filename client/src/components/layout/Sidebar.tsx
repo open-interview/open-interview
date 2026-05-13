@@ -3,6 +3,7 @@
  * Spring animation, violet active state, tooltip on collapse
  */
 
+import React from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCredits } from '../../context/CreditsContext';
@@ -86,6 +87,99 @@ const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] =
   },
 ];
 
+interface NavItemElProps {
+  item: NavItem;
+  isCollapsed: boolean;
+  hovered: string | null;
+  setHovered: (id: string | null) => void;
+  isActive: (path: string) => boolean;
+  setLocation: (path: string) => void;
+}
+
+const NavItemEl = React.memo(function NavItemEl({
+  item, isCollapsed, hovered, setHovered, isActive, setLocation,
+}: NavItemElProps) {
+  const Icon = item.icon;
+  const active = isActive(item.path);
+  const showTip = isCollapsed && hovered === item.id;
+
+  return (
+    <div className="relative">
+      <motion.button
+        onClick={() => setLocation(item.path)}
+        onMouseEnter={() => setHovered(item.id)}
+        onMouseLeave={() => setHovered(null)}
+        whileTap={{ scale: 0.96 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+        aria-current={active ? 'page' : undefined}
+        className={cn(
+          'w-full flex items-center gap-3 rounded-[24px] transition-all duration-150 group relative overflow-hidden',
+          isCollapsed ? 'justify-center p-2' : 'px-3 py-2',
+          active
+            ? 'bg-gradient-to-r from-violet-500/20 via-primary/15 to-cyan-400/20 text-primary shadow-[0_4px_16px_rgba(124,58,237,0.15),inset_0_1px_0_rgba(255,255,255,0.1)]'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/70 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+        )}
+      >
+        {/* Gradient left border */}
+        {active && !isCollapsed && (
+          <div className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-gradient-to-b from-violet-500 via-primary to-cyan-400" />
+        )}
+
+        <div className={cn(
+          'flex items-center justify-center w-8 h-8 rounded-xl shrink-0 transition-colors',
+          active ? 'bg-primary/25' : 'bg-transparent group-hover:bg-muted/80'
+        )}>
+          <Icon className="w-4 h-4" />
+        </div>
+
+        {!isCollapsed && (
+          <>
+            <span className="text-sm font-medium flex-1 text-left">{item.label}</span>
+            {item.badge && (
+              <span className={cn(
+                'text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0',
+                item.badge === 'NEW'
+                  ? 'bg-emerald-500/20 text-emerald-400'
+                  : 'bg-amber-500/20 text-amber-400'
+              )}>{item.badge}</span>
+            )}
+            {item.shortcut && (
+              <kbd className="opacity-0 group-hover:opacity-50 text-[10px] px-1 py-0.5 bg-muted rounded border border-border font-mono shrink-0 transition-opacity">
+                {item.shortcut}
+              </kbd>
+            )}
+          </>
+        )}
+      </motion.button>
+
+      {/* Tooltip */}
+      <AnimatePresence>
+        {showTip && (
+          <motion.div
+            initial={{ opacity: 0, x: -6 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -6 }}
+            transition={{ duration: 0.12 }}
+            className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 pointer-events-none"
+          >
+            <div className="bg-popover border border-border rounded-lg shadow-xl px-3 py-1.5 whitespace-nowrap flex items-center gap-2">
+              <span className="text-sm font-medium">{item.label}</span>
+              {item.badge && (
+                <span className={cn(
+                  'text-[10px] px-1.5 py-0.5 rounded font-medium',
+                  item.badge === 'NEW'
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : 'bg-amber-500/20 text-amber-400'
+                )}>{item.badge}</span>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+});
+
 export function Sidebar() {
   const [location, setLocation] = useLocation();
   const { balance, formatCredits, level } = useCredits();
@@ -115,88 +209,6 @@ export function Sidebar() {
     }
     return s;
   });
-
-  const NavItemEl = ({ item }: { item: NavItem }) => {
-    const Icon = item.icon;
-    const active = isActive(item.path);
-    const showTip = isCollapsed && hovered === item.id;
-
-    return (
-      <div className="relative">
-        <motion.button
-          onClick={() => setLocation(item.path)}
-          onMouseEnter={() => setHovered(item.id)}
-          onMouseLeave={() => setHovered(null)}
-          whileTap={{ scale: 0.96 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-          aria-current={active ? 'page' : undefined}
-          className={cn(
-            'w-full flex items-center gap-3 rounded-[24px] transition-all duration-150 group relative overflow-hidden',
-            isCollapsed ? 'justify-center p-2' : 'px-3 py-2',
-            active
-              ? 'bg-gradient-to-r from-violet-500/20 via-primary/15 to-cyan-400/20 text-primary shadow-[0_4px_16px_rgba(124,58,237,0.15),inset_0_1px_0_rgba(255,255,255,0.1)]'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/70 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
-          )}
-        >
-          {/* Gradient left border */}
-          {active && !isCollapsed && (
-            <div className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-gradient-to-b from-violet-500 via-primary to-cyan-400" />
-          )}
-
-          <div className={cn(
-            'flex items-center justify-center w-8 h-8 rounded-xl shrink-0 transition-colors',
-            active ? 'bg-primary/25' : 'bg-transparent group-hover:bg-muted/80'
-          )}>
-            <Icon className="w-4 h-4" />
-          </div>
-
-          {!isCollapsed && (
-            <>
-              <span className="text-sm font-medium flex-1 text-left">{item.label}</span>
-              {item.badge && (
-                <span className={cn(
-                  'text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0',
-                  item.badge === 'NEW'
-                    ? 'bg-emerald-500/20 text-emerald-400'
-                    : 'bg-amber-500/20 text-amber-400'
-                )}>{item.badge}</span>
-              )}
-              {item.shortcut && (
-                <kbd className="opacity-0 group-hover:opacity-50 text-[10px] px-1 py-0.5 bg-muted rounded border border-border font-mono shrink-0 transition-opacity">
-                  {item.shortcut}
-                </kbd>
-              )}
-</>
-            )}
-          </motion.button>
-
-        {/* Tooltip */}
-        <AnimatePresence>
-          {showTip && (
-            <motion.div
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -6 }}
-              transition={{ duration: 0.12 }}
-              className="absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 pointer-events-none"
-            >
-              <div className="bg-popover border border-border rounded-lg shadow-xl px-3 py-1.5 whitespace-nowrap flex items-center gap-2">
-                <span className="text-sm font-medium">{item.label}</span>
-                {item.badge && (
-                  <span className={cn(
-                    'text-[10px] px-1.5 py-0.5 rounded font-medium',
-                    item.badge === 'NEW'
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-amber-500/20 text-amber-400'
-                  )}>{item.badge}</span>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    );
-  };
 
   return (
     <motion.aside
@@ -251,7 +263,7 @@ export function Sidebar() {
       {/* Nav */}
       <nav className={cn('flex-1 overflow-y-auto overflow-x-hidden py-2 custom-scrollbar', isCollapsed ? 'px-1.5' : 'px-2')}>
         {/* Home */}
-        <NavItemEl item={{ id: 'home', label: 'Home', icon: Home, path: '/', shortcut: 'H' }} />
+        <NavItemEl item={{ id: 'home', label: 'Home', icon: Home, path: '/', shortcut: 'H' }} isCollapsed={isCollapsed} hovered={hovered} setHovered={setHovered} isActive={isActive} setLocation={setLocation} />
 
         {filteredSections.map(section => (
           <div key={section.label} className="mt-1">
@@ -271,7 +283,7 @@ export function Sidebar() {
             }
             {(isCollapsed || expandedSections[section.label]) && (
               <div id={`section-${section.label}`}>
-                {section.items.map(item => <NavItemEl key={item.id} item={item} />)}
+                {section.items.map(item => <NavItemEl key={item.id} item={item} isCollapsed={isCollapsed} hovered={hovered} setHovered={setHovered} isActive={isActive} setLocation={setLocation} />)}
               </div>
             )}
           </div>

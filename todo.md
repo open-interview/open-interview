@@ -1613,7 +1613,7 @@ The combined analysis found **93 issues total** (17 critical, 26 high, 31 modera
 
 ### Phase 2 — State Management Consolidation (2–3 hours)
 - [ ] **SS1/SS3/SS4**: Mount RewardProvider (currently dead code), consolidate CreditsContext + AchievementContext into it
-- [ ] **SS6**: Remove internal `balance` vs `state.balance` duplication in CreditsContext
+- [x] **SS6**: Remove internal `balance` vs `state.balance` duplication in CreditsContext
 - [ ] **SS2**: Consolidate 5 notification systems → UnifiedNotificationManager
 - [ ] **SS8**: Remove independent localStorage scanning from BadgeContext
 - [ ] **SS9/SS11**: Create StorageService wrapper with error handling and quota detection
@@ -1636,14 +1636,14 @@ The combined analysis found **93 issues total** (17 critical, 26 high, 31 modera
 ---
 
 ### Phase 4 — Performance (2–3 hours)
-- [ ] **SPF1**: Add `React.memo` to ChannelCard, NavItemEl, EventRow, MobileBottomNav
+- [x] **SPF1**: Add `React.memo` to ChannelCard, NavItemEl, EventRow, MobileBottomNav
 - [ ] **SPF3**: Add list virtualization to AllChannels channel grid
 - [ ] **SPF4**: Consolidate timer management — replace JS timers with CSS/RAF
-- [ ] **SPF5**: Add `useReducedMotion` wrapper to framer-motion components
+- [x] **SPF5**: Add `useReducedMotion` wrapper to framer-motion components
 - [ ] **SPF6**: Extract inline arrow functions in Sidebar, facelift-navbar, MobileHeader
 - [ ] **SPF7**: Begin splitting largest page files (Documentation, CertificationExam)
 - [x] **SPF8**: Cache `useGlobalStats` to avoid full localStorage scan on every refresh
-- [ ] **SPF9**: Debounce high-frequency event listeners
+- [x] **SPF9**: Debounce high-frequency event listeners
 - [ ] **PF1/PF2/PF3**: Complete existing performance checklist
 
 ---
@@ -1665,7 +1665,7 @@ The combined analysis found **93 issues total** (17 critical, 26 high, 31 modera
 - [x] **SD4**: Fix blog article count stat (showing 9 instead of 121+)
 - [ ] **SD1**: Fix E2E tests that reference old branding
 - [x] **P5**: Remove skeleton loaders from Channels (sync data)
-- [ ] **M5**: Rewrite Voice Interview empty state
+- [x] **M5**: Rewrite Voice Interview empty state
 - [ ] **D1-D8**: Complete all minor polish items
 
 ---

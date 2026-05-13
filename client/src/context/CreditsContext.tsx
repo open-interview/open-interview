@@ -7,7 +7,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import {
   getCreditsState,
-  getBalance,
   earnCredits,
   spendCredits,
   redeemCoupon,
@@ -57,7 +56,6 @@ interface CreditsContextType {
 const CreditsContext = createContext<CreditsContextType | null>(null);
 
 export function CreditsProvider({ children }: { children: ReactNode }) {
-  const [balance, setBalance] = useState(0);
   const [state, setState] = useState<CreditsState>({
     balance: 0,
     totalEarned: 0,
@@ -97,7 +95,6 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
       // Sync credit balance
       const newState = getCreditsState();
       setState(newState);
-      setBalance(newState.balance);
       
       // Show splash for credit changes
       if (result.netCredits !== 0) {
@@ -110,7 +107,6 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   const refreshBalance = useCallback(() => {
     const newState = getCreditsState();
     setState(newState);
-    setBalance(newState.balance);
     setHistory(getTransactionHistory());
     setShowVoiceReminder(shouldShowVoiceReminder());
     setRewardState(rewardStorage.getProgress());
@@ -119,7 +115,6 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   const onQuestionView = useCallback(() => {
     const result = deductQuestionViewCredits();
     if (result.success) {
-      setBalance(result.balance);
       showCreditSplash(-result.cost);
       // Also update unified system
       rewardStorage.spendCredits(result.cost);
@@ -130,7 +125,6 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
 
   const onVoiceInterview = useCallback((verdict: string) => {
     const result = awardVoiceInterviewCredits(verdict);
-    setBalance(result.newBalance);
     setShowVoiceReminder(false);
     showCreditSplash(result.totalCredits);
     
@@ -148,7 +142,6 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   const onRedeemCoupon = useCallback((code: string) => {
     const result = redeemCoupon(code);
     if (result.success && result.newBalance !== undefined) {
-      setBalance(result.newBalance);
       if (result.credits) {
         showCreditSplash(result.credits);
         // Also update unified system
@@ -175,7 +168,6 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   const onQuizAnswer = useCallback((isCorrect: boolean) => {
     const result = processQuizAnswer(isCorrect);
     if (result.amount !== 0) {
-      setBalance(result.newBalance);
       showCreditSplash(result.amount);
       refreshBalance();
     }
@@ -193,7 +185,6 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   const onSRSReview = useCallback((rating: 'again' | 'hard' | 'good' | 'easy') => {
     const result = processSRSReview(rating);
     if (result.amount !== 0) {
-      setBalance(result.newBalance);
       showCreditSplash(result.amount);
       refreshBalance();
     }
@@ -209,13 +200,13 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   }, [refreshBalance, showCreditSplash]);
 
   const canAffordCheck = useCallback((amount: number) => {
-    return balance >= amount;
-  }, [balance]);
+    return state.balance >= amount;
+  }, [state.balance]);
 
   return (
     <CreditsContext.Provider
       value={{
-        balance,
+        balance: state.balance,
         state,
         history,
         creditChange,

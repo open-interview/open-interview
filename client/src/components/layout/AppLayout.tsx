@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { Sidebar } from './Sidebar';
 import { MobileBottomNav } from './UnifiedNav';
 import { MobileHeader } from './MobileHeader';
@@ -48,6 +49,8 @@ export function AppLayout({
   const { isCollapsed } = useSidebar();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
+  const transition = prefersReducedMotion ? { duration: 0 } : pageTransition;
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1023px)');
@@ -138,7 +141,7 @@ export function AppLayout({
             initial="initial"
             animate="animate"
             exit="exit"
-            transition={pageTransition}
+            transition={transition}
             ref={scrollRef as React.RefObject<HTMLElement>}
             className={cn(
               'w-full overflow-x-hidden',
