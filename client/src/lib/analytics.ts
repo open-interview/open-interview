@@ -1,4 +1,4 @@
-// Google Analytics Integration for Code Reels
+// Google Analytics Integration for Open Interview
 // This module handles all analytics tracking
 
 declare global {

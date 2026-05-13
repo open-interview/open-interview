@@ -1,5 +1,5 @@
 /**
- * Spaced Repetition System (SRS) for Code Reels
+ * Spaced Repetition System (SRS) for Open Interview
  * 
  * Uses a modified SM-2 algorithm optimized for interview prep:
  * - Shorter initial intervals (interviews are time-sensitive)

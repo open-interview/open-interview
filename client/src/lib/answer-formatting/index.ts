@@ -2,7 +2,7 @@
  * Answer Formatting Standards Library
  * 
  * This module provides a comprehensive system for standardizing answer formatting
- * across Code Reels. It includes pattern detection, validation, and auto-formatting
+ * across Open Interview. It includes pattern detection, validation, and auto-formatting
  * capabilities to ensure consistent, high-quality content.
  * 
  * @module answer-formatting

@@ -620,7 +620,7 @@ export function generateShareableBadge(
   passed: boolean
 ): string {
   const badge = passed ? '✅' : '📊';
-  const text = `${badge} I scored ${score}% on the ${channelName} test on Code Reels!`;
+  const text = `${badge} I scored ${score}% on the ${channelName} test on Open Interview!`;
   const url = 'https://open-interview.github.io/';
   
   return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;

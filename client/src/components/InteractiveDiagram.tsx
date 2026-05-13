@@ -11,7 +11,7 @@ import { useTheme } from '../context/ThemeContext';
 
 // ─── Mermaid theme configs ────────────────────────────────────────────────────
 
-type MermaidTheme = 'default' | 'neutral' | 'dark' | 'forest' | 'base';
+type MermaidTheme = 'default' | 'neutral' | 'dark' | 'forest' | 'base' | 'github-dark';
 
 const mermaidThemeConfigs: Record<MermaidTheme, object> = {
   default: {
@@ -74,10 +74,100 @@ const mermaidThemeConfigs: Record<MermaidTheme, object> = {
       edgeLabelBackground: '#fff4dd',
     },
   },
+  'github-dark': {
+    theme: 'base',
+    themeVariables: {
+      // Backgrounds
+      background: '#0d1117',
+      mainBkg: '#161b22',
+      // Primary nodes — blue accent (services, clients)
+      primaryColor: '#1f3d5c',
+      primaryTextColor: '#e6edf3',
+      primaryBorderColor: '#388bfd',
+      // Secondary nodes — green accent (data/success)
+      secondaryColor: '#1a3a2a',
+      secondaryTextColor: '#3fb950',
+      secondaryBorderColor: '#238636',
+      // Tertiary nodes — purple accent (infra/special)
+      tertiaryColor: '#2d1e40',
+      tertiaryTextColor: '#d2a8ff',
+      tertiaryBorderColor: '#8957e5',
+      // Lines
+      lineColor: '#8b949e',
+      // Cluster / subgraph
+      clusterBkg: '#161b22',
+      clusterBorder: '#30363d',
+      // Title
+      titleColor: '#e6edf3',
+      // Edge labels
+      edgeLabelBackground: '#21262d',
+      // Sequence diagram specific
+      actorBkg: '#161b22',
+      actorBorder: '#388bfd',
+      actorTextColor: '#e6edf3',
+      actorLineColor: '#30363d',
+      signalColor: '#8b949e',
+      signalTextColor: '#e6edf3',
+      labelBoxBkgColor: '#161b22',
+      labelBoxBorderColor: '#388bfd',
+      labelTextColor: '#e6edf3',
+      loopTextColor: '#e6edf3',
+      noteBorderColor: '#8957e5',
+      noteBkgColor: '#2d1e40',
+      noteTextColor: '#d2a8ff',
+      activationBorderColor: '#388bfd',
+      activationBkgColor: '#1f3d5c',
+      // ER diagram
+      attributeBackgroundColorEven: '#161b22',
+      attributeBackgroundColorOdd: '#0d1117',
+      // Git graph
+      git0: '#388bfd',
+      git1: '#3fb950',
+      git2: '#d2a8ff',
+      git3: '#ffa657',
+      git4: '#ff7b72',
+      git5: '#56d364',
+      git6: '#79c0ff',
+      git7: '#f78166',
+      gitBranchLabel0: '#e6edf3',
+      gitBranchLabel1: '#e6edf3',
+      gitBranchLabel2: '#e6edf3',
+      gitBranchLabel3: '#e6edf3',
+      gitBranchLabel4: '#e6edf3',
+      gitBranchLabel5: '#e6edf3',
+      gitBranchLabel6: '#e6edf3',
+      gitBranchLabel7: '#e6edf3',
+      gitInv0: '#0d1117',
+      gitInv1: '#0d1117',
+      gitInv2: '#0d1117',
+      gitInv3: '#0d1117',
+      gitInv4: '#0d1117',
+      gitInv5: '#0d1117',
+      gitInv6: '#0d1117',
+      gitInv7: '#0d1117',
+      // State machine
+      stateBkg: '#161b22',
+      stateBorder: '#388bfd',
+      innerEndBackground: '#388bfd',
+      specialStateColor: '#388bfd',
+      errorBkgColor: '#3d1c1c',
+      errorTextColor: '#ff7b72',
+      // Fill types
+      fillType0: '#1f3d5c',
+      fillType1: '#1a3a2a',
+      fillType2: '#2d1e40',
+      fillType3: '#3a2000',
+      fillType4: '#1a1f2e',
+      fillType5: '#0d1117',
+      fillType6: '#1e2a3a',
+      fillType7: '#2a1e2e',
+    },
+  },
 };
 
 const appThemeToMermaid: Record<string, MermaidTheme> = {
-  'premium-dark': 'dark',
+  'premium-dark': 'github-dark',
+  'dark': 'github-dark',
 };
 
 // ─── Lazy mermaid loader ──────────────────────────────────────────────────────
@@ -155,7 +245,7 @@ export interface InteractiveDiagramProps {
   themeOverride?: MermaidTheme;
   className?: string;
   /** Called after render attempt — true = success, false = error */
-  onRenderResult?: (success: boolean) => void;
+  onRenderResult?: (success: boolean, errorMsg?: string) => void;
 }
 
 export function InteractiveDiagram({ chart, themeOverride, className = '', onRenderResult }: InteractiveDiagramProps) {
@@ -179,7 +269,7 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
   const panZoomExpandedRef = useRef<any>(null);
 
   const effectiveTheme: MermaidTheme =
-    themeOverride ?? selectedTheme ?? appThemeToMermaid[appTheme] ?? 'forest';
+    themeOverride ?? selectedTheme ?? appThemeToMermaid[appTheme] ?? 'github-dark';
 
   const handleThemeChange = (t: MermaidTheme | null) => {
     setSelectedTheme(t);
@@ -233,9 +323,10 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
       } catch (err: any) {
         document.getElementById(`d${renderId}`)?.remove();
         document.getElementById(renderId)?.remove();
+        const errMsg = err?.message ?? 'Render failed';
         if (!cancelled && id === renderIdRef.current) {
-          setError(err?.message ?? 'Render failed');
-          onRenderResult?.(false);
+          setError(errMsg);
+          onRenderResult?.(false, errMsg);
         }
       } finally {
         if (!cancelled && id === renderIdRef.current) setIsLoading(false);
@@ -335,11 +426,12 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
   }, []);
 
   const themes: { id: MermaidTheme; name: string; color: string }[] = [
-    { id: 'default', name: 'Default', color: '#326ce5' },
-    { id: 'neutral', name: 'Neutral', color: '#999' },
-    { id: 'dark',    name: 'Dark',    color: '#22c55e' },
-    { id: 'forest',  name: 'Forest',  color: '#6eaa49' },
-    { id: 'base',    name: 'Base',    color: '#f9a825' },
+    { id: 'github-dark', name: 'GitHub Dark', color: '#388bfd' },
+    { id: 'default',     name: 'Default',     color: '#326ce5' },
+    { id: 'neutral',     name: 'Neutral',      color: '#999' },
+    { id: 'dark',        name: 'Dark',         color: '#22c55e' },
+    { id: 'forest',      name: 'Forest',       color: '#6eaa49' },
+    { id: 'base',        name: 'Base',         color: '#f9a825' },
   ];
 
   if (error) return null;
@@ -374,7 +466,7 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
                 <span className="text-[9px] text-white/50 hidden sm:inline">{effectiveTheme}</span>
               </button>
               {showThemePicker && (
-                <div className="absolute top-full right-0 mt-1 bg-black border border-white/20 rounded shadow-lg z-10 min-w-[120px]">
+                <div className="absolute top-full right-0 mt-1 bg-black border border-white/20 rounded shadow-lg z-10 min-w-[140px]">
                   {themes.map((t) => (
                     <button
                       key={t.id}

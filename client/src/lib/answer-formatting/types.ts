@@ -2,7 +2,7 @@
  * Core type definitions for the Answer Formatting Standards system
  * 
  * This module defines all TypeScript interfaces and types used throughout
- * the answer formatting system for Code Reels.
+ * the answer formatting system for Open Interview.
  */
 
 // ============================================================================

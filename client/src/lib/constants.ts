@@ -178,7 +178,7 @@ export const EXTERNAL_LINKS = {
 // APP METADATA
 // ============================================
 export const APP_METADATA = {
-  NAME: 'Code Reels',
+  NAME: 'Open Interview',
   VERSION: '2.3.0',
   DESCRIPTION: 'Free technical interview prep platform with 1000+ questions across 30+ channels. Voice interview practice, spaced repetition, coding challenges, and gamified learning.',
   CANONICAL_URL: 'https://open-interview.github.io',
