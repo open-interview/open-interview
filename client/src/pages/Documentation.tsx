@@ -3,7 +3,7 @@
  * Comprehensive technical documentation with Mermaid diagrams
  */
 import { useState, useEffect } from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { 
   BookOpen, Code, Database, Cpu, Layers, GitBranch, 
   Zap, Shield, BarChart3, Palette, ChevronLeft, ChevronRight, ChevronDown,
@@ -26,8 +26,22 @@ const sections = [
 ];
 
 export default function Documentation() {
+  const [, setLocation] = useLocation();
+  const [isAdmin] = useState(() => localStorage.getItem('admin_mode') === 'true');
   const [activeSection, setActiveSection] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md px-6 py-12">
+          <h1 className="text-2xl font-bold mb-2">Access Restricted</h1>
+          <p className="text-muted-foreground mb-6">This page is for internal documentation only.</p>
+          <button onClick={() => setLocation('/')} className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold">Back to Home</button>
+        </div>
+      </div>
+    );
+  }
 
   // Close sidebar on section change (mobile)
   useEffect(() => {

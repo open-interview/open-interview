@@ -161,7 +161,8 @@ function Router() {
         <Route path="/training">{() => { window.location.replace('/voice-interview'); return null; }}</Route>
         <Route path="/voice-session" component={VoiceSession} />
         <Route path="/voice-session/:questionId" component={VoiceSession} />
-        <Route path="/docs" component={Documentation} />
+        <Route path="/admin/docs" component={Documentation} />
+        <Route path="/docs">{() => { window.location.replace('/admin/docs'); return null; }}</Route>
         <Route path="/certifications" component={Certifications} />
         <Route path="/manage-subscriptions" component={ManageSubscriptions} />
         <Route path="/certification/:id" component={CertificationPractice} />

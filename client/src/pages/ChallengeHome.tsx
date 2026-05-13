@@ -132,7 +132,7 @@ export default function ChallengeHome() {
         {/* ── Hero ── */}
         <section className="text-center space-y-4">
           <h1 className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
-            Code. Learn. Level Up.
+            Ace your next tech interview.
           </h1>
           <p className="text-muted-foreground text-lg">Practice coding challenges in your browser. No login required.</p>
           {hasProgress && (

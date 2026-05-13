@@ -65,7 +65,6 @@ const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] =
     icon: BookOpen,
     items: [
       { id: 'blog',  label: 'Blog',  icon: FileText, path: '/blog' },
-      { id: 'docs',  label: 'Docs',  icon: BookOpen, path: '/docs' },
     ],
   },
   {
@@ -82,6 +81,7 @@ const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] =
       { id: 'bot-activity', label: 'Bot Activity', icon: Bot, path: '/bot-activity' },
       { id: 'events',       label: 'Activity Log', icon: Activity, path: '/events' },
       { id: 'settings',     label: 'Settings',     icon: Settings,  path: '/profile' },
+      { id: 'docs',         label: 'Docs',         icon: BookOpen,  path: '/admin/docs' },
     ],
   },
 ];

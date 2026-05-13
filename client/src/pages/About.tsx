@@ -351,7 +351,7 @@ export default function About() {
                 </motion.div>
                 
                 <p className="text-lg sm:text-xl text-muted-foreground mb-2">
-                  <TerminalTyping text="Level up your interview game with AI-powered practice" delay={500} />
+                  <TerminalTyping text="Ace your next tech interview." delay={500} />
                 </p>
                 
                 <p className="text-sm text-muted-foreground/70 mb-8">

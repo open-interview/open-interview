@@ -335,6 +335,30 @@ The `OnboardingFlow` left panel (logo, features list, testimonial carousel) is h
 | D6 | Certifications duplicated in Channels page filter pills | Minor | `pages/AllChannels.tsx` |
 | D7 | "Events Log" sidebar label is ambiguous | Minor | Sidebar component |
 | D8 | Onboarding mobile layout has no brand header | Minor | `components/OnboardingFlow.tsx` |
+| R1 | `/coding` vs `/code` point to different components | Moderate | `App.tsx` |
+| R2 | Full page reload on `/code/challenges` redirect | Minor | `App.tsx` |
+| R3 | ExtremeQuestionViewer references non-existent routes | Minor | `components/ExtremeQuestionViewer.tsx` |
+| R4 | Unnecessary 1.5s delay on `/stats` redirect | Minor | `App.tsx` |
+| S1 | Multiple contexts with overlapping reward state | Major | `context/CreditsContext.tsx`, `context/AchievementContext.tsx` |
+| S2 | Silent error swallowing in AllChannels | Moderate | `pages/AllChannels.tsx` |
+| S3 | Race condition in useQuestions session seed | Moderate | `hooks/useQuestions.ts` |
+| S4 | No loading state for Blog fetches | Minor | `pages/blog/BlogHomePage.tsx` |
+| S5 | Duplicate credits state in CreditsContext | Minor | `context/CreditsContext.tsx` |
+| S6 | Silent fallback for ReviewSession lazy load | Moderate | `App.tsx` |
+| A1 | Input fields without visible labels | High | `pages/MyPath.tsx`, `ManageSubscriptions.tsx`, `Documentation.tsx`, `About.tsx` |
+| A2 | Icon-only buttons missing aria-label | High | `pages/Profile.tsx`, `MyPath.tsx`, `Certifications.tsx`, `AllChannels.tsx` |
+| A3 | Low-contrast gray text classes | Medium | Throughout codebase |
+| A4 | Missing focus-visible styles | Medium | Multiple components |
+| A5 | Form validation accessibility gaps | Medium | `components/blog/NewsletterForm.tsx`, `components/ui/form.tsx` |
+| A6 | Missing aria-hidden on decorative icons | Low | Multiple components |
+| PF1 | No list virtualization on large lists | Moderate | `pages/EventsDashboard.tsx`, `AllChannels.tsx`, `BlogListPage.tsx` |
+| PF2 | Heavy framer-motion animations causing lag | Moderate | `pages/About.tsx` (118 files total) |
+| PF3 | Missing React.memo on reusable components | Moderate | `Sidebar.tsx`, `QuestionCard.tsx`, channel cards |
+| PF4 | Inline arrow functions in JSX props | Minor | `Sidebar.tsx`, `UnifiedNav.tsx`, `MobileHeader.tsx` |
+| PF5 | use-level hook runs every second (CRITICAL) | Critical | `hooks/use-level.ts` |
+| PF6 | Large monolithic page files | Minor | `VoiceInterview.tsx`, `Documentation.tsx`, `CertificationExam.tsx` |
+| PF7 | Missing useMemo for expensive derived data | Minor | Various components |
+| PF8 | Missing image optimization | Minor | Blog, article components |
 
 ---
 
@@ -367,6 +391,351 @@ The `OnboardingFlow` left panel (logo, features list, testimonial carousel) is h
 - D4: Remove non-functional search bar from Docs
 - D7: Rename/hide Events Log
 - D1: Fix 404 console error on asset load
+
+**Phase 5 — Swarm-Found Issues (3–4 hours)**
+- PF5: Fix use-level hook polling interval (CRITICAL — causes constant re-renders)
+- S1: Consolidate reward state across contexts
+- A1: Add visible labels to all input fields
+- A2: Add aria-label to all icon-only buttons
+- R1: Consolidate /coding vs /code routes
+- R3: Either implement /extreme/* routes or remove ExtremeQuestionViewer
+- PF1: Add list virtualization to large list components
+- PF2: Add useReducedMotion() to respect user preferences
+- S6: Add error boundary for ReviewSession lazy load failures
+
+---
+
+## Additional Issues Found by Swarm Analysis
+
+> Issues discovered by running parallel agent analysis across routing, state management, accessibility, and performance areas.
+
+---
+
+### Routing & Navigation (4 issues)
+
+#### R1 — `/coding` vs `/code` Point to Completely Different Components
+
+**What's happening:** Two routes with similar names route to completely different components:
+- `/coding` → `CodingChallenge` (coding challenge interface)
+- `/code` → `ChallengeHome` (different coding platform)
+
+Users bookmarking or sharing either URL will get completely different experiences with no way to understand why the URLs are different.
+
+**File:** `App.tsx` lines 144, 146
+
+**Fix:** Pick one canonical route (`/code` or `/coding`), redirect the other, and consolidate to a single coding feature.
+
+---
+
+#### R2 — Full Page Reload on `/code/challenges` Redirect
+
+**What's happening:** The redirect from `/code/challenges` to `/code` uses `window.location.replace()` which causes a full page reload, while all other routing in the app uses Wouter's SPA navigation.
+
+**File:** `App.tsx` line 147
+
+**Fix:** Use Wouter's `setLocation('/code')` instead of `window.location.replace`.
+
+---
+
+#### R3 — ExtremeQuestionViewer References Non-Existent Routes
+
+**What's happening:** The `ExtremeQuestionViewer` component internally navigates to `/extreme/channel/...` paths, but no `/extreme/*` routes are registered in `App.tsx`. This component appears to be dead code — it's not imported anywhere.
+
+**Files:** `components/ExtremeQuestionViewer.tsx`, `App.tsx`
+
+**Fix:** Either implement the `/extreme/*` routes or remove the component entirely if unused.
+
+---
+
+#### R4 — Unnecessary Delay on `/stats` Redirect
+
+**What's happening:** The `/stats` route renders a temporary page that shows a toast and waits 1.5 seconds before redirecting to `/profile`. This delay is unnecessary.
+
+**File:** `App.tsx` (stats route handler)
+
+**Fix:** Redirect immediately to `/profile` or remove the `/stats` route entirely.
+
+---
+
+### State Management (6 issues)
+
+#### S1 — Multiple Contexts with Overlapping Reward State
+
+**What's happening:** Three separate contexts maintain overlapping reward/credit state that can become desynchronized:
+- `CreditsContext`: maintains `balance`, `state.balance`
+- `AchievementContext`: also maintains `level`, `totalXP`, `credits`, `streak`
+- `rewardState` from some external store
+
+When these get out of sync, users may see inconsistent XP, credits, or level displays.
+
+**Files:** `context/CreditsContext.tsx`, `context/AchievementContext.tsx`
+
+**Fix:** Consolidate to a single source of truth. Have one context own the reward state and others derive from it.
+
+---
+
+#### S2 — Silent Error Swallowing in AllChannels
+
+**What's happening:** The fetch operation in AllChannels silently catches errors with an empty catch block — users get no feedback if channel data fails to load.
+
+**File:** `pages/AllChannels.tsx` lines 402-409
+
+```tsx
+fetch('/data/channels.json')
+  .then(r => r.json())
+  .then(...)
+  .catch(() => {});  // Silent failure
+```
+
+**Fix:** Show a user-friendly error message or retry option when the fetch fails.
+
+---
+
+#### S3 — Race Condition in useQuestions Session Seed
+
+**What's happening:** The `sessionSeed` in `useQuestions` depends on `channelId`. Rapid channel switching could cause inconsistent behavior since the seed changes but data may not be ready.
+
+**File:** `hooks/useQuestions.ts` line 65
+
+**Fix:** Add proper cleanup and debounce the seed calculation, or ensure data is ready before applying the seed.
+
+---
+
+#### S4 — No Loading State for Blog Fetches
+
+**What's happening:** Multiple fetches in `BlogHomePage` lack explicit loading states to display to users while data loads.
+
+**File:** `pages/blog/BlogHomePage.tsx` line 77
+
+**Fix:** Add loading skeletons or spinners during blog data fetches.
+
+---
+
+#### S5 — Duplicate Credits State in CreditsContext
+
+**What's happening:** The context maintains THREE values for the same data:
+- `balance` (useState)
+- `state.balance` (CreditsState object)
+- Synced with `rewardState`
+
+This creates multiple sources of truth for the same information, making debugging difficult.
+
+**File:** `context/CreditsContext.tsx` lines 60-117
+
+**Fix:** Use a single source of truth. Remove redundant state variables.
+
+---
+
+#### S6 — Silent Fallback for ReviewSession Lazy Load
+
+**What's happening:** The ReviewSession lazy load fallback catches errors silently — if both primary and fallback imports fail, users see an infinite spinner with no error message.
+
+**File:** `App.tsx` line 28
+
+```tsx
+const ReviewSession = React.lazy(() => 
+  import("@/pages/ReviewSession").catch(() => import("@/pages/ReviewSessionOptimized"))
+);
+```
+
+**Fix:** Add an error boundary that shows a helpful error message when both imports fail.
+
+---
+
+### Accessibility (6 issues)
+
+#### A1 — Input Fields Without Visible Labels
+
+**What's happening:** Multiple input fields rely only on `placeholder` text without visible `<label>` elements, violating WCAG 2.1 SC 1.3.1. Placeholders disappear on focus and are not reliable for accessibility.
+
+**Files & Locations:**
+| File | Line | Field |
+|------|------|-------|
+| `pages/MyPath.tsx` | 334 | Path name input |
+| `pages/MyPath.tsx` | 348 | Search input |
+| `pages/ManageSubscriptions.tsx` | 77 | Search input |
+| `pages/Documentation.tsx` | 68 | Search input |
+| `pages/About.tsx` | 427 | Terminal command input |
+
+**Fix:** Add visible `<label>` elements for each input field.
+
+---
+
+#### A2 — Icon-Only Buttons Missing `aria-label`
+
+**What's happening:** Many buttons contain only icons with no accessible name. Screen readers cannot announce what these buttons do.
+
+**Files & Locations:**
+| File | Lines | Buttons |
+|------|-------|---------|
+| `pages/Profile.tsx` | 187, 188 | Check/X icons |
+| `pages/MyPath.tsx` | 560, 563 | Edit/Delete path (uses `title` only — not reliable) |
+| `pages/Certifications.tsx` | 118 | Modal close |
+| `pages/AllChannels.tsx` | 246, 310 | Expand/close |
+| `components/SearchModal.tsx` | 340, 455 | Clear search |
+| `components/OnboardingFlow.tsx` | 258, 448 | Back/Skip |
+
+**Fix:** Add `aria-label` to all icon-only buttons.
+
+---
+
+#### A3 — Low-Contrast Gray Text Classes
+
+**What's happening:** The codebase uses `text-gray-400`, `text-gray-500`, and `text-muted-foreground` extensively, which may fail WCAG AA contrast requirements (4.5:1 for normal text).
+
+**Files:** Appears 1075+ times throughout the codebase with `text-muted-foreground`
+
+**Fix:** Test both dark and light themes with a contrast checker. Upgrade to higher-contrast color classes where needed.
+
+---
+
+#### A4 — Missing `focus-visible` Styles
+
+**What's happening:** Some interactive elements rely on default browser focus or use `focus:outline-none` without providing alternative visible focus indicators.
+
+**Files:** Search bar inputs, modal close buttons, About page terminal
+
+**Fix:** Add `focus-visible` styles with visible outline or ring.
+
+---
+
+#### A5 — Form Validation Accessibility Gaps
+
+**What's happening:** Form error messages may not be connected to inputs via `aria-describedby`. Some inputs lack `aria-invalid` states when validation fails. Error messages should use `role="alert"` or `aria-live` for screen reader announcements.
+
+**Files:** `components/blog/NewsletterForm.tsx`, `components/ui/form.tsx`
+
+**Fix:** Connect error messages to inputs with proper ARIA attributes.
+
+---
+
+#### A6 — Missing `aria-hidden` on Decorative Icons
+
+**What's happening:** Some decorative icons within interactive components should be marked `aria-hidden="true"` to reduce screen reader noise.
+
+**Fix:** Add `aria-hidden={true}` to decorative icons that are not meaningful on their own.
+
+---
+
+### Performance (8 issues)
+
+#### P1 — No List Virtualization (Large Lists Without Optimization)
+
+**What's happening:** Multiple pages render large arrays without virtualization, causing performance issues when displaying many items.
+
+- **EventsDashboard** (line 604): manually slices to 25 items but loads all data into memory
+- **AllChannels**: renders all channels without windowing
+- **BlogListPage**: renders potentially 100+ articles without virtualization
+- **UnifiedLearningPaths**: path list can grow large
+
+**Fix:** Install and use `@tanstack/react-virtual` or `react-window` to virtualize long lists.
+
+---
+
+#### P2 — Heavy Framer-Motion Animations Causing Lag
+
+**What's happening:** 118 files use framer-motion. The About page (824 lines) has especially heavy animations:
+- Matrix/code-rain animation running on continuous `setInterval` (lines 130, 185)
+- Multiple `motion.div` elements with complex variants
+- Animated counter using `useMotionValue` and `useTransform` (lines 20-32)
+- Terminal typing effect with nested intervals (lines 35-66)
+- Floating icons with staggered animations
+
+**Fix:**
+1. Add device capability detection and reduce animations on low-end devices
+2. Use `useReducedMotion()` hook to respect user preferences
+3. Consider simplifying About page animations
+
+---
+
+#### P3 — Missing React.memo on Reusable Components
+
+**What's happening:** No components use `React.memo` to prevent unnecessary re-renders. This is especially impactful for:
+- **Sidebar NavItemEl** — re-renders on every location change
+- **QuestionCard** — re-renders when parent state changes even if props unchanged
+- **Channel cards** — re-render on any parent state change
+- **List items** in EventsDashboard, BlogList, LearningPaths
+
+**Fix:** Wrap frequently re-rendered components with `React.memo()`:
+```tsx
+const NavItemEl = React.memo(function NavItemEl({ item }) { ... });
+```
+
+---
+
+#### P4 — Inline Arrow Functions in JSX Props
+
+**What's happening:** Multiple components pass inline arrow functions as onClick handlers, creating new function references on every render:
+
+- **Sidebar.tsx** (lines 106, 188, 255, 277, 286, 306, 313)
+- **UnifiedNav.tsx** (lines 118, 143, 160, 212)
+- **MobileHeader.tsx** (lines 89, 97, 120)
+
+**Fix:** Wrap handlers in `useCallback` and pass stable references.
+
+---
+
+#### P5 — use-level Hook Runs Every Second (CRITICAL)
+
+**What's happening:** `use-level.ts` (lines 24-40) sets up a `setInterval` that runs every 1000ms to check for level ups:
+
+```tsx
+const interval = setInterval(() => {
+  const newMetrics = getMetrics();
+  setMetrics(newMetrics);
+}, 1000);
+```
+
+This causes the entire app to re-render every second when the Sidebar (which uses `useCredits` context) is mounted. This is the most impactful performance issue.
+
+**File:** `hooks/use-level.ts` lines 24-40
+
+**Fix:**
+1. Increase interval to 5-10 seconds minimum
+2. Only poll when there's active XP gain
+3. Use event-driven updates instead of polling
+
+---
+
+#### P6 — Large Monolithic Page Files
+
+**What's happening:** Several page files exceed 800 lines without code splitting into smaller components:
+
+| File | Lines |
+|------|-------|
+| VoiceInterview.tsx | 1457 |
+| Documentation.tsx | 1453 |
+| CertificationExam.tsx | 1025 |
+| ArtStudio.tsx | 924 |
+| UnifiedLearningPaths.tsx | 923 |
+| About.tsx | 824 |
+
+**Fix:** Split into feature-based subcomponents with their own files.
+
+---
+
+#### P7 — Missing useMemo for Expensive Derived Data
+
+**What's happening:** Some components compute expensive derived data inside render without memoization:
+- Multiple `.filter().map()` chains in render
+- Date formatting on every render
+- Complex object creation in render
+
+**Fix:** Wrap expensive computations in `useMemo` with proper dependencies.
+
+---
+
+#### P8 — Missing Image Optimization
+
+**What's happening:** Blog posts and articles load images without proper optimization:
+- No responsive images (`srcset`)
+- No lazy loading except via `loading="lazy"` attribute
+- No image format optimization (WebP, AVIF)
+
+**Fix:**
+1. Add `srcset` for responsive images
+2. Consider using `vite-plugin-image-optimizer`
+3. Add blur-up placeholder pattern
 
 ---
 
@@ -572,3 +941,229 @@ With `--assert` flag, the script exits with code 1 if any field exceeds its limi
 4. **SP5** — manual review of flagged items after automated rewrites
 5. **SP6** — register validation and run it to confirm zero violations
 6. **SP7** — write the guide so the work doesn't have to be repeated
+
+---
+
+---
+
+# True Card Layout System
+
+> **Scope:** Flashcard viewer, Question viewer (QuestionCard), Voice session cards, Certification practice cards — any surface where a single piece of content is displayed in a "card" context.
+
+## The Problem
+
+Every card in the app is currently a wide rectangle that fills whatever container it sits in. The flashcard uses `max-w-2xl` (672px) with a landscape `clamp(260px, 42vh, 400px)` height. The QuestionCard is `w-full h-full` with no fixed ratio. On a 1440px wide desktop with the sidebar open, a flashcard stretches to roughly 600px × 340px — the proportions of a banner advertisement, not a card.
+
+Real cards — playing cards, index cards, flash cards — are portrait-oriented objects. They have fixed proportions. You can hold a deck of them. They feel tactile. The current layout has none of this. On wide screens only one card is shown at a time, wasting the horizontal space that could show the user where they are in the deck.
+
+---
+
+## The Vision: What "Actual Cards" Means
+
+### Card Proportions
+
+| Card type | Real-world ratio | Use case |
+|-----------|-----------------|----------|
+| Playing card | 5:7 (portrait) | Flashcards |
+| Index card (3×5") | 3:4 (portrait) | Question cards |
+| Credit card | 8:5 (landscape) | Certification MCQ cards |
+
+Flashcards should use a **portrait 5:7 ratio** — like holding a real flash card. On mobile a card is ~300px × 420px. On desktop the card is a fixed comfortable size (~280px × 392px) and does not grow wider than that regardless of screen width.
+
+Question viewer cards should use a **portrait 3:4 ratio** — like an index card. The question has room to breathe without sprawling edge to edge.
+
+### Multi-Card Layout on Wide Screens
+
+On screens wider than 1024px, there is enough horizontal space to show multiple cards simultaneously. Instead of centering one stretched card with floating arrows, the layout reveals adjacent cards in a **deck spread** — the current card is front and center at full size, and the previous/next cards peek in from the sides at reduced scale with a slight rotation.
+
+```
+Mobile (< 640px)
+┌─────────────────────┐
+│     [  CARD  ]      │  1 card, portrait, full usable width
+└─────────────────────┘
+
+Tablet (640–1023px)
+┌──────────────────────────────┐
+│  [▸]   [  CARD  ]   [◂]     │  Current card + ghost edges of neighbors
+└──────────────────────────────┘
+
+Desktop (1024–1439px)
+┌───────────────────────────────────────┐
+│  [prev]  [  CARD  ]  [next]           │  3 cards — prev/next at 85% + ±6° tilt
+└───────────────────────────────────────┘
+
+Wide (≥ 1440px)
+┌──────────────────────────────────────────────┐
+│  [p2][p1]  [  CURRENT  ]  [n1][n2]  ░ deck  │  5 cards + stacked deck visual
+└──────────────────────────────────────────────┘
+```
+
+---
+
+## Plan Items
+
+### CC1 — Design the Card Proportions and Responsive Breakpoints
+
+**What:** Before touching any code, define the exact pixel dimensions, aspect ratios, and responsive behaviour for each card surface. This is a design decision that cascades across the flashcard viewer, question viewer, voice session, and certification practice.
+
+Decisions to lock in this step:
+- Exact card size at each breakpoint (fixed size, not fluid — the card should not resize as the browser window changes)
+- Aspect ratio per card type: flashcard = portrait 5:7, question card = portrait 3:4
+- How many cards are visible at each breakpoint: 1 → peek → 3 full → 5 full
+- Scale factor for non-focused adjacent cards (suggested: 0.85× for neighbors, 0.72× for secondary neighbors)
+- Rotation angle for adjacent cards (suggested: ±5° to ±8° — enough to read as a fan without looking sloppy)
+- How the layout gracefully handles the sidebar: sidebar is 240px wide, available card area = viewport width − 240px; the breakpoints above are for the card area, not the full viewport
+
+**Skill to use:** `think` — use this skill to reason through the dimension decisions before committing. Run through the exact numbers at each breakpoint: sidebar (240px) + gutter + card area → how many cards fit at what size without overlapping. The wrong proportions will look worse than the current layout.
+
+---
+
+### CC2 — Design the Physical Card Aesthetic
+
+**What:** Real cards have visual properties that make them feel like objects, not UI panels. Define and design each of these:
+
+**Card face:**
+- Tighter rounded corners than the current `border-radius: 28px` — playing cards use ~3–4mm radius; at ~280px wide that is closer to `border-radius: 10–12px`
+- A subtle paper/linen texture as the background (CSS `background-image` with a noise SVG data URI — no external image files)
+- A thin border in a slightly lighter shade than the card face, giving the impression of card edge/thickness
+
+**Card back (shown during flip):**
+- The back of the card should have a distinct repeating geometric pattern or the app logo watermarked, not just the inverse gradient of the front
+- This makes the flip animation feel like physically turning a card over, not toggling between two UI states
+
+**Card depth / deck indicator:**
+- Behind the current card, render 2–3 card-shaped layers offset by ~4px down and ~2px right each, progressively smaller and darker, like a real physical deck sitting on a surface
+- The bottom layer shows a small "×38 remaining" label
+- As the user progresses, the deck visually shrinks (fewer layers) until the last card stands alone
+
+**Drag elevation:**
+- When dragging, the card's shadow grows and scale slightly increases (1.03×) — the card "lifts" off the surface
+- On release past the swipe threshold, the card arcs off-screen with its drag velocity plus a slight rotation — like throwing a card — not a fade
+
+**Skill to use:** `frontend-design` — use this skill to design the specific visual values (shadow layers, noise texture pattern, corner radius, tilt angles) before implementing them. The aesthetic details are subjective and need visual iteration, not calculation.
+
+---
+
+### CC3 — Implement Multi-Card Layout for the Flashcard Viewer
+
+**What:** Apply the card system from CC1/CC2 to `Flashcards.tsx` — the flagship card surface.
+
+Current state:
+- Container: `w-full max-w-lg` wrapping `w-full max-w-2xl` — wide landscape card
+- Height: `clamp(260px, 42vh, 400px)` — scales with viewport
+- Navigation: floating `<button>` arrows `absolute left-2 / right-2`
+- One card at all times regardless of screen width
+
+Target state:
+- Card has a **fixed portrait size** at each breakpoint — does not scale with viewport width
+- Mobile: 1 card, full-width portrait, swipe to navigate
+- Tablet: current card centered with ~25% of adjacent cards visible at edges
+- Desktop: 3 cards rendered — prev (85% scale, +6° tilt), current (100%), next (85% scale, −6° tilt)
+- Wide: 5 cards rendered with the deck stack graphic behind the rightmost card
+- Navigation: tapping/clicking an adjacent card navigates to it (no floating arrow buttons needed on desktop)
+- The channel filter pills, progress bar, and rating buttons remain at the top/bottom, unchanged in layout
+
+**Files affected:** `client/src/pages/Flashcards.tsx`
+
+**Skill to use:** `frontend-design` — for the implementation of the multi-card container layout, scaling transforms, and tilt rotations.
+
+---
+
+### CC4 — Physical Swipe-Throw Animation
+
+**What:** Upgrade the drag-and-release interaction on flashcards from a mechanical slide to a physical card throw.
+
+Current: `framer-motion` `drag="x"` with flat `opacity`/`scale` exit animation.
+
+Target behaviour:
+1. **During drag:** card rotates proportionally to horizontal drag offset — up to ±15° at the swipe threshold distance. Shadow simultaneously grows and scale increases to 1.04× (the card lifts)
+2. **On release past threshold:** card exits with its current velocity plus a slight upward arc (y offset) and continued rotation — it doesn't stop at the screen edge, it flies through
+3. **Next card entrance:** the card that was behind it "rises" from the deck with a quick spring scale animation (0.85 → 1.0) and the deck stack loses one layer
+4. **On release before threshold:** card snaps back to center with a spring bounce, returning to 0° rotation and 1.0 scale
+
+This is the interaction signature of every premium card-based learning app (Anki, Duolingo stories, Tinder). It is what makes swiping through a deck feel rewarding rather than functional.
+
+**Files affected:** `client/src/pages/Flashcards.tsx` (the `motion.div` drag handler, `onDragEnd`, and `AnimatePresence` exit/enter variants)
+
+**Skill to use:** `frontend-design` — the specific Framer Motion spring stiffness, damping, and exit velocity values need to be tuned by feel, not calculated. The design skill is the right one for iterating on these until they feel right.
+
+---
+
+### CC5 — Deck Stack Visual (Cards Remaining)
+
+**What:** Replace the plain `index + 1 / total` counter in the flashcard header with a spatial deck indicator.
+
+Behind the active card, render 2–3 card-shaped `<div>` layers:
+- Layer 1 (directly behind): offset +3px down, +2px right, 97% width, slightly darker background
+- Layer 2: offset +6px down, +4px right, 94% width, darker still
+- Layer 3 (optional for decks > 20 cards): offset +9px down, +6px right, 91% width, darkest
+- The bottom layer shows a small `×38` label in the bottom-right corner
+
+As the user works through the deck:
+- At > 15 cards remaining: show all 3 layers
+- At 6–15 cards: show 2 layers
+- At 2–5 cards: show 1 layer
+- At 1 card: no stack layers, card stands alone — gives a satisfying "final card" moment
+
+The numeric counter in the header can remain as a secondary data point (e.g., small `38 left` text), but the stack is the primary progress signal.
+
+**Files affected:** `client/src/pages/Flashcards.tsx`
+
+**Skill to use:** `frontend-design` — the offset values, color steps, and size tapers for the stack layers are visual parameters that need to be tuned aesthetically.
+
+---
+
+### CC6 — Question Viewer Card: Fixed Width and Portrait Ratio
+
+**What:** The `QuestionCard` component (`QuestionCard.tsx`) is currently `w-full h-full` — fully fluid. In the QuestionViewer, this means the question card stretches to 800–900px on a desktop, which is far too wide.
+
+Target:
+- Maximum card width: **480px**
+- Aspect ratio: **3:4** portrait (480 × 640px on desktop)
+- Question text vertically centered within the card face
+- Card is centered horizontally in the content area
+- The remaining horizontal space on desktop shows the prev/next question cards at 75% scale with ±5° tilt — same multi-card system as CC3
+- On mobile, card is full-width maintaining the 3:4 ratio
+
+The answer panel (AnswerPanel / UnifiedAnswerPanel) sits below the question card as a separate surface — it does not need to match the card proportions, but it should be constrained to the same maximum width as the question card so the two stack neatly.
+
+**Files affected:** `client/src/components/unified/QuestionCard.tsx` and the container in `QuestionViewer.tsx` (or wherever the card is placed in the question browsing flow)
+
+**Skill to use:** `frontend-design` — for the proportion constraints and the multi-card layout adaptation for the question context.
+
+---
+
+### CC7 — Voice Session and Certification Practice Cards
+
+**What:** Both the voice interview session and the certification exam practice show question cards one at a time using `QuestionCard`. Once CC6 establishes the fixed-width portrait system for `QuestionCard`, these surfaces get the new proportions for free — but they need to be checked explicitly to confirm nothing breaks:
+
+- Voice session: question card + keyword chips + recording controls → confirm the card proportions work with the recording UI below
+- Certification practice: MCQ question card + 4 answer option buttons → confirm the card proportions work with the answer options layout. The answer options should appear below the card (not inside it), constrained to the same max-width
+
+**Files affected:** `VoicePractice.tsx`, certification practice component
+
+**Skill to use:** `frontend-design` — visual QA and any adjustments needed for these specific surfaces.
+
+---
+
+## True Card Layout — Summary Table
+
+| ID | Task | Surfaces Affected | Skill |
+|----|------|------------------|-------|
+| CC1 | Design card proportions and responsive breakpoints | All card surfaces | `think` |
+| CC2 | Design physical card aesthetic (texture, back, depth, throw) | All card surfaces | `frontend-design` |
+| CC3 | Multi-card fan layout in Flashcard viewer | `Flashcards.tsx` | `frontend-design` |
+| CC4 | Physical swipe-throw animation (rotate + arc exit + spring entrance) | `Flashcards.tsx` | `frontend-design` |
+| CC5 | Deck stack visual: stacked card layers showing cards remaining | `Flashcards.tsx` | `frontend-design` |
+| CC6 | Fixed-width portrait card in Question viewer | `QuestionCard.tsx` + viewer | `frontend-design` |
+| CC7 | Voice session and certification practice visual QA | `VoicePractice.tsx`, cert component | `frontend-design` |
+
+## Recommended Execution Order for Card Layout
+
+1. **CC1** — lock dimensions and breakpoints (design decision, no code)
+2. **CC2** — design the card aesthetic in isolation (CSS values, textures, shadows)
+3. **CC3** — implement the multi-card layout in the flashcard viewer (flagship surface)
+4. **CC4** — add the throw animation while the flashcard component is being worked on
+5. **CC5** — add the deck stack while still in the flashcard component
+6. **CC6** — apply the fixed-width portrait system to the question viewer card
+7. **CC7** — propagate to voice and certification surfaces and do visual QA

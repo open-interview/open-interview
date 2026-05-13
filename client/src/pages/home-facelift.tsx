@@ -288,9 +288,9 @@ function HeroSection() {
           transition={{ duration: 0.7, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
           className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-6"
         >
-          Master engineering
+          Ace your next
           <br />
-          <span className="gradient-text">interviews with AI</span>
+          <span className="gradient-text">tech interview.</span>
         </motion.h1>
 
         {/* Subtitle */}
