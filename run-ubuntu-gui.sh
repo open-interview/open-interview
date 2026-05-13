@@ -15,6 +15,7 @@ echo "Cleaning up..."
 for p in $(ps aux | grep -E "Xvfb|x11vnc|fluxbox|websockify|rfbproxy" | grep -v grep | awk '{print $2}'); do
   kill -9 "$p" 2>/dev/null || true
 done
+pkill -f "rfbproxy.*--rfb-server.*15900" 2>/dev/null || true
 sleep 2
 rm -f /tmp/.X${DISPLAY_NUM}-lock /tmp/.X11-unix/X${DISPLAY_NUM}
 
@@ -68,12 +69,21 @@ nix shell nixpkgs#proot --command \
 # 5. Start GUI services in background
 echo "Starting GUI services..."
 nix shell nixpkgs#proot --command \
-  proot -S "$ROOTFS" -b /nix:/nix -b "$WORKSPACE:/workspace" -w /root \
+  proot -S "$ROOTFS" -b /nix:/nix -b "$WORKSPACE:/workspace" -b /home/runner/.local/share/kiro:/opt/kiro-ide -w /root \
   /bin/sh /root/start-gui.sh &
 PROOT_PID=$!
 
 # 6. Wait and check
 sleep 7
+
+# 6b. Start rfbproxy for Replit VNC tab (on host, proxies to x11vnc inside proot)
+echo "Starting rfbproxy for Replit VNC tab..."
+kill_rfbproxy() {
+  pkill -f "rfbproxy.*--rfb-server.*15900" 2>/dev/null || true
+}
+kill_rfbproxy
+nohup rfbproxy --rfb-server 127.0.0.1:15900 --address 0.0.0.0:5900 > /tmp/rfbproxy.log 2>&1 &
+sleep 1
 echo ""
 echo "=== Health checks ==="
 
@@ -109,13 +119,14 @@ echo "============================================"
 echo "  Ubuntu GUI is RUNNING"
 echo "============================================"
 echo ""
-echo "  Web UI:  http://localhost:$WEB_PORT/vnc.html"
-echo "  VNC:     localhost:$VNC_PORT"
-echo "  Display: :$DISPLAY_NUM"
+echo "  noVNC Web UI: http://localhost:$WEB_PORT/vnc.html"
+echo "  VNC direct:   localhost:$VNC_PORT"
+echo "  Replit VNC:   Use the 'VNC' tab in Replit (rfbproxy :5900 -> :15900)"
+echo "  Display:      :$DISPLAY_NUM"
 echo ""
 echo "  Run GUI apps:"
 echo "    nix shell nixpkgs#proot --command \\"
-echo "      proot -S $ROOTFS -b /nix:/nix -b $WORKSPACE:/workspace -w /root \\"
+echo "      proot -S $ROOTFS -b /nix:/nix -b $WORKSPACE:/workspace -b /opt/kiro-ide -w /root \\"
 echo '      /bin/sh -c "unset PORT; export PATH=/usr/sbin:/usr/bin:/sbin:/bin; export DISPLAY=:99; cd /workspace; xeyes &"'
 echo ""
 echo "  Install apps:"

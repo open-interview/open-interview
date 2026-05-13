@@ -196,7 +196,7 @@ export function Sidebar() {
           </motion.div>
           {!isCollapsed && (
             <div className="text-left overflow-hidden">
-              <div className="font-bold text-sm leading-tight whitespace-nowrap">Code Reels</div>
+              <div className="font-bold text-sm leading-tight whitespace-nowrap">Open Interview</div>
               <div className="text-[10px] text-muted-foreground whitespace-nowrap">Interview Prep</div>
             </div>
           )}

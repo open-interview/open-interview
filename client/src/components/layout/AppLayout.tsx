@@ -150,7 +150,7 @@ export function AppLayout({
       <MobileBottomNav />
 
       <footer className="sr-only" role="contentinfo">
-        Code Reels — Technical Interview Preparation
+        Open Interview — Technical Interview Preparation
       </footer>
 
       <UnifiedSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />

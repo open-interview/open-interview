@@ -104,7 +104,7 @@ export function MobileHeader({
                 <Brain className="w-4 h-4 text-white" strokeWidth={2.5} />
               </div>
               {!title && (
-                <span className="font-bold text-sm text-foreground">Code Reels</span>
+                <span className="font-bold text-sm text-foreground">Open Interview</span>
               )}
             </button>
           )}

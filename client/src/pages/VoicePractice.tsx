@@ -102,15 +102,14 @@ export default function VoicePractice() {
       setLoading(true);
       const subscribedChannels = getSubscribedChannels();
 
-      if (subscribedChannels.length === 0) {
-        setLoading(false);
-        return;
-      }
-
       try {
         const allQuestions: Question[] = [];
 
-        for (const channel of subscribedChannels) {
+        const channelsToLoad = subscribedChannels.length > 0
+          ? subscribedChannels
+          : (await ChannelService.getAll()).slice(0, 6).map(c => c);
+
+        for (const channel of channelsToLoad) {
           try {
             const data = await ChannelService.getData(channel.id);
             const suitable = data.questions.filter((q: Question) =>
@@ -381,7 +380,7 @@ export default function VoicePractice() {
     return (
       <>
         <SEOHead
-          title="Voice Practice | Code Reels"
+          title="Voice Practice | Open Interview"
           description="Practice answering interview questions with voice recording and feedback"
           canonical="https://open-interview.github.io/voice-practice"
         />
@@ -484,7 +483,7 @@ export default function VoicePractice() {
   return (
     <>
       <SEOHead
-        title="Voice Practice | Code Reels"
+        title="Voice Practice | Open Interview"
         description="Practice answering interview questions with voice recording and feedback"
         canonical="https://open-interview.github.io/voice-practice"
       />

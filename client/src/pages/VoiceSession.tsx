@@ -11,7 +11,6 @@ import {
   Loader2, RotateCcw, ArrowRight, Share2, RefreshCw
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
-import { getAllQuestionsAsync } from '../lib/questions-loader';
 import { useCredits } from '../context/CreditsContext';
 import { useAchievementContext } from '../context/AchievementContext';
 import { useUserPreferences } from '../hooks/use-user-preferences';
@@ -23,8 +22,7 @@ import {
   type SessionState,
   type SessionResult,
   loadVoiceSessions,
-  generateSessionsFromQuestions,
-  buildSessionQuestions,
+  buildSessionQuestionsAsync,
   startSession,
   beginSession,
   submitAnswer,
@@ -36,7 +34,6 @@ import {
   clearSessionState,
   saveSessionToHistory
 } from '../lib/voice-interview-session';
-import type { Question } from '../types';
 
 type PageState = 'loading' | 'select' | 'intro' | 'recording' | 'editing' | 'feedback' | 'results';
 
@@ -173,7 +170,6 @@ export default function VoiceSession() {
   
   const [pageState, setPageState] = useState<PageState>('loading');
   const [availableSessions, setAvailableSessions] = useState<VoiceSession[]>([]);
-  const [allQuestions, setAllQuestions] = useState<Question[]>([]);
   const [sessionState, setSessionState] = useState<SessionState | null>(null);
   const [sessionResult, setSessionResult] = useState<SessionResult | null>(null);
   
@@ -193,20 +189,16 @@ export default function VoiceSession() {
     pageStateRef.current = pageState;
   }, [pageState]);
 
-  // Load sessions and questions
+  // Load sessions only — questions are fetched on-demand when a session starts
   useEffect(() => {
     async function loadData() {
       try {
-        const questions = await getAllQuestionsAsync();
-        setAllQuestions(questions);
-        
-        let sessions = await loadVoiceSessions();
-        if (sessions.length === 0) {
-          sessions = generateSessionsFromQuestions(questions);
-        }
+        const sessions = await loadVoiceSessions();
         
         const subscribedChannels = preferences.subscribedChannels;
-        const filteredSessions = sessions.filter(s => subscribedChannels.includes(s.channel));
+        const filteredSessions = subscribedChannels.length > 0
+          ? sessions.filter(s => subscribedChannels.includes(s.channel))
+          : sessions;
         setAvailableSessions(filteredSessions);
         
         const saved = loadSessionState();
@@ -270,17 +262,24 @@ export default function VoiceSession() {
     return () => { try { recognition.stop(); } catch (e) { } };
   }, []);
 
-  const startNewSession = useCallback((session: VoiceSession) => {
-    const sessionQuestions = buildSessionQuestions(session, allQuestions);
-    if (sessionQuestions.length < 3) {
-      setError('Not enough questions available for this session');
-      return;
+  const startNewSession = useCallback(async (session: VoiceSession) => {
+    setPageState('loading');
+    try {
+      const sessionQuestions = await buildSessionQuestionsAsync(session);
+      if (sessionQuestions.length < 3) {
+        setError('Not enough questions available for this session. Try another.');
+        setPageState('select');
+        return;
+      }
+      const newState = startSession(session, sessionQuestions);
+      setSessionState(newState);
+      saveSessionState(newState);
+      setPageState('intro');
+    } catch (err) {
+      setError('Failed to load session questions. Please try again.');
+      setPageState('select');
     }
-    const newState = startSession(session, sessionQuestions);
-    setSessionState(newState);
-    saveSessionState(newState);
-    setPageState('intro');
-  }, [allQuestions]);
+  }, []);
 
   const beginQuestions = useCallback(() => {
     if (!sessionState) return;
@@ -420,8 +419,8 @@ export default function VoiceSession() {
 
     return (
       <>
-        <SEOHead title="Voice Sessions | Code Reels" description="Practice interview topics with focused question sessions" />
-        <AppLayout fullWidth hideNav>
+        <SEOHead title="Voice Sessions | Open Interview" description="Practice interview topics with focused question sessions" />
+        <AppLayout fullWidth>
           <div className="min-h-screen bg-background text-foreground">
           <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
             <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">

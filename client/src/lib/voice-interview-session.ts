@@ -133,11 +133,7 @@ export function buildSessionQuestions(
     
     if (question) {
       const keywords = question.voiceKeywords || [];
-      
-      // Build critical points from keywords with weights
       const criticalPoints = buildCriticalPoints(keywords);
-      
-      // Build ideal answer from the question's answer field
       const idealAnswer = buildIdealAnswer(question.answer, keywords);
       
       sessionQuestions.push({
@@ -151,6 +147,39 @@ export function buildSessionQuestions(
     }
   }
   
+  return sessionQuestions;
+}
+
+/**
+ * Build session questions by fetching only the needed questions by ID.
+ * Much faster than preloading all questions — fetches per-channel JSON
+ * only for the channels referenced by this session.
+ */
+export async function buildSessionQuestionsAsync(
+  session: VoiceSession
+): Promise<SessionQuestion[]> {
+  const { getQuestionByIdAsync } = await import('./questions-loader');
+  const sessionQuestions: SessionQuestion[] = [];
+
+  for (let i = 0; i < session.questionIds.length; i++) {
+    const questionId = session.questionIds[i];
+    const question = await getQuestionByIdAsync(questionId);
+    if (!question) continue;
+
+    const keywords = question.voiceKeywords || [];
+    const criticalPoints = buildCriticalPoints(keywords);
+    const idealAnswer = buildIdealAnswer(question.answer, keywords);
+
+    sessionQuestions.push({
+      id: question.id,
+      question: question.question,
+      criticalPoints,
+      idealAnswer,
+      difficulty: question.difficulty,
+      order: i + 1
+    });
+  }
+
   return sessionQuestions;
 }
 
@@ -574,12 +603,15 @@ function generateSessionSummary(
 export function generateSessionsFromQuestions(questions: Question[]): VoiceSession[] {
   const sessions: VoiceSession[] = [];
   
-  // Filter voice-suitable questions
-  const suitable = questions.filter(q => 
-    q.voiceSuitable === true && 
-    q.voiceKeywords && 
+  // Filter voice-suitable questions; fall back to all questions if none are marked
+  let suitable = questions.filter(q =>
+    q.voiceSuitable === true &&
+    q.voiceKeywords &&
     q.voiceKeywords.length >= 3
   );
+  if (suitable.length === 0) {
+    suitable = questions.filter(q => q.question && q.answer);
+  }
   
   // Group by channel + subChannel
   const groups: Record<string, Question[]> = {};
