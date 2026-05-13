@@ -1198,3 +1198,115 @@ The answer panel (AnswerPanel / UnifiedAnswerPanel) sits below the question card
 5. **CC5** — add the deck stack while still in the flashcard component
 6. **CC6** — apply the fixed-width portrait system to the question viewer card
 7. **CC7** — propagate to voice and certification surfaces and do visual QA
+---
+
+# Todo (Concise)
+
+## Critical Bugs (P0)
+
+- [ ] **Onboarding modal blocks deep links** — `ProgressiveOnboarding` component renders on every route, blocking direct navigation to deep-linked pages. Partially mitigated by route check on `/` only, but still breaks bookmarked URLs for fresh users
+- [ ] **`/events` page crashes browser renderer** — Unhandled component error; entire page crashes when navigating to `/events`. Likely a missing import or null state
+- [ ] **`/channels` page load timeout** — Page hangs or times out on initial load under certain conditions (possibly infinite re-render from `use-level` hook)
+- [ ] **`/whats-new` route returns 404** — Route is not registered in `App.tsx` router. File may still exist in pages/
+- [ ] **404 page renders empty** — No fallback UI; user sees blank white page
+- [ ] **Profile page renders blank** — No error boundary or fallback content; user sees empty page
+- [ ] **Mobile bottom nav hidden at 375px** — Bottom navigation bar not visible on narrow viewports; users cannot navigate
+
+## High Priority (P1)
+
+- [ ] **`use-level` hook runs every second** — `setInterval(1000)` causes constant re-renders across the entire component tree. Replace with event-driven updates or reduce polling interval
+- [ ] **10 orphaned page files consuming bundle** — Files exist in `client/src/pages/` but are not imported in `App.tsx` router. Delete or re-register them
+- [ ] **Dual onboarding systems conflict** — Both `SubscriptionGate` and `ProgressiveOnboarding` handle first-user experience. Consolidate into one system
+- [ ] **`/stats` silently redirects** — No toast, no feedback, no explanation. User is confused why navigation happened
+- [ ] **Blog pages use separate CSS variable system** — Blog uses its own CSS variables (e.g. `--blog-bg`, `--blog-text`), breaking visual continuity with main app theme
+- [ ] **AllChannels page uses skeleton loaders for synchronous data** — Skeleton loaders shown for data loaded synchronously from JSON; flashes loading state unnecessarily
+- [ ] **Profile + Bookmarks lack localStorage error handling** — No try/catch around localStorage reads; corrupted storage crashes the page
+- [ ] **CertificationPractice navigates to wrong channel** — Routing logic maps certifications to incorrect channel IDs
+- [ ] **`/questions` route returns 404** — Route not registered or broken import
+- [ ] **Documentation page shows internal developer content** — User-facing docs page leaks internal dev instructions
+
+## Medium Priority (P2)
+
+- [ ] **Mobile bottom nav overlaps last content row** — On scroll, bottom nav covers the last row of interactive content
+- [ ] **Several low-contrast text instances** — Gray-on-gray text fails WCAG AA contrast minimums (`#6b7280` on `#f9fafb` and similar)
+- [ ] **Blog has no visual continuity with main app** — Separate header, separate styling, no shared navigation
+- [ ] **Fresh user sees "Voice Interview +10" badge before subscribing to channels** — Badge shown with no way to earn it; misleading gamification
+- [ ] **Stale brand names scattered across pages** — "Code Reels" and "Reel-LearnHub" still appear in UI text and metadata
+
+## Performance
+
+- [ ] **No list virtualization on large pages** — Channels list, Questions list, Blog list all render every item; use `react-window` or `@tanstack/virtual`
+- [ ] **Heavy framer-motion animations on 118 files** — Every component has entrance animations; causes jank on mid-range devices. Reduce to meaningful moments only
+- [ ] **No `React.memo` on reusable components** — `QuestionCard`, `ChannelCard`, `Badge` and other frequently-rendered components lack memoization
+- [ ] **`ChallengeHome.tsx` hardcodes 20+ Tailwind gray classes** — No design token usage; breaks theme switching
+- [ ] **Large JSON files loaded synchronously on page load** — Some data files (~MB) block rendering; lazy-load or split further
+- [ ] **Pagefind search index rebuild on every build** — Can be optimized to rebuild only when content changes
+
+## Accessibility
+
+- [ ] **Input fields without visible labels** — 5+ locations use placeholder-only inputs with no `<label>` element
+- [ ] **Icon-only buttons missing `aria-label`** — 8+ buttons with SVG icons have no accessible name
+- [ ] **Low-contrast gray text** — Widespread use of `text-gray-400/500` on light gray backgrounds fails WCAG AA
+- [ ] **Missing `focus-visible` styles** — Keyboard navigation invisible on interactive elements
+- [ ] **37/42 pages have zero `data-testid` attributes** — Makes E2E testing fragile; relies on visual text selectors
+- [ ] **VoicePractice has no error state when microphone is denied** — User sees spinner forever when mic permission blocked
+- [ ] **No skip-to-content link** — Keyboard users must tab through entire nav to reach main content
+
+## Testing
+
+- [ ] **Fix 14 failing E2E tests** — Current run: 129 passed, 14 failed, 5 skipped. Main failures:
+  - [ ] 5 onboarding tests — modal not mounting, skip button missing
+  - [ ] 3 navigation tests — `/events` crash, `/whats-new` timeout, empty 404
+  - [ ] 2 channels tests — page timeout, cards not visible
+  - [ ] 1 profile test — blank profile page
+  - [ ] 1 accessibility test — wrong assertion logic
+  - [ ] 2 mobile tests — bottom nav not visible at 375px
+- [ ] **Add unit tests for core hooks** — `useAuth`, `useProgress`, `useLevel` have no tests
+- [ ] **Add component tests with React Testing Library** — Zero component-level tests currently
+- [ ] **Add `data-testid` attributes to remaining 37 pages** — Target most-broken pages first
+- [ ] **Set up API integration tests for server endpoints**
+- [ ] **Add accessibility assertion tests** — Use `@axe-core/playwright` for automated a11y checks
+
+## DevOps / CI-CD
+
+- [ ] **Fix GitHub Analytics bot PostgreSQL dependency** — `github-analytics-bot.js` still expects a DB. Rewrite to file-based storage or remove
+- [ ] **Re-enable and fix `deploy-blog.yml`** — Currently disabled; was the legacy blog deployment
+- [ ] **Remove disabled workflows or document reason** — `deploy-astro-blog.yml` is dead code
+- [ ] **Consolidate Playwright config** — Tests exist in both `e2e/` and `tests/e2e/`; confusion about which is canonical. Move all to `e2e/`
+- [ ] **Reduce CI runtime** — E2E tests take ~15min; target <10min by splitting into shards
+
+## Content Pipeline
+
+- [ ] **Validate all 93 per-channel question files** — After splitting monolithic `tests.json`, ensure no questions were lost or malformed
+- [ ] **Verify blog post quality** — AI-generated 147+ posts; run content quality validation on all
+- [ ] **Add flashcard content** — Only 323 cards exists; expand coverage to match question bank
+- [ ] **Fix SVG generator output** — Some generated SVGs have rendering artifacts or broken references
+- [ ] **Add content freshness dates** — Questions have no "last updated" metadata; users can't tell if content is stale
+
+## Technical Debt
+
+- [ ] **Remove dead code** — Search for unused exports, commented-out blocks, and dead imports
+- [ ] **Consolidate `lib/` utilities** — 42 files with overlapping responsibilities (formatting, validation, helpers)
+- [ ] **Standardize error handling** — Mix of try/catch, `.catch()`, and unhandled promise rejections
+- [ ] **Type strictness** — Many `any` types; enable `strict: true` in tsconfig and fix violations
+- [ ] **Remove Drizzle ORM remnants** — `shared/schema.ts` still has Drizzle imports; clean up
+- [ ] **Fix ESLint/TS errors** — Run full lint pass and address warnings
+- [ ] **Remove stale bot scripts** — Several scripts in `script/` directory are unused; audit and delete
+- [ ] **Update README** — Outdated setup instructions, missing feature docs, stale screenshots
+
+## Future / Nice-to-Have
+
+- [ ] **Dark mode** — No theme toggle; users want light/dark switching
+- [ ] **User accounts** — Currently localStorage-only; no cross-device progress sync
+- [ ] **Offline support** — Service worker + cache for offline question browsing
+- [ ] **PWA support** — Add manifest, install prompt, push notifications
+- [ ] **API rate limiting** — Add to Express server
+- [ ] **i18n** — Multi-language support for international users
+- [ ] **CI/CD dashboard** — Visual dashboard showing pipeline health and deploy status
+- [ ] **Automated dependency updates** — Use Dependabot or Renovate
+- [ ] **Load testing** — Use k6 or Artillery to benchmark static site performance
+- [ ] **Mobile app** — React Native or PWA wrapper for app store distribution
+
+---
+
+**Legend**: `[ ]` = not started, `[~]` = in progress, `[x]` = done

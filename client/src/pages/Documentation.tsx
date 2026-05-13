@@ -1152,55 +1152,50 @@ function APISection() {
   const flowDiagram = `
 sequenceDiagram
     participant C as Client
-    participant S as Server
-    participant DB as Turso
-    participant V as Qdrant
+    participant F as Static JSON Files
     
-    C->>S: GET /api/questions/:id
-    S->>DB: SELECT question
-    DB-->>S: Question data
-    S->>V: Find similar
-    V-->>S: Similar IDs
-    S->>DB: Get similar
-    DB-->>S: Similar data
-    S-->>C: Response
+    C->>F: GET /data/channels.json
+    F-->>C: Channel list
+    C->>F: GET /data/{channelId}.json
+    F-->>C: Questions + metadata
+    C->>F: GET /data/coding-challenges.json
+    F-->>C: Coding challenges
+    Note over C,F: All data is pre-built at deploy time\\nNo server required
 `;
 
   const endpoints = [
-    { method: 'GET', path: '/api/questions', desc: 'List questions with filters', params: 'channel, difficulty, limit' },
-    { method: 'GET', path: '/api/questions/:id', desc: 'Get single question with similar', params: 'id' },
-    { method: 'POST', path: '/api/questions', desc: 'Create new question', params: 'body: Question' },
-    { method: 'PATCH', path: '/api/questions/:id', desc: 'Update question', params: 'id, body: Partial<Question>' },
-    { method: 'GET', path: '/api/channels', desc: 'List all channels with stats', params: '-' },
-    { method: 'GET', path: '/api/progress/:userId', desc: 'Get user SRS progress', params: 'userId' },
-    { method: 'POST', path: '/api/progress', desc: 'Update SRS progress', params: 'body: ProgressUpdate' },
-    { method: 'GET', path: '/api/achievements/:userId', desc: 'Get user achievements', params: 'userId' },
-    { method: 'POST', path: '/api/search', desc: 'Full-text search', params: 'body: { query, filters }' },
+    { method: 'GET', path: '/data/channels.json', desc: 'All channels with question counts' },
+    { method: 'GET', path: '/data/{channelId}.json', desc: 'Questions, subchannels, companies per channel' },
+    { method: 'GET', path: '/data/coding-challenges.json', desc: 'All coding challenges' },
+    { method: 'GET', path: '/data/certifications.json', desc: 'All certifications' },
+    { method: 'GET', path: '/data/learning-paths.json', desc: 'All learning paths' },
+    { method: 'GET', path: '/data/flashcards.json', desc: 'All flashcards' },
+    { method: 'GET', path: '/data/blog-posts.json', desc: 'Blog post index' },
+    { method: 'GET', path: '/blog-data.json', desc: 'Full blog content' },
   ];
 
   return (
     <div>
       <SectionHeader 
         icon={Server} 
-        title="API Reference" 
-        description="REST API endpoints for questions, progress tracking, achievements, and search. All responses are JSON with consistent error handling."
+        title="Data Sources" 
+        description="The app is a fully static SPA — all data is served from pre-built JSON files. No backend server required."
         color="#39c5cf"
       />
       
       <DiagramCard
-        title="Request Flow"
-        description="Typical request flow from client through server to databases"
+        title="Data Flow"
+        description="All data flows directly from static JSON files — no backend server involved"
         diagram={flowDiagram}
       />
       
-      <h2 className="text-xl font-semibold text-white mt-10 mb-4">Endpoints</h2>
+      <h2 className="text-xl font-semibold text-white mt-10 mb-4">Data Files</h2>
       
       <div className="rounded-xl border border-[#30363d] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-[#161b22]">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-[#8b949e]">Method</th>
                 <th className="px-4 py-3 text-left font-medium text-[#8b949e]">Path</th>
                 <th className="px-4 py-3 text-left font-medium text-[#8b949e] hidden md:table-cell">Description</th>
               </tr>
@@ -1208,15 +1203,6 @@ sequenceDiagram
             <tbody className="divide-y divide-[#21262d]">
               {endpoints.map((ep, i) => (
                 <tr key={i} className="hover:bg-[#161b22]/50">
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded text-xs font-mono font-medium ${
-                      ep.method === 'GET' ? 'bg-[#238636]/20 text-[#3fb950]' :
-                      ep.method === 'POST' ? 'bg-[#1f6feb]/20 text-[#58a6ff]' :
-                      'bg-[#bf8700]/20 text-[#d29922]'
-                    }`}>
-                      {ep.method}
-                    </span>
-                  </td>
                   <td className="px-4 py-3 font-mono text-[#e6edf3]">{ep.path}</td>
                   <td className="px-4 py-3 text-[#8b949e] hidden md:table-cell">{ep.desc}</td>
                 </tr>
@@ -1228,20 +1214,18 @@ sequenceDiagram
       
       <SectionDivider />
       
-      <h2 className="text-xl font-semibold text-white mb-4">Request/Response Examples</h2>
+      <h2 className="text-xl font-semibold text-white mb-4">Data Example</h2>
       
       <CodeBlock
-        title="GET /api/questions/:id - Response"
+        title="Channel JSON Structure"
         language="json"
         code={`{
-  "id": "q-123",
-  "question": "Explain the CAP theorem in distributed systems",
-  "answer": "The CAP theorem states that a distributed system...",
-  "explanation": "In distributed systems, you must choose between...",
-  "diagram": "graph LR\\n  C[Consistency]\\n  A[Availability]\\n  P[Partition Tolerance]",
-  "channel": "system-design",
-  "difficulty": "intermediate",
-  "tags": ["distributed-systems", "databases", "theory"],
+  "id": "system-design",
+  "questions": [{ "id": "q-123", "question": "Explain the CAP theorem..." }],
+  "subChannels": ["distributed-systems", "databases"],
+  "companies": ["Google", "Amazon", "Microsoft"],
+  "stats": { "total": 42, "beginner": 15, "intermediate": 18, "advanced": 9 }
+},
   "companies": ["Google", "Amazon", "Netflix"],
   "similar": [
     { "id": "q-456", "question": "What is eventual consistency?" },
