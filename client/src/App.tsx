@@ -58,16 +58,25 @@ function useSpaRedirect() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('spa-redirect') === 'true') {
       try {
+        let fullPath: string | null = null;
+
+        // Primary: sessionStorage
         const stored = sessionStorage.getItem('spa-redirect');
         if (stored) {
           const { path, search, hash } = JSON.parse(stored);
           sessionStorage.removeItem('spa-redirect');
-          
-          // Navigate to the intended path
-          const fullPath = path + (search || '') + (hash || '');
-          // Use replaceState to clean up the URL
+          fullPath = path + (search || '') + (hash || '');
+        }
+
+        // Fallback: ?p= query param (set by 404.html when sessionStorage is unavailable)
+        if (!fullPath) {
+          const encoded = params.get('p');
+          if (encoded) fullPath = decodeURIComponent(encoded);
+        }
+
+        if (fullPath) {
           window.history.replaceState(null, '', fullPath);
-          setLocation(path);
+          setLocation(fullPath.split('?')[0].split('#')[0]);
         }
       } catch (e) {
         console.error('SPA redirect error:', e);
