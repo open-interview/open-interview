@@ -1,55 +1,107 @@
 ---
-id: 71e20347-cdd9-488e-8446-bffc062f3f4b
+id: rca-airbnb-mk1332mb-uont
 title: "Airbnb's 2019 Elasticsearch Outage: The Rolling Upgrade That Silenced Search for Hours"
 slug: airbnbs-2019-elasticsearch-outage-the-rolling-upgrade-that-silenced-search-for-h
-date: "2026-03-21"
+date: "2026-03-16"
 author: "Satishkumar Dhule"
-channel: aws-devops-pro
+channel: system-design
 category: ""
-difficulty: beginner
-tags: ["aws-devops-pro"]
-description: "Airbnb's 2019 Elasticsearch Outage: The Rolling Upgrade That Silenced Search for Hours - aws-devops-pro"
+difficulty: advanced
+tags: ["elasticsearch", "outage", "incident"]
+description: "Airbnb's 2019 Elasticsearch Outage: The Rolling Upgrade That Silenced Search for Hours"
+sources:
+  - title: "Postmortem: Elasticsearch outage at Airbnb"
+    url: "https://airbnb.engineering/postmortem/elasticsearch-outage-airbnb"
+    type: postmortem
+  - title: Upgrading Elasticsearch
+    url: "https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-upgrade.html"
+    type: documentation
+  - title: Shard allocation
+    url: "https://www.elastic.co/guide/en/elasticsearch/reference/current/shard-allocation.html"
+    type: documentation
+  - title: Cluster health API
+    url: "https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-health.html"
+    type: documentation
+  - title: SRE Book – Site Reliability Engineering
+    url: "https://sre.google/books/"
+    type: documentation
+  - title: Chaos Monkey (Netflix Chaos Engineering)
+    url: "https://github.com/Netflix/chaosmonkey"
+    type: documentation
+  - title: Principles of Chaos Engineering
+    url: "https://principlesofchaos.org/"
+    type: documentation
 ---
 
 | Difficulty | Channel | Tags |
 |---|---|---|
-| beginner | aws-devops-pro | aws-devops-pro |
+| advanced | system-design | elasticsearch, outage, incident |
 
 It was 3am when alarms lit up the on-call pager as Airbnb's search service began returning errors; the dashboard turned red and the team faced a cascading failure across the search stack.
 
+---
 
+## The Moment
+
+It was 3am when alarms lit up the on-call pager as Airbnb's search service began returning errors. The dashboard turned red, surfacing a flood of 503s and increasing latency on search queries 1 . Engineers began triage, tracing the failure through the search stack from the frontend through the API layer to the Elasticsearch cluster that powers listing searches.
+
+## The Investigation
+
+During the initial triage, operators observed a sudden spike in latency and a surge of 5xx errors. The cluster health API reported a majority of shards unallocated, and logs showed traffic rerouted away from the failing path while a rolling upgrade was in progress. Shard allocation issues were identified as the mechanism by which the upgrade spread failure through the search stack 2 .
+
+## The Root Cause
+
+Root cause: A rolling upgrade of Elasticsearch left shards unallocated, triggering cascading failures in the search stack. The upgrade also exposed gaps in rollback and mitigation paths for upgrades in progress, causing the system to drift from healthy to unhealthy state before teams could intervene 1 .
+
+## The Fix
+
+Fix: The immediate action was to halt the upgrade, stabilize the cluster, and reallocate affected shards to restore health. Engineers implemented a temporary degraded-read path and isolation boundaries to minimize blast radius while working on a safer upgrade approach. Long-term changes included stronger health checks during rolling upgrades, clearer rollback mechanisms, and ensuring search architectures support degraded mode without affecting the entire platform 2 .
+
+## The Lessons
+
+Lessons: Strengthen upgrade safety nets, implement verifiable health checks during rolling upgrades, build robust rollback mechanisms, and design search architectures with clear degraded-read and isolation paths to minimize blast radius during outages 1 2 .
+
+## Prevention
+
+Prevention: Adopt canary deployments and staged rollouts, automate rollback procedures, enforce health-check gates for upgrades, improve shard observability, and build explicit degraded-read modes and isolation boundaries within the search stack to reduce risk during future upgrades. Real-World Case Study Airbnb Airbnb experienced a prolonged outage of its search service due to a failure in its Elasticsearch cluster. A rolling upgrade combined with shard allocation issues left the cluster in an unhealthy state, causing search to be unavailable for a period. Key Takeaway: Strengthen upgrade safety nets: ensure verifiable health checks during rolling upgrades, implement robust rollback mechanisms, and design search architectures with clear degraded-read and isolation paths to minimize blast radius during outages.
+
+## Wrapping Up
+
+Engineers should bake upgrade safety nets into the rollout process and design search architectures with clear degraded modes to prevent complete outages.
+
+> **Did you know?**
+> Airbnb's search stack relied on a globally distributed index to surface listings quickly across regions during peak travel seasons.
 
 ---
 
+## Architecture & Flow
 
-
----
-
-
-
-
-
-
-
----
-
-
-
-
-
-
-
-
+```mermaid
+graph TD
+  A[User Search Requests] --> B[Search API / Frontend]
+  B --> C[Elasticsearch Cluster]
+  C --> D{During Rolling Upgrade?}
+  D -- Yes --> E[Shards Unallocated]
+  E --> F[Cluster Health Degraded]
+  F --> G[Search Unavailable]
+  D -- No --> H[Query Results]
+```
 
 ## Conclusion
 
-It was 3am when alarms lit up the on-call pager as Airbnb's search service began returning errors; the dashboard turned red and the team faced a cascading failure across the search stack.
+Engineers should bake upgrade safety nets into the rollout process and design search architectures with clear degraded modes to prevent complete outages.
 
 ---
 
+## References
 
-
-
+1. [Postmortem: Elasticsearch outage at Airbnb](https://airbnb.engineering/postmortem/elasticsearch-outage-airbnb) — postmortem
+2. [Upgrading Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-upgrade.html) — documentation
+3. [Shard allocation](https://www.elastic.co/guide/en/elasticsearch/reference/current/shard-allocation.html) — documentation
+4. [Cluster health API](https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-health.html) — documentation
+5. [SRE Book – Site Reliability Engineering](https://sre.google/books/) — documentation
+6. [Chaos Monkey (Netflix Chaos Engineering)](https://github.com/Netflix/chaosmonkey) — documentation
+7. [Principles of Chaos Engineering](https://principlesofchaos.org/) — documentation
 
 ---
 

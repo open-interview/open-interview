@@ -439,6 +439,8 @@ async function saveBlogPost(questionId, blogContent, question, svgContent = {}) 
       real_world_example: blogContent.realWorldExample || null,
       svgContent,
       svg_content: svgContent,
+      relatedQuestions: blogContent.relatedQuestions || [],
+      category: getCategoryForChannel(question.channel) || '',
     };
     const originalQuestion = { question: question.question, answer: question.answer };
     const mdContent = serializeMD(mdPost, originalQuestion);

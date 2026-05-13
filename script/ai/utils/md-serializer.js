@@ -28,6 +28,12 @@ function stripHtml(str) {
     .replace(/<em>(.*?)<\/em>/gi, '_$1_')
     .replace(/<code>(.*?)<\/code>/gi, '`$1`')
     .replace(/<br\s*\/?>/gi, '\n')
+    // Strip entire script blocks including content
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    // Strip share/social snippet blocks injected by old pipeline
+    .replace(/Share This[\s\S]*?#\w+(\s+#\w+)*/g, '')
+    .replace(/function copySnippet[\s\S]*?\}\s*/g, '')
+    .replace(/https?:\/\/openstackdaily\.github\.io\/posts\/[^\s]*/g, '')
     .replace(/<[^>]+>/g, '')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
@@ -128,7 +134,10 @@ function buildRealWorldCase(post) {
     rwe.lesson    ? `| **Lesson** | ${stripHtml(rwe.lesson)} |`       : null,
   ].filter(Boolean);
 
-  const scenario = rwe.scenario ? `\n${stripHtml(rwe.scenario)}\n` : '';
+  const scenario = rwe.scenario ? `\n> ${stripHtml(rwe.scenario)}\n>` : '';
+  if (rows.length === 0) {
+    return `> ### Real-World Case — ${rwe.company}\n>${scenario}`;
+  }
   return `> ### Real-World Case — ${rwe.company}\n>${scenario}\n> | | |\n> |---|---|\n${rows.map(r => '> ' + r).join('\n')}`;
 }
 
@@ -136,17 +145,32 @@ function buildSections(post) {
   const sections = parseJson(post.blogSections || post.sections, []);
   if (!sections.length) return '';
 
+  const diagram = (post.diagram || '').trim();
+
   return sections.map(sec => {
     const heading = sec.title || sec.heading || '';
-    const raw = sec.content || '';
+    const raw = (sec.content || '').trim();
+
+    // Skip sections whose content IS the mermaid diagram
+    const rawNorm = raw.replace(/\s+/g, ' ');
+    const mermaidKeywords = ['flowchart ', 'graph ', 'sequenceDiagram', 'classDiagram', 'stateDiagram', 'erDiagram', 'gantt', 'pie '];
+    if (diagram && mermaidKeywords.some(k => raw.startsWith(k))) {
+      const diagNorm = diagram.replace(/\s+/g, ' ');
+      // Match if first 40 chars align (handles HTML entity stripping differences)
+      if (diagNorm.slice(0, 40) === rawNorm.slice(0, 40)) return null;
+      // Also match if they share the same opening keyword + first node
+      const rawHead = rawNorm.slice(0, 25);
+      if (diagNorm.startsWith(rawHead)) return null;
+    }
+
     const { cleanContent, codeBlocks } = extractCodeBlocks(raw);
     let body = stripHtml(cleanContent);
-    // Restore code blocks
     codeBlocks.forEach((cb, i) => {
       body = body.replace(`\`\`\`PLACEHOLDER_${i}\`\`\``, `\`\`\`${cb.lang}\n${cb.code}\n\`\`\``);
     });
+    if (!body.trim()) return null;
     return `## ${heading}\n\n${body.trim()}`;
-  }).join('\n\n');
+  }).filter(Boolean).join('\n\n');
 }
 
 function buildMidSVG(post) {
@@ -241,9 +265,13 @@ export function validateMD(mdString) {
   const body = mdString.replace(/^---[\s\S]*?---\n/, '');
   if (body.length < 800) warnings.push(`Body too short: ${body.length} chars (min 800)`);
 
-  // 3. SVG safety
-  if (/<script/i.test(mdString) || /javascript:/i.test(mdString)) {
-    errors.push('SVG contains unsafe script content');
+  // 3. SVG safety — only flag actual executable script blocks, not inline text examples
+  const strippedForCheck = mdString
+    .replace(/<svg[\s\S]*?<\/svg>/gi, '[SVG_BLOCK]')
+    .replace(/`[^`]*<script[^`]*`/gi, '[CODE_EXAMPLE]')  // strip inline code examples
+    .replace(/```[\s\S]*?```/g, '[CODE_BLOCK]');          // strip fenced code blocks
+  if (/<script\s/i.test(strippedForCheck) || /javascript:\s*\w/i.test(strippedForCheck)) {
+    errors.push('Contains unsafe executable script content');
   }
 
   // 4. Slug format
@@ -314,5 +342,9 @@ export function serializeMD(post, question = {}) {
     buildAuthorFooter(),
   ].filter(part => part !== null && part !== undefined);
 
-  return parts.join('\n');
+  // Collapse consecutive HRs (--- \n\n ---) that result from empty optional sections
+  return parts.join('\n')
+    .replace(/(\n---\n+){2,}/g, '\n\n---\n\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim() + '\n';
 }

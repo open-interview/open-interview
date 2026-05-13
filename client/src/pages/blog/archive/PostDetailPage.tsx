@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
+import { useBlogSEO } from "@/hooks/use-blog-seo";
 import { BlogLayout, ArticleLayout } from "@/components/blog/BlogLayout";
 import { TableOfContents } from "@/components/blog/TableOfContents";
 import { ReadingProgressBar } from "@/components/blog/ReadingProgressBar";
@@ -44,6 +45,15 @@ export default function PostDetailPage({ slug }: PostDetailPageProps) {
   const [notFound, setNotFound] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const articleRef = useRef<HTMLElement>(null);
+
+  useBlogSEO({
+    title: post?.title,
+    description: post?.excerpt,
+    ogImage: post?.coverImage,
+    ogType: "article",
+    canonicalUrl: post ? `https://open-interview.dev/blog/${post.slug}` : undefined,
+    publishedAt: post?.publishedAt,
+  });
 
   useEffect(() => {
     setLoading(true);

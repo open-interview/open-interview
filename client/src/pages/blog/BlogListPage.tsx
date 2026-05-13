@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { getPosts, getCategories, getTags } from "@/lib/blog-loader";
+import { useBlogSEO } from "@/hooks/use-blog-seo";
 import { BlogLayout } from "@/components/blog/BlogLayout";
 import { ArticleCard, ArticleCardSkeleton, type ArticleCardData, type ArticleDifficulty } from "@/components/facelift/article-card";
 import { motion } from "framer-motion";
@@ -122,7 +123,13 @@ const difficultyLabels: Record<ArticleDifficulty, string> = {
 };
 
 export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
+<<<<<<< Updated upstream
   const [posts, setPosts] = useState<ArticleCardData[]>([]);
+=======
+  const title = categorySlug ? `${categorySlug} Posts` : tag ? `#${tag}` : "All Posts";
+  useBlogSEO({ title, canonicalUrl: `https://open-interview.dev/blog` });
+  const [posts, setPosts] = useState<PostCardData[]>([]);
+>>>>>>> Stashed changes
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [total, setTotal] = useState(0);

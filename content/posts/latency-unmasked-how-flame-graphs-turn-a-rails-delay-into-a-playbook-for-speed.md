@@ -1,44 +1,89 @@
 ---
-id: 86f1166c-0734-4774-9333-a56cdf9025db
+id: q-280
 title: "Latency Unmasked: How Flame Graphs Turn a Rails Delay Into a Playbook for Speed"
 slug: latency-unmasked-how-flame-graphs-turn-a-rails-delay-into-a-playbook-for-speed
-date: "2026-03-21"
+date: "2026-03-16"
 author: "Satishkumar Dhule"
-channel: aws-devops-pro
+channel: performance-testing
 category: ""
 difficulty: beginner
-tags: ["aws-devops-pro"]
-description: "Latency Unmasked: How Flame Graphs Turn a Rails Delay Into a Playbook for Speed - aws-devops-pro"
+tags: ["cpu-profiling", "memory-profiling", "flame-graphs"]
+description: "Latency Unmasked: How Flame Graphs Turn a Rails Delay Into a Playbook for Speed"
 question: "What is the difference between CPU profiling and memory profiling, and when would you use a flame graph?"
+sources:
+  - title: Profiling Rails Applications with Flamegraphs 🔥
+    url: "https://deliveroo.engineering/2022/11/21/profiling-rails-application-code-via-flame-graph.html"
+    type: documentation
+  - title: Profiling (computer programming)
+    url: "https://en.wikipedia.org/wiki/Profiling_(computer_programming)"
+    type: documentation
+  - title: Performance - MDN Web Docs
+    url: "https://developer.mozilla.org/en-US/docs/Web/Performance"
+    type: documentation
+  - title: Flame Graphs
+    url: "https://github.com/brendangregg/FlameGraph"
+    type: documentation
+  - title: profile — Python Documentation
+    url: "https://docs.python.org/3/library/profile.html"
+    type: documentation
+  - title: AWS X-Ray Developer Guide
+    url: "https://docs.aws.amazon.com/xray/index.html"
+    type: documentation
+  - title: RFC 7231 - HTTP/1.1 Semantics
+    url: "https://datatracker.ietf.org/doc/html/rfc7231"
+    type: documentation
+  - title: Ruby Prof
+    url: "https://github.com/ruby-prof/ruby-prof"
+    type: documentation
+  - title: Performance testing
+    url: "https://en.wikipedia.org/wiki/Performance_testing"
+    type: documentation
 ---
 
 | Difficulty | Channel | Tags |
 |---|---|---|
-| beginner | aws-devops-pro | aws-devops-pro |
+| beginner | performance-testing | cpu-profiling, memory-profiling, flame-graphs |
 
-It was a latency spike on Deliveroo's Rails endpoint used by riders to switch zones; requests pushed beyond 4 seconds and intermittent 503 errors began to appear
-
-
+It was a latency spike on Deliveroo's Rails endpoint used by riders to switch zones; requests pushed beyond 4 seconds and intermittent 503 errors began to appear 1. Engineers brought flame graphs into the room, and in moments a hidden CPU hotspot in the serializer path emerged from the chaos. This isn’t theory—it's a tale of turning noisy metrics into a clear path to speed, with a tool that reveals the unseen by watching how time threads through code 1.
 
 ---
 
+## From Latency to Clarity: The Deliveroo Case
 
+Deliveroo faced a critical latency spike on a Rails endpoint used by riders to switch zones. The problem wasn’t a single slow line of code; it was a CPU hotspot buried in a serializer path that traditional metrics failed to reveal. By visualizing CPU time with flame graphs during development, the team reproduced the issue locally and pinpointed the bottleneck rapidly 1 . This story isn’t just about finding a slow function; it’s about discovering how a composite of allocations and execution time can conspire to create latency you can feel in the field. The lesson is clear: flame graphs can expose CPU hotspots that aggregate metrics miss, unlocking substantial latency reductions when profiling happens where developers actually work—during development and testing 1 .
+
+## CPU vs Memory Profiling: Two Lenses on a Single Window
+
+CPU profiling measures where time is spent inside functions, revealing execution bottlenecks that drive latency 2 . Memory profiling tracks memory allocation patterns, leaks, and garbage collection behavior, illuminating how allocations impact performance 2 . Flame graphs are a visual shorthand for CPU hotspots, turning a river of traces into a single landscape of hot paths 4 . When to choose: use CPU profiling to locate slow code paths; switch to memory profiling when allocation pressure and GC behavior are suspected culprits. The combination often yields the most actionable insights.
+
+## The Journey: Tools, Trade-offs, and a Quick Start
+
+CPU Profiling (example): # Node.js example node --prof app.js node --prof-process isolate-*.log > processed.txt Memory Profiling (example): // Chrome DevTools (conceptual) console.profile('CPU-analysis'); console.memory; Trade-offs: CPU profiling adds minimal overhead while revealing execution hot spots 2 ; memory profiling can impose noticeable performance impact due to tracking allocations 2 . Flame graphs provide an intuitive view but rely on sampling-based data collection 4 .
+
+## Putting It All Together: A Practical Playbook
+
+1) Define the latency symptoms and reproduce locally. 2) Choose profiling focus based on suspected root cause (CPU vs memory). 3) Collect data and generate flame graphs to visualize hotspots 4 . 4) Drill into serializers, allocations, and GC cycles to identify optimization opportunities. 5) Implement targeted changes, then re-profile to confirm latency reductions. 6) Scale the approach to other endpoints and services to prevent future surprises. Real-World Case Study Deliveroo Deliveroo faced a latency spike on a Rails endpoint used by riders to switch zones; requests exceeded 4 seconds and caused intermittent 503 errors. They used flame graphs to quickly pinpoint the bottleneck in the serializer path during development and reproduce the issue locally. Key Takeaway: Flame graphs reveal CPU hotspots hidden by aggregate metrics; profiling in development can uncover opportunities for substantial latency reductions by reducing object allocations.
+
+## Wrapping Up
+
+Profiling isn’t a one-off debugging step; it’s a disciplined practice that reshapes how teams think about performance. Start profiling where code changes happen most, then iterate to turn latency into reliability.
+
+> **Did you know?**
+> A single hot path in a serializer can ripple into seconds of latency when allocations explode GC cycles.
 
 ---
 
+## Architecture & Flow
 
-
-
-
-
-
----
-
-
-
-
-
-
+```mermaid
+flowchart TD
+  A[Request arrives] --> B[Rails endpoint]
+  B --> C{Serializer path}
+  C --> D[CPU hotspot identified]
+  D --> E[Flame graph visualizes hotspot]
+  E --> F[Code/app changes implemented]
+  F --> G[Latency improves]
+```
 
 <details>
 <summary><strong>Original Interview Question</strong></summary>
@@ -51,13 +96,21 @@ It was a latency spike on Deliveroo's Rails endpoint used by riders to switch zo
 
 ## Conclusion
 
-It was a latency spike on Deliveroo's Rails endpoint used by riders to switch zones; requests pushed beyond 4 seconds and intermittent 503 errors began to appear
+Profiling isn’t a one-off debugging step; it’s a disciplined practice that reshapes how teams think about performance. Start profiling where code changes happen most, then iterate to turn latency into reliability.
 
 ---
 
+## References
 
-
-
+1. [Profiling Rails Applications with Flamegraphs 🔥](https://deliveroo.engineering/2022/11/21/profiling-rails-application-code-via-flame-graph.html) — documentation
+2. [Profiling (computer programming)](https://en.wikipedia.org/wiki/Profiling_(computer_programming)) — documentation
+3. [Performance - MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/Performance) — documentation
+4. [Flame Graphs](https://github.com/brendangregg/FlameGraph) — documentation
+5. [profile — Python Documentation](https://docs.python.org/3/library/profile.html) — documentation
+6. [AWS X-Ray Developer Guide](https://docs.aws.amazon.com/xray/index.html) — documentation
+7. [RFC 7231 - HTTP/1.1 Semantics](https://datatracker.ietf.org/doc/html/rfc7231) — documentation
+8. [Ruby Prof](https://github.com/ruby-prof/ruby-prof) — documentation
+9. [Performance testing](https://en.wikipedia.org/wiki/Performance_testing) — documentation
 
 ---
 

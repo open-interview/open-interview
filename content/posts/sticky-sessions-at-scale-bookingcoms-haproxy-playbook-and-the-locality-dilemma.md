@@ -1,44 +1,99 @@
 ---
-id: d4431350-cdb7-485e-8010-c28c1706eeb1
+id: q-186
 title: "Sticky Sessions at Scale: Booking.com's HAProxy Playbook and the Locality Dilemma"
 slug: sticky-sessions-at-scale-bookingcoms-haproxy-playbook-and-the-locality-dilemma
-date: "2026-03-21"
+date: "2026-03-16"
 author: "Satishkumar Dhule"
-channel: aws-devops-pro
+channel: networking
 category: ""
-difficulty: beginner
-tags: ["aws-devops-pro"]
-description: "Sticky Sessions at Scale: Booking.com's HAProxy Playbook and the Locality Dilemma - aws-devops-pro"
+difficulty: intermediate
+tags: ["lb", "traffic", "nginx", "haproxy"]
+description: "Sticky Sessions at Scale: Booking.com's HAProxy Playbook and the Locality Dilemma"
 question: "How would you implement session affinity (sticky sessions) in HAProxy while maintaining high availability, and what are the trade-offs compared to stateless load balancing?"
+sources:
+  - title: "Scaling the Edge: How Booking.com Powers a Global Application Delivery Network with HAProxy"
+    url: "https://www.haproxy.com/user-spotlight-series/scaling-the-edge-how-booking-com-powers-a-global-application-delivery-network-with-haproxy"
+    type: article
+  - title: haproxy/haproxy
+    url: "https://github.com/haproxy/haproxy"
+    type: repository
+  - title: AWS Application Load Balancer sticky sessions
+    url: "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-sticky-sessions.html"
+    type: documentation
+  - title: "Kubernetes: Load balancing overview"
+    url: "https://kubernetes.io/docs/concepts/services-networking/service/#load-balancing"
+    type: documentation
+  - title: HTTP Cookies - MDN
+    url: "https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies"
+    type: documentation
+  - title: "RFC 6265: HTTP State Management Mechanism"
+    url: "https://datatracker.ietf.org/doc/html/rfc6265"
+    type: documentation
+  - title: Load Balancing - Wikipedia
+    url: "https://en.wikipedia.org/wiki/Load_balancing"
+    type: documentation
+  - title: "ELB: What is Elastic Load Balancing?"
+    url: "https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-elb.html"
+    type: documentation
+  - title: Netflix architecture and resilience
+    url: "https://en.wikipedia.org/wiki/Netflix"
+    type: documentation
+  - title: Chaos Monkey (concept)
+    url: "https://en.wikipedia.org/wiki/Chaos_Monkey"
+    type: documentation
+  - title: HAProxy Advanced Patterns
+    url: "https://github.com/haproxy/haproxy/tree/master/examples"
+    type: documentation
 ---
 
 | Difficulty | Channel | Tags |
 |---|---|---|
-| beginner | aws-devops-pro | aws-devops-pro |
+| intermediate | networking | lb, traffic, nginx, haproxy |
 
-Booking.com scaled its global application delivery network using an internal LBaaS built around HAProxy to manage billions of requests per day. To avoid session data issues across multiple Availability Zones, they implemented smart routing that keeps a user within a single AZ, leveraging per-AZ pools and a centralized Balancer API
-
-
+Booking.com scaled its global application delivery network using an internal LBaaS built around HAProxy to manage billions of requests per day. To avoid session data issues across multiple Availability Zones, they implemented smart routing that keeps a user within a single AZ, leveraging per-AZ pools and a centralized Balancer API 1. If you're wrestling with sticky sessions, this is where the story begins. The journey reveals how locality-aware routing reshapes what 'session affinity' means in practice.
 
 ---
 
+## Hook &amp; Stakes
 
+Booking.com's global delivery network handles billions of requests daily. To prevent session data from wandering across Availability Zones, teams embraced locality-aware routing and per-AZ pools, forming the backbone of an LBaaS built on HAProxy 1 . The stakes are simple: keep users seamless and fast, or risk churn when sessions vanish mid-flight. This sets the stage for a deeper dive into session affinity and its price tag.
+
+## The Dilemma: Stateless vs Sticky Sessions
+
+Session affinity (sticky sessions) ensures a user keeps hitting the same backend, preserving local session state. But this convenience comes at a cost: it can complicate scaling and lead to hot spots. In modern architectures, many teams weigh strict statelessness against the comfort of a locally stored session. Understanding this balance is the key to choosing the right recipe for a given service. See how patterns map to real systems and what trade-offs show up in practice 3 4 9 .
+
+## Implementation Playbook
+
+Two common HAProxy approaches shine here: Source IP Hashing backend web_servers balance source server web1 192.168.1.10:80 check server web2 192.168.1.11:80 check server web3 192.168.1.12:80 check Stick Tables (Cookie-based) backend web_servers balance roundrobin stick-table type string len 32 size 30k expire 30m stick on cookie(JSESSIONID) server web1 192.168.1.10:80 check cookie web1 server web2 192.168.1.11:80 check cookie web2 server web3 192.168.1.12:80 check cookie web3 Both approaches offer HA and performance, but with different implications for scaling and state management 3 7 8 .
+
+## Real-World Proof
+
+Booking.com's experience demonstrates a practical, scalable path: locality-aware routing helps keep users within an AZ, while a central control plane coordinates pools and failover. This mirrors lessons from large-scale operators who emphasize topology-aware persistence and careful failover, a pattern echoed by major system-design narratives and supported by industry references 11 9 .
+
+## Takeaways
+
+Start with a topology-aware mindset: locality matters for latency and consistency. Choose a HAProxy pattern that aligns with your session needs (source hashing for speed, stick-tables for stateful sessions). Plan for failure: health checks, backups, and session replication where appropriate 4 5 . Real-World Case Study Booking.com Booking.com scaled its global application delivery network using an internal LBaaS built around HAProxy to manage billions of requests per day. To avoid session data issues across multiple availability zones, they implemented smart routing that tends to keep a user within a single AZ, leveraging per-AZ pools and a centralized Balancer API. Key Takeaway: Sticky sessions at scale can be achieved by locality-aware routing and per-AZ state management, but require a control plane (LBaaS) and careful planning to avoid cross-AZ data races and imbalance; true scale often involves shifting from pure stateless designs to topology-aware persistence with robust failover.
+
+## Wrapping Up
+
+Sticky sessions can be powerful at scale when paired with locality-aware routing and a robust control plane. Start by mapping your topology, choose a HAProxy pattern that fits, and build in failover early.
+
+> **Did you know?**
+> Some large-scale CDNs use per-AZ routing as a primary design principle to minimize cross-region latency.
 
 ---
 
+## Architecture & Flow
 
-
-
-
-
-
----
-
-
-
-
-
-
+```mermaid
+graph TD;
+A(Client) --> B[HAProxy]
+B --> C[AZ-1 Pool]
+B --> D[AZ-2 Pool]
+C --> E[web1]
+C --> F[web2]
+D --> G[web3]
+```
 
 <details>
 <summary><strong>Original Interview Question</strong></summary>
@@ -51,13 +106,23 @@ Booking.com scaled its global application delivery network using an internal LBa
 
 ## Conclusion
 
-Booking.com scaled its global application delivery network using an internal LBaaS built around HAProxy to manage billions of requests per day. To avoid session data issues across multiple Availabilit
+Sticky sessions can be powerful at scale when paired with locality-aware routing and a robust control plane. Start by mapping your topology, choose a HAProxy pattern that fits, and build in failover early.
 
 ---
 
+## References
 
-
-
+1. [Scaling the Edge: How Booking.com Powers a Global Application Delivery Network with HAProxy](https://www.haproxy.com/user-spotlight-series/scaling-the-edge-how-booking-com-powers-a-global-application-delivery-network-with-haproxy) — article
+2. [haproxy/haproxy](https://github.com/haproxy/haproxy) — repository
+3. [AWS Application Load Balancer sticky sessions](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-sticky-sessions.html) — documentation
+4. [Kubernetes: Load balancing overview](https://kubernetes.io/docs/concepts/services-networking/service/#load-balancing) — documentation
+5. [HTTP Cookies - MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies) — documentation
+6. [RFC 6265: HTTP State Management Mechanism](https://datatracker.ietf.org/doc/html/rfc6265) — documentation
+7. [Load Balancing - Wikipedia](https://en.wikipedia.org/wiki/Load_balancing) — documentation
+8. [ELB: What is Elastic Load Balancing?](https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/what-is-elb.html) — documentation
+9. [Netflix architecture and resilience](https://en.wikipedia.org/wiki/Netflix) — documentation
+10. [Chaos Monkey (concept)](https://en.wikipedia.org/wiki/Chaos_Monkey) — documentation
+11. [HAProxy Advanced Patterns](https://github.com/haproxy/haproxy/tree/master/examples) — documentation
 
 ---
 

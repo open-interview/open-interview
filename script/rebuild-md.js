@@ -1,6 +1,7 @@
 /**
- * Backfill script: rebuild content/posts/<slug>.md for all blog_posts rows.
- * No API calls — reads from DB only.
+ * Backfill script: rebuild content/posts/<slug>.md for all blog posts.
+ * Reads from data/blog-posts.json (primary) joined with DB for question text.
+ * No API calls.
  *
  * Usage:
  *   node script/rebuild-md.js                   → rebuild all posts
@@ -22,82 +23,96 @@ const idIdx = args.indexOf('--id');
 const FILTER_ID = idIdx !== -1 ? args[idIdx + 1] : null;
 
 const OUT_DIR = path.resolve('content/posts');
+const JSON_PATH = path.resolve('data/blog-posts.json');
 
-function mapRow(row) {
-  return {
-    id: row.id,
-    question_id: row.question_id,
-    blogTitle: row.title,
-    title: row.title,
-    blogSlug: row.slug,
-    slug: row.slug,
-    blogIntro: row.introduction,
-    introduction: row.introduction,
-    blogSections: row.sections,
-    sections: row.sections,
-    blogConclusion: row.conclusion,
-    conclusion: row.conclusion,
-    blogMeta: row.meta_description,
-    meta_description: row.meta_description,
-    channel: row.channel,
-    difficulty: row.difficulty,
-    tags: row.tags,
-    diagram: row.diagram,
-    diagramLabel: row.diagram_label,
-    diagram_label: row.diagram_label,
-    funFact: row.fun_fact,
-    fun_fact: row.fun_fact,
-    quickReference: row.quick_reference,
-    quick_reference: row.quick_reference,
-    glossary: row.glossary,
-    realWorldExample: row.real_world_example,
-    real_world_example: row.real_world_example,
-    sources: row.sources,
-    svgContent: row.svg_content,
-    svg_content: row.svg_content,
-    images: row.images,
-    createdAt: row.created_at,
-    category: row.category || '',
-  };
+async function loadQuestions() {
+  try {
+    const r = await dbClient.execute('SELECT id, question, answer FROM questions');
+    const map = {};
+    r.rows.forEach(q => { map[q.id] = q; });
+    return map;
+  } catch {
+    return {};
+  }
 }
 
 async function main() {
   let written = 0, skipped = 0, warned = 0;
 
-  // Build query
-  let sql = `SELECT bp.*, q.question, q.answer
-             FROM blog_posts bp
-             LEFT JOIN questions q ON q.id = bp.question_id
-             ORDER BY bp.created_at DESC`;
-  const sqlArgs = [];
-
-  if (FILTER_ID) {
-    sql = `SELECT bp.*, q.question, q.answer
-           FROM blog_posts bp
-           LEFT JOIN questions q ON q.id = bp.question_id
-           WHERE bp.question_id = ?
-           ORDER BY bp.created_at DESC`;
-    sqlArgs.push(FILTER_ID);
+  // Load blog posts from JSON file (has full content)
+  let posts = [];
+  if (fs.existsSync(JSON_PATH)) {
+    const raw = JSON.parse(fs.readFileSync(JSON_PATH, 'utf-8'));
+    posts = Array.isArray(raw) ? raw : raw.posts || Object.values(raw);
   }
 
-  const result = await dbClient.execute({ sql, args: sqlArgs });
-  const rows = result.rows;
+  // Also load from DB to get any posts not in JSON
+  try {
+    const r = await dbClient.execute(
+      `SELECT bp.*, q.question, q.answer FROM blog_posts bp LEFT JOIN questions q ON q.id = bp.question_id ORDER BY bp.created_at DESC`
+    );
+    // Merge: JSON posts take priority (they have full content), DB fills gaps
+    const jsonSlugs = new Set(posts.map(p => p.blogSlug || p.slug));
+    for (const row of r.rows) {
+      const slug = row.slug;
+      if (!jsonSlugs.has(slug)) {
+        posts.push({
+          id: row.id,
+          question_id: row.question_id,
+          blogTitle: row.title,
+          blogSlug: row.slug,
+          blogIntro: row.introduction,
+          blogSections: typeof row.sections === 'string' ? JSON.parse(row.sections) : (row.sections || []),
+          blogConclusion: row.conclusion,
+          blogMeta: row.meta_description,
+          channel: row.channel,
+          difficulty: row.difficulty,
+          tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || []),
+          diagram: row.diagram,
+          diagramLabel: row.diagram_label,
+          funFact: row.fun_fact,
+          quickReference: typeof row.quick_reference === 'string' ? JSON.parse(row.quick_reference) : (row.quick_reference || []),
+          glossary: typeof row.glossary === 'string' ? JSON.parse(row.glossary) : (row.glossary || []),
+          realWorldExample: typeof row.real_world_example === 'string' ? JSON.parse(row.real_world_example) : row.real_world_example,
+          sources: typeof row.sources === 'string' ? JSON.parse(row.sources) : (row.sources || []),
+          svgContent: typeof row.svg_content === 'string' ? JSON.parse(row.svg_content) : (row.svg_content || {}),
+          images: typeof row.images === 'string' ? JSON.parse(row.images) : (row.images || []),
+          createdAt: row.created_at,
+          _question: row.question,
+          _answer: row.answer,
+        });
+      }
+    }
+  } catch (err) {
+    console.warn(`⚠️ DB load failed (using JSON only): ${err.message}`);
+  }
 
-  if (!rows.length) {
+  if (FILTER_ID) {
+    posts = posts.filter(p => (p.id || p.question_id) === FILTER_ID || p.blogSlug === FILTER_ID);
+  }
+
+  if (!posts.length) {
     console.log('No blog posts found.');
     process.exit(0);
   }
 
-  console.log(`Found ${rows.length} post(s). Mode: ${DRY_RUN ? 'dry-run' : VALIDATE_ONLY ? 'validate-only' : 'write'}`);
+  // Load questions from DB for Q&A section
+  const questions = await loadQuestions();
+
+  console.log(`Found ${posts.length} post(s). Mode: ${DRY_RUN ? 'dry-run' : VALIDATE_ONLY ? 'validate-only' : 'write'}`);
 
   if (!DRY_RUN && !VALIDATE_ONLY) {
     fs.mkdirSync(OUT_DIR, { recursive: true });
   }
 
-  for (const row of rows) {
-    const post = mapRow(row);
-    const question = { question: row.question, answer: row.answer };
+  for (const post of posts) {
     const slug = post.blogSlug || post.slug || post.id;
+    const qid = post.question_id || post.id;
+    const dbQ = questions[qid] || {};
+    const question = {
+      question: post._question || dbQ.question || '',
+      answer: post._answer || dbQ.answer || '',
+    };
 
     let mdString;
     try {
@@ -126,7 +141,6 @@ async function main() {
       console.log(`DRY RUN — ${slug}.md`);
       console.log('─'.repeat(60));
       console.log(mdString);
-      // Only print first post in dry-run
       break;
     }
 
