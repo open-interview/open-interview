@@ -13,6 +13,7 @@ import {
 import { AppLayout } from '../components/layout/AppLayout';
 import { PageHeader, SectionHeader } from '@/components/ui/page';
 import { SEOHead } from '../components/SEOHead';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { useCredits } from '../context/CreditsContext';
 import { useAchievements } from '../hooks/use-achievements';
@@ -109,7 +110,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
   const { unlocked: unlockedBadges } = useAchievements();
 
   const [editingName, setEditingName] = useState(false);
-  const [displayName, setDisplayName] = useState(() => localStorage.getItem('user-display-name') || 'Learner');
+  const [displayName, setDisplayName] = useState(() => { try { return localStorage.getItem('user-display-name') || 'Learner'; } catch { return 'Learner'; } });
   const [nameInput, setNameInput] = useState(displayName);
 
   const memberSince = useMemo(() => {
@@ -141,7 +142,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
 
   const exportData = () => {
     const data: Record<string, unknown> = { exportedAt: new Date().toISOString(), xp: balance, totalCompleted };
-    Object.keys(localStorage).forEach(k => { data[k] = localStorage.getItem(k); });
+    try { Object.keys(localStorage).forEach(k => { data[k] = localStorage.getItem(k); }); } catch {}
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'code-reels-data.json'; a.click();
@@ -374,7 +375,7 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
     return {
       moduleProgress: modProgress,
       certCount: modProgress.filter(m => m.pct === 100).length,
-      voiceSessions: parseInt(localStorage.getItem('voice-sessions-count') || '0', 10),
+      voiceSessions: (() => { try { return parseInt(localStorage.getItem('voice-sessions-count') || '0', 10); } catch { return 0; } })(),
     };
   }, [stats]);
 
@@ -663,7 +664,21 @@ export default function ProfilePage() {
   }, []);
 
   return (
-    <>
+    <ErrorBoundary fallback={
+      <AppLayout fullWidth>
+        <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-8">
+          <div className="max-w-md text-center space-y-4">
+            <LucideIcons.AlertCircle className="w-12 h-12 mx-auto text-destructive" />
+            <h2 className="text-xl font-bold">Something went wrong</h2>
+            <p className="text-muted-foreground">Your profile data could not be loaded. This is usually caused by corrupted localStorage data.</p>
+            <button onClick={() => { try { localStorage.clear(); } catch {} window.location.reload(); }}
+              className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 transition-opacity cursor-pointer">
+              Reset & Reload
+            </button>
+          </div>
+        </div>
+      </AppLayout>
+    }>
       <SEOHead title="Profile & Stats" description="Your profile, settings and learning statistics" canonical="https://open-interview.github.io/profile" />
       <AppLayout fullWidth>
         <div className="min-h-screen bg-background text-foreground">
@@ -676,6 +691,6 @@ export default function ProfilePage() {
           </div>
         </div>
       </AppLayout>
-    </>
+    </ErrorBoundary>
   );
 }

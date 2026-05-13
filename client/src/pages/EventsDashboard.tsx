@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -428,9 +428,8 @@ function AuditTable({ events }: { events: Event[] }) {
                 const isExpanded = expandedId === event.id;
 
                 return (
-                  <>
+                  <Fragment key={event.id}>
                     <tr
-                      key={event.id}
                       className={cn(
                         "border-b border-border/40 transition-colors cursor-pointer",
                         isExpanded ? "bg-muted/30" : "hover:bg-muted/20",
@@ -502,7 +501,7 @@ function AuditTable({ events }: { events: Event[] }) {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -710,7 +709,7 @@ export default function EventsDashboard() {
 
         {/* Activity Chart */}
         {!isEmpty && (
-          <div className="bg-card border border-border rounded-xl p-4">
+          <div className="bg-card border border-border rounded-xl p-4" style={{ width: '100%', minHeight: 300 }}>
             <h2 className="text-sm font-semibold text-foreground mb-1">Activity — Last 30 Days</h2>
             <p className="text-xs text-muted-foreground mb-4">Daily event count by outcome</p>
             <ResponsiveContainer width="100%" height={160}>

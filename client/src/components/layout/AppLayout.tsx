@@ -138,7 +138,7 @@ export function AppLayout({
                 ? ''
                 : 'mx-auto px-4 py-4 max-w-6xl',
               isMobile && useFacelift && 'pt-16',
-              isMobile && 'pb-[calc(72px+env(safe-area-inset-bottom,0px))]',
+              isMobile && 'pb-[calc(80px+env(safe-area-inset-bottom,0px))]',
             )}
           >
             {children}

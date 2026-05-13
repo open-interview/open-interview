@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { Home, Search, ArrowLeft, AlertCircle, Compass } from 'lucide-react';
+import { AppLayout } from '../components/layout/AppLayout';
 
 export default function NotFound() {
   const [, setLocation] = useLocation();
@@ -23,7 +24,7 @@ export default function NotFound() {
   }, [setLocation]);
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background px-4 py-6 pb-24">
+    <AppLayout title="Page Not Found">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -151,6 +152,6 @@ export default function NotFound() {
           </div>
         </motion.div>
       </motion.div>
-    </div>
+    </AppLayout>
   );
 }

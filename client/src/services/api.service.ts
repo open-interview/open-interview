@@ -274,24 +274,24 @@ export const StatsService = {
     if (cached) return cached;
 
     const channels = await ChannelService.getAll();
-    const stats: ChannelDetailedStats[] = [];
+    
+    const results = await Promise.all(
+      channels.map(channel =>
+        ChannelService.getData(channel.id)
+          .then(data => ({
+            id: channel.id,
+            total: data.stats.total,
+            beginner: data.stats.beginner,
+            intermediate: data.stats.intermediate,
+            advanced: data.stats.advanced,
+            newThisWeek: (data.stats as any).newThisWeek || 0,
+          }))
+          .catch(() => null)
+      )
+    );
 
-    for (const channel of channels) {
-      try {
-        const data = await ChannelService.getData(channel.id);
-        stats.push({
-          id: channel.id,
-          total: data.stats.total,
-          beginner: data.stats.beginner,
-          intermediate: data.stats.intermediate,
-          advanced: data.stats.advanced,
-          newThisWeek: (data.stats as any).newThisWeek || 0,
-        });
-      } catch {
-        // Skip if channel fails
-      }
-    }
-
+    const stats = results.filter(Boolean) as ChannelDetailedStats[];
+    
     statsCache.set('all', stats);
     return stats;
   },

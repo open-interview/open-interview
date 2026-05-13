@@ -36,7 +36,6 @@ const Documentation = React.lazy(() => import("@/pages/Documentation"));
 const LearningPaths = React.lazy(() => import("@/pages/UnifiedLearningPaths"));
 const MyPath = React.lazy(() => import("@/pages/UnifiedLearningPaths"));
 const PersonalizedPath = React.lazy(() => import("@/pages/PersonalizedPath"));
-import { SubscriptionGate } from "./components/SubscriptionGate";
 const ManageSubscriptions = React.lazy(() => import("@/pages/ManageSubscriptions"));
 import { ThemeProvider } from "./context/ThemeContext";
 import { UserPreferencesProvider, useUserPreferences } from "./context/UserPreferencesContext";
@@ -219,9 +218,7 @@ function AppContent() {
 
   return (
     <>
-      <SubscriptionGate>
-        <Router />
-      </SubscriptionGate>
+      <Router />
       <GlobalCreditSplash />
       <AchievementNotificationManager />
     </>

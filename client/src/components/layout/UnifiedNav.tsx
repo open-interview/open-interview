@@ -197,7 +197,7 @@ export function MobileBottomNav() {
       </AnimatePresence>
 
       {/* Bottom bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <nav className="fixed bottom-0 left-0 right-0 z-[70] lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="bg-background/80 backdrop-blur-2xl border-t border-white/20 shadow-[0_-4px_24px_rgba(0,0,0,0.15)]">
           <div className="flex items-end justify-around h-14 px-1 max-w-md mx-auto">
             {mainNavItems.map((item) => {

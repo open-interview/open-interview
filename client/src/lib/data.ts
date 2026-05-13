@@ -84,7 +84,9 @@ function buildChannels(): Channel[] {
   });
 }
 
-export const channels: Channel[] = buildChannels();
+export const channels: Channel[] = (() => {
+  try { return buildChannels(); } catch { return []; }
+})();
 
 // Get channel by ID
 export function getChannel(channelId: string): Channel | undefined {

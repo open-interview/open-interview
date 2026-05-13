@@ -1204,13 +1204,13 @@ The answer panel (AnswerPanel / UnifiedAnswerPanel) sits below the question card
 
 ## Critical Bugs (P0)
 
-- [ ] **Onboarding modal blocks deep links** — `ProgressiveOnboarding` component renders on every route, blocking direct navigation to deep-linked pages. Partially mitigated by route check on `/` only, but still breaks bookmarked URLs for fresh users
-- [ ] **`/events` page crashes browser renderer** — Unhandled component error; entire page crashes when navigating to `/events`. Likely a missing import or null state
-- [ ] **`/channels` page load timeout** — Page hangs or times out on initial load under certain conditions (possibly infinite re-render from `use-level` hook)
-- [ ] **`/whats-new` route returns 404** — Route is not registered in `App.tsx` router. File may still exist in pages/
-- [ ] **404 page renders empty** — No fallback UI; user sees blank white page
-- [ ] **Profile page renders blank** — No error boundary or fallback content; user sees empty page
-- [ ] **Mobile bottom nav hidden at 375px** — Bottom navigation bar not visible on narrow viewports; users cannot navigate
+- [x] **Onboarding modal blocks deep links** — Moved check from `SubscriptionGate` (which wrapped Router) into Home page only. Deep links bypass onboarding entirely
+- [x] **`/events` page crashes browser renderer** — Fixed: replaced `<>...</>` fragments in `.map()` with `<React.Fragment key={...}>` to fix React reconciliation crash. Also stabilized recharts `ResponsiveContainer` width
+- [x] **`/channels` page load timeout** — Fixed: `StatsService.getAll()` changed from sequential `for...of` (80+ sequential HTTP requests) to parallel `Promise.all`
+- [x] **`/whats-new` route returns 404** — Fixed: created missing `client/src/lib/changelog.ts` module with types and default data
+- [x] **404 page renders empty** — Fixed: wrapped `NotFound` in `<AppLayout>` so users get sidebar/bottom nav navigation chrome
+- [x] **Profile page renders blank** — Fixed: wrapped render tree in `<ErrorBoundary>` with "Reset & Reload" fallback. Added try/catch on all `localStorage` reads
+- [x] **Mobile bottom nav hidden at 375px** — Fixed: increased bottom nav z-index to `z-[70]` (above FaceliftNavbar). Increased bottom padding to 80px
 
 ## High Priority (P1)
 
