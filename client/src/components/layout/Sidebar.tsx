@@ -3,7 +3,7 @@
  * Spring animation, violet active state, tooltip on collapse
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCredits } from '../../context/CreditsContext';
@@ -188,17 +188,25 @@ export function Sidebar() {
   const { preferences } = useUserPreferences();
   const [hovered, setHovered] = useState<string | null>(null);
 
-  const isActive = (path: string) =>
+  const isActive = useCallback((path: string) =>
     path === '/'
       ? location === '/'
-      : location === path || location.startsWith(path.replace(/\/$/, '') + '/');
+      : location === path || location.startsWith(path.replace(/\/$/, '') + '/'),
+    [location]
+  );
 
   const isAdmin = localStorage.getItem('admin') === 'true' || window.location.search.includes('admin=true');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(sections.map(s => [s.label, true]))
   );
-  const toggleSection = (label: string) =>
-    setExpandedSections(prev => ({ ...prev, [label]: !prev[label] }));
+  const toggleSection = useCallback((label: string) =>
+    setExpandedSections(prev => ({ ...prev, [label]: !prev[label] })),
+    []
+  );
+
+  const handleGoHome = useCallback(() => setLocation('/'), [setLocation]);
+  const handleGoProfile = useCallback(() => setLocation('/profile'), [setLocation]);
+  const handleGoBotActivity = useCallback(() => setLocation('/bot-activity'), [setLocation]);
 
   const filteredSections = sections.map(s => {
     if (s.label === 'Learn' && preferences.hideCertifications) {
@@ -219,7 +227,7 @@ export function Sidebar() {
       {/* Logo + wordmark */}
       <div className="h-14 flex items-center justify-between px-3 border-b border-border shrink-0">
         <button
-          onClick={() => setLocation('/')}
+          onClick={handleGoHome}
           className={cn('flex items-center gap-2.5 min-w-0', isCollapsed && 'justify-center w-full')}
         >
           <motion.div
@@ -293,7 +301,7 @@ export function Sidebar() {
       {/* Bottom: Level/XP + Credits + settings */}
       <div className={cn('border-t border-border shrink-0', isCollapsed ? 'p-1.5' : 'p-2')}>
         <button
-          onClick={() => setLocation('/profile')}
+          onClick={handleGoProfile}
           className={cn(
             'w-full flex items-center rounded-lg hover:bg-muted/50 transition-colors overflow-hidden',
             isCollapsed ? 'justify-center p-2' : 'gap-2 px-2.5 py-2'
@@ -327,7 +335,7 @@ export function Sidebar() {
           <div className="mt-1 space-y-0.5">
             {isAdmin && (
             <button
-              onClick={() => setLocation('/bot-activity')}
+              onClick={handleGoBotActivity}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs"
             >
               <Bot className="w-3.5 h-3.5" />
@@ -335,7 +343,7 @@ export function Sidebar() {
             </button>
             )}
             <button
-              onClick={() => setLocation('/profile')}
+              onClick={handleGoProfile}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs"
             >
               <Settings className="w-3.5 h-3.5" />

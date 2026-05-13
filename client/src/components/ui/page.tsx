@@ -50,13 +50,17 @@ interface SearchBarProps {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  id?: string;
+  label?: string;
 }
 
-export function SearchBar({ value, onChange, placeholder = 'Search...', className }: SearchBarProps) {
+export function SearchBar({ value, onChange, placeholder = 'Search...', className, id = 'search-bar', label }: SearchBarProps) {
   return (
     <div className={cn('relative', className)}>
+      <label htmlFor={id} className="sr-only">{label ?? placeholder}</label>
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
       <input
+        id={id}
         type="text"
         value={value}
         onChange={e => onChange(e.target.value)}

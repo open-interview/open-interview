@@ -73,8 +73,10 @@ export default function ManageSubscriptionsPage() {
 
         {/* Search */}
         <div className="relative mb-4">
+          <label htmlFor="subscription-search" className="sr-only">Search topics or certifications</label>
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <input
+            id="subscription-search"
             type="text"
             placeholder="Search topics or certifications..."
             value={query}

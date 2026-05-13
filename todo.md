@@ -1615,7 +1615,7 @@ The combined analysis found **93 issues total** (17 critical, 26 high, 31 modera
 - [ ] **SS1/SS3/SS4**: Mount RewardProvider (currently dead code), consolidate CreditsContext + AchievementContext into it
 - [x] **SS6**: Remove internal `balance` vs `state.balance` duplication in CreditsContext
 - [ ] **SS2**: Consolidate 5 notification systems → UnifiedNotificationManager
-- [ ] **SS8**: Remove independent localStorage scanning from BadgeContext
+- [x] **SS8**: Remove independent localStorage scanning from BadgeContext
 - [ ] **SS9/SS11**: Create StorageService wrapper with error handling and quota detection
 - [ ] **SS10**: Reduce provider nesting from 9 to 6
 - [x] **SS12**: Remove artificial 1s delay in BadgeContext
@@ -1623,9 +1623,9 @@ The combined analysis found **93 issues total** (17 critical, 26 high, 31 modera
 ---
 
 ### Phase 3 — Accessibility (2–3 hours)
-- [ ] **SA1**: Add visible labels to 15+ input fields and selects
+- [x] **SA1**: Add visible labels to 15+ input fields and selects
 - [x] **SA2**: Add `aria-label` to 17+ icon-only buttons
-- [ ] **SA3**: Fix low-contrast text on home-facelift.tsx (`text-white/20/30/40`)
+- [x] **SA3**: Fix low-contrast text on home-facelift.tsx (`text-white/20/30/40`)
 - [x] **SA4**: Add skip-to-content link to AppLayout
 - [ ] **SA5**: Fix `focus-visible` styles on 10+ elements
 - [x] **SA6**: Add `aria-current="page"` to navigation items
@@ -1640,7 +1640,7 @@ The combined analysis found **93 issues total** (17 critical, 26 high, 31 modera
 - [ ] **SPF3**: Add list virtualization to AllChannels channel grid
 - [ ] **SPF4**: Consolidate timer management — replace JS timers with CSS/RAF
 - [x] **SPF5**: Add `useReducedMotion` wrapper to framer-motion components
-- [ ] **SPF6**: Extract inline arrow functions in Sidebar, facelift-navbar, MobileHeader
+- [x] **SPF6**: Extract inline arrow functions in Sidebar, facelift-navbar, MobileHeader
 - [ ] **SPF7**: Begin splitting largest page files (Documentation, CertificationExam)
 - [x] **SPF8**: Cache `useGlobalStats` to avoid full localStorage scan on every refresh
 - [x] **SPF9**: Debounce high-frequency event listeners

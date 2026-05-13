@@ -356,7 +356,7 @@ function HeroSection() {
               <div className="text-2xl sm:text-3xl font-bold text-white mb-1">
                 <AnimatedNumber value={stat.value} suffix={stat.suffix} />
               </div>
-              <div className="text-xs text-white/40 font-medium uppercase tracking-wider">
+              <div className="text-xs text-white/60 font-medium uppercase tracking-wider">
                 {stat.label}
               </div>
             </div>
@@ -453,7 +453,7 @@ function FeaturedArticles() {
             <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-bold text-white mb-4">
               Learn from the <span className="gradient-text">best resources</span>
             </motion.h2>
-            <motion.p variants={fadeUp} className="text-white/40 max-w-xl mx-auto">
+            <motion.p variants={fadeUp} className="text-white/60 max-w-xl mx-auto">
               Curated engineering articles written by senior engineers from top tech companies.
             </motion.p>
           </div>
@@ -468,7 +468,7 @@ function FeaturedArticles() {
             ))
           ) : articles.length === 0 ? (
             <div className="col-span-full text-center py-12">
-              <p className="text-white/40 text-sm">No featured articles available right now.</p>
+              <p className="text-white/60 text-sm">No featured articles available right now.</p>
               <button onClick={() => setLocation("/blog")} className="mt-3 text-sm text-violet-400 hover:text-violet-300 transition-colors">
                 Browse all articles <ArrowRight className="w-3 h-3 inline" />
               </button>
@@ -489,9 +489,9 @@ function FeaturedArticles() {
                     <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${article.gradient} flex items-center justify-center`}>
                       {article.icon}
                     </div>
-                    <span className="text-xs font-medium text-white/40">{article.category}</span>
+                    <span className="text-xs font-medium text-white/60">{article.category}</span>
                     <span className="text-xs text-white/20">·</span>
-                    <span className="text-xs text-white/30 flex items-center gap-1">
+                    <span className="text-xs text-white/60 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {article.readTime}
                     </span>
@@ -500,7 +500,7 @@ function FeaturedArticles() {
                   <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-violet-300 transition-colors leading-snug">
                     {article.title}
                   </h3>
-                  <p className="text-sm text-white/40 leading-relaxed mb-4 line-clamp-3">
+                  <p className="text-sm text-white/60 leading-relaxed mb-4 line-clamp-3">
                     {article.description}
                   </p>
 
@@ -591,7 +591,7 @@ function TrendingTopics() {
             <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-bold text-white mb-4">
               Explore <span className="gradient-text">popular topics</span>
             </motion.h2>
-            <motion.p variants={fadeUp} className="text-white/40 max-w-xl mx-auto">
+            <motion.p variants={fadeUp} className="text-white/60 max-w-xl mx-auto">
               Dive into the most sought-after engineering topics with curated practice questions.
             </motion.p>
           </div>
@@ -611,7 +611,7 @@ function TrendingTopics() {
               <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">
                 {ch.id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
               </span>
-              <span className="text-xs text-white/30">{ch.total}</span>
+              <span className="text-xs text-white/60">{ch.total}</span>
             </motion.button>
           ))}
         </AnimatedSection>
@@ -685,7 +685,7 @@ function WhyOpenInterview() {
             <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-bold text-white mb-4">
               Everything you need to <span className="gradient-text">ace the interview</span>
             </motion.h2>
-            <motion.p variants={fadeUp} className="text-white/40 max-w-xl mx-auto">
+            <motion.p variants={fadeUp} className="text-white/60 max-w-xl mx-auto">
               A complete interview preparation platform built by engineers, for engineers.
             </motion.p>
           </div>
@@ -707,7 +707,7 @@ function WhyOpenInterview() {
                   {feature.icon}
                 </div>
                 <h3 className="text-base font-semibold text-white mb-2">{feature.title}</h3>
-                <p className="text-sm text-white/40 leading-relaxed">{feature.description}</p>
+                <p className="text-sm text-white/60 leading-relaxed">{feature.description}</p>
               </div>
             </motion.div>
           ))}
@@ -736,7 +736,7 @@ function SocialProof() {
             <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-bold text-white mb-4">
               By the <span className="gradient-text">numbers</span>
             </motion.h2>
-            <motion.p variants={fadeUp} className="text-white/40 max-w-xl mx-auto">
+            <motion.p variants={fadeUp} className="text-white/60 max-w-xl mx-auto">
               Real platform metrics that speak for themselves.
             </motion.p>
           </div>
@@ -766,7 +766,7 @@ function SocialProof() {
             { label: "Community Driven" },
             { label: "Free Forever" },
           ].map((badge) => (
-            <div key={badge.label} className="flex items-center gap-2 text-white/30">
+            <div key={badge.label} className="flex items-center gap-2 text-white/60">
               <CheckCircle2 className="w-5 h-5 text-emerald-400" />
               <span className="text-sm font-medium">{badge.label}</span>
             </div>
@@ -797,7 +797,7 @@ function LandingFooter() {
                 Open<span className="gradient-text">Interview</span>
               </span>
             </div>
-            <p className="text-sm text-white/30 leading-relaxed max-w-xs">
+            <p className="text-sm text-white/60 leading-relaxed max-w-xs">
               The modern platform for engineering interview preparation. Practice smarter,
               not harder.
             </p>
@@ -845,7 +845,7 @@ function LandingFooter() {
                           setLocation(link.href);
                         }
                       }}
-                      className="text-sm text-white/30 hover:text-white/70 transition-colors"
+                      className="text-sm text-white/60 hover:text-white/70 transition-colors"
                     >
                       {link.label}
                     </button>
@@ -857,7 +857,7 @@ function LandingFooter() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-white/[0.06]">
-          <p className="text-xs text-white/20">
+          <p className="text-xs text-white/60">
             &copy; {new Date().getFullYear()} Open Interview. All rights reserved.
           </p>
           <div className="flex items-center gap-4">

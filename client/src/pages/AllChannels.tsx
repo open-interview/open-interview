@@ -647,7 +647,7 @@ export default function AllChannels() {
             {/* Filter bar */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-6 space-y-3">
               <div className="flex gap-3 flex-wrap">
-                <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search channels…" />
+                <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search channels…" id="channel-search" />
                 <select value={progressFilter} onChange={e => setProgressFilter(e.target.value as typeof progressFilter)}
                   className="min-h-[44px] px-3 py-2.5 rounded-xl text-sm focus:outline-none bg-muted border border-border text-foreground cursor-pointer">
                   <option value="all">All Progress</option>
