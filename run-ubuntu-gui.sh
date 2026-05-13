@@ -62,19 +62,19 @@ chmod +x "$ROOTFS/root/start-gui.sh"
 
 # 4. Install GUI packages (once)
 echo "Checking/installing packages..."
-nix shell nixpkgs#proot --command \
-  proot -S "$ROOTFS" -b /nix:/nix -b "$WORKSPACE:/workspace" -w /root \
+PROOT_TMP_DIR="$WORKSPACE" nix shell nixpkgs#proot --command \
+  sh -c 'PROOT_TMP_DIR="$0" proot -S "$1" -b /nix:/nix -b "$2:/workspace" -w /root \
   /bin/sh -c "unset PORT; export PATH=/usr/sbin:/usr/bin:/sbin:/bin; \
     dpkg -l xvfb &>/dev/null || { \
       apt-get update -qq && \
       apt-get install -y -qq xvfb x11vnc fluxbox xterm novnc x11-apps 2>&1 | tail -3; \
-    }"
+    }"' "$WORKSPACE" "$ROOTFS" "$WORKSPACE"
 
 # 5. Start GUI services in background
 echo "Starting GUI services..."
-nix shell nixpkgs#proot --command \
-  proot -S "$ROOTFS" -b /nix:/nix -b "$WORKSPACE:/workspace" -b "$KIRO_DIR:/opt/kiro-ide" -w /root \
-  /bin/sh /root/start-gui.sh &
+PROOT_TMP_DIR="$WORKSPACE" nix shell nixpkgs#proot --command \
+  sh -c 'PROOT_TMP_DIR="$0" proot -S "$1" -b /nix:/nix -b "$2:/workspace" -b "$3:/opt/kiro-ide" -w /root \
+  /bin/sh /root/start-gui.sh' "$WORKSPACE" "$ROOTFS" "$WORKSPACE" "$KIRO_DIR" &
 PROOT_PID=$!
 
 # 6. Wait for Xvfb to be ready
