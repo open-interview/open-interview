@@ -17,6 +17,8 @@
  */
 
 import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
 import { getDb, initBotTables } from './shared/db.js';
 import { logAction } from './shared/ledger.js';
 import { addToQueue, getNextWorkItem, completeWorkItem, getBatchWorkItems } from './shared/queue.js';
@@ -38,6 +40,47 @@ async function getVectorDB() {
 
 const BOT_NAME = 'verifier';
 const db = getDb();
+
+const QUESTIONS_DIR = path.join(process.cwd(), 'data', 'questions');
+
+function readQuestions(ch) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, `${ch}.json`), 'utf8'));
+  } catch { return []; }
+}
+
+function writeQuestions(ch, data) {
+  fs.mkdirSync(QUESTIONS_DIR, { recursive: true });
+  fs.writeFileSync(path.join(QUESTIONS_DIR, `${ch}.json`), JSON.stringify(data, null, 2));
+}
+
+function readAllQuestions() {
+  let files = [];
+  try { files = fs.readdirSync(QUESTIONS_DIR); } catch { return []; }
+  const all = [];
+  for (const f of files) {
+    if (!f.endsWith('.json')) continue;
+    try { all.push(...JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, f), 'utf8'))); } catch {}
+  }
+  return all;
+}
+
+function normalizeQuestion(q) {
+  return {
+    id: q.id,
+    question: q.question,
+    answer: q.answer,
+    explanation: q.explanation,
+    channel: q.channel,
+    subChannel: q.sub_channel,
+    difficulty: q.difficulty,
+    diagram: q.diagram,
+    tags: q.tags || [],
+    voiceKeywords: q.voice_keywords || null,
+    voiceSuitable: q.voice_suitable === 1,
+    status: q.status
+  };
+}
 
 // ============================================
 // ANALYSIS CONFIGURATION
@@ -650,65 +693,33 @@ async function reportAndQueueNode(state) {
 // ============================================
 
 async function getQuestionById(id) {
-  const result = await db.execute({
-    sql: 'SELECT * FROM questions WHERE id = ?',
-    args: [id]
-  });
-  if (result.rows.length === 0) return null;
-  
-  const row = result.rows[0];
-  return {
-    id: row.id,
-    question: row.question,
-    answer: row.answer,
-    explanation: row.explanation,
-    channel: row.channel,
-    subChannel: row.sub_channel,
-    difficulty: row.difficulty,
-    diagram: row.diagram,
-    tags: row.tags ? JSON.parse(row.tags) : [],
-    voiceKeywords: row.voice_keywords ? JSON.parse(row.voice_keywords) : null,
-    voiceSuitable: row.voice_suitable === 1,
-    status: row.status
-  };
+  const allQuestions = readAllQuestions();
+  const q = allQuestions.find(q => q.id === id);
+  return q ? normalizeQuestion(q) : null;
 }
 
 async function getUnverifiedQuestions(limit = 100, channel = null) {
-  let sql = `SELECT * FROM questions 
-             WHERE status = 'active' 
-             AND id NOT IN (
-               SELECT DISTINCT item_id FROM bot_ledger 
-               WHERE bot_name = 'verifier' 
-               AND action IN ('verify', 'flag')
-               AND created_at > TO_CHAR(NOW() - INTERVAL '7 days', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
-             )`;
-  
-  const args = [];
+  let questions = readAllQuestions().filter(q => q.status === 'active');
   
   if (channel) {
-    sql += ' AND channel = ?';
-    args.push(channel);
+    questions = questions.filter(q => q.channel === channel);
   }
   
-  sql += ' ORDER BY RANDOM() LIMIT ?';
-  args.push(limit);
+  // Filter out recently verified items
+  const ledger = db.readArray('ledger.json');
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const recentVerifiedIds = new Set(
+    ledger
+      .filter(l => l.botName === 'verifier' && ['verify', 'flag'].includes(l.action))
+      .map(l => l.itemId)
+  );
+  questions = questions.filter(q => !recentVerifiedIds.has(q.id));
   
-  const result = await db.execute({ sql, args });
+  // Shuffle and limit
+  questions.sort(() => Math.random() - 0.5);
+  questions = questions.slice(0, limit);
   
-  return result.rows.map(row => ({
-    id: row.id,
-    question: row.question,
-    answer: row.answer,
-    explanation: row.explanation,
-    channel: row.channel,
-    subChannel: row.sub_channel,
-    difficulty: row.difficulty,
-    diagram: row.diagram,
-    tags: row.tags ? JSON.parse(row.tags) : [],
-    voiceKeywords: row.voice_keywords ? JSON.parse(row.voice_keywords) : null,
-    voiceSuitable: row.voice_suitable === 1,
-    status: row.status
-  }));
+  return questions.map(normalizeQuestion);
 }
 
 async function findSimilarQuestions(excludeId, questionText, channel) {
@@ -744,16 +755,13 @@ async function findSimilarQuestions(excludeId, questionText, channel) {
     }
   }
   
-  // Fallback to TF-IDF comparison
-  const result = await db.execute({
-    sql: 'SELECT id, question FROM questions WHERE channel = ? AND id != ? AND status = ? LIMIT 150',
-    args: [channel, excludeId, 'active']
-  });
-  
-  for (const row of result.rows) {
-    const similarity = calculateSimilarity(questionText, row.question);
+  // Fallback: read from channel file
+  const questions = readQuestions(channel);
+  for (const q of questions) {
+    if (q.id === excludeId || q.status !== 'active') continue;
+    const similarity = calculateSimilarity(questionText, q.question);
     if (similarity >= CONFIG.thresholds.duplicateSimilarity) {
-      similar.push({ id: row.id, similarity, question: row.question.substring(0, 80) });
+      similar.push({ id: q.id, similarity, question: q.question.substring(0, 80) });
     }
   }
   

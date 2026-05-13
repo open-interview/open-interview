@@ -1,25 +1,14 @@
 #!/usr/bin/env node
-/**
- * Fetch Question History for Static Build
- *
- * Retrieves history from the database and generates static JSON files.
- * For questions without history, creates a default "created" entry using
- * the question's created_at date.
- *
- * Output:
- * - public/data/history/index.json - Summary of all questions with history
- * - public/data/history/{questionId}.json - Individual question history
- */
 
-import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import 'dotenv/config';
-import { dbClient as db } from './db/pg-client.js';
 
 const OUTPUT_DIR = 'client/public/data/history';
+const QUESTIONS_DIR = 'data/questions';
 
 async function fetchQuestionHistory() {
-  console.log('📜 Fetching question history from database...\n');
+  console.log('📜 Fetching question history from files...\n');
 
   if (!existsSync(OUTPUT_DIR)) {
     mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -30,54 +19,29 @@ async function fetchQuestionHistory() {
   const summaryByQuestion = new Map();
 
   try {
-    // Fetch all questions
-    console.log('📊 Fetching all questions...');
-    const questionsResult = await db.execute(`
-      SELECT id, channel, created_at, last_updated
-      FROM questions
-    `);
-    console.log(`   Found ${questionsResult.rows.length} questions`);
-
-    for (const row of questionsResult.rows) {
-      const questionId = row.id;
-      const createdAt = row.created_at || row.last_updated || new Date().toISOString();
-
-      historyByQuestion.set(questionId, [{
-        eventType: 'created',
-        eventSource: 'system',
-        sourceName: 'content-pipeline',
-        changesSummary: `Question added to ${row.channel} channel`,
-        changedFields: null,
-        reason: null,
-        metadata: null,
-        createdAt,
-      }]);
-
-      summaryByQuestion.set(questionId, {
-        questionType: 'question',
-        totalEvents: 1,
-        latestEvent: { eventType: 'created', createdAt },
-        eventTypes: { created: 1 }
-      });
+    console.log('📊 Reading all questions...');
+    if (!existsSync(QUESTIONS_DIR)) {
+      console.log('   No questions directory found');
+      return;
     }
 
-    // Fetch coding challenges
-    console.log('📊 Fetching coding challenges...');
-    try {
-      const challengesResult = await db.execute(`
-        SELECT id, category, created_at FROM coding_challenges
-      `);
-      console.log(`   Found ${challengesResult.rows.length} coding challenges`);
+    const files = readdirSync(QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+    let questionCount = 0;
 
-      for (const row of challengesResult.rows) {
+    for (const file of files) {
+      const channel = file.replace(/\.json$/, '');
+      const questions = JSON.parse(readFileSync(join(QUESTIONS_DIR, file), 'utf8'));
+
+      for (const row of questions) {
+        questionCount++;
         const questionId = row.id;
-        const createdAt = row.created_at || new Date().toISOString();
+        const createdAt = row.createdAt || row.created_at || row.lastUpdated || new Date().toISOString();
 
         historyByQuestion.set(questionId, [{
           eventType: 'created',
           eventSource: 'system',
-          sourceName: 'challenge-generator',
-          changesSummary: `Coding challenge added to ${row.category} category`,
+          sourceName: 'content-pipeline',
+          changesSummary: `Question added to ${channel} channel`,
           changedFields: null,
           reason: null,
           metadata: null,
@@ -85,118 +49,16 @@ async function fetchQuestionHistory() {
         }]);
 
         summaryByQuestion.set(questionId, {
-          questionType: 'coding',
+          questionType: 'question',
           totalEvents: 1,
           latestEvent: { eventType: 'created', createdAt },
           eventTypes: { created: 1 }
         });
       }
-    } catch (e) {
-      console.log('   No coding_challenges table found, skipping');
     }
 
-    // Fetch tests
-    console.log('📊 Fetching tests...');
-    try {
-      const testsResult = await db.execute(`
-        SELECT id, channel_name, created_at FROM tests
-      `);
-      console.log(`   Found ${testsResult.rows.length} tests`);
+    console.log(`   Found ${questionCount} questions`);
 
-      for (const row of testsResult.rows) {
-        const testId = row.id;
-        const createdAt = row.created_at || new Date().toISOString();
-
-        historyByQuestion.set(testId, [{
-          eventType: 'created',
-          eventSource: 'system',
-          sourceName: 'test-generator',
-          changesSummary: `Test created for ${row.channel_name} channel`,
-          changedFields: null,
-          reason: null,
-          metadata: null,
-          createdAt,
-        }]);
-
-        summaryByQuestion.set(testId, {
-          questionType: 'test',
-          totalEvents: 1,
-          latestEvent: { eventType: 'created', createdAt },
-          eventTypes: { created: 1 }
-        });
-      }
-    } catch (e) {
-      console.log('   No tests table found, skipping');
-    }
-
-    // Overlay actual history records
-    console.log('📊 Fetching history records...');
-    try {
-      const historyResult = await db.execute(`
-        SELECT
-          question_id,
-          question_type,
-          event_type,
-          event_source,
-          source_name,
-          changes_summary,
-          changed_fields,
-          reason,
-          metadata,
-          created_at
-        FROM question_history
-        ORDER BY created_at DESC
-      `);
-      console.log(`   Found ${historyResult.rows.length} history records`);
-
-      for (const row of historyResult.rows) {
-        const questionId = row.question_id;
-
-        const record = {
-          eventType: row.event_type,
-          eventSource: row.event_source,
-          sourceName: row.source_name,
-          changesSummary: row.changes_summary,
-          changedFields: row.changed_fields ? JSON.parse(row.changed_fields) : null,
-          reason: row.reason,
-          metadata: row.metadata ? JSON.parse(row.metadata) : null,
-          createdAt: row.created_at,
-        };
-
-        if (historyByQuestion.has(questionId)) {
-          const existing = historyByQuestion.get(questionId);
-          if (existing.length === 1 && existing[0].eventSource === 'system') {
-            historyByQuestion.set(questionId, [record]);
-            summaryByQuestion.set(questionId, {
-              questionType: row.question_type,
-              totalEvents: 1,
-              latestEvent: { eventType: row.event_type, createdAt: row.created_at },
-              eventTypes: { [row.event_type]: 1 }
-            });
-          } else {
-            existing.unshift(record);
-            const summary = summaryByQuestion.get(questionId);
-            summary.totalEvents++;
-            summary.eventTypes[row.event_type] = (summary.eventTypes[row.event_type] || 0) + 1;
-            if (new Date(row.created_at) > new Date(summary.latestEvent.createdAt)) {
-              summary.latestEvent = { eventType: row.event_type, createdAt: row.created_at };
-            }
-          }
-        } else {
-          historyByQuestion.set(questionId, [record]);
-          summaryByQuestion.set(questionId, {
-            questionType: row.question_type,
-            totalEvents: 1,
-            latestEvent: { eventType: row.event_type, createdAt: row.created_at },
-            eventTypes: { [row.event_type]: 1 }
-          });
-        }
-      }
-    } catch (e) {
-      console.log('   No question_history table found, using default history only');
-    }
-
-    // Write individual question history files
     let filesWritten = 0;
     for (const [questionId, records] of historyByQuestion) {
       const filePath = join(OUTPUT_DIR, `${questionId}.json`);

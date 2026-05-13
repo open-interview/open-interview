@@ -32,8 +32,8 @@ test.describe('Profile Page — /profile', () => {
 
     // Profile page renders without crash — the name may display differently (initials, etc.)
     // Check for either exact text or a fallback that the page content is present
-    const hasName = await page.getByText(/test user/i).isVisible({ timeout: 5000 }).catch(() => false);
-    const hasProfileContent = await page.getByText(/profile|streak|question|progress/i).first().isVisible({ timeout: 3000 }).catch(() => false);
+    const hasName = await page.getByText(/test user/i).first().isVisible({ timeout: 5000 }).catch(() => false);
+    const hasProfileContent = await page.getByRole('heading', { name: /profile|achievements|learning/i }).first().isVisible({ timeout: 5000 }).catch(() => false);
     console.log(`Profile: name visible: ${hasName}, profile content visible: ${hasProfileContent}`);
     expect(hasName || hasProfileContent, 'Profile page should show either the name or profile stats').toBe(true);
   });

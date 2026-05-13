@@ -5,7 +5,7 @@
  */
 
 import 'dotenv/config';
-import { dbClient } from './utils.js';
+import { getAllUnifiedQuestions, getQuestionsForChannel } from './utils.js';
 
 console.log('═'.repeat(60));
 console.log('🧪 LinkedIn Poll Setup Test');
@@ -43,8 +43,8 @@ if (!personUrn) {
 // Test 2: Check database connection
 console.log('\n2️⃣ Checking database connection...');
 try {
-  const result = await dbClient.execute('SELECT COUNT(*) as count FROM questions');
-  const count = result.rows[0]?.count || 0;
+  const allQuestions = await getAllUnifiedQuestions();
+  const count = allQuestions.length;
   console.log(`   ✅ Database connected (${count} questions)`);
   
   if (count === 0) {
@@ -59,20 +59,13 @@ try {
 // Test 3: Check for questions with multiple choice format
 console.log('\n3️⃣ Checking for poll-suitable questions...');
 try {
-  const result = await dbClient.execute(`
-    SELECT id, question, answer, channel, difficulty 
-    FROM questions 
-    WHERE status = 'active' 
-    AND (
-      answer LIKE '%A)%' OR 
-      answer LIKE '%B)%' OR 
-      answer LIKE '%1.%' OR
-      answer LIKE '%2.%'
-    )
-    LIMIT 5
-  `);
+  const allQuestions = await getAllUnifiedQuestions();
+  const matching = allQuestions.filter(q => {
+    const a = q.answer || '';
+    return a.includes('A)') || a.includes('B)') || a.includes('1.') || a.includes('2.');
+  }).slice(0, 5);
   
-  if (result.rows.length === 0) {
+  if (matching.length === 0) {
     console.log('   ⚠️  No questions with multiple choice format found');
     console.log('      Questions need format like:');
     console.log('      A) Option 1');
@@ -80,9 +73,9 @@ try {
     console.log('      C) Option 3');
     hasErrors = true;
   } else {
-    console.log(`   ✅ Found ${result.rows.length} poll-suitable questions`);
+    console.log(`   ✅ Found ${matching.length} poll-suitable questions`);
     console.log('\n   Sample questions:');
-    result.rows.forEach((row, i) => {
+    matching.forEach((row, i) => {
       console.log(`   ${i + 1}. ${row.id} - ${row.channel} (${row.difficulty})`);
       console.log(`      ${row.question.substring(0, 60)}...`);
     });

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
-import { FileText, ExternalLink, Clock, Share2, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { FileText, ExternalLink, Share2, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { SEOHead } from "../../components/SEOHead";
 import { AppLayout } from "../../components/layout/AppLayout";
 import { cn } from "../../lib/utils";
@@ -15,6 +15,8 @@ interface BlogPostRow {
   publishedAt: string | null;
   createdAt: string;
 }
+
+const LINKEDIN_STORAGE_KEY = "admin_linkedin_shares";
 
 function formatTimeAgo(dateStr: string): string {
   if (!dateStr) return "never";
@@ -44,12 +46,44 @@ export default function AdminBlogPage() {
   const fetchData = useCallback(async () => {
     try {
       setFetchError(false);
-      const res = await fetch("/api/admin/blog");
+      // Load blog posts from static JSON files (pre-built at deploy time)
+      const res = await fetch("/data/blog-posts.json");
       if (res.ok) {
         const data = await res.json();
-        setPosts(data);
+        // Normalize: data may be array or object with posts key
+        const items = Array.isArray(data) ? data : (data.posts ?? []);
+        // Restore LinkedIn share timestamps from localStorage
+        const stored = JSON.parse(localStorage.getItem(LINKEDIN_STORAGE_KEY) || "{}");
+        const rows: BlogPostRow[] = items.map((p: any) => ({
+          id: p.id || p._id || "",
+          title: p.blogTitle || p.title || "Untitled",
+          slug: p.blogSlug || p.slug || "",
+          channel: p.channel || null,
+          status: p.status || "published",
+          linkedinSharedAt: stored[p.id || p._id] || p.linkedinSharedAt || null,
+          publishedAt: p.publishedAt || p.createdAt || null,
+          createdAt: p.createdAt || "",
+        }));
+        setPosts(rows);
       } else {
-        setFetchError(true);
+        // Fallback: try loading from individual blog post files
+        const indexRes = await fetch("/data/blog-index.json");
+        if (indexRes.ok) {
+          const index = await indexRes.json();
+          const rows: BlogPostRow[] = (index.posts || []).map((p: any) => ({
+            id: p.id,
+            title: p.title,
+            slug: p.slug,
+            channel: p.channel || null,
+            status: "published",
+            linkedinSharedAt: null,
+            publishedAt: p.publishedAt || null,
+            createdAt: p.createdAt || "",
+          }));
+          setPosts(rows);
+        } else {
+          setFetchError(true);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch blog posts:", error);
@@ -69,26 +103,18 @@ export default function AdminBlogPage() {
     fetchData();
   };
 
-  const handleSyncLinkedin = async (postId: string) => {
+  const handleSyncLinkedin = (postId: string) => {
     setUpdateMessage(null);
     setUpdateError(null);
     try {
-      const res = await fetch(`/api/admin/blog/${postId}/linkedin`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sharedAt: new Date().toISOString(),
-        }),
-      });
-      if (res.ok) {
-        setUpdateMessage("LinkedIn timestamp updated");
-        fetchData();
-      } else {
-        const body = await res.json();
-        setUpdateError(body.error || "Failed to update");
-      }
-    } catch (error) {
-      setUpdateError("Network error");
+      const now = new Date().toISOString();
+      const stored = JSON.parse(localStorage.getItem(LINKEDIN_STORAGE_KEY) || "{}");
+      stored[postId] = now;
+      localStorage.setItem(LINKEDIN_STORAGE_KEY, JSON.stringify(stored));
+      setUpdateMessage("LinkedIn timestamp updated (local)");
+      setPosts(prev => prev.map(p => p.id === postId ? { ...p, linkedinSharedAt: now } : p));
+    } catch {
+      setUpdateError("Failed to save locally");
     }
     setTimeout(() => {
       setUpdateMessage(null);

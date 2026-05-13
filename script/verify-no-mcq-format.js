@@ -4,7 +4,7 @@
  */
 
 import 'dotenv/config';
-import { dbClient } from './utils.js';
+import { getAllUnifiedQuestions } from './utils.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -19,7 +19,8 @@ const results = {
 // 1. Check Database
 console.log('1️⃣  Checking Database...');
 try {
-  const result = await dbClient.execute('SELECT id, channel, answer FROM questions WHERE status != "deleted"');
+  const allQuestions = await getAllUnifiedQuestions();
+  const result = { rows: allQuestions.filter(q => q.status !== 'deleted') };
   
   const mcqQuestions = result.rows.filter(q => {
     const answer = q.answer;

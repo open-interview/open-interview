@@ -10,36 +10,66 @@ export const schema = {
   introduction: "Opening hook that draws readers in with a story, problem, or provocative question (3-4 sentences)",
   sections: [
     {
-      heading: "Section heading that advances the narrative",
-      content: "Section content in markdown - story-driven with real scenarios, code examples, and insights. Include inline citations like [1], [2] referencing sources array"
+      heading: "Hook — [compelling opening that grabs attention]",
+      content: "Content establishing the stakes, context, and curiosity — draws reader in immediately"
+    },
+    {
+      heading: "Problem — [core challenge or pain point]",
+      content: "Deep exploration of the problem space — why it matters, who it affects, and what is at stake"
+    },
+    {
+      heading: "Real-World Case — [company name]",
+      content: "Documented real-world incident that illustrates the problem and its quantified impact"
+    },
+    {
+      heading: "Deep Dive — [technical exploration]",
+      content: "In-depth technical analysis of concepts, trade-offs, and underlying principles"
+    },
+    {
+      heading: "Workflow — [step-by-step process or architecture]",
+      content: "Step-by-step breakdown of the solution with the Mermaid diagram referenced inline"
+    },
+    {
+      heading: "Code Example — [implementation walkthrough]",
+      content: "Practical code example showing implementation with line-by-line explanations"
+    },
+    {
+      heading: "Lessons Learned — [key takeaways]",
+      content: "Summary of insights, best practices, pitfalls to avoid, and actionable advice"
     }
   ],
-  realWorldExample: {
-    company: "Famous company name (Netflix, Uber, Spotify, etc.)",
-    scenario: "The story of how they faced this challenge and what happened",
-    lesson: "The insight they gained that changed their approach",
-    sourceUrl: "URL to the public post-mortem, engineering blog, or documentation that describes this incident (REQUIRED — do not fabricate)"
+  realWorldCase: {
+    company: "Company name",
+    incident: "What happened — the incident, failure, or challenge they faced",
+    year: "YYYY",
+    impact: "Quantified impact — revenue lost, performance degraded, users affected, etc.",
+    sourceUrl: "https://verified-url-to-public-postmortem-or-engineering-blog"
   },
   diagram: "Mermaid diagram code showing architecture/flow (without ```mermaid wrapper)",
   diagramType: "Type of diagram: flowchart|sequence|state|class|er|gantt|pie|mindmap|timeline|architecture",
   diagramLabel: "Human-readable label for the diagram (e.g., 'System Flow', 'Event Sequence', 'State Transitions')",
-  glossary: [
-    { term: "Technical term", definition: "Simple explanation" }
-  ],
-  sources: [
-    { title: "Source title", url: "https://example.com", type: "documentation|blog|paper|video" }
-  ],
   images: [
-    { 
-      url: "https://images.unsplash.com/photo-xxx or other free image URL",
+    {
+      url: "https://images.unsplash.com/photo-xxxxxxxxx?w=800",
       alt: "Descriptive alt text for accessibility",
-      caption: "Optional caption explaining the image",
+      caption: "Caption explaining the image relevance to the content",
       placement: "after-intro|after-section-1|after-section-2|before-conclusion"
     }
   ],
-  quickReference: ["Key insight 1", "Key insight 2", "Key insight 3"],
-  funFact: "Surprising story or historical context about this topic",
-  conclusion: "The moral of the story and what to do next",
+  references: [
+    {
+      number: 1,
+      title: "Reference title",
+      url: "https://example.com",
+      type: "documentation|blog|paper|video"
+    }
+  ],
+  codeExample: {
+    language: "python|javascript|go|rust|typescript|bash",
+    code: "// actual code block with inline comments",
+    explanation: "Walkthrough of what the code does, why it works, and key design decisions"
+  },
+  conclusion: "The moral of the story and what to do next — actionable call to action",
   metaDescription: "SEO meta description (150-160 chars)",
   socialSnippet: {
     hook: "Attention-grabbing first line with emoji (max 100 chars)",
@@ -55,7 +85,7 @@ export const guidelines = [
   
   // CRITICAL CITATION RULE FOR OPENING STORY
   'The introduction/opening paragraph MUST include a citation [1] linking to the source of the real-world story',
-  'The FIRST source in the sources array MUST be the reference for the opening story/case study',
+  'The FIRST reference in the references array MUST be the reference for the opening story/case study',
   'Example: "In 2017, Stripe faced a critical API failure that cost them millions [1]..." where [1] links to the source',
   
   // LOGICAL FLOW & COHERENCE - NEW CRITICAL REQUIREMENTS
@@ -86,19 +116,21 @@ export const guidelines = [
   // REAL-WORLD GROUNDING
   'Every concept needs a "when would I actually use this?" answer',
   'Include a REAL company war story (Netflix, Uber, Stripe, etc.) - what broke, how they fixed it',
-  'ATTRIBUTION RULE: Company war stories MUST be based on publicly documented incidents. Include a sourceUrl in realWorldExample pointing to the post-mortem, engineering blog, or documentation. Do NOT fabricate incidents.',
+  'ATTRIBUTION RULE: Company war stories MUST be based on publicly documented incidents. Populate realWorldCase with: company, incident, year, impact, and a verified sourceUrl pointing to a post-mortem, engineering blog, or documentation. Do NOT fabricate incidents.',
   'Add "battle scars" - common mistakes and how to avoid them',
   'Include specific numbers: latency, throughput, cost savings, team size',
   
   // STRUCTURE & FORMAT
   'Sections should flow like chapters in a story, not disconnected topics',
+  'FOLLOW the section order exactly: Hook → Problem → Real-World Case → Deep Dive → Workflow → Code Example → Lessons Learned',
   'Use bullet lists for "heres what you need to know" moments',
   'Use tables for comparisons: "Option A vs Option B - heres the real tradeoff"',
   'Include a Mermaid diagram that tells the visual story',
   'Use callouts strategically: 💡 Insight, ⚠️ Watch Out, 🔥 Hot Take, 🎯 Key Point',
   
-  // SOURCES & CREDIBILITY - CRITICAL
-  'MUST include AT LEAST 12 credible sources with REAL, WORKING URLs',
+  // REFERENCES & CREDIBILITY - CRITICAL
+  'MUST include AT LEAST 8 references with REAL, WORKING URLs',
+  'Each reference MUST have number (1-indexed), title, url, and type (documentation|blog|paper|video)',
   'USE ONLY these stable URL patterns that actually exist:',
   '  - Wikipedia: https://en.wikipedia.org/wiki/[Topic]',
   '  - MDN: https://developer.mozilla.org/en-US/docs/...',
@@ -114,28 +146,30 @@ export const guidelines = [
   
   // INLINE CITATIONS - CRITICAL FOR CREDIBILITY
   'ADD INLINE CITATIONS throughout the article content using [1], [2], [3] format',
-  'Each citation number corresponds to the index in the sources array (1-indexed)',
+  'Each citation number corresponds to the index in the references array (1-indexed)',
   'Place citations after key facts, statistics, or technical claims',
   'Example: "Kubernetes uses etcd for distributed consensus [1], which provides strong consistency guarantees [2]."',
   'Aim for at least 5-8 inline citations spread throughout the article',
   'Citations should feel natural, not forced - cite when making factual claims',
   
-  // IMAGES - ILLUSTRATED CHARACTERS
-  'Include 2-3 illustrated character images (NOT stock photos)',
-  'USE illustrated character images from these free sources:',
-  '  - Popsy: https://illustrations.popsy.co/amber/[name].svg',
-  '  - Available illustrations: engineer, designer, remote-work, team-work, collaboration,',
-  '    success, product-launch, app-launch, home-office, working, creative-work,',
-  '    data-analysis, security, artificial-intelligence, qa-engineers',
-  '  - Example: https://illustrations.popsy.co/amber/engineer.svg',
-  '  - Example: https://illustrations.popsy.co/amber/team-work.svg',
-  'Choose illustrations that match the topic - engineers for technical, teamwork for collaboration',
-  'These colorful character illustrations make content more engaging and friendly',
-  'Provide descriptive alt text for accessibility',
-  'Add captions that connect the illustration to the content',
+  // IMAGES - UNSPLASH PHOTOGRAPHY
+  'Include AT LEAST 2 images with REAL Unsplash URLs',
+  'USE only verified Unsplash photo URLs: https://images.unsplash.com/photo-[id]?w=800',
+  'Each image MUST have: url (Unsplash), alt text, caption, and placement',
   'Placement options: after-intro, after-section-1, after-section-2, before-conclusion',
-  'Images will be downloaded and stored locally for better performance',
+  'Choose images that reinforce the content visually — architecture diagrams, team collaboration, technical setups',
+  'Provide descriptive alt text for accessibility (screen readers depend on this)',
+  'Add captions that explain the image relevance to the surrounding content',
   
+  // CODE EXAMPLE - REQUIRED
+  'The codeExample field is REQUIRED — every blog MUST include a runnable or illustrative code snippet',
+  'Set language to one of: python, javascript, go, rust, typescript, bash',
+  'The code block must be syntactically valid for the declared language',
+  'Include inline comments in the code to explain key lines',
+  'The explanation field must walk through the code step by step — what each section does and why',
+  'The code must directly relate to the blog topic and solve part of the Problem described earlier',
+  'Prefer real production patterns over toy examples',
+
   // ENDING
   'Conclude with the "so what?" - what should they do differently tomorrow?',
   'Leave them with one memorable insight they can share with their team',
@@ -200,16 +234,16 @@ export function build(context) {
   const realWorldCaseSection = realWorldCase ? `
 REAL-WORLD CASE TO USE AS HOOK (REQUIRED):
 Company: ${realWorldCase.company}
-Scenario: ${realWorldCase.scenario}
-Lesson: ${realWorldCase.lesson}
+Incident: ${realWorldCase.incident || 'N/A'}
+Year: ${realWorldCase.year || 'N/A'}
+Impact: ${realWorldCase.impact || 'N/A'}
 Source URL: ${realWorldCase.sourceUrl || 'N/A'}
-Source Title: ${realWorldCase.sourceTitle || 'N/A'}
 
 IMPORTANT: 
 - Start the blog with this real-world case! Use it as the opening hook to draw readers in.
 - The introduction MUST reference ${realWorldCase.company}'s experience with this topic.
 - The introduction MUST include citation [1] linking to the source.
-- The FIRST item in your sources array MUST be: { title: "${realWorldCase?.sourceTitle || realWorldCase?.company || 'case study'}", url: "${realWorldCase?.sourceUrl || ''}", type: "article" }
+- The FIRST item in your references array MUST be: { number: 1, title: "${realWorldCase.company} incident report", url: "${realWorldCase?.sourceUrl || ''}", type: "article" }
 ` : '';
 
   return `${buildSystemContext('blog')}
@@ -231,13 +265,14 @@ ${realWorldCaseSection}
 STORYTELLING REQUIREMENTS:
 ${guidelines.map(g => `- ${g}`).join('\n')}
 
-STRUCTURE YOUR STORY:
-1. HOOK: Start with a compelling scenario, problem, or question that creates tension
-2. CONTEXT: Set the stage - why does this matter? what are the stakes?
-3. THE JOURNEY: Walk through the concepts as discoveries, not lectures
-4. THE TWIST: Include counterintuitive insights or "aha moments"
-5. REAL-WORLD PROOF: Show how a real company dealt with this
-6. THE PAYOFF: Concrete takeaways and next steps
+STRICT SECTION STRUCTURE — each section is required, in this exact order:
+1. Hook — Opening hook that grabs attention and establishes stakes
+2. Problem — Core challenge or pain point being addressed
+3. Real-World Case — Documented incident showing real-world impact
+4. Deep Dive — Technical analysis of concepts and trade-offs
+5. Workflow — Step-by-step process with Mermaid diagram reference
+6. Code Example — Implementation walkthrough with code
+7. Lessons Learned — Key takeaways and actionable next steps
 
 Output this exact JSON structure:
 ${JSON.stringify(schema, null, 2)}

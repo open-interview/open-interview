@@ -33,7 +33,6 @@ const Certifications = React.lazy(() => import("@/pages/Certifications"));
 const CertificationPractice = React.lazy(() => import("@/pages/CertificationPractice"));
 const CertificationExam = React.lazy(() => import("@/pages/CertificationExam"));
 const Documentation = React.lazy(() => import("@/pages/Documentation"));
-const ExtremeQuestionViewer = React.lazy(() => import("@/pages/ExtremeQuestionViewer"));
 const LearningPaths = React.lazy(() => import("@/pages/UnifiedLearningPaths"));
 const MyPath = React.lazy(() => import("@/pages/UnifiedLearningPaths"));
 const PersonalizedPath = React.lazy(() => import("@/pages/PersonalizedPath"));
@@ -168,8 +167,6 @@ function Router() {
         <Route path="/certification/:id" component={CertificationPractice} />
         <Route path="/certification/:id/exam" component={CertificationExam} />
         <Route path="/certification/:id/:questionIndex" component={CertificationPractice} />
-        <Route path="/extreme/channel/:id" component={ExtremeQuestionViewer} />
-        <Route path="/extreme/channel/:id/:questionId" component={ExtremeQuestionViewer} />
         <Route path="/channel/:id" component={QuestionViewer} />
         <Route path="/channel/:id/:index" component={QuestionViewer} />
         {/* Tools */}
@@ -214,9 +211,7 @@ function AppContent() {
     preloadQuestions().catch(console.error);
   }, []);
   
-  const { needsOnboarding } = useUserPreferences();
-  
-  // Don't render anything while redirecting
+
   if (isSearchRedirecting) {
     return null;
   }
@@ -228,8 +223,7 @@ function AppContent() {
       </SubscriptionGate>
       <GlobalCreditSplash />
       <AchievementNotificationManager />
-      {/* Progressive onboarding - DISABLED */}
-      {/* {needsOnboarding && <ProgressiveOnboarding />} */}
+      <ProgressiveOnboarding />
     </>
   );
 }

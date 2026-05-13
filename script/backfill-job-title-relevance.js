@@ -3,17 +3,26 @@
  * Adds job title relevance scores to existing questions
  */
 
-import { db } from '../server/db.js';
-import { questions } from '../shared/schema.js';
+import fs from 'fs';
+import path from 'path';
 import jobTitleService from './ai/services/job-title-relevance.js';
-import { eq } from 'drizzle-orm';
+import { saveQuestion } from './utils.js';
+
+const QUESTIONS_DIR = path.join(process.cwd(), 'data', 'questions');
+
+function readAllQuestions() {
+  if (!fs.existsSync(QUESTIONS_DIR)) return [];
+  return fs.readdirSync(QUESTIONS_DIR)
+    .filter(f => f.endsWith('.json'))
+    .flatMap(f => JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, f), 'utf8')) || []);
+}
 
 async function backfillJobTitleRelevance() {
   console.log('🔄 Backfilling job title relevance for existing questions...\n');
   
   try {
     // Get all questions
-    const allQuestions = await db.select().from(questions);
+    const allQuestions = readAllQuestions();
     console.log(`Found ${allQuestions.length} questions to process\n`);
     
     let updated = 0;
@@ -30,12 +39,7 @@ async function backfillJobTitleRelevance() {
       const enriched = jobTitleService.enrichQuestionWithJobTitleData(question);
       
       // Update question
-      await db.update(questions)
-        .set({
-          jobTitleRelevance: enriched.jobTitleRelevance,
-          experienceLevelTags: enriched.experienceLevelTags
-        })
-        .where(eq(questions.id, question.id));
+      await saveQuestion(enriched);
       
       updated++;
       

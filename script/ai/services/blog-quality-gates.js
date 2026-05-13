@@ -428,34 +428,31 @@ function validateCoherence(blogContent, question) {
 function validateTechnicalAccuracy(blogContent, question) {
   const issues = [];
   
-  // Check if real-world example exists and is substantial
-  const realWorldExample = blogContent.realWorldExample;
-  if (!realWorldExample || !realWorldExample.company) {
-    issues.push('Missing real-world example from a known company');
-  } else {
-    if (!realWorldExample.scenario || realWorldExample.scenario.length < 50) {
-      issues.push('Real-world scenario is too brief or missing');
-    }
-    if (!realWorldExample.lesson || realWorldExample.lesson.length < 30) {
-      issues.push('Real-world lesson is too brief or missing');
-    }
+  // Check if real-world case exists with source URL
+  const realWorldCase = blogContent.realWorldCase;
+  if (!realWorldCase || !realWorldCase.sourceUrl) {
+    issues.push('Missing real-world case source URL — must include a verified link');
+  } else if (!realWorldCase.company || !realWorldCase.incident) {
+    issues.push('Real-world case is incomplete — company and incident are required');
   }
-  
+
   // Check if diagram exists and is appropriate
   if (!blogContent.diagram || blogContent.diagram.length < 50) {
     issues.push('Missing or insufficient diagram');
   }
-  
-  // Check glossary
-  const glossary = blogContent.glossary || [];
-  if (glossary.length === 0) {
-    issues.push('No glossary terms defined');
+
+  // Check code example
+  const codeExample = blogContent.codeExample;
+  if (!codeExample || !codeExample.code || !codeExample.language) {
+    issues.push('Missing code example — code and language fields are required');
+  } else if (!codeExample.explanation || codeExample.explanation.length < 50) {
+    issues.push('Code example explanation is too brief or missing');
   }
-  
-  // Check quick reference
-  const quickRef = blogContent.quickReference || [];
-  if (quickRef.length < 3) {
-    issues.push(`Too few quick reference items: ${quickRef.length} (need 3+)`);
+
+  // Check references
+  const references = blogContent.references || [];
+  if (references.length < 6) {
+    issues.push(`Too few references: ${references.length} (need 6+)`);
   }
   
   return {
@@ -478,7 +475,7 @@ export async function validateBlogQuality(blogContent, question) {
     readability: null,
     coherence: null,
     technical: null,
-    sources: null,
+    references: null,
     citations: null,
     issues: [],
     warnings: []
@@ -512,22 +509,22 @@ export async function validateBlogQuality(blogContent, question) {
     results.issues.push(...results.technical.issues);
   }
   
-  // 5. Source validation
-  console.log('   📚 Validating sources...');
-  const sourceValidation = await validateSources(blogContent.sources);
-  results.sources = {
-    total: (blogContent.sources || []).length,
-    valid: sourceValidation.valid.length,
-    invalid: sourceValidation.invalid.length,
-    validPercentage: sourceValidation.validPercentage,
-    invalidSources: sourceValidation.invalid
+  // 5. Reference validation
+  console.log('   📚 Validating references...');
+  const referenceValidation = await validateSources(blogContent.references);
+  results.references = {
+    total: (blogContent.references || []).length,
+    valid: referenceValidation.valid.length,
+    invalid: referenceValidation.invalid.length,
+    validPercentage: referenceValidation.validPercentage,
+    invalidSources: referenceValidation.invalid
   };
   
-  if (sourceValidation.valid.length < QUALITY_THRESHOLDS.minSources) {
-    results.issues.push(`Insufficient valid sources: ${sourceValidation.valid.length} (need ${QUALITY_THRESHOLDS.minSources})`);
+  if (referenceValidation.valid.length < QUALITY_THRESHOLDS.minSources) {
+    results.issues.push(`Insufficient valid references: ${referenceValidation.valid.length} (need ${QUALITY_THRESHOLDS.minSources})`);
   }
-  if (sourceValidation.validPercentage < QUALITY_THRESHOLDS.minValidSourcePercentage) {
-    results.issues.push(`Too many invalid sources: ${(sourceValidation.validPercentage * 100).toFixed(0)}% valid (need ${QUALITY_THRESHOLDS.minValidSourcePercentage * 100}%)`);
+  if (referenceValidation.validPercentage < QUALITY_THRESHOLDS.minValidSourcePercentage) {
+    results.issues.push(`Too many invalid references: ${(referenceValidation.validPercentage * 100).toFixed(0)}% valid (need ${QUALITY_THRESHOLDS.minValidSourcePercentage * 100}%)`);
   }
   
   // 6. Citation validation
@@ -570,7 +567,7 @@ export async function validateBlogQuality(blogContent, question) {
     results.readability.score >= QUALITY_THRESHOLDS.minReadabilityScore &&
     results.coherence.score >= QUALITY_THRESHOLDS.minCoherenceScore &&
     results.technical.score >= QUALITY_THRESHOLDS.minTechnicalScore &&
-    results.sources.valid >= QUALITY_THRESHOLDS.minSources;
+    results.references.valid >= QUALITY_THRESHOLDS.minSources;
   
   // Log results
   console.log(`\n   📊 Quality Scores:`);
@@ -579,7 +576,7 @@ export async function validateBlogQuality(blogContent, question) {
   console.log(`      Readability: ${results.readability.score}/100`);
   console.log(`      Coherence: ${results.coherence.score}/100`);
   console.log(`      Technical: ${results.technical.score}/100`);
-  console.log(`      Sources: ${results.sources.valid}/${results.sources.total} valid`);
+  console.log(`      References: ${results.references.valid}/${results.references.total} valid`);
   console.log(`      Citations: ${results.citations.inline} inline`);
   
   if (results.issues.length > 0) {

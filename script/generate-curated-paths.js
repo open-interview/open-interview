@@ -12,11 +12,8 @@
  */
 
 import 'dotenv/config';
-import { dbClient } from './utils.js';
 import fs from 'fs';
 import path from 'path';
-
-const db = dbClient;
 const OUTPUT_DIR = 'client/public/data';
 
 // Get all questions with their metadata

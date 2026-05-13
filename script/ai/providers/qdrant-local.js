@@ -1,46 +1,41 @@
-/**
- * Postgres-backed Vector Store — drop-in replacement for qdrant-local.js
- *
- * Stores vectors as REAL[] in Postgres and computes cosine similarity in SQL.
- * No external dependencies beyond the existing pg-client.
- *
- * Implements the same interface as the old LocalQdrantProvider:
- *   init, ensureCollection, upsert, search, findDuplicates,
- *   batchSearch, delete, deleteByFilter, getCollectionInfo,
- *   scroll, createPayloadIndex, getPoint, exists
- */
-
-import { getPool } from '../../db/pg-client.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 
-class PgVectorProvider {
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const VECTOR_STORE_DIR = path.join(__dirname, '..', '..', '..', 'data', 'vectors');
+
+class FileVectorProvider {
   constructor() {
     this._ensuredCollections = new Set();
   }
 
-  _pool() { return getPool(); }
+  _collectionFile(name) {
+    return path.join(VECTOR_STORE_DIR, `${name}.json`);
+  }
 
-  _table(name) { return `vec_${name.replace(/[^a-z0-9_]/gi, '_')}`; }
+  _loadCollection(name) {
+    const file = this._collectionFile(name);
+    if (!fs.existsSync(file)) return [];
+    try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return []; }
+  }
+
+  _saveCollection(name, points) {
+    if (!fs.existsSync(VECTOR_STORE_DIR)) {
+      fs.mkdirSync(VECTOR_STORE_DIR, { recursive: true });
+    }
+    fs.writeFileSync(this._collectionFile(name), JSON.stringify(points, null, 2));
+  }
 
   async init() {
-    console.log('✅ Postgres vector store initialized');
+    console.log('✅ File-based vector store initialized');
   }
 
   async ensureCollection(name) {
     if (this._ensuredCollections.has(name)) return true;
-    const t = this._table(name);
-    await this._pool().query(`
-      CREATE TABLE IF NOT EXISTS ${t} (
-        id          TEXT PRIMARY KEY,
-        original_id TEXT NOT NULL,
-        vector      REAL[] NOT NULL,
-        payload     JSONB NOT NULL,
-        created_at  TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-    await this._pool().query(`CREATE INDEX IF NOT EXISTS idx_${t}_oid ON ${t}(original_id)`);
+    this._loadCollection(name);
     this._ensuredCollections.add(name);
-    console.log(`✅ Postgres vector collection ready: ${name}`);
     return true;
   }
 
@@ -49,92 +44,57 @@ class PgVectorProvider {
     return `${h.slice(0,8)}-${h.slice(8,12)}-4${h.slice(13,16)}-${h.slice(16,20)}-${h.slice(20,32)}`;
   }
 
+  _cosineSimilarity(a, b) {
+    const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
+    const magA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
+    const magB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
+    return magA * magB === 0 ? 0 : dot / (magA * magB);
+  }
+
   async upsert(name, points) {
     await this.ensureCollection(name);
-    const t = this._table(name);
     const valid = points.filter(p =>
       Array.isArray(p.vector) && p.vector.length > 0 &&
       p.vector.every(v => typeof v === 'number' && isFinite(v))
     );
     if (!valid.length) return { status: 'skipped' };
 
-    const pool = this._pool();
+    const collection = this._loadCollection(name);
     for (const p of valid) {
-      await pool.query(
-        `INSERT INTO ${t} (id, original_id, vector, payload)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (id) DO UPDATE SET vector = EXCLUDED.vector, payload = EXCLUDED.payload`,
-        [this._uuid(p.id), p.id, p.vector, { ...p.payload, originalId: p.id }]
-      );
+      const idx = collection.findIndex(c => c.id === this._uuid(p.id));
+      const entry = { id: this._uuid(p.id), originalId: p.id, vector: p.vector, payload: { ...p.payload, originalId: p.id } };
+      if (idx >= 0) collection[idx] = entry;
+      else collection.push(entry);
     }
+    this._saveCollection(name, collection);
     return { status: 'ok', upserted: valid.length };
   }
 
-  /**
-   * Cosine similarity in SQL:
-   *   dot(a,b) / (||a|| * ||b||)
-   * Postgres doesn't have a built-in, so we use array operators.
-   */
   async search(name, vector, options = {}) {
     await this.ensureCollection(name);
     const { limit = 10, scoreThreshold = 0, filter = null, withPayload = true } = options;
-    const t = this._table(name);
-    const pool = this._pool();
+    const collection = this._loadCollection(name);
 
-    // Build WHERE clause from filter
-    const conditions = [`score >= $2`];
-    const params = [vector, scoreThreshold];
+    let results = collection.map(p => ({
+      id: p.id,
+      score: this._cosineSimilarity(vector, p.vector),
+      payload: withPayload ? p.payload : {}
+    }));
 
-    // We compute similarity as a subquery so we can filter on it
-    let filterSql = '';
     if (filter?.must?.length) {
       for (const f of filter.must) {
-        params.push(f.match?.value);
-        filterSql += ` AND payload->>'${f.key}' = $${params.length}`;
+        results = results.filter(r => r.payload[f.key] === f.match?.value);
       }
     }
     if (filter?.must_not?.length) {
       for (const f of filter.must_not) {
-        params.push(f.match?.value);
-        filterSql += ` AND payload->>'${f.key}' != $${params.length}`;
+        results = results.filter(r => r.payload[f.key] !== f.match?.value);
       }
     }
 
-    params.push(limit);
-    const limitParam = params.length;
-
-    const sql = `
-      SELECT id, original_id, payload,
-        (
-          (SELECT SUM(a*b) FROM UNNEST(vector, $1::REAL[]) AS t(a,b))
-          /
-          NULLIF(
-            SQRT((SELECT SUM(a*a) FROM UNNEST(vector) AS t(a))) *
-            SQRT((SELECT SUM(b*b) FROM UNNEST($1::REAL[]) AS t(b))),
-            0
-          )
-        ) AS score
-      FROM ${t}
-      WHERE (
-          (SELECT SUM(a*b) FROM UNNEST(vector, $1::REAL[]) AS t(a,b))
-          /
-          NULLIF(
-            SQRT((SELECT SUM(a*a) FROM UNNEST(vector) AS t(a))) *
-            SQRT((SELECT SUM(b*b) FROM UNNEST($1::REAL[]) AS t(b))),
-            0
-          )
-        ) >= $2
-        ${filterSql}
-      ORDER BY score DESC
-      LIMIT $${limitParam}
-    `;
-
-    const res = await pool.query(sql, params);
-    return res.rows.map(r => ({
-      id: r.id,
-      score: parseFloat(r.score) || 0,
-      payload: withPayload ? r.payload : {}
-    }));
+    results = results.filter(r => r.score >= scoreThreshold);
+    results.sort((a, b) => b.score - a.score);
+    return results.slice(0, limit);
   }
 
   async findDuplicates(name, vector, questionId, threshold = 0.85) {
@@ -158,33 +118,31 @@ class PgVectorProvider {
 
   async delete(name, ids) {
     await this.ensureCollection(name);
-    const t = this._table(name);
-    for (const id of ids) {
-      await this._pool().query(`DELETE FROM ${t} WHERE id = $1`, [this._uuid(id)]);
-    }
+    const collection = this._loadCollection(name);
+    const idSet = new Set(ids.map(id => this._uuid(id)));
+    const filtered = collection.filter(p => !idSet.has(p.id));
+    this._saveCollection(name, filtered);
     return true;
   }
 
   async deleteByFilter(name, filter) {
-    console.warn('deleteByFilter: not implemented in pg provider');
+    await this.ensureCollection(name);
+    this._saveCollection(name, []);
     return true;
   }
 
   async getCollectionInfo(name) {
     await this.ensureCollection(name);
-    const t = this._table(name);
-    const res = await this._pool().query(`SELECT COUNT(*) AS cnt FROM ${t}`);
-    const cnt = parseInt(res.rows[0].cnt);
-    return { name, vectorsCount: cnt, pointsCount: cnt, status: 'green' };
+    const collection = this._loadCollection(name);
+    return { name, vectorsCount: collection.length, pointsCount: collection.length, status: 'green' };
   }
 
   async scroll(name, options = {}) {
     await this.ensureCollection(name);
     const { limit = 100, withPayload = true } = options;
-    const t = this._table(name);
-    const res = await this._pool().query(`SELECT id, payload FROM ${t} LIMIT $1`, [limit]);
+    const collection = this._loadCollection(name);
     return {
-      points: res.rows.map(r => ({ id: r.id, payload: withPayload ? r.payload : {} })),
+      points: collection.slice(0, limit).map(p => ({ id: p.id, payload: withPayload ? p.payload : {} })),
       nextOffset: null
     };
   }
@@ -193,13 +151,9 @@ class PgVectorProvider {
 
   async getPoint(name, id) {
     await this.ensureCollection(name);
-    const t = this._table(name);
-    const res = await this._pool().query(
-      `SELECT id, payload, vector FROM ${t} WHERE id = $1`, [this._uuid(id)]
-    );
-    if (!res.rows.length) return null;
-    const r = res.rows[0];
-    return { id: r.id, payload: r.payload, vector: r.vector };
+    const collection = this._loadCollection(name);
+    const p = collection.find(c => c.id === this._uuid(id));
+    return p || null;
   }
 
   async exists(name, id) {
@@ -207,6 +161,6 @@ class PgVectorProvider {
   }
 }
 
-const pgVector = new PgVectorProvider();
-export default pgVector;
-export { pgVector };
+const fileVector = new FileVectorProvider();
+export default fileVector;
+export { fileVector };

@@ -5,9 +5,6 @@
 
 import { getDb } from './db.js';
 
-/**
- * Log an action to the ledger
- */
 export async function logAction({
   botName,
   action,
@@ -18,47 +15,49 @@ export async function logAction({
   reason = null
 }) {
   const db = getDb();
-  
-  await db.execute({
-    sql: `INSERT INTO bot_ledger (bot_name, action, item_type, item_id, before_state, after_state, reason, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [
-      botName,
-      action,
-      itemType,
-      itemId,
-      beforeState ? JSON.stringify(beforeState) : null,
-      afterState ? JSON.stringify(afterState) : null,
-      reason,
-      new Date().toISOString()
-    ]
-  });
+  const entries = db.readArray('ledger.json');
+  const id = db.getNextId(entries);
+
+  const entry = {
+    id,
+    bot_name: botName,
+    action,
+    item_type: itemType,
+    item_id: itemId,
+    before_state: beforeState ? JSON.stringify(beforeState) : null,
+    after_state: afterState ? JSON.stringify(afterState) : null,
+    reason,
+    created_at: new Date().toISOString()
+  };
+
+  entries.push(entry);
+  db.writeArray('ledger.json', entries);
+  return entry;
 }
 
-/**
- * Get recent ledger entries
- */
-export async function getLedgerEntries({ botName = null, itemType = null, limit = 100 } = {}) {
+export async function getLedgerEntries({ botName = null, action = null, itemType = null, limit = 100, offset = 0 } = {}) {
   const db = getDb();
-  
-  let sql = 'SELECT * FROM bot_ledger WHERE 1=1';
-  const args = [];
-  
+  const entries = db.readArray('ledger.json');
+
+  let filtered = entries;
+
   if (botName) {
-    sql += ' AND bot_name = ?';
-    args.push(botName);
+    filtered = filtered.filter(e => e.bot_name === botName);
   }
-  
+
+  if (action) {
+    filtered = filtered.filter(e => e.action === action);
+  }
+
   if (itemType) {
-    sql += ' AND item_type = ?';
-    args.push(itemType);
+    filtered = filtered.filter(e => e.item_type === itemType);
   }
-  
-  sql += ' ORDER BY created_at DESC LIMIT ?';
-  args.push(limit);
-  
-  const result = await db.execute({ sql, args });
-  return result.rows.map(row => ({
+
+  filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  const sliced = filtered.slice(offset, offset + limit);
+
+  return sliced.map(row => ({
     id: row.id,
     botName: row.bot_name,
     action: row.action,
@@ -71,31 +70,23 @@ export async function getLedgerEntries({ botName = null, itemType = null, limit 
   }));
 }
 
-/**
- * Get ledger stats
- */
 export async function getLedgerStats() {
   const db = getDb();
-  
-  const result = await db.execute(`
-    SELECT 
-      bot_name,
-      action,
-      COUNT(*) as count
-    FROM bot_ledger
-    WHERE created_at > TO_CHAR(NOW() - INTERVAL '7 days', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
-    GROUP BY bot_name, action
-    ORDER BY bot_name, count DESC
-  `);
-  
+  const entries = db.readArray('ledger.json');
+
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const recent = entries.filter(e => new Date(e.created_at) >= sevenDaysAgo);
+
   const stats = {};
-  for (const row of result.rows) {
+  for (const row of recent) {
     if (!stats[row.bot_name]) {
       stats[row.bot_name] = {};
     }
-    stats[row.bot_name][row.action] = row.count;
+    stats[row.bot_name][row.action] = (stats[row.bot_name][row.action] || 0) + 1;
   }
-  
+
   return stats;
 }
 

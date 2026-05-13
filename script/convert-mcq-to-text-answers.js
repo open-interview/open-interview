@@ -13,9 +13,11 @@
  */
 
 import 'dotenv/config';
-import { dbClient } from './utils.js';
+import { getAllUnifiedQuestions, saveQuestion } from './utils.js';
 import { runWithRetries, parseJson } from './utils.js';
 import { validateBeforeInsert, sanitizeQuestion } from './bots/shared/validation.js';
+import fs from 'fs';
+import path from 'path';
 
 const DRY_RUN = process.argv.includes('--dry-run');
 const CREATE_TESTS = process.argv.includes('--create-tests');
@@ -134,8 +136,7 @@ async function main() {
   console.log('📥 Fetching questions with MCQ format...\n');
   
   // Fetch all questions
-  const result = await dbClient.execute('SELECT * FROM questions WHERE status = "active"');
-  const allQuestions = result.rows;
+  const allQuestions = await getAllUnifiedQuestions();
   
   console.log(`   Found ${allQuestions.length} total questions`);
   
@@ -235,17 +236,7 @@ async function main() {
       }
       
       // Update in database
-      await dbClient.execute({
-        sql: `UPDATE questions 
-              SET answer = ?, explanation = ?, last_updated = ?
-              WHERE id = ?`,
-        args: [
-          updatedQuestion.answer,
-          updatedQuestion.explanation,
-          updatedQuestion.lastUpdated,
-          q.id
-        ]
-      });
+      await saveQuestion(updatedQuestion);
       
       console.log(`   ✅ Converted: "${converted.answer.substring(0, 60)}..."`);
       stats.converted++;
@@ -286,34 +277,37 @@ async function main() {
       testsByChannel[channel].questions.push(tq);
     }
     
-    // Insert or update tests
+    // Save test questions to tests.json file
+    const testsPath = path.join(process.cwd(), 'data', 'tests.json');
+    let existingTests = [];
+    try { existingTests = JSON.parse(fs.readFileSync(testsPath, 'utf8')); } catch {}
     for (const [channel, test] of Object.entries(testsByChannel)) {
       try {
-        await dbClient.execute({
-          sql: `INSERT INTO tests (id, channel_id, channel_name, title, description, questions, passing_score, created_at, last_updated)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                  questions = (tests.questions::jsonb || ?::jsonb)::text,
-                  last_updated = ?`,
-          args: [
-            `test-${channel}-converted`,
-            test.channelId,
-            test.channelName,
-            test.title,
-            test.description,
-            JSON.stringify(test.questions),
-            70,
-            new Date().toISOString(),
-            new Date().toISOString(),
-            JSON.stringify([test.questions[0]]),
-            new Date().toISOString()
-          ]
-        });
+        const existing = existingTests.find(t => t.id === `test-${channel}-converted`);
+        const entry = {
+          id: `test-${channel}-converted`,
+          channelId: test.channelId,
+          channelName: test.channelName,
+          title: test.title,
+          description: test.description,
+          questions: test.questions,
+          passingScore: 70,
+          createdAt: new Date().toISOString(),
+          lastUpdated: new Date().toISOString()
+        };
+        if (existing) {
+          Object.assign(existing, entry);
+        } else {
+          existingTests.push(entry);
+        }
         console.log(`   ✅ Created test for ${channel}`);
       } catch (e) {
         console.log(`   ⚠️  Test creation failed for ${channel}: ${e.message}`);
       }
     }
+    const dir = path.dirname(testsPath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(testsPath, JSON.stringify(existingTests, null, 2));
   }
   
   // Summary

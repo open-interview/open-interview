@@ -8,21 +8,33 @@ import { getDb } from './db.js';
 const _pendingStats = new Map();
 const _pendingCounts = new Map();
 
-/**
- * Start a new bot run
- */
 export async function startRun(botName) {
   const db = getDb();
-  
-  const result = await db.execute({
-    sql: `INSERT INTO bot_runs (bot_name, started_at, status) VALUES (?, ?, 'running')`,
-    args: [botName, new Date().toISOString()]
-  });
-  
+  const runs = db.readArray('runs.json');
+
+  const id = db.getNextId(runs);
+  const now = new Date().toISOString();
+
+  const entry = {
+    id,
+    bot_name: botName,
+    started_at: now,
+    completed_at: null,
+    status: 'running',
+    items_processed: 0,
+    items_created: 0,
+    items_updated: 0,
+    items_deleted: 0,
+    summary: null
+  };
+
+  runs.push(entry);
+  db.writeArray('runs.json', runs);
+
   return {
-    id: result.lastInsertRowid,
+    id,
     botName,
-    startedAt: new Date().toISOString(),
+    startedAt: now,
     stats: {
       processed: 0,
       created: 0,
@@ -32,9 +44,6 @@ export async function startRun(botName) {
   };
 }
 
-/**
- * Update run stats
- */
 export async function updateRunStats(runId, stats) {
   _pendingStats.set(runId, stats);
   _pendingCounts.set(runId, (_pendingCounts.get(runId) || 0) + 1);
@@ -43,93 +52,61 @@ export async function updateRunStats(runId, stats) {
   }
 }
 
-/**
- * Flush pending stats to DB
- */
 export async function flushRunStats(runId) {
   const stats = _pendingStats.get(runId);
   if (!stats) return;
+
   const db = getDb();
-  await db.execute({
-    sql: `UPDATE bot_runs SET 
-          items_processed = ?,
-          items_created = ?,
-          items_updated = ?,
-          items_deleted = ?
-          WHERE id = ?`,
-    args: [
-      stats.processed || 0,
-      stats.created || 0,
-      stats.updated || 0,
-      stats.deleted || 0,
-      runId
-    ]
-  });
+  const runs = db.readArray('runs.json');
+  const run = runs.find(r => r.id === runId);
+  if (!run) return;
+
+  run.items_processed = stats.processed || 0;
+  run.items_created = stats.created || 0;
+  run.items_updated = stats.updated || 0;
+  run.items_deleted = stats.deleted || 0;
+  db.writeArray('runs.json', runs);
+
   _pendingStats.delete(runId);
   _pendingCounts.delete(runId);
 }
 
-/**
- * Complete a bot run
- */
 export async function completeRun(runId, stats, summary = null) {
+  if (stats) {
+    _pendingStats.set(runId, stats);
+  }
   await flushRunStats(runId);
+
   const db = getDb();
-  
-  await db.execute({
-    sql: `UPDATE bot_runs SET 
-          completed_at = ?,
-          status = 'completed',
-          items_processed = ?,
-          items_created = ?,
-          items_updated = ?,
-          items_deleted = ?,
-          summary = ?
-          WHERE id = ?`,
-    args: [
-      new Date().toISOString(),
-      stats.processed || 0,
-      stats.created || 0,
-      stats.updated || 0,
-      stats.deleted || 0,
-      summary ? JSON.stringify(summary) : null,
-      runId
-    ]
-  });
+  const runs = db.readArray('runs.json');
+  const run = runs.find(r => r.id === runId);
+  if (!run) return;
+
+  run.completed_at = new Date().toISOString();
+  run.status = 'completed';
+  run.summary = summary ? JSON.stringify(summary) : null;
+  db.writeArray('runs.json', runs);
 }
 
-/**
- * Fail a bot run
- */
 export async function failRun(runId, error) {
   const db = getDb();
-  
-  await db.execute({
-    sql: `UPDATE bot_runs SET 
-          completed_at = ?,
-          status = 'failed',
-          summary = ?
-          WHERE id = ?`,
-    args: [
-      new Date().toISOString(),
-      JSON.stringify({ error: error.message || error }),
-      runId
-    ]
-  });
+  const runs = db.readArray('runs.json');
+  const run = runs.find(r => r.id === runId);
+  if (!run) return;
+
+  run.completed_at = new Date().toISOString();
+  run.status = 'failed';
+  run.summary = JSON.stringify({ error: error.message || error });
+  db.writeArray('runs.json', runs);
 }
 
-/**
- * Get recent bot runs
- */
 export async function getRecentRuns(limit = 20) {
   const db = getDb();
-  
-  const result = await db.execute({
-    sql: `SELECT * FROM bot_runs ORDER BY started_at DESC LIMIT ?`,
-    args: [limit]
-  });
-  
-  return result.rows.map(row => ({
+  const runs = db.readArray('runs.json');
+
+  runs.sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
+
+  return runs.slice(0, limit).map(row => ({
     id: row.id,
     botName: row.bot_name,
     startedAt: row.started_at,
@@ -143,34 +120,35 @@ export async function getRecentRuns(limit = 20) {
   }));
 }
 
-/**
- * Get bot run stats
- */
 export async function getBotStats() {
   const db = getDb();
-  
-  const result = await db.execute(`
-    SELECT 
-      bot_name,
-      COUNT(*) as total_runs,
-      SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as successful_runs,
-      SUM(items_created) as total_created,
-      SUM(items_updated) as total_updated,
-      SUM(items_deleted) as total_deleted,
-      MAX(started_at) as last_run
-    FROM bot_runs
-    GROUP BY bot_name
-  `);
-  
-  return result.rows.map(row => ({
-    botName: row.bot_name,
-    totalRuns: row.total_runs,
-    successfulRuns: row.successful_runs,
-    totalCreated: row.total_created,
-    totalUpdated: row.total_updated,
-    totalDeleted: row.total_deleted,
-    lastRun: row.last_run
-  }));
+  const runs = db.readArray('runs.json');
+
+  const botMap = {};
+  for (const row of runs) {
+    if (!botMap[row.bot_name]) {
+      botMap[row.bot_name] = {
+        botName: row.bot_name,
+        totalRuns: 0,
+        successfulRuns: 0,
+        totalCreated: 0,
+        totalUpdated: 0,
+        totalDeleted: 0,
+        lastRun: null
+      };
+    }
+    const s = botMap[row.bot_name];
+    s.totalRuns++;
+    if (row.status === 'completed') s.successfulRuns++;
+    s.totalCreated += row.items_created || 0;
+    s.totalUpdated += row.items_updated || 0;
+    s.totalDeleted += row.items_deleted || 0;
+    if (!s.lastRun || row.started_at > s.lastRun) {
+      s.lastRun = row.started_at;
+    }
+  }
+
+  return Object.values(botMap);
 }
 
 export default { startRun, updateRunStats, flushRunStats, completeRun, failRun, getRecentRuns, getBotStats };

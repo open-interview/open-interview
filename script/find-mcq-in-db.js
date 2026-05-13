@@ -4,13 +4,14 @@
  */
 
 import 'dotenv/config';
-import { dbClient } from './utils.js';
+import { getAllUnifiedQuestions } from './utils.js';
 
 console.log('=== Finding MCQ Format Questions in Database ===\n');
 
 try {
   // Get all questions
-  const result = await dbClient.execute('SELECT id, channel, question, answer FROM questions WHERE status != "deleted"');
+  const allQuestions = await getAllUnifiedQuestions();
+  const result = { rows: allQuestions.filter(q => q.status !== 'deleted') };
   
   console.log(`Total questions: ${result.rows.length}\n`);
   

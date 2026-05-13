@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
 import { getDb, initBotTables } from './shared/db.js';
 import { logAction } from './shared/ledger.js';
 import { addToQueue, getQueueStats } from './shared/queue.js';
@@ -6,6 +8,19 @@ import { startRun, completeRun, failRun } from './shared/runs.js';
 import { auditAnswer, ISSUE_SEVERITY } from '../ai/prompts/templates/answer-standard.js';
 
 const BOT_NAME = 'answer-auditor';
+
+const QUESTIONS_DIR = path.join(process.cwd(), 'data', 'questions');
+
+function readAllQuestions() {
+  let files = [];
+  try { files = fs.readdirSync(QUESTIONS_DIR); } catch { return []; }
+  const all = [];
+  for (const f of files) {
+    if (!f.endsWith('.json')) continue;
+    try { all.push(...JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, f), 'utf8'))); } catch {}
+  }
+  return all;
+}
 
 const SEVERITY_RANK = { critical: 4, high: 3, medium: 2, low: 1 };
 
@@ -28,12 +43,9 @@ process.on('unhandledRejection', (err) => {
 });
 
 async function scanAllQuestions(db, { limit = 0, channel = null } = {}) {
-  let sql = `SELECT id, question, answer, explanation FROM questions WHERE status != 'deleted'`;
-  const args = [];
-  if (channel) { sql += ` AND channel = ?`; args.push(channel); }
-  if (limit > 0) { sql += ` LIMIT ?`; args.push(limit); }
-  const result = await db.execute({ sql, args });
-  const questions = result.rows;
+  let questions = readAllQuestions().filter(q => q.status !== 'deleted');
+  if (channel) { questions = questions.filter(q => q.channel === channel); }
+  if (limit > 0) { questions = questions.slice(0, limit); }
 
   const bySeverity = { critical: [], high: [], medium: [], low: [] };
   const byIssue = {};
@@ -129,7 +141,7 @@ async function reprocessQuestions(scanResult, opts, db) {
 async function main() {
   const opts = parseArgs();
   await initBotTables();
-  const db = await getDb();
+  const db = getDb();
 
   if (opts.mode === 'status') {
     const stats = await getQueueStats();

@@ -1,15 +1,30 @@
-/**
- * History Logger Utility
- *
- * Provides functions for bots and scripts to log changes to questions.
- * This creates a complete audit trail accessible via the UI.
- */
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-import { dbClient } from '../../db/pg-client.js';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const HISTORY_DIR = path.join(__dirname, '..', '..', '..', 'data', 'question-history');
 
-/**
- * Log a history event for a question
- */
+function ensureDir() {
+  if (!fs.existsSync(HISTORY_DIR)) {
+    fs.mkdirSync(HISTORY_DIR, { recursive: true });
+  }
+}
+
+function readHistory(questionId) {
+  ensureDir();
+  const filePath = path.join(HISTORY_DIR, `${questionId}.json`);
+  if (fs.existsSync(filePath)) {
+    try { return JSON.parse(fs.readFileSync(filePath, 'utf8')); } catch { return []; }
+  }
+  return [];
+}
+
+function writeHistory(questionId, records) {
+  ensureDir();
+  fs.writeFileSync(path.join(HISTORY_DIR, `${questionId}.json`), JSON.stringify(records, null, 2));
+}
+
 export async function logHistory({
   questionId,
   questionType = 'question',
@@ -28,28 +43,23 @@ export async function logHistory({
   }
 
   try {
-    await dbClient.execute({
-      sql: `INSERT INTO question_history
-            (question_id, question_type, event_type, event_source, source_name,
-             changes_summary, changed_fields, before_snapshot, after_snapshot,
-             reason, metadata, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [
-        questionId,
-        questionType,
-        eventType,
-        eventSource,
-        sourceName,
-        changesSummary,
-        changedFields ? JSON.stringify(changedFields) : null,
-        beforeSnapshot ? JSON.stringify(beforeSnapshot) : null,
-        afterSnapshot ? JSON.stringify(afterSnapshot) : null,
-        reason,
-        metadata ? JSON.stringify(metadata) : null,
-        new Date().toISOString(),
-      ],
+    const records = readHistory(questionId);
+    records.push({
+      id: `${questionId}-${Date.now()}`,
+      questionId,
+      questionType,
+      eventType,
+      eventSource,
+      sourceName,
+      changesSummary,
+      changedFields: changedFields || null,
+      beforeSnapshot: beforeSnapshot || null,
+      afterSnapshot: afterSnapshot || null,
+      reason,
+      metadata: metadata || null,
+      createdAt: new Date().toISOString(),
     });
-
+    writeHistory(questionId, records);
     return true;
   } catch (error) {
     console.error('Failed to log history:', error);
@@ -89,25 +99,11 @@ export async function logEnriched(questionId, questionType, sourceName, enrichme
 }
 
 export async function getHistory(questionId, questionType = 'question', limit = 50) {
-  const result = await dbClient.execute({
-    sql: `SELECT * FROM question_history WHERE question_id = ? AND question_type = ? ORDER BY created_at DESC LIMIT ?`,
-    args: [questionId, questionType, limit],
-  });
-  return result.rows.map(row => ({
-    id: row.id,
-    questionId: row.question_id,
-    questionType: row.question_type,
-    eventType: row.event_type,
-    eventSource: row.event_source,
-    sourceName: row.source_name,
-    changesSummary: row.changes_summary,
-    changedFields: row.changed_fields ? JSON.parse(row.changed_fields) : [],
-    beforeSnapshot: row.before_snapshot ? JSON.parse(row.before_snapshot) : null,
-    afterSnapshot: row.after_snapshot ? JSON.parse(row.after_snapshot) : null,
-    reason: row.reason,
-    metadata: row.metadata ? JSON.parse(row.metadata) : null,
-    createdAt: row.created_at,
-  }));
+  const records = readHistory(questionId);
+  return records
+    .filter(r => r.questionType === questionType)
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+    .slice(0, limit);
 }
 
 export default { logHistory, logCreated, logUpdated, logImproved, logFlagged, logVerified, logEnriched, getHistory };

@@ -1,22 +1,10 @@
 #!/usr/bin/env node
-import { dbClient as db } from './db/pg-client.js';
-/**
- * Dry-run preview: shows exactly how a LinkedIn post and poll will look
- * Uses real question data from local DB, no external API calls.
- *
- * Usage:
- *   node script/dry-run-preview.js
- *   node script/dry-run-preview.js --channel kubernetes
- *   node script/dry-run-preview.js --id gh-78
- */
+import { getAllUnifiedQuestions } from './utils.js';
 
 const args = process.argv.slice(2).reduce((acc, arg, i, arr) => {
   if (arg.startsWith('--')) acc[arg.slice(2)] = arr[i + 1] ?? true;
   return acc;
 }, {});
-
-
-// ── helpers ──────────────────────────────────────────────────────────────────
 
 const PRACTICE_URL = 'https://open-interview.github.io/';
 const BLOG_BASE    = 'https://open-interview.github.io';
@@ -33,29 +21,25 @@ function channelEmoji(ch) {
 
 function truncate(str, n) { return str?.length > n ? str.slice(0, n - 3) + '...' : str; }
 
-// ── fetch question ────────────────────────────────────────────────────────────
-
 async function fetchQuestion() {
-  let sql = 'SELECT * FROM questions';
-  const args = [];
+  const allQuestions = await getAllUnifiedQuestions();
+  const questions = allQuestions.filter(q => q.status !== 'deleted');
+
   if (process.argv.includes('--id')) {
-    sql += ' WHERE id = ?'; args.push(process.argv[process.argv.indexOf('--id') + 1]);
+    const id = process.argv[process.argv.indexOf('--id') + 1];
+    return questions.find(q => q.id === id);
   } else if (process.argv.includes('--channel')) {
-    sql += ' WHERE channel = ? ORDER BY RANDOM() LIMIT 1';
-    args.push(process.argv[process.argv.indexOf('--channel') + 1]);
+    const channel = process.argv[process.argv.indexOf('--channel') + 1];
+    const filtered = questions.filter(q => q.channel === channel);
+    return filtered[Math.floor(Math.random() * filtered.length)];
   } else {
-    sql += " WHERE channel IN ('sre','devops','kubernetes','aws','terraform','security','system-design') ORDER BY RANDOM() LIMIT 1";
+    const channels = ['sre','devops','kubernetes','aws','terraform','security','system-design'];
+    const filtered = questions.filter(q => channels.includes(q.channel));
+    return filtered[Math.floor(Math.random() * filtered.length)];
   }
-  const r = await db.execute({ sql, args });
-  if (!r.rows.length) throw new Error('No question found');
-  const row = r.rows[0];
-  return { ...row, tags: JSON.parse(row.tags || '[]') };
 }
 
-// ── simulate blog context (what get-latest-blog-post.js would output) ─────────
-
 function simulateBlogContext(q) {
-  // Parse explanation into quick_reference bullets
   const lines = (q.explanation || '').split('\n')
     .map(l => l.replace(/^#+\s*/, '').replace(/\*\*/g, '').trim())
     .filter(l => l.startsWith('- ') || l.startsWith('• '))
@@ -70,16 +54,12 @@ function simulateBlogContext(q) {
   return { quickReference, socialHook, socialBody, realWorldExample: '' };
 }
 
-// ── simulate LinkedIn POST content ───────────────────────────────────────────
-
 function buildLinkedInPost(q, blogCtx, blogUrl) {
   const emoji = channelEmoji(q.channel);
   const { quickReference, socialHook, socialBody } = blogCtx;
 
-  // Debate-framing opener (mirrors poll-generator-agent composePost)
   const opener = `🤔 Engineers disagree on this. Where do you stand?\n\n`;
 
-  // Story body drawn from article context
   const keyPoints = quickReference
     ? quickReference.split(' | ').slice(0, 4).map((p, i) => {
         const icons = ['🔍','⚡','🎯','💡'];
@@ -107,14 +87,10 @@ ${PRACTICE_URL}
 ${tags}`;
 }
 
-// ── simulate POLL content ─────────────────────────────────────────────────────
-
 function buildPoll(q) {
-  // Derive a simple MCQ from the answer
   const concept = q.question.split(' ').slice(0, 6).join(' ');
   const pollQuestion = truncate(`What is the primary purpose of: ${concept}?`, 140);
 
-  // Generate 4 plausible options from the answer text
   const answerWords = q.answer.split(/[,.\n]/).map(s => s.trim()).filter(s => s.length > 10 && s.length < 30);
   const correct = truncate(answerWords[0] || 'Ensure reliability', 30);
   const distractors = [
@@ -134,8 +110,6 @@ function buildPoll(q) {
   return { pollQuestion, options, postText, duration: 'TWO_WEEKS (14 days)' };
 }
 
-// ── render ────────────────────────────────────────────────────────────────────
-
 function box(title, content) {
   const width = 62;
   const line = '═'.repeat(width);
@@ -149,13 +123,13 @@ function box(title, content) {
 async function main() {
   console.log('\n🔍 Fetching question from database...');
   const q = await fetchQuestion();
+  if (!q) { console.error('No question found'); process.exit(1); }
   console.log(`   ✅ ${q.id} | ${q.channel} | ${q.difficulty}`);
   console.log(`   Q: ${q.question.slice(0, 80)}...`);
 
   const blogCtx = simulateBlogContext(q);
   const blogUrl = `${BLOG_BASE}/posts/${q.id}/${slug(q.question)}/`;
 
-  // ── POLL PREVIEW ──
   const poll = buildPoll(q);
   box('📊 LINKEDIN POLL — what will be posted', [
     `POLL QUESTION (max 140 chars):`,
@@ -172,7 +146,6 @@ async function main() {
     `─`.repeat(60),
   ].join('\n'));
 
-  // ── LINKEDIN POST PREVIEW ──
   const post = buildLinkedInPost(q, blogCtx, blogUrl);
   box('📢 LINKEDIN POST — what will be posted', [
     `CHARACTER COUNT: ${post.length} / 3000`,
@@ -182,7 +155,6 @@ async function main() {
     `─`.repeat(60),
   ].join('\n'));
 
-  // ── CONTEXT USED ──
   box('🧠 ARTICLE CONTEXT injected into AI prompt', [
     `quick_reference:`,
     `  ${blogCtx.quickReference?.slice(0, 120)}`,

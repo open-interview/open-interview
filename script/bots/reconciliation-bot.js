@@ -7,11 +7,37 @@
  */
 
 import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
 import { findExistingDuplicates } from '../ai/services/duplicate-prevention.js';
 import { getDb } from './shared/db.js';
 import { startRun, completeRun, failRun } from './shared/runs.js';
 
 const db = getDb();
+
+const QUESTIONS_DIR = path.join(process.cwd(), 'data', 'questions');
+
+function readQuestions(channel) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, `${channel}.json`), 'utf8'));
+  } catch { return []; }
+}
+
+function writeQuestions(channel, data) {
+  fs.mkdirSync(QUESTIONS_DIR, { recursive: true });
+  fs.writeFileSync(path.join(QUESTIONS_DIR, `${channel}.json`), JSON.stringify(data, null, 2));
+}
+
+function readAllQuestions() {
+  let files = [];
+  try { files = fs.readdirSync(QUESTIONS_DIR); } catch { return []; }
+  const all = [];
+  for (const f of files) {
+    if (!f.endsWith('.json')) continue;
+    try { all.push(...JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, f), 'utf8'))); } catch {}
+  }
+  return all;
+}
 
 const args = process.argv.slice(2);
 const getArg = (name, def) => {
@@ -63,7 +89,16 @@ async function main() {
       for (const dup of toFlag) {
         console.log(`    → ${dup.id} (${dup.similarity}% similar)`);
         if (!dryRun) {
-          await db.execute({ sql: 'UPDATE questions SET status = ? WHERE id = ?', args: ['flagged', dup.id] });
+          const allQuestions = readAllQuestions();
+          const match = allQuestions.find(q => q.id === dup.id);
+          if (match) {
+            const channelQuestions = readQuestions(match.channel);
+            const idx = channelQuestions.findIndex(q => q.id === dup.id);
+            if (idx !== -1) {
+              channelQuestions[idx].status = 'flagged';
+              writeQuestions(match.channel, channelQuestions);
+            }
+          }
           console.log(`      ✓ Flagged`);
           reconciled++;
         }

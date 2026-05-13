@@ -1,39 +1,29 @@
 #!/usr/bin/env node
-/**
- * GitHub Analytics Bot
- * Fetches traffic data from GitHub API and stores it in SQLite
- * Runs daily via GitHub Actions to collect:
- * - Page views (unique and total)
- * - Clone counts
- * - Top referrers
- * - Popular content paths
- */
 
 import 'dotenv/config';
-import { dbClient as db, getPool } from './db/pg-client.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
 const REPO_OWNER = process.env.REPO_OWNER || 'satishkumar-dhule';
 const REPO_NAME = process.env.REPO_NAME || 'code-reels';
-
-// Also track the deployed site repo
 const PAGES_REPO_OWNER = process.env.PAGES_REPO_OWNER || 'open-interview';
 const PAGES_REPO_NAME = process.env.PAGES_REPO_NAME || 'open-interview.github.io';
 
-async function initializeTable() {
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS github_analytics (
-      id SERIAL PRIMARY KEY,
-      date TEXT NOT NULL,
-      repo TEXT NOT NULL,
-      metric_type TEXT NOT NULL,
-      metric_name TEXT,
-      count INTEGER DEFAULT 0,
-      uniques INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(date, repo, metric_type, metric_name)
-    )
-  `);
-  console.log('✓ github_analytics table ready');
+const ANALYTICS_FILE = path.join(__dirname, '..', 'data', 'github-analytics.json');
+
+function readAnalytics() {
+  if (!fs.existsSync(ANALYTICS_FILE)) return [];
+  try { return JSON.parse(fs.readFileSync(ANALYTICS_FILE, 'utf8')); } catch { return []; }
+}
+
+function writeAnalytics(data) {
+  const dir = path.dirname(ANALYTICS_FILE);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(data, null, 2));
 }
 
 async function fetchGitHubAPI(endpoint, repo = `${REPO_OWNER}/${REPO_NAME}`) {
@@ -45,28 +35,35 @@ async function fetchGitHubAPI(endpoint, repo = `${REPO_OWNER}/${REPO_NAME}`) {
       'X-GitHub-Api-Version': '2022-11-28'
     }
   });
-  
+
   if (!response.ok) {
     const error = await response.text();
     throw new Error(`GitHub API error (${response.status}): ${error}`);
   }
-  
+
   return response.json();
 }
 
 async function collectTrafficViews(repo) {
   console.log(`\n📊 Fetching page views for ${repo}...`);
   const data = await fetchGitHubAPI('/traffic/views', repo);
-  
+  const analytics = readAnalytics();
+
   for (const view of data.views || []) {
-    await db.execute({
-      sql: `INSERT INTO github_analytics (date, repo, metric_type, metric_name, count, uniques)
-            VALUES (?, ?, 'views', 'daily', ?, ?)
-            ON CONFLICT (date, repo, metric_type, metric_name) DO UPDATE SET count = EXCLUDED.count, uniques = EXCLUDED.uniques`,
-      args: [view.timestamp.split('T')[0], repo, view.count, view.uniques]
-    });
+    const date = view.timestamp.split('T')[0];
+    const key = `${date}|${repo}|views|daily`;
+    const existing = analytics.find(a => a._key === key);
+    if (existing) {
+      existing.count = view.count;
+      existing.uniques = view.uniques;
+    } else {
+      analytics.push({
+        _key: key, date, repo, metricType: 'views', metricName: 'daily', count: view.count, uniques: view.uniques, createdAt: new Date().toISOString()
+      });
+    }
   }
-  
+
+  writeAnalytics(analytics);
   console.log(`  ✓ ${data.views?.length || 0} days of view data saved`);
   return data;
 }
@@ -74,16 +71,23 @@ async function collectTrafficViews(repo) {
 async function collectTrafficClones(repo) {
   console.log(`📥 Fetching clone data for ${repo}...`);
   const data = await fetchGitHubAPI('/traffic/clones', repo);
-  
+  const analytics = readAnalytics();
+
   for (const clone of data.clones || []) {
-    await db.execute({
-      sql: `INSERT INTO github_analytics (date, repo, metric_type, metric_name, count, uniques)
-            VALUES (?, ?, 'clones', 'daily', ?, ?)
-            ON CONFLICT (date, repo, metric_type, metric_name) DO UPDATE SET count = EXCLUDED.count, uniques = EXCLUDED.uniques`,
-      args: [clone.timestamp.split('T')[0], repo, clone.count, clone.uniques]
-    });
+    const date = clone.timestamp.split('T')[0];
+    const key = `${date}|${repo}|clones|daily`;
+    const existing = analytics.find(a => a._key === key);
+    if (existing) {
+      existing.count = clone.count;
+      existing.uniques = clone.uniques;
+    } else {
+      analytics.push({
+        _key: key, date, repo, metricType: 'clones', metricName: 'daily', count: clone.count, uniques: clone.uniques, createdAt: new Date().toISOString()
+      });
+    }
   }
-  
+
+  writeAnalytics(analytics);
   console.log(`  ✓ ${data.clones?.length || 0} days of clone data saved`);
   return data;
 }
@@ -92,16 +96,22 @@ async function collectReferrers(repo) {
   console.log(`🔗 Fetching top referrers for ${repo}...`);
   const data = await fetchGitHubAPI('/traffic/popular/referrers', repo);
   const today = new Date().toISOString().split('T')[0];
-  
+  const analytics = readAnalytics();
+
   for (const ref of data || []) {
-    await db.execute({
-      sql: `INSERT INTO github_analytics (date, repo, metric_type, metric_name, count, uniques)
-            VALUES (?, ?, 'referrer', ?, ?, ?)
-            ON CONFLICT (date, repo, metric_type, metric_name) DO UPDATE SET count = EXCLUDED.count, uniques = EXCLUDED.uniques`,
-      args: [today, repo, ref.referrer, ref.count, ref.uniques]
-    });
+    const key = `${today}|${repo}|referrer|${ref.referrer}`;
+    const existing = analytics.find(a => a._key === key);
+    if (existing) {
+      existing.count = ref.count;
+      existing.uniques = ref.uniques;
+    } else {
+      analytics.push({
+        _key: key, date: today, repo, metricType: 'referrer', metricName: ref.referrer, count: ref.count, uniques: ref.uniques, createdAt: new Date().toISOString()
+      });
+    }
   }
-  
+
+  writeAnalytics(analytics);
   console.log(`  ✓ ${data?.length || 0} referrers saved`);
   return data;
 }
@@ -110,16 +120,22 @@ async function collectPopularPaths(repo) {
   console.log(`📄 Fetching popular paths for ${repo}...`);
   const data = await fetchGitHubAPI('/traffic/popular/paths', repo);
   const today = new Date().toISOString().split('T')[0];
-  
-  for (const path of data || []) {
-    await db.execute({
-      sql: `INSERT INTO github_analytics (date, repo, metric_type, metric_name, count, uniques)
-            VALUES (?, ?, 'path', ?, ?, ?)
-            ON CONFLICT (date, repo, metric_type, metric_name) DO UPDATE SET count = EXCLUDED.count, uniques = EXCLUDED.uniques`,
-      args: [today, repo, path.path, path.count, path.uniques]
-    });
+  const analytics = readAnalytics();
+
+  for (const pathEntry of data || []) {
+    const key = `${today}|${repo}|path|${pathEntry.path}`;
+    const existing = analytics.find(a => a._key === key);
+    if (existing) {
+      existing.count = pathEntry.count;
+      existing.uniques = pathEntry.uniques;
+    } else {
+      analytics.push({
+        _key: key, date: today, repo, metricType: 'path', metricName: pathEntry.path, count: pathEntry.count, uniques: pathEntry.uniques, createdAt: new Date().toISOString()
+      });
+    }
   }
-  
+
+  writeAnalytics(analytics);
   console.log(`  ✓ ${data?.length || 0} popular paths saved`);
   return data;
 }
@@ -128,7 +144,8 @@ async function collectRepoStats(repo) {
   console.log(`⭐ Fetching repo stats for ${repo}...`);
   const data = await fetchGitHubAPI('', repo);
   const today = new Date().toISOString().split('T')[0];
-  
+  const analytics = readAnalytics();
+
   const stats = [
     { name: 'stars', count: data.stargazers_count },
     { name: 'forks', count: data.forks_count },
@@ -136,90 +153,64 @@ async function collectRepoStats(repo) {
     { name: 'open_issues', count: data.open_issues_count },
     { name: 'size_kb', count: data.size },
   ];
-  
+
   for (const stat of stats) {
-    await db.execute({
-      sql: `INSERT INTO github_analytics (date, repo, metric_type, metric_name, count, uniques)
-            VALUES (?, ?, 'repo_stat', ?, ?, 0)
-            ON CONFLICT (date, repo, metric_type, metric_name) DO UPDATE SET count = EXCLUDED.count, uniques = EXCLUDED.uniques`,
-      args: [today, repo, stat.name, stat.count]
-    });
+    const key = `${today}|${repo}|repo_stat|${stat.name}`;
+    const existing = analytics.find(a => a._key === key);
+    if (existing) {
+      existing.count = stat.count;
+    } else {
+      analytics.push({
+        _key: key, date: today, repo, metricType: 'repo_stat', metricName: stat.name, count: stat.count, uniques: 0, createdAt: new Date().toISOString()
+      });
+    }
   }
-  
+
+  writeAnalytics(analytics);
   console.log(`  ✓ Repo stats saved (⭐${data.stargazers_count} 🍴${data.forks_count})`);
   return data;
-}
-
-async function testDbConnection() {
-  try {
-    const pool = getPool();
-    const client = await pool.connect();
-    client.release();
-  } catch (err) {
-    if (err.code === 'ECONNREFUSED') {
-      console.error('❌ Database connection refused. Ensure the PostgreSQL service is running.');
-      console.error('   In GitHub Actions: add a postgres service container to your workflow.');
-      console.error(`   Connection target: ${process.env.DATABASE_URL || `${process.env.PGHOST || 'localhost'}:${process.env.PGPORT || 5432}`}`);
-    } else {
-      console.error(`❌ Database connection failed: ${err.message}`);
-    }
-    process.exit(1);
-  }
 }
 
 async function main() {
   console.log('🚀 GitHub Analytics Bot Starting...\n');
 
-  // Validate required env vars before doing anything
   if (!GITHUB_TOKEN) {
     console.error('❌ GITHUB_TOKEN or GH_TOKEN is required');
     process.exit(1);
   }
 
-  const hasDbConfig = process.env.DATABASE_URL ||
-    (process.env.PGHOST && process.env.PGDATABASE);
-  if (!hasDbConfig) {
-    console.error('❌ Database configuration missing. Set DATABASE_URL or PGHOST+PGDATABASE+PGUSER+PGPASSWORD.');
-    process.exit(1);
-  }
-
-  await testDbConnection();
-  console.log('✓ Database connection verified');
-
   try {
-    await initializeTable();
-    
     const repos = [
       `${REPO_OWNER}/${REPO_NAME}`,
       `${PAGES_REPO_OWNER}/${PAGES_REPO_NAME}`
     ];
-    
+
     const summary = { views: 0, clones: 0, referrers: 0, paths: 0 };
-    
+
     for (const repo of repos) {
       console.log(`\n${'='.repeat(50)}`);
       console.log(`Processing: ${repo}`);
       console.log('='.repeat(50));
-      
+
       try {
         const views = await collectTrafficViews(repo);
         summary.views += views.count || 0;
-        
+
         const clones = await collectTrafficClones(repo);
         summary.clones += clones.count || 0;
-        
+
         const referrers = await collectReferrers(repo);
         summary.referrers += referrers?.length || 0;
-        
+
         const paths = await collectPopularPaths(repo);
         summary.paths += paths?.length || 0;
-        
+
         await collectRepoStats(repo);
       } catch (err) {
         console.error(`  ⚠️ Error processing ${repo}: ${err.message}`);
       }
     }
-    
+
     console.log('\n' + '='.repeat(50));
     console.log('📈 Summary');
     console.log('='.repeat(50));
@@ -228,7 +219,7 @@ async function main() {
     console.log(`  Referrers tracked: ${summary.referrers}`);
     console.log(`  Popular paths: ${summary.paths}`);
     console.log('\n✅ GitHub Analytics collection complete!');
-    
+
   } catch (error) {
     console.error('❌ Fatal error:', error);
     process.exit(1);

@@ -15,6 +15,8 @@
  */
 
 import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
 import { getDb, initBotTables } from './shared/db.js';
 import { logAction } from './shared/ledger.js';
 import { getNextWorkItem, completeWorkItem, failWorkItem, getQueueStats, getBatchWorkItems } from './shared/queue.js';
@@ -24,6 +26,50 @@ import { validateBeforeInsert, sanitizeQuestion } from './shared/validation.js';
 
 const BOT_NAME = 'processor';
 const db = getDb();
+
+const QUESTIONS_DIR = path.join(process.cwd(), 'data', 'questions');
+
+function readQuestions(ch) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, `${ch}.json`), 'utf8'));
+  } catch { return []; }
+}
+
+function writeQuestions(ch, data) {
+  fs.mkdirSync(QUESTIONS_DIR, { recursive: true });
+  fs.writeFileSync(path.join(QUESTIONS_DIR, `${ch}.json`), JSON.stringify(data, null, 2));
+}
+
+function readAllQuestions() {
+  let files = [];
+  try { files = fs.readdirSync(QUESTIONS_DIR); } catch { return []; }
+  const all = [];
+  for (const f of files) {
+    if (!f.endsWith('.json')) continue;
+    try { all.push(...JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, f), 'utf8'))); } catch {}
+  }
+  return all;
+}
+
+function normalizeQuestion(q) {
+  return {
+    id: q.id,
+    question: q.question,
+    answer: q.answer,
+    explanation: q.explanation,
+    diagram: q.diagram,
+    channel: q.channel,
+    subChannel: q.sub_channel,
+    difficulty: q.difficulty,
+    tags: q.tags || [],
+    videos: q.videos || null,
+    companies: q.companies || null,
+    voiceKeywords: q.voice_keywords || null,
+    voiceSuitable: q.voice_suitable === 1,
+    status: q.status,
+    lastUpdated: q.last_updated
+  };
+}
 
 // ============================================
 // ISSUE TYPE TO ACTION MAPPING
@@ -952,38 +998,15 @@ Return ONLY JSON:
 
 async function fetchItem(type, id) {
   if (type === 'question') {
-    const result = await db.execute({
-      sql: 'SELECT * FROM questions WHERE id = ?',
-      args: [id]
-    });
-    
-    if (result.rows.length === 0) return null;
-    
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      question: row.question,
-      answer: row.answer,
-      explanation: row.explanation,
-      diagram: row.diagram,
-      channel: row.channel,
-      subChannel: row.sub_channel,
-      difficulty: row.difficulty,
-      tags: row.tags ? JSON.parse(row.tags) : [],
-      videos: row.videos ? JSON.parse(row.videos) : null,
-      companies: row.companies ? JSON.parse(row.companies) : null,
-      voiceKeywords: row.voice_keywords ? JSON.parse(row.voice_keywords) : null,
-      voiceSuitable: row.voice_suitable === 1,
-      status: row.status,
-      lastUpdated: row.last_updated
-    };
+    const allQuestions = readAllQuestions();
+    const q = allQuestions.find(q => q.id === id);
+    return q ? normalizeQuestion(q) : null;
   }
   return null;
 }
 
 async function saveItem(type, item) {
   if (type === 'question') {
-    // CRITICAL: Validate before updating database
     try {
       validateBeforeInsert(item, BOT_NAME);
     } catch (error) {
@@ -992,48 +1015,47 @@ async function saveItem(type, item) {
       throw error;
     }
     
-    // Sanitize to ensure no JSON in answer field
     const sanitized = sanitizeQuestion(item);
     
     if (sanitized._sanitized) {
       console.warn(`⚠️  Question ${item.id} had JSON in answer field - sanitized automatically`);
     }
     
-    await db.execute({
-      sql: `UPDATE questions SET 
-            question = ?, answer = ?, explanation = ?, diagram = ?,
-            tags = ?, videos = ?, companies = ?,
-            voice_keywords = ?, voice_suitable = ?,
-            status = ?, last_updated = ?
-            WHERE id = ?`,
-      args: [
-        sanitized.question,
-        sanitized.answer,
-        sanitized.explanation,
-        sanitized.diagram || null,
-        sanitized.tags ? JSON.stringify(sanitized.tags) : null,
-        sanitized.videos ? JSON.stringify(sanitized.videos) : null,
-        sanitized.companies ? JSON.stringify(sanitized.companies) : null,
-        sanitized.voiceKeywords ? JSON.stringify(sanitized.voiceKeywords) : null,
-        sanitized.voiceSuitable ? 1 : 0,
-        sanitized.status || 'active',
-        item.lastUpdated || new Date().toISOString(),
-        item.id
-      ]
-    });
+    const questions = readQuestions(sanitized.channel);
+    const idx = questions.findIndex(q => q.id === sanitized.id);
+    if (idx !== -1) {
+      questions[idx] = {
+        ...questions[idx],
+        question: sanitized.question,
+        answer: sanitized.answer,
+        explanation: sanitized.explanation,
+        diagram: sanitized.diagram || null,
+        tags: sanitized.tags || [],
+        videos: sanitized.videos || null,
+        companies: sanitized.companies || null,
+        voice_keywords: sanitized.voiceKeywords || null,
+        voice_suitable: sanitized.voiceSuitable ? 1 : 0,
+        status: sanitized.status || 'active',
+        last_updated: item.lastUpdated || new Date().toISOString()
+      };
+      writeQuestions(sanitized.channel, questions);
+    }
   }
 }
 
 async function deleteItem(type, id) {
   if (type === 'question') {
-    await db.execute({
-      sql: `UPDATE questions SET status = 'deleted', last_updated = ? WHERE id = ?`,
-      args: [new Date().toISOString(), id]
-    });
-    await db.execute({
-      sql: 'DELETE FROM channel_mappings WHERE question_id = ?',
-      args: [id]
-    });
+    const allQuestions = readAllQuestions();
+    const q = allQuestions.find(q => q.id === id);
+    if (q) {
+      const questions = readQuestions(q.channel);
+      const idx = questions.findIndex(x => x.id === id);
+      if (idx !== -1) {
+        questions[idx].status = 'deleted';
+        questions[idx].last_updated = new Date().toISOString();
+        writeQuestions(q.channel, questions);
+      }
+    }
   }
 }
 

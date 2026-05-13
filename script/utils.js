@@ -2,13 +2,52 @@ import 'dotenv/config';
 import { spawn } from 'child_process';
 import https from 'https';
 import fs from 'fs';
-import { dbClient as _pgDbClient } from './db/pg-client.js';
+import path from 'path';
 
-// ============================================
-// DATABASE CONNECTION (PostgreSQL)
-// ============================================
+const QUESTIONS_DIR = path.join(process.cwd(), 'data', 'questions');
+const BOT_DATA_DIR = path.join(process.cwd(), 'data', 'bot-data');
+const CHANNEL_MAPPINGS_FILE = path.join(process.cwd(), 'data', 'channel-mappings.json');
+const WORK_QUEUE_FILE = path.join(BOT_DATA_DIR, 'work-queue.json');
+const BOT_ACTIVITY_FILE = path.join(BOT_DATA_DIR, 'bot-activity.json');
 
-export const dbClient = _pgDbClient;
+function readJsonFile(filepath) {
+  if (!fs.existsSync(filepath)) return null;
+  try { return JSON.parse(fs.readFileSync(filepath, 'utf8')); } catch { return null; }
+}
+
+function writeJsonFile(filepath, data) {
+  const dir = path.dirname(filepath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(filepath, JSON.stringify(data, null, 2));
+}
+
+function readChannelFile(channel) {
+  return readJsonFile(path.join(QUESTIONS_DIR, `${channel}.json`)) || [];
+}
+
+function writeChannelFile(channel, data) {
+  writeJsonFile(path.join(QUESTIONS_DIR, `${channel}.json`), data);
+}
+
+function readAllQuestions() {
+  if (!fs.existsSync(QUESTIONS_DIR)) return [];
+  return fs.readdirSync(QUESTIONS_DIR)
+    .filter(f => f.endsWith('.json'))
+    .flatMap(f => readJsonFile(path.join(QUESTIONS_DIR, f)) || []);
+}
+
+function findQuestionById(questionId) {
+  if (!fs.existsSync(QUESTIONS_DIR)) return null;
+  const files = fs.readdirSync(QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+  for (const f of files) {
+    try {
+      const questions = JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, f), 'utf8'));
+      const found = questions.find(q => q.id === questionId);
+      if (found) return found;
+    } catch {}
+  }
+  return null;
+}
 
 // Constants
 export const MAX_RETRIES = 3;
@@ -16,60 +55,7 @@ export const RETRY_DELAY_MS = 10000;
 export const TIMEOUT_MS = 300000; // 5 minutes
 
 // ============================================
-// DATABASE RETRY LOGIC
-// ============================================
-
-/**
- * Retry wrapper for database operations with exponential backoff
- * Handles transient errors from database client (HTTP 400, 500, 502, 503, timeouts)
- */
-async function retryDatabaseOperation(operation, operationName = 'database operation', maxRetries = 3) {
-  let lastError = null;
-  
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      // Add exponential backoff for retries
-      if (attempt > 0) {
-        const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
-        console.log(`   ⏳ [DB RETRY] Waiting ${backoffMs}ms before retry ${attempt}/${maxRetries}...`);
-        await new Promise(resolve => setTimeout(resolve, backoffMs));
-      }
-      
-      return await operation();
-    } catch (error) {
-      lastError = error;
-      const errorMsg = error.message || String(error);
-      
-      // Check if it's a retryable error
-      const isRetryable = 
-        errorMsg.includes('HTTP status 400') ||
-        errorMsg.includes('HTTP status 429') ||
-        errorMsg.includes('HTTP status 500') ||
-        errorMsg.includes('HTTP status 502') ||
-        errorMsg.includes('HTTP status 503') ||
-        errorMsg.includes('timeout') ||
-        errorMsg.includes('ECONNRESET') ||
-        errorMsg.includes('ETIMEDOUT') ||
-        errorMsg.includes('SERVER_ERROR');
-      
-      if (isRetryable && attempt < maxRetries) {
-        console.log(`   🔄 [DB RETRY] ${operationName} failed (attempt ${attempt + 1}/${maxRetries + 1}): ${errorMsg}`);
-        continue;
-      }
-      
-      // Non-retryable error or max retries reached
-      if (attempt >= maxRetries) {
-        console.log(`   ❌ [DB RETRY] ${operationName} failed after ${maxRetries + 1} attempts`);
-      }
-      throw error;
-    }
-  }
-  
-  throw lastError;
-}
-
-// ============================================
-// DATABASE OPERATIONS
+// DATABASE OPERATIONS (file-based)
 // ============================================
 
 // Cache for questions within a single bot run
@@ -87,39 +73,12 @@ export function clearCaches() {
   _workQueueInitialized = false;
 }
 
-// Parse a database row into a question object
-function parseQuestionRow(row) {
-  return {
-    id: row.id,
-    question: row.question,
-    answer: row.answer,
-    explanation: row.explanation,
-    diagram: row.diagram,
-    difficulty: row.difficulty,
-    tags: row.tags ? JSON.parse(row.tags) : [],
-    channel: row.channel,
-    subChannel: row.sub_channel,
-    sourceUrl: row.source_url,
-    videos: row.videos ? JSON.parse(row.videos) : null,
-    companies: row.companies ? JSON.parse(row.companies) : null,
-    eli5: row.eli5,
-    tldr: row.tldr,
-    relevanceScore: row.relevance_score,
-    voiceKeywords: row.voice_keywords ? JSON.parse(row.voice_keywords) : null,
-    voiceSuitable: row.voice_suitable === 1,
-    isNew: row.is_new === 1, // Parse isNew flag
-    lastUpdated: row.last_updated,
-    lastRemapped: row.last_remapped,
-    createdAt: row.created_at
-  };
-}
-
-// Load all questions from database
+// Load all questions from files
 export async function loadUnifiedQuestions() {
-  const result = await dbClient.execute('SELECT * FROM questions');
+  const all = readAllQuestions();
   const questions = {};
-  for (const row of result.rows) {
-    questions[row.id] = parseQuestionRow(row);
+  for (const q of all) {
+    questions[q.id] = q;
   }
   return questions;
 }
@@ -128,15 +87,12 @@ export async function loadUnifiedQuestions() {
 export async function getAllUnifiedQuestions(useCache = true) {
   const now = Date.now();
   
-  // Return cached data if valid
   if (useCache && _questionsCache && (now - _questionsCacheTime) < CACHE_TTL_MS) {
     return _questionsCache;
   }
   
-  const result = await dbClient.execute('SELECT * FROM questions');
-  const questions = result.rows.map(parseQuestionRow);
+  const questions = readAllQuestions();
   
-  // Update cache
   _questionsCache = questions;
   _questionsCacheTime = now;
   
@@ -146,48 +102,45 @@ export async function getAllUnifiedQuestions(useCache = true) {
 // Get question count without fetching all data
 export async function getQuestionCount(channel = null) {
   if (channel) {
-    const result = await dbClient.execute({
-      sql: 'SELECT COUNT(*) as count FROM questions WHERE channel = ?',
-      args: [channel]
-    });
-    return result.rows[0]?.count || 0;
+    return readChannelFile(channel).length;
   }
   
-  const result = await dbClient.execute('SELECT COUNT(*) as count FROM questions');
-  return result.rows[0]?.count || 0;
+  if (!fs.existsSync(QUESTIONS_DIR)) return 0;
+  let count = 0;
+  const files = fs.readdirSync(QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+  for (const f of files) {
+    try {
+      const data = JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, f), 'utf8'));
+      count += data.length;
+    } catch {}
+  }
+  return count;
 }
 
-// Get channel question counts efficiently (single query)
+// Get channel question counts
 export async function getChannelQuestionCounts() {
-  const result = await dbClient.execute(`
-    SELECT channel, COUNT(*) as count 
-    FROM questions 
-    WHERE status != 'deleted'
-    GROUP BY channel
-  `);
-  
+  if (!fs.existsSync(QUESTIONS_DIR)) return {};
+  const files = fs.readdirSync(QUESTIONS_DIR).filter(f => f.endsWith('.json'));
   const counts = {};
-  for (const row of result.rows) {
-    counts[row.channel] = row.count;
+  for (const f of files) {
+    try {
+      const channel = f.replace(/\.json$/, '');
+      const data = JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, f), 'utf8'));
+      counts[channel] = data.length;
+    } catch {}
   }
   return counts;
 }
 
-// Get sub-channel question counts for prioritization (grouped by channel and sub_channel)
+// Get sub-channel question counts for prioritization
 export async function getSubChannelQuestionCounts() {
-  const result = await dbClient.execute(`
-    SELECT channel, sub_channel, COUNT(*) as count 
-    FROM questions 
-    WHERE sub_channel IS NOT NULL AND status != 'deleted'
-    GROUP BY channel, sub_channel
-  `);
-  
+  const mappings = await loadChannelMappings();
   const counts = {};
-  for (const row of result.rows) {
-    if (!counts[row.channel]) {
-      counts[row.channel] = {};
+  for (const [channel, data] of Object.entries(mappings)) {
+    for (const [subChannel, questionIds] of Object.entries(data.subChannels || {})) {
+      if (!counts[channel]) counts[channel] = {};
+      counts[channel][subChannel] = questionIds.length;
     }
-    counts[row.channel][row.sub_channel] = row.count;
   }
   return counts;
 }
@@ -198,29 +151,23 @@ export async function getPrioritizedChannels(channelList, limit = 10) {
     return [];
   }
   
-  // Get counts for all channels
   const channelCounts = await getChannelQuestionCounts();
   
-  // Sort by count ascending (prioritize channels with fewer questions)
   const sorted = channelList.map(ch => ({
     channel: ch,
     count: channelCounts[ch] || 0
   })).sort((a, b) => a.count - b.count);
   
-  // Return top N channels that need content (prioritize 0-count channels)
   const zeroCount = sorted.filter(c => c.count === 0);
   const lowCount = sorted.filter(c => c.count > 0);
   
-  // Prioritize channels with 0 questions first
   const prioritized = [...zeroCount, ...lowCount].slice(0, limit);
   
   return prioritized.map(c => c.channel);
 }
 
-// Save/update a question in the database
+// Save/update a question
 export async function saveQuestion(question) {
-  // CRITICAL: Validate before saving to database
-  // Import validation module dynamically to avoid circular dependencies
   const { validateBeforeInsert, sanitizeQuestion } = await import('./bots/shared/validation.js');
   
   try {
@@ -231,126 +178,52 @@ export async function saveQuestion(question) {
     throw error;
   }
   
-  // Sanitize to ensure no JSON in answer field
   const sanitized = sanitizeQuestion(question);
   
   if (sanitized._sanitized) {
     console.warn(`⚠️  Question ${question.id} had JSON in answer field - sanitized automatically`);
   }
   
-  // Wrap database operation with retry logic
-  await retryDatabaseOperation(
-    async () => {
-      await dbClient.execute({
-        sql: `INSERT INTO questions 
-              (id, question, answer, explanation, diagram, difficulty, tags, channel, sub_channel, source_url, videos, companies, eli5, tldr, last_updated, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM questions WHERE id = ?), ?))
-              ON CONFLICT (id) DO UPDATE SET
-                question = EXCLUDED.question,
-                answer = EXCLUDED.answer,
-                explanation = EXCLUDED.explanation,
-                diagram = EXCLUDED.diagram,
-                difficulty = EXCLUDED.difficulty,
-                tags = EXCLUDED.tags,
-                channel = EXCLUDED.channel,
-                sub_channel = EXCLUDED.sub_channel,
-                source_url = EXCLUDED.source_url,
-                videos = EXCLUDED.videos,
-                companies = EXCLUDED.companies,
-                eli5 = EXCLUDED.eli5,
-                tldr = EXCLUDED.tldr,
-                last_updated = EXCLUDED.last_updated`,
-        args: [
-          sanitized.id,
-          sanitized.question,
-          sanitized.answer,
-          sanitized.explanation,
-          sanitized.diagram || null,
-          sanitized.difficulty || 'intermediate',
-          sanitized.tags ? JSON.stringify(sanitized.tags) : null,
-          sanitized.channel,
-          sanitized.subChannel,
-          sanitized.sourceUrl || null,
-          sanitized.videos ? JSON.stringify(sanitized.videos) : null,
-          sanitized.companies ? JSON.stringify(sanitized.companies) : null,
-          sanitized.eli5 || null,
-          sanitized.tldr || null,
-          sanitized.lastUpdated || new Date().toISOString(),
-          sanitized.id,
-          new Date().toISOString()
-        ]
-      });
-    },
-    `saveQuestion(${sanitized.id})`
-  );
+  const channel = sanitized.channel || 'uncategorized';
+  const questions = readChannelFile(channel);
+  const idx = questions.findIndex(q => q.id === sanitized.id);
+  
+  if (idx >= 0) {
+    questions[idx] = sanitized;
+  } else {
+    questions.push(sanitized);
+  }
+  
+  writeChannelFile(channel, questions);
   
   console.log(`✅ Question ${sanitized.id} validated and saved successfully`);
 }
 
 // Save all questions (batch update)
 export async function saveUnifiedQuestions(questions) {
-  // CRITICAL: Validate all questions before batch save
   const { validateBeforeInsert, sanitizeQuestion } = await import('./bots/shared/validation.js');
   
-  const batch = [];
+  const byChannel = {};
   let validCount = 0;
   let invalidCount = 0;
   
   for (const [id, q] of Object.entries(questions)) {
     try {
-      // Validate each question
       validateBeforeInsert(q, 'utils.saveUnifiedQuestions');
-      
-      // Sanitize
       const sanitized = sanitizeQuestion(q);
       
       if (sanitized._sanitized) {
         console.warn(`⚠️  Question ${id} had JSON in answer field - sanitized automatically`);
       }
       
-      batch.push({
-        sql: `INSERT INTO questions 
-              (id, question, answer, explanation, diagram, difficulty, tags, channel, sub_channel, source_url, videos, companies, eli5, tldr, last_updated)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-              ON CONFLICT (id) DO UPDATE SET
-                question = EXCLUDED.question,
-                answer = EXCLUDED.answer,
-                explanation = EXCLUDED.explanation,
-                diagram = EXCLUDED.diagram,
-                difficulty = EXCLUDED.difficulty,
-                tags = EXCLUDED.tags,
-                channel = EXCLUDED.channel,
-                sub_channel = EXCLUDED.sub_channel,
-                source_url = EXCLUDED.source_url,
-                videos = EXCLUDED.videos,
-                companies = EXCLUDED.companies,
-                eli5 = EXCLUDED.eli5,
-                tldr = EXCLUDED.tldr,
-                last_updated = EXCLUDED.last_updated`,
-        args: [
-          id,
-          sanitized.question,
-          sanitized.answer,
-          sanitized.explanation,
-          sanitized.diagram || null,
-          sanitized.difficulty || 'intermediate',
-          sanitized.tags ? JSON.stringify(sanitized.tags) : null,
-          sanitized.channel,
-          sanitized.subChannel,
-          sanitized.sourceUrl || null,
-          sanitized.videos ? JSON.stringify(sanitized.videos) : null,
-          sanitized.companies ? JSON.stringify(sanitized.companies) : null,
-          sanitized.eli5 || null,
-          sanitized.tldr || null,
-          sanitized.lastUpdated || new Date().toISOString()
-        ]
-      });
+      const channel = sanitized.channel || 'uncategorized';
+      if (!byChannel[channel]) byChannel[channel] = {};
+      byChannel[channel][id] = sanitized;
       
       validCount++;
     } catch (error) {
       console.error(`❌ Validation failed for question ${id}: ${error.message}`);
       invalidCount++;
-      // Skip this question - don't add to batch
     }
   }
   
@@ -358,114 +231,67 @@ export async function saveUnifiedQuestions(questions) {
   console.log(`   ✅ Valid: ${validCount}`);
   console.log(`   ❌ Invalid (skipped): ${invalidCount}`);
   
-  // Execute in batches of 50 with retry logic
-  for (let i = 0; i < batch.length; i += 50) {
-    const batchSlice = batch.slice(i, i + 50);
-    await retryDatabaseOperation(
-      async () => {
-        await dbClient.batch(batchSlice);
-      },
-      `batch save questions (${i}-${i + batchSlice.length})`
-    );
-  }
-  
-  console.log(`✅ Saved ${validCount} validated questions to database`);
-}
-
-// Load channel mappings from database
-export async function loadChannelMappings() {
-  const result = await dbClient.execute('SELECT * FROM channel_mappings ORDER BY channel_id, sub_channel');
-  const mappings = {};
-  
-  for (const row of result.rows) {
-    const channelId = row.channel_id;
-    const subChannel = row.sub_channel;
-    const questionId = row.question_id;
-    
-    if (!mappings[channelId]) {
-      mappings[channelId] = { subChannels: {} };
-    }
-    if (!mappings[channelId].subChannels[subChannel]) {
-      mappings[channelId].subChannels[subChannel] = [];
-    }
-    if (!mappings[channelId].subChannels[subChannel].includes(questionId)) {
-      mappings[channelId].subChannels[subChannel].push(questionId);
-    }
-  }
-  
-  return mappings;
-}
-
-// Save channel mappings to database
-export async function saveChannelMappings(mappings) {
-  // Clear existing mappings
-  await dbClient.execute('DELETE FROM channel_mappings');
-  
-  // Insert new mappings
-  const batch = [];
-  for (const [channelId, data] of Object.entries(mappings)) {
-    for (const [subChannel, questionIds] of Object.entries(data.subChannels || {})) {
-      for (const questionId of questionIds) {
-        batch.push({
-          sql: 'INSERT INTO channel_mappings (channel_id, sub_channel, question_id) VALUES (?, ?, ?)',
-          args: [channelId, subChannel, questionId]
-        });
+  for (const [channel, channelQuestions] of Object.entries(byChannel)) {
+    const existing = readChannelFile(channel);
+    for (const [, sanitized] of Object.entries(channelQuestions)) {
+      const idx = existing.findIndex(q => q.id === sanitized.id);
+      if (idx >= 0) {
+        existing[idx] = sanitized;
+      } else {
+        existing.push(sanitized);
       }
     }
+    writeChannelFile(channel, existing);
   }
   
-  // Execute in batches
-  for (let i = 0; i < batch.length; i += 100) {
-    await dbClient.batch(batch.slice(i, i + 100));
-  }
+  console.log(`✅ Saved ${validCount} validated questions to files`);
 }
 
-// Add a question to database and map to channels (optimized with batch insert)
+// Load channel mappings from file
+export async function loadChannelMappings() {
+  return readJsonFile(CHANNEL_MAPPINGS_FILE) || {};
+}
+
+// Save channel mappings to file
+export async function saveChannelMappings(mappings) {
+  writeJsonFile(CHANNEL_MAPPINGS_FILE, mappings);
+}
+
+// Add a question and map to channels
 export async function addUnifiedQuestion(question, channels) {
-  // Set channel/subChannel from first mapping
   question.channel = channels[0].channel;
   question.subChannel = channels[0].subChannel;
   
-  // Save question (already has retry logic)
   await saveQuestion(question);
   
-  // Batch insert channel mappings (single transaction instead of multiple calls)
-  if (channels.length > 0) {
-    const batch = channels.map(({ channel, subChannel }) => ({
-      sql: 'INSERT INTO channel_mappings (channel_id, sub_channel, question_id) VALUES (?, ?, ?) ON CONFLICT DO NOTHING',
-      args: [channel, subChannel, question.id]
-    }));
-    
-    // Wrap batch operation with retry logic
-    await retryDatabaseOperation(
-      async () => {
-        await dbClient.batch(batch);
-      },
-      `batch insert channel mappings for ${question.id}`
-    );
+  const mappings = await loadChannelMappings();
+  for (const { channel, subChannel } of channels) {
+    if (!mappings[channel]) {
+      mappings[channel] = { subChannels: {} };
+    }
+    if (!mappings[channel].subChannels[subChannel]) {
+      mappings[channel].subChannels[subChannel] = [];
+    }
+    if (!mappings[channel].subChannels[subChannel].includes(question.id)) {
+      mappings[channel].subChannels[subChannel].push(question.id);
+    }
   }
+  await saveChannelMappings(mappings);
   
-  // Index in vector database for semantic search
   try {
     const vectorDB = (await import('./ai/services/vector-db.js')).default;
     await vectorDB.indexQuestion(question);
     console.log(`   📊 Indexed in vector DB: ${question.id}`);
   } catch (error) {
-    // Non-fatal - vector indexing is optional
     console.log(`   ⚠️ Vector indexing skipped: ${error.message}`);
   }
   
-  // Invalidate cache since we added a new question
   _questionsCache = null;
 }
 
 // Get questions for a specific channel
 export async function getQuestionsForChannel(channel) {
-  const result = await dbClient.execute({
-    sql: 'SELECT * FROM questions WHERE channel = ?',
-    args: [channel]
-  });
-  return result.rows.map(parseQuestionRow);
+  return readChannelFile(channel);
 }
 
 // ============================================
@@ -474,158 +300,142 @@ export async function getQuestionsForChannel(channel) {
 
 // Get questions that need improvement, sorted by priority
 export async function getQuestionsNeedingImprovement(limit = 10) {
-  // Query questions with issues, prioritizing:
-  // 1. Missing or short answers
-  // 2. Missing explanations
-  // 3. Missing diagrams
-  // 4. Oldest lastUpdated
-  const result = await dbClient.execute({
-    sql: `
-      SELECT *,
-        CASE 
-          WHEN answer IS NULL OR LENGTH(answer) < 20 THEN 5
-          WHEN LENGTH(answer) > 300 THEN 3
-          ELSE 0
-        END +
-        CASE 
-          WHEN explanation IS NULL OR LENGTH(explanation) < 50 THEN 4
-          WHEN explanation LIKE '%[truncated%' THEN 3
-          ELSE 0
-        END +
-        CASE 
-          WHEN diagram IS NULL OR LENGTH(diagram) < 20 THEN 3
-          ELSE 0
-        END +
-        CASE 
-          WHEN source_url IS NULL THEN 1
-          ELSE 0
-        END +
-        CASE 
-          WHEN videos IS NULL OR videos = '{}' OR videos = 'null' THEN 2
-          ELSE 0
-        END +
-        CASE 
-          WHEN companies IS NULL OR companies = '[]' OR companies = 'null' THEN 1
-          ELSE 0
-        END AS priority_score
-      FROM questions
-      WHERE 
-        (answer IS NULL OR LENGTH(answer) < 20 OR LENGTH(answer) > 300) OR
-        (explanation IS NULL OR LENGTH(explanation) < 50 OR explanation LIKE '%[truncated%') OR
-        (diagram IS NULL OR LENGTH(diagram) < 20) OR
-        (source_url IS NULL) OR
-        (videos IS NULL OR videos = '{}' OR videos = 'null') OR
-        (companies IS NULL OR companies = '[]' OR companies = 'null') OR
-        (question NOT LIKE '%?')
-      ORDER BY priority_score DESC, last_updated ASC
-      LIMIT ?
-    `,
-    args: [limit]
+  const questions = readAllQuestions();
+  
+  const scored = questions.map(q => {
+    let score = 0;
+    if (!q.answer || q.answer.length < 20) score += 5;
+    else if (q.answer.length > 300) score += 3;
+    if (!q.explanation || q.explanation.length < 50) score += 4;
+    else if (q.explanation && q.explanation.includes('[truncated')) score += 3;
+    if (!q.diagram || q.diagram.length < 20) score += 3;
+    if (!q.sourceUrl) score += 1;
+    if (!q.videos || q.videos === '{}' || q.videos === 'null' || (Array.isArray(q.videos) && q.videos.length === 0)) score += 2;
+    if (!q.companies || q.companies === '[]' || q.companies === 'null' || (Array.isArray(q.companies) && q.companies.length === 0)) score += 1;
+    return { ...q, priority_score: score };
   });
-  return result.rows.map(parseQuestionRow);
+  
+  const filtered = scored.filter(q => 
+    (!q.answer || q.answer.length < 20 || q.answer.length > 300) ||
+    (!q.explanation || q.explanation.length < 50 || (q.explanation && q.explanation.includes('[truncated'))) ||
+    (!q.diagram || q.diagram.length < 20) ||
+    !q.sourceUrl ||
+    (!q.videos || q.videos === '{}' || q.videos === 'null' || (Array.isArray(q.videos) && q.videos.length === 0)) ||
+    (!q.companies || q.companies === '[]' || q.companies === 'null' || (Array.isArray(q.companies) && q.companies.length === 0))
+  );
+  
+  filtered.sort((a, b) => {
+    if (b.priority_score !== a.priority_score) return b.priority_score - a.priority_score;
+    return (a.lastUpdated || '').localeCompare(b.lastUpdated || '');
+  });
+  
+  return filtered.slice(0, limit);
 }
 
 // Get questions needing diagrams, sorted by priority
 export async function getQuestionsNeedingDiagrams(limit = 10) {
-  const result = await dbClient.execute({
-    sql: `
-      SELECT *,
-        CASE 
-          WHEN diagram IS NULL OR LENGTH(diagram) < 20 THEN 3
-          WHEN diagram LIKE '%Concept%' AND diagram LIKE '%Implementation%' AND LENGTH(diagram) < 100 THEN 2
-          WHEN LENGTH(diagram) < 50 THEN 1
-          ELSE 0
-        END AS diagram_priority
-      FROM questions
-      WHERE 
-        diagram IS NULL OR 
-        LENGTH(diagram) < 20 OR
-        (diagram LIKE '%Concept%' AND diagram LIKE '%Implementation%' AND LENGTH(diagram) < 100)
-      ORDER BY diagram_priority DESC, last_updated ASC
-      LIMIT ?
-    `,
-    args: [limit]
+  const questions = readAllQuestions();
+  
+  const scored = questions.map(q => {
+    let score = 0;
+    if (!q.diagram || q.diagram.length < 20) score += 3;
+    else if (q.diagram && q.diagram.includes('Concept') && q.diagram.includes('Implementation') && q.diagram.length < 100) score += 2;
+    else if (q.diagram && q.diagram.length < 50) score += 1;
+    return { ...q, diagram_priority: score };
   });
-  return result.rows.map(parseQuestionRow);
+  
+  const filtered = scored.filter(q =>
+    !q.diagram ||
+    q.diagram.length < 20 ||
+    (q.diagram && q.diagram.includes('Concept') && q.diagram.includes('Implementation') && q.diagram.length < 100)
+  );
+  
+  filtered.sort((a, b) => {
+    if (b.diagram_priority !== a.diagram_priority) return b.diagram_priority - a.diagram_priority;
+    return (a.lastUpdated || '').localeCompare(b.lastUpdated || '');
+  });
+  
+  return filtered.slice(0, limit);
 }
 
-// Get all unique channels from database
+// Get all unique channels from files
 export async function getAllChannelsFromDb() {
-  const result = await dbClient.execute(`
-    SELECT DISTINCT channel FROM questions ORDER BY channel
-  `);
-  return result.rows.map(r => r.channel);
+  if (!fs.existsSync(QUESTIONS_DIR)) return [];
+  return fs.readdirSync(QUESTIONS_DIR)
+    .filter(f => f.endsWith('.json'))
+    .map(f => f.replace(/\.json$/, ''))
+    .sort();
 }
 
 // Get channel statistics for balancing question distribution
 export async function getChannelStats() {
-  const result = await dbClient.execute(`
-    SELECT 
-      channel,
-      COUNT(*) as question_count,
-      SUM(CASE WHEN diagram IS NULL OR LENGTH(diagram) < 20 THEN 1 ELSE 0 END) as missing_diagrams,
-      SUM(CASE WHEN explanation IS NULL OR LENGTH(explanation) < 50 THEN 1 ELSE 0 END) as missing_explanations,
-      SUM(CASE WHEN companies IS NULL OR companies = '[]' THEN 1 ELSE 0 END) as missing_companies,
-      MIN(last_updated) as oldest_update
-    FROM questions
-    WHERE status != 'deleted'
-    GROUP BY channel
-    ORDER BY question_count ASC
-  `);
-  return result.rows;
+  if (!fs.existsSync(QUESTIONS_DIR)) return [];
+  
+  const files = fs.readdirSync(QUESTIONS_DIR).filter(f => f.endsWith('.json'));
+  const stats = [];
+  
+  for (const f of files) {
+    try {
+      const channel = f.replace(/\.json$/, '');
+      const questions = JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, f), 'utf8'));
+      
+      let questionCount = 0;
+      let missingDiagrams = 0;
+      let missingExplanations = 0;
+      let missingCompanies = 0;
+      let oldestUpdate = null;
+      
+      for (const q of questions) {
+        questionCount++;
+        if (!q.diagram || q.diagram.length < 20) missingDiagrams++;
+        if (!q.explanation || q.explanation.length < 50) missingExplanations++;
+        if (!q.companies || q.companies === '[]' || (Array.isArray(q.companies) && q.companies.length === 0)) missingCompanies++;
+        if (!oldestUpdate || q.lastUpdated < oldestUpdate) oldestUpdate = q.lastUpdated;
+      }
+      
+      stats.push({
+        channel,
+        question_count: questionCount,
+        missing_diagrams: missingDiagrams,
+        missing_explanations: missingExplanations,
+        missing_companies: missingCompanies,
+        oldest_update: oldestUpdate
+      });
+    } catch {}
+  }
+  
+  stats.sort((a, b) => a.question_count - b.question_count);
+  return stats;
 }
 
 // Get channels with fewest questions (for balancing new question additions)
 export async function getUnderservedChannels(minQuestions = 10) {
-  const result = await dbClient.execute({
-    sql: `
-      SELECT channel, COUNT(*) as count
-      FROM questions
-      WHERE status != 'deleted'
-      GROUP BY channel
-      HAVING COUNT(*) < ?
-      ORDER BY count ASC
-    `,
-    args: [minQuestions]
-  });
-  return result.rows;
+  const counts = await getChannelQuestionCounts();
+  return Object.entries(counts)
+    .filter(([, count]) => count < minQuestions)
+    .map(([channel, count]) => ({ channel, count }))
+    .sort((a, b) => a.count - b.count);
 }
 
-// Generate unique ID - optimized to only fetch max ID
+// Generate unique ID
 export async function generateUnifiedId(prefix = 'q') {
-  // Get the max numeric ID to avoid fetching all IDs
-  const result = await dbClient.execute(`
-    SELECT MAX(CAST(SUBSTR(id, 3) AS INTEGER)) as max_num 
-    FROM questions 
-    WHERE id LIKE '${prefix}-%'
-  `);
-  
-  const maxNum = result.rows[0]?.max_num || 0;
+  const questions = readAllQuestions();
+  let maxNum = 0;
+  const pattern = new RegExp(`^${prefix}-(\\d+)$`);
+  for (const q of questions) {
+    const m = (q.id || '').match(pattern);
+    if (m) {
+      const num = parseInt(m[1], 10);
+      if (num > maxNum) maxNum = num;
+    }
+  }
   return `${prefix}-${maxNum + 1}`;
 }
 
-// Check if question is duplicate - optimized to use SQL LIKE for initial filter
+// Check if question is duplicate
 export async function isDuplicateUnified(questionText, threshold = 0.6) {
-  // Extract key words for SQL pre-filtering (reduces data transfer)
-  const words = normalizeText(questionText).split(' ').filter(w => w.length > 3).slice(0, 5);
-  
-  if (words.length === 0) {
-    // Fallback to full scan if no meaningful words
-    const questions = await getAllUnifiedQuestions();
-    return questions.some(q => calculateSimilarity(questionText, q.question) >= threshold);
-  }
-  
-  // Pre-filter with SQL LIKE to reduce candidates
-  const likeConditions = words.map(() => 'LOWER(question) LIKE ?').join(' OR ');
-  const likeArgs = words.map(w => `%${w}%`);
-  
-  const result = await dbClient.execute({
-    sql: `SELECT question FROM questions WHERE ${likeConditions}`,
-    args: likeArgs
-  });
-  
-  // Check similarity only on pre-filtered candidates
-  return result.rows.some(row => calculateSimilarity(questionText, row.question) >= threshold);
+  const questions = await getAllUnifiedQuestions();
+  return questions.some(q => calculateSimilarity(questionText, q.question) >= threshold);
 }
 
 // ============================================
@@ -987,8 +797,7 @@ export function writeGitHubOutput(data) {
 // ============================================
 
 export function updateUnifiedIndexFile() {
-  // No-op - we no longer use local files
-  console.log('📝 Index file update skipped (using database)');
+  console.log('📝 Index is file-based (data/questions/*.json)');
 }
 
 // ============================================
@@ -1039,32 +848,19 @@ export function logQuestionsImproved(count, channels, questionIds = []) {
 // WORK QUEUE OPERATIONS
 // ============================================
 
-// Initialize work queue table (cached to avoid repeated CREATE TABLE calls)
+function ensureBotDataDir() {
+  if (!fs.existsSync(BOT_DATA_DIR)) {
+    fs.mkdirSync(BOT_DATA_DIR, { recursive: true });
+  }
+}
+
+// Initialize work queue file
 export async function initWorkQueue() {
-  // Skip if already initialized in this run
   if (_workQueueInitialized) return;
-  
-  await dbClient.execute(`
-    CREATE TABLE IF NOT EXISTS work_queue (
-      id SERIAL PRIMARY KEY,
-      question_id TEXT NOT NULL,
-      bot_type TEXT NOT NULL,
-      priority INTEGER DEFAULT 5,
-      status TEXT DEFAULT 'pending',
-      reason TEXT,
-      created_by TEXT,
-      created_at TEXT,
-      started_at TEXT,
-      completed_at TEXT,
-      result TEXT,
-      FOREIGN KEY (question_id) REFERENCES questions(id)
-    )
-  `);
-  // Create index for efficient queries
-  await dbClient.execute(`
-    CREATE INDEX IF NOT EXISTS idx_work_queue_status_bot ON work_queue(status, bot_type, priority)
-  `);
-  
+  ensureBotDataDir();
+  if (!fs.existsSync(WORK_QUEUE_FILE)) {
+    writeJsonFile(WORK_QUEUE_FILE, []);
+  }
   _workQueueInitialized = true;
 }
 
@@ -1072,132 +868,119 @@ export async function initWorkQueue() {
 export async function addWorkItem(questionId, botType, reason, createdBy, priority = 5) {
   await initWorkQueue();
   
-  // Check if pending work already exists for this question+bot
-  const existing = await retryDatabaseOperation(
-    async () => {
-      return await dbClient.execute({
-        sql: `SELECT id FROM work_queue WHERE question_id = ? AND bot_type = ? AND status = 'pending'`,
-        args: [questionId, botType]
-      });
-    },
-    `check existing work item for ${questionId}`
-  );
+  const items = readJsonFile(WORK_QUEUE_FILE) || [];
+  const existing = items.find(item => item.question_id === questionId && item.bot_type === botType && item.status === 'pending');
   
-  if (existing.rows.length > 0) {
+  if (existing) {
     console.log(`  ℹ️ Work item already exists for ${questionId} -> ${botType}`);
-    return existing.rows[0].id;
+    return existing.id;
   }
   
-  const result = await retryDatabaseOperation(
-    async () => {
-      return await dbClient.execute({
-        sql: `INSERT INTO work_queue (question_id, bot_type, priority, status, reason, created_by, created_at)
-              VALUES (?, ?, ?, 'pending', ?, ?, ?)`,
-        args: [questionId, botType, priority, reason, createdBy, new Date().toISOString()]
-      });
-    },
-    `insert work item for ${questionId}`
-  );
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const item = {
+    id,
+    question_id: questionId,
+    bot_type: botType,
+    priority,
+    status: 'pending',
+    reason,
+    created_by: createdBy,
+    created_at: new Date().toISOString(),
+    started_at: null,
+    completed_at: null,
+    result: null
+  };
+  
+  items.push(item);
+  writeJsonFile(WORK_QUEUE_FILE, items);
   
   console.log(`  📋 Created work item: ${questionId} -> ${botType} (${reason})`);
-  return result.lastInsertRowid;
+  return id;
 }
 
 // Get pending work items for a specific bot type
 export async function getPendingWork(botType, limit = 10) {
   await initWorkQueue();
   
-  const result = await dbClient.execute({
-    sql: `SELECT w.*, q.question, q.answer, q.explanation, q.channel, q.sub_channel, q.tags, q.videos, q.companies, q.diagram, q.eli5, q.difficulty, q.source_url, q.last_updated, q.created_at as q_created_at
-          FROM work_queue w
-          JOIN questions q ON w.question_id = q.id
-          WHERE w.bot_type = ? AND w.status = 'pending'
-          ORDER BY w.priority ASC, w.created_at ASC
-          LIMIT ?`,
-    args: [botType, limit]
-  });
+  const items = readJsonFile(WORK_QUEUE_FILE) || [];
+  const pending = items
+    .filter(item => item.bot_type === botType && item.status === 'pending')
+    .sort((a, b) => a.priority - b.priority || (a.created_at || '').localeCompare(b.created_at || ''))
+    .slice(0, limit);
   
-  return result.rows.map(row => ({
-    workId: row.id,
-    questionId: row.question_id,
-    reason: row.reason,
-    priority: row.priority,
-    createdBy: row.created_by,
-    createdAt: row.created_at,
-    question: {
-      id: row.question_id,
-      question: row.question,
-      answer: row.answer,
-      explanation: row.explanation,
-      channel: row.channel,
-      subChannel: row.sub_channel,
-      tags: row.tags ? JSON.parse(row.tags) : [],
-      videos: row.videos ? JSON.parse(row.videos) : null,
-      companies: row.companies ? JSON.parse(row.companies) : null,
-      diagram: row.diagram,
-      eli5: row.eli5,
-      difficulty: row.difficulty,
-      sourceUrl: row.source_url,
-      lastUpdated: row.last_updated,
-      createdAt: row.q_created_at
-    }
-  }));
+  return pending.map(item => {
+    const q = findQuestionById(item.question_id);
+    return {
+      workId: item.id,
+      questionId: item.question_id,
+      reason: item.reason,
+      priority: item.priority,
+      createdBy: item.created_by,
+      createdAt: item.created_at,
+      question: q || {
+        id: item.question_id,
+        question: item.question_id,
+        answer: '',
+        explanation: '',
+        channel: null,
+        subChannel: null,
+        tags: [],
+        videos: null,
+        companies: null,
+        diagram: null,
+        eli5: null,
+        difficulty: 'intermediate',
+        sourceUrl: null,
+        lastUpdated: null,
+        createdAt: null
+      }
+    };
+  });
 }
 
 // Mark work item as started
 export async function startWorkItem(workId) {
-  await retryDatabaseOperation(
-    async () => {
-      await dbClient.execute({
-        sql: `UPDATE work_queue SET status = 'processing', started_at = ? WHERE id = ?`,
-        args: [new Date().toISOString(), workId]
-      });
-    },
-    `startWorkItem(${workId})`
-  );
+  const items = readJsonFile(WORK_QUEUE_FILE) || [];
+  const item = items.find(i => i.id === workId);
+  if (item) {
+    item.status = 'processing';
+    item.started_at = new Date().toISOString();
+    writeJsonFile(WORK_QUEUE_FILE, items);
+  }
 }
 
 // Mark work item as completed
 export async function completeWorkItem(workId, result = null) {
-  await retryDatabaseOperation(
-    async () => {
-      await dbClient.execute({
-        sql: `UPDATE work_queue SET status = 'completed', completed_at = ?, result = ? WHERE id = ?`,
-        args: [new Date().toISOString(), result ? JSON.stringify(result) : null, workId]
-      });
-    },
-    `completeWorkItem(${workId})`
-  );
+  const items = readJsonFile(WORK_QUEUE_FILE) || [];
+  const item = items.find(i => i.id === workId);
+  if (item) {
+    item.status = 'completed';
+    item.completed_at = new Date().toISOString();
+    item.result = result ? JSON.stringify(result) : null;
+    writeJsonFile(WORK_QUEUE_FILE, items);
+  }
 }
 
 // Mark work item as failed
 export async function failWorkItem(workId, error) {
-  await retryDatabaseOperation(
-    async () => {
-      await dbClient.execute({
-        sql: `UPDATE work_queue SET status = 'failed', completed_at = ?, result = ? WHERE id = ?`,
-        args: [new Date().toISOString(), JSON.stringify({ error }), workId]
-      });
-    },
-    `failWorkItem(${workId})`
-  );
+  const items = readJsonFile(WORK_QUEUE_FILE) || [];
+  const item = items.find(i => i.id === workId);
+  if (item) {
+    item.status = 'failed';
+    item.completed_at = new Date().toISOString();
+    item.result = JSON.stringify({ error });
+    writeJsonFile(WORK_QUEUE_FILE, items);
+  }
 }
 
 // Get work queue stats
 export async function getWorkQueueStats() {
-  await initWorkQueue();
-  
-  const result = await dbClient.execute(`
-    SELECT bot_type, status, COUNT(*) as count
-    FROM work_queue
-    GROUP BY bot_type, status
-    ORDER BY bot_type, status
-  `);
-  
+  const items = readJsonFile(WORK_QUEUE_FILE) || [];
   const stats = {};
-  for (const row of result.rows) {
-    if (!stats[row.bot_type]) stats[row.bot_type] = {};
-    stats[row.bot_type][row.status] = row.count;
+  for (const item of items) {
+    if (!stats[item.bot_type]) stats[item.bot_type] = {};
+    if (!stats[item.bot_type][item.status]) stats[item.bot_type][item.status] = 0;
+    stats[item.bot_type][item.status]++;
   }
   return stats;
 }
@@ -1207,127 +990,99 @@ export async function cleanupWorkQueue(daysOld = 7) {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - daysOld);
   
-  const result = await dbClient.execute({
-    sql: `DELETE FROM work_queue WHERE status IN ('completed', 'failed') AND completed_at < ?`,
-    args: [cutoff.toISOString()]
-  });
+  const items = readJsonFile(WORK_QUEUE_FILE) || [];
+  const before = items.length;
+  const filtered = items.filter(item =>
+    !(item.status === 'completed' || item.status === 'failed') ||
+    !item.completed_at ||
+    item.completed_at >= cutoff.toISOString()
+  );
   
-  return result.rowsAffected;
+  writeJsonFile(WORK_QUEUE_FILE, filtered);
+  return before - filtered.length;
 }
 
 // ============================================
 // BOT ACTIVITY LOGGING
 // ============================================
 
-// Log a bot activity (creates a work queue entry for tracking)
+// Log a bot activity
 export async function logBotActivity(questionId, botType, action, status = 'completed', result = null) {
-  await initWorkQueue();
+  ensureBotDataDir();
   
-  const now = new Date().toISOString();
+  const activities = readJsonFile(BOT_ACTIVITY_FILE) || [];
   
-  // Include item_type and item_id for backward compatibility with existing schema
-  await dbClient.execute({
-    sql: `INSERT INTO work_queue (item_type, item_id, question_id, bot_type, action, priority, status, reason, created_by, created_at, started_at, completed_at, result)
-          VALUES (?, ?, ?, ?, ?, 5, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [
-      'question',      // item_type
-      questionId,      // item_id
-      questionId,      // question_id
-      botType,         // bot_type
-      action,          // action
-      status,          // status
-      action,          // reason
-      botType,         // created_by
-      now,             // created_at
-      now,             // started_at
-      now,             // completed_at
-      result ? JSON.stringify(result) : null
-    ]
-  });
+  const entry = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+    question_id: questionId,
+    bot_type: botType,
+    action,
+    status,
+    result: result ? JSON.stringify(result) : null,
+    created_at: new Date().toISOString(),
+    completed_at: new Date().toISOString()
+  };
+  
+  activities.push(entry);
+  writeJsonFile(BOT_ACTIVITY_FILE, activities);
   
   console.log(`  📊 Logged activity: ${botType} -> ${questionId} (${action})`);
 }
 
 // Get recent bot activity
 export async function getRecentBotActivity(limit = 50, botType = null) {
-  await initWorkQueue();
-  
-  let sql = `
-    SELECT w.*, q.question, q.channel
-    FROM work_queue w
-    LEFT JOIN questions q ON w.question_id = q.id
-    WHERE w.status IN ('completed', 'failed')
-  `;
-  const args = [];
+  let activities = readJsonFile(BOT_ACTIVITY_FILE) || [];
   
   if (botType) {
-    sql += ' AND w.bot_type = ?';
-    args.push(botType);
+    activities = activities.filter(a => a.bot_type === botType);
   }
   
-  sql += ' ORDER BY w.completed_at DESC LIMIT ?';
-  args.push(limit);
+  activities.sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
   
-  const result = await dbClient.execute({ sql, args });
-  
-  return result.rows.map(row => ({
+  return activities.slice(0, limit).map(row => ({
     id: row.id,
     questionId: row.question_id,
     botType: row.bot_type,
-    action: row.reason,
+    action: row.action,
     status: row.status,
     result: row.result ? JSON.parse(row.result) : null,
     completedAt: row.completed_at,
-    questionText: row.question,
-    channel: row.channel
+    questionText: null,
+    channel: null
   }));
 }
 
 
 // ============================================
-// OPTIMIZED DATABASE QUERIES FOR BOTS
+// OPTIMIZED QUERIES FOR BOTS
 // ============================================
 
-// Get questions needing ELI5 explanations (targeted query instead of fetching all)
+// Get questions needing ELI5 explanations
 export async function getQuestionsNeedingEli5(limit = 100) {
-  const result = await dbClient.execute({
-    sql: `SELECT * FROM questions 
-          WHERE eli5 IS NULL OR LENGTH(eli5) < 50 
-          ORDER BY last_updated ASC 
-          LIMIT ?`,
-    args: [limit]
-  });
-  return result.rows.map(parseQuestionRow);
+  const questions = readAllQuestions();
+  const filtered = questions.filter(q => !q.eli5 || q.eli5.length < 50);
+  filtered.sort((a, b) => (a.lastUpdated || '').localeCompare(b.lastUpdated || ''));
+  return filtered.slice(0, limit);
 }
 
-// Get questions needing TLDR summaries (targeted query)
+// Get questions needing TLDR summaries
 export async function getQuestionsNeedingTldr(limit = 100) {
-  const result = await dbClient.execute({
-    sql: `SELECT * FROM questions 
-          WHERE tldr IS NULL OR LENGTH(tldr) < 20 
-          ORDER BY last_updated ASC 
-          LIMIT ?`,
-    args: [limit]
-  });
-  return result.rows.map(parseQuestionRow);
+  const questions = readAllQuestions();
+  const filtered = questions.filter(q => !q.tldr || q.tldr.length < 20);
+  filtered.sort((a, b) => (a.lastUpdated || '').localeCompare(b.lastUpdated || ''));
+  return filtered.slice(0, limit);
 }
 
-// Get questions needing company data (targeted query)
+// Get questions needing company data
 export async function getQuestionsNeedingCompanies(limit = 100, minCompanies = 3) {
-  const result = await dbClient.execute({
-    sql: `SELECT * FROM questions 
-          WHERE companies IS NULL 
-             OR companies = '[]' 
-             OR companies = 'null'
-             OR LENGTH(companies) < 10
-             OR (
-               LENGTH(companies) - LENGTH(REPLACE(companies, ',', '')) < ?
-             )
-          ORDER BY last_updated ASC 
-          LIMIT ?`,
-    args: [minCompanies - 1, limit]
+  const questions = readAllQuestions();
+  const filtered = questions.filter(q => {
+    if (!q.companies || q.companies === '[]' || q.companies === 'null') return true;
+    const companies = Array.isArray(q.companies) ? q.companies : [];
+    return companies.length < minCompanies;
   });
-  return result.rows.map(parseQuestionRow);
+  filtered.sort((a, b) => (a.lastUpdated || '').localeCompare(b.lastUpdated || ''));
+  return filtered.slice(0, limit);
 }
 
 // ============================================
@@ -1406,19 +1161,13 @@ export class BaseBotRunner {
     };
   }
 
-  // Load bot state from database
+  // Load bot state from file
   async loadState() {
     try {
-      const result = await dbClient.execute({
-        sql: "SELECT value FROM bot_state WHERE bot_name = ?",
-        args: [this.botName]
-      });
-      if (result.rows.length > 0) {
-        return JSON.parse(result.rows[0].value);
-      }
-    } catch (e) {
-      // Table might not exist yet
-    }
+      const stateFile = path.join(BOT_DATA_DIR, `bot-state-${this.botName}.json`);
+      const data = readJsonFile(stateFile);
+      if (data) return data;
+    } catch {}
     return this.getDefaultState();
   }
 
@@ -1431,21 +1180,13 @@ export class BaseBotRunner {
     };
   }
 
-  // Save bot state to database
+  // Save bot state to file
   async saveState(state) {
     state.lastRunDate = new Date().toISOString();
     try {
-      await dbClient.execute(`
-        CREATE TABLE IF NOT EXISTS bot_state (
-          bot_name TEXT PRIMARY KEY,
-          value TEXT,
-          updated_at TEXT
-        )
-      `);
-      await dbClient.execute({
-        sql: "INSERT INTO bot_state (bot_name, value, updated_at) VALUES (?, ?, ?) ON CONFLICT (bot_name) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at",
-        args: [this.botName, JSON.stringify(state), new Date().toISOString()]
-      });
+      ensureBotDataDir();
+      const stateFile = path.join(BOT_DATA_DIR, `bot-state-${this.botName}.json`);
+      writeJsonFile(stateFile, state);
     } catch (e) {
       console.error('Failed to save state:', e.message);
     }

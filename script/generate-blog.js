@@ -13,10 +13,11 @@ import { marked } from 'marked';
 import { fileURLToPath } from 'url';
 import { generateBlogPost } from './ai/graphs/blog-graph.js';
 import { generateIllustration, generatePixelIllustration } from './ai/utils/blog-illustration-generator.js';
-import { dbClient as client } from './db/pg-client.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const BLOG_POSTS_DIR = path.join(process.cwd(), 'data', 'blog-posts');
 
 // Author info for credits
 const AUTHOR = {
@@ -31,9 +32,7 @@ const AUTHOR = {
 const OUTPUT_DIR = 'blog-output';
 const MIN_SOURCES = 8;
 const MAX_SKIP_ATTEMPTS = 5; // Max questions to try before giving up
-const GA_MEASUREMENT_ID = process.env.GA_MEASUREMENT_ID || 'G-47MSM57H95'; // Same as main app
-
-const writeClient = client;
+const GA_MEASUREMENT_ID = process.env.GA_MEASUREMENT_ID || 'G-47MSM57H95';
 
 /**
  * Validate a URL by checking if it returns a valid response (not 404)
@@ -215,44 +214,40 @@ const ALLOWED_BLOG_CHANNELS = [
   'prompt-engineering'
 ];
 
-// Get next question to convert
+// Get next question to convert — reads from data/questions/, skips already-blogged IDs
 async function getNextQuestionForBlog(limit = 1) {
-  // First, find channels that have the least blog posts to ensure variety
-  // Only select from allowed channels: SRE, DevOps, AI, LLM, GenAI
-  const channelFilter = ALLOWED_BLOG_CHANNELS.map(() => '?').join(',');
-  
-  const result = await client.execute({
-    sql: `
-    SELECT q.id, q.question, q.answer, q.explanation, q.diagram, 
-           q.difficulty, q.tags, q.channel, q.sub_channel, q.companies
-    FROM questions q
-    LEFT JOIN blog_posts bp ON q.id = bp.question_id
-    WHERE bp.question_id IS NULL
-      AND q.explanation IS NOT NULL 
-      AND LENGTH(q.explanation) > 100
-      AND q.channel IN (${channelFilter})
-    ORDER BY 
-      (SELECT COUNT(*) FROM blog_posts WHERE channel = q.channel) ASC,
-      RANDOM()
-    LIMIT ?
-  `,
-    args: [...ALLOWED_BLOG_CHANNELS, limit]
-  });
-  
-  if (result.rows.length === 0) return [];
-  
-  return result.rows.map(row => ({
-    id: row.id,
-    question: row.question,
-    answer: row.answer,
-    explanation: row.explanation,
-    diagram: row.diagram,
-    difficulty: row.difficulty,
-    tags: row.tags ? JSON.parse(row.tags) : [],
-    channel: row.channel,
-    subChannel: row.sub_channel,
-    companies: row.companies ? JSON.parse(row.companies) : [],
-  }));
+  const questionsDir = path.join(process.cwd(), 'data', 'questions');
+  fs.mkdirSync(BLOG_POSTS_DIR, { recursive: true });
+
+  // Collect already-blogged question IDs from data/blog-posts/
+  const bloggedIds = new Set(
+    fs.readdirSync(BLOG_POSTS_DIR)
+      .filter(f => f.endsWith('.json'))
+      .map(f => { try { return JSON.parse(fs.readFileSync(path.join(BLOG_POSTS_DIR, f), 'utf8')).questionId; } catch { return null; } })
+      .filter(Boolean)
+  );
+
+  const candidates = [];
+  for (const ch of ALLOWED_BLOG_CHANNELS) {
+    const file = path.join(questionsDir, `${ch}.json`);
+    if (!fs.existsSync(file)) continue;
+    try {
+      const qs = JSON.parse(fs.readFileSync(file, 'utf8'));
+      for (const q of qs) {
+        if (!bloggedIds.has(q.id) && q.explanation && q.explanation.length > 100) {
+          candidates.push({ id: q.id, question: q.question, answer: q.answer, explanation: q.explanation, diagram: q.diagram, difficulty: q.difficulty, tags: Array.isArray(q.tags) ? q.tags : [], channel: q.channel, subChannel: q.subChannel, companies: Array.isArray(q.companies) ? q.companies : [] });
+        }
+      }
+    } catch {}
+  }
+
+  if (!candidates.length) return [];
+  // Shuffle and return limit
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+  return candidates.slice(0, limit);
 }
 
 // Parse YAML frontmatter from MDX files using js-yaml
@@ -323,50 +318,21 @@ function loadPostsFromMDX() {
 
 // Get all existing blog posts
 async function getAllBlogPosts() {
-  const result = await client.execute(`SELECT * FROM blog_posts ORDER BY created_at DESC`);
-  const dbPosts = result.rows.map(row => {
-    const safeJsonParse = (str, fallback) => {
-      if (!str) return fallback;
+  const jsonPosts = [];
+  if (fs.existsSync(BLOG_POSTS_DIR)) {
+    const files = fs.readdirSync(BLOG_POSTS_DIR).filter(f => f.endsWith('.json'));
+    for (const f of files) {
       try {
-        const parsed = JSON.parse(str);
-        return parsed;
-      } catch (e) {
-        console.warn(`Failed to parse JSON for post ${row.id}:`, e.message);
-        return fallback;
-      }
-    };
-    
-    const ensureArray = (val) => Array.isArray(val) ? val : [];
-    
-    return {
-      id: row.id,
-      blogTitle: row.title,
-      blogSlug: row.slug,
-      blogIntro: row.introduction,
-      blogSections: ensureArray(safeJsonParse(row.sections, [])),
-      blogConclusion: row.conclusion,
-      blogMeta: row.meta_description,
-      channel: row.channel,
-      difficulty: row.difficulty,
-      tags: ensureArray(safeJsonParse(row.tags, [])),
-      diagram: row.diagram,
-      diagramType: row.diagram_type,
-      diagramLabel: row.diagram_label,
-      quickReference: ensureArray(safeJsonParse(row.quick_reference, [])),
-      glossary: ensureArray(safeJsonParse(row.glossary, [])),
-      realWorldExample: safeJsonParse(row.real_world_example, null),
-      funFact: row.fun_fact,
-      sources: ensureArray(safeJsonParse(row.sources, [])),
-      images: ensureArray(safeJsonParse(row.images, [])),
-      svgContent: safeJsonParse(row.svg_content, {}),
-      socialSnippet: safeJsonParse(row.social_snippet, null),
-      createdAt: row.created_at
-    };
-  });
-  const dbIds = new Set(dbPosts.map(p => p.id));
-  const mdxPosts = loadPostsFromMDX().filter(p => !dbIds.has(p.id));
-  if (mdxPosts.length) console.log(`📂 Merged ${mdxPosts.length} MDX-only posts into DB results`);
-  return [...dbPosts, ...mdxPosts];
+        const post = JSON.parse(fs.readFileSync(path.join(BLOG_POSTS_DIR, f), 'utf8'));
+        jsonPosts.push(post);
+      } catch {}
+    }
+  }
+  jsonPosts.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  const jsonIds = new Set(jsonPosts.map(p => p.id));
+  const mdxPosts = loadPostsFromMDX().filter(p => !jsonIds.has(p.id));
+  if (mdxPosts.length) console.log(`📂 Merged ${mdxPosts.length} MDX-only posts`);
+  return [...jsonPosts, ...mdxPosts];
 }
 
 // Save blog post as MDX file
@@ -416,76 +382,49 @@ function savePostAsMDX(post) {
 async function saveBlogPost(questionId, blogContent, question, svgContent = {}) {
   const now = new Date().toISOString();
   const diagram = blogContent.diagram || question.diagram;
-  const id = crypto.randomUUID();
-  const slug = await generateUniqueSlug(blogContent.title, writeClient);
-  await writeClient.execute({
-    sql: `INSERT INTO blog_posts 
-          (id, question_id, title, slug, introduction, sections, conclusion, 
-           meta_description, channel, difficulty, tags, diagram, quick_reference,
-           glossary, real_world_example, fun_fact, sources, social_snippet, 
-           diagram_type, diagram_label, images, svg_content, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [
-      id,
-      questionId,
-      blogContent.title,
-      slug,
-      blogContent.introduction,
-      JSON.stringify(blogContent.sections),
-      blogContent.conclusion,
-      blogContent.metaDescription,
-      question.channel,
-      question.difficulty,
-      JSON.stringify(question.tags),
-      diagram,
-      JSON.stringify(blogContent.quickReference || []),
-      JSON.stringify(blogContent.glossary || []),
-      JSON.stringify(blogContent.realWorldExample || null),
-      blogContent.funFact || null,
-      JSON.stringify(blogContent.sources || []),
-      JSON.stringify(blogContent.socialSnippet || null),
-      blogContent.diagramType || null,
-      blogContent.diagramLabel || null,
-      JSON.stringify(blogContent.images || []),
-      JSON.stringify(svgContent),
-      now
-    ]
-  });
-  savePostAsMDX({
-    id,
-    blogTitle: blogContent.title,
-    blogSlug: slug,
-    channel: question.channel,
-    difficulty: question.difficulty,
-    tags: question.tags,
-    createdAt: now,
-    funFact: blogContent.funFact || null,
-    diagram: diagram || null,
-    images: blogContent.images || [],
-    sources: blogContent.sources || [],
-    blogIntro: blogContent.introduction,
-    blogSections: blogContent.sections,
-    blogConclusion: blogContent.conclusion,
-  });
+  const id = `blog-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const slug = blogContent.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+
+  fs.mkdirSync(BLOG_POSTS_DIR, { recursive: true });
+  const post = {
+    id, questionId, blogTitle: blogContent.title, blogSlug: slug,
+    channel: question.channel, difficulty: question.difficulty,
+    tags: question.tags || [], diagram, diagramType: blogContent.diagramType || null,
+    diagramLabel: blogContent.diagramLabel || null,
+    blogIntro: blogContent.introduction, blogSections: blogContent.sections,
+    blogConclusion: blogContent.conclusion, metaDescription: blogContent.metaDescription,
+    quickReference: blogContent.quickReference || [], glossary: blogContent.glossary || [],
+    realWorldExample: blogContent.realWorldExample || null, funFact: blogContent.funFact || null,
+    sources: blogContent.sources || [], images: blogContent.images || [],
+    socialSnippet: blogContent.socialSnippet || null, svgContent,
+    status: 'published', createdAt: now,
+  };
+  fs.writeFileSync(path.join(BLOG_POSTS_DIR, `${id}.json`), JSON.stringify(post, null, 2));
+  console.log(`   ✅ Saved blog post: ${id}.json`);
+  return id;
 }
 
 // Update SVG content for existing blog post
 async function updateSvgContent(blogPostId, svgContent) {
-  await writeClient.execute({
-    sql: `UPDATE blog_posts SET svg_content = ? WHERE id = ?`,
-    args: [JSON.stringify(svgContent), blogPostId]
-  });
+  const file = path.join(BLOG_POSTS_DIR, `${blogPostId}.json`);
+  if (!fs.existsSync(file)) return;
+  try {
+    const post = JSON.parse(fs.readFileSync(file, 'utf8'));
+    post.svgContent = svgContent;
+    fs.writeFileSync(file, JSON.stringify(post, null, 2));
+  } catch {}
 }
 
 // Get blog stats
 async function getBlogStats() {
-  const total = await client.execute('SELECT COUNT(*) as count FROM blog_posts');
-  const byChannel = await client.execute(`
-    SELECT channel, COUNT(*) as count FROM blog_posts GROUP BY channel ORDER BY count DESC
-  `);
-  return { total: total.rows[0]?.count || 0, byChannel: byChannel.rows };
+  if (!fs.existsSync(BLOG_POSTS_DIR)) return { total: 0, byChannel: [] };
+  const files = fs.readdirSync(BLOG_POSTS_DIR).filter(f => f.endsWith('.json'));
+  const byChannel = {};
+  for (const f of files) {
+    try { const p = JSON.parse(fs.readFileSync(path.join(BLOG_POSTS_DIR, f), 'utf8')); byChannel[p.channel] = (byChannel[p.channel] || 0) + 1; } catch {}
+  }
+  return { total: files.length, byChannel: Object.entries(byChannel).map(([channel, count]) => ({ channel, count })) };
 }
-
 // Helper functions
 function getCategoryForChannel(channel) {
   for (const [category, channels] of Object.entries(categoryMap)) {
@@ -498,18 +437,22 @@ function formatChannelName(channel) {
   return channel.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 }
 
-async function generateUniqueSlug(title, client) {
+async function generateUniqueSlug(title) {
   const base = title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').substring(0, 80);
-  const result = await client.execute({ sql: 'SELECT COUNT(*) as count FROM blog_posts WHERE slug LIKE ?', args: [base] });
-  const count = parseInt(result.rows[0]?.count || '0', 10);
-  if (count === 0) return base;
-  let suffix = 2;
-  while (true) {
-    const slug = `${base}-${suffix}`;
-    const r = await client.execute({ sql: 'SELECT COUNT(*) as count FROM blog_posts WHERE slug = ?', args: [slug] });
-    if (parseInt(r.rows[0]?.count || '0', 10) === 0) return slug;
-    suffix++;
+  const existingSlugs = new Set();
+  if (fs.existsSync(BLOG_POSTS_DIR)) {
+    const files = fs.readdirSync(BLOG_POSTS_DIR).filter(f => f.endsWith('.json'));
+    for (const f of files) {
+      try {
+        const post = JSON.parse(fs.readFileSync(path.join(BLOG_POSTS_DIR, f), 'utf8'));
+        if (post.blogSlug) existingSlugs.add(post.blogSlug);
+      } catch {}
+    }
   }
+  if (!existingSlugs.has(base)) return base;
+  let suffix = 2;
+  while (existingSlugs.has(`${base}-${suffix}`)) suffix++;
+  return `${base}-${suffix}`;
 }
 
 function escapeHtml(text) {
@@ -1993,13 +1936,13 @@ async function main() {
     return 'pixel-default.svg';
   };
 
-  if (htmlOnly && !process.env.DATABASE_URL) {
+  if (htmlOnly) {
     // Fallback: load from MDX files in content/posts/, then data/blog-posts.json
     let articles = loadPostsFromMDX();
     if (!articles.length) {
       const fallbackPath = path.join(process.cwd(), 'data/blog-posts.json');
       if (!fs.existsSync(fallbackPath)) {
-        console.log('⚠️  DATABASE_URL not set, no MDX posts found, and data/blog-posts.json not found — skipping blog generation');
+        console.log('⚠️  No MDX posts found and data/blog-posts.json not found — skipping blog generation');
         process.exit(0);
       }
       articles = JSON.parse(fs.readFileSync(fallbackPath, 'utf-8'));
@@ -2213,8 +2156,7 @@ ${sitemapEntriesFb}
     process.exit(0);
   }
 
-  // Schema managed by Drizzle ORM migrations (drizzle-kit generate)
-  // Run: pnpm db:push to apply schema changes
+  // Blog posts managed via file-based storage (data/questions/*.json + client/public/data/posts.json)
   
   const stats = await getBlogStats();
   console.log(`📊 Current blog posts: ${stats.total}`);

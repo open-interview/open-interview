@@ -109,7 +109,7 @@ function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSub
       animate={{ opacity: 1, scale: 1 }}
       whileTap={{ scale: 0.98 }}
       onClick={onSelect}
-      className="group relative p-5 bg-card border border-border rounded-3xl cursor-pointer hover:border-[var(--color-accent-violet)]/40 transition-all duration-200 ease-out overflow-hidden"
+      className="group relative p-4 bg-card border border-border rounded-2xl cursor-pointer hover:border-[var(--color-accent-violet)]/40 transition-all duration-200 ease-out overflow-hidden"
       style={{
         boxShadow: '8px 8px 24px rgba(0,0,0,0.15), -4px -4px 16px rgba(255,255,255,0.05)',
       }}
@@ -133,14 +133,14 @@ function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSub
 
       {/* NEW badge */}
       {isNew && (
-        <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold z-10 bg-[var(--color-accent-cyan)] text-black">
+        <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-xs font-bold z-10 bg-[var(--color-accent-cyan)] text-black">
           NEW
         </div>
       )}
 
       {/* Subscribed badge */}
       {subscribed && !isNew && (
-        <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold z-10"
+        <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-xs font-bold z-10"
           style={{ background: `${accent}22`, border: `1px solid ${accent}66`, color: accent }}>
           ★ Subscribed
         </div>
@@ -163,7 +163,7 @@ function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSub
           </div>
           {/* Text */}
           <div className="flex-1 min-w-0">
-            <div className="text-[10px] text-muted-foreground capitalize">{channel.category}</div>
+            <div className="text-xs text-muted-foreground capitalize">{channel.category}</div>
             <h3 className="text-sm font-bold leading-tight line-clamp-2">{channel.name}</h3>
           </div>
         </div>
@@ -172,7 +172,7 @@ function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSub
         <p className="text-xs text-muted-foreground line-clamp-2">{channel.description}</p>
 
         {/* Stats row */}
-        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1"><Sparkles className="w-3 h-3" />{questionCount}q</span>
           {subscribed && <span className="flex items-center gap-1"><BarChart2 className="w-3 h-3" />{progress}%</span>}
         </div>
@@ -247,7 +247,7 @@ function CategorySection({ categoryKey, channels, questionCounts, navigate, isSu
           <span className="text-xl">{meta.emoji}</span>
           <div className="text-left">
             <div className="text-sm font-bold">{meta.label}</div>
-            <div className="text-[10px] text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               {channels.length} channels{subscribedCount > 0 ? ` · ${subscribedCount} subscribed` : ''}
             </div>
           </div>
@@ -265,7 +265,7 @@ function CategorySection({ categoryKey, channels, questionCounts, navigate, isSu
             transition={{ duration: 0.25, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {channels.map(ch => (
                 <ChannelCard key={ch.id} channel={ch}
                   questionCount={questionCounts[ch.id] || 0}
@@ -333,7 +333,7 @@ function ChannelDetail({ channel, questionCount, isSubscribed: subscribed, onTog
             <div key={label} className="p-3 rounded-xl bg-muted/40 flex items-center gap-2.5">
               <I className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <div>
-                <div className="text-[10px] text-muted-foreground">{label}</div>
+                <div className="text-xs text-muted-foreground">{label}</div>
                 <div className="text-sm font-semibold">{value}</div>
               </div>
             </div>
@@ -604,7 +604,7 @@ export default function AllChannels() {
                 ].map(({ label, value, colorClass }) => (
                   <div key={label} className="p-3 rounded-xl bg-muted/40 border border-border text-center">
                     <div className={`text-xl font-bold ${colorClass}`}>{value}</div>
-                    <div className="text-[10px] text-muted-foreground">{label}</div>
+                    <div className="text-xs text-muted-foreground">{label}</div>
                   </div>
                 ))}
               </motion.div>

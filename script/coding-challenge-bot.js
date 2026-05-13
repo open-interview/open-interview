@@ -15,9 +15,28 @@
  *   INPUT_COUNT - number of challenges to generate (default: 1)
  */
 
-import { writeGitHubOutput, dbClient } from './utils.js';
+import { writeGitHubOutput } from './utils.js';
+import fs from 'fs';
+import path from 'path';
 import { generateChallengesParallel } from './ai/graphs/coding-challenge-graph.js';
 import { categories as CATEGORIES, difficulties as DIFFICULTIES, topCompanies as TOP_COMPANIES } from './ai/prompts/templates/coding-challenge.js';
+
+const CODING_CHALLENGES_FILE = path.join(process.cwd(), 'data', 'coding-challenges.json');
+
+function readCodingChallenges() {
+  try {
+    if (fs.existsSync(CODING_CHALLENGES_FILE)) {
+      return JSON.parse(fs.readFileSync(CODING_CHALLENGES_FILE, 'utf8'));
+    }
+  } catch {}
+  return [];
+}
+
+function writeCodingChallenges(challenges) {
+  const dir = path.dirname(CODING_CHALLENGES_FILE);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(CODING_CHALLENGES_FILE, JSON.stringify(challenges, null, 2));
+}
 
 // Get 2-4 random companies
 function getRandomCompanies() {
@@ -26,71 +45,44 @@ function getRandomCompanies() {
   return shuffled.slice(0, count);
 }
 
-// Initialize coding_challenges table
+// Initialize coding_challenges data file
 async function initCodingChallengesTable() {
-  console.log('📦 Ensuring coding_challenges table exists...');
+  console.log('📦 Ensuring coding_challenges data file exists...');
   
-  await dbClient.execute(`
-    CREATE TABLE IF NOT EXISTS coding_challenges (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      description TEXT NOT NULL,
-      difficulty TEXT NOT NULL,
-      category TEXT NOT NULL,
-      tags TEXT,
-      companies TEXT,
-      starter_code_js TEXT,
-      starter_code_py TEXT,
-      test_cases TEXT NOT NULL,
-      hints TEXT,
-      solution_js TEXT,
-      solution_py TEXT,
-      complexity_time TEXT,
-      complexity_space TEXT,
-      complexity_explanation TEXT,
-      time_limit INTEGER DEFAULT 15,
-      created_at TEXT,
-      last_updated TEXT
-    )
-  `);
+  // Ensure the file exists by reading (creates dir via writeCodingChallenges if needed)
+  const existing = readCodingChallenges();
+  writeCodingChallenges(existing);
   
-  // Create indexes
-  await dbClient.execute(`CREATE INDEX IF NOT EXISTS idx_coding_difficulty ON coding_challenges(difficulty)`);
-  await dbClient.execute(`CREATE INDEX IF NOT EXISTS idx_coding_category ON coding_challenges(category)`);
-  
-  console.log('✅ Table ready');
+  console.log('✅ Data file ready');
 }
 
 // Generate unique ID for coding challenge
 async function generateChallengeId() {
-  const result = await dbClient.execute(`
-    SELECT MAX(CAST(SUBSTR(id, 3) AS INTEGER)) as max_num 
-    FROM coding_challenges 
-    WHERE id ~ '^cc[0-9]+'
-  `);
-  
-  const maxNum = result.rows[0]?.max_num || 0;
+  const challenges = readCodingChallenges();
+  let maxNum = 0;
+  for (const c of challenges) {
+    const m = (c.id || '').match(/^cc(\d+)$/);
+    if (m) {
+      const num = parseInt(m[1], 10);
+      if (num > maxNum) maxNum = num;
+    }
+  }
   return `cc${maxNum + 1}`;
 }
 
 // Check for duplicate challenge by title similarity (fuzzy match)
 async function isDuplicateChallenge(title) {
-  // Normalize title for comparison
   const normalizedTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const challenges = readCodingChallenges();
   
-  const result = await dbClient.execute('SELECT title FROM coding_challenges');
-  
-  for (const row of result.rows) {
-    const existingNormalized = row.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+  for (const c of challenges) {
+    const existingNormalized = (c.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     
-    // Exact match after normalization
     if (existingNormalized === normalizedTitle) {
       return true;
     }
     
-    // Check if one contains the other (catches "Two Sum" vs "Two Sum II")
     if (existingNormalized.includes(normalizedTitle) || normalizedTitle.includes(existingNormalized)) {
-      // Only flag if they're very similar (>80% overlap)
       const shorter = Math.min(existingNormalized.length, normalizedTitle.length);
       const longer = Math.max(existingNormalized.length, normalizedTitle.length);
       if (shorter / longer > 0.8) {
@@ -104,11 +96,8 @@ async function isDuplicateChallenge(title) {
 
 // Get existing challenge titles for a category (for prompt context)
 async function getExistingTitlesForCategory(category) {
-  const result = await dbClient.execute({
-    sql: 'SELECT title FROM coding_challenges WHERE category = ? LIMIT 20',
-    args: [category]
-  });
-  return result.rows.map(r => r.title);
+  const challenges = readCodingChallenges();
+  return challenges.filter(c => c.category === category).slice(0, 20).map(c => c.title);
 }
 
 // Save challenge to database
@@ -116,43 +105,36 @@ async function saveChallengeToDb(challenge) {
   const id = await generateChallengeId();
   const now = new Date().toISOString();
   
-  await dbClient.execute({
-    sql: `INSERT INTO coding_challenges 
-          (id, title, description, difficulty, category, tags, companies,
-           starter_code_js, starter_code_py, test_cases, hints,
-           solution_js, solution_py, complexity_time, complexity_space,
-           complexity_explanation, time_limit, created_at, last_updated)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [
-      id,
-      challenge.title,
-      challenge.description,
-      challenge.difficulty,
-      challenge.category,
-      JSON.stringify(challenge.tags || []),
-      JSON.stringify(challenge.companies || []),
-      challenge.starterCode?.javascript || '',
-      challenge.starterCode?.python || '',
-      JSON.stringify(challenge.testCases),
-      JSON.stringify(challenge.hints || []),
-      challenge.sampleSolution?.javascript || '',
-      challenge.sampleSolution?.python || '',
-      challenge.complexity?.time || 'O(n)',
-      challenge.complexity?.space || 'O(1)',
-      challenge.complexity?.explanation || '',
-      challenge.timeLimit || 15,
-      now,
-      now
-    ]
+  const challenges = readCodingChallenges();
+  challenges.push({
+    id,
+    title: challenge.title,
+    description: challenge.description,
+    difficulty: challenge.difficulty,
+    category: challenge.category,
+    tags: JSON.stringify(challenge.tags || []),
+    companies: JSON.stringify(challenge.companies || []),
+    starter_code_js: challenge.starterCode?.javascript || '',
+    starter_code_py: challenge.starterCode?.python || '',
+    test_cases: JSON.stringify(challenge.testCases),
+    hints: JSON.stringify(challenge.hints || []),
+    solution_js: challenge.sampleSolution?.javascript || '',
+    solution_py: challenge.sampleSolution?.python || '',
+    complexity_time: challenge.complexity?.time || 'O(n)',
+    complexity_space: challenge.complexity?.space || 'O(1)',
+    complexity_explanation: challenge.complexity?.explanation || '',
+    time_limit: challenge.timeLimit || 15,
+    created_at: now,
+    last_updated: now
   });
+  writeCodingChallenges(challenges);
   
   return id;
 }
 
 // Get count of challenges in database
 async function getChallengeCount() {
-  const result = await dbClient.execute('SELECT COUNT(*) as count FROM coding_challenges');
-  return result.rows[0]?.count || 0;
+  return readCodingChallenges().length;
 }
 
 async function main() {

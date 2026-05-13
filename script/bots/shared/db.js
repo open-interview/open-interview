@@ -1,139 +1,70 @@
 /**
- * Database utilities for bots — PostgreSQL edition
- * Provides a unified PostgreSQL client API.
+ * Database utilities for bots — file-based edition
+ * Provides file I/O helpers for bot data storage.
  */
 
-import { dbClient, getPool } from '../../db/pg-client.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-export function getDb() {
-  return dbClient;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const BOT_DATA_DIR = path.join(process.cwd(), 'data', 'bot-data');
+
+function ensureDir() {
+  fs.mkdirSync(BOT_DATA_DIR, { recursive: true });
 }
 
-// Initialize all bot tables (idempotent — CREATE IF NOT EXISTS)
+function readArray(filename) {
+  ensureDir();
+  const filepath = path.join(BOT_DATA_DIR, filename);
+  if (!fs.existsSync(filepath)) return [];
+  try { return JSON.parse(fs.readFileSync(filepath, 'utf8')); } catch { return []; }
+}
+
+function writeArray(filename, data) {
+  ensureDir();
+  fs.writeFileSync(path.join(BOT_DATA_DIR, filename), JSON.stringify(data, null, 2));
+}
+
+function appendToArray(filename, entry) {
+  const arr = readArray(filename);
+  arr.push(entry);
+  writeArray(filename, arr);
+  return entry;
+}
+
+function getNextId(arr) {
+  if (arr.length === 0) return 1;
+  return Math.max(...arr.map(item => item.id || 0)) + 1;
+}
+
+export function getDb() {
+  return {
+    readArray: (f) => readArray(f),
+    writeArray: (f, d) => writeArray(f, d),
+    appendToArray: (f, e) => appendToArray(f, e),
+    getNextId: (arr) => getNextId(arr),
+  };
+}
+
 export async function initBotTables() {
-  const pool = getPool();
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS work_queue (
-      id SERIAL PRIMARY KEY,
-      item_type TEXT NOT NULL,
-      item_id TEXT NOT NULL,
-      action TEXT NOT NULL,
-      priority INTEGER DEFAULT 5,
-      status TEXT DEFAULT 'pending',
-      reason TEXT,
-      created_by TEXT,
-      assigned_to TEXT,
-      created_at TEXT DEFAULT TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
-      processed_at TEXT,
-      result TEXT
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS bot_ledger (
-      id SERIAL PRIMARY KEY,
-      bot_name TEXT NOT NULL,
-      action TEXT NOT NULL,
-      item_type TEXT NOT NULL,
-      item_id TEXT NOT NULL,
-      before_state TEXT,
-      after_state TEXT,
-      reason TEXT,
-      created_at TEXT DEFAULT TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS bot_runs (
-      id SERIAL PRIMARY KEY,
-      bot_name TEXT NOT NULL,
-      started_at TEXT NOT NULL,
-      completed_at TEXT,
-      status TEXT DEFAULT 'running',
-      items_processed INTEGER DEFAULT 0,
-      items_created INTEGER DEFAULT 0,
-      items_updated INTEGER DEFAULT 0,
-      items_deleted INTEGER DEFAULT 0,
-      summary TEXT
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS question_relationships (
-      id SERIAL PRIMARY KEY,
-      source_question_id TEXT NOT NULL,
-      target_question_id TEXT NOT NULL,
-      relationship_type TEXT NOT NULL,
-      strength INTEGER DEFAULT 50,
-      created_at TEXT DEFAULT TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
-      FOREIGN KEY (source_question_id) REFERENCES questions(id),
-      FOREIGN KEY (target_question_id) REFERENCES questions(id)
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS voice_sessions (
-      id TEXT PRIMARY KEY,
-      topic TEXT NOT NULL,
-      description TEXT,
-      channel TEXT NOT NULL,
-      difficulty TEXT NOT NULL,
-      question_ids TEXT NOT NULL,
-      total_questions INTEGER NOT NULL,
-      estimated_minutes INTEGER DEFAULT 5,
-      created_at TEXT DEFAULT TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
-      last_updated TEXT
-    )
-  `);
-
-  // Add status column to questions if it doesn't exist
-  await pool.query(`
-    DO $$
-    BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name='questions' AND column_name='status'
-      ) THEN
-        ALTER TABLE questions ADD COLUMN status TEXT DEFAULT 'active';
-      END IF;
-    END$$;
-  `);
-
-  // Indexes
-  await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_relationships_source ON question_relationships(source_question_id)
-  `).catch(() => {});
-  await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_relationships_target ON question_relationships(target_question_id)
-  `).catch(() => {});
-  await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_voice_sessions_channel ON voice_sessions(channel)
-  `).catch(() => {});
-
-  // Repair sequences in case they were reset (e.g. after table recreation)
-  const seqFixes = [
-    ['bot_runs_id_seq',        'bot_runs'],
-    ['bot_ledger_id_seq',      'bot_ledger'],
-    ['work_queue_id_seq',      'work_queue'],
-  ];
-  for (const [seq, table] of seqFixes) {
-    await pool.query(
-      `SELECT setval('${seq}', GREATEST((SELECT COALESCE(MAX(id), 1) FROM ${table}), 1))`
-    ).catch(() => {});
-  }
-
-  console.log('✓ Bot tables initialized (PostgreSQL)');
+  ensureDir();
+  ['ledger.json', 'queue.json', 'runs.json', 'relationships.json', 'voice_sessions.json'].forEach(f => {
+    const fp = path.join(BOT_DATA_DIR, f);
+    if (!fs.existsSync(fp)) fs.writeFileSync(fp, '[]');
+  });
+  console.log('✓ Bot data files initialized');
 }
 
 export async function resetBotTables() {
-  const pool = getPool();
-  console.log('⚠️ Resetting bot tables (all data will be lost)...');
-  await pool.query('DROP TABLE IF EXISTS work_queue CASCADE');
-  await pool.query('DROP TABLE IF EXISTS bot_ledger CASCADE');
-  await pool.query('DROP TABLE IF EXISTS bot_runs CASCADE');
+  const dir = BOT_DATA_DIR;
+  if (fs.existsSync(dir)) {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  fs.mkdirSync(dir, { recursive: true });
   await initBotTables();
-  console.log('✓ Bot tables reset complete');
+  console.log('✓ Bot data files reset');
 }
 
 export default { getDb, initBotTables, resetBotTables };

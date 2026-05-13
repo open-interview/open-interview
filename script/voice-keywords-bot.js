@@ -1,14 +1,5 @@
-/**
- * Voice Keywords Bot
- * Exports processQuestionForVoice for use by add-random-question.js
- */
+import { runWithRetries, parseJson, saveQuestion, findQuestionById, getAllUnifiedQuestions } from './utils.js';
 
-import { runWithRetries, parseJson } from './utils.js';
-import { dbClient as db } from './db/pg-client.js';
-/**
- * Generate voice interview keywords for a question and persist them.
- * @returns {{ suitable: boolean, keywords: string[] } | null}
- */
 export async function processQuestionForVoice(id, question, explanation, channel) {
   const prompt = `You are a JSON generator. Output ONLY valid JSON, no explanations, no markdown.
 
@@ -32,21 +23,21 @@ or
   const data = parseJson(response);
   if (!data || typeof data.suitable !== 'boolean') return null;
 
-  // Persist to DB
   try {
     if (data.suitable && data.keywords?.length > 0) {
-      await db.execute({
-        sql: `UPDATE questions SET voice_keywords = ?, voice_suitable = 1, last_updated = ? WHERE id = ?`,
-        args: [JSON.stringify(data.keywords), new Date().toISOString(), id],
-      });
+      const existing = findQuestionById(id);
+      if (existing) {
+        const updated = { ...existing, voiceKeywords: data.keywords, voiceSuitable: true, lastUpdated: new Date().toISOString() };
+        await saveQuestion(updated);
+      }
     } else {
-      await db.execute({
-        sql: `UPDATE questions SET voice_suitable = 0, last_updated = ? WHERE id = ?`,
-        args: [new Date().toISOString(), id],
-      });
+      const existing = findQuestionById(id);
+      if (existing) {
+        const updated = { ...existing, voiceSuitable: false, lastUpdated: new Date().toISOString() };
+        await saveQuestion(updated);
+      }
     }
   } catch {
-    // Non-fatal: DB update failure doesn't block question creation
   }
 
   return data;

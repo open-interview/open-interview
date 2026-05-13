@@ -1,8 +1,36 @@
-import type { BlogPost, BlogCategory, GetPostsOptions } from './blog-storage';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const DATA_PATH = path.join(process.cwd(), 'data', 'blog-posts.json');
+// Local type definitions (blog-storage.ts was deleted)
+interface BlogCategory {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+interface GetPostsOptions {
+  category?: string;
+  tag?: string;
+  limit?: number;
+  offset?: number;
+}
+
+interface BlogPost {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  coverImage: string | undefined;
+  author: string;
+  category: string;
+  tags: string[];
+  publishedAt: string;
+  readingTimeMinutes: number;
+  featured: boolean;
+  status: string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced' | undefined;
+}
 
 let cachedPosts: BlogPost[] = [];
 let cachedCategories: BlogCategory[] = [];
@@ -55,15 +83,19 @@ function buildContent(entry: Record<string, unknown>): string {
   return contentParts.join('\n\n');
 }
 
+const DATA_PATH = path.join(process.cwd(), 'data', 'blog-posts');
+
 function loadLocalData() {
   try {
     if (!fs.existsSync(DATA_PATH)) {
-      console.warn(`Local blog data not found at ${DATA_PATH}`);
+      console.warn(`Local blog data directory not found at ${DATA_PATH}`);
       return;
     }
 
-    const rawData = fs.readFileSync(DATA_PATH, 'utf-8');
-    const jsonEntries = JSON.parse(rawData) as Array<Record<string, unknown>>;
+    const files = fs.readdirSync(DATA_PATH).filter(f => f.endsWith('.json'));
+    const jsonEntries = files.map(f => {
+      try { return JSON.parse(fs.readFileSync(path.join(DATA_PATH, f), 'utf-8')); } catch { return null; }
+    }).filter(Boolean) as Array<Record<string, unknown>>;
 
     cachedPosts = jsonEntries.map((entry) => {
       const id = (entry.id as string) || '';

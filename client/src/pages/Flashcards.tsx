@@ -141,7 +141,7 @@ export default function Flashcards() {
 
   if (loading) {
     return (
-      <AppLayout hideNav fullWidth>
+      <AppLayout fullWidth>
         <div className="h-screen h-dvh bg-background flex items-center justify-center">
           <div className="flex flex-col gap-4 w-full max-w-sm px-6">
             <div className="h-1.5 bg-muted rounded-full animate-pulse" />
@@ -161,11 +161,11 @@ export default function Flashcards() {
         <div className="min-h-screen bg-background text-foreground">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <div className="text-center mb-10">
-              <h1 className="text-5xl md:text-6xl font-black mb-3">
+              <h1 className="text-2xl font-bold mb-2">
                 <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">Flashcards</span>
               </h1>
             </div>
-            <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+            <div className="flex flex-col items-center justify-center py-10 gap-4 text-center">
               <Layers className="w-10 h-10 text-muted-foreground/40" />
               <h2 className="text-xl font-bold">No flashcards yet</h2>
               <p className="text-sm text-muted-foreground max-w-xs">Flashcards are generated from your subscribed channels. Check back soon!</p>
@@ -185,7 +185,7 @@ export default function Flashcards() {
           style={{ background: flashBg, transition: 'background 0.2s' }}>
 
           {/* Header */}
-          <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0">
+          <div className="flex items-center justify-between px-4 pt-2 pb-1 flex-shrink-0">
             <button onClick={() => setLocation('/')} className="cursor-pointer flex items-center gap-1 min-h-[44px] px-2 text-muted-foreground hover:text-foreground transition-colors duration-150">
               <ChevronLeft className="w-5 h-5" /><span className="text-sm">Back</span>
             </button>
@@ -249,6 +249,7 @@ export default function Flashcards() {
               className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full items-center justify-center bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-20 transition-all cursor-pointer">
               <ChevronRight className="w-6 h-6" />
             </button>
+            <div className="w-full max-w-lg">
             <AnimatePresence mode="wait">
               {current ? (
                 <motion.div key={current.id}
@@ -337,6 +338,7 @@ export default function Flashcards() {
                   variant="default" size="sm" />
               )}
             </AnimatePresence>
+            </div>
           </div>
 
           {/* SRS rating buttons — only active after flip */}

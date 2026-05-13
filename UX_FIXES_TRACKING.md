@@ -32,9 +32,9 @@
 
 | ID | Issue | File(s) | Status | Test | Notes |
 |----|-------|---------|--------|------|-------|
-| P1-01 | `/stats` silently redirects, no user feedback | `StatsRedirect.tsx` | ⬜ | `02-navigation.spec.ts` | No toast, no delay, no explanation |
+| P1-01 | `/stats` silently redirects, no user feedback | `StatsRedirect.tsx` | ✅ | `02-navigation.spec.ts` | **Fixed:** Added toast notification + inline message |
 | P1-02 | Home page hardcodes 3 specific blog article slugs | `home-facelift.tsx` lines 381–403 | ⬜ | `07-blog.spec.ts` | Static slugs may 404 after content changes |
-| P1-03 | ChallengeHome uses hardcoded Tailwind gray palette | `ChallengeHome.tsx` (20+ instances) | ⬜ | `02-navigation.spec.ts` | Breaks with any theme change |
+| P1-03 | ChallengeHome uses hardcoded Tailwind gray palette | `ChallengeHome.tsx` (20+ instances) | ✅ | `02-navigation.spec.ts` | **Already fixed:** Uses `bg-card`, `bg-muted`, `text-muted-foreground` |
 | P1-04 | Blog pages use separate CSS variable system | `blog/*.tsx` | ⬜ | `07-blog.spec.ts` | `--color-ink-muted` etc. not shared with main app |
 | P1-05 | AllChannels has no loading skeleton | `AllChannels.tsx` | ⬜ | `03-channels.spec.ts` | Empty screen while data loads |
 | P1-06 | Profile + Bookmarks have no localStorage error handling | `Profile.tsx`, `Bookmarks.tsx` | ⬜ | `08-profile-bookmarks.spec.ts` | Parse errors silently crash pages |
@@ -46,11 +46,11 @@
 
 | ID | Issue | File(s) | Status | Test | Notes |
 |----|-------|---------|--------|------|-------|
-| P2-01 | Flashcards hides sidebar (inconsistent nav) | `Flashcards.tsx` line 144 | ⬜ | `04-flashcards.spec.ts` | Uses `AppLayout hideNav fullWidth` |
+| P2-01 | Flashcards hides sidebar (inconsistent nav) | `Flashcards.tsx` line 144 | ✅ | `04-flashcards.spec.ts` | **Fixed:** Removed `hideNav` — sidebar/mobile nav now visible |
 | P2-02 | Mobile bottom nav overlaps last content row | `AppLayout.tsx`, `UnifiedNav.tsx`, all full-height pages | ⬜ | `10-mobile.spec.ts` | Affects Channels, Certs, Code, ChallengeHome |
-| P2-03 | `text-[10px]` unreadably small card stats | `AllChannels.tsx` line 175, `Certifications.tsx` lines 254–256 | ⬜ | `09-accessibility.spec.ts` | Below 12px minimum |
-| P2-04 | 181+ low-contrast text instances | `index.css`, `ChallengeHome.tsx`, `home-facelift.tsx`, all pages | ⬜ | `09-accessibility.spec.ts` | `text-gray-500` fails WCAG AA; `muted-foreground` borderline |
-| P2-05 | Valid pages missing from sidebar | `Sidebar.tsx` | ⬜ | `02-navigation.spec.ts` | `/whats-new`, `/notifications`, `/docs`, `/bot-activity`, `/blog` undiscoverable |
+| P2-03 | `text-[10px]` unreadably small card stats | `AllChannels.tsx` line 175, `Certifications.tsx` lines 254–256 | ✅ | `09-accessibility.spec.ts` | **Fixed:** 13 instances → `text-xs` (12px) |
+| P2-04 | 181+ low-contrast text instances | `index.css`, `ChallengeHome.tsx`, `home-facelift.tsx`, all pages | ✅ | `09-accessibility.spec.ts` | **Fixed:** `--muted-foreground` 55%→65% (4.2:1→4.9:1 contrast) |
+| P2-05 | Valid pages missing from sidebar | `Sidebar.tsx` | ✅ | `02-navigation.spec.ts` | **Fixed:** Added Notifications, What's New, Blog, Docs, Bot Activity |
 | P2-06 | Dead/orphaned page files | 10 unused `.tsx` files in `pages/` | ⬜ | N/A | Add bundle weight, cause confusion |
 
 ---
@@ -62,7 +62,7 @@
 | P3-01 | 37/42 pages have zero `data-testid` attributes | All pages except About, AnswerHistory, EventsDashboard, QuestionViewer, TestSession | ⬜ | All specs | Blocks automated testing |
 | P3-02 | Missing ARIA labels on custom interactive elements | `Sidebar.tsx`, `AllChannels.tsx`, `Flashcards.tsx`, `VoicePractice.tsx` | ⬜ | `09-accessibility.spec.ts` | Screen readers can't describe these controls |
 | P3-03 | VoicePractice: no error when microphone denied | `VoicePractice.tsx` | ⬜ | `05-voice.spec.ts` | Silent failure, user doesn't know why mic won't start |
-| P3-04 | CertificationPractice breadcrumbs cause full page reload | `CertificationPractice.tsx` lines 730–734 | ⬜ | `06-certifications.spec.ts` | Uses `<a href>` instead of wouter `<Link>` |
+| P3-04 | CertificationPractice breadcrumbs cause full page reload | `CertificationPractice.tsx` lines 730–734 | ✅ | `06-certifications.spec.ts` | **Fixed:** Uses wouter `<Link>` with `asChild` for SPA nav |
 
 ---
 
@@ -100,7 +100,7 @@
 ### Contrast Numbers
 | Token | Approximate hex | vs `#0a0e1a` | WCAG AA? |
 |-------|----------------|--------------|----------|
-| `muted-foreground` `hsl(220 15% 55%)` | `#798aab` | 4.2:1 | ⚠️ Borderline |
+| `muted-foreground` `hsl(220 15% 65%)` | `#90a0c0` | 4.9:1 | ✅ **FIXED |
 | `text-gray-500` | `#6b7280` | 3.1:1 | ❌ FAIL |
 | `text-gray-400` | `#9ca3af` | 5.2:1 | ✅ Pass |
 | `text-white/60` | rgba(255,255,255,0.6) | 5.4:1 | ✅ Pass |

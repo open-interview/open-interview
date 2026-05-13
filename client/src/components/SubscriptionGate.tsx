@@ -14,49 +14,14 @@ interface Props {
   children: React.ReactNode;
 }
 
-const UNBLOCKED_PREFIXES = [
-  '/',
-  '/blog',
-  '/channels',
-  '/channel/',
-  '/certifications',
-  '/certification/',
-  '/learning-paths',
-  '/my-path',
-  '/voice-interview',
-  '/voice-session',
-  '/training',
-  '/tests',
-  '/test/',
-  '/code',
-  '/coding',
-  '/review',
-  '/flashcards',
-  '/badges',
-  '/bookmarks',
-  '/profile',
-  '/about',
-  '/docs',
-  '/whats-new',
-  '/manage-subscriptions',
-  '/history',
-  '/stats',
-  '/events',
-  '/bot-activity',
-  '/generate',
-];
-
-function isUnblocked(path: string): boolean {
-  if (path === '/') return true;
-  return UNBLOCKED_PREFIXES.some(prefix => prefix !== '/' && path.startsWith(prefix));
-}
-
 export function SubscriptionGate({ children }: Props) {
   const { needsOnboarding } = useUserPreferences();
   const [dismissed, setDismissed] = useState(false);
   const [location] = useLocation();
 
-  if (needsOnboarding && !dismissed && !isUnblocked(location)) {
+  const isHome = location === '/' || location === '';
+
+  if (needsOnboarding && !dismissed && isHome) {
     return <OnboardingFlow onComplete={() => setDismissed(true)} />;
   }
 

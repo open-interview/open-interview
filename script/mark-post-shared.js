@@ -1,42 +1,48 @@
 #!/usr/bin/env node
-/**
- * Mark Blog Post as Shared on LinkedIn
- * Updates the database to track which posts have been shared
- */
 
 import 'dotenv/config';
-import { dbClient as client } from './db/pg-client.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 const postId = process.env.POST_ID;
 const linkedInId = process.env.POST_LINKEDIN_ID;
+const SHARED_POSTS_FILE = path.join(__dirname, '..', 'data', 'shared-posts.json');
 
 if (!postId) {
   console.error('❌ Missing POST_ID environment variable');
   process.exit(1);
 }
 
+function readSharedPosts() {
+  if (!fs.existsSync(SHARED_POSTS_FILE)) return {};
+  try { return JSON.parse(fs.readFileSync(SHARED_POSTS_FILE, 'utf8')); } catch { return {}; }
+}
+
+function writeSharedPosts(data) {
+  const dir = path.dirname(SHARED_POSTS_FILE);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(SHARED_POSTS_FILE, JSON.stringify(data, null, 2));
+}
+
 async function markAsShared() {
   console.log(`📝 Marking post ${postId} as shared on LinkedIn...`);
 
-  // Schema managed by Drizzle ORM migrations (drizzle-kit generate)
-  // Run: pnpm db:push to apply schema changes
-
   const now = new Date().toISOString();
-  const MAX_RETRIES = 3;
+  const sharedPosts = readSharedPosts();
 
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      await client.execute({
-        sql: `UPDATE blog_posts SET linkedin_shared_at = ?, linkedin_post_id = COALESCE(?, linkedin_post_id) WHERE question_id = ? AND linkedin_shared_at IS NULL`,
-        args: [now, linkedInId || null, postId]
-      });
-      console.log('✅ Post marked as shared');
-      break;
-    } catch (e) {
-      if (attempt === MAX_RETRIES) throw e;
-      console.log(`⚠️  Attempt ${attempt} failed, retrying...`);
-      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
-    }
+  if (!sharedPosts[postId]) {
+    sharedPosts[postId] = {};
   }
+  sharedPosts[postId].linkedinSharedAt = now;
+  if (linkedInId) {
+    sharedPosts[postId].linkedinPostId = linkedInId;
+  }
+
+  writeSharedPosts(sharedPosts);
+  console.log('✅ Post marked as shared');
 }
 
 markAsShared().catch(console.error);

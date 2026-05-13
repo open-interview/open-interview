@@ -33,27 +33,48 @@ const iconMap: Record<string, React.ReactNode> = {
 };
 
 const DISMISSED_KEY = 'progressive-onboarding-dismissed';
-const ROLE_PROMPT_DELAY = 3000;
+// Show after user has been engaged: 15s on page OR scrolled 200px — whichever comes first
+const ENGAGEMENT_DELAY = 15000;
 
 interface ProgressiveOnboardingProps {
   onComplete?: () => void;
 }
 
 export function ProgressiveOnboarding({ onComplete }: ProgressiveOnboardingProps) {
-  const { preferences, setRole, subscribeChannel, unsubscribeChannel, needsOnboarding } = useUserPreferences();
+  const { preferences, setRole, subscribeChannel, unsubscribeChannel } = useUserPreferences();
   const [isVisible, setIsVisible] = useState(false);
   const [step, setStep] = useState<'role' | 'channels'>('role');
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [selectedChannels, setSelectedChannels] = useState<Set<string>>(new Set());
   const headingRef = useRef<HTMLHeadingElement>(null);
 
+  // Only show when role is not yet set (user hasn't personalised)
+  const needsRole = preferences.role === null || preferences.role === undefined;
+
   useEffect(() => {
-    if (!needsOnboarding) return;
+    if (!needsRole) return;
     const dismissed = sessionStorage.getItem(DISMISSED_KEY);
     if (dismissed) return;
-    const timer = setTimeout(() => setIsVisible(true), ROLE_PROMPT_DELAY);
-    return () => clearTimeout(timer);
-  }, [needsOnboarding]);
+
+    let shown = false;
+    const show = () => {
+      if (!shown) { shown = true; setIsVisible(true); }
+    };
+
+    // Trigger after engagement delay
+    const timer = setTimeout(show, ENGAGEMENT_DELAY);
+
+    // Or trigger on meaningful scroll (user is reading content)
+    const onScroll = () => {
+      if (window.scrollY > 200) show();
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, [needsRole]);
 
   // Focus heading on step change
   useEffect(() => {

@@ -4,6 +4,8 @@
  */
 
 import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
 import { getDb, initBotTables } from './shared/db.js';
 import { startRun, completeRun, failRun, updateRunStats } from './shared/runs.js';
 import { generateFlashcardsParallel, ensureTable } from '../ai/graphs/flashcard-graph.js';
@@ -12,33 +14,55 @@ const BOT_NAME   = 'flashcard';
 const CONCURRENCY = 10;
 const BATCH_SIZE  = 10;
 
+const QUESTIONS_DIR = path.join(process.cwd(), 'data', 'questions');
+
+function readQuestions(ch) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, `${ch}.json`), 'utf8'));
+  } catch { return []; }
+}
+
+function readAllQuestions() {
+  let files = [];
+  try { files = fs.readdirSync(QUESTIONS_DIR); } catch { return []; }
+  const all = [];
+  for (const f of files) {
+    if (!f.endsWith('.json')) continue;
+    try { all.push(...JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, f), 'utf8'))); } catch {}
+  }
+  return all;
+}
+
 async function fetchPendingQuestions({ channel, limit }) {
   const db = getDb();
-
-  // Do set-difference and priority ordering entirely in SQL — avoids fetching rows that will be filtered out
-  let sql = `
-    SELECT q.id, q.question, q.answer, q.channel, q.difficulty, q.tags
-    FROM questions q
-    LEFT JOIN flashcards f ON f.question_id = q.id
-    WHERE q.status = 'active'
-      AND f.question_id IS NULL`;
-  const args = [];
+  const allQuestions = readAllQuestions().filter(q => q.status === 'active');
+  const flashcards = db.readArray('flashcards.json');
+  const flashcardQuestionIds = new Set(flashcards.map(f => f.question_id));
+  let pending = allQuestions.filter(q => !flashcardQuestionIds.has(q.id));
 
   if (channel) {
-    sql += ' AND q.channel = ?';
-    args.push(channel);
+    pending = pending.filter(q => q.channel === channel);
   }
 
-  sql += `
-    ORDER BY (SELECT COUNT(*) FROM flashcards f2 WHERE f2.channel = q.channel) ASC`;
+  // Count flashcards per channel for ordering
+  const flashcardCounts = {};
+  for (const f of flashcards) {
+    flashcardCounts[f.channel] = (flashcardCounts[f.channel] || 0) + 1;
+  }
+  pending.sort((a, b) => (flashcardCounts[a.channel] || 0) - (flashcardCounts[b.channel] || 0));
 
   if (limit) {
-    sql += ' LIMIT ?';
-    args.push(limit);
+    pending = pending.slice(0, limit);
   }
 
-  const result = await db.execute({ sql, args });
-  return result.rows;
+  return pending.map(q => ({
+    id: q.id,
+    question: q.question,
+    answer: q.answer,
+    channel: q.channel,
+    difficulty: q.difficulty,
+    tags: q.tags || []
+  }));
 }
 
 async function main() {

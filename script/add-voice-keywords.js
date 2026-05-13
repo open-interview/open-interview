@@ -1,55 +1,38 @@
 #!/usr/bin/env node
-/**
- * Add Voice Keywords to Existing Questions
- * 
- * This script processes questions that are suitable for voice interviews
- * but don't have voiceKeywords populated yet.
- * 
- * Usage: node script/add-voice-keywords.js [--limit=100] [--channel=system-design]
- */
 
 import 'dotenv/config';
-import { dbClient as db } from './db/pg-client.js';
+import { getAllUnifiedQuestions, saveQuestion } from './utils.js';
 import opencode from './ai/providers/opencode.js';
-// Channels suitable for voice interviews
+
 const VOICE_CHANNELS = [
-  'behavioral', 'system-design', 'sre', 'devops', 
+  'behavioral', 'system-design', 'sre', 'devops',
   'engineering-management', 'aws', 'kubernetes',
   'database', 'frontend', 'backend', 'security'
 ];
 
-// Parse command line args
 const args = process.argv.slice(2);
 const limit = parseInt(args.find(a => a.startsWith('--limit='))?.split('=')[1] || '50');
 const channelFilter = args.find(a => a.startsWith('--channel='))?.split('=')[1];
 
 async function main() {
   console.log('🎤 Voice Keywords Generator\n');
-  
-  // Find questions without voice keywords
-  let sql = `
-    SELECT id, question, answer, explanation, channel, sub_channel, difficulty
-    FROM questions 
-    WHERE status = 'active'
-    AND (voice_keywords IS NULL OR voice_keywords = '[]' OR voice_keywords = '')
-    AND channel IN (${VOICE_CHANNELS.map(() => '?').join(',')})
-  `;
-  
-  const sqlArgs = [...VOICE_CHANNELS];
-  
+
+  const allQuestions = await getAllUnifiedQuestions();
+  let questions = allQuestions.filter(q =>
+    q.status === 'active' &&
+    (!q.voiceKeywords || q.voiceKeywords === '[]' || q.voiceKeywords === '' || q.voiceKeywords === null) &&
+    VOICE_CHANNELS.includes(q.channel)
+  );
+
   if (channelFilter) {
-    sql += ' AND channel = ?';
-    sqlArgs.push(channelFilter);
+    questions = questions.filter(q => q.channel === channelFilter);
   }
-  
-  sql += ` ORDER BY RANDOM() LIMIT ?`;
-  sqlArgs.push(limit);
-  
-  const result = await db.execute({ sql, args: sqlArgs });
-  
-  console.log(`Found ${result.rows.length} questions to process\n`);
-  
-  if (result.rows.length === 0) {
+
+  questions = questions.slice(0, limit);
+
+  console.log(`Found ${questions.length} questions to process\n`);
+
+  if (questions.length === 0) {
     console.log('✅ All questions already have voice keywords!');
     return;
   }
@@ -57,11 +40,11 @@ async function main() {
   let processed = 0;
   let updated = 0;
   let errors = 0;
-  
-  for (const row of result.rows) {
+
+  for (const row of questions) {
     processed++;
-    console.log(`[${processed}/${result.rows.length}] Processing ${row.id}...`);
-    
+    console.log(`[${processed}/${questions.length}] Processing ${row.id}...`);
+
     try {
       const keywords = await generateVoiceKeywords({
         question: row.question,
@@ -69,43 +52,33 @@ async function main() {
         explanation: row.explanation,
         channel: row.channel
       });
-      
+
       if (keywords && keywords.suitable && keywords.keywords.length > 0) {
-        await db.execute({
-          sql: `UPDATE questions 
-                SET voice_keywords = ?, voice_suitable = 1, last_updated = ?
-                WHERE id = ?`,
-          args: [
-            JSON.stringify(keywords.keywords),
-            new Date().toISOString(),
-            row.id
-          ]
-        });
-        
+        row.voiceKeywords = keywords.keywords;
+        row.voiceSuitable = true;
+        row.lastUpdated = new Date().toISOString();
+        await saveQuestion(row);
+
         console.log(`   ✓ Added ${keywords.keywords.length} keywords: ${keywords.keywords.slice(0, 5).join(', ')}...`);
         updated++;
       } else if (keywords && !keywords.suitable) {
-        await db.execute({
-          sql: `UPDATE questions 
-                SET voice_suitable = 0, last_updated = ?
-                WHERE id = ?`,
-          args: [new Date().toISOString(), row.id]
-        });
+        row.voiceSuitable = false;
+        row.lastUpdated = new Date().toISOString();
+        await saveQuestion(row);
         console.log(`   ✗ Not suitable for voice interview`);
       } else {
         console.log(`   ⚠ Could not generate keywords`);
         errors++;
       }
-      
-      // Rate limiting
+
       await sleep(1000);
-      
+
     } catch (err) {
       console.error(`   ✗ Error: ${err.message}`);
       errors++;
     }
   }
-  
+
   console.log('\n📊 Summary:');
   console.log(`   Processed: ${processed}`);
   console.log(`   Updated: ${updated}`);

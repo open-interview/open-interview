@@ -17,7 +17,8 @@
 
 import 'dotenv/config';
 import fs from 'node:fs';
-import { dbClient } from './utils.js';
+import path from 'node:path';
+import { getAllUnifiedQuestions, getQuestionsForChannel } from './utils.js';
 import ai from './ai/index.js';
 
 function writeGitHubOutput(key, value) {
@@ -117,9 +118,9 @@ function parseQuestionRow(row) {
     answer: row.answer,
     explanation: row.explanation,
     difficulty: row.difficulty,
-    tags: row.tags ? JSON.parse(row.tags) : [],
+    tags: Array.isArray(row.tags) ? row.tags : (row.tags ? JSON.parse(row.tags) : []),
     channel: row.channel,
-    subChannel: row.sub_channel,
+    subChannel: row.subChannel || row.sub_channel,
   };
 }
 
@@ -129,76 +130,55 @@ function parseQuestionRow(row) {
 async function fetchQuestion() {
   console.log('🔍 Fetching question from database...');
 
-  let sql = "SELECT * FROM questions WHERE status = 'active' AND linkedin_poll_at IS NULL";
-  const args = [];
+  let questions = await getAllUnifiedQuestions();
+
+  questions = questions.filter(q => (q.status === 'active' || !q.status) && !q.linkedin_poll_at);
 
   if (questionId) {
-    sql += ' AND id = ?';
-    args.push(questionId);
+    questions = questions.filter(q => q.id === questionId);
   }
 
   if (channel) {
-    sql += ' AND channel = ?';
-    args.push(channel);
+    questions = questions.filter(q => q.channel === channel);
   } else {
-    const placeholders = DEFAULT_CHANNELS.map(() => '?').join(', ');
-    sql += ` AND channel IN (${placeholders})`;
-    args.push(...DEFAULT_CHANNELS);
+    questions = questions.filter(q => DEFAULT_CHANNELS.includes(q.channel));
   }
 
   if (difficulty) {
-    sql += ' AND difficulty = ?';
-    args.push(difficulty);
+    questions = questions.filter(q => q.difficulty === difficulty);
   } else {
-    const dPlaceholders = DEFAULT_DIFFICULTIES.map(() => '?').join(', ');
-    sql += ` AND difficulty IN (${dPlaceholders})`;
-    args.push(...DEFAULT_DIFFICULTIES);
+    questions = questions.filter(q => DEFAULT_DIFFICULTIES.includes(q.difficulty));
   }
 
-  sql += ' ORDER BY RANDOM() LIMIT 1';
-
-  let result = await dbClient.execute({ sql, args });
-
-  // Fallback: if no unposted questions, reset those posted > 90 days ago
-  if (result.rows.length === 0) {
+  // Fallback: if no unposted questions, try those posted > 90 days ago
+  if (questions.length === 0) {
     console.log('⚠️ No unposted questions found, falling back to questions posted > 90 days ago...');
-    sql = "SELECT * FROM questions WHERE status = 'active' AND linkedin_poll_at IS NOT NULL AND linkedin_poll_at < ?";
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-    const fallbackArgs = [ninetyDaysAgo];
+
+    questions = await getAllUnifiedQuestions();
+    questions = questions.filter(q => (q.status === 'active' || !q.status) && q.linkedin_poll_at && q.linkedin_poll_at < ninetyDaysAgo);
 
     if (questionId) {
-      sql += ' AND id = ?';
-      fallbackArgs.push(questionId);
+      questions = questions.filter(q => q.id === questionId);
     }
-
     if (channel) {
-      sql += ' AND channel = ?';
-      fallbackArgs.push(channel);
+      questions = questions.filter(q => q.channel === channel);
     } else {
-      const placeholders = DEFAULT_CHANNELS.map(() => '?').join(', ');
-      sql += ` AND channel IN (${placeholders})`;
-      fallbackArgs.push(...DEFAULT_CHANNELS);
+      questions = questions.filter(q => DEFAULT_CHANNELS.includes(q.channel));
     }
-
     if (difficulty) {
-      sql += ' AND difficulty = ?';
-      fallbackArgs.push(difficulty);
+      questions = questions.filter(q => q.difficulty === difficulty);
     } else {
-      const dPlaceholders = DEFAULT_DIFFICULTIES.map(() => '?').join(', ');
-      sql += ` AND difficulty IN (${dPlaceholders})`;
-      fallbackArgs.push(...DEFAULT_DIFFICULTIES);
+      questions = questions.filter(q => DEFAULT_DIFFICULTIES.includes(q.difficulty));
     }
-
-    sql += ' ORDER BY RANDOM() LIMIT 1';
-
-    result = await dbClient.execute({ sql, args: fallbackArgs });
   }
-  
-  if (result.rows.length === 0) {
+
+  if (questions.length === 0) {
     throw new Error('No questions found matching criteria');
   }
-  
-  const question = parseQuestionRow(result.rows[0]);
+
+  const randomIndex = Math.floor(Math.random() * questions.length);
+  const question = parseQuestionRow(questions[randomIndex]);
   console.log(`   ✅ Found question: ${question.id}`);
   console.log(`   Channel: ${question.channel}`);
   console.log(`   Difficulty: ${question.difficulty}`);
@@ -208,17 +188,6 @@ async function fetchQuestion() {
 }
 
 async function fetchBlogPostUrl(question) {
-  try {
-    const result = await dbClient.execute({
-      sql: 'SELECT slug FROM blog_posts WHERE question_id = ? LIMIT 1',
-      args: [question.id]
-    });
-    if (result.rows.length > 0 && result.rows[0].slug) {
-      return { url: `${process.env.BLOG_BASE_URL || 'https://open-interview.github.io'}/posts/${question.id}/${result.rows[0].slug}/`, isNew: false };
-    }
-  } catch {
-    // blog_posts table query failed — continue without URL
-  }
   return { url: null, isNew: false };
 }
 
@@ -483,10 +452,15 @@ async function main() {
     console.log(`   Post ID: ${linkedInResult.id}`);
     
     // Mark question as posted on LinkedIn
-    await dbClient.execute({
-      sql: 'UPDATE questions SET linkedin_poll_at = ? WHERE id = ?',
-      args: [new Date().toISOString(), question.id]
-    });
+    const channelQuestions = await getQuestionsForChannel(question.channel);
+    const qIdx = channelQuestions.findIndex(q => q.id === question.id);
+    if (qIdx >= 0) {
+      channelQuestions[qIdx].linkedin_poll_at = new Date().toISOString();
+      fs.writeFileSync(
+        path.join(process.cwd(), 'data', 'questions', `${question.channel}.json`),
+        JSON.stringify(channelQuestions, null, 2)
+      );
+    }
 
     writeGitHubOutput('posted', 'true');
     writeGitHubOutput('linkedin_post_id', linkedInResult.id);

@@ -13,7 +13,7 @@
 
 import { generateCertificationsParallel } from './ai/graphs/certification-question-graph.js';
 import { certificationDomains } from './ai/prompts/templates/certification-question.js';
-import { dbClient, saveQuestion } from './utils.js';
+import { saveQuestion, getQuestionsForChannel } from './utils.js';
 
 // Get certification channels from environment or use defaults
 const CERT_CHANNELS = process.env.CERT_CHANNELS?.split(',') || Object.keys(certificationDomains);
@@ -36,12 +36,8 @@ async function getCertificationsToGenerate() {
     }
     
     try {
-      const result = await dbClient.execute({
-        sql: `SELECT COUNT(*) as count FROM questions WHERE channel = ? AND status != 'deleted'`,
-        args: [certId]
-      });
-      
-      const count = result.rows[0]?.count || 0;
+      const qs = await getQuestionsForChannel(certId);
+      const count = qs.filter(q => q.status !== 'deleted').length;
       counts.push({ certId, count });
     } catch (e) {
       counts.push({ certId, count: 0 });
@@ -97,17 +93,12 @@ async function getPrioritizedDomain(certId) {
   }
   
   // Get question counts per domain for this certification
-  const result = await dbClient.execute({
-    sql: `SELECT sub_channel, COUNT(*) as count 
-          FROM questions 
-          WHERE channel = ? AND status != 'deleted'
-          GROUP BY sub_channel`,
-    args: [certId]
-  });
-  
+  const qs = await getQuestionsForChannel(certId);
   const domainCounts = {};
-  for (const row of result.rows) {
-    domainCounts[row.sub_channel] = row.count;
+  for (const q of qs) {
+    if (q.status === 'deleted') continue;
+    const sub = q.subChannel || q.sub_channel;
+    domainCounts[sub] = (domainCounts[sub] || 0) + 1;
   }
   
   // Sort domains by count ascending, prioritizing 0-count domains
@@ -143,31 +134,17 @@ async function saveCertQuestion(question) {
       `domain-weight-${question.domainWeight || 0}`
     ];
     
-    await dbClient.execute({
-      sql: `INSERT INTO questions 
-            (id, channel, sub_channel, question, answer, explanation, difficulty, tags, status, last_updated)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
-            ON CONFLICT (id) DO UPDATE SET
-              channel = EXCLUDED.channel,
-              sub_channel = EXCLUDED.sub_channel,
-              question = EXCLUDED.question,
-              answer = EXCLUDED.answer,
-              explanation = EXCLUDED.explanation,
-              difficulty = EXCLUDED.difficulty,
-              tags = EXCLUDED.tags,
-              status = EXCLUDED.status,
-              last_updated = EXCLUDED.last_updated`,
-      args: [
-        id,
-        question.certificationId,
-        question.domain,
-        question.question,
-        JSON.stringify(question.options), // Store options as answer
-        question.explanation,
-        question.difficulty,
-        JSON.stringify(tags),
-        new Date().toISOString()
-      ]
+    await saveQuestion({
+      id,
+      channel: question.certificationId,
+      subChannel: question.domain,
+      question: question.question,
+      answer: JSON.stringify(question.options),
+      explanation: question.explanation,
+      difficulty: question.difficulty,
+      tags,
+      status: 'active',
+      lastUpdated: new Date().toISOString()
     });
     
     console.log(`   ✅ Saved: ${question.question.substring(0, 50)}...`);

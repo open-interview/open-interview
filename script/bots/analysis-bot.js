@@ -20,6 +20,8 @@
  */
 
 import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
 import { getDb, initBotTables } from './shared/db.js';
 import { logAction } from './shared/ledger.js';
 import { addToQueue, addBatchToQueue } from './shared/queue.js';
@@ -28,6 +30,25 @@ import { WorkerPool } from '../ai/graphs/parallel-bot-executor.js';
 
 const BOT_NAME = 'analysis';
 const db = getDb();
+
+const QUESTIONS_DIR = path.join(process.cwd(), 'data', 'questions');
+
+function readQuestions(ch) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, `${ch}.json`), 'utf8'));
+  } catch { return []; }
+}
+
+function readAllQuestions() {
+  let files = [];
+  try { files = fs.readdirSync(QUESTIONS_DIR); } catch { return []; }
+  const all = [];
+  for (const f of files) {
+    if (!f.endsWith('.json')) continue;
+    try { all.push(...JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, f), 'utf8'))); } catch {}
+  }
+  return all;
+}
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
@@ -293,15 +314,15 @@ async function analyzeDuplicates(question) {
 // ============================================
 
 /**
- * Normalize question data from database
+ * Normalize question data from file
  */
 function normalizeQuestion(row) {
   return {
     ...row,
-    tags: row.tags ? JSON.parse(row.tags) : [],
-    companies: row.companies ? JSON.parse(row.companies) : [],
-    videos: row.videos ? JSON.parse(row.videos) : null,
-    voiceKeywords: row.voice_keywords ? JSON.parse(row.voice_keywords) : [],
+    tags: row.tags || [],
+    companies: row.companies || [],
+    videos: row.videos || null,
+    voiceKeywords: row.voice_keywords || [],
     voiceSuitable: row.voice_suitable === 1
   };
 }
@@ -404,36 +425,20 @@ async function main() {
   
   try {
     // Get questions to analyze
-    // Note: This query matches the portal's filter to ensure consistency
-    let query = `
-      SELECT * FROM questions 
-      WHERE status != 'deleted'
-    `;
-    
+    let questions = readAllQuestions().filter(q => q.status !== 'deleted');
     if (targetChannel) {
-      query += ` AND channel = ?`;
+      questions = questions.filter(q => q.channel === targetChannel);
     }
-    
-    query += ` ORDER BY last_updated DESC`;
-    
+    questions.sort((a, b) => (b.last_updated || '').localeCompare(a.last_updated || ''));
     if (limit > 0) {
-      query += ` LIMIT ${limit}`;
+      questions = questions.slice(0, limit);
     }
-    
-    const result = await db.execute({
-      sql: query,
-      args: targetChannel ? [targetChannel] : []
-    });
-    
-    const questions = result.rows;
     console.log(`\nFound ${questions.length} questions to analyze\n`);
 
     // Pre-fetch existing pending/completed queue items to avoid re-adding duplicates
-    const existingQueueResult = await db.execute(
-      `SELECT item_type, item_id, action FROM work_queue WHERE status IN ('pending', 'processing', 'completed')`
-    );
+    const existingQueue = db.readArray('queue.json');
     const existingQueueKeys = new Set(
-      existingQueueResult.rows.map(r => `${r.item_type}|${r.item_id}|${r.action}`)
+      existingQueue.map(r => `${r.item_type}|${r.item_id}|${r.action}`)
     );
     console.log(`Pre-fetched ${existingQueueKeys.size} existing queue entries for dedup\n`);
     

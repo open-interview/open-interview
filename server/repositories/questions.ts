@@ -1,63 +1,64 @@
-import { db } from '../db';
-import { questions } from '@shared/schema';
-import { eq, and, ne, like, sql, count, asc, desc } from 'drizzle-orm';
+import fs from 'fs';
+import path from 'path';
 
-export async function getChannels() {
-  return db
-    .select({ channel: questions.channel, count: count() })
-    .from(questions)
-    .where(ne(questions.status, 'deleted'))
-    .groupBy(questions.channel);
+const DATA_DIR = path.join(process.cwd(), 'data');
+
+function readChannel(channelId: string): any[] {
+  const file = path.join(DATA_DIR, 'questions', `${channelId}.json`);
+  if (!fs.existsSync(file)) return [];
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return []; }
 }
 
-export async function getQuestionsByChannel(channelId: string, subChannel?: string, difficulty?: string) {
-  const conditions = [
-    eq(questions.channel, channelId),
-    ne(questions.status, 'deleted'),
-    ...(subChannel ? [eq(questions.subChannel, subChannel)] : []),
-    ...(difficulty ? [eq(questions.difficulty, difficulty)] : []),
-  ];
-  return db.select().from(questions).where(and(...conditions));
+function allChannelIds(): string[] {
+  const dir = path.join(DATA_DIR, 'questions');
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => f.replace('.json', ''));
 }
 
-export async function getRandomQuestion(channel?: string, difficulty?: string) {
-  const conditions = [
-    ne(questions.status, 'deleted'),
-    ...(channel ? [eq(questions.channel, channel)] : []),
-    ...(difficulty ? [eq(questions.difficulty, difficulty)] : []),
-  ];
-  const rows = await db
-    .select()
-    .from(questions)
-    .where(and(...conditions))
-    .orderBy(sql`RANDOM()`)
-    .limit(1);
-  return rows[0] ?? null;
+export function getChannels() {
+  try {
+    const meta = path.join(DATA_DIR, 'meta', 'channels.json');
+    if (fs.existsSync(meta)) return JSON.parse(fs.readFileSync(meta, 'utf8'));
+  } catch {}
+  return allChannelIds().map(id => ({ channel: id, count: readChannel(id).length }));
 }
 
-export async function getQuestionById(id: string) {
-  const rows = await db.select().from(questions).where(eq(questions.id, id)).limit(1);
-  return rows[0] ?? null;
+export function getQuestionsByChannel(channelId: string, subChannel?: string, difficulty?: string) {
+  let qs = readChannel(channelId).filter((q: any) => q.status !== 'deleted');
+  if (subChannel) qs = qs.filter((q: any) => q.subChannel === subChannel);
+  if (difficulty) qs = qs.filter((q: any) => q.difficulty === difficulty);
+  return qs;
 }
 
-export async function getStats() {
-  return db
-    .select({ channel: questions.channel, difficulty: questions.difficulty, count: count() })
-    .from(questions)
-    .where(ne(questions.status, 'deleted'))
-    .groupBy(questions.channel, questions.difficulty);
+export function getQuestionById(id: string) {
+  for (const ch of allChannelIds()) {
+    const q = readChannel(ch).find((q: any) => q.id === id);
+    if (q) return q;
+  }
+  return null;
 }
 
-export async function getSubchannels(channelId: string) {
-  return db
-    .selectDistinct({ sub_channel: questions.subChannel })
-    .from(questions)
-    .where(and(eq(questions.channel, channelId), ne(questions.status, 'deleted')));
+export function getRandomQuestion(channel?: string, difficulty?: string) {
+  const channels = channel ? [channel] : allChannelIds();
+  let pool: any[] = [];
+  for (const ch of channels) {
+    let qs = readChannel(ch).filter((q: any) => q.status !== 'deleted');
+    if (difficulty) qs = qs.filter((q: any) => q.difficulty === difficulty);
+    pool = pool.concat(qs);
+  }
+  if (!pool.length) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
-export async function getCompaniesByChannel(channelId: string) {
-  return db
-    .select({ companies: questions.companies })
-    .from(questions)
-    .where(and(eq(questions.channel, channelId), ne(questions.status, 'deleted')));
+export function getStats() {
+  const stats: any[] = [];
+  for (const ch of allChannelIds()) {
+    const qs = readChannel(ch).filter((q: any) => q.status !== 'deleted');
+    const byDiff: Record<string, number> = {};
+    for (const q of qs) { byDiff[q.difficulty] = (byDiff[q.difficulty] || 0) + 1; }
+    for (const [difficulty, count] of Object.entries(byDiff)) {
+      stats.push({ channel: ch, difficulty, count });
+    }
+  }
+  return stats;
 }

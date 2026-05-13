@@ -83,11 +83,11 @@ export function AppLayout({
       } as React.CSSProperties}
     >
       {/* Facelift Navbar (top header for all breakpoints) */}
-      {useFacelift && <FaceliftNavbar onSearchOpen={() => setSearchOpen(true)} />}
+      {useFacelift && <div className="lg:hidden"><FaceliftNavbar onSearchOpen={() => setSearchOpen(true)} /></div>}
 
       {/* Desktop Sidebar — offset below the facelift navbar */}
       {useFacelift && (
-        <div className="hidden lg:block" style={{ paddingTop: '64px' }}>
+        <div className="hidden lg:block">
           <Sidebar />
         </div>
       )}
@@ -124,7 +124,7 @@ export function AppLayout({
             exit="exit"
             transition={pageTransition}
             ref={scrollRef as React.RefObject<HTMLElement>}
-            className={fullWidth ? 'w-full overflow-x-hidden' : 'max-w-7xl mx-auto px-6 py-6 w-full overflow-x-hidden'}
+            className={fullWidth ? 'w-full overflow-x-hidden' : 'max-w-6xl mx-auto px-6 py-4 w-full overflow-x-hidden'}
           >
             {children}
           </motion.main>

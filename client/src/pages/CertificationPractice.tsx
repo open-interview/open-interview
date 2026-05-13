@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
-import { useLocation, useRoute } from 'wouter';
+import { Link, useLocation, useRoute } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   getCertificationById, 
@@ -727,11 +727,11 @@ export default function CertificationPractice() {
           <div className="max-w-7xl mx-auto px-3 pt-1.5 pb-0">
             <Breadcrumb>
               <BreadcrumbList className="text-[10px]">
-                <BreadcrumbItem><BreadcrumbLink href="/">Home</BreadcrumbLink></BreadcrumbItem>
+                <BreadcrumbItem><BreadcrumbLink asChild><Link href="/">Home</Link></BreadcrumbLink></BreadcrumbItem>
                 <BreadcrumbSeparator />
-                <BreadcrumbItem><BreadcrumbLink href="/certifications">Certifications</BreadcrumbLink></BreadcrumbItem>
+                <BreadcrumbItem><BreadcrumbLink asChild><Link href="/certifications">Certifications</Link></BreadcrumbLink></BreadcrumbItem>
                 <BreadcrumbSeparator />
-                <BreadcrumbItem><BreadcrumbLink href={`/certification/${certificationId}`}>{certification.name}</BreadcrumbLink></BreadcrumbItem>
+                <BreadcrumbItem><BreadcrumbLink asChild><Link href={`/certification/${certificationId}`}>{certification.name}</Link></BreadcrumbLink></BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem><BreadcrumbPage>Practice</BreadcrumbPage></BreadcrumbItem>
               </BreadcrumbList>

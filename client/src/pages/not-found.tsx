@@ -5,7 +5,7 @@ import { Home, Search, ArrowLeft, AlertCircle, Compass } from 'lucide-react';
 
 export default function NotFound() {
   const [, setLocation] = useLocation();
-  const [countdown, setCountdown] = useState(5);
+  const [countdown, setCountdown] = useState(30);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -86,7 +86,7 @@ export default function NotFound() {
               className="h-full bg-primary rounded-full"
               initial={{ width: '100%' }}
               animate={{ width: '0%' }}
-              transition={{ duration: 5, ease: 'linear' }}
+              transition={{ duration: 30, ease: 'linear' }}
             />
           </div>
         </motion.div>

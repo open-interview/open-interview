@@ -104,9 +104,12 @@ function main() {
     if (t) tests.push(t);
     else skipped++;
   }
-  const outFile = path.join(DATA_DIR, 'tests.json');
-  fs.writeFileSync(outFile, JSON.stringify(tests, null, 2));
-  console.log(`Wrote ${tests.length} tests (skipped ${skipped}) to ${outFile}`);
+  const outDir = path.join(DATA_DIR, 'tests');
+  fs.mkdirSync(outDir, { recursive: true });
+  for (const t of tests) {
+    fs.writeFileSync(path.join(outDir, `${t.channelId}.json`), JSON.stringify([t], null, 2));
+  }
+  console.log(`Wrote ${tests.length} tests (skipped ${skipped}) to ${outDir}/`);
 }
 
 main();

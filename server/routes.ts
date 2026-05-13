@@ -3,10 +3,11 @@ import { type Server } from "http";
 import * as QRepo from './repositories/questions';
 import * as CRepo from './repositories/certifications';
 import * as SRepo from './repositories/sessions';
-import { db } from './db';
-import { learningPaths, userSessions, flashcards, voiceSessions, tests, blogPosts, linkedinPublishLog } from '@shared/schema';
-import { eq, sql, desc, asc, and, ne, like } from 'drizzle-orm';
+import fs from 'fs';
+import path from 'path';
 import { localBlogStorage as blogStorage } from "./blog-storage-local";
+
+const DATA_DIR = path.join(process.cwd(), 'data');
 
 // Helper to parse JSON fields from DB
 function parseQuestion(row: any) {
@@ -627,16 +628,8 @@ export async function registerRoutes(
     }
   });
 
-  // Increment popularity when user starts a path
   app.post("/api/learning-paths/:pathId/start", async (req, res) => {
-    try {
-      const { pathId } = req.params;
-      await db.update(learningPaths).set({ popularity: sql`popularity + 1` }).where(eq(learningPaths.id, pathId));
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error updating path popularity:", error);
-      res.status(500).json({ error: "Failed to update popularity" });
-    }
+    res.json({ success: true }); // popularity tracking removed with DB layer
   });
 
   // ============================================
@@ -646,117 +639,45 @@ export async function registerRoutes(
   // Get all active sessions for a user
   app.get("/api/user/sessions", async (_req, res) => {
     try {
-      const rows = await db.select().from(userSessions).where(eq(userSessions.status, 'active')).orderBy(desc(userSessions.lastAccessedAt));
+      const rows = await SRepo.getUserSessions('');
       res.json(rows);
-    } catch (error) {
-      console.error("Error fetching user sessions:", error);
-      res.status(500).json({ error: "Failed to fetch sessions" });
-    }
+    } catch { res.status(500).json({ error: "Failed to fetch sessions" }); }
   });
 
-  // Get a specific session
   app.get("/api/user/sessions/:sessionId", async (req, res) => {
     try {
-      const { sessionId } = req.params;
-      const rows = await db.select().from(userSessions).where(eq(userSessions.id, sessionId)).limit(1);
-      if (rows.length === 0) {
-        return res.status(404).json({ error: "Session not found" });
-      }
+      const rows = await SRepo.getUserSessions(req.params.sessionId);
+      if (!rows.length) return res.status(404).json({ error: "Session not found" });
       res.json(rows[0]);
-    } catch (error) {
-      console.error("Error fetching session:", error);
-      res.status(500).json({ error: "Failed to fetch session" });
-    }
+    } catch { res.status(500).json({ error: "Failed to fetch session" }); }
   });
 
-  // Create or update a session
   app.post("/api/user/sessions", async (req, res) => {
     try {
-      const {
-        sessionKey,
-        sessionType,
-        title,
-        subtitle,
-        channelId,
-        certificationId,
-        progress,
-        totalItems,
-        completedItems,
-        sessionData
-      } = req.body;
-
-      // Check if session already exists
-      const existing = await db.select({ id: userSessions.id }).from(userSessions).where(and(eq(userSessions.sessionKey, sessionKey), eq(userSessions.status, 'active'))).limit(1);
-
-      if (existing.length > 0) {
-        // Update existing session
-        const sessionId = existing[0].id;
-        await db.update(userSessions).set({ title, subtitle, progress, completedItems, sessionData: JSON.stringify(sessionData), lastAccessedAt: new Date().toISOString() }).where(eq(userSessions.id, sessionId));
-        res.json({ id: sessionId, updated: true });
-      } else {
-        // Create new session
-        const sessionId = crypto.randomUUID();
-        await db.insert(userSessions).values({
-          id: sessionId,
-          sessionKey,
-          sessionType,
-          title,
-          subtitle: subtitle || null,
-          channelId: channelId || null,
-          certificationId: certificationId || null,
-          progress,
-          totalItems,
-          completedItems,
-          sessionData: JSON.stringify(sessionData),
-          startedAt: new Date().toISOString(),
-          lastAccessedAt: new Date().toISOString(),
-          status: 'active',
-        });
-        res.json({ id: sessionId, created: true });
-      }
-    } catch (error) {
-      console.error("Error saving session:", error);
-      res.status(500).json({ error: "Failed to save session" });
-    }
+      const result = await SRepo.upsertUserSession(req.body);
+      res.json(result[0]);
+    } catch { res.status(500).json({ error: "Failed to save session" }); }
   });
 
-  // Update session progress
   app.put("/api/user/sessions/:sessionId", async (req, res) => {
     try {
-      const { sessionId } = req.params;
-      const { progress, completedItems, sessionData } = req.body;
-
-      await db.update(userSessions).set({ progress, completedItems, sessionData: JSON.stringify(sessionData), lastAccessedAt: new Date().toISOString() }).where(eq(userSessions.id, sessionId));
-
+      await SRepo.upsertUserSession({ ...req.body, id: req.params.sessionId });
       res.json({ success: true });
-    } catch (error) {
-      console.error("Error updating session:", error);
-      res.status(500).json({ error: "Failed to update session" });
-    }
+    } catch { res.status(500).json({ error: "Failed to update session" }); }
   });
 
-  // Delete/abandon a session
   app.delete("/api/user/sessions/:sessionId", async (req, res) => {
     try {
-      const { sessionId } = req.params;
-      await db.update(userSessions).set({ status: 'abandoned' }).where(eq(userSessions.id, sessionId));
+      await SRepo.deleteUserSession(req.params.sessionId);
       res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting session:", error);
-      res.status(500).json({ error: "Failed to delete session" });
-    }
+    } catch { res.status(500).json({ error: "Failed to delete session" }); }
   });
 
-  // Complete a session
   app.post("/api/user/sessions/:sessionId/complete", async (req, res) => {
     try {
-      const { sessionId } = req.params;
-      await db.update(userSessions).set({ status: 'completed', completedAt: new Date().toISOString() }).where(eq(userSessions.id, sessionId));
+      await SRepo.upsertUserSession({ id: req.params.sessionId, status: 'completed', completedAt: new Date().toISOString() });
       res.json({ success: true });
-    } catch (error) {
-      console.error("Error completing session:", error);
-      res.status(500).json({ error: "Failed to complete session" });
-    }
+    } catch { res.status(500).json({ error: "Failed to complete session" }); }
   });
 
   // ============================================================
@@ -766,35 +687,29 @@ export async function registerRoutes(
   app.get("/api/flashcards", async (req, res) => {
     try {
       const { channel, limit = "50", offset = "0" } = req.query as Record<string, string>;
-      const query = db.select().from(flashcards);
-      const rows = await (channel
-        ? query.where(eq(flashcards.channel, channel))
-        : query
-      ).orderBy(desc(flashcards.createdAt)).limit(parseInt(limit)).offset(parseInt(offset));
-      res.json(rows);
-    } catch (error) {
-      console.error("Error fetching flashcards:", error);
-      res.status(500).json({ error: "Failed to fetch flashcards" });
-    }
+      let cards: any[] = [];
+      try { cards = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'flashcards', 'all.json'), 'utf8')); } catch {}
+      if (channel) cards = cards.filter((c: any) => c.channel === channel);
+      res.json(cards.slice(parseInt(offset), parseInt(offset) + parseInt(limit)));
+    } catch { res.status(500).json({ error: "Failed to fetch flashcards" }); }
   });
 
   app.get("/api/flashcards/:id", async (req, res) => {
     try {
-      const rows = await db.select().from(flashcards).where(eq(flashcards.id, req.params.id)).limit(1);
-      if (rows.length === 0) return res.status(404).json({ error: "Flashcard not found" });
-      res.json(rows[0]);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch flashcard" });
-    }
+      let cards: any[] = [];
+      try { cards = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'flashcards', 'all.json'), 'utf8')); } catch {}
+      const card = cards.find((c: any) => c.id === req.params.id);
+      if (!card) return res.status(404).json({ error: "Flashcard not found" });
+      res.json(card);
+    } catch { res.status(500).json({ error: "Failed to fetch flashcard" }); }
   });
 
   app.get("/api/flashcards/question/:questionId", async (req, res) => {
     try {
-      const rows = await db.select().from(flashcards).where(eq(flashcards.questionId, req.params.questionId)).limit(1);
-      res.json(rows[0] || null);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch flashcard" });
-    }
+      let cards: any[] = [];
+      try { cards = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'flashcards', 'all.json'), 'utf8')); } catch {}
+      res.json(cards.find((c: any) => c.questionId === req.params.questionId) || null);
+    } catch { res.status(500).json({ error: "Failed to fetch flashcard" }); }
   });
 
   // ============================================================
@@ -804,29 +719,20 @@ export async function registerRoutes(
   app.get("/api/voice-sessions", async (req, res) => {
     try {
       const { channel, difficulty } = req.query as Record<string, string>;
-      const conditions = [];
-      if (channel) conditions.push(eq(voiceSessions.channel, channel));
-      if (difficulty) conditions.push(eq(voiceSessions.difficulty, difficulty));
-      const rows = await (conditions.length
-        ? db.select().from(voiceSessions).where(and(...conditions))
-        : db.select().from(voiceSessions)
-      ).orderBy(desc(voiceSessions.lastUpdated));
-      res.json(rows.map(r => ({ ...r, questionIds: r.questionIds ? JSON.parse(r.questionIds as string) : [] })));
-    } catch (error) {
-      console.error("Error fetching voice sessions:", error);
-      res.status(500).json({ error: "Failed to fetch voice sessions" });
-    }
+      let sessions = SRepo.getVoiceSessions();
+      if (channel) sessions = sessions.filter((s: any) => s.channel === channel);
+      if (difficulty) sessions = sessions.filter((s: any) => s.difficulty === difficulty);
+      res.json(sessions.map((s: any) => ({ ...s, questionIds: typeof s.questionIds === 'string' ? JSON.parse(s.questionIds) : s.questionIds })));
+    } catch { res.status(500).json({ error: "Failed to fetch voice sessions" }); }
   });
 
   app.get("/api/voice-sessions/:id", async (req, res) => {
     try {
-      const rows = await db.select().from(voiceSessions).where(eq(voiceSessions.id, req.params.id)).limit(1);
-      if (rows.length === 0) return res.status(404).json({ error: "Voice session not found" });
-      const row = rows[0];
-      res.json({ ...row, questionIds: row.questionIds ? JSON.parse(row.questionIds as string) : [] });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch voice session" });
-    }
+      const sessions = SRepo.getVoiceSessions();
+      const s = sessions.find((s: any) => s.id === req.params.id);
+      if (!s) return res.status(404).json({ error: "Voice session not found" });
+      res.json({ ...s, questionIds: typeof s.questionIds === 'string' ? JSON.parse(s.questionIds) : s.questionIds });
+    } catch { res.status(500).json({ error: "Failed to fetch voice session" }); }
   });
 
   // ============================================================
@@ -836,27 +742,34 @@ export async function registerRoutes(
   app.get("/api/tests", async (req, res) => {
     try {
       const { channelId } = req.query as Record<string, string>;
-      const query = db.select({ id: tests.id, channelId: tests.channelId, channelName: tests.channelName, title: tests.title, description: tests.description, passingScore: tests.passingScore, version: tests.version, createdAt: tests.createdAt, lastUpdated: tests.lastUpdated }).from(tests);
-      const rows = await (channelId
-        ? query.where(eq(tests.channelId, channelId))
-        : query
-      ).orderBy(asc(tests.channelName));
-      res.json(rows);
-    } catch (error) {
-      console.error("Error fetching tests:", error);
-      res.status(500).json({ error: "Failed to fetch tests" });
-    }
+      const testsDir = path.join(DATA_DIR, 'tests');
+      let allTests: any[] = [];
+      if (fs.existsSync(testsDir)) {
+        for (const f of fs.readdirSync(testsDir).filter(f => f.endsWith('.json'))) {
+          try { allTests = allTests.concat(JSON.parse(fs.readFileSync(path.join(testsDir, f), 'utf8'))); } catch {}
+        }
+      }
+      if (channelId) allTests = allTests.filter((t: any) => t.channelId === channelId);
+      res.json(allTests.map((t: any) => ({ id: t.id, channelId: t.channelId, channelName: t.channelName, title: t.title, description: t.description, passingScore: t.passingScore, version: t.version, createdAt: t.createdAt, lastUpdated: t.lastUpdated })));
+    } catch { res.status(500).json({ error: "Failed to fetch tests" }); }
   });
 
   app.get("/api/tests/:id", async (req, res) => {
     try {
-      const rows = await db.select().from(tests).where(eq(tests.id, req.params.id)).limit(1);
-      if (rows.length === 0) return res.status(404).json({ error: "Test not found" });
-      const row = rows[0];
-      res.json({ ...row, questions: row.questions ? JSON.parse(row.questions as string) : [] });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch test" });
-    }
+      const testsDir = path.join(DATA_DIR, 'tests');
+      let found: any = null;
+      if (fs.existsSync(testsDir)) {
+        for (const f of fs.readdirSync(testsDir).filter(f => f.endsWith('.json'))) {
+          try {
+            const items = JSON.parse(fs.readFileSync(path.join(testsDir, f), 'utf8'));
+            found = items.find((t: any) => t.id === req.params.id);
+            if (found) break;
+          } catch {}
+        }
+      }
+      if (!found) return res.status(404).json({ error: "Test not found" });
+      res.json({ ...found, questions: typeof found.questions === 'string' ? JSON.parse(found.questions) : found.questions });
+    } catch { res.status(500).json({ error: "Failed to fetch test" }); }
   });
 
   // ── Blog API Routes ────────────────────────────────────────────────────────
@@ -986,13 +899,7 @@ export async function registerRoutes(
   });
 
   app.get("/api/admin/linkedin-log", async (_req, res) => {
-    try {
-      const rows = await db.select().from(linkedinPublishLog).orderBy(desc(linkedinPublishLog.createdAt));
-      res.json(rows);
-    } catch (error) {
-      console.error("Error fetching linkedin publish log:", error);
-      res.status(500).json({ error: "Failed to fetch publish log" });
-    }
+    res.json([]); // LinkedIn publish log removed with DB layer
   });
 
   // ── Art Studio: image proxy for cross-origin downloads ───────────────────

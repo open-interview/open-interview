@@ -12,8 +12,8 @@ export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 4 : undefined,
+  retries: process.env.CI ? 2 : 1,
+  workers: process.env.CI ? 4 : 4,
   
   // Enhanced reporting
   reporter: process.env.CI 

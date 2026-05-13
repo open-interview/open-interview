@@ -408,7 +408,7 @@ export default function ReviewSession() {
     return (
       <AppLayout fullWidth>
         <div className="min-h-screen bg-background text-foreground">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
             <PageHeader title="SRS Review" subtitle="Spaced repetition to lock in what you've learned" />
             <PageLoader message="Loading review cards..." />
           </div>
@@ -468,7 +468,7 @@ export default function ReviewSession() {
       <AppLayout fullWidth>
         {/* iPhone 13 FIX: Ensure content fits within viewport with safe areas */}
         <div className="min-h-screen bg-background text-foreground overflow-x-hidden w-full pb-24 lg:pb-0">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 w-full overflow-x-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 w-full overflow-x-hidden">
             {/* Page Header */}
             <PageHeader title="SRS Review" subtitle="Spaced repetition to lock in what you've learned" />
 
@@ -563,6 +563,7 @@ export default function ReviewSession() {
             </div>
 
             {/* Card */}
+            <div className="max-w-2xl mx-auto w-full">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentCard.id}
@@ -905,6 +906,7 @@ export default function ReviewSession() {
                 </div>
               </motion.div>
             </AnimatePresence>
+            </div>{/* /max-w-2xl */}
 
 
           </div>

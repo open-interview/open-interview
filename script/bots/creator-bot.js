@@ -16,16 +16,48 @@
  */
 
 import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
 import { getDb, initBotTables } from './shared/db.js';
 import { logAction } from './shared/ledger.js';
 import { addToQueue } from './shared/queue.js';
 import { startRun, completeRun, failRun, updateRunStats } from './shared/runs.js';
-import { runWithRetries, parseJson, generateUnifiedId, isDuplicateUnified, getChannelQuestionCounts, getAllChannelsFromDb } from '../utils.js';
+import { runWithRetries, parseJson, generateUnifiedId } from '../utils.js';
 import { WorkerPool } from '../ai/graphs/parallel-bot-executor.js';
 import ragService from '../ai/services/rag-enhanced-generation.js';
 import { checkDuplicateBeforeCreate } from '../ai/services/duplicate-prevention.js';
 import { validateBeforeInsert, sanitizeQuestion } from './shared/validation.js';
 import { runQualityGate } from '../ai/graphs/quality-gate-graph.js';
+
+const QUESTIONS_DIR = path.join(process.cwd(), 'data', 'questions');
+
+function readQuestions(ch) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, `${ch}.json`), 'utf8'));
+  } catch { return []; }
+}
+
+function writeQuestions(ch, data) {
+  fs.mkdirSync(QUESTIONS_DIR, { recursive: true });
+  fs.writeFileSync(path.join(QUESTIONS_DIR, `${ch}.json`), JSON.stringify(data, null, 2));
+}
+
+function readAllQuestions() {
+  let files = [];
+  try { files = fs.readdirSync(QUESTIONS_DIR); } catch { return []; }
+  const all = [];
+  for (const f of files) {
+    if (!f.endsWith('.json')) continue;
+    try { all.push(...JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, f), 'utf8'))); } catch {}
+  }
+  return all;
+}
+
+function readAllChannels() {
+  let files = [];
+  try { files = fs.readdirSync(QUESTIONS_DIR); } catch { return []; }
+  return files.filter(f => f.endsWith('.json')).map(f => f.replace('.json', ''));
+}
 
 // Static imports for Answer Formatting Standards modules (cached at module level)
 let _patternDetector = null;
@@ -132,39 +164,16 @@ async function applyAnswerFormattingStandards(content) {
   */
 async function logAnswerFormattingValidation(validationData) {
   try {
-    // Create validation reports table if it doesn't exist
-    await db.execute(`
-      CREATE TABLE IF NOT EXISTS answer_formatting_reports (
-        id SERIAL PRIMARY KEY,
-        question_id TEXT NOT NULL,
-        pattern TEXT,
-        score INTEGER NOT NULL,
-        violations_count INTEGER NOT NULL,
-        violations TEXT,
-        auto_formatted BOOLEAN DEFAULT FALSE,
-        timestamp TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    
-    // Insert validation report
-    await db.execute({
-      sql: `
-        INSERT INTO answer_formatting_reports 
-        (question_id, pattern, score, violations_count, violations, auto_formatted, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `,
-      args: [
-        validationData.questionId,
-        validationData.pattern,
-        validationData.score,
-        validationData.violations.length,
-        JSON.stringify(validationData.violations),
-        validationData.autoFormatted ? 1 : 0,
-        validationData.timestamp
-      ]
+    db.appendToArray('answer_formatting_reports.json', {
+      question_id: validationData.questionId,
+      pattern: validationData.pattern,
+      score: validationData.score,
+      violations_count: validationData.violations.length,
+      violations: JSON.stringify(validationData.violations),
+      auto_formatted: validationData.autoFormatted ? 1 : 0,
+      timestamp: validationData.timestamp,
+      created_at: new Date().toISOString()
     });
-    
     console.log(`   Logged validation report for question ${validationData.questionId}`);
   } catch (error) {
     console.warn(`   Failed to log validation report: ${error.message}`);
@@ -691,7 +700,6 @@ function validateContent(content, type) {
 // ============================================
 
 async function saveQuestion(content) {
-  // CRITICAL: Validate before inserting into database
   try {
     validateBeforeInsert(content, BOT_NAME);
   } catch (error) {
@@ -700,34 +708,31 @@ async function saveQuestion(content) {
     throw error;
   }
   
-  // Sanitize to ensure no JSON in answer field
   const sanitized = sanitizeQuestion(content);
   
   if (sanitized._sanitized) {
     console.warn(`⚠️  Question ${content.id} had JSON in answer field - sanitized automatically`);
   }
   
-  await db.execute({
-    sql: `INSERT INTO questions (id, question, answer, explanation, diagram, difficulty, tags, channel, sub_channel, companies, voice_keywords, voice_suitable, status, last_updated, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [
-      sanitized.id,
-      sanitized.question,
-      sanitized.answer,
-      sanitized.explanation,
-      sanitized.diagram || null,
-      sanitized.difficulty,
-      JSON.stringify(sanitized.tags || []),
-      sanitized.channel,
-      sanitized.subChannel,
-      JSON.stringify(sanitized.companies || []),
-      sanitized.voiceKeywords ? JSON.stringify(sanitized.voiceKeywords) : null,
-      sanitized.voiceSuitable ? 1 : 0,
-      'active',
-      new Date().toISOString(),
-      new Date().toISOString()
-    ]
+  const questions = readQuestions(sanitized.channel);
+  questions.push({
+    id: sanitized.id,
+    question: sanitized.question,
+    answer: sanitized.answer,
+    explanation: sanitized.explanation,
+    diagram: sanitized.diagram || null,
+    difficulty: sanitized.difficulty,
+    tags: sanitized.tags || [],
+    channel: sanitized.channel,
+    sub_channel: sanitized.subChannel,
+    companies: sanitized.companies || [],
+    voice_keywords: sanitized.voiceKeywords || null,
+    voice_suitable: sanitized.voiceSuitable ? 1 : 0,
+    status: 'active',
+    last_updated: new Date().toISOString(),
+    created_at: new Date().toISOString()
   });
+  writeQuestions(sanitized.channel, questions);
   
   console.log(`✅ Question ${sanitized.id} validated and saved successfully`);
   return sanitized.id;
@@ -797,8 +802,11 @@ async function main() {
     const count = parseInt(process.env.COUNT || '1');
 
     if (!input) {
-      const allChannels = await getAllChannelsFromDb();
-      const channelCounts = await getChannelQuestionCounts();
+      const allChannels = readAllChannels();
+      const channelCounts = {};
+      for (const ch of allChannels) {
+        channelCounts[ch] = readQuestions(ch).length;
+      }
 
       const eligibleChannels = channel ? [channel] : allChannels;
       const sortedChannels = [...eligibleChannels]

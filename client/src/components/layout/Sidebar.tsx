@@ -14,7 +14,8 @@ import {
   Home, BookOpen, Award, Mic, Code, Target, Flame,
   Trophy, Bookmark, Brain, Coins, Layers,
   GraduationCap, BarChart3, ChevronLeft, ChevronRight,
-  Search, User, Info, Settings, Zap, Activity, Palette
+  Search, User, Info, Settings, Zap, Activity, Palette,
+  Bell, Sparkles, FileText, Bot
 } from 'lucide-react';
 
 interface NavItem {
@@ -51,12 +52,21 @@ const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] =
     label: 'Progress',
     icon: BarChart3,
     items: [
-      { id: 'badges',    label: 'Badges',     icon: Trophy,    path: '/badges' },
-      { id: 'bookmarks', label: 'Bookmarks',  icon: Bookmark,  path: '/bookmarks' },
-      { id: 'events',    label: 'Events Log', icon: Activity,  path: '/events' },
-      { id: 'profile',   label: 'Profile',    icon: User,      path: '/profile' },
-      { id: 'manage-subscriptions', label: 'My Subscriptions', icon: Settings, path: '/manage-subscriptions' },
-      { id: 'about',     label: 'About',      icon: Info,      path: '/about' },
+      { id: 'badges',    label: 'Badges',       icon: Trophy,    path: '/badges' },
+      { id: 'bookmarks', label: 'Bookmarks',    icon: Bookmark,  path: '/bookmarks' },
+      { id: 'events',    label: 'Events Log',   icon: Activity,  path: '/events' },
+      { id: 'notifications', label: 'Notifications', icon: Bell, path: '/notifications' },
+      { id: 'whats-new', label: "What's New",   icon: Sparkles,  path: '/whats-new' },
+      { id: 'profile',   label: 'Profile',      icon: User,      path: '/profile' },
+      { id: 'about',     label: 'About',        icon: Info,      path: '/about' },
+    ],
+  },
+  {
+    label: 'Resources',
+    icon: BookOpen,
+    items: [
+      { id: 'blog',  label: 'Blog',  icon: FileText, path: '/blog' },
+      { id: 'docs',  label: 'Docs',  icon: BookOpen, path: '/docs' },
     ],
   },
   {
@@ -291,13 +301,22 @@ export function Sidebar() {
         </button>
 
         {!isCollapsed && (
-          <button
-            onClick={() => setLocation('/profile')}
-            className="w-full flex items-center gap-2 px-2.5 py-1.5 mt-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs"
-          >
-            <Settings className="w-3.5 h-3.5" />
-            <span>Settings</span>
-          </button>
+          <div className="mt-1 space-y-0.5">
+            <button
+              onClick={() => setLocation('/bot-activity')}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs"
+            >
+              <Bot className="w-3.5 h-3.5" />
+              <span>Bot Activity</span>
+            </button>
+            <button
+              onClick={() => setLocation('/profile')}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              <span>Settings</span>
+            </button>
+          </div>
         )}
       </div>
     </motion.aside>

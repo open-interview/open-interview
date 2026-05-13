@@ -1,15 +1,7 @@
 #!/usr/bin/env node
-/**
- * Content Quality Gate
- * Runs all questions through validateQuestionFormat and reports counts.
- * Exits with code 1 if more than 1% of questions are invalid.
- * 
- * Usage: node script/test-content-quality.js
- * Env: SQLITE_URL or uses local.db
- */
 
 import 'dotenv/config';
-import { dbClient as client } from './db/pg-client.js';
+import { getAllUnifiedQuestions } from './utils.js';
 
 function validateQuestionFormat(question) {
   const issues = [];
@@ -46,8 +38,8 @@ function validateQuestionFormat(question) {
 async function main() {
   console.log('=== 🔒 Content Quality Gate ===\n');
 
-  const result = await client.execute('SELECT id, question, answer, channel, difficulty FROM questions WHERE status != \'deleted\'');
-  const questions = result.rows;
+  const allQuestions = await getAllUnifiedQuestions();
+  const questions = allQuestions.filter(q => q.status !== 'deleted');
   console.log(`Checking ${questions.length} questions...\n`);
 
   const counts = {

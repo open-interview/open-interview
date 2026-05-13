@@ -19,6 +19,8 @@
  */
 
 import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
 import { getDb, initBotTables } from './shared/db.js';
 import { logAction } from './shared/ledger.js';
 import { addToQueue } from './shared/queue.js';
@@ -26,6 +28,19 @@ import { startRun, completeRun, failRun, updateRunStats } from './shared/runs.js
 
 const BOT_NAME = 'unified-content';
 const db = getDb();
+
+const QUESTIONS_DIR = path.join(process.cwd(), 'data', 'questions');
+
+function readAllQuestions() {
+  let files = [];
+  try { files = fs.readdirSync(QUESTIONS_DIR); } catch { return []; }
+  const all = [];
+  for (const f of files) {
+    if (!f.endsWith('.json')) continue;
+    try { all.push(...JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, f), 'utf8'))); } catch {}
+  }
+  return all;
+}
 
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled rejection:', err.message);
@@ -193,13 +208,10 @@ async function generateVoiceSessions() {
 
 async function generateFlashcard(options) {
   const { generateFlashcardsParallel } = await import('../ai/graphs/flashcard-graph.js');
-  const db = getDb();
-  let sql = `SELECT id, question, answer, channel, difficulty FROM questions WHERE status='active'`;
-  const args = [];
-  if (options.channel) { sql += ' AND channel = ?'; args.push(options.channel); }
-  sql += ' LIMIT ?'; args.push(options.count || 10);
-  const result = await db.execute({ sql, args });
-  return generateFlashcardsParallel(result.rows, { concurrency: 10, batchSize: 10 });
+  let questions = readAllQuestions().filter(q => q.status === 'active');
+  if (options.channel) { questions = questions.filter(q => q.channel === options.channel); }
+  questions = questions.slice(0, options.count || 10);
+  return generateFlashcardsParallel(questions, { concurrency: 10, batchSize: 10 });
 }
 
 async function generateBlogPost(options) {

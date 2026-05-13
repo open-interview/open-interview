@@ -11,7 +11,12 @@
  * Run daily via GitHub Actions or cron
  */
 
-import { dbClient as client } from './utils.js';
+import { getAllUnifiedQuestions, getQuestionsForChannel } from './utils.js';
+import fs from 'fs';
+import path from 'path';
+
+const QUESTIONS_DIR = path.join(process.cwd(), 'data', 'questions');
+const LEARNING_PATHS_PATH = path.join(process.cwd(), 'data', 'learning-paths.json');
 import ragService from './ai/services/rag-enhanced-generation.js';
 import jobTitleService from './ai/services/job-title-relevance.js';
 import vectorDB from './ai/services/vector-db.js';
@@ -34,15 +39,6 @@ async function generateAllLearningPaths() {
   console.log('🚀 Starting learning path generation...\n');
   
   await vectorDB.init();
-  
-  // Verify DB connectivity before proceeding
-  try {
-    await client.execute({ sql: 'SELECT 1', args: [] });
-  } catch (err) {
-    console.warn(`⚠️  Could not connect to database: ${err.message}`);
-    console.warn('   Skipping learning path generation');
-    return;
-  }
   
   const stats = {
     companyPaths: 0,
@@ -88,19 +84,19 @@ async function generateCompanyPaths(company) {
   console.log(`  Analyzing ${company}...`);
   
   // Get all questions tagged with this company
-  const result = await client.execute({
-    sql: `SELECT * FROM questions 
-          WHERE companies LIKE ? AND status = 'active'
-          ORDER BY relevance_score DESC`,
-    args: [`%"${company}"%`]
-  });
+  const allQuestions = await getAllUnifiedQuestions();
+  const result = allQuestions.filter(q =>
+    (q.status === 'active' || !q.status) &&
+    q.companies && Array.isArray(q.companies) &&
+    q.companies.some(c => c.toLowerCase() === company.toLowerCase())
+  );
   
-  if (result.rows.length < 10) {
-    console.log(`    ⚠️  Insufficient data (${result.rows.length} questions)`);
+  if (result.length < 10) {
+    console.log(`    ⚠️  Insufficient data (${result.length} questions)`);
     return [];
   }
   
-  console.log(`    Found ${result.rows.length} questions`);
+  console.log(`    Found ${result.length} questions`);
   
   // Group by difficulty
   const byDifficulty = {
@@ -109,7 +105,7 @@ async function generateCompanyPaths(company) {
     advanced: []
   };
   
-  for (const row of result.rows) {
+  for (const row of result) {
     const diff = row.difficulty || 'intermediate';
     if (byDifficulty[diff]) {
       byDifficulty[diff].push(row);
@@ -127,8 +123,8 @@ async function generateCompanyPaths(company) {
     
     // Extract channels and tags
     const channels = [...new Set(questions.map(q => q.channel))];
-    const allTags = questions.flatMap(q => 
-      q.tags ? JSON.parse(q.tags) : []
+    const allTags = questions.flatMap(q =>
+      Array.isArray(q.tags) ? q.tags : (q.tags ? JSON.parse(q.tags) : [])
     );
     const topTags = getTopTags(allTags, 10);
     
@@ -185,19 +181,17 @@ async function generateJobTitlePaths(jobTitle) {
   if (!config) return [];
   
   // Get questions relevant to this job title
-  const result = await client.execute({
-    sql: `SELECT * FROM questions 
-          WHERE job_title_relevance IS NOT NULL 
-          AND status = 'active'
-          ORDER BY relevance_score DESC
-          LIMIT 500`
-  });
-  
-  // Filter by relevance score
-  const relevantQuestions = result.rows.filter(row => {
+  const allQuestions = await getAllUnifiedQuestions();
+  const relevantQuestions = allQuestions.filter(row => {
+    if (row.status === 'deleted') return false;
     if (!row.job_title_relevance) return false;
-    const relevance = JSON.parse(row.job_title_relevance);
-    return relevance[jobTitle] && relevance[jobTitle] >= 40; // Threshold
+    let relevance;
+    try {
+      relevance = typeof row.job_title_relevance === 'string' ? JSON.parse(row.job_title_relevance) : row.job_title_relevance;
+    } catch {
+      return false;
+    }
+    return relevance[jobTitle] && relevance[jobTitle] >= 40;
   });
   
   if (relevantQuestions.length < 10) {
@@ -241,7 +235,9 @@ async function generateJobTitlePaths(jobTitle) {
     const orderedQuestions = await orderQuestionsWithRAG(topQuestions);
     
     const channels = [...new Set(questions.map(q => q.channel))];
-    const allTags = questions.flatMap(q => q.tags ? JSON.parse(q.tags) : []);
+    const allTags = questions.flatMap(q =>
+      Array.isArray(q.tags) ? q.tags : (q.tags ? JSON.parse(q.tags) : [])
+    );
     const topTags = getTopTags(allTags, 10);
     
     const objectives = generateJobTitleObjectives(jobTitle, difficulty, channels);
@@ -292,14 +288,13 @@ async function generateSkillBasedPaths() {
   console.log('  Using RAG to identify skill clusters...');
   
   // Get all channels
-  const channelsResult = await client.execute(
-    "SELECT DISTINCT channel FROM questions WHERE status = 'active'"
-  );
+  const channelsResult = fs.readdirSync(QUESTIONS_DIR)
+    .filter(f => f.endsWith('.json'))
+    .map(f => ({ channel: f.replace(/\.json$/, '') }));
   
   const paths = [];
   
-  for (const row of channelsResult.rows) {
-    const channel = row.channel;
+  for (const { channel } of channelsResult) {
     
     // Find coverage gaps using RAG
     const gaps = await ragService.findCoverageGaps(channel, { minQuestions: 5 });
@@ -438,48 +433,51 @@ function createMilestones(totalQuestions) {
   return milestones;
 }
 
-async function upsertLearningPath(path) {
-  // Check if exists
-  const existing = await client.execute({
-    sql: 'SELECT id FROM learning_paths WHERE id = ?',
-    args: [path.id]
-  });
+async function upsertLearningPath(lp) {
+  let allPaths = [];
+  try {
+    if (fs.existsSync(LEARNING_PATHS_PATH)) {
+      allPaths = JSON.parse(fs.readFileSync(LEARNING_PATHS_PATH, 'utf8'));
+    }
+  } catch {}
   
-  if (existing.rows.length > 0) {
-    // Update
-    await client.execute({
-      sql: `UPDATE learning_paths SET 
-            title = ?, description = ?, difficulty = ?, estimated_hours = ?,
-            question_ids = ?, channels = ?, tags = ?, prerequisites = ?,
-            learning_objectives = ?, milestones = ?, metadata = ?,
-            last_updated = ?, last_generated = ?
-            WHERE id = ?`,
-      args: [
-        path.title, path.description, path.difficulty, path.estimatedHours,
-        path.questionIds, path.channels, path.tags, path.prerequisites,
-        path.learningObjectives, path.milestones, path.metadata,
-        new Date().toISOString(), path.lastGenerated, path.id
-      ]
-    });
+  const idx = allPaths.findIndex(p => p.id === lp.id);
+  const now = new Date().toISOString();
+  
+  const entry = {
+    id: lp.id,
+    title: lp.title,
+    description: lp.description,
+    path_type: lp.pathType,
+    target_company: lp.targetCompany || null,
+    target_job_title: lp.targetJobTitle || null,
+    difficulty: lp.difficulty,
+    estimated_hours: lp.estimatedHours,
+    question_ids: lp.questionIds,
+    channels: lp.channels,
+    tags: lp.tags,
+    prerequisites: lp.prerequisites || '[]',
+    learning_objectives: lp.learningObjectives || '[]',
+    milestones: lp.milestones || '[]',
+    popularity: lp.popularity || 0,
+    completion_rate: lp.completionRate || 0,
+    average_rating: lp.averageRating || 0,
+    metadata: lp.metadata || '{}',
+    status: lp.status || 'active',
+    created_at: idx >= 0 ? allPaths[idx].created_at : now,
+    last_updated: now,
+    last_generated: lp.lastGenerated || now
+  };
+  
+  if (idx >= 0) {
+    allPaths[idx] = entry;
   } else {
-    // Insert
-    await client.execute({
-      sql: `INSERT INTO learning_paths (
-        id, title, description, path_type, target_company, target_job_title,
-        difficulty, estimated_hours, question_ids, channels, tags, prerequisites,
-        learning_objectives, milestones, popularity, completion_rate, average_rating,
-        metadata, status, created_at, last_updated, last_generated
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [
-        path.id, path.title, path.description, path.pathType, path.targetCompany,
-        path.targetJobTitle, path.difficulty, path.estimatedHours, path.questionIds,
-        path.channels, path.tags, path.prerequisites, path.learningObjectives,
-        path.milestones, path.popularity, path.completionRate, path.averageRating,
-        path.metadata, path.status, new Date().toISOString(), new Date().toISOString(),
-        path.lastGenerated
-      ]
-    });
+    allPaths.push(entry);
   }
+  
+  const dir = path.dirname(LEARNING_PATHS_PATH);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(LEARNING_PATHS_PATH, JSON.stringify(allPaths, null, 2));
 }
 
 function capitalize(str) {

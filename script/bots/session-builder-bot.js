@@ -12,6 +12,8 @@
  */
 
 import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
 import { getDb, initBotTables } from './shared/db.js';
 import { logAction } from './shared/ledger.js';
 import { startRun, completeRun, failRun, updateRunStats } from './shared/runs.js';
@@ -19,6 +21,25 @@ import { runWithRetries, parseJson } from '../utils.js';
 
 const BOT_NAME = 'session-builder';
 const db = getDb();
+
+const QUESTIONS_DIR = path.join(process.cwd(), 'data', 'questions');
+
+function readQuestions(ch) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, `${ch}.json`), 'utf8'));
+  } catch { return []; }
+}
+
+function readAllQuestions() {
+  let files = [];
+  try { files = fs.readdirSync(QUESTIONS_DIR); } catch { return []; }
+  const all = [];
+  for (const f of files) {
+    if (!f.endsWith('.json')) continue;
+    try { all.push(...JSON.parse(fs.readFileSync(path.join(QUESTIONS_DIR, f), 'utf8'))); } catch {}
+  }
+  return all;
+}
 
 // Parse CLI args
 const args = process.argv.slice(2);
@@ -46,19 +67,18 @@ async function loadQuestionsNode(state) {
   if (options.channel) console.log(`   Channel filter: ${options.channel}`);
   if (options.limit) console.log(`   Limit: ${options.limit}`);
 
-  let sql = `SELECT id, question, answer, explanation, channel, sub_channel, difficulty, tags, voice_keywords
-          FROM questions 
-          WHERE voice_suitable = 1 
-          AND status = 'active'
-          AND voice_keywords IS NOT NULL`;
-  const sqlArgs = [];
-  if (options.channel) { sql += ' AND channel = ?'; sqlArgs.push(options.channel); }
-  sql += ' ORDER BY channel, sub_channel';
-  if (options.limit) { sql += ' LIMIT ?'; sqlArgs.push(options.limit); }
+  let questions = readAllQuestions().filter(q =>
+    q.voice_suitable === 1 && q.status === 'active' && q.voice_keywords != null
+  );
+  if (options.channel) {
+    questions = questions.filter(q => q.channel === options.channel);
+  }
+  questions.sort((a, b) => (a.channel || '').localeCompare(b.channel || '') || (a.sub_channel || '').localeCompare(b.sub_channel || ''));
+  if (options.limit) {
+    questions = questions.slice(0, options.limit);
+  }
 
-  const result = await db.execute({ sql, args: sqlArgs });
-  
-  const questions = result.rows.map(row => ({
+  questions = questions.map(row => ({
     id: row.id,
     question: row.question,
     answer: row.answer,
@@ -66,8 +86,8 @@ async function loadQuestionsNode(state) {
     channel: row.channel,
     subChannel: row.sub_channel,
     difficulty: row.difficulty,
-    tags: row.tags ? JSON.parse(row.tags) : [],
-    voiceKeywords: row.voice_keywords ? JSON.parse(row.voice_keywords) : []
+    tags: row.tags || [],
+    voiceKeywords: row.voice_keywords || []
   }));
   
   console.log(`   Found ${questions.length} voice-suitable questions`);
@@ -176,17 +196,17 @@ async function saveNode(state) {
   let savedSessions = 0;
 
   // Clear existing relationships and sessions (rebuild fresh)
-  await db.execute('DELETE FROM question_relationships');
-  await db.execute('DELETE FROM voice_sessions');
+  db.writeArray('relationships.json', []);
+  db.writeArray('voice_sessions.json', []);
 
   // Save relationships
   for (const rel of relationships) {
     try {
-      await db.execute({
-        sql: `INSERT INTO question_relationships 
-              (source_question_id, target_question_id, relationship_type, strength)
-              VALUES (?, ?, ?, ?)`,
-        args: [rel.sourceId, rel.targetId, rel.type, rel.strength]
+      db.appendToArray('relationships.json', {
+        source_question_id: rel.sourceId,
+        target_question_id: rel.targetId,
+        relationship_type: rel.type,
+        strength: rel.strength
       });
       savedRelationships++;
     } catch (e) {
@@ -195,44 +215,28 @@ async function saveNode(state) {
   }
 
   // Save sessions with deduplication
+  const allSessions = db.readArray('voice_sessions.json');
   for (const session of sessions) {
     try {
-      // Dedup: check if session with same sorted question_ids already exists
       const sortedIds = JSON.stringify([...session.questionIds].sort());
-      const existing = await db.execute({
-        sql: `SELECT id FROM voice_sessions WHERE question_ids = $1`,
-        args: [sortedIds]
+      const isDup = allSessions.some(s => {
+        try { return JSON.stringify([...(s.question_ids || [])].sort()) === sortedIds; } catch { return false; }
       });
-      // Fallback: manual check if json() not supported
-      if (existing.rows.length === 0) {
-        const allSessions = await db.execute({ sql: `SELECT id, question_ids FROM voice_sessions`, args: [] });
-        const isDup = allSessions.rows.some(r => {
-          try { return JSON.stringify(JSON.parse(r.question_ids).sort()) === sortedIds; } catch { return false; }
-        });
-        if (isDup) {
-          console.log(`   ⚠️ Duplicate session skipped: ${session.topic}`);
-          continue;
-        }
-      } else if (existing.rows.length > 0) {
+      if (isDup) {
         console.log(`   ⚠️ Duplicate session skipped: ${session.topic}`);
         continue;
       }
 
-      await db.execute({
-        sql: `INSERT INTO voice_sessions 
-              (id, topic, description, channel, difficulty, question_ids, total_questions, estimated_minutes, last_updated)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        args: [
-          session.id,
-          session.topic,
-          session.description,
-          session.channel,
-          session.difficulty,
-          JSON.stringify(session.questionIds),
-          session.totalQuestions,
-          session.estimatedMinutes,
-          new Date().toISOString()
-        ]
+      allSessions.push({
+        id: session.id,
+        topic: session.topic,
+        description: session.description,
+        channel: session.channel,
+        difficulty: session.difficulty,
+        question_ids: session.questionIds,
+        total_questions: session.totalQuestions,
+        estimated_minutes: session.estimatedMinutes,
+        last_updated: new Date().toISOString()
       });
       savedSessions++;
 
@@ -248,6 +252,7 @@ async function saveNode(state) {
       console.error(`   Failed to save session: ${e.message}`);
     }
   }
+  db.writeArray('voice_sessions.json', allSessions);
 
   console.log(`   Saved ${savedRelationships} relationships`);
   console.log(`   Saved ${savedSessions} sessions`);

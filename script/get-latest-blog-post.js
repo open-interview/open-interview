@@ -1,21 +1,34 @@
 #!/usr/bin/env node
-/**
- * Get Latest Blog Post for LinkedIn Sharing
- * Fetches the most recent unshared blog post from the database
- */
 
 import 'dotenv/config';
 import fs from 'fs';
-import { dbClient as client } from './db/pg-client.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const BLOG_BASE_URL = process.env.BLOG_BASE_URL || 'https://open-interview.github.io';
-
 const specificUrl = process.env.SPECIFIC_URL;
+const SHARED_POSTS_FILE = path.join(__dirname, '..', 'data', 'shared-posts.json');
 
-// DEPRECATED: Schema is now managed by Drizzle ORM migrations.
-// Run `pnpm db:push` to apply schema changes.
-async function ensureLinkedInColumn() {
-  console.log('📦 Blog schema managed by Drizzle ORM. Run `pnpm db:push` for migrations.');
+const BLOG_POSTS_DIR = path.join(__dirname, '..', 'data', 'blog-posts');
+
+function readBlogPosts() {
+  if (!fs.existsSync(BLOG_POSTS_DIR)) return [];
+  const files = fs.readdirSync(BLOG_POSTS_DIR).filter(f => f.endsWith('.json'));
+  const posts = [];
+  for (const file of files) {
+    try {
+      const data = JSON.parse(fs.readFileSync(path.join(BLOG_POSTS_DIR, file), 'utf8'));
+      posts.push(...(Array.isArray(data) ? data : [data]));
+    } catch {}
+  }
+  return posts;
+}
+
+function readSharedPosts() {
+  if (!fs.existsSync(SHARED_POSTS_FILE)) return {};
+  try { return JSON.parse(fs.readFileSync(SHARED_POSTS_FILE, 'utf8')); } catch { return {}; }
 }
 
 async function isUrlLive(postUrl, timeout = 8000) {
@@ -31,32 +44,25 @@ async function isUrlLive(postUrl, timeout = 8000) {
 }
 
 async function getLatestUnsharedPost() {
-  // If specific URL provided, extract post id and find that post
   if (specificUrl) {
-    // URL format: /posts/{id}/{slug}/
     const match = specificUrl.match(/\/posts\/([^\/]+)\/([^\/]+)/);
     if (match) {
       const postId = match[1];
-      const result = await client.execute({
-        sql: `SELECT * FROM blog_posts WHERE id = ? LIMIT 1`,
-        args: [postId]
-      });
-      if (result.rows.length > 0) {
-        return result.rows[0];
-      }
+      const posts = readBlogPosts();
+      const post = posts.find(p => p.id === postId);
+      if (post) return post;
     }
   }
 
-  // Fetch a batch of candidates and return the first one whose URL is live.
-  // This skips posts that exist in the DB but were never deployed to GitHub Pages.
-  const result = await client.execute(`
-    SELECT * FROM blog_posts
-    WHERE linkedin_shared_at IS NULL
-    ORDER BY created_at DESC
-    LIMIT 20
-  `);
+  const sharedPosts = readSharedPosts();
+  const allPosts = readBlogPosts();
 
-  for (const post of result.rows) {
+  const unshared = allPosts
+    .filter(post => !sharedPosts[post.id]?.linkedinSharedAt)
+    .sort((a, b) => (b.createdAt || b.created_at || '').localeCompare(a.createdAt || a.created_at || ''))
+    .slice(0, 20);
+
+  for (const post of unshared) {
     const postUrl = `${BLOG_BASE_URL}/posts/${post.id}/${post.slug}/`;
     const live = await isUrlLive(postUrl);
     if (live) {
@@ -70,8 +76,7 @@ async function getLatestUnsharedPost() {
 
 function generateExcerpt(intro, maxLength = 200) {
   if (!intro) return '';
-  
-  // Clean up the intro
+
   let excerpt = intro
     .replace(/\*\*/g, '')
     .replace(/\*/g, '')
@@ -79,19 +84,18 @@ function generateExcerpt(intro, maxLength = 200) {
     .replace(/\[.*?\]/g, '')
     .replace(/\n+/g, ' ')
     .trim();
-  
+
   if (excerpt.length > maxLength) {
     excerpt = excerpt.substring(0, maxLength - 3) + '...';
   }
-  
+
   return excerpt;
 }
 
 function formatTags(tags, channel, title = '', excerpt = '') {
   let tagList = [];
   try { tagList = tags ? JSON.parse(tags) : []; } catch { tagList = []; }
-  
-  // Channel-specific hashtags for better reach
+
   const channelHashtags = {
     'aws': ['AWS', 'Cloud', 'CloudComputing'],
     'kubernetes': ['Kubernetes', 'K8s', 'CloudNative', 'DevOps'],
@@ -108,23 +112,20 @@ function formatTags(tags, channel, title = '', excerpt = '') {
     'sre': ['SRE', 'Reliability', 'Observability'],
     'testing': ['Testing', 'QA', 'TestAutomation']
   };
-  
-  // Extract keywords from title (simple approach)
+
   const titleKeywords = title
     .toLowerCase()
     .split(/\s+/)
     .filter(word => word.length > 4 && !['about', 'using', 'guide', 'learn'].includes(word))
     .slice(0, 3);
-  
-  // Combine all sources
+
   const allTags = [
     channel,
     ...tagList,
     ...(channelHashtags[channel] || []),
     ...titleKeywords
   ].filter(Boolean);
-  
-  // Deduplicate (case-insensitive)
+
   const seen = new Set();
   const uniqueTags = allTags.filter(tag => {
     const lower = tag.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -132,8 +133,7 @@ function formatTags(tags, channel, title = '', excerpt = '') {
     seen.add(lower);
     return true;
   });
-  
-  // Convert to hashtags (limit to 10 for optimal LinkedIn performance)
+
   return uniqueTags
     .slice(0, 10)
     .map(tag => '#' + tag.replace(/[^a-zA-Z0-9]/g, ''))
@@ -143,36 +143,31 @@ function formatTags(tags, channel, title = '', excerpt = '') {
 async function main() {
   console.log('🔍 Getting latest blog post for LinkedIn...\n');
   console.log(`📡 Blog Base URL: ${BLOG_BASE_URL}`);
-  
-  await ensureLinkedInColumn();
-  
+
   const post = await getLatestUnsharedPost();
-  
+
   if (!post) {
     console.log('No unshared posts found');
-    
-    // Set GitHub Actions output
+
     const outputFile = process.env.GITHUB_OUTPUT;
     if (outputFile) {
       fs.appendFileSync(outputFile, `has_post=false\n`);
     }
     return;
   }
-  
-  // URL structure: /posts/{id}/{slug}/
+
   const postUrl = `${BLOG_BASE_URL}/posts/${post.id}/${post.slug}/`;
   const excerpt = generateExcerpt(post.introduction);
   const tags = formatTags(post.tags, post.channel, post.title, excerpt);
-  
+
   console.log(`📝 Found post: ${post.title}`);
   console.log(`   URL: ${postUrl}`);
   console.log(`   Channel: ${post.channel}`);
   console.log(`   Tags: ${tags}`);
-  
-  // Parse rich context fields
+
   let quickReference = '';
   try {
-    const qr = JSON.parse(post.quick_reference || '[]');
+    const qr = JSON.parse(post.quick_reference || post.quickReference || '[]');
     quickReference = Array.isArray(qr) ? qr.join(' | ') : '';
   } catch (e) {
     console.warn(`   ⚠️ Failed to parse quick_reference for post ${post.id}: ${e.message}`);
@@ -182,7 +177,7 @@ async function main() {
   let socialHook = '';
   let socialBody = '';
   try {
-    const ss = JSON.parse(post.social_snippet || '{}');
+    const ss = JSON.parse(post.social_snippet || post.socialSnippet || '{}');
     socialHook = ss.hook || '';
     socialBody = Array.isArray(ss.body) ? ss.body.join('\n') : (ss.body || '');
   } catch (e) {
@@ -191,7 +186,7 @@ async function main() {
 
   let realWorldExample = '';
   try {
-    const rwe = JSON.parse(post.real_world_example || '{}');
+    const rwe = JSON.parse(post.real_world_example || post.realWorldExample || '{}');
     if (rwe?.company && rwe?.scenario) {
       const sourceNote = rwe.sourceUrl ? ` (source: ${rwe.sourceUrl})` : '';
       realWorldExample = `${rwe.company}: ${rwe.scenario}${sourceNote}`;
@@ -200,7 +195,6 @@ async function main() {
     console.warn(`   ⚠️ Failed to parse real_world_example for post ${post.id}: ${e.message}`);
   }
 
-  // Set GitHub Actions outputs — use heredoc for values that may contain newlines
   const outputFile = process.env.GITHUB_OUTPUT;
   if (outputFile) {
     const writeOutput = (key, value) => {
