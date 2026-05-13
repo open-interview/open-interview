@@ -43,6 +43,7 @@ run('script/generate-interview-intelligence.js', 'Generate interview intelligenc
 run('script/generate-rss.js', 'Generate RSS', true);
 run('script/generate-sitemap.js', 'Generate sitemap', true);
 runVite();
+run('script/generate-route-shells.mjs', 'Generate static route shells');
 run('script/generate-pagefind-index.js', 'Generate Pagefind index');
 run('script/build-pagefind.js', 'Build Pagefind');
 
