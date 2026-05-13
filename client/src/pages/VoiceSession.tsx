@@ -421,7 +421,7 @@ export default function VoiceSession() {
     return (
       <>
         <SEOHead title="Voice Sessions | Code Reels" description="Practice interview topics with focused question sessions" />
-        <AppLayout fullWidth>
+        <AppLayout fullWidth hideNav>
           <div className="min-h-screen bg-background text-foreground">
           <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
             <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">

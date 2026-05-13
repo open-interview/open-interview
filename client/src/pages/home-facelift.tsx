@@ -807,7 +807,7 @@ function LandingFooter() {
               title: "Product",
               links: [
                 { label: "Features", href: "#features" },
-                { label: "Learning Paths", href: "/learning-paths" },
+                { label: "Channels", href: "/channels" },
                 { label: "Voice Interviews", href: "/voice-interview" },
                 { label: "Code Challenges", href: "/code" },
               ],
