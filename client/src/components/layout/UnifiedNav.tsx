@@ -39,7 +39,7 @@ const mainNavItems: NavItem[] = [
 const learnSubNav: NavItem[] = [
   { id: 'channels',       label: 'Channels',        icon: BookOpen,      path: '/channels',        description: 'Browse by topic',       shortcut: 'C' },
   { id: 'certifications', label: 'Certifications',  icon: Award,         path: '/certifications',  description: 'Exam prep',             shortcut: 'E' },
-  { id: 'paths',          label: 'Learning Paths',  icon: Brain,         path: '/learning-paths',  description: 'Structured curricula',  badge: 'NEW' },
+  { id: 'paths',          label: 'Learning Paths',  icon: Brain,         path: '/learning-paths',  description: 'Structured curricula' },
   { id: 'my-path',        label: 'My Path',         icon: Target,        path: '/my-path',         description: 'Your learning journey' },
 ];
 
@@ -48,7 +48,7 @@ const practiceSubNav: NavItem[] = [
   { id: 'tests',      label: 'Quick Tests',     icon: Target, path: '/tests',           description: 'Timed challenges',    shortcut: 'T' },
   { id: 'coding',     label: 'Coding',          icon: Code,   path: '/code',            description: 'Code challenges',     shortcut: 'X' },
   { id: 'review',     label: 'SRS Review',      icon: Flame,  path: '/review',          description: 'Spaced repetition',   shortcut: 'R' },
-  { id: 'flashcards', label: 'Flashcards',      icon: Layers, path: '/flashcards',      description: 'Flip & memorize',     badge: 'NEW' },
+  { id: 'flashcards', label: 'Flashcards',      icon: Layers, path: '/flashcards',      description: 'Flip & memorize',     shortcut: 'R' },
 ];
 
 const progressSubNav: NavItem[] = [

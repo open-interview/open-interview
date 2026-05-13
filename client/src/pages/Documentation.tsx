@@ -1371,8 +1371,8 @@ graph LR
           </div>
           <CodeBlock
             language="bash"
-            code={`git clone https://github.com/your-repo/reel-learnhub.git
-cd reel-learnhub
+            code={`git clone https://github.com/your-repo/open-interview.git
+cd open-interview
 pnpm install`}
             copyable
           />

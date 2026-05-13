@@ -5,8 +5,7 @@ import { toast } from '@/hooks/use-toast';
 export default function StatsRedirect() {
   const [, nav] = useLocation();
   useEffect(() => {
-    const t = setTimeout(() => nav('/profile'), 1500);
-    return () => clearTimeout(t);
+    nav('/profile');
   }, [nav]);
   useEffect(() => {
     toast({

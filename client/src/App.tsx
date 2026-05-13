@@ -1,4 +1,4 @@
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { useEffect, useState, Suspense } from "react";
 import React from "react";
 import { queryClient } from "./lib/queryClient";
@@ -151,7 +151,7 @@ function Router() {
         <Route path="/coding" component={CodingChallenge} />
         <Route path="/coding/:id" component={CodingChallenge} />
         <Route path="/code" component={ChallengeHome} />
-        <Route path="/code/challenges">{() => { window.location.replace('/code'); return null; }}</Route>
+        <Route path="/code/challenges"><Redirect to="/code" /></Route>
         <Route path="/code/challenges/:id" component={ChallengeWorkspace} />
         <Route path="/bot-activity" component={BotActivity} />
         <Route path="/events" component={EventsDashboard} />
@@ -161,6 +161,7 @@ function Router() {
         <Route path="/my-path" component={MyPath} />
         <Route path="/personalized-path" component={PersonalizedPath} />
         <Route path="/profile" component={Profile} />
+        <Route path="/settings">{() => { window.location.replace('/profile'); return null; }}</Route>
         <Route path="/notifications" component={Notifications} />
         <Route path="/bookmarks" component={Bookmarks} />
         <Route path="/review" component={ReviewSession} />

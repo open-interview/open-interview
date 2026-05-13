@@ -99,11 +99,17 @@ export function Sidebar() {
       ? location === '/'
       : location === path || location.startsWith(path.replace(/\/$/, '') + '/');
 
-  const filteredSections = sections.map(s =>
-    s.label === 'Learn' && preferences.hideCertifications
-      ? { ...s, items: s.items.filter(i => i.id !== 'certifications') }
-      : s
-  );
+  const isAdmin = localStorage.getItem('admin') === 'true' || window.location.search.includes('admin=true');
+
+  const filteredSections = sections.map(s => {
+    if (s.label === 'Learn' && preferences.hideCertifications) {
+      return { ...s, items: s.items.filter(i => i.id !== 'certifications') };
+    }
+    if (s.label === 'Admin' && !isAdmin) {
+      return { ...s, items: s.items.filter(i => i.id !== 'bot-activity' && i.id !== 'events' && i.id !== 'docs') };
+    }
+    return s;
+  });
 
   const NavItemEl = ({ item }: { item: NavItem }) => {
     const Icon = item.icon;
@@ -292,6 +298,7 @@ export function Sidebar() {
 
         {!isCollapsed && (
           <div className="mt-1 space-y-0.5">
+            {isAdmin && (
             <button
               onClick={() => setLocation('/bot-activity')}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs"
@@ -299,6 +306,7 @@ export function Sidebar() {
               <Bot className="w-3.5 h-3.5" />
               <span>Bot Activity</span>
             </button>
+            )}
             <button
               onClick={() => setLocation('/profile')}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs"
