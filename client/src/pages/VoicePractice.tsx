@@ -102,14 +102,15 @@ export default function VoicePractice() {
       setLoading(true);
       const subscribedChannels = getSubscribedChannels();
 
+      if (subscribedChannels.length === 0) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const allQuestions: Question[] = [];
 
-        const channelsToLoad = subscribedChannels.length > 0
-          ? subscribedChannels
-          : (await ChannelService.getAll()).slice(0, 6).map(c => c);
-
-        for (const channel of channelsToLoad) {
+        for (const channel of subscribedChannels) {
           try {
             const data = await ChannelService.getData(channel.id);
             const suitable = data.questions.filter((q: Question) =>
@@ -380,11 +381,11 @@ export default function VoicePractice() {
     return (
       <>
         <SEOHead
-          title="Voice Practice | Open Interview"
+          title="Voice Practice | Code Reels"
           description="Practice answering interview questions with voice recording and feedback"
           canonical="https://open-interview.github.io/voice-practice"
         />
-        <AppLayout fullWidth>
+        <AppLayout fullWidth hideNav>
           <div className="min-h-screen bg-background text-foreground">
             <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
               <div className="max-w-4xl mx-auto px-4 h-14 flex items-center gap-3">
@@ -483,12 +484,12 @@ export default function VoicePractice() {
   return (
     <>
       <SEOHead
-        title="Voice Practice | Open Interview"
+        title="Voice Practice | Code Reels"
         description="Practice answering interview questions with voice recording and feedback"
         canonical="https://open-interview.github.io/voice-practice"
       />
 
-      <AppLayout fullWidth>
+      <AppLayout fullWidth hideNav>
         <div className="min-h-screen bg-background text-foreground">
           {/* Header */}
           <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">

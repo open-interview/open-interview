@@ -90,19 +90,14 @@ export default function BlogHomePage() {
           ...c,
           count: countByCategory[c.slug] || 0,
         })));
-        const totalArticles = postsRes.meta?.total || postsRes.data?.length || 0;
+        const totalArticles = postsRes.data?.length || 0;
         const totalReadingTime = (postsRes.data || []).reduce((sum: number, p: any) => sum + (p.readingTimeMinutes || 0), 0);
-        const avgReadTime = (postsRes.data || []).length > 0 ? Math.round(totalReadingTime / (postsRes.data || []).length) : 0;
-        const newestDate = (postsRes.data || []).reduce((latest: string, p: any) => {
-          const d = p.publishedAt || p.createdAt || '';
-          return d > latest ? d : latest;
-        }, '');
-        const newestLabel = newestDate ? new Date(newestDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Recent';
+        const avgReadTime = totalArticles > 0 ? Math.round(totalReadingTime / totalArticles) : 0;
         setStats([
           { label: "Published Articles", value: totalArticles, icon: <BookOpen size={18} />, accent: 'violet' as const },
           { label: "Topics Covered", value: catsData.length || 0, icon: <Grid3x3 size={18} />, accent: 'emerald' as const },
           { label: "Avg Read Time", value: avgReadTime, suffix: " min", icon: <Clock size={18} />, accent: 'amber' as const },
-          { label: "Updated", value: newestLabel as any, icon: <TrendingUp size={18} />, accent: 'cyan' as const },
+          { label: "Newest Article", value: "Latest", icon: <TrendingUp size={18} />, accent: 'cyan' as const },
         ]);
       })
       .finally(() => setLoading(false));
