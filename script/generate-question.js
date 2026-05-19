@@ -77,7 +77,8 @@ async function processChannel(channel, index, total, subChannelCounts, inputDiff
     // Silently fail - will retry
   }
 
-  const hasCerts = hasRelatedCertifications(channel);
+  const skipCerts = process.env.SKIP_CERTS === 'true';
+  const hasCerts = !skipCerts && hasRelatedCertifications(channel);
   
   let result;
   try {

@@ -1,0 +1,110 @@
+[
+  {
+    "id": "frontend-1779190848941-1",
+    "channel": "frontend",
+    "subChannel": "css",
+    "question": "How does CSS containment via the contain property interact with the browser's rendering pipeline, and what specific performance guarantees does content-visibility: auto provide over manual contain values for long-scrolling pages?",
+    "answer": "CSS containment tells the browser to isolate a subtree from the rest of the page, limiting how far rendering effects can propagate. The contain property accepts layout, paint, size, and style keywords. Layout containment establishes its own formatting context and prevents descendant positioned elements from affecting outside scrollable overflow or absolute positioning calculations; the browser skips layout invalidation outside the container when interior content changes. Paint containment clips descendant content to the container's box and prevents descendants from painting outside its bounds; the browser can skip painting the entire subtree when the container is offscreen. Size containment makes the element assume it has no intrinsic size unless explicitly set, meaning percentage-based children resolve against specified or explicit dimensions. Style containment scopes counters and quotes to the container. The value content-visibility: auto applies contain: layout paint style and adds a size-containment-like behavior, but instead of requiring explicit dimensions, it treats the element as having zero intrinsic size when offscreen and swaps to full containment as it approaches the viewport. Auto also adds visibility checks: offscreen subtrees skip layout, paint, and style recalculation entirely. The key benefit over manual contain values is that content-visibility: auto automatically manages based on viewport proximity, eliminating the need to juggle contain values across breakpoints or dynamic content heights. However, the zero-offscreen-size tradeoff means content above the fold that shifts layout forces the browser to recalculate sizes for elided offscreen sections, potentially causing Cumulative Layout Shift if contain-intrinsic-size is not provided. Content-visibility: auto also causes synchronous forced rendering if scripts query offsetHeight on offscreen elements, eliminating the performance benefit. The practical pattern is: apply content-visibility: auto to repeatable list items or card components, and set contain-intrinsic-size to each item's estimated block size so scrollbar thumb size remains accurate. This delivers the same subtree isolation that virtualized lists provide, but at the rendering-engine level with zero JavaScript overhead.",
+    "explanation": "CSS containment matters because modern web applications render hundreds of components that the browser must constantly check for cross-boundary effects. Without containment, any style change anywhere can trigger layout recalculations across the entire document tree. Stripe's dashboard uses containment on data rows to isolate table rendering when updating individual cells. Uber applies paint containment on map overlay list items to prevent repaints of off-screen entries during scroll. Airbnb uses content-visibility: auto on search result cards to sustain 60fps scrolling across hundreds of listings. The core engineering insight is that containment provides rendering isolation comparable to React virtualization but at the browser engine level with zero runtime cost. The most common mistake is applying content-visibility: auto without contain-intrinsic-size, which causes scrollbar jitter since elided elements report zero height. Another pitfall is using it on elements with scroll-driven animations or intersection observer callbacks that expect measurable dimensions at all times. Additionally, content-visibility: auto lazily renders subtrees, so browser find-in-page searches require forcing full render of matching sections, temporarily degrading performance. In production, the pattern is: use contain: paint style on fixed-position panels, use contain: layout on independently scrollable areas, and use content-visibility: auto on repeatable feed items with contain-intrinsic-size matching typical content height.",
+    "diagram": "flowchart TD\n  A[DOM update received] --> B{Inside contained subtree?}\n  B -->|Yes| C[Recalculate styles within container]\n  B -->|No| D[Global style recalc - expensive]\n  C --> E[Layout constraint: layout containment]\n  E --> F{Is subtree offscreen?}\n  F -->|Yes| G[Skip paint: no rendering work]\n  F -->|No| H[Paint subtree to composited layer]\n  G --> I[content-visibility: auto activates]\n  I --> J[Zero intrinsic size offscreen]\n  J --> K[Placeholder via contain-intrinsic-size]\n  K --> L[Near viewport?]\n  L -->|No| M[Keep zero-size, still no paint]\n  L -->|Yes| N[Swap to full render cycle]\n  N --> O[Layout, paint, composition complete]\n  H --> P[No style propagation to siblings or ancestors]",
+    "companies": [
+      "Stripe",
+      "Uber",
+      "Airbnb"
+    ],
+    "tags": [
+      "css",
+      "frontend"
+    ],
+    "difficulty": "advanced",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T11:40:48.941Z",
+    "lastUpdated": "2026-05-19T11:40:48.941Z"
+  },
+  {
+    "id": "frontend-1779191149908-2",
+    "channel": "frontend",
+    "subChannel": "react",
+    "question": "When updating state in React based on the previous state, why should you use the functional updater form (setCount(prev => prev + 1)) over directly referencing the current value (setCount(count + 1))?",
+    "answer": "The functional updater form should be used because React state updates are asynchronous and batched. When you write setCount(count + 1), you are closing over the value of count at the time the component rendered. If multiple state updates are batched together or if the user rapidly triggers updates (like clicking a button multiple times in quick succession), each call will capture the same stale count value, leading to incorrect results. For example, if count is 0 and you call setCount(count + 1) three times in the same synchronous block, all three see count = 0, so the final state is 1, not 3. With setCount(prev => prev + 1), each call receives the most recent pending state from React's internal queue, so three calls correctly produce 3. This is critical in event handlers, useEffect callbacks, and any scenario where multiple state updates may coalesce. React 18 with automatic batching makes this even more important, as updates inside timeouts, promises, and native event handlers are now batched alongside synthetic event updates. The functional updater also eliminates the need to list the state variable in the dependency array of useEffect when you only need the previous value, avoiding unnecessary re-runs. In practice, every senior React developer at companies like Stripe or Airbnb understands this distinction: the direct form is acceptable only when the next state does not depend on the previous state, like toggling a boolean, or when the update happens in a place guaranteed to run once per user action. For any derived update, the functional form is the safe, correct choice.",
+    "explanation": "This question targets understanding of React's rendering lifecycle and closure behavior. When a component function runs, all variables (including state values) are captured in that render's closure. Calling setCount triggers a re-render, but the current function continues executing with its original closure. This is why console.log(count) right after setCount still shows the old value. The functional updater solves this by giving you access to React's internal pending state queue, which is updated synchronously within React's reconciler even though the render is deferred. This pattern is not just academic — it directly prevents bugs in real-world scenarios like optimistic updates, polling intervals, WebSocket handlers, and debounced inputs. For instance, when building a collaborative cursor feature like Figma or a real-time comment counter like Disqus, stale closures from direct state access can cause off-by-one errors that are hard to reproduce. The functional updater also plays well with useReducer, which is built on the same principle of passing a reducer function rather than a value. Understanding this concept separates developers who can build reliable, bug-free UIs at scale from those who introduce subtle state corruption bugs that only surface under load.",
+    "diagram": "flowchart TD\n  A[User clicks button] --> B[Event handler fires]\n  B --> C{Update method?}\n  C -->|Direct: setCount(count+1)| D[Captures stale count from current render]\n  C -->|Functional: setCount(p=>p+1)| E[Reads pending state from React queue]\n  D --> F[Three rapid clicks, all see count=0]\n  F --> G[Final state: 1 - BUG]\n  E --> H[Each call sees incremented pending value]\n  H --> I[Final state: 3 - CORRECT]",
+    "companies": [
+      "Stripe",
+      "Airbnb",
+      "Uber"
+    ],
+    "tags": [
+      "react",
+      "frontend"
+    ],
+    "difficulty": "beginner",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T11:45:49.908Z",
+    "lastUpdated": "2026-05-19T11:45:49.908Z"
+  },
+  {
+    "id": "frontend-1779191322556-3",
+    "channel": "frontend",
+    "subChannel": "web-apis",
+    "question": "How would you implement a system to aggregate multiple cancellation signals from different sources (e.g., user action, component unmount, timeout) using the AbortController and AbortSignal APIs, and what are the key considerations for ensuring correct cleanup?",
+    "answer": "The AbortController interface provides an abort method that updates its associated AbortSignal. The signal can be passed to fetch and any custom async operations that accept it. To aggregate signals, you can use either AbortSignal.any() (available in modern browsers) or manually attach listeners to each individual signal. Using AbortSignal.any([timeoutSignal, userCancelSignal, parentSignal]) creates a new signal that aborts when any of the input signals abort. This is the cleanest approach. When one source aborts, the aggregated signal propagates the abort to the fetch call. Manual aggregation involves creating a single AbortController and listening to each source signal. When any source fires, you call controller.abort() and set up the reasons via the cause property. You must also remove listeners to avoid memory leaks: in the abort event handler, remove all listeners from source signals. Key considerations: always check signal.aborted before attaching listeners to avoid calling aborted signals. In React's useEffect, return a cleanup function that calls controller.abort() and removes listeners. Use AbortSignal.timeout() for simple timeouts. In cases where AbortSignal.any() is unsupported, provide a polyfill that creates a new controller and reacts to the fastest abort. Caveats: signals are one-shot; after abort() is called, the signal stays aborted. Do not reuse aborted controllers. The abort event fires asynchronously, so synchronous checks after calling abort() are safe. When using AbortSignal.any() with fetch, be aware that the stream is consumed; aborting mid-stream might leave the connection open in some browsers.",
+    "explanation": "AbortController is critical for modern web apps because it allows cancellation of fetch requests and any promise-based tasks. This prevents wasted bandwidth when a user navigates away, performs a new search, or when components unmount in SPA frameworks. Real-world usage includes search autocomplete: each keystroke aborts the previous request. Or lazy loading images: aborting when the user quickly scrolls past thumbnails. The aggregation pattern is especially useful for combining timeout, user gesture, and component lifecycle signals. Edge cases: if you forget to remove event listeners from source signals, you will have memory leaks. If you reuse a single controller across multiple fetches, aborting will cancel all of them, which might not be desired. Always create a new controller per operation. The AbortSignal.any() API is relatively new (Chrome 95+). For older browsers, you must manually implement aggregation. In React, the cleanup function in useEffect should call abort() on the controller and optionally set an isCancelled flag for non-fetch async operations. For stream data, aborting fetch will reject the promise, but you may need to also stop processing the stream explicitly.",
+    "diagram": "flowchart TD\n    A[Component mounts] --> B[Create parent AbortController]\n    B --> C[Define signals: timeout, unmount, user]\n    C --> D[Use AbortSignal.any() to aggregate]\n    D --> E[Pass aggregated signal to fetch]\n    E --> F{Any signal aborted?}\n    F -- Yes --> G[Fetch rejects with AbortError]\n    G --> H[Cleanup: remove event listeners]\n    F -- No --> I[Response fully streamed]\n    I --> J[Process and render data]\n    J --> H",
+    "companies": [
+      "Google",
+      "Meta",
+      "Amazon"
+    ],
+    "tags": [
+      "web-apis",
+      "frontend"
+    ],
+    "difficulty": "advanced",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T11:48:42.556Z",
+    "lastUpdated": "2026-05-19T11:48:42.556Z"
+  },
+  {
+    "id": "frontend-1779191496705-4",
+    "channel": "frontend",
+    "subChannel": "css",
+    "question": "How does the CSS @layer rule interact with the cascade, and how would you architect a layer strategy for a design system serving multiple products with conflicting style requirements?",
+    "answer": "The CSS @layer rule adds an explicit ordering dimension to the cascade, controlling which declarations win regardless of specificity or source order within those layers. Normal declarations in later layers override earlier layers, while important declarations reverse this — earlier layers override later layers. Unlayered normal styles beat all layered normal styles, acting as if they belong to the highest-priority implicit layer declared last. For a design system serving multiple products, I would architect layers as: reset (normalize browser defaults), tokens (design tokens as CSS custom properties), base (semantic element styles like headings and links), components (consistent single-class selectors for all reusable UI), utilities (atomic classes for layout and spacing), and products (product-specific overrides and customizations). This ordering ensures that components have predictable defaults, utilities enable rapid layout without touching component internals, and product teams can safely override any style without resorting to important or specificity arms races. Each layer uses identical specificity, so layer order is the sole arbiter of conflicts. Key edge cases include: imported stylesheets must declare their layer before the import statement; layers can nest as sub-layers like reset.base, creating a hierarchy that complicates resolution; the revert-layer keyword rolls back to the previous layer's value; legacy unlayered CSS always overrides layered CSS in normal flow, making incremental adoption dangerous without wrapping existing code; and keyframes and font-face declarations ignore layering entirely. Real-world adoption: Cloudflare Dashboard uses this pattern to separate their design system from product-specific dashboard features, Databricks applies layered CSS to their component library for workspace-level theming, and Snowflake's Snowsight uses layered strategies to manage their visualization component styles across multiple product surfaces. The strategy eliminates specificity wars that typically plague large applications and makes CSS predictable at scale.",
+    "explanation": "The @layer rule fundamentally alters the CSS cascade by introducing an explicit architectural dimension between origin and specificity in the cascade resolution order. Before @layer, large-scale design systems faced an unsolvable tradeoff: low-specificity selectors that consumers could override but risked breaking encapsulation, BEM-style high-specificity selectors that required important to override, or CSS-in-JS solutions that introduced runtime cost and server-side rendering complexity. None provided a clean dependency injection pattern for styles. @layer solves this by letting the design system ship all component styles in an early layer with identical specificity, while consumers declare overrides in a later layer with identical specificity. The layer order resolves conflicts predictably, not selector specificity or source order. This is the CSS equivalent of a dependency injection container — consumers customize behavior through clearly defined extension points rather than hacking around internals. Critical edge cases require team awareness: the !important property reverses layer priority, which often surprises developers who expect it to always win; legacy unlayered code deceptively overrides layered code, making gradual migration unsafe unless all existing CSS is wrapped in a catch-all layer; and the revert-layer keyword provides granular rollback but has limited browser support for complex multi-layer scenarios. Additionally, keyframes and font-face do not participate in layering, meaning multiple definitions still resolve by last declared wins. Nested layers create a sub-layer resolution order that adds cognitive overhead. Teams adopting @layer must enforce linting to prevent accidental layer ordering, ensure build tools output layers in the correct sequence, and audit existing CSS for unlayered styles that silently override layered ones. Properly implemented, @layer eliminates the primary source of CSS fragility in large applications and is now supported in all modern browsers.",
+    "diagram": "flowchart TD\n  A[CSS Declaration] --> B{Source Origin?}\n  B -->|Normal Author| C{In @layer?}\n  B -->|Important Author| D{In @layer?}\n  C -->|No - Unlayered| E[Highest Priority Layer]\n  C -->|Yes, Layer 1| F[Medium Priority]\n  C -->|Yes, Layer 2 later| G[Lower Priority]\n  D -->|Yes, Layer 1| H[Highest Priority - Reversed]\n  D -->|Yes, Layer 2 later| I[Lower Priority - Reversed]\n  D -->|No - Unlayered| J[Lowest Priority - Important]\n  E --> K{!important present?}\n  F --> K\n  G --> K\n  H --> K\n  I --> K\n  J --> K\n  K -->|Yes| L[Important wins in earliest layer]\n  K -->|No| M[Last layer or unlayered wins]\n  L --> N[Final Computed Value]\n  M --> N",
+    "companies": [
+      "Cloudflare",
+      "Databricks",
+      "Snowflake"
+    ],
+    "tags": [
+      "css",
+      "frontend"
+    ],
+    "difficulty": "advanced",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T11:51:36.705Z",
+    "lastUpdated": "2026-05-19T11:51:36.705Z"
+  }
+]

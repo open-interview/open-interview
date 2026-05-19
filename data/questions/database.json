@@ -1,0 +1,83 @@
+[
+  {
+    "id": "database-1779191222636-1",
+    "channel": "database",
+    "subChannel": "nosql",
+    "question": "Design a real-time leaderboard for a multiplayer game with millions of active players using a NoSQL database like DynamoDB or Cassandra. How would you model the data to support low-latency score updates and fast retrieval of top-N players while handling hot partitions and write contention?",
+    "answer": "For a real-time leaderboard, I would use DynamoDB with a composite primary key: partition key = game_id (or tournament_id) and sort key = player_id. The score would be a top-level numeric attribute. To support fast top-N queries, I would create a global secondary index (GSI) with partition key = game_id and sort key = score, projected to include player_id and score. This allows a Query operation on the GSI with ScanIndexForward=false and Limit=N to fetch the top N players in a single request. For score updates, I would use an atomic UpdateItem with an UpdateExpression to increment the score by a delta (e.g., SET score = score + :points). To mitigate hot partitions (e.g., a popular game_id), I could distribute writes using write sharding: append a random suffix (0-9) to the partition key during writes, and then query each shard independently and merge results. This spreads the write load across multiple physical partitions. For bursty reads, I would layer a Redis cache in front of the leaderboard, invalidating it after a short TTL (e.g., 5 seconds) or when a new top score is detected. The trade-off is eventual consistency: updates might take seconds to propagate to the cache, but for a real-time game this is acceptable. If strong consistency is required, DynamoDB's ConsistentRead parameter can be used on the GSI, but at higher cost. For Cassandra, I would use a table with primary key (game_id, player_id) and a sorted clustering order on score via a materialized view or a separate table with (game_id, score) as primary key and player_id as clustering column, but this requires careful handling of tombstone overhead from frequent score updates. Overall, the DynamoDB + GSI + write sharding + Redis cache pattern is production-proven at companies like Uber and Airbnb for leaderboard and ranking use cases.",
+    "explanation": "This question tests deep understanding of NoSQL data modeling under real-world constraints: high write throughput, hot keys, and fast range queries. The naive solution (single partition for a leaderboard) fails because DynamoDB partitions handle ~1000 WCU/3000 RCU per partition; a million players updating every minute would overwhelm one partition. Write sharding evenly distributes load but requires a scatter-gather read pattern — each shard is queried and results are merged server-side, adding complexity. The GSI approach avoids scanning the entire table but has its own costs: GSIs are eventually consistent and have separate throughput limits. Companies like Uber use a similar write-sharded DynamoDB table for their driver location service (though location is different from scores). Edge cases include ties: if two players share the same score, sort by timestamp or player_id to break ties. Another edge is stale cache: if the game ends and the leaderboard freezes, the cache should be invalidated immediately. Real-world production leaderboards (e.g., Airbnb's guest reviews ranking, Stripe's top merchants) combine DynamoDB with Redis or Elasticsearch for reads and DynamoDB Streams + Lambda to update materialized views. The ability to discuss trade-offs — consistency vs. latency, write amplification vs. read simplicity — separates senior engineers.",
+    "diagram": "flowchart TD\n  A[Player scores point] --> B[Write to DynamoDB: partition key = game_id + shard_suffix as random 0-9, sort key = player_id]\n  B --> C[Atomic UpdateItem: SET score = score + delta]\n  C --> D[For leaderboard read: Query each shard GSI (game_id + suffix, score) with Limit N, merge results in application code]\n  D --> E[Cache merged top-N in Redis with TTL 5 seconds]\n  E --> F[Serve leaderboard from Redis cache]\n  F --> G[Cache miss? Re-query DynamoDB and repopulate]",
+    "companies": [
+      "Stripe",
+      "Uber",
+      "Airbnb"
+    ],
+    "tags": [
+      "nosql",
+      "database"
+    ],
+    "difficulty": "advanced",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T11:47:02.636Z",
+    "lastUpdated": "2026-05-19T11:47:02.636Z"
+  },
+  {
+    "id": "database-1779191320789-2",
+    "channel": "database",
+    "subChannel": "indexing",
+    "question": "Design an optimal index for the query: SELECT user_id, created_at, amount FROM orders WHERE status = 'completed' AND created_at >= NOW() - INTERVAL '30 days' ORDER BY created_at DESC LIMIT 100. What database access pattern will it enable, and how would you verify the index is being used effectively?",
+    "answer": "Create a composite covering index: CREATE INDEX idx_orders_status_created ON orders (status, created_at DESC) INCLUDE (user_id, amount). This is a covering index because all columns needed by the query (user_id, amount, created_at) are present in the index leaf pages, avoiding lookups into the heap. The B+ tree first navigates through the status column to find all leaf nodes with status='completed'. Within that subtree, the entries are already sorted by created_at DESC due to the index definition. The query can perform an Index Seek to locate the first leaf entry satisfying created_at >= NOW() - INTERVAL '30 days' within the 'completed' subtree. From there, it does an ordered forward scan within the leaf level, which already returns rows in descending order of created_at. Because the LIMIT 100 is applied and the scan is in the correct order, the database can stop after retrieving 100 rows without sorting any data. The INCLUDE columns mean the index leaf pages store user_id and amount alongside the key columns, making the index larger but entirely self-sufficient for this query. For a table with 50 million rows and a WHERE clause that filters by a status that is not very common (e.g., 'completed' is 10% of rows), this index will be highly selective on the leading column and well-ordered for the range/order by. To verify, use EXPLAIN (or EXPLAIN ANALYZE in PostgreSQL). The plan should show an Index Scan (or Index Only Scan) on idx_orders_status_created with no subsequent Sort node. The index scan should report 'Index Cond: (status = 'completed'::text) AND (created_at >= ...)'. If a Bitmap Scan or Seq Scan appears, the index is not being used, likely due to low selectivity of status or outdated statistics. Check with 'EXPLAIN (BUFFERS, ANALYZE)' to see actual rows and I/O; a small number of Buffer hits versus heap fetches confirms the covering nature works.",
+    "explanation": "This question tests deep understanding of composite indexes, covering indexes, and ordered scans—concepts that appear in system design and query optimization interviews at Google, Meta, and Amazon. The key insight is that a B+ tree stores entries in order by the key columns. By placing the equality column (status) first and the range/order column (created_at DESC) second, the database can traverse a single subtree and then linearly scan in the desired order. The INCLUDE clause (available in PostgreSQL, SQL Server 2012+, MySQL 8.0+) adds payload columns without affecting the sort order, which further reduces I/O. Edge cases to consider: (1) If status='completed' matches most rows (low selectivity), the index becomes less efficient; the database might prefer a different plan such as scanning by created_at alone using a BRIN or partial index. (2) Write overhead: every INSERT/UPDATE on orders must maintain this large index, which can degrade TPS; for OLTP workloads, a narrower index might be preferred at the cost of a Sort in queries. (3) The UUID primary key (order_id) leads to random page splits in the PK cluster (if using a clustered index like SQL Server); consider using a sequential UUID generator (e.g., UUID v7) to reduce fragmentation. Real-world usage: dashboards that run thousands of times per day benefit immensely from covering, ordered indexes—they can turn a multi-second query into single-digit milliseconds, reducing server load and latency.",
+    "diagram": "flowchart TD\n  A[Query received] --> B[Index Seek on idx_orders_status_created]\n  B --> C[Navigate B+ tree to leaf level for status='completed']\n  C --> D[Locate first leaf entry with created_at >= 30 days ago, within 'completed' subtree]\n  D --> E[Sequential forward scan in leaf level following next pointers, order matches ORDER BY DESC]\n  E --> F[Retrieve INCLUDE columns user_id, amount from leaf pages]\n  F --> G[Return row; increment counter]\n  G --> H{Count >= 100?}\n  H -->|No| E\n  H -->|Yes| I[Return result]\n  I --> J[Execution complete: Index Only Scan, no heap lookups, no Sort]",
+    "companies": [
+      "Google",
+      "Meta",
+      "Amazon"
+    ],
+    "tags": [
+      "indexing",
+      "database"
+    ],
+    "difficulty": "advanced",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T11:48:40.789Z",
+    "lastUpdated": "2026-05-19T11:48:40.789Z"
+  },
+  {
+    "id": "database-1779191492151-3",
+    "channel": "database",
+    "subChannel": "indexing",
+    "question": "You have a 50-million-row transactions table with columns (id, account_id, transaction_date, amount, category, merchant, status). The query `SELECT account_id, amount, merchant FROM transactions WHERE account_id = ? AND transaction_date BETWEEN ? AND ? AND status = 'settled' ORDER BY transaction_date DESC` runs thousands of times per second. How would you design a composite index to achieve index-only scans, and what is the optimal column order?",
+    "answer": "The optimal index is a composite B-tree index on (account_id, status, transaction_date DESC) with amount and merchant as included (non-key) columns. Place equality predicates before range predicates: account_id = ? and status = 'settled' are equality conditions, so they occupy the first two positions, allowing precise index seeks. The transaction_date column, used in a BETWEEN range condition, comes third. Including transaction_date DESC matches the ORDER BY clause, eliminating a separate sort. Amount and merchant, present only in the SELECT clause, should be non-key columns (using INCLUDE in SQL Server or PostgreSQL, or appending as key columns in MySQL). This makes the index covering: the database retrieves all needed data from index pages without expensive heap lookups against the clustered index or table heap. In PostgreSQL, index-only scans require good visibility map coverage, so regular VACUUM is essential. Without covering, each matched row requires a random I/O to the heap, multiplying latency by orders of magnitude. Trade-offs are increased index size and slower writes since every INSERT, UPDATE, DELETE must update this wide index. For a read-heavy workload with this performance-critical query, the trade-off is overwhelmingly favorable. A partial index (WHERE status = 'settled') could reduce size further if other statuses are rarely queried, but would not help if other queries need different status values. This design is standard practice at Microsoft, Apple, and Netflix for high-throughput transaction systems.",
+    "explanation": "Index-only scans are a cornerstone of high-performance relational database design. By storing all required columns in the index itself, the query engine satisfies the query entirely from the index's leaf pages, which are more compact than the heap and benefit from sequential I/O. The column order follows the equality-then-range rule: equality columns provide the highest selectivity per index level and compress the search space immediately, while range columns benefit from the sorted order within each equality group. Edge cases arise when column selectivity is misestimated: if status has only two values like 'settled' vs 'pending', placing it early provides minimal filtering, and the query planner might still use the index but with additional filter predicates. Real-world usage at companies like Netflix and Apple leverages these optimizations in financial reporting and order management systems. Index size considerations are important: including wide varchar columns like merchant can bloat the index significantly. A common alternative is a filtered/partial index that only covers settled transactions, reducing size and write overhead. PostgreSQL's INCLUDE clause (since v11) allows non-key columns without affecting sort order, keeping the B-tree leaner. This approach combined with periodic REINDEX or pg_repack maintains performance over time. Understanding when and how to use covering indexes is critical for database engineers handling millions of transactions daily.",
+    "diagram": "flowchart TD\n  A[Query arrives]\n  B[Composite index on (account_id, status, transaction_date DESC) INCLUDE (amount, merchant)]\n  C{Equality predicates first?}\n  C -->|account_id, status| D[Range predicate transaction_date]\n  D --> E[Index seeks for equality + range scan]\n  E --> F{All required columns in index?}\n  F -->|Yes| G[Index-only scan - no heap lookup]\n  G --> H[Fast query execution < 5ms on 50M rows]",
+    "companies": [
+      "Microsoft",
+      "Apple",
+      "Netflix"
+    ],
+    "tags": [
+      "indexing",
+      "database"
+    ],
+    "difficulty": "advanced",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T11:51:32.151Z",
+    "lastUpdated": "2026-05-19T11:51:32.151Z"
+  }
+]

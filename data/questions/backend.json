@@ -1,0 +1,111 @@
+[
+  {
+    "id": "backend-1779190850456-1",
+    "channel": "backend",
+    "subChannel": "server-architecture",
+    "question": "Design an idempotent payment API that ensures exactly-once processing in a distributed system where clients may retry, message brokers may deliver duplicates, and database partitions can fail independently. How do you guarantee that a payment is processed exactly once even under network partitions and partial failures?",
+    "answer": "The core strategy is idempotency keys combined with a deterministic state machine and fencing tokens. The client generates a unique idempotency key (UUIDv4) per payment request and sends it in the header. The API gateway or first write service checks a dedicated idempotency store (DynamoDB or Redis with strong consistency and TTL of 24-48 hours) before any processing begins. The idempotency store records the request hash, status (PENDING, COMPLETED, FAILED), and the response. If a request with the same key arrives, the stored response is returned directly without re-executing the payment logic. For the payment orchestration itself, a saga pattern with compensating transactions is used. Each step in the saga (reserve funds, debit source, credit destination, settle) is modeled as a state transition in a database row with an optimistic lock version. The database record stores the payment ID, idempotency key, current state, and a fencing token. Before any service executes a step, it acquires a fencing token from a coordinator (e.g., ZooKeeper or the database itself) that monotonically increases. This prevents stale leaders or zombie processes from mutating state after leadership has changed. For the message broker duplicates, each event produced by the saga steps carries both the payment ID and a sequence number. Consumers are made idempotent by recording the highest processed sequence number per payment ID in their local database and ignoring anything at or below it. The database state machine transitions are: INITIALIZED -> FUNDS_RESERVED -> DEBIT_SUCCEEDED -> CREDIT_SUCCEEDED -> SETTLED, with COMPENSATING for any failure. Transactional outbox pattern ensures that database state changes and event publication are atomic so message loss doesn't cause inconsistency. This design guarantees exactly-once processing as long as the idempotency store, state machine database, and fencing token coordinator are all configured with quorum-based consistency (RAFT/Paxos). The cost is a 20-30% latency overhead per request for the additional coordination reads, but it eliminates double charges which are the most expensive failure mode in payments.",
+    "explanation": "This question tests deep understanding of distributed system failure modes that are invisible in single-node systems. The naive approach of 'just use a unique constraint in the database' fails because a client may retry before the first request reaches the database, or the database write succeeds but the response is lost, leaving the client unsure. The idempotency key pattern solves the client-retry problem but introduces a new failure: the idempotency store itself can fail or return stale data during partitions. This is why strong consistency reads on the idempotency store are critical — eventual consistency would allow double processing. The fencing token pattern addresses the zombie problem in leader-based systems. After a network partition heals, the old leader may still believe it is active and process writes. A fencing token that must be monotonically increasing across terms prevents split-brain writes. In real-world systems like Stripe's API and Amazon's payment pipeline, these exact patterns are used. Stripe's idempotency keys have been in production for years and prevent double charges across network failures. At Amazon, the transaction outbox pattern within the payment pipeline ensures that messages are never lost after a database write. The saga pattern with compensating transactions is critical because global two-phase commit (XA) doesn't scale across microservices. Each saga step must itself be idempotent because the compensating transaction might also need retry. Edge cases include: the idempotency key TTL expiring before the client retries, requiring the client to detect this via response headers; concurrent requests with the same idempotency key, which must be resolved with a compare-and-set on the idempotency store; and partial saga failures where a compensating transaction itself fails, requiring a manual reconciliation process. The deepest insight is that exactly-once semantics in distributed systems is actually exactly-once delivery plus idempotent processing — you trade the impossibility of guaranteed delivery for the achievability of idempotent handling.",
+    "diagram": "flowchart TD\n  A[Client sends payment request with idempotency key K] --> B{Gateway checks idempotency store}\n  B -->|Key exists & COMPLETED| C[Return cached response]\n  B -->|Key exists & PENDING| D[Return 409 Conflict, client waits]\n  B -->|Key not found| E[Insert PENDING record with fencing token]\n  E --> F[Reserve funds in source account with optimistic lock]\n  F -->|Success| G[Publish FUNDS_RESERVED event via outbox]\n  G --> H[Debit source account]\n  H -->|Success| I[Publish DEBIT_SUCCEEDED event]\n  I --> J[Credit destination account]\n  J -->|Success| K[Publish CREDIT_SUCCEEDED event]\n  K --> L[Mark saga COMPLETED, update idempotency store]\n  F -->|Failure| M[Publish COMPENSATING event]\n  M --> N[Reverse any partial state, mark FAILED]\n  L --> O[Return success response to client]\n  N --> P[Return failure response to client]\n  D --> Q[Client backs off exponentially, retries]\n  Q --> B",
+    "companies": [
+      "Google",
+      "Meta",
+      "Amazon"
+    ],
+    "tags": [
+      "scaling",
+      "sharding",
+      "replication"
+    ],
+    "difficulty": "advanced",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T11:40:50.456Z",
+    "lastUpdated": "2026-05-19T11:40:50.457Z"
+  },
+  {
+    "id": "backend-1779191134710-2",
+    "channel": "backend",
+    "subChannel": "server-architecture",
+    "question": "How would you design a distributed idempotency key system to ensure exactly-once execution for payment API requests across multiple data centers?",
+    "answer": "A distributed idempotency key system ensures payment API requests are processed exactly once despite retries. The client includes a unique idempotency key (UUID) in each request. The server uses this key to deduplicate across data centers. Storage layer: use a globally replicated, strongly consistent key-value store such as CockroachDB or Spanner, or a Redis cluster with RedisRaft for cross-datacenter consistency. Request flow: upon receiving a request, the server first queries the idempotency key. If it exists with a completed status, return the stored response immediately. If it exists with a processing status, return 409 Conflict or wait. If not present, atomically insert the key with a processing status using a conditional PUT (optimistic locking). Execute the business logic (e.g., charging the card). Then update the key with the success or failure response and change status to completed. TTL: keys must have a TTL (e.g., 24 hours) to cap storage. If a request arrives after TTL, it could cause double execution. Mitigate with longer TTL and a secondary deduplication journal for critical operations. Consistency: cross-datacenter replication requires careful conflict resolution. Use a global consensus protocol (Raft/Paxos) or a primary-region approach with async replication for eventual consistency on log data. This system is critical for payment providers to prevent users from being charged multiple times. Stripe uses a combination of local fast paths with globally consistent backend reconciliation. In case of region failover, idempotency is maintained through a replicated log that ensures at-most-once processing across regions.",
+    "explanation": "Idempotency is fundamental for distributed payment APIs. The challenge is maintaining exactly-once semantics while balancing availability and latency. Edge cases: concurrent requests with the same idempotency key require a locking or CAS mechanism to ensure only one request proceeds. Partial failures: if the server crashes after processing but before storing the response, the retry may trigger re-processing. Use a two-phase approach: mark as processing with a lease, execute, then mark as completed. Clock skew between data centers: avoid timestamp-based ordering; use causal ordering via sequence numbers or hybrid logical clocks. Real-world usage: Stripe implements idempotency via a dedicated strongly consistent KV store. Uber uses Cassandra with lightweight transactions across regions, handling concurrent updates with conditional writes. Airbnb uses idempotency in booking and messaging to avoid duplicate charges. Storage cost: keys accumulate; TTLs with background cleanup jobs address this. At scale, custom solutions with global consensus (e.g., Google Spanner) offer strong consistency across regions. Modern systems increasingly use serverless databases like DynamoDB with conditional writes for simplicity, but globally distributed payment systems require stronger guarantees to prevent financial loss.",
+    "diagram": "flowchart TD\n  A[Client sends request with idempotency key] --> B{Dedup store lookup}\n  B -- Existing+Completed --> C[Return cached response]\n  B -- Existing+Processing --> D[Return 409 Conflict or wait]\n  B -- Not found --> E[Atomically insert with processing status]\n  E --> F[Execute payment logic]\n  F --> G{Success?}\n  G -- Yes --> H[Update key with success response]\n  G -- No --> I[Update key with failure response]\n  H --> J[Return response]\n  I --> J\n  C --> J\n  D --> J",
+    "companies": [
+      "Stripe",
+      "Uber",
+      "Airbnb"
+    ],
+    "tags": [
+      "server-architecture",
+      "backend"
+    ],
+    "difficulty": "advanced",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T11:45:34.710Z",
+    "lastUpdated": "2026-05-19T11:45:34.710Z"
+  },
+  {
+    "id": "backend-1779191308867-3",
+    "channel": "backend",
+    "subChannel": "caching",
+    "question": "What is the difference between cache-aside and read-through caching strategies, and how do they handle cache misses differently?",
+    "answer": "Cache-aside (lazy loading) and read-through are two common caching strategies that differ primarily in where the responsibility for loading data resides. In cache-aside, the application is responsible for both reading from the cache and, on a miss, querying the database and populating the cache itself. The cache acts as a passive key-value store. The typical flow on a cache miss is: application checks cache, misses, queries database, stores the result in cache with a TTL, and returns the data. This keeps the application in full control but requires extra logic to handle population, staleness, and serialization.  Read-through shifts this responsibility to the cache layer. The cache itself knows how to load data from the underlying data store when a key is not present — it delegates to a loader or database gateway. The application simply requests the key from the cache; if there's a miss, the cache transparently fetches the data, stores it, and returns it. This simplifies application code but couples the cache more tightly to the persistence layer.  The key advantage of cache-aside is that the cache only holds data that is actually requested, saving memory for rarely accessed items. It also works well with existing database abstractions and is easy to retrofit. However, it can lead to stale data because updates bypass the cache; cache invalidation must be handled explicitly by the application or through TTLs. Read-through ensures that the cache is always the authoritative source after the first read, and can support automatic invalidation hooks from the database. It also reduces code duplication across services. The trade-off is that the cache becomes more complex, and a cold start (empty cache) can trigger many simultaneous database calls — a common source of cache-stampede issues unless mitigated with request coalescing or probabilistic early expiration. In practice, many systems combine both: cache-aside for user-facing reads (where write patterns vary) and read-through for reference data that changes infrequently, such as configuration or lookup tables.",
+    "explanation": "Choosing between cache-aside and read-through has significant implications for system reliability, latency, and operational complexity. Cache-aside is more flexible and widely deployed because it can be layered on top of any data store without modifications. However, it forces every service to implement the same boilerplate: check cache, miss, query DB, populate cache, return. This duplication can lead to subtle bugs, especially around serialization formats, TTL constants, and error handling. A common real-world pitfall is the cache-stampede problem: when a popular key expires, multiple concurrent requests all miss, hit the database simultaneously, and then all redundantly write the same value to the cache. Solutions like request coalescing (only one request reloads the cache), early re-computation (probabilistic TTL refresh), or using a locking mechanism (e.g., SETNX in Redis) are essential in production. Read-through caches like Amazon ElastiCache for Redis with a lazy loading client, or using a dedicated caching library like Spring Cache with @Cacheable annotations, hide this complexity but introduce a dependency on the cache provider's loader implementation. This can make debugging harder — a slow loader delays all requests for that key. Another edge case: what happens when the database is down? In cache-aside, the miss path can fail fast or return stale data if the application is designed to serve stale on error. In read-through, the cache must be configured with fallback behavior. Real-world systems often use a hybrid approach: cache-aside for volatile user data and read-through for reference data. Netflix's EVCache and Twitter's Twemproxy both demonstrate aspects of these patterns. The choice ultimately depends on whether simplicity of the cache layer (cache-aside) or simplicity of the application layer (read-through) is more important to your architecture.",
+    "diagram": "flowchart TD\n  A[Application request] --> B{Cache lookup}\n  B -->|Hit| C[Return cached data]\n  B -->|Miss| D{Strategy?}\n  D -->|Cache-aside| E[App queries database]\n  D -->|Read-through| F[Cache queries database via loader]\n  E --> G[App writes data to cache]\n  F --> H[Cache stores data internally]\n  G --> I[Return data to app]\n  H --> I\n  I --> J[Response sent to client]",
+    "companies": [
+      "Google",
+      "Meta",
+      "Amazon"
+    ],
+    "tags": [
+      "caching",
+      "backend"
+    ],
+    "difficulty": "beginner",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T11:48:28.867Z",
+    "lastUpdated": "2026-05-19T11:48:28.867Z"
+  },
+  {
+    "id": "backend-1779191469121-4",
+    "channel": "backend",
+    "subChannel": "authentication",
+    "question": "How would you design a refresh token rotation mechanism that securely handles concurrent requests while preventing replay attacks in a distributed microservices architecture?",
+    "answer": "A robust refresh token rotation mechanism must handle the family-of-tokens pattern where each refresh token can be used exactly once. When a client presents a valid refresh token, the server issues a new access token and a new refresh token, simultaneously invalidating the old refresh token. This creates a token lineage traceable through a family identifier stored alongside the token hash in the database. To handle concurrent requests, implement a sliding window grace period of 30-60 seconds where both the old and new refresh tokens in the same family are accepted. This prevents race conditions when multiple services refresh tokens simultaneously. The server maintains a database table with columns: token_hash, family_id, user_id, expires_at, created_at, and a revoked boolean. Every refresh attempt checks the family_id: if an incoming refresh token's family_id has a recently issued replacement (within the grace window), both tokens are considered valid and the newer one wins. Beyond the window, the older token is rejected. For replay attack prevention, the server tracks a monotonically increasing counter per token family. Each new token in the family increments this counter, and the server rejects any token with a counter lower than the highest seen for that family. Additionally, all refresh tokens should be cryptographically random (128+ bits from a CSPRNG) rather than JWTs containing user info. Access tokens remain short-lived JWTs (5-15 minutes) containing only essential claims (sub, iat, exp, jti). The rotation database must enforce that each token hash is unique via a unique constraint, and token families should expire completely after a configurable absolute timeout (typically 7-30 days) regardless of activity, enforced by a TTL index on expires_at.",
+    "explanation": "Refresh token rotation addresses two fundamental security problems: leaked tokens and stolen sessions. Without rotation, a stolen refresh token grants permanent access until manually revoked. With rotation, each refresh invalidates the previous token, so even if an attacker intercepts a token, they can only use it before the legitimate client refreshes. The family-of-tokens pattern is essential for distributed systems where network partitions or concurrent API calls can cause valid clients to appear as attackers. Google's OAuth 2.0 implementation and Auth0 both use variants of this pattern for their enterprise authentication. The grace period window introduces a deliberate tradeoff between security and availability, which is why it must be bounded and configurable. The counter-based replay protection adds a second layer of defense beyond simple token revocation, preventing an attacker from reusing a stolen token even within the grace window if they try to use an older token after a newer one has been issued. Real-world implementations must also consider token theft detection by analyzing IP addresses, User-Agent headers, and request patterns between successive refresh attempts in the same family. A sudden geographic change or device switch between refreshes should trigger additional verification or family invalidation. The absolute timeout on token families ensures that even a compromised family eventually becomes worthless, limiting the blast radius of a long-running undetected breach.",
+    "diagram": "flowchart TD\n  A[Client Login] --> B[Server generates Access Token + Refresh Token]\n  B --> C[Client stores tokens securely]\n  C --> D{Access Token expired?}\n  D -->|No| E[Use Access Token for API calls]\n  D -->|Yes| F[Send Refresh Token to /auth/refresh]\n  F --> G{Refresh Token valid?}\n  G -->|Valid| H[Check family_id grace window]\n  H --> I{Within grace period?}\n  I -->|Yes| J[Accept old token, issue new pair]\n  I -->|No| K[Verify counter >= max seen for family]\n  K --> L{Counter valid?}\n  L -->|Yes| M[Revoke old token, issue new pair, increment counter]\n  L -->|No| N[Reject - possible replay attack]\n  G -->|Invalid| O[Force re-login]\n  M --> P[New Access Token + New Refresh Token]\n  P --> Q[Update database: revoke old, store new hash]\n  Q --> R[Return new tokens to client]\n  R --> C\n  N --> S[Revoke entire token family]\n  S --> T[Alert security team]\n  T --> O",
+    "companies": [
+      "Google",
+      "Meta",
+      "Amazon"
+    ],
+    "tags": [
+      "authentication",
+      "backend"
+    ],
+    "difficulty": "intermediate",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T11:51:09.121Z",
+    "lastUpdated": "2026-05-19T11:51:09.122Z"
+  }
+]
