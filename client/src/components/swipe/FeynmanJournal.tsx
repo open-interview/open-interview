@@ -73,9 +73,9 @@ export function FeynmanJournal({ attempts, onClear }: FeynmanJournalProps) {
                   </span>
                 </span>
                 {isOpen ? (
-                  <ChevronUp className="w-4 h-4 text-gray-500 shrink-0" />
+                  <ChevronUp className="w-4 h-4 text-gray-500 shrink-0" aria-hidden={true} />
                 ) : (
-                  <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
+                  <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" aria-hidden={true} />
                 )}
               </button>
 

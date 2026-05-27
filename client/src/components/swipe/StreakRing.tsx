@@ -1,4 +1,6 @@
+import React from 'react';
 import { motion } from 'framer-motion';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
 
 interface StreakRingProps {
   streak: number;
@@ -7,19 +9,20 @@ interface StreakRingProps {
   xpProgress: number;
 }
 
-export function StreakRing({ streak, xp, level, xpProgress }: StreakRingProps) {
+export const StreakRing = React.memo(function StreakRing({ streak, xp, level, xpProgress }: StreakRingProps) {
+  const prefersReducedMotion = useReducedMotion();
   const radius = 42;
   const circumference = 2 * Math.PI * radius;
   const progress = Math.min(streak / 100, 1);
   const strokeDashoffset = circumference * (1 - progress);
-  const ringStroke = streak > 0 ? '#10b981' : '#6b7280';
+  const ringStroke = streak > 0 ? 'var(--color-success)' : 'var(--text-tertiary)';
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="flex flex-col items-center mb-6"
+      initial={prefersReducedMotion ? {} : { opacity: 0, scale: 0.8 }}
+      animate={prefersReducedMotion ? {} : { opacity: 1, scale: 1 }}
+      transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.5, ease: 'easeOut' }}
+      className="flex flex-col items-center mb-6 glass-card"
     >
       <div className="relative w-28 h-28">
         <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
@@ -28,7 +31,7 @@ export function StreakRing({ streak, xp, level, xpProgress }: StreakRingProps) {
             cy="50"
             r={radius}
             fill="none"
-            className="stroke-[#2a2a2a]"
+            className="stroke-[var(--border-subtle)]"
             strokeWidth="8"
           />
           <motion.circle
@@ -40,9 +43,9 @@ export function StreakRing({ streak, xp, level, xpProgress }: StreakRingProps) {
             strokeWidth="8"
             strokeLinecap="round"
             strokeDasharray={circumference}
-            initial={{ strokeDashoffset: circumference }}
+            initial={prefersReducedMotion ? {} : { strokeDashoffset: circumference }}
             animate={{ strokeDashoffset }}
-            transition={{ duration: 1, ease: 'easeOut', delay: 0.2 }}
+            transition={prefersReducedMotion ? { duration: 0 } : { duration: 1, ease: 'easeOut', delay: 0.2 }}
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -56,14 +59,14 @@ export function StreakRing({ streak, xp, level, xpProgress }: StreakRingProps) {
         <span className="text-muted-foreground">Level {level}</span>
       </div>
 
-      <div className="w-40 h-1.5 rounded-full bg-[#2a2a2a] overflow-hidden mt-2">
+      <div className="w-40 h-1.5 rounded-full bg-[var(--border-subtle)] overflow-hidden mt-2">
         <motion.div
           className="h-full rounded-full bg-amber-500"
-          initial={{ width: 0 }}
+          initial={prefersReducedMotion ? {} : { width: 0 }}
           animate={{ width: `${xpProgress}%` }}
-          transition={{ duration: 0.8, ease: 'easeOut', delay: 0.4 }}
+          transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.8, ease: 'easeOut', delay: 0.4 }}
         />
       </div>
     </motion.div>
   );
-}
+});

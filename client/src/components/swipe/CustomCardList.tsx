@@ -1,6 +1,7 @@
 import type { CustomCardData } from '@/types/swipe';
 import { Pencil, Trash2, Upload, Download } from 'lucide-react';
 import { useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface CustomCardListProps {
   cards: CustomCardData[];
@@ -33,6 +34,15 @@ export function CustomCardList({
     }
   };
 
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: cards.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 72,
+    overscan: 5,
+  });
+
   const truncated = (text: string, max = 60) =>
     text.length > max ? text.slice(0, max) + '…' : text;
 
@@ -50,7 +60,7 @@ export function CustomCardList({
             className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center"
             aria-label="Import cards"
           >
-            <Upload className="h-4 w-4 text-muted-foreground" />
+            <Upload className="h-4 w-4 text-muted-foreground" aria-hidden={true} />
           </button>
           <button
             type="button"
@@ -58,7 +68,7 @@ export function CustomCardList({
             className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center"
             aria-label="Export cards"
           >
-            <Download className="h-4 w-4 text-muted-foreground" />
+            <Download className="h-4 w-4 text-muted-foreground" aria-hidden={true} />
           </button>
           <input
             ref={fileInputRef}
@@ -76,28 +86,39 @@ export function CustomCardList({
           No custom cards yet. Tap + in the study view to create one.
         </p>
       ) : (
-        <div className="space-y-2">
-          {cards.map((card) => (
-            <div
-              key={card.id}
-              className="bg-[#141414] border border-[#2a2a2a] rounded-lg p-3 flex justify-between items-center mb-2"
-            >
-              <div className="flex-1 min-w-0 mr-3">
-                <p className="text-sm text-foreground truncate">
-                  {truncated(card.front)}
-                </p>
-                <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-medium rounded bg-purple-600/20 text-purple-400">
-                  {card.channel}
-                </span>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => onEdit(card)}
-                  className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center"
-                  aria-label="Edit card"
+        <div ref={listRef} className="max-h-[60vh] overflow-auto">
+          <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
+            {virtualizer.getVirtualItems().map((virtualItem) => {
+              const card = cards[virtualItem.index];
+              return (
+                <div
+                  key={card.id}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: `${virtualItem.size}px`,
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
                 >
-                  <Pencil className="h-4 w-4 text-muted-foreground" />
+                  <div className="bg-[#141414] border border-[#2a2a2a] rounded-lg p-3 flex justify-between items-center">
+                    <div className="flex-1 min-w-0 mr-3">
+                      <p className="text-sm text-foreground truncate">
+                        {truncated(card.front)}
+                      </p>
+                      <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-medium rounded bg-purple-600/20 text-purple-400">
+                        {card.channel}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => onEdit(card)}
+                        className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center"
+                        aria-label="Edit card"
+                      >
+                  <Pencil className="h-4 w-4 text-muted-foreground" aria-hidden={true} />
                 </button>
                 <button
                   type="button"
@@ -105,11 +126,14 @@ export function CustomCardList({
                   className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center"
                   aria-label="Delete card"
                 >
-                  <Trash2 className="h-4 w-4 text-muted-foreground" />
-                </button>
-              </div>
-            </div>
-          ))}
+                  <Trash2 className="h-4 w-4 text-muted-foreground" aria-hidden={true} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

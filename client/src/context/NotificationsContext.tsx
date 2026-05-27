@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { NotificationsStorage } from '../services/storage.service';
-import { LIMITS } from '../lib/constants';
+import { createContext, useContext, useCallback, useMemo, ReactNode } from 'react';
+import { rewardStorage } from '../lib/rewards';
+import { useRewardContext } from './RewardContext';
 import type { Notification, NotificationType } from '../types';
 
 // Re-export Notification type for backward compatibility
@@ -18,51 +18,55 @@ interface NotificationsContextType {
 
 const NotificationsContext = createContext<NotificationsContextType | null>(null);
 
-// Generate unique ID without deprecated substr
-function generateId(): string {
-  return `notif-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+function mapToRewardNotifications(n: { title: string; description?: string; type: NotificationType; link?: string }) {
+  return {
+    type: (n.type === 'error' ? 'credits' : 'xp') as 'xp' | 'credits' | 'level_up' | 'achievement' | 'streak',
+    title: n.title,
+    message: n.description || '',
+    ...(n.link ? { icon: '🔗' } : {}),
+  };
 }
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
-  const [notifications, setNotifications] = useState<Notification[]>(() => {
-    return NotificationsStorage.get();
-  });
+  const { notifications: rewardNotifs, dismissNotification, clearNotifications, refresh } = useRewardContext();
 
-  // Save to localStorage when notifications change
-  useEffect(() => {
-    NotificationsStorage.set(notifications);
-  }, [notifications]);
+  const notifications = useMemo<Notification[]>(() =>
+    rewardNotifs.map(r => ({
+      id: r.id,
+      title: r.title,
+      description: r.message,
+      type: 'info' as NotificationType,
+      timestamp: r.timestamp,
+      read: r.dismissed,
+    })),
+    [rewardNotifs]
+  );
+
+  const unreadCount = useMemo(() =>
+    notifications.filter(n => !n.read).length,
+    [notifications]
+  );
 
   const addNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
-    const newNotification: Notification = {
-      ...notification,
-      id: generateId(),
-      timestamp: new Date().toISOString(),
-      read: false,
-    };
-
-    setNotifications(prev => [newNotification, ...prev].slice(0, LIMITS.MAX_NOTIFICATIONS));
-  }, []);
+    rewardStorage.addNotification(mapToRewardNotifications(notification));
+    refresh();
+  }, [refresh]);
 
   const markAsRead = useCallback((id: string) => {
-    setNotifications(prev => 
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
-    );
-  }, []);
+    dismissNotification(id);
+  }, [dismissNotification]);
 
   const markAllAsRead = useCallback(() => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  }, []);
+    clearNotifications();
+  }, [clearNotifications]);
 
   const clearNotification = useCallback((id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  }, []);
+    dismissNotification(id);
+  }, [dismissNotification]);
 
   const clearAll = useCallback(() => {
-    setNotifications([]);
-  }, []);
-
-  const unreadCount = notifications.filter(n => !n.read).length;
+    clearNotifications();
+  }, [clearNotifications]);
 
   return (
     <NotificationsContext.Provider value={{

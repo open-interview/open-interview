@@ -45,7 +45,7 @@ function generateRssFeed() {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Code Reels - Interview Questions</title>
+    <title>Open Interview - Interview Questions</title>
     <description>Master technical interviews with ${stats.totalQuestions} questions across ${stats.totalChannels} channels. System design, algorithms, frontend, backend, DevOps, and more.</description>
     <link>${BASE_URL}</link>
     <atom:link href="${BASE_URL}/rss.xml" rel="self" type="application/rss+xml"/>
@@ -54,7 +54,7 @@ function generateRssFeed() {
     <ttl>60</ttl>
     <image>
       <url>${BASE_URL}/favicon.svg</url>
-      <title>Code Reels</title>
+      <title>Open Interview</title>
       <link>${BASE_URL}</link>
     </image>
     ${channelItems}

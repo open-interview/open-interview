@@ -135,10 +135,11 @@ export function CreateCardModal({
     <div className="space-y-5">
       {/* Front */}
       <div>
-        <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+        <label htmlFor="card-front" className="block text-sm font-medium text-zinc-300 mb-1.5">
           What's the question/concept?
         </label>
         <textarea
+          id="card-front"
           value={front}
           onChange={(e) => {
             if (e.target.value.length <= 150) setFront(e.target.value)
@@ -146,10 +147,11 @@ export function CreateCardModal({
           onBlur={() => markTouched('front')}
           placeholder="e.g. What is a closure in JavaScript?"
           className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-600 resize-none h-20"
+          aria-describedby={showError('front') ? 'card-front-error' : undefined}
         />
         <div className="flex items-center justify-between mt-1">
           {showError('front') && (
-            <span className="text-xs text-red-400">{errors.front}</span>
+            <span id="card-front-error" role="alert" className="text-xs text-red-400">{errors.front}</span>
           )}
           <span className={`text-xs ml-auto ${front.length > 130 ? 'text-amber-400' : 'text-zinc-500'}`}>
             {front.length}/150
@@ -159,15 +161,17 @@ export function CreateCardModal({
 
       {/* Back */}
       <div>
-        <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+        <label htmlFor="card-back" className="block text-sm font-medium text-zinc-300 mb-1.5">
           Answer / Explanation
         </label>
         <textarea
+          id="card-back"
           value={back}
           onChange={(e) => setBack(e.target.value)}
           onBlur={() => markTouched('back')}
           placeholder="e.g. A closure is a function that remembers its outer variables..."
           className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-600 resize-none h-24"
+          aria-describedby={showError('back') ? 'card-back-error' : undefined}
         />
         <div className="flex items-center gap-2 mt-1">
           {back.trim() && (
@@ -179,17 +183,18 @@ export function CreateCardModal({
             />
           )}
           {showError('back') && (
-            <span className="text-xs text-red-400">{errors.back}</span>
+            <span id="card-back-error" role="alert" className="text-xs text-red-400">{errors.back}</span>
           )}
         </div>
       </div>
 
       {/* Hint */}
       <div>
-        <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+        <label htmlFor="card-hint" className="block text-sm font-medium text-zinc-300 mb-1.5">
           Hint <span className="text-zinc-500">(optional)</span>
         </label>
         <input
+          id="card-hint"
           value={hint}
           onChange={(e) => setHint(e.target.value)}
           placeholder="A subtle hint to help recall"
@@ -199,10 +204,11 @@ export function CreateCardModal({
 
       {/* Palace Scene */}
       <div>
-        <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+        <label htmlFor="card-palace" className="block text-sm font-medium text-zinc-300 mb-1.5">
           Palace Scene <span className="text-zinc-500">(optional)</span>
         </label>
         <input
+          id="card-palace"
           value={palaceScene}
           onChange={(e) => {
             if (e.target.value.length <= 60) setPalaceScene(e.target.value)
@@ -217,14 +223,16 @@ export function CreateCardModal({
 
       {/* Channel */}
       <div>
-        <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+        <label htmlFor="card-channel" className="block text-sm font-medium text-zinc-300 mb-1.5">
           Topic
         </label>
         <select
+          id="card-channel"
           value={channel}
           onChange={(e) => setChannel(e.target.value)}
           onBlur={() => markTouched('channel')}
           className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-600 appearance-none"
+          aria-describedby={showError('channel') ? 'card-channel-error' : undefined}
         >
           <option value="" disabled>Select a topic</option>
           {channels.map((ch) => (
@@ -234,16 +242,17 @@ export function CreateCardModal({
           ))}
         </select>
         {showError('channel') && (
-          <span className="text-xs text-red-400 mt-1 block">{errors.channel}</span>
+          <span id="card-channel-error" role="alert" className="text-xs text-red-400 mt-1 block">{errors.channel}</span>
         )}
       </div>
 
       {/* Tags */}
       <div>
-        <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+        <label htmlFor="card-tags" className="block text-sm font-medium text-zinc-300 mb-1.5">
           Tags <span className="text-zinc-500">(comma-separated)</span>
         </label>
         <input
+          id="card-tags"
           value={tagsInput}
           onChange={(e) => setTagsInput(e.target.value)}
           placeholder="e.g. javascript, closures, fundamentals"

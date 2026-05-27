@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { SwipeCard } from '@/types/swipe';
 import { StudyCard } from './StudyCard';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
 
 interface CardFanProps {
   cards: SwipeCard[];
@@ -43,7 +44,7 @@ function useFanCardCount() {
   return count;
 }
 
-export function CardFan({
+export const CardFan = React.memo(function CardFan({
   cards,
   currentIndex,
   onSwipe,
@@ -53,6 +54,7 @@ export function CardFan({
   setIsFlipped,
 }: CardFanProps) {
   const isMobile = useIsMobile();
+  const prefersReducedMotion = useReducedMotion();
   const fanCardCount = useFanCardCount();
   const containerRef = useRef<HTMLDivElement>(null);
   const lastScrollTime = useRef(0);
@@ -99,10 +101,10 @@ export function CardFan({
           <AnimatePresence mode="wait">
             <motion.div
               key={card.id}
-              initial={{ opacity: 0, x: 100 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -100 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              initial={prefersReducedMotion ? {} : { opacity: 0, x: 100 }}
+              animate={prefersReducedMotion ? {} : { opacity: 1, x: 0 }}
+              exit={prefersReducedMotion ? {} : { opacity: 0, x: -100 }}
+              transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 30 }}
             >
               <StudyCard
                 card={card}
@@ -114,8 +116,8 @@ export function CardFan({
             </motion.div>
           </AnimatePresence>
         </div>
-      </div>
-    );
+    </div>
+  );
   }
 
   const visiblePositions = generateFanPositions(fanCardCount);
@@ -140,7 +142,7 @@ export function CardFan({
                 style={{
                   zIndex: isActive ? 50 : cardIndex,
                 }}
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={prefersReducedMotion ? {} : { opacity: 0, scale: 0.8 }}
                 animate={{
                   x: pos.x,
                   y: pos.y,
@@ -149,9 +151,9 @@ export function CardFan({
                   opacity: pos.opacity,
                   filter: isActive ? 'none' : 'blur(1.5px)',
                 }}
-                exit={{ opacity: 0, scale: 0.8, x: -100, transition: { duration: 0.2 } }}
-                transition={{ type: 'spring', stiffness: 300, damping: 30, mass: 0.8 }}
-                layout
+                exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.8, x: -100, transition: { duration: 0.2 } }}
+                transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 30, mass: 0.8 }}
+                {...(prefersReducedMotion ? {} : { layout: true })}
                 onClick={() => {
                   if (!isActive) {
                     onIndexChange(cardIndex);
@@ -172,4 +174,4 @@ export function CardFan({
       </div>
     </div>
   );
-}
+});

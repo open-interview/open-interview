@@ -103,15 +103,16 @@ export function FeynmanMode({ card, onComplete, onCancel }: FeynmanModeProps) {
                   exit={{ opacity: 0, y: -12 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <label className="block text-sm text-[#a0a0a0] mb-3">
+                  <label htmlFor="feynman-explain" className="block text-sm text-[#a0a0a0] mb-3">
                     Explain this in your own words
                   </label>
                   <textarea
+                    id="feynman-explain"
                     ref={textareaRef}
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Type your explanation..."
-                    className="w-full h-48 bg-[#141414] border border-[#2a2a2a] rounded-xl p-4 text-white font-mono text-sm resize-none focus:outline-none focus:border-[#4a4a4a] transition-colors"
+                    className="w-full h-48 bg-[#141414] border border-[#2a2a2a] rounded-xl p-4 text-white font-mono text-sm resize-none focus:outline-none focus:border-[#4a4a4a] focus-visible:ring-2 focus-visible:ring-purple-500 transition-colors"
                   />
                   <div className="flex justify-between items-center mt-3">
                     <span className="text-xs text-[#555]">

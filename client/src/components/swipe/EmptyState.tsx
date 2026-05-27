@@ -51,7 +51,7 @@ export function EmptyState({ streak, onBrowse, onStudyMore }: EmptyStateProps) {
           className="mb-6"
         >
           <div className="w-20 h-20 rounded-full bg-purple-600/20 flex items-center justify-center">
-            <Target className="w-10 h-10 text-purple-400" />
+            <Target className="w-10 h-10 text-purple-400" aria-hidden={true} />
           </div>
         </motion.div>
 

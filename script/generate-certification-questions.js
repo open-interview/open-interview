@@ -126,23 +126,34 @@ async function saveCertQuestion(question) {
   const id = question.id || `cert-${question.certificationId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   try {
-    // Store MCQ options in the answer field as JSON
-    // Store additional metadata in tags field
+    // Extract correct answer as plain text (not MCQ JSON)
+    // Extract ONLY the correct answer text — concise and readable for card flip side
+    const correctOption = question.options?.find(o => o.isCorrect);
+    const answerText = correctOption?.text || question.explanation || '';
+    
     const tags = [
       ...(question.tags || []),
-      'certification-mcq',
+      'certification',
       `domain-weight-${question.domainWeight || 0}`
     ];
+    
+    // Build MCQ options as structured data for potential UI use
+    const mcqOptions = (question.options || []).map(o => ({
+      id: o.id,
+      text: o.text,
+      isCorrect: !!o.isCorrect
+    }));
     
     await saveQuestion({
       id,
       channel: question.certificationId,
       subChannel: question.domain,
       question: question.question,
-      answer: JSON.stringify(question.options),
+      answer: answerText,
       explanation: question.explanation,
       difficulty: question.difficulty,
       tags,
+      options: mcqOptions,
       status: 'active',
       lastUpdated: new Date().toISOString()
     });

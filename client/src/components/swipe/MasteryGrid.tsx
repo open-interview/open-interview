@@ -1,3 +1,4 @@
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Tooltip,
@@ -10,7 +11,7 @@ interface MasteryGridProps {
   masteryData: Array<{ channel: string; percentage: number; cards: number }>;
 }
 
-export function MasteryGrid({ masteryData }: MasteryGridProps) {
+export const MasteryGrid = React.memo(function MasteryGrid({ masteryData }: MasteryGridProps) {
   return (
     <div data-pagefind-ignore>
       <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
@@ -63,4 +64,4 @@ export function MasteryGrid({ masteryData }: MasteryGridProps) {
       )}
     </div>
   );
-}
+});

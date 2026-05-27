@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   getQuestions,
   getQuestionById,
@@ -64,7 +64,13 @@ export function useQuestions(
   // Get stable session seed for this channel
   const sessionSeed = useMemo(() => channelId ? getSessionSeed(channelId) : 0, [channelId]);
 
+  // Track effect freshness to avoid stale async updates
+  const activeKeyRef = useRef('');
+
   useEffect(() => {
+    const key = `${channelId}|${subChannel}|${difficulty}|${company}|${shuffle}|${prioritizeUnvisited}|${sessionSeed}`;
+    activeKeyRef.current = key;
+
     if (!channelId) {
       setQuestions([]);
       setLoading(false);
@@ -86,15 +92,20 @@ export function useQuestions(
     // Load from API
     loadChannelQuestions(channelId)
       .then(() => {
+        if (activeKeyRef.current !== key) return;
         const filtered = getQuestions(channelId, subChannel, difficulty, company);
         const processed = processQuestions(filtered, channelId, shuffle, prioritizeUnvisited, sessionSeed);
         setQuestions(processed);
       })
       .catch((err: Error) => {
+        if (activeKeyRef.current !== key) return;
         setError(err);
         setQuestions([]);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (activeKeyRef.current !== key) return;
+        setLoading(false);
+      });
   }, [channelId, subChannel, difficulty, company, shuffle, prioritizeUnvisited, sessionSeed]);
 
   const questionIds = useMemo(() => questions.map(q => q.id), [questions]);

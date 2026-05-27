@@ -399,3 +399,20 @@ export function useCreditsContextCompat() {
     },
   };
 }
+
+/**
+ * Backward-compatible `useCredits` hook.
+ * Existing consumers importing `useCredits` from CreditsContext can switch
+ * to importing from RewardContext instead.
+ */
+export function useCredits() {
+  return useCreditsContextCompat();
+}
+
+/**
+ * Backward-compatible `useAchievements` hook.
+ * Existing consumers can import from RewardContext instead of AchievementContext.
+ */
+export function useAchievements() {
+  return useAchievementContextCompat();
+}

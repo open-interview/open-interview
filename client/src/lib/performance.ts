@@ -356,7 +356,7 @@ export function measureBlogPostLoad(slug: string): () => void {
       performance.measure(measureName, markStart, markEnd);
       const [entry] = performance.getEntriesByName(measureName);
       if (entry) {
-        trackMobilePerformance('blog_post_fmp', entry.duration, slug);
+        trackMobilePerformance('load_time', entry.duration, slug);
       }
     } catch {
       // Unsupported browser — silently ignore

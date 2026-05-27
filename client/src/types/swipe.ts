@@ -14,6 +14,8 @@ export interface SwipeCard {
   palaceImage?: string;
   codeExample?: string;
   diagram?: string;
+  explanation?: string;
+  options?: Array<{ id: string; text: string; isCorrect: boolean }>;
   channel: string;
   subChannel?: string;
   difficulty: 'beginner' | 'intermediate' | 'advanced';

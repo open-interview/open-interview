@@ -7,22 +7,22 @@ export interface StudyTipsProps {
 
 const tips = [
   {
-    icon: <ArrowRight className="w-5 h-5" />,
+    icon: <ArrowRight className="w-5 h-5" aria-hidden={true} />,
     text: 'Swipe right (→) when you know the answer well',
     color: 'text-green-400',
   },
   {
-    icon: <ArrowLeft className="w-5 h-5" />,
+    icon: <ArrowLeft className="w-5 h-5" aria-hidden={true} />,
     text: 'Swipe left (←) to review again later',
     color: 'text-red-400',
   },
   {
-    icon: <ArrowUp className="w-5 h-5" />,
+    icon: <ArrowUp className="w-5 h-5" aria-hidden={true} />,
     text: 'Swipe up (↑) to use the Feynman technique',
     color: 'text-amber-400',
   },
   {
-    icon: <ArrowDown className="w-5 h-5" />,
+    icon: <ArrowDown className="w-5 h-5" aria-hidden={true} />,
     text: 'Swipe down (↓) to skip a card',
     color: 'text-gray-400',
   },

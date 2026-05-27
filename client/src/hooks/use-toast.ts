@@ -4,6 +4,7 @@ import type {
   ToastActionElement,
   ToastProps,
 } from "@/components/ui/toast"
+import { rewardStorage } from "../lib/rewards"
 
 const TOAST_LIMIT = 1
 const TOAST_REMOVE_DELAY = 1000000
@@ -137,30 +138,15 @@ function dispatch(action: Action) {
   })
 }
 
-// Notification storage helper - stores toasts as notifications
+// Notification storage helper - stores toasts through unified reward system
 function saveToNotifications(title: string, description?: string, variant?: string) {
   try {
-    const STORAGE_KEY = 'app-notifications';
-    const MAX_NOTIFICATIONS = 50;
-    
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const notifications = stored ? JSON.parse(stored) : [];
-    
-    const type = variant === 'destructive' ? 'error' : 'info';
-    
-    const newNotification = {
-      id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+    rewardStorage.addNotification({
+      type: variant === 'destructive' ? 'credits' : 'xp',
       title: typeof title === 'string' ? title : 'Notification',
-      description: typeof description === 'string' ? description : undefined,
-      type,
-      timestamp: new Date().toISOString(),
-      read: false,
-    };
+      message: typeof description === 'string' ? description : '',
+    });
     
-    const updated = [newNotification, ...notifications].slice(0, MAX_NOTIFICATIONS);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    
-    // Dispatch custom event so NotificationsContext can update
     window.dispatchEvent(new CustomEvent('notification-added'));
   } catch (e) {
     console.error('Failed to save notification:', e);

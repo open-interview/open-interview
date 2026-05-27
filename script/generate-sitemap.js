@@ -149,7 +149,7 @@ ${urls}
 
 // Generate robots.txt
 function generateRobotsTxt() {
-  return `# Code Reels - Technical Interview Prep
+  return `# Open Interview - Technical Interview Prep
 # https://open-interview.github.io
 
 User-agent: *

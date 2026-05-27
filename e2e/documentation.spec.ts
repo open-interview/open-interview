@@ -15,7 +15,7 @@ test.describe('Documentation Page', () => {
   test('page loads with sections', async ({ page }) => {
     await waitForContent(page, 200);
     
-    const docHeading = page.getByText(/Documentation|Reel-LearnHub/i).first();
+    const docHeading = page.getByText(/Documentation|Open Interview/i).first();
     const hasHeading = await docHeading.isVisible({ timeout: 3000 }).catch(() => false);
     expect(hasHeading || (await page.locator('body').textContent())?.length! > 200).toBeTruthy();
     

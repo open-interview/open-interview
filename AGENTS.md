@@ -24,7 +24,7 @@ React SPA (Vite + React 19 + wouter + Tailwind CSS + shadcn/ui) delivering techn
 - **Shared types:** `shared/schema.ts`
 - **Data source of truth:** `data/questions/`, `data/tests/`, `data/certifications.json`, `data/blog-posts/`, `data/vectors/`, etc.
 - **Build orchestrator:** `scripts/build-static.mjs` — runs these steps in order:
-  1. Fetch questions from remote API
+  1. Read questions from `data/questions/*.json` (local files, no remote API call)
   2. Generate tests from channels
   3. Generate learning paths
   4. Vite build (`client/` → `dist/public/`)
@@ -49,9 +49,21 @@ React SPA (Vite + React 19 + wouter + Tailwind CSS + shadcn/ui) delivering techn
 - The `blog/` package is a separate Astro site with its own `pnpm --filter @openinterview/blog` commands.
 - The repo has a large `todo.md` with 102+ known UI/UX issues. Do not assume the app is in a polished state.
 
-## Known pitfalls
+## Question generation
 
-- `pnpm dev` does **not** run the data pipeline. Tests/Learning Paths/Voice Sessions appear empty.
+Questions live in `data/questions/*.json`. The build step (`script/fetch-questions-for-build.js`) reads them locally — **no remote API call**. Of 62 channel files, only 8 general-topic channels have questions (algorithms, backend, behavioral, database, devops, frontend, generative-ai, system-design). The 54 certification-specific channels are empty `[]` stubs.
+
+To generate questions for a channel, run:
+```
+node script/generate-certification-questions.js <channel-id>
+```
+or batch-generate with:
+```
+node script/gen-questions-batch.js
+```
+These use AI (OpenRouter/local via `VITE_OPENROUTER_COOKIE` or `opencode`) and write to `data/questions/<channel-id>.json`. See `.env.example` for AI configuration.
+
+## Known pitfalls
 - Five notification/reward systems coexist (CreditsContext, AchievementContext, BadgeContext, rewardStorage, NotificationsContext). Expect overlapping state.
 - Routes like `/review` have known loading failures. `/docs` shows internal developer docs, not user-facing help.
 - Multiple pages exceed 800 lines (VoiceInterview.tsx: 1457, Documentation.tsx: 1453).

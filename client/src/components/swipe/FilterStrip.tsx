@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { FilterState } from '@/types/swipe';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
@@ -38,7 +38,7 @@ const MODE_OPTIONS: Array<{ value: FilterState['mode']; label: string }> = [
   { value: 'new', label: 'New' },
 ];
 
-export function FilterStrip({
+export const FilterStrip = React.memo(function FilterStrip({
   channels,
   certifications,
   activeFilter,
@@ -70,7 +70,7 @@ export function FilterStrip({
 
   const chipBase = cn(
     'inline-flex items-center justify-center h-8 px-3 rounded-full text-sm font-medium whitespace-nowrap',
-    'bg-white/5 transition-colors cursor-pointer select-none',
+    'bg-muted transition-colors cursor-pointer select-none',
   );
 
   const chipActive = 'bg-purple-600/20 text-purple-400';
@@ -80,7 +80,7 @@ export function FilterStrip({
       chipBase,
       active
         ? chipActive
-        : 'text-muted-foreground hover:text-foreground hover:bg-white/10',
+        : 'text-muted-foreground hover:text-foreground hover:bg-accent',
       active && color && 'shadow-[inset_0_-2px_0]',
     );
 
@@ -113,7 +113,7 @@ export function FilterStrip({
                 modeBtnBase,
                 activeFilter.mode === opt.value
                   ? 'bg-purple-600/20 text-purple-400'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-white/10',
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent',
               )}
               onClick={() => handleMode(opt.value)}
             >
@@ -260,7 +260,7 @@ export function FilterStrip({
                   </div>
                 </div>
                 {onCreateCard && (
-                  <div className="pt-3 border-t border-white/10">
+                  <div className="pt-3 border-t border-[var(--border-default)]">
                     <DrawerClose asChild>
                       <button
                         type="button"
@@ -292,7 +292,7 @@ export function FilterStrip({
               modeBtnBase,
               activeFilter.mode === opt.value
                 ? 'bg-purple-600/20 text-purple-400'
-                : 'text-muted-foreground hover:text-foreground hover:bg-white/10',
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent',
             )}
             onClick={() => handleMode(opt.value)}
           >
@@ -304,7 +304,7 @@ export function FilterStrip({
             type="button"
             className={cn(
               modeBtnBase,
-              'w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-white/10',
+              'w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-accent',
             )}
             onClick={onCreateCard}
             aria-label="Create card"
@@ -315,4 +315,4 @@ export function FilterStrip({
       </div>
     </div>
   );
-}
+});

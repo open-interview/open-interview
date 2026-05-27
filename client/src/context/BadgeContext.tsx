@@ -10,10 +10,10 @@ import {
 } from '../lib/badges';
 import { getAllQuestions, getQuestionById } from '../lib/questions-loader';
 import { useGlobalStats } from '../hooks/use-progress';
+import { rewardStorage } from '../lib/rewards';
 
 // Storage keys
 const SHOWN_BADGES_KEY = 'shown-badge-unlocks';
-const NOTIFICATIONS_KEY = 'app-notifications';
 
 function getShownBadges(): string[] {
   try {
@@ -29,33 +29,6 @@ function markBadgeAsShown(badgeId: string): void {
   if (!shown.includes(badgeId)) {
     shown.push(badgeId);
     localStorage.setItem(SHOWN_BADGES_KEY, JSON.stringify(shown));
-  }
-}
-
-// Add notification to localStorage
-function addBadgeNotification(badge: Badge): void {
-  try {
-    const stored = localStorage.getItem(NOTIFICATIONS_KEY);
-    const notifications = stored ? JSON.parse(stored) : [];
-    
-    const newNotification = {
-      id: `badge-${badge.id}-${Date.now()}`,
-      title: `🏆 Badge Unlocked: ${badge.name}`,
-      description: badge.description,
-      type: 'success',
-      timestamp: new Date().toISOString(),
-      read: false,
-      link: '/badges', // Navigate to badges page when clicked
-    };
-    
-    // Add to beginning, limit to 50 notifications
-    notifications.unshift(newNotification);
-    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications.slice(0, 50)));
-    
-    // Dispatch event so Notifications page can update
-    window.dispatchEvent(new CustomEvent('notification-added'));
-  } catch (e) {
-    console.error('Failed to add badge notification:', e);
   }
 }
 
@@ -75,7 +48,6 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
   const [badgeProgress, setBadgeProgress] = useState<BadgeProgress[]>([]);
   const [pendingBadges, setPendingBadges] = useState<Badge[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [isReady, setIsReady] = useState(false);
 
   // Listen for question completion events to trigger badge recalculation
   useEffect(() => {
@@ -86,97 +58,39 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
     window.addEventListener('question-completed', handleQuestionCompleted);
     return () => window.removeEventListener('question-completed', handleQuestionCompleted);
   }, []);
-  
-  // Mark ready immediately — no artificial delay needed
-  useEffect(() => { setIsReady(true); }, []);
 
-  // Calculate user stats from localStorage
+  // Calculate user stats from unified reward storage
   const userStats = useMemo(() => {
-    // Don't calculate until ready
-    if (!isReady) {
-      return {
-        totalCompleted: 0,
-        streak: 0,
-        channelsExplored: [],
-        difficultyStats: { beginner: 0, intermediate: 0, advanced: 0 },
-        channelCompletionPcts: [],
-        totalChannels: 0
-      };
-    }
-    
+    const progress = rewardStorage.getProgress();
     const allQuestions = getAllQuestions();
-    
-    // Get all completed question IDs across all channels
-    const allCompletedIds: string[] = [];
-    const channelsWithProgress: string[] = [];
-    
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('progress-')) {
-        const channelId = key.replace('progress-', '');
-        const completed = JSON.parse(localStorage.getItem(key) || '[]');
-        completed.forEach((id: string) => {
-          if (!allCompletedIds.includes(id)) {
-            allCompletedIds.push(id);
-          }
-        });
-        if (completed.length > 0 && !channelsWithProgress.includes(channelId)) {
-          channelsWithProgress.push(channelId);
-        }
-      }
-    });
-
-    // Calculate difficulty stats
-    const difficultyStats = { beginner: 0, intermediate: 0, advanced: 0 };
-    allCompletedIds.forEach(id => {
-      const question = getQuestionById(id);
-      if (question && question.difficulty) {
-        const difficulty = question.difficulty as keyof typeof difficultyStats;
-        if (difficultyStats[difficulty] !== undefined) {
-          difficultyStats[difficulty]++;
-        }
-      }
-    });
-
-    // Calculate streak
-    let streak = 0;
-    for (let i = 0; i < 365; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      if (stats.find(x => x.date === dateStr)) {
-        streak++;
-      } else {
-        break;
-      }
-    }
 
     // Calculate channel completion percentages
-    const channelCompletionPcts: number[] = [];
     const channelQuestionCounts: Record<string, number> = {};
     allQuestions.forEach(q => {
       channelQuestionCounts[q.channel] = (channelQuestionCounts[q.channel] || 0) + 1;
     });
 
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('progress-')) {
-        const channelId = key.replace('progress-', '');
-        const completed = JSON.parse(localStorage.getItem(key) || '[]');
-        const total = channelQuestionCounts[channelId] || 0;
-        if (total > 0) {
-          channelCompletionPcts.push(Math.round((completed.length / total) * 100));
-        }
+    const channelCompletionPcts: number[] = [];
+    Object.entries(progress.channelProgress).forEach(([channelId, completed]) => {
+      const total = channelQuestionCounts[channelId] || 0;
+      if (total > 0) {
+        channelCompletionPcts.push(Math.round((completed / total) * 100));
       }
     });
 
     return {
-      totalCompleted: allCompletedIds.length,
-      streak,
-      channelsExplored: channelsWithProgress,
-      difficultyStats,
+      totalCompleted: progress.questionsCompleted,
+      streak: progress.currentStreak,
+      channelsExplored: progress.channelsExplored,
+      difficultyStats: {
+        beginner: progress.beginnerCompleted,
+        intermediate: progress.intermediateCompleted,
+        advanced: progress.advancedCompleted,
+      },
       channelCompletionPcts,
       totalChannels: Object.keys(channelQuestionCounts).length
     };
-  }, [stats, refreshKey, isReady]);
+  }, [stats, refreshKey]);
 
   // Calculate badge progress
   useEffect(() => {
@@ -214,14 +128,18 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
     checkForNewUnlocks();
   }, [badgeProgress, checkForNewUnlocks]);
 
-  // Show next pending badge - now handled by unified notification system
+  // Show next pending badge - route through unified reward notification system
   useEffect(() => {
     if (pendingBadges.length > 0) {
-      const [next, ...rest] = pendingBadges;
+      const [next] = pendingBadges;
       markBadgeAsShown(next.id);
-      // Also add to notifications history
-      addBadgeNotification(next);
-      // Keep the badge in pending for unified system to consume
+      rewardStorage.addNotification({
+        type: 'achievement',
+        title: `Badge Unlocked: ${next.name}`,
+        message: next.description,
+        icon: '🏆',
+        color: '#8b5cf6',
+      });
     }
   }, [pendingBadges]);
 

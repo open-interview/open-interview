@@ -10,11 +10,12 @@ import { questionToSwipeCard, flashcardToSwipeCard } from '@/lib/card-adapters'
 import { recordReview, getCard, getFcCard, recordFcReview, getSRSStats, addToSRS } from '@/lib/spaced-repetition'
 import { FilterStrip, CardFan, SwipeHints, EmptyState, UndoToast, FeynmanMode, CreateCardModal } from '@/components/swipe'
 import SessionSummary from '@/components/swipe/SessionSummary'
-import { ArrowLeft, User, Flame, AlertCircle, RefreshCw } from 'lucide-react'
+import { AlertCircle, RefreshCw } from 'lucide-react'
 import type { SwipeCard, SwipeDirection, FeynmanRating, FilterState, CustomCardData, FeynmanAttempt } from '@/types/swipe'
 import type { ConfidenceRating } from '@/lib/spaced-repetition'
 import { getEnrolledChannels, getEnrolledCerts } from '@/lib/enrollment-service'
 import ChannelPicker from '@/components/channels/ChannelPicker'
+import { Layout } from '@/ui/Layout'
 
 const DATA_BASE = import.meta.env.BASE_URL + 'data'
 const CUSTOM_CARDS_KEY = 'oi-custom-cards'
@@ -92,6 +93,7 @@ export default function SwipeStudy() {
   // Example: /study/data-structures -> filter === 'data-structures'
   //          /study/bookmarks -> filter === 'bookmarks'
   //          /study -> filter === undefined (no param)
+  const { filter } = useParams()
   const [, setLocation] = useLocation()
   const isMobile = useIsMobile()
 
@@ -221,6 +223,9 @@ export default function SwipeStudy() {
           return
         }
         channelIds = enrolledIds
+      } else if (filters.scope === 'cert' && filters.certId) {
+        // Cert questions live at data/{certId}.json — same fetch pattern as channels
+        channelIds = [filters.certId]
       } else if (filters.channelId) {
         channelIds = [filters.channelId]
       }
@@ -453,146 +458,122 @@ export default function SwipeStudy() {
     return filterChannels.find(c => c.id === filters.channelId)?.name || null
   }, [filters.channelId, filterChannels])
 
+  const handleBack = useCallback(() => setLocation('/'), [setLocation])
+  const handleOpenCreateCard = useCallback(() => setShowCreateCardModal(true), [])
+  const handleCancelFeynman = useCallback(() => setFeynmanActive(false), [])
+  const handlePickTopics = useCallback(() => setShowChannelPicker(true), [])
+  const handleCloseCreateCard = useCallback(() => setShowCreateCardModal(false), [])
+
+  function handleChannelPickerClose() {
+    setShowChannelPicker(false)
+    refreshFilterChannels()
+    loadCardsForStudy()
+  }
+
   return (
-    <div className="flex flex-col min-h-screen bg-[#0a0a0a]" data-pagefind-body>
-      <header className="h-10 flex items-center justify-between px-4 shrink-0">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setLocation('/')}
-            className="text-muted-foreground hover:text-white transition-colors"
-            aria-label="Back"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <span className="text-sm font-semibold text-white" data-pagefind-title="Study - Swipe Mode">Study</span>
-          {activeChannelName && (
-            <span className="text-xs text-muted-foreground hidden sm:inline">
-              {activeChannelName}
-              {filters.mode !== 'browse' && (
-                <span className="ml-1 text-purple-400">• {filters.mode}</span>
-              )}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 text-amber-400">
-            <Flame className="w-3.5 h-3.5" />
-            <span className="text-xs font-semibold">{streak}</span>
-          </div>
-          <button
-            onClick={() => setLocation('/profile')}
-            className="text-muted-foreground hover:text-white transition-colors"
-            aria-label="Profile"
-          >
-            <User className="w-4 h-4" />
-          </button>
-        </div>
-      </header>
-
-      <div className="px-4 shrink-0">
-        <FilterStrip
-          channels={filterChannels}
-          certifications={certifications}
-          activeFilter={filters}
-          onFilterChange={handleFilterChange}
-          onCreateCard={() => setShowCreateCardModal(true)}
-        />
-      </div>
-
-      <main className="flex-1 flex flex-col min-h-0">
-        {error ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 px-4">
-            <div className="flex items-center gap-2 text-red-400">
-              <AlertCircle className="w-5 h-5" />
-              <span className="text-sm">{error}</span>
-            </div>
-            <button
-              onClick={handleRetry}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-zinc-800 text-zinc-200 rounded-lg hover:bg-zinc-700 transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Retry
-            </button>
-          </div>
-        ) : feynmanActive && currentCard ? (
-          <FeynmanMode
-            card={currentCard}
-            onComplete={handleFeynmanComplete}
-            onCancel={() => setFeynmanActive(false)}
+    <Layout title="Study" showBack={!!filter} onBack={() => setLocation('/study')}>
+      <div data-pagefind-body className="flex flex-col min-h-full">
+        <div className="px-4 shrink-0">
+          <FilterStrip
+            channels={filterChannels}
+            certifications={certifications}
+            activeFilter={filters}
+            onFilterChange={handleFilterChange}
+            onCreateCard={handleOpenCreateCard}
           />
-        ) : isComplete ? (
-          <SessionSummary
-            cardsReviewed={sessionStats.cardsReviewed}
-            correctCount={sessionStats.correctCount}
-            againCount={sessionStats.againCount}
-            hardCount={sessionStats.hardCount}
-            timeStarted={timeStartedRef.current}
-            timeEnded={timeEnded}
-            streak={streak}
-            onStudyMore={handleStudyMore}
-            onBack={() => setLocation('/')}
-          />
-        ) : isEmpty && getEnrolledChannels().length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 px-4">
-            <div className="text-center">
-              <h2 className="text-xl font-bold text-white mb-2">Pick topics to study</h2>
-              <p className="text-sm text-muted-foreground mb-6">Choose topics you want to learn to get started</p>
+        </div>
+
+        <div className="flex-1 flex flex-col min-h-0 glass-card rounded-none">
+          {error ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 px-4">
+              <div className="flex items-center gap-2 text-red-400">
+                <AlertCircle className="w-5 h-5" aria-hidden={true} />
+                <span className="text-sm">{error}</span>
+              </div>
               <button
-                onClick={() => setShowChannelPicker(true)}
-                className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl px-6 py-3 font-semibold transition-colors"
+                onClick={handleRetry}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-zinc-800 text-zinc-200 rounded-lg hover:bg-zinc-700 transition-colors"
               >
-                Pick topics
+                <RefreshCw className="w-4 h-4" aria-hidden={true} />
+                Retry
               </button>
             </div>
-          </div>
-        ) : isEmpty ? (
-          <EmptyState
-            nextReviewIn={nextReviewText}
-            streak={streak}
-            onBrowse={handleBrowse}
-          />
-        ) : loading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : currentCard ? (
-          <CardFan
-            cards={cards}
-            currentIndex={currentIndex}
-            onSwipe={handleSwipe}
-            onRate={handleRate}
-            onIndexChange={setCurrentIndex}
-            isFlipped={isFlipped}
-            setIsFlipped={setIsFlipped}
-          />
-        ) : null}
-      </main>
+          ) : feynmanActive && currentCard ? (
+            <FeynmanMode
+              card={currentCard}
+              onComplete={handleFeynmanComplete}
+              onCancel={handleCancelFeynman}
+            />
+          ) : isComplete ? (
+            <SessionSummary
+              cardsReviewed={sessionStats.cardsReviewed}
+              correctCount={sessionStats.correctCount}
+              againCount={sessionStats.againCount}
+              hardCount={sessionStats.hardCount}
+              timeStarted={timeStartedRef.current}
+              timeEnded={timeEnded}
+              streak={streak}
+              onStudyMore={handleStudyMore}
+              onBack={handleBack}
+            />
+          ) : isEmpty && getEnrolledChannels().length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 px-4">
+              <div className="text-center">
+                <h2 className="text-xl font-bold text-white mb-2 gradient-text">Pick topics to study</h2>
+                <p className="text-sm text-muted-foreground mb-6">Choose topics you want to learn to get started</p>
+                <button
+                  onClick={handlePickTopics}
+                  className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl px-6 py-3 font-semibold transition-colors"
+                >
+                  Pick topics
+                </button>
+              </div>
+            </div>
+          ) : isEmpty ? (
+            <EmptyState
+              nextReviewIn={nextReviewText}
+              streak={streak}
+              onBrowse={handleBrowse}
+            />
+          ) : loading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : currentCard ? (
+            <CardFan
+              cards={cards}
+              currentIndex={currentIndex}
+              onSwipe={handleSwipe}
+              onRate={handleRate}
+              onIndexChange={setCurrentIndex}
+              isFlipped={isFlipped}
+              setIsFlipped={setIsFlipped}
+            />
+          ) : null}
+        </div>
 
-      {showChannelPicker && (
-        <ChannelPicker
-          onClose={() => {
-            setShowChannelPicker(false)
-            refreshFilterChannels()
-            loadCardsForStudy()
-          }}
+        {showChannelPicker && (
+          <ChannelPicker
+            onClose={handleChannelPickerClose}
+          />
+        )}
+
+        <UndoToast
+          show={showUndo}
+          onUndo={handleUndo}
+          onTimeout={handleUndoTimeout}
+          duration={3000}
         />
-      )}
 
-      <UndoToast
-        show={showUndo}
-        onUndo={handleUndo}
-        onTimeout={handleUndoTimeout}
-        duration={3000}
-      />
+        {showHints && <SwipeHints onDismiss={dismissHints} />}
 
-      {showHints && <SwipeHints onDismiss={dismissHints} />}
-
-      <CreateCardModal
-        isOpen={showCreateCardModal}
-        onClose={() => setShowCreateCardModal(false)}
-        onCreate={handleCreateCard}
-        channels={filterChannels}
-      />
-    </div>
+        <CreateCardModal
+          isOpen={showCreateCardModal}
+          onClose={handleCloseCreateCard}
+          onCreate={handleCreateCard}
+          channels={filterChannels}
+        />
+      </div>
+    </Layout>
   )
 }

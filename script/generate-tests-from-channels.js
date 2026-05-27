@@ -109,7 +109,11 @@ function main() {
   for (const t of tests) {
     fs.writeFileSync(path.join(outDir, `${t.channelId}.json`), JSON.stringify([t], null, 2));
   }
+
+  // Write consolidated tests.json for downstream consumption
+  fs.writeFileSync(path.join(DATA_DIR, 'tests.json'), JSON.stringify(tests, null, 0));
   console.log(`Wrote ${tests.length} tests (skipped ${skipped}) to ${outDir}/`);
+  console.log(`   ✓ tests.json (${tests.length} tests)`);
 }
 
 main();

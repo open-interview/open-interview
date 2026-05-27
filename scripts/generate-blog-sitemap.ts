@@ -58,7 +58,7 @@ function extractPostMetadata(dirPath: string, id: string): PostMetadata | null {
 
     // Extract title from <title> tag
     const titleMatch = html.match(/<title>(.*?)<\/title>/);
-    const title = titleMatch ? titleMatch[1].replace(" - DevInsights", "") : "";
+    const title = titleMatch ? titleMatch[1].replace(" - Open Interview", "") : "";
 
     // Extract date from meta or article content
     const dateMatch = html.match(/"datePublished":"([^"]+)"/) ||

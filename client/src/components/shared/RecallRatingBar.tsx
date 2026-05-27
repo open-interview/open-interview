@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import type { ConfidenceRating } from '../../lib/spaced-repetition';
 
@@ -47,7 +47,7 @@ const ratingConfig: Record<ConfidenceRating, { label: string; description: strin
   },
 };
 
-export function RecallRatingBar({ onRate, disabled = false, size = 'md' }: RecallRatingBarProps) {
+export const RecallRatingBar = React.memo(function RecallRatingBar({ onRate, disabled = false, size = 'md' }: RecallRatingBarProps) {
   const [selected, setSelected] = useState<ConfidenceRating | null>(null);
 
   const handleSelect = (rating: ConfidenceRating) => {
@@ -94,4 +94,4 @@ export function RecallRatingBar({ onRate, disabled = false, size = 'md' }: Recal
       </div>
     </div>
   );
-}
+});

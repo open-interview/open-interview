@@ -25,11 +25,4 @@ export {
   OnboardingStorage,
 } from './storage.service';
 
-// Recommendation Service
-export {
-  RecommendationService,
-  type ChannelEngagement,
-  type NewQuestionAlert,
-  type Recommendation,
-  type UserEngagementData,
-} from './recommendation.service';
+

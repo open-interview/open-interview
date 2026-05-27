@@ -1,6 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useLocation } from 'wouter';
-import { ArrowLeft } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { Layout } from '@/ui/Layout';
 import { StreakRing } from '@/components/swipe/StreakRing';
 import { MasteryGrid } from '@/components/swipe/MasteryGrid';
 import { StatRow } from '@/components/swipe/StatRow';
@@ -12,6 +11,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import type { FeynmanAttempt, CustomCardData } from '@/types/swipe';
 import { getEnrolledChannels, getEnrolledCerts, getEnrollment } from '@/lib/enrollment-service'
 import ChannelPicker from '@/components/channels/ChannelPicker'
+import ProfileSettingsPanel from '@/components/profile/ProfileSettingsPanel'
 import type { ReviewCard, SRSStats } from '@/lib/spaced-repetition';
 
 interface ProfileSettings {
@@ -35,48 +35,45 @@ function getLongestStreak(): number {
 }
 
 export default function MinimalProfile() {
-  const [, setLocation] = useLocation();
   const isMobile = useIsMobile();
 
-  const [loading, setLoading] = useState(true);
-  const [settings, setSettings] = useState<ProfileSettings>(DEFAULT_SETTINGS);
-  const [feynmanAttempts, setFeynmanAttempts] = useState<FeynmanAttempt[]>([]);
-  const [customCards, setCustomCards] = useState<CustomCardData[]>([]);
-  const [srsStats, setSrsStats] = useState<SRSStats | null>(null);
-  const [xp, setXp] = useState<ReturnType<typeof getUserXP> | null>(null);
-  const [allCards, setAllCards] = useState<Map<string, ReviewCard>>(new Map());
-  const [showChannelPicker, setShowChannelPicker] = useState(false)
-
-  useEffect(() => {
-    migrateSRSStores();
-
+  const [settings, setSettings] = useState<ProfileSettings>(() => {
     try {
       const stored = localStorage.getItem('oi-profile-settings');
-      if (stored) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(stored) });
-    } catch {}
+      return stored ? { ...DEFAULT_SETTINGS, ...JSON.parse(stored) } : DEFAULT_SETTINGS;
+    } catch {
+      return DEFAULT_SETTINGS;
+    }
+  });
+  const [feynmanAttempts, setFeynmanAttempts] = useState<FeynmanAttempt[]>(() => {
     try {
       const stored = localStorage.getItem('oi-feynman-attempts');
-      if (stored) setFeynmanAttempts(JSON.parse(stored));
-    } catch {}
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [customCards, setCustomCards] = useState<CustomCardData[]>(() => {
     try {
       const stored = localStorage.getItem('oi-custom-cards');
-      if (stored) setCustomCards(JSON.parse(stored));
-    } catch {}
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [showChannelPicker, setShowChannelPicker] = useState(false)
 
+  const [srsStats, setSrsStats] = useState<SRSStats>(() => {
+    migrateSRSStores();
     const stats = getSRSStats();
-    const xpData = getUserXP();
-    const cards = getAllCards();
-
     const prev = getLongestStreak();
     if (stats.reviewStreak > prev) {
       localStorage.setItem('oi-longest-streak', String(stats.reviewStreak));
     }
-
-    setSrsStats(stats);
-    setXp(xpData);
-    setAllCards(cards);
-    setLoading(false);
-  }, []);
+    return stats;
+  });
+  const [xp, setXp] = useState(() => getUserXP());
+  const [allCards, setAllCards] = useState<Map<string, ReviewCard>>(() => getAllCards());
 
   const updateSettings = useCallback((patch: Partial<ProfileSettings>) => {
     setSettings(prev => {
@@ -177,53 +174,64 @@ export default function MinimalProfile() {
     input.click();
   }, []);
 
-  if (loading || !srsStats || !xp) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0a0a0a', color: '#fff' }}>
-        <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-      </div>
-    );
-  }
+  const handleOpenManageTopics = useCallback(() => setShowChannelPicker(true), [])
+  const handleClearFeynman = useCallback(() => {
+    localStorage.removeItem('oi-feynman-attempts');
+    setFeynmanAttempts([]);
+  }, [])
+  const handleEditCard = useCallback((card: CustomCardData) => {
+    console.log('Edit card', card)
+  }, [])
+  const handleDeleteCard = useCallback((id: string) => {
+    const updated = customCards.filter(c => c.id !== id);
+    setCustomCards(updated);
+    localStorage.setItem('oi-custom-cards', JSON.stringify(updated));
+  }, [customCards])
+  const handleExportCards = useCallback(() => {
+    const blob = new Blob([JSON.stringify(customCards, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'oi-custom-cards.json';
+    a.click();
+  }, [customCards])
+  const handleImportCards = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text) as CustomCardData[];
+        setCustomCards(data);
+        localStorage.setItem('oi-custom-cards', JSON.stringify(data));
+      } catch {}
+    };
+    input.click();
+  }, [])
 
   return (
-    <div className="min-h-screen overflow-y-auto" style={{ background: '#0a0a0a', color: '#fff' }}>
-      <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3" style={{ background: '#0a0a0a' }}>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setLocation('/')}
-            className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <h1 className="text-lg font-bold">Profile</h1>
-        </div>
-        <button
-          onClick={() => setLocation('/study')}
-          className="px-4 py-2 rounded-lg text-sm font-medium bg-white/10 hover:bg-white/15 transition-colors cursor-pointer"
-        >
-          Go to Study
-        </button>
-      </div>
-
+    <Layout title="Profile" showBack>
       <div className={isMobile ? 'px-4 pb-24 space-y-6' : 'max-w-4xl mx-auto px-6 pb-24 space-y-6'}>
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Progress
           </h2>
-          <div className="p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)' }}>
+          <div className="glass-card p-4">
             <StreakRing streak={srsStats.reviewStreak} xp={xp.totalXP} level={xp.level} xpProgress={xp.progress} />
           </div>
         </section>
 
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Mastery
           </h2>
           <MasteryGrid masteryData={masteryByChannel.map(m => ({ channel: m.channel, percentage: m.pct, cards: m.cards }))} />
         </section>
 
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Stats
           </h2>
           <StatRow
@@ -236,23 +244,23 @@ export default function MinimalProfile() {
         </section>
 
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             My Topics
           </h2>
-          <div className="p-4 rounded-2xl space-y-3" style={{ background: 'rgba(255,255,255,0.04)' }}>
+          <div className="p-4 rounded-2xl space-y-3 bg-muted">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Enrolled Channels</p>
-                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{getEnrolledChannels().length} channels</p>
+                <p className="text-xs text-muted-foreground">{getEnrolledChannels().length} channels</p>
               </div>
               <div>
                 <p className="text-sm font-medium">Enrolled Certs</p>
-                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{getEnrolledCerts().length} certifications</p>
+                <p className="text-xs text-muted-foreground">{getEnrolledCerts().length} certifications</p>
               </div>
             </div>
             <button
-              onClick={() => setShowChannelPicker(true)}
-              className="w-full px-4 py-2 rounded-lg text-sm bg-white/10 hover:bg-white/15 transition-colors cursor-pointer"
+            onClick={handleOpenManageTopics}
+            className="w-full px-4 py-2 rounded-lg text-sm bg-muted hover:bg-accent transition-colors cursor-pointer"
             >
               Manage Topics
             </button>
@@ -260,134 +268,59 @@ export default function MinimalProfile() {
         </section>
 
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             My Feynman Journal
           </h2>
           <FeynmanJournal
             attempts={feynmanAttempts.slice(0, 10)}
-            onClear={() => { localStorage.removeItem('oi-feynman-attempts'); setFeynmanAttempts([]); }}
+            onClear={handleClearFeynman}
           />
         </section>
 
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             My Cards
           </h2>
           <CustomCardList
             cards={customCards}
-            onEdit={(card) => console.log('Edit card', card)}
-            onDelete={(id) => {
-              const updated = customCards.filter(c => c.id !== id);
-              setCustomCards(updated);
-              localStorage.setItem('oi-custom-cards', JSON.stringify(updated));
-            }}
-            onExport={() => {
-              const blob = new Blob([JSON.stringify(customCards, null, 2)], { type: 'application/json' });
-              const a = document.createElement('a');
-              a.href = URL.createObjectURL(blob);
-              a.download = 'oi-custom-cards.json';
-              a.click();
-            }}
-            onImport={() => {
-              const input = document.createElement('input');
-              input.type = 'file';
-              input.accept = '.json';
-              input.onchange = async (e: Event) => {
-                const file = (e.target as HTMLInputElement).files?.[0];
-                if (!file) return;
-                try {
-                  const text = await file.text();
-                  const data = JSON.parse(text) as CustomCardData[];
-                  setCustomCards(data);
-                  localStorage.setItem('oi-custom-cards', JSON.stringify(data));
-                } catch {}
-              };
-              input.click();
-            }}
+            onEdit={handleEditCard}
+            onDelete={handleDeleteCard}
+            onExport={handleExportCards}
+            onImport={handleImportCards}
           />
         </section>
 
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Data Management
           </h2>
-          <div className="flex gap-3 p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)' }}>
+          <div className="flex gap-3 p-4 rounded-2xl bg-muted">
             <button
               onClick={handleExportAll}
-              className="px-4 py-2 rounded-lg text-sm bg-white/10 hover:bg-white/15 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-lg text-sm bg-muted hover:bg-accent transition-colors cursor-pointer"
             >
               Export All Data
             </button>
             <button
               onClick={handleImportAll}
-              className="px-4 py-2 rounded-lg text-sm bg-white/10 hover:bg-white/15 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-lg text-sm bg-muted hover:bg-accent transition-colors cursor-pointer"
             >
               Import Data
             </button>
           </div>
         </section>
 
-        <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'rgba(255,255,255,0.4)' }}>
-            Settings
-          </h2>
-          <div className="space-y-3 p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,0.04)' }}>
-            <div className="flex items-center justify-between">
-              <label htmlFor="dailyGoal" className="text-sm">Daily goal</label>
-              <select
-                id="dailyGoal"
-                value={settings.dailyGoal}
-                onChange={e => updateSettings({ dailyGoal: Number(e.target.value) })}
-                className="px-3 py-1.5 rounded-lg text-sm cursor-pointer outline-none"
-                style={{ background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
-              >
-                {[5, 10, 15, 20, 25].map(n => (
-                  <option key={n} value={n} style={{ background: '#1a1a1a' }}>{n} cards/day</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center justify-between">
-              <label htmlFor="defaultMode" className="text-sm">Default mode</label>
-              <select
-                id="defaultMode"
-                value={settings.defaultMode}
-                onChange={e => updateSettings({ defaultMode: e.target.value })}
-                className="px-3 py-1.5 rounded-lg text-sm cursor-pointer outline-none"
-                style={{ background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
-              >
-                {['recall', 'standard', 'feynman', 'palace'].map(m => (
-                  <option key={m} value={m} style={{ background: '#1a1a1a' }}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center justify-between">
-              <label htmlFor="fontSize" className="text-sm">Font size</label>
-              <select
-                id="fontSize"
-                value={settings.fontSize}
-                onChange={e => updateSettings({ fontSize: e.target.value })}
-                className="px-3 py-1.5 rounded-lg text-sm cursor-pointer outline-none"
-                style={{ background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
-              >
-                {['S', 'M', 'L'].map(s => (
-                  <option key={s} value={s} style={{ background: '#1a1a1a' }}>
-                    {s === 'S' ? 'Small' : s === 'M' ? 'Medium' : 'Large'}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </section>
+        <ProfileSettingsPanel settings={settings} onUpdate={updateSettings} />
 
         {showChannelPicker && (
           <section>
-            <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'rgba(255,255,255,0.4)' }}>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               Manage Topics
             </h2>
             <ChannelPicker onClose={handleChannelPickerClose} />
           </section>
         )}
       </div>
-    </div>
+    </Layout>
   );
 }

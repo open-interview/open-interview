@@ -1,3 +1,4 @@
+import React from 'react'
 import { motion } from 'framer-motion'
 import {
   Trophy,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 
 export interface SessionSummaryProps {
   cardsReviewed: number
@@ -33,29 +35,7 @@ function formatTimeDiff(start: Date, end: Date): string {
   return `${minutes}m ${seconds}s`
 }
 
-const containerVariants = {
-  hidden: { opacity: 0, scale: 0.9 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: {
-      duration: 0.5,
-      ease: 'easeOut' as const,
-      staggerChildren: 0.1,
-    },
-  },
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.4, ease: 'easeOut' as const },
-  },
-}
-
-export default function SessionSummary({
+const SessionSummary = React.memo(function SessionSummary({
   cardsReviewed,
   correctCount,
   againCount,
@@ -66,6 +46,30 @@ export default function SessionSummary({
   onStudyMore,
   onBack,
 }: SessionSummaryProps) {
+  const prefersReducedMotion = useReducedMotion()
+
+  const containerVariants = {
+    hidden: prefersReducedMotion ? {} : { opacity: 0, scale: 0.9 },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      transition: prefersReducedMotion ? { duration: 0 } : {
+        duration: 0.5,
+        ease: 'easeOut' as const,
+        staggerChildren: 0.1,
+      },
+    },
+  }
+
+  const itemVariants = {
+    hidden: prefersReducedMotion ? {} : { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: prefersReducedMotion ? { duration: 0 } : { duration: 0.4, ease: 'easeOut' as const },
+    },
+  }
+
   const accuracy =
     cardsReviewed > 0
       ? Math.round((correctCount / cardsReviewed) * 100)
@@ -90,7 +94,7 @@ export default function SessionSummary({
   ]
 
   return (
-    <div className="flex items-center justify-center min-h-[500px] p-4 bg-gray-900">
+    <div className="flex items-center justify-center min-h-[500px] p-4 bg-background">
       <motion.div
         className="w-full max-w-md"
         variants={containerVariants}
@@ -99,12 +103,12 @@ export default function SessionSummary({
       >
         <motion.div className="flex justify-center mb-6" variants={itemVariants}>
           <div className="w-20 h-20 rounded-full bg-amber-500/20 flex items-center justify-center">
-            <Trophy className="w-10 h-10 text-amber-400" />
+            <Trophy className="w-10 h-10 text-amber-400" aria-hidden={true} />
           </div>
         </motion.div>
 
         <motion.h1
-          className="text-3xl font-bold text-white text-center mb-8"
+          className="text-3xl font-bold text-white text-center mb-8 gradient-text"
           variants={itemVariants}
         >
           Session Complete!
@@ -116,43 +120,44 @@ export default function SessionSummary({
             return (
               <div
                 key={stat.label}
-                className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 text-center"
+                className="glass-card p-4 text-center"
               >
-                <Icon className="w-5 h-5 text-purple-400 mx-auto mb-2" />
+                <Icon className="w-5 h-5 text-purple-400 mx-auto mb-2" aria-hidden={true} />
                 <p className="text-xl font-bold text-white">{stat.value}</p>
-                <p className="text-xs text-gray-400 mt-1">{stat.label}</p>
+                <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
               </div>
             )
           })}
         </motion.div>
 
         <motion.div
-          className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 mb-6"
+          className="glass-card p-4 mb-6"
           variants={itemVariants}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-400">Level {currentLevel}</span>
-            <span className="text-sm text-gray-400">{xpEarned} XP</span>
+            <span className="text-sm text-muted-foreground">Level {currentLevel}</span>
+            <span className="text-sm text-muted-foreground">{xpEarned} XP</span>
           </div>
           <Progress value={xpProgress} className="h-2" />
-          <p className="text-xs text-gray-500 mt-2 text-center">
+          <p className="text-xs text-muted-foreground mt-2 text-center">
             {xpInCurrentLevel} / {xpPerLevel} XP to next level
           </p>
         </motion.div>
 
         <motion.div className="flex gap-3" variants={itemVariants}>
           <Button onClick={onStudyMore} variant="default" className="flex-1 gap-2">
-            <BookOpen className="w-4 h-4" />
+            <BookOpen className="w-4 h-4" aria-hidden={true} />
             Study More
           </Button>
           <Button onClick={onBack} variant="outline" className="flex-1 gap-2">
-            <Home className="w-4 h-4" />
+            <Home className="w-4 h-4" aria-hidden={true} />
             Go Home
           </Button>
         </motion.div>
       </motion.div>
     </div>
   )
-}
+})
 
+export default SessionSummary
 

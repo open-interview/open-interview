@@ -1,2 +1,1 @@
-export { Sidebar } from './Sidebar';
-export { AppLayout } from './AppLayout';
+// Layout components - minimal header only

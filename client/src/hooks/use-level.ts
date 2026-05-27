@@ -3,7 +3,7 @@
  * React hook for user level and XP tracking
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   UserLevel,
   LevelProgress,
@@ -15,11 +15,45 @@ import {
   getStreakMultiplier,
   awardXP,
 } from '../lib/achievements';
+import { rewardEngine } from '../lib/rewards';
 
 export function useLevel() {
   const [metrics, setMetrics] = useState(() => getMetrics());
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [previousLevel, setPreviousLevel] = useState<number | null>(null);
+
+  // Track previous metrics to avoid unnecessary re-renders
+  const prevMetricsRef = useRef(metrics);
+
+  // Poll for external XP/streak changes every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newMetrics = getMetrics();
+      const prev = prevMetricsRef.current;
+
+      if (
+        newMetrics.totalXP !== prev.totalXP ||
+        newMetrics.level !== prev.level ||
+        newMetrics.currentStreak !== prev.currentStreak ||
+        newMetrics.longestStreak !== prev.longestStreak
+      ) {
+        prevMetricsRef.current = newMetrics;
+        setMetrics(newMetrics);
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Subscribe to reward engine events for immediate XP updates
+  useEffect(() => {
+    const unsubscribe = rewardEngine.addListener(() => {
+      const newMetrics = getMetrics();
+      prevMetricsRef.current = newMetrics;
+      setMetrics(newMetrics);
+    });
+    return unsubscribe;
+  }, []);
 
   // Current level data
   const currentLevel = useMemo(() => {
@@ -55,6 +89,7 @@ export function useLevel() {
     awardXP(amount);
     setMetrics(prev => {
       const newMetrics = getMetrics();
+      prevMetricsRef.current = newMetrics;
       if (newMetrics.level > prev.level) {
         setPreviousLevel(prev.level);
         setShowLevelUp(true);

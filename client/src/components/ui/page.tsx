@@ -2,6 +2,7 @@
  * Page-level UI components — shared across all pages
  */
 
+import React from 'react';
 import { motion } from 'framer-motion';
 import { Search, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -15,7 +16,7 @@ interface PageHeaderProps {
   children?: React.ReactNode; // extra content below subtitle
 }
 
-export function PageHeader({ title, subtitle, children }: PageHeaderProps) {
+export const PageHeader = React.memo(function PageHeader({ title, subtitle, children }: PageHeaderProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -31,7 +32,7 @@ export function PageHeader({ title, subtitle, children }: PageHeaderProps) {
       {children}
     </motion.div>
   );
-}
+});
 
 // ── PageLoader ────────────────────────────────────────────────────────────────
 
@@ -39,9 +40,9 @@ interface PageLoaderProps {
   message?: string;
 }
 
-export function PageLoader({ message = 'Loading...' }: PageLoaderProps) {
+export const PageLoader = React.memo(function PageLoader({ message = 'Loading...' }: PageLoaderProps) {
   return <InterviewLoader message={message} />;
-}
+});
 
 // ── SearchBar ─────────────────────────────────────────────────────────────────
 
@@ -54,7 +55,7 @@ interface SearchBarProps {
   label?: string;
 }
 
-export function SearchBar({ value, onChange, placeholder = 'Search...', className, id = 'search-bar', label }: SearchBarProps) {
+export const SearchBar = React.memo(function SearchBar({ value, onChange, placeholder = 'Search...', className, id = 'search-bar', label }: SearchBarProps) {
   return (
     <div className={cn('relative', className)}>
       <label htmlFor={id} className="sr-only">{label ?? placeholder}</label>
@@ -77,7 +78,7 @@ export function SearchBar({ value, onChange, placeholder = 'Search...', classNam
       )}
     </div>
   );
-}
+});
 
 // ── FilterPill ────────────────────────────────────────────────────────────────
 
@@ -88,7 +89,7 @@ interface FilterPillProps {
   badge?: string | number;
 }
 
-export function FilterPill({ label, active, onClick, badge }: FilterPillProps) {
+export const FilterPill = React.memo(function FilterPill({ label, active, onClick, badge }: FilterPillProps) {
   return (
     <button
       onClick={onClick}
@@ -107,7 +108,7 @@ export function FilterPill({ label, active, onClick, badge }: FilterPillProps) {
       )}
     </button>
   );
-}
+});
 
 // ── FilterPills ───────────────────────────────────────────────────────────────
 
@@ -118,7 +119,7 @@ interface FilterPillsProps {
   className?: string;
 }
 
-export function FilterPills({ options, active, onChange, className }: FilterPillsProps) {
+export const FilterPills = React.memo(function FilterPills({ options, active, onChange, className }: FilterPillsProps) {
   return (
     <div className={cn('flex gap-2 flex-wrap', className)}>
       {options.map(opt => (
@@ -132,7 +133,7 @@ export function FilterPills({ options, active, onChange, className }: FilterPill
       ))}
     </div>
   );
-}
+});
 
 // ── StatCard ──────────────────────────────────────────────────────────────────
 
@@ -146,7 +147,7 @@ interface StatCardProps {
   delay?: number;
 }
 
-export function StatCard({ icon: Icon, label, value, color, bgColor, borderColor, delay = 0 }: StatCardProps) {
+export const StatCard = React.memo(function StatCard({ icon: Icon, label, value, color, bgColor, borderColor, delay = 0 }: StatCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -159,7 +160,7 @@ export function StatCard({ icon: Icon, label, value, color, bgColor, borderColor
       <div className="text-xs text-muted-foreground">{label}</div>
     </motion.div>
   );
-}
+});
 
 // ── SectionHeader ─────────────────────────────────────────────────────────────
 
@@ -170,7 +171,7 @@ interface SectionHeaderProps {
   className?: string;
 }
 
-export function SectionHeader({ title, icon, action, className }: SectionHeaderProps) {
+export const SectionHeader = React.memo(function SectionHeader({ title, icon, action, className }: SectionHeaderProps) {
   return (
     <div className={cn('flex items-center justify-between mb-4', className)}>
       <h2 className="text-lg font-bold flex items-center gap-2">
@@ -180,4 +181,4 @@ export function SectionHeader({ title, icon, action, className }: SectionHeaderP
       {action}
     </div>
   );
-}
+});

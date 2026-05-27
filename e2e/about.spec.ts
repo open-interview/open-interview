@@ -13,7 +13,7 @@ test.describe('About Page', () => {
   });
 
   test.skip('page loads with hero stats', async ({ page }) => {
-    await expect(page.getByText('Code_Reels')).toBeVisible();
+    await expect(page.getByText('Open Interview')).toBeVisible();
     
     const statsSection = page.locator('main .grid.grid-cols-2').first();
     await expect(statsSection).toBeVisible();
