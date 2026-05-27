@@ -79,5 +79,117 @@
     },
     "createdAt": "2026-05-19T11:51:32.151Z",
     "lastUpdated": "2026-05-19T11:51:32.151Z"
+  },
+  {
+    "id": "database-1779192358626-7",
+    "channel": "database",
+    "subChannel": "query-optimization",
+    "question": "A paginated API query on a 5-million row posts table takes over 3 seconds for page 25,000 (OFFSET 499980, LIMIT 20) despite having a B-tree index on created_at. Why is this query slow and how would you restructure it to achieve consistent sub-10ms response time regardless of page depth?",
+    "answer": "The query is slow because OFFSET does not skip rows in O(1); it forces the database to scan and discard all preceding rows. Internally, the database traverses the B-tree index on created_at, reads and counts through OFFSET + LIMIT rows, then discards the first OFFSET rows. For OFFSET 499980, it reads 500,000 index entries and heap fetches regardless of the index, resulting in O(n) scan depth proportional to page offset. The solution is keyset pagination, also called the seek method. Instead of OFFSET, use WHERE created_at < last_created_on_page_24999 ORDER BY created_at DESC LIMIT 20. The database performs a direct B-tree seek to the cursor value, then a sequential scan of exactly 20 leaf pages. This is O(log n) for the initial seek plus O(limit) for fetch, yielding consistent sub-millisecond index scans even at extreme depths. A tiebreaker column (the primary key id) must be added to the WHERE clause when multiple rows share the same created_at to prevent missed or duplicate rows. The implementation requires the client to pass the last seen values (created_at, id) rather than a page number, which changes the API contract from offset-based to cursor-based pagination. This is the standard approach used by Twitter, Stripe, and Slack for their timeline and list endpoints.",
+    "explanation": "Keyset pagination is critical for any system where users deeply paginate or where latency must remain predictable. The OFFSET approach not only slows down but also breaks under concurrent writes: new rows inserted before the current offset shift the result window, causing duplicate or skipped entries as the user paginates. Keyset pagination is immune to this because it paginates by value rather than position—new rows inserted before the cursor do not affect where the next page picks up. Real-world implementations must handle encoding the cursor for the client. Most APIs base64-encode a tuple like {created_at: timestamp, id: bigint} into a single opaque cursor string (following the Relay Connection spec or JSON:API pagination). The cursor also prevents users from arbitrarily jumping to deep pages, which eliminates a class of abuse vectors. One edge case: the sort column must have an index that supports the ORDER BY direction, and if the sort column is not unique (created_at is often not unique), the tiebreaker column must be added to both the WHERE clause and the composite index to guarantee deterministic ordering. The composite index (created_at DESC, id DESC) allows the database to satisfy the entire query from the index if it is a covering index, eliminating heap lookups entirely.",
+    "diagram": "flowchart TD\n  A[Client Requests Page 25,000] --> B{Which Pagination Method?}\n  B -->|OFFSET 499980 LIMIT 20| C[B-tree Index Scan on created_at]\n  C --> D[Read and Count 500,000 Index Entries]\n  D --> E[Discard First 499,980 Entries]\n  E --> F[Fetch 20 Rows from Heap]\n  F --> G[O(n) Time, Scales with Page Depth]\n  G --> H[3+ Seconds at Deep Pages]\n  B -->|Keyset: WHERE created_at < cursor| I[B-tree Index Seek to Cursor Value]\n  I --> J[Sequential Leaf Scan for 20 Entries]\n  J --> K[Fetch 20 Rows from Heap]\n  K --> L[O(log n) Seek + O(limit) Scan]\n  L --> M[Sub-10ms at Any Page Depth]\n  H --> N[Unusable at Scale]\n  M --> O[Preferred for Production APIs]",
+    "companies": [
+      "Google",
+      "Meta",
+      "Amazon"
+    ],
+    "tags": [
+      "query-optimization",
+      "database",
+      "pagination",
+      "indexing"
+    ],
+    "difficulty": "advanced",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T12:05:58.626Z",
+    "lastUpdated": "2026-05-19T12:05:58.626Z"
+  },
+  {
+    "id": "database-1779192361793-6",
+    "channel": "database",
+    "subChannel": "nosql",
+    "question": "How would you design a MongoDB document schema for a hotel booking system that must support real-time room availability checks across multiple dates and room types, while handling concurrent booking requests without double-booking?",
+    "answer": "For a production hotel booking system in MongoDB, I would use a hybrid embedded-referenced model. Each room document stores a time-bucketed availability subdocument rather than embedding full bookings. The room schema would include: room type metadata (type, base price, capacity, amenities), and an availability array where each element represents one date with fields for date, total rooms of this type, available rooms count, and a holds array containing pending booking IDs with expiration timestamps. The holds array prevents double-booking during the payment processing window without creating confirmed bookings prematurely. Actual confirmed bookings live in a separate dedicated bookings collection with references to room, user, price snapshot, and status. This separation is critical because bookings are highly mutable (cancellations, modifications, no-shows, extensions). Embedding mutable data inside documents that are frequently read for availability would cause document growth issues, write contention on the room document, and force read operations to skip large embedded arrays. Availability checks use a compound query on room type, date range, and available count. Atomic updates leverage MongoDB's $ positional operator to decrement available rooms for a specific date while adding a hold, all in a single atomic operation. The holds expire after 10 minutes via TTL index on the holds collection, automatically releasing unconfirmed slots back to the pool. For the checkout flow, the hold is converted to a confirmed booking by moving the hold record to the bookings collection with a status change, without touching the room document's availability counts since the hold already reserved the slot. If the booking fails, the hold is released atomically by removing it and incrementing the available count back.",
+    "explanation": "This design directly addresses MongoDB's document size limits (16 MB) and write contention problems that plague naive embedding approaches. A common mistake is embedding all bookings inside room documents, which causes each room to grow linearly with bookings, eventually hitting the 16 MB limit for high-traffic rooms. Worse, every write to any booking on a room locks the entire document, serializing all booking operations on popular rooms. The time-bucketed approach caps document size because each room only stores availability data for a fixed lookahead window (e.g., 365 days), creating a predictable upper bound of roughly 365 entries per room regardless of how many bookings exist. The separate bookings collection also enables efficient analytical queries like revenue reporting, guest history, and cancellation patterns without scanning room documents. In practice, companies like Airbnb use similar patterns with DynamoDB or MongoDB for their availability systems. The hold pattern solves the distributed booking race condition without requiring distributed locks or transactions, which degrade latency. Each room document acts as a single source of truth for its availability, and because MongoDB operations on a single document are atomic, the check-and-decrement operation is inherently safe under concurrent requests. This design works until you need cross-property atomicity, at which point you shard by property and accept that bookings spanning properties need an orchestrator with saga pattern compensation.",
+    "diagram": "flowchart TD\n  A[Guest Requests Booking] --> B[Query Room Document by Type & Dates]\n  B --> C{Available >= Requested?}\n  C -->|No| D[Reject: No Availability]\n  C -->|Yes| E[Atomic Update: Decrement availability + Add Hold]\n  E --> F{Ten-minute Payment Window}\n  F -->|Payment Successful| G[Convert Hold to Confirmed Booking in Bookings Collection]\n  F -->|Payment Failed or Expired| H[Atomic Release: Increment availability + Remove Hold]\n  G --> I[Return Confirmation]\n  H --> D",
+    "companies": [
+      "Airbnb",
+      "Booking.com",
+      "Uber"
+    ],
+    "tags": [
+      "nosql",
+      "database",
+      "mongodb",
+      "data-modeling"
+    ],
+    "difficulty": "intermediate",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T12:06:01.793Z",
+    "lastUpdated": "2026-05-19T12:06:01.793Z"
+  },
+  {
+    "id": "database-1779192372501-5",
+    "channel": "database",
+    "subChannel": "indexing",
+    "question": "How does an LSM-tree differ from a B-tree in handling write-heavy workloads, and when would you choose one over the other for a distributed storage system?",
+    "answer": "B-trees and LSM-trees represent fundamentally different approaches to on-disk data organization with distinct write amplification profiles. A B-tree performs in-place updates, modifying a fixed-size page (typically 4-16KB) on every write. Even a single row update requires a random I/O to locate the page, read it, modify it, and write it back. This produces write amplification of roughly 2-5x. B-trees also suffer from fragmentation over time as pages split and merge. However, B-trees excel at point reads and range scans because data is densely packed and sorted on disk with minimal read amplification (typically 1-3 page fetches per lookup via the tree height).\n\nAn LSM-tree (Log-Structured Merge-Tree) takes an append-only approach. Writes first hit an in-memory memtable (a sorted structure like a red-black tree or skip list), which is periodically flushed to disk as an immutable SSTable. Deletes are handled via tombstone records rather than immediate removal. Over time, a background compaction process merges overlapping SSTables to reclaim space and maintain read efficiency. This design dramatically improves write throughput — sequential I/O to the WAL and memtable flushes means 10-100x higher write rates compared to B-trees on spinning disks, and significant gains even on SSDs. The tradeoff is severe write amplification: compaction can produce 10-50x write amplification depending on the compaction strategy (size-tiered vs leveled).\n\nRead amplification is also higher for LSM-trees because a lookup must check the memtable, then multiple SSTable layers in order from newest to oldest. Leveled compaction (used in LevelDB, RocksDB) limits this by organizing SSTables into levels with exponentially increasing sizes, capping total files checked at roughly level count times a constant. Bloom filters per SSTable further reduce unnecessary probes. Choose a B-tree when point reads and low-latency single-row lookups dominate — classic OLTP workloads like PostgreSQL's heap with B-tree indexes. Choose an LSM-tree when write throughput is the bottleneck, workloads are append-heavy (time-series metrics, event logs, CDC streams), or when you need efficient compression across large datasets. Real-world systems often hybridize: WiredTiger (MongoDB) uses B-trees in cache backed by LSM on disk; MyRocks replaces InnoDB's B-tree with RocksDB's LSM for flash-optimized MySQL.",
+    "explanation": "This question tests whether a candidate understands that storage engines are not one-size-fits-all and that architectural tradeoffs directly impact operational outcomes. Companies like Snowflake and Databricks build large-scale distributed storage layers where write throughput bottlenecks cascade across clusters. Cloudflare operates edge storage (Durable Objects, R2) where SSD lifetime and write amplification directly affect hardware costs and reliability.\n\nA critical edge case is the range delete pattern. In a B-tree, deleting a range of keys requires visiting every page in that range — each page modified and written back, with potential cascading page merges. In an LSM-tree, a single range tombstone record covers the entire range at negligible write cost, but read amplification skyrockets until compaction materializes the deletion. This means LSM-trees handle bulk deletions efficiently on write but poorly on subsequent reads.\n\nAnother subtlety is SSD wear leveling. LSM-tree compaction causes sustained write amplification that accelerates NAND flash wear. On write-constrained environments (NVMe drives with limited endurance), excessive compaction pressure can reduce hardware lifespan by years. Modern LSM implementations mitigate this with rate-limited compaction (RocksDB's subcompactions, ScyllaDB's incremental compaction), but tuning these parameters requires deep understanding of the data distribution.\n\nReal-world usage: RocksDB powers CockroachDB's distributed KV store and Uber's document store. Bigtable and HBase use LSM-trees for time-series IoT data ingestion at millions of writes per second. Cassandra's size-tiered compaction favors write throughput while accepting higher read costs. On the B-tree side, InnoDB remains dominant for transactional workloads, and SQLite's B-tree engine runs billions of mobile apps. The fundamental lesson is that no single indexing structure dominates — the optimal choice depends on whether your bottleneck is read latency, write throughput, storage cost, or operational complexity.",
+    "diagram": "flowchart TD\n  A[Write Request Arrives] --> B{Workload Pattern?}\n  B -->|Write-heavy, Append-dominant| C[LSM-Tree Path]\n  B -->|Read-heavy, Low-latency| D[B-Tree Path]\n  C --> E[Write to WAL + Memtable]\n  E --> F[Flush Memtable to SSTable]\n  F --> G[Background Compaction Merges Files]\n  G --> H[Higher Write Throughput, Higher Read Amplification]\n  D --> I[Locate Target Page via Tree Traversal]\n  I --> J[Read Page, Modify In-Place]\n  J --> K[Write Modified Page Back to Disk]\n  K --> L[Lower Write Throughput, Lower Read Latency]",
+    "companies": [
+      "Cloudflare",
+      "Databricks",
+      "Snowflake"
+    ],
+    "tags": [
+      "indexing",
+      "database"
+    ],
+    "difficulty": "intermediate",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T12:06:12.501Z",
+    "lastUpdated": "2026-05-19T12:06:12.501Z"
+  },
+  {
+    "id": "database-1779192473961-8",
+    "channel": "database",
+    "subChannel": "query-optimization",
+    "question": "You are optimizing a reporting query for a large e-commerce platform. The orders table has 300 million rows with columns id, product_id, customer_id, status, total_amount, created_at. The query SELECT product_id, SUM(total_amount) as revenue FROM orders WHERE status = 'completed' AND created_at >= '2024-01-01' GROUP BY product_id ORDER BY revenue DESC LIMIT 10 takes 45 seconds. An EXPLAIN ANALYZE shows a Sequential Scan on the entire table followed by a sort. What indexing strategy would make this query return results in milliseconds, and why?",
+    "answer": "The query requires a covering composite index defined as: CREATE INDEX idx_order_covering ON orders (status, created_at, product_id) INCLUDE (total_amount). A simple composite index on status and created_at alone is insufficient because it still requires expensive random heap lookups to retrieve product_id and total_amount for the aggregation phase. The covering index converts the execution plan from a Sequential Scan to an Index-Only Scan. In an Index-Only Scan, the database engine traverses the sorted B-tree structure directly without consulting the main table heap. Since the index key (status, created_at, product_id) already guarantees the rows matching the filter are physically adjacent in the index leaf pages, the database can perform a highly efficient sequential read of just the relevant range. As it scans these leaf pages, it aggregates SUM(total_amount) directly from the INCLUDE columns. No separate Sort step is needed because the index naturally orders rows by product_id after filtering on the leading equality column status and the range column created_at. The database completes the scan of the filtered range and streams the top 10 grouped results directly to the client. This entire process involves zero heap disk access and zero sorting overhead, reducing the query time from 45 seconds to single-digit milliseconds. The trade-off for this performance is significant index bloat potential: a covering index with five columns can be very wide, increasing storage costs and write amplification considerably. On a high-write table processing millions of transactions per day, maintaining this wide index can slow down INSERT and UPDATE operations by 20 to 30 percent, generate excess Write-Ahead Log traffic, and require more aggressive autovacuum tuning. Companies like Meta and Amazon often mitigate this by using partial covering indexes targeting only the most critical time ranges, implementing table partitioning by created_at to keep each partition's index smaller, or offloading the aggregation to a dedicated columnar analytics store like Apache Parquet on S3 queried by Presto or Athena. However, when optimizing a single critical reporting query in a row-oriented database, the covering composite index with INCLUDE columns is the standard first optimization and is frequently the only optimization needed.",
+    "explanation": "This optimization directly addresses the two most expensive operations in query execution: full table scans and random heap lookups. A 300 million row sequential scan is catastrophic for both query latency and database buffer cache efficiency. The covering composite index provides a pre-organized, narrow data structure that the query executor can navigate entirely within the index's own B-tree pages. The key insight is column order in the composite index. Equality conditions must always precede range conditions because B-trees are optimized for binary search on prefix columns. Placing the range column first would destroy selectivity, forcing the database to scan a much larger portion of the index tree. A common edge case is when status has very low cardinality, such as only three distinct values. The optimizer might still prefer a Sequential Scan if it estimates a large portion of the table matches the filter, even with an index. However, including created_at as the second column dramatically reduces the scanned range to just the relevant time window. Another critical real-world consideration is write performance versus read performance. Adding wide INCLUDE columns increases the index's physical size and the write amplification factor for every DML statement. On a social media platform processing millions of writes per second, maintaining a wide covering index can cause significant index bloat, increased autovacuum pressure, and contribute to right-hand-side page splits when created_at is monotonically increasing. Mitigation strategies include using a fillfactor of 90 to leave room for future inserts, implementing table partitioning by created_at so each partition hosts a smaller index, or routing the reporting workload to a dedicated columnar analytics store.",
+    "diagram": "flowchart TD\n  A[Query: filter status & date, group by product_id, sum amount] --> B{Index Strategy}\n  B -->|C1: Index on status only| C[Bitmap Index Scan]\n  C --> D[Fetch matching heap pages]\n  D --> E[Filter by date in heap]\n  E --> F[Sort / Aggregate]\n  F --> G[Slow: 10-15 seconds]\n  B -->|C2: Index on status, created_at| H[Index Scan + Heap Lookup]\n  H --> I[Retrieve product_id, amount from heap]\n  I --> J[Sort by product_id]\n  J --> K[Slow: 5-10 seconds]\n  B -->|C3: Covering Index with INCLUDE| L[Index-Only Scan]\n  L --> M[Seek to status completed in B-tree]\n  M --> N[Range scan date in leaf pages]\n  N --> O[Stream product_id & SUM from INCLUDE columns]\n  O --> P[No Sort needed]\n  P --> Q[Fast: sub-100ms]",
+    "companies": [
+      "Google",
+      "Meta",
+      "Amazon"
+    ],
+    "tags": [
+      "query-optimization",
+      "database"
+    ],
+    "difficulty": "advanced",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T12:07:53.961Z",
+    "lastUpdated": "2026-05-19T12:07:53.961Z"
   }
 ]

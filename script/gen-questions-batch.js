@@ -27,6 +27,7 @@ const QUESTIONS_DIR = path.join(ROOT, 'data', 'questions');
 // ── imports ───────────────────────────────────────────────────────────────────
 import { call, parseResponse } from './ai/providers/opencode.js';
 import { channelConfigs } from './ai/prompts/templates/generate.js';
+import { runWithConcurrency, createProgressReporter } from './run-with-concurrency.js';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -144,32 +145,15 @@ async function generateOne(channel, existingQuestions, n) {
   };
 }
 
-// ── channel batch ─────────────────────────────────────────────────────────────
+// ── single question generation (for parallel queue) ──────────────────────────
 
-async function generateForChannel(channel, perChannel) {
-  const existing = readChannel(channel);
-  const startCount = existing.length;
-  const results = [...existing];
-  let added = 0;
-  let failed = 0;
-
-  console.log(`\n📋 [${channel}] Starting — ${startCount} existing, targeting +${perChannel}`);
-
-  for (let n = 0; n < perChannel; n++) {
-    try {
-      const q = await generateOne(channel, results, startCount + n + 1);
-      results.push(q);
-      added++;
-      writeChannel(channel, results);
-      console.log(`  ✅ [${channel}] ${added}/${perChannel}: ${q.question.slice(0, 60)}...`);
-    } catch (e) {
-      failed++;
-      console.log(`  ❌ [${channel}] attempt ${n + 1} failed: ${e.message}`);
-    }
+async function generateOneForChannel(channel, questionIndex, existingQuestions) {
+  try {
+    const q = await generateOne(channel, existingQuestions, questionIndex);
+    return { success: true, channel, question: q };
+  } catch (e) {
+    return { success: false, channel, error: e.message };
   }
-
-  console.log(`  📊 [${channel}] Done: +${added} added, ${failed} failed`);
-  return { channel, added, failed };
 }
 
 // ── main ──────────────────────────────────────────────────────────────────────
@@ -185,13 +169,13 @@ async function main() {
     10,
   );
   const concurrency = parseInt(
-    concurrencyArg?.split('=')[1] || process.env.CONCURRENCY || '3',
+    concurrencyArg?.split('=')[1] || process.env.CONCURRENCY || '20',
     10,
   );
 
   const channelsEnv = process.env.CHANNELS;
   const positionalChannels = args.filter(a => !a.startsWith('--'));
-  const allBase = Object.keys(channelConfigs); // 8 base channels
+  const allBase = Object.keys(channelConfigs);
 
   let channels;
   if (channelsEnv) {
@@ -202,50 +186,94 @@ async function main() {
     channels = allBase;
   }
 
-  // Validate channels
   const allKnown = [...allBase];
   const invalid = channels.filter(c => !allKnown.includes(c) && !fs.existsSync(path.join(QUESTIONS_DIR, `${c}.json`)));
   if (invalid.length > 0) {
     console.warn(`⚠️  Unknown channels (will still try): ${invalid.join(', ')}`);
   }
 
+  const totalTasks = channels.length * perChannel;
+
   console.log('═══════════════════════════════════════════════════════');
   console.log('🚀 Lean Batch Question Generator');
   console.log('═══════════════════════════════════════════════════════');
   console.log(`Channels:     ${channels.join(', ')}`);
   console.log(`Per channel:  ${perChannel}`);
-  console.log(`Concurrency:  ${concurrency}`);
-  console.log(`Total target: ${channels.length * perChannel} questions`);
+  console.log(`Concurrency:  ${concurrency} (parallel consumer queue)`);
+  console.log(`Total target: ${totalTasks} questions`);
   console.log('═══════════════════════════════════════════════════════');
 
-  const summary = [];
+  // ── Build task queue ───────────────────────────────────────────
+  // Each task = one question to generate for one channel
+  const tasks = [];
+  const channelExistingQuestions = {};
 
-  // Process in batches of `concurrency`
-  for (let i = 0; i < channels.length; i += concurrency) {
-    const batch = channels.slice(i, i + concurrency);
-    console.log(`\n🔄 Batch ${Math.floor(i / concurrency) + 1}/${Math.ceil(channels.length / concurrency)}: ${batch.join(', ')}`);
-
-    const batchResults = await Promise.all(
-      batch.map(ch => generateForChannel(ch, perChannel).catch(e => ({
-        channel: ch,
-        added: 0,
-        failed: perChannel,
-        error: e.message,
-      }))),
-    );
-    summary.push(...batchResults);
+  for (const ch of channels) {
+    const existing = readChannel(ch);
+    channelExistingQuestions[ch] = existing;
+    for (let n = 0; n < perChannel; n++) {
+      tasks.push({ channel: ch, questionIndex: existing.length + n + 1, existingQuestions: existing });
+    }
   }
 
+  // ── Shared state for incremental save ──────────────────────────
+  const byChannel = {};
+  const pendingByChannel = {};
+  for (const ch of channels) {
+    byChannel[ch] = { added: 0, failed: 0 };
+    pendingByChannel[ch] = [];
+  }
+
+  let completedCount = 0;
+  let lastSavePct = 0;
+  const SAVE_INTERVAL = 0.1; // save every 10% completion
+
+  async function flushPending() {
+    for (const [ch, pending] of Object.entries(pendingByChannel)) {
+      if (pending.length === 0) continue;
+      const existing = readChannel(ch);
+      existing.push(...pending);
+      writeChannel(ch, existing);
+      pending.length = 0;
+    }
+  }
+
+  const reporter = createProgressReporter('Questions');
+
+  // ── Run with parallel consumer queue ───────────────────────────
+  const results = await runWithConcurrency(tasks, concurrency, async (task) => {
+    const result = await generateOneForChannel(task.channel, task.questionIndex, task.existingQuestions);
+    if (result.success) {
+      byChannel[result.channel].added++;
+      pendingByChannel[result.channel].push(result.question);
+    } else {
+      byChannel[result.channel].failed++;
+    }
+    completedCount++;
+    const pct = completedCount / totalTasks;
+    // Incremental save every 10% to prevent data loss on interruption
+    if (pct - lastSavePct >= SAVE_INTERVAL) {
+      await flushPending();
+      lastSavePct = pct;
+    }
+    return result;
+  }, reporter);
+
+  // Final save of any remaining
+  await flushPending();
+
+  // ── Final summary ──────────────────────────────────────────────
   console.log('\n═══════════════════════════════════════════════════════');
   console.log('📊 FINAL SUMMARY');
   console.log('═══════════════════════════════════════════════════════');
   let totalAdded = 0;
   let totalFailed = 0;
-  for (const r of summary) {
-    const status = r.added > 0 ? '✅' : '❌';
-    console.log(`  ${status} ${r.channel}: +${r.added} added, ${r.failed} failed`);
-    totalAdded += r.added;
-    totalFailed += r.failed;
+  for (const ch of channels) {
+    const s = byChannel[ch];
+    const status = s.added > 0 ? '✅' : '❌';
+    console.log(`  ${status} ${ch}: +${s.added} added, ${s.failed} failed`);
+    totalAdded += s.added;
+    totalFailed += s.failed;
   }
   console.log(`\nTotal added:  ${totalAdded}`);
   console.log(`Total failed: ${totalFailed}`);

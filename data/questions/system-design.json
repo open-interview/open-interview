@@ -187,5 +187,114 @@
     },
     "createdAt": "2026-05-19T11:52:09.898Z",
     "lastUpdated": "2026-05-19T11:52:09.898Z"
+  },
+  {
+    "id": "system-design-1779192335853-9",
+    "channel": "system-design",
+    "subChannel": "load-balancing",
+    "question": "How would you design a load balancing strategy for a globally distributed database that serves both real-time read/write workloads and large analytical queries, while ensuring fault tolerance and minimal latency?",
+    "answer": "A globally distributed database handling both real-time and analytical workloads requires a multi-tier load balancing approach. At the first tier, use DNS-based Global Server Load Balancing (GSLB) with geo-routing to direct clients to the nearest regional endpoint, reducing latency. Each regional endpoint has a second-tier load balancer (e.g., Envoy or HAProxy) that performs health checks, TLS termination, and connection pooling. This layer also inspects incoming queries to classify them: real-time writes need immediate dispatch to the primary shard; read-heavy analytical queries can be routed to read replicas or queued for batch processing. The third tier is a shard-aware routing layer using consistent hashing to distribute queries across database shards without reshuffling on scaling. For fault tolerance, every load balancer runs in an active-active configuration with continuous health monitors. On node failure, connections are gracefully drained before traffic is shifted. To minimize latency, use anycast for DNS resolution, persistent HTTP/2 connections, and a distributed cache (e.g., Redis) for hot data. Rate limiting at the edge prevents cascading failures during traffic spikes. For analytical workloads, implement a separate queue (Kafka) to absorb bursts and throttle database connections. This layered approach ensures low latency for transactions while isolating heavy queries from impacting real-time performance.",
+    "explanation": "Designing load balancing for mixed workloads is critical because a one-size-fits-all strategy leads to resource contention and unpredictable latency. Real-time writes require immediate consistency and low latency, while analytical queries can tolerate higher latency but consume significant IO and memory. Geolocation routing reduces baseline latency but becomes challenging with failover: if the nearest region degrades, traffic must fail over without overloading other regions. Consistent hashing minimizes disruption during scaling but can create hotspots if data distribution is not uniform; virtual nodes help mitigate this. Health checking must be application-aware: a database node may accept TCP connections but be stuck in a long query. Connection draining is essential during rolling updates to avoid half-closed transactions. In production, Cloudflare uses its global anycast network and intelligent routing; Databricks's Photon engine coordinates with cloud LBs for query distribution; Snowflake relies on cloud provider load balancers plus its own queue management for large queries. Each face similar trade-offs: active-active adds complexity but provides better utilization than active-passive. Monitoring metrics like request latency, error rates, and connection pool depth are necessary to auto-scale and prevent thundering herds.",
+    "diagram": "flowchart TD\n  A[Client] --> B[DNS GSLB Geo-Routing]\n  B --> C[Regional Load Balancer]\n  C --> D{Query Classifier}\n  D -->|Real-time Write| E[Shard Router Consistent Hashing]\n  D -->|Analytical Query| F[Message Queue / Read Replica]\n  E --> G[(Database Shard)]\n  F --> H[Worker Node]\n  C --> I[Health Check Monitor]\n  I --> J[Active-Active Pool]\n  G --> K[Response]\n  H --> L[Result Aggregation]\n  K --> M[Client]\n  L --> M",
+    "companies": [
+      "Cloudflare",
+      "Databricks",
+      "Snowflake"
+    ],
+    "tags": [
+      "load-balancing",
+      "system-design"
+    ],
+    "difficulty": "advanced",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T12:05:35.853Z",
+    "lastUpdated": "2026-05-19T12:05:35.853Z"
+  },
+  {
+    "id": "system-design-1779192344565-11",
+    "channel": "system-design",
+    "subChannel": "distributed-systems",
+    "question": "How does consistent hashing improve scalability and reliability in distributed caching systems like Memcached or Redis clusters?",
+    "answer": "Consistent hashing is a distributed hashing scheme that maps data to nodes using a hash ring, minimizing redistribution when nodes are added or removed. Traditional modulo-based hashing calculates hash(key) % N to determine node assignment, but when N changes, nearly every key must be remapped. In a production cache, this causes a thundering herd of cache misses that can overwhelm the database and degrade p99 latency by orders of magnitude. Consistent hashing solves this by hashing both keys and node identifiers onto a circular ring. Each key is assigned to the nearest node clockwise from its position. When a node joins or leaves, only the keys that hash into the arc between that node and its predecessor need to be reassigned. In a cluster of N nodes with K total keys, this is roughly K/N keys remapped instead of K keys. This property makes rolling deployments, auto-scaling events, and node failures transparent to overall cache performance. A key enhancement is virtual nodes, where each physical node appears on the ring at multiple pseudorandom positions. Virtual nodes improve load distribution because keys are spread more evenly, especially in heterogeneous clusters with different machine sizes. Without virtual nodes, removing one node leaves its clockwise neighbor handling both its own load and the departed node's load, creating a hot spot. Virtual nodes also enable weighted capacity a node with twice the RAM or CPU gets twice as many virtual tokens. Dynamo-style databases like Cassandra and Voldemort use this approach. The ring structure supports O(log N) lookups via binary search on sorted ring positions, and gossip protocols handle membership changes without a centralized coordinator. Consistent hashing is not a consistency or replication protocol it only governs key placement. Cache invalidation, replication factor, and read repair are separate layers built on top. But as the foundational routing mechanism, consistent hashing is what allows modern distributed caches to scale horizontally while maintaining predictable performance during topology changes.",
+    "explanation": "Consistent hashing matters because cache efficiency directly determines system tail latency and database load. At Netflix scale, the video recommendation pipeline serves millions of personalized requests per second. A 1 percent cache miss rate increase can trigger hundreds of thousands of additional database queries. Without consistent hashing, a routine five-node rolling deployment would cause a complete cache flush five times, spiking database connections and degrading the user experience. Consistent hashing makes operations like scaling, patching, and failover invisible to performance metrics. Edge cases reveal important subtleties. When a node fails, its keys are reassigned to the next clockwise node that is still alive. That surviving node now handles both its own traffic and the failed nodes traffic. This creates a cascading overload risk. Virtual nodes mitigate this by distributing a single physical nodes load across many survivors instead of just one. Another edge case is ring imbalance. If node positions on the ring are clustered, large gaps produce uneven key distribution. Consistent hashing variants like Jump Hash and Rendezvous Hashing provide alternative guarantees: Jump Hash gives O(log N) assignment with zero memory for the ring but does not support arbitrary node addition, and Rendezvous Hashing produces better uniformity at the cost of O(N) assignment per key. Real-world usage extends far beyond caching. Google Maglev uses consistent hashing for network load balancer session persistence. Amazon DynamoDB uses it for partition placement. Akamai and Cloudflare route users to edge servers using similar ring-based hashing. The pattern appears wherever a system needs to distribute work across a changing set of workers while maximizing stability. Understanding consistent hashing is foundational because it reveals the fundamental tradeoff between availability, operational simplicity, and uniform load distribution in distributed systems.",
+    "diagram": "flowchart TD\n  A[Key: user_123] --> B[Hash Function]\n  B --> C[Place Key on Hash Ring]\n  C --> D{Find Nearest Node Clockwise}\n  D --> E[Node cache-n4]\n  E --> F{Is node online?}\n  F -->|Yes| G[Return cached value]\n  F -->|No| H[Query database]\n  H --> I[Store result in cache]\n  I --> J[Return to client]\n  G --> J\n  K[Node cache-n2 joins] --> L[Only keys between\n cache-n1 and cache-n2\n are reassigned]\n  L --> M[Other keys unaffected]",
+    "companies": [
+      "Microsoft",
+      "Apple",
+      "Netflix"
+    ],
+    "tags": [
+      "distributed-systems",
+      "system-design"
+    ],
+    "difficulty": "beginner",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T12:05:44.565Z",
+    "lastUpdated": "2026-05-19T12:05:44.565Z"
+  },
+  {
+    "id": "system-design-1779192382509-10",
+    "channel": "system-design",
+    "subChannel": "api-design",
+    "question": "Design an idempotent API endpoint for processing a one-time payment. How do you guarantee exactly-once semantics despite network failures and concurrent requests, and what system design underpins this?",
+    "answer": "The core pattern is the idempotency key. The client generates a unique key, typically a version 4 UUID, and sends it in the Idempotency-Key header. The server uses a strongly consistent database to store the processing state. The schema is a single table: IdempotencyKeys with a partition key of idempotency_key (String). Attributes include status (String: STARTED, COMPLETED, FAILED), request_payload (Hash), response_payload (JSON), and created_at (TTL). The request flow begins with a conditional write: an attempt to INSERT the key with status STARTED, conditioned on the key not existing. If the insert succeeds, the request proceeds. A second request with the same key will see the existing record. If status is COMPLETED, it returns the cached response. If status is FAILED, it returns the cached error. If status is STARTED, it returns a 409 Conflict. This atomic check-and-set prevents race conditions where two nodes process the same request. Once the record is inserted, the worker processes the payment. On success, it atomically updates the record to COMPLETED. On failure, it updates to FAILED. A background reconciliation service handles stuck STARTED records older than a configurable timeout, contacting the downstream provider for the authoritative state. This reconciliation is critical for correctness during provider failures or network partitions. The system design ensures the idempotency store is highly available and horizontally scalable. DynamoDB or Cosmos DB with strong consistency is the standard choice. The system must fail-closed if the store is unreachable to prevent double charges.",
+    "explanation": "This challenge sits at the intersection of API design and distributed systems. Real-world incidents at major companies often stem from poorly designed idempotency. In services like Apple's App Store billing or Netflix charge events, a single request might be retried multiple times. The idempotency key is the antidote. The most critical edge case is the window between starting the payment and receiving the response. If the server crashes in this window, the record is stuck in STARTED state. The background reconciliation must handle this without manual intervention. Another key edge case is the client sending a different request payload with the same idempotency key. The system must validate the request_payload hash against the original, returning a 422 Unprocessable Entity if they differ. The TTL is also a design trade-off: a 24-hour TTL is standard to cover most retry scenarios, requiring careful capacity planning. Stripe's API is the gold standard here. They generate an idempotency key automatically if one is not provided, hiding complexity from the client while maintaining safety. The ultimate lesson is that idempotency pervades the entire write path, from the load balancer to the database, and is not merely an API concern.",
+    "diagram": "flowchart TD\n  A[Client Request + Idempotency Key] --> B[API Middleware]\n  B --> C{Conditional Insert\ninto Idempotency Store?}\n  C -- Exists & COMPLETED --> D[Return Cached Result]\n  C -- Exists & IN_PROGRESS --> E[Return 409 Conflict]\n  C -- Inserted (IN_PROGRESS) --> F[Process Payment with PSP]\n  F --> G{Payment Successful?}\n  G -- Yes --> H[Update Key to COMPLETED]\n  H --> I[Return 200 OK]\n  G -- No --> J[Update Key to FAILED]\n  J --> K[Return Error Response]",
+    "companies": [
+      "Netflix",
+      "Apple",
+      "Microsoft"
+    ],
+    "tags": [
+      "api-design",
+      "system-design"
+    ],
+    "difficulty": "intermediate",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T12:06:22.509Z",
+    "lastUpdated": "2026-05-19T12:06:22.510Z"
+  },
+  {
+    "id": "system-design-1779192405230-12",
+    "channel": "system-design",
+    "subChannel": "distributed-systems",
+    "question": "How would you design a distributed rate limiting service that provides per-user, per-second throttling with 99.999% accuracy across 5 global data centers handling 10M requests per second, while maintaining sub-millisecond P99 latency?",
+    "answer": "A distributed rate limiter at this scale requires a hybrid two-tier architecture combining local decision-making with periodic global reconciliation. Each application server runs a local token bucket in memory, pre-allocated with a share of the user's global rate limit proportional to the data center's historical traffic weight. For example, if us-east-1 handles 40% of a user's traffic, its local bucket starts with 40% of the user's per-second limit. Tokens refill locally at the weighted rate, avoiding any cross-datacenter round trip on the hot path. When the local bucket drops below a configurable threshold (e.g., 20%), the server fetches a fresh allocation from its regional Redis cluster, which participates in a gossip protocol to periodically synchronize token counts across regions. Synchronization is eventually consistent with a bounded error budget of ±5% per window, which is acceptable for rate limiting use cases. To handle clock skew, the system uses CLOCK_MONOTONIC for local decisions and NTP-synchronized wall clocks with drift tolerance of ±100ms; nodes exceeding this threshold are quarantined. Hot keys are addressed using consistent hashing with virtual nodes across Redis shards, combined with probabilistic early expiration to prevent thundering herds. A bloom filter pre-filters requests before consulting the token bucket, reducing lookups for non-throttled traffic by roughly 90%. Each data center runs a circuit breaker that detects when the local error rate for rate limit checks exceeds 1%, triggering a conservative local-only fallback mode to prevent cascading failures. Metrics are emitted every second to a time-series database for monitoring accuracy against the ideal global limit. The system also implements a token debt mechanism: when a data center fails, survivors borrow from a shared pool and repay within one window, preventing over-commitment of the user's global limit.",
+    "explanation": "This design matters because naive centralized rate limiting breaks at global scale. A single Redis counter consulted on every request would add 50-100ms of cross-datacenter latency, making sub-millisecond P99 impossible. The hybrid approach achieves both accuracy and performance by exploiting the observation that rate limiting is a coordination problem where eventual consistency with bounded error is entirely acceptable; over-throttling by 5% is far better than adding 100ms of latency. Key edge cases include traffic migration between data centers due to DNS failover or load balancer rebalancing. The burst buffer mechanism handles this by allowing a node to temporarily over-consume up to 10% of the user's limit, which is debited from future allocations. Another edge case is the thundering herd problem when a hot key's rate limit resets simultaneously across all local buckets. This is solved by jittering the refill timers across nodes using a deterministic offset based on the node ID hash. Real-world usage is extensive. Stripe's production rate limiter uses a similar hierarchical sliding window approach in Redis with workspace-level, account-level, and API-key-level limits. Uber's dispatch rate limiter uses a distributed token bucket with dynamic weight adjustment based on real-time traffic patterns. Airbnb's search rate limiting must handle variable-latency ML inference requests, requiring adaptive rate limiting where the limit adjusts based on upstream service capacity. A common anti-pattern is making rate limiting strongly consistent; this trades availability for precision that is never actually needed. The CAP theorem dictates that at global scale, you must choose partition tolerance, and the choice between consistency and availability is clear: rate limiting must remain available even if it means allowing 5% more traffic briefly.",
+    "diagram": "flowchart TD\n  A[Request Arrives] --> B{Local Token Bucket<br/>Check TTL expiry}\n  B -->|Has Tokens| C[Allow Request<br/>Decrement Token Count]\n  B -->|Empty| D{Regional Redis<br/>Fetch Fresh Tokens}\n  D -->|Allocated| E[Refill Local Bucket<br/>Allow Request]\n  D -->|Exhausted| F[Global Sync<br/>Gossip Protocol]\n  F -->|Borrow Available| G[Borrow Token<br/>Log Debt]\n  F -->|All Exhausted| H[Rate Limit Exceeded<br/>Return 429]\n  G --> E\n  C --> I[Emit Metrics<br/>Count & Latency]\n  H --> I\n  I --> J{Error Rate > 1%?}\n  J -->|No| A\n  J -->|Yes| K[Circuit Breaker<br/>Local-Only Fallback]",
+    "companies": [
+      "Stripe",
+      "Uber",
+      "Airbnb"
+    ],
+    "tags": [
+      "distributed-systems",
+      "system-design",
+      "rate-limiting"
+    ],
+    "difficulty": "advanced",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T12:06:45.230Z",
+    "lastUpdated": "2026-05-19T12:06:45.230Z"
   }
 ]

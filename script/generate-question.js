@@ -14,6 +14,7 @@ import {
   getQuestionsForChannel,
   getSubChannelQuestionCounts
 } from './utils.js';
+import { runWithConcurrency, createProgressReporter } from './run-with-concurrency.js';
 import { generateQuestion as generateQuestionGraph } from './ai/graphs/question-graph.js';
 import { generateQuestionWithCertifications, hasRelatedCertifications } from './ai/graphs/enhanced-question-generator.js';
 import { runQualityGate } from './ai/graphs/quality-gate-graph.js';
@@ -171,39 +172,28 @@ async function processChannel(channel, index, total, subChannelCounts, inputDiff
   }
 }
 
-// Process channels with concurrency limit
-async function processChannelsWithConcurrency(channels, subChannelCounts, inputDifficulty, allChannels, concurrency = 3) {
-  const results = [];
+// Process channels with concurrent consumer queue
+async function processChannelsWithConcurrency(channels, subChannelCounts, inputDifficulty, allChannels, concurrency = 20) {
+  const tasks = channels.map((ch, i) => ({ channel: ch, index: i + 1 }));
+  const addedQuestions = [];
   const errors = [];
-  
-  for (let i = 0; i < channels.length; i += concurrency) {
-    const batch = channels.slice(i, i + concurrency);
-    console.log(`\n🔄 Processing batch ${Math.floor(i / concurrency) + 1}/${Math.ceil(channels.length / concurrency)} (${batch.length} channels)`);
-    
-    const promises = batch.map((channel, batchIdx) =>
-      processChannel(channel, i + batchIdx + 1, channels.length, subChannelCounts, inputDifficulty, allChannels)
-        .catch(error => ({
-          success: false,
-          error: error.message,
-          channel: 'unknown'
-        }))
-    );
 
-    const batchResults = await Promise.all(promises);
-    batchResults.forEach(res => {
-      if (res.success) {
-        results.push(res.question);
-      } else {
-        errors.push({ channel: res.channel, reason: res.error });
-        console.log(`   ❌ ${res.channel}: ${res.error}`);
-      }
-    });
+  const reporter = createProgressReporter('Channels');
 
-    // Progress update
-    console.log(`   Batch complete: ${batchResults.filter(r => r.success).length}/${batch.length} successful`);
+  const results = await runWithConcurrency(tasks, concurrency, async (task) => {
+    return await processChannel(task.channel, task.index, channels.length, subChannelCounts, inputDifficulty, allChannels);
+  }, reporter);
+
+  console.log('');
+  for (const r of results) {
+    if (r.success) {
+      addedQuestions.push(r.question);
+    } else {
+      errors.push({ channel: r.channel, reason: r.error });
+    }
   }
 
-  return { results, errors };
+  return { results: addedQuestions, errors };
 }
 
 // Get all channels - fetches from database AND includes all configured channels (including certifications)
@@ -518,14 +508,14 @@ async function main() {
     console.log(`\nProcessing all ${channels.length} channels`);
   }
 
-  // Use concurrent processing with limit of 3 simultaneous channels
-  console.log(`\n🚀 Starting concurrent question generation (3 channels at a time)...`);
+  // Use parallel consumer queue for maximum throughput
+  console.log(`\n🚀 Starting concurrent question generation (20-channel consumer queue)...`);
   const { results: addedQuestions, errors: failedAttempts } = await processChannelsWithConcurrency(
     channels,
     subChannelCounts,
     inputDifficulty,
     allChannels,
-    3  // Concurrency limit
+    20  // Parallel consumer queue concurrency
   );
 
   const totalQuestions = await getQuestionCount();

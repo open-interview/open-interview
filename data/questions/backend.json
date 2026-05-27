@@ -107,5 +107,140 @@
     },
     "createdAt": "2026-05-19T11:51:09.121Z",
     "lastUpdated": "2026-05-19T11:51:09.122Z"
+  },
+  {
+    "id": "backend-1779192318986-8",
+    "channel": "backend",
+    "subChannel": "microservices",
+    "question": "What is an API gateway and how does it help in a microservices architecture?",
+    "answer": "An API gateway is a single entry point for all client requests in a microservices architecture. It sits between clients (web, mobile, IoT) and the backend services, routing requests to the appropriate service. Instead of clients knowing the addresses of every microservice, they only know the gateway's address. The gateway handles cross-cutting concerns like authentication, rate limiting, request aggregation, protocol translation, and load balancing. For example, in Netflix's architecture, Zuul acts as their API gateway, handling authentication and routing for billions of requests daily. When a client wants to load a user's profile, it sends a single request to the gateway, which then fans out to the user service, recommendation service, and billing service, aggregates the results, and returns a unified response. This reduces chatty client-to-service interactions and simplifies client code. The gateway can also enforce security policies, validate API keys, and log requests centrally. Common implementations include Kong, NGINX Plus, AWS API Gateway, and Spring Cloud Gateway. However, the API gateway introduces a potential single point of failure and can become a bottleneck if not properly scaled. Teams often deploy multiple gateway instances behind a load balancer and implement circuit breakers to maintain resilience. In practice, the gateway is one of the first components deployed when migrating from monolithic to microservices architecture, as it decouples clients from backend service discovery and allows teams to independently change service internals without breaking clients.",
+    "explanation": "The API gateway pattern solves a fundamental challenge in microservices: how to present a unified interface to clients while maintaining independently deployable services. Without a gateway, each client must implement its own service discovery, handle retries, and aggregate responses, leading to tight coupling between client and backend. In real-world systems like Microsoft's Azure API Management or Apple's private API gateway layers, the gateway also enables gradual versioning, A/B testing of new services, and migration between service implementations without client changes. Edge cases are critical here: when a downstream service fails, the gateway must decide whether to return a partial response, a cached fallback, or an error to the client. This is where circuit breakers and timeouts at the gateway level become essential. Another edge case is handling large payloads—the gateway may need to stream responses (e.g., video chunks) rather than buffering everything in memory. Real-world usage often combines the gateway with a service mesh (like Istio or Linkerd) where the gateway handles north-south traffic (client to service) and the mesh handles east-west traffic (service to service). The gateway can also offload TLS termination, reducing the overhead on individual services. Companies like Netflix run multiple gateway variants optimized for different traffic patterns: Zuul for API traffic and an internal gateway for inter-service requests. Understanding when to split a gateway by domain (e.g., mobile gateway vs. web gateway) or use a sidecar per-service proxy approach is a key architectural decision.",
+    "diagram": "flowchart TD\n  A[Client] -->|HTTP Request| B[API Gateway]\n  B --> C{Authentication}\n  C -->|Pass| D[Rate Limiter]\n  D --> E{Route Request}\n  E --> F[User Service]\n  E --> G[Recommendation Service]\n  E --> H[Billing Service]\n  F --> I[Aggregate Response]\n  G --> I\n  H --> I\n  I --> B\n  B -->|Unified Response| A\n  C -->|Fail| J[Error Handler]\n  J --> A",
+    "companies": [
+      "Microsoft",
+      "Apple",
+      "Netflix"
+    ],
+    "tags": [
+      "microservices",
+      "backend"
+    ],
+    "difficulty": "beginner",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T12:05:18.986Z",
+    "lastUpdated": "2026-05-19T12:05:18.986Z"
+  },
+  {
+    "id": "backend-1779192322118-9",
+    "channel": "backend",
+    "subChannel": "authentication",
+    "question": "How would you design a refresh token rotation mechanism that detects and prevents token replay attacks in a stateless JWT authentication system?",
+    "answer": "Refresh token rotation is a security mechanism where each time a client exchanges a refresh token for a new access token, the server issues a new refresh token and invalidates the old one. This limits the window of vulnerability if a refresh token is compromised. To detect token replay attacks, implement a family tracking system: each refresh token belongs to a family, and when a token from a family is used, the server stores the current token's family ID and a counter in a persistent store like Redis with a TTL. If a compromised token is used after its successor has already been issued, the original token was stolen, and the attacker is now trying to reuse it. At this point, you detect a replay: the old token was already rotated out. However, a sophisticated attacker might wait for the legitimate user to use the stolen token first, then immediately use the newly issued refresh token themselves. To handle this, implement reuse detection on the rotation endpoint: when a token is rotated, write a record of the new token to a fast KV store keyed by user ID. The next rotation request must include a valid, unrotated token. If a rotation attempt arrives with a token that the server has already marked as rotated, the server can infer that either the user or the attacker has a stale token, meaning a compromise may be in progress. In that case, invalidate the entire token family and require re-authentication. This is called automatic invalidation on reuse detection. The access token itself should be short-lived (5-15 minutes) and stateless, so the server does not need to track it. The refresh token must be stored hashed in the database or in Redis; never store it in plaintext. Set a maximum family size (e.g., 5 tokens per family) to prevent an attacker from infinitely extending the chain. Implement rate limiting on the token endpoint to slow down brute-force attempts against the rotation endpoint. Use TLS for all token transmission and bind refresh tokens to specific client instances using a token binding or a public client identifier. Finally, allow users to view and revoke active sessions from their account settings, providing a self-service recovery mechanism.",
+    "explanation": "This question matters because refresh token handling is one of the most common security gaps in production authentication systems. Many developers implement JWT authentication with long-lived access tokens or naive refresh mechanisms, which leads to serious vulnerabilities. Companies like Stripe and Uber deal with high-value API access where token theft can result in financial loss or data breaches. The core challenge is balancing stateless scalability with stateful security: JWT access tokens are stateless and fast, but revocation is impossible without a blocklist. Refresh tokens solve this by being stateful and short-lived, but they introduce the rotation and replay problem. Real-world considerations include token storage on the client side: mobile apps use secure enclaves (iOS Keychain, Android Keystore), web apps use httpOnly secure cookies or in-memory storage with refresh in a dedicated endpoint. The OAuth 2.0 BCP (Best Current Practice) document codifies many of these patterns. Edge cases include concurrent requests from multiple tabs on the same browser leading to false positives in replay detection (mitigated by short rotation windows or allowing a small degree of parallel reuse), token migration during database failovers, and clock skew when verifying token expiry across distributed systems. In Stripe's infrastructure, token management extends to API keys, where key rotation triggers a gradual migration window rather than immediate invalidation to avoid production outages.",
+    "diagram": "flowchart TD\n  A[Client requests access token] --> B[Server issues access + refresh token pair]\n  B --> C[Client stores refresh token securely]\n  C --> D[Access token expires after 15 min]\n  D --> E[Client sends refresh token to /rotate]\n  E --> F{Server checks refresh token in Redis}\n  F -- Valid, not rotated --> G[Issue new access + new refresh token]\n  G --> H[Invalidate old refresh token]\n  H --> I[Record new refresh token hash in Redis]\n  I --> C\n  F -- Already rotated --> J[REPLAY DETECTED]\n  J --> K[Invalidate entire token family]\n  K --> L[Force user re-authentication]\n  F -- Invalid or expired --> M[Reject request]\n  M --> N[Client must re-authenticate]",
+    "companies": [
+      "Stripe",
+      "Uber",
+      "Airbnb"
+    ],
+    "tags": [
+      "authentication",
+      "backend"
+    ],
+    "difficulty": "intermediate",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T12:05:22.118Z",
+    "lastUpdated": "2026-05-19T12:05:22.118Z"
+  },
+  {
+    "id": "backend-1779192328045-5",
+    "channel": "backend",
+    "subChannel": "authentication",
+    "question": "How would you design a secure token-based authentication system that detects and prevents refresh token theft in a distributed microservices architecture?",
+    "answer": "The core mechanism is refresh token rotation paired with reuse detection. When a client refreshes an access token, the authorization server issues a new refresh token AND invalidates the previous one, creating a token family chain. If an attacker steals a refresh token and uses it after the legitimate client has already rotated, the authorization server detects reuse of a revoked token. At that point, the entire token family is immediately invalidated, forcing the legitimate user to re-authenticate and terminating all active sessions in that family. To implement this at scale across microservices, the authorization server maintains a token family table keyed by a unique family ID, with columns for the current refresh token hash, a version counter, and user ID. Each refresh increments the version and replaces the hash. All token issuance and validation goes through a centralized auth service that holds a distributed lock (via Redis or DynamoDB with conditional writes) during rotation to prevent race conditions from concurrent refresh attempts. A background job scans for reuse events and publishes security alerts to a message queue consumed by monitoring and notification services. Access tokens remain short-lived (5-15 minutes) and are stateless JWTs signed by the auth service. They carry only the user ID, session ID, and role claims. Services validate access tokens locally by checking the signature against the auth service's public key and require no database lookup. For additional security, the authorization server implements sliding expiration: session lifetimes reset on each legit refresh up to an absolute maximum (e.g., 30 days). This limits the exposure window of any single compromised rotation. Rate limiting on the /token endpoint per client fingerprint and IP helps brute-force token harvesting. Hardware-backed security keys or biometrics are required for high-value operations, and the auth service logs all token events to an immutable audit trail.",
+    "explanation": "Refresh token theft is one of the most dangerous OAuth 2.0 vulnerabilities because a stolen long-lived token gives an attacker persistent access even after the short-lived access token expires. Without rotation, a single compromised refresh token can be used indefinitely until manually revoked. Rotation alone is insufficient because an attacker that steals the token mid-session can use it before the legitimate client's next refresh. Reuse detection closes this window by making the token family single-use: if the server ever sees a refresh attempt with an already-revoked token, the attacker must have possession of it, so all derived tokens in that family are poisoned. This pattern is used by major identity providers including Auth0, Okta, and Google's OAuth system. Real-world edge cases include mobile clients losing network mid-rotation (the client gets a new token but the server invalidated the old one before the client received the response). The client must handle this by detecting the /token failure and silently re-authenticating using stored credentials or a secondary factor. Another edge case is batch refresh from multiple tabs sharing the same refresh token. The recommended solution is concurrent session support: each browser tab or device gets its own refresh token bound to a unique session ID, so tabs share the access token via a ServiceWorker or BroadcastChannel but refresh independently. In a microservices architecture, the auth service is a single point of failure for validation, which is why stateless JWTs for access tokens are preferred — each service validates signatures locally using cached public keys, eliminating synchronous calls to the auth service on every request. The session management system must be consistent and durable, using a database with strong read-after-write semantics (like Spanner or PostgreSQL with quorum reads) to prevent reuse false positives during leader elections or network partitions.",
+    "diagram": "flowchart TD\n  A[Client Request Access] --> B[Auth Server Issues Access + Refresh Token]\n  B --> C[Legitimate Refresh: Old Token Invalidated, New Issued]\n  B -.-> D[Attacker Steals Refresh Token]\n  D --> E[Attacker Uses Stolen Refresh Token]\n  C --> F[Legitimate Refresh Succeeds, Version Advanced]\n  E --> G{Reuse Detection:<br/>Token Already Revoked?}\n  G -->|Yes| H[Invalidate Entire Token Family]\n  G -->|No| I[Attacker Gets New Token]\n  H --> J[Force User Re-Authentication]\n  J --> K[Notify User of Suspicious Activity]\n  I --> L[Run Reuse Detection on Next Legitimate Refresh]\n  L --> G",
+    "companies": [
+      "Google",
+      "Meta",
+      "Amazon"
+    ],
+    "tags": [
+      "authentication",
+      "backend"
+    ],
+    "difficulty": "advanced",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T12:05:28.045Z",
+    "lastUpdated": "2026-05-19T12:05:28.045Z"
+  },
+  {
+    "id": "backend-1779192346409-7",
+    "channel": "backend",
+    "subChannel": "apis",
+    "question": "How would you design a REST API endpoint to handle idempotent payment processing, ensuring a client can retry requests safely without duplicate charges, even when the server crashes mid-operation?",
+    "answer": "The core pattern is an idempotency key. The client generates a unique UUID and sends it as an Idempotency-Key header with every POST /payments request. Upon receiving the request, the server acquires a distributed lock using Redis SETNX or database SELECT FOR UPDATE on this key to prevent race conditions from concurrent retries. The server then checks a dedicated idempotency store. If a record exists as completed, the cached success response is returned. If it exists as processing, a 409 Conflict or polling instruction is sent. If the key is not found, a new record with status processing is inserted atomically within the same database transaction that performs the payment logic. The payment logic account debits and credits is executed. If the transaction succeeds, the idempotency key status is updated to completed. If it fails, it is updated to failed. If the server crashes after the database transaction commits but before the response is sent to the client, the client retries. The retry request arrives at a healthy instance, finds the idempotency key in a completed state, and returns the stored success response without performing the side effects again. The lock is released in a finally block. Edge cases include key expiry which requires a TTL of 24 hours to prevent unbounded storage growth and handling scenarios where downstream external payment gateways require their own idempotency key for safe multi-layer retries. This design shifts the burden of deduplication from the inherently unreliable client to the server which has a consistent view of state through its database.",
+    "explanation": "Idempotency is a cornerstone of reliable distributed systems famously detailed in Amazon's internal systems and is the standard for APIs at Stripe. The naive approach of just checking if an operation was done before fails under crash scenarios because the check and the write are non-atomic. The lock-and-check pattern solves this by ensuring atomicity across distributed nodes. In real-world engineering at Stripe, the Idempotency-Key header is mandatory for all write operations and their system has handled trillions of dollars using this exact pattern. Without designing for idempotency, a single network timeout can result in a customer being charged twice or a transaction being lost entirely. Netflix subscription systems rely on this pattern for renewal payments to ensure that if a connection to the bank succeeds but the response is lost, the next retry does not charge again. Apple App Store server-to-server notifications include transaction identifiers that act as idempotency keys, and Apple warns developers to process them idempotently because the same notification may be delivered multiple times. Microsoft Azure billing APIs require idempotency for resource creation operations and use the Azure-AsyncOperation header pattern allowing clients to poll for completion. The underlying implementation across all these systems must be idempotent to maintain correctness at scale while the system is constantly failing and recovering.",
+    "diagram": "flowchart TD\n  A[Client sends POST /payments\nwith Idempotency-Key: UUID] --> B{Server receives request}\n  B --> C[Acquire distributed lock\non Idempotency Key]\n  C --> D{Check Idempotency Store}\n  D -- Key exists, completed --> E[Return cached success\nresponse immediately]\n  D -- Key exists, processing --> F[Return 409 Conflict\nor ask client to wait]\n  D -- Key not found --> G[Insert record\n(status = processing)]\n  G --> H[Execute atomic\ndatabase transaction]\n  H --> I{Transaction succeeds?}\n  I -- Yes --> J[Update record\n(status = completed)]\n  J --> K[Release lock]\n  K --> L[Return 201 Created\nwith payment details]\n  I -- No --> M[Update record\n(status = failed)]\n  M --> K\n  F --> K\n  E --> K",
+    "companies": [
+      "Microsoft",
+      "Apple",
+      "Netflix"
+    ],
+    "tags": [
+      "apis",
+      "backend"
+    ],
+    "difficulty": "intermediate",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T12:05:46.409Z",
+    "lastUpdated": "2026-05-19T12:05:46.409Z"
+  },
+  {
+    "id": "backend-1779192428303-6",
+    "channel": "backend",
+    "subChannel": "caching",
+    "question": "Design a multi-tier caching strategy for a globally distributed social media feed API that requires sub-10ms read latency while guaranteeing eventual consistency within 2 seconds. How do you architect the cache layers, handle cache stampedes for viral content, and invalidate stale entries across global regions without increasing write latency?",
+    "answer": "A robust multi-tier caching strategy for a globally distributed feed service consists of three tiers, commonly referred to as L1, L2, and L3.\n\nTier 1: Local In-Memory Cache (L1): Deployed on each application server instance (e.g., Caffeine in Java, MemoryCache in .NET). Handles the hottest keys (feeds of the top 1% of creators) with nanosecond latency. Consistency is maintained via an out-of-band invalidation channel (Redis Pub/Sub or Kafka). Each node subscribes to a topic for key evictions. To handle missed events from network partitions or GC pauses, each entry carries a monotonic version number and a short TTL (30 seconds). On expiry, the node performs a version check against a central registry.\n\nTier 2: Geographically Replicated Distributed Cache (L2): A Redis Cluster or Memcached pool replicating across regions (e.g., us-east-1, eu-west-1, ap-southeast-1). Uses a Write-Around pattern with Lazy Loading. When a user posts, the write service writes to the primary database (Cassandra or DynamoDB). The L2 cache is updated lazily on the next read miss. The cache entry stores the computed feed along with a version token derived from a global sequence (e.g., AWS TimeSync or a DB sequence).\n\nMitigating Cache Stampedes:\n1. Request Coalescing (Mutex): Before computing a value, the service attempts a SET NX on a Redis lock key for that specific feed entry. Only the single thread holding the lock performs the DB query and L2 population. Other threads either block briefly (via 500ms retry loops) or return a stale value immediately.\n2. Stale-While-Revalidate (SWR): The L2 cache maintains a TTL and an extended SWR window. If a read occurs during the SWR window after TTL expiry, the stale value is returned instantly to the client, while an asynchronous background job regenerates the cache. This eliminates synchronous wait times for regeneration.\n\nCross-Region Invalidation: A write in us-east-1 updates the database and publishes a cache invalidation event to a global event bus (Kafka Multi-Region Clusters). Replicas in eu-west-1 and ap-southeast-1 listen to these events and asynchronously invalidate their local L2 partitions. Reads during the replication lag return the old version, satisfying the 2-second eventual consistency SLA. The version token ensures the system naturally converges without requiring strict synchronous cache purges across the globe.",
+    "explanation": "This multi-tier approach mirrors production systems documented by Netflix (EVCache architecture) and Microsoft (Azure Cache for Redis patterns). Netflix's API gateway (Zuul) employs a local L1 cache for frequently accessed metadata like user entitlements and A/B test configurations to reduce latency from milliseconds to microseconds. Apple's iCloud infrastructure uses a similar cascading cache pattern to handle billions of daily key-value requests with single-digit millisecond latencies.\n\nThe critical trade-off is strict consistency vs. performance and availability. Strictly invalidating L1 caches across a 10,000-node cluster is impossible without significant overhead. The combination of a short TTL with version-based checks (read repair) elegantly solves this: it allows a bounded inconsistency window while guaranteeing eventual correctness. Every request implicitly validates the freshness of its data.\n\nThe request coalescing pattern using a distributed mutex is essential for preventing cascading failures. Without it, a single cache miss for a globally popular key (e.g., a celebrity's feed update) can generate a load spike that exceeds the database's capacity. This classic Thundering Herd or Dogpile Effect is a primary cause of production outages. By having the first request regenerate the cache and subsequent requests block or fetch stale data, the system self-throttles. This pattern is heavily featured in Redis' documentation on distributed locks and in system design interviews for senior infrastructure roles at Microsoft and Netflix.\n\nReal-world edge cases include Negative Caching (caching a 404 or 503 error for a few seconds to prevent repeated database hits for failed retrievals on non-existent users) and Cold Start (pre-warming caches by replaying recent DB transactions before diverting production traffic to a new data center). A production-grade solution must also handle the case where the mutex lock itself becomes a bottleneck under extreme concurrency, which is often mitigated by using probabilistic early expiration (randomizing TTLs to prevent global expiry cascades) or write-through caches for mission-critical keys.",
+    "diagram": "flowchart TD\n  A[Client Read Request] --> B{Request Cacheable}\n  B -->|No| C[Query Database]\n  C --> D[Return Result to Client]\n  B -->|Yes| E{L1 Cache Hit}\n  E -->|Yes, Fresh| D\n  E -->|Miss or Expired| F{L2 Cache Hit}\n  F -->|Yes, Fresh| G[Populate L1 Cache]\n  G --> D\n  F -->|Miss or Stale| H[Try Distributed Lock for Key]\n  H --> I{Lock Acquired}\n  I -->|Yes| J[Compute Value from DB]\n  J --> K[Write to L2 Cache]\n  K --> L[Release Lock]\n  L --> D\n  I -->|No| M{Stale L1 Value Exists}\n  M -->|Yes| N[Return Stale L1 with SWR Header]\n  M -->|No| O[Poll Lock for Computed Value]\n  O --> P[Return Computed Value]\n  N --> D\n  P --> D",
+    "companies": [
+      "Microsoft",
+      "Apple",
+      "Netflix"
+    ],
+    "tags": [
+      "caching",
+      "backend"
+    ],
+    "difficulty": "advanced",
+    "status": "active",
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    },
+    "createdAt": "2026-05-19T12:07:08.303Z",
+    "lastUpdated": "2026-05-19T12:07:08.303Z"
   }
 ]
