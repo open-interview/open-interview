@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { motion, useScroll, useTransform, useInView } from "framer-motion";
+import { motion, useScroll, useTransform, useInView, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import {
   Zap,
@@ -29,6 +29,10 @@ import {
   Server,
   Terminal,
   Cloud,
+  GraduationCap,
+  BarChart3,
+  Menu,
+  X,
 } from "lucide-react";
 import { SEOHead } from "../components/SEOHead";
 import { OnboardingFlow } from "../components/OnboardingFlow";
@@ -188,12 +192,22 @@ function AuroraBackground() {
 function LandingNavbar() {
   const [, setLocation] = useLocation();
   const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  const navItems = [
+    { label: "Features", onClick: () => document.getElementById('features')?.scrollIntoView({behavior:'smooth'}) },
+    { label: "Topics", onClick: () => document.getElementById('topics')?.scrollIntoView({behavior:'smooth'}) },
+    { label: "Articles", onClick: () => document.getElementById('articles')?.scrollIntoView({behavior:'smooth'}) },
+    { label: "Community", onClick: () => document.getElementById('community')?.scrollIntoView({behavior:'smooth'}) },
+    { label: "Study", onClick: () => setLocation("/study"), icon: GraduationCap },
+    { label: "Stats", onClick: () => setLocation("/minimal-profile"), icon: BarChart3 },
+  ];
 
   return (
     <motion.nav
@@ -220,21 +234,15 @@ function LandingNavbar() {
         </button>
 
         <div className="hidden md:flex items-center gap-8">
-          <button onClick={() => document.getElementById('features')?.scrollIntoView({behavior:'smooth'})} className="text-sm text-white/60 hover:text-white transition-colors">
-            Features
-          </button>
-          <button onClick={() => document.getElementById('topics')?.scrollIntoView({behavior:'smooth'})} className="text-sm text-white/60 hover:text-white transition-colors">
-            Topics
-          </button>
-          <button onClick={() => document.getElementById('articles')?.scrollIntoView({behavior:'smooth'})} className="text-sm text-white/60 hover:text-white transition-colors">
-            Articles
-          </button>
-          <button onClick={() => document.getElementById('community')?.scrollIntoView({behavior:'smooth'})} className="text-sm text-white/60 hover:text-white transition-colors">
-            Community
-          </button>
+          {navItems.map(item => (
+            <button key={item.label} onClick={item.onClick} className="text-sm text-white/60 hover:text-white transition-colors flex items-center gap-1.5">
+              {item.icon && <item.icon className="w-3.5 h-3.5" />}
+              {item.label}
+            </button>
+          ))}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setLocation("/blog")}
             className="hidden sm:flex text-sm text-white/60 hover:text-white transition-colors px-3 py-2"
@@ -243,12 +251,52 @@ function LandingNavbar() {
           </button>
           <button
             onClick={() => setLocation("/channels")}
-            className="text-sm font-medium text-white bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.1] px-4 py-2 rounded-lg transition-all"
+            className="hidden sm:flex text-sm font-medium text-white bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.1] px-4 py-2 rounded-lg transition-all"
           >
             Get Started
           </button>
+          <button
+            onClick={() => { setMenuOpen(!menuOpen); if (!menuOpen) document.body.style.overflow = 'hidden'; else document.body.style.overflow = ''; }}
+            className="flex md:hidden text-white/60 hover:text-white transition-colors p-2"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+          >
+            {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="md:hidden border-t border-white/[0.06] bg-[#0a0e1a]/95 backdrop-blur-xl"
+          >
+            <div className="px-6 py-4 space-y-1">
+              {navItems.map(item => (
+                <button
+                  key={item.label}
+                  onClick={() => { item.onClick(); setMenuOpen(false); document.body.style.overflow = ''; }}
+                  className="w-full text-left text-sm text-white/60 hover:text-white transition-colors px-3 py-3 rounded-lg hover:bg-white/[0.06] flex items-center gap-3"
+                >
+                  {item.icon && <item.icon className="w-4 h-4" />}
+                  {item.label}
+                </button>
+              ))}
+              <div className="pt-3 border-t border-white/[0.06] mt-3">
+                <button
+                  onClick={() => { setLocation("/channels"); setMenuOpen(false); document.body.style.overflow = ''; }}
+                  className="w-full text-sm font-medium text-white bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.1] px-4 py-3 rounded-lg transition-all"
+                >
+                  Get Started
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.nav>
   );
 }

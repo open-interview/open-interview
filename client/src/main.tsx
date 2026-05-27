@@ -3,6 +3,10 @@ import App from "./App";
 import "./index.css";
 import { initializeAnalytics } from "./lib/analytics";
 import { registerServiceWorker } from "./lib/service-worker";
+import { migrateSRSStores } from "./lib/srs-migration";
+
+// Migrate old SRS data to unified format
+migrateSRSStores();
 
 // Initialize Google Analytics
 // Using Open Interview Google Analytics Measurement ID

@@ -32,7 +32,8 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { id: 'home',     label: 'Home',     icon: Home,          path: '/' },
   { id: 'learn',    label: 'Learn',    icon: GraduationCap, path: '/channels' },
-  { id: 'practice', label: 'Practice', icon: Mic,           path: '/voice-interview', highlight: true },
+  { id: 'practice', label: 'Practice', icon: Mic,           path: '/tests', highlight: true },
+  { id: 'study',    label: 'Study',    icon: GraduationCap, path: '/study' },
   { id: 'profile',  label: 'Profile',  icon: User,          path: '/profile' },
 ];
 
@@ -44,7 +45,6 @@ const learnSubNav: NavItem[] = [
 ];
 
 const practiceSubNav: NavItem[] = [
-  { id: 'voice',      label: 'Voice Interview', icon: Mic,    path: '/voice-interview', description: 'AI mock interviews',  badge: '+10', shortcut: 'V' },
   { id: 'tests',      label: 'Quick Tests',     icon: Target, path: '/tests',           description: 'Timed challenges',    shortcut: 'T' },
   { id: 'coding',     label: 'Coding',          icon: Code,   path: '/code',            description: 'Code challenges',     shortcut: 'X' },
   { id: 'review',     label: 'SRS Review',      icon: Flame,  path: '/review',          description: 'Spaced repetition',   shortcut: 'R' },
@@ -52,17 +52,18 @@ const practiceSubNav: NavItem[] = [
 ];
 
 const progressSubNav: NavItem[] = [
-  { id: 'profile',   label: 'Profile & Stats', icon: User,      path: '/profile',   description: 'Your profile & stats' },
-  { id: 'badges',    label: 'Badges',          icon: Trophy,    path: '/badges',    description: 'Achievements' },
-  { id: 'bookmarks', label: 'Bookmarks',       icon: Bookmark,  path: '/bookmarks', description: 'Saved questions' },
-  { id: 'about',     label: 'About',           icon: Info,      path: '/about',     description: 'About Open-Interview' },
+  { id: 'profile',   label: 'Profile & Stats', icon: User,      path: '/profile',        description: 'Your profile & stats' },
+  { id: 'stats',     label: 'Stats',           icon: BarChart3, path: '/minimal-profile', description: 'Quick stats view' },
+  { id: 'badges',    label: 'Badges',          icon: Trophy,    path: '/badges',         description: 'Achievements' },
+  { id: 'bookmarks', label: 'Bookmarks',       icon: Bookmark,  path: '/bookmarks',      description: 'Saved questions' },
+  { id: 'about',     label: 'About',           icon: Info,      path: '/about',          description: 'About Open-Interview' },
 ];
 
 function getActiveSection(location: string): string {
   if (location === '/') return 'home';
   if (location === '/channels' || location.startsWith('/channel/') || location === '/certifications' || location.startsWith('/certification/') || location === '/my-path' || location === '/learning-paths' || location.startsWith('/learning-path/')) return 'learn';
-  if (location.startsWith('/voice') || location.startsWith('/test') || location.startsWith('/coding') || location === '/review' || location === '/training' || location === '/flashcards') return 'practice';
-  if (location === '/profile' || location === '/badges' || location === '/bookmarks' || location === '/about') return 'progress';
+  if (location.startsWith('/test') || location.startsWith('/coding') || location === '/review' || location === '/flashcards' || location === '/study' || location.startsWith('/study/')) return 'practice';
+  if (location === '/profile' || location === '/minimal-profile' || location === '/badges' || location === '/bookmarks' || location === '/about') return 'progress';
   return 'home';
 }
 

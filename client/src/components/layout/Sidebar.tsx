@@ -16,7 +16,7 @@ import {
   Trophy, Bookmark, Brain, Layers,
   GraduationCap, BarChart3, ChevronLeft, ChevronRight,
   Search, User, Info, Settings, Zap, Activity, Palette,
-  Bell, Sparkles, FileText, Bot
+  Bell, Sparkles, FileText
 } from 'lucide-react';
 
 interface NavItem {
@@ -42,11 +42,11 @@ const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] =
     label: 'Practice',
     icon: Mic,
     items: [
-      { id: 'voice',      label: 'Voice Interview', icon: Mic,    path: '/voice-interview', shortcut: 'V' },
       { id: 'tests',      label: 'Quick Tests',     icon: Target, path: '/tests',           shortcut: 'T' },
       { id: 'coding',     label: 'Code Challenges', icon: Code,   path: '/code',           shortcut: 'X' },
       { id: 'review',     label: 'SRS Review',      icon: Flame,  path: '/review',          shortcut: 'R' },
       { id: 'flashcards', label: 'Flashcards',      icon: Layers, path: '/flashcards' },
+      { id: 'study',      label: 'Study',           icon: GraduationCap, path: '/study' },
     ],
   },
   {
@@ -58,6 +58,7 @@ const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] =
       { id: 'notifications', label: 'Notifications', icon: Bell, path: '/notifications' },
       { id: 'whats-new', label: "What's New",   icon: Sparkles,  path: '/whats-new' },
       { id: 'profile',   label: 'Profile',      icon: User,      path: '/profile' },
+      { id: 'stats',     label: 'Stats',        icon: BarChart3, path: '/minimal-profile' },
       { id: 'about',     label: 'About',        icon: Info,      path: '/about' },
     ],
   },
@@ -79,7 +80,6 @@ const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] =
     label: 'Admin',
     icon: Activity,
     items: [
-      { id: 'bot-activity', label: 'Bot Activity', icon: Bot, path: '/bot-activity' },
       { id: 'events',       label: 'Activity Log', icon: Activity, path: '/events' },
       { id: 'settings',     label: 'Settings',     icon: Settings,  path: '/profile' },
       { id: 'docs',         label: 'Docs',         icon: BookOpen,  path: '/admin/docs' },
@@ -206,14 +206,13 @@ export function Sidebar() {
 
   const handleGoHome = useCallback(() => setLocation('/'), [setLocation]);
   const handleGoProfile = useCallback(() => setLocation('/profile'), [setLocation]);
-  const handleGoBotActivity = useCallback(() => setLocation('/bot-activity'), [setLocation]);
 
   const filteredSections = sections.map(s => {
     if (s.label === 'Learn' && preferences.hideCertifications) {
       return { ...s, items: s.items.filter(i => i.id !== 'certifications') };
     }
     if (s.label === 'Admin' && !isAdmin) {
-      return { ...s, items: s.items.filter(i => i.id !== 'bot-activity' && i.id !== 'events' && i.id !== 'docs') };
+      return { ...s, items: s.items.filter(i => i.id !== 'events' && i.id !== 'docs') };
     }
     return s;
   });
@@ -333,15 +332,6 @@ export function Sidebar() {
 
         {!isCollapsed && (
           <div className="mt-1 space-y-0.5">
-            {isAdmin && (
-            <button
-              onClick={handleGoBotActivity}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs"
-            >
-              <Bot className="w-3.5 h-3.5" />
-              <span>Bot Activity</span>
-            </button>
-            )}
             <button
               onClick={handleGoProfile}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs"

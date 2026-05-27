@@ -8,7 +8,7 @@ import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Menu, X, Search, Sun, Moon, ChevronRight,
-  Brain, BookOpen, Home, Mic, ExternalLink,
+  Brain, BookOpen, Home, Mic, ExternalLink, GraduationCap, BarChart3,
 } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { cn } from '@/lib/utils';
@@ -26,8 +26,10 @@ interface NavLink {
 const NAV_LINKS: NavLink[] = [
   { id: 'home', label: 'Home', href: '/', icon: Home },
   { id: 'topics', label: 'Topics', href: '/channels', icon: BookOpen },
+  { id: 'study', label: 'Study', href: '/study', icon: GraduationCap },
+  { id: 'stats', label: 'Stats', href: '/minimal-profile', icon: BarChart3 },
   { id: 'blog', label: 'Blog', href: '/blog', icon: BookOpen },
-  { id: 'practice', label: 'Practice', href: '/voice-interview', icon: Mic },
+  { id: 'practice', label: 'Practice', href: '/tests', icon: Mic },
 ];
 
 // ─── Scroll threshold constants ──────────────────────────────────────────────
@@ -251,7 +253,9 @@ export function FaceliftNavbar({ onSearchOpen }: FaceliftNavbarProps) {
     if (location === '/') return 'home';
     if (location.startsWith('/channel') || location.startsWith('/channels')) return 'topics';
     if (location.startsWith('/blog')) return 'blog';
-    if (location.startsWith('/voice') || location.startsWith('/test') || location.startsWith('/coding') || location.startsWith('/review') || location.startsWith('/flashcard')) return 'practice';
+    if (location.startsWith('/minimal-profile')) return 'stats';
+    if (location.startsWith('/study')) return 'study';
+    if (location.startsWith('/test') || location.startsWith('/coding') || location.startsWith('/review') || location.startsWith('/flashcard')) return 'practice';
     return 'home';
   }, [location]);
 

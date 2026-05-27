@@ -16,7 +16,6 @@ const About = React.lazy(() => import("@/pages/About"));
 const WhatsNew = React.lazy(() => import("@/pages/WhatsNew"));
 const QuestionViewer = React.lazy(() => import("@/pages/QuestionViewer"));
 const Profile = React.lazy(() => import("@/pages/Profile"));
-const BotActivity = React.lazy(() => import("@/pages/BotActivity"));
 const EventsDashboard = React.lazy(() => import("@/pages/EventsDashboard"));
 const Badges = React.lazy(() => import("@/pages/Badges"));
 const TestSession = React.lazy(() => import("@/pages/TestSession"));
@@ -36,6 +35,8 @@ const Documentation = React.lazy(() => import("@/pages/Documentation"));
 const MyPath = React.lazy(() => import("@/pages/UnifiedLearningPaths"));
 const PersonalizedPath = React.lazy(() => import("@/pages/PersonalizedPath"));
 const ManageSubscriptions = React.lazy(() => import("@/pages/ManageSubscriptions"));
+const SwipeStudy = React.lazy(() => import('@/pages/SwipeStudy'));
+const MinimalProfile = React.lazy(() => import('@/pages/MinimalProfile'));
 import { ThemeProvider } from "./context/ThemeContext";
 import { UserPreferencesProvider, useUserPreferences } from "./context/UserPreferencesContext";
 import { BadgeProvider } from "./context/BadgeContext";
@@ -139,6 +140,10 @@ function Router() {
   return (
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><InterviewLoader message="Loading..." showTip={false} /></div>}>
       <Switch>
+        {/* Swipe-only routes */}
+        <Route path="/study" component={SwipeStudy} />
+        <Route path="/study/:filter" component={SwipeStudy} />
+        <Route path="/minimal-profile" component={MinimalProfile} />
         <Route path="/" component={Home} />
         <Route path="/history" component={AnswerHistory} />
         <Route path="/about" component={About} />
@@ -152,7 +157,6 @@ function Router() {
         <Route path="/code" component={ChallengeHome} />
         <Route path="/code/challenges"><Redirect to="/code" /></Route>
         <Route path="/code/challenges/:id" component={ChallengeWorkspace} />
-        <Route path="/bot-activity" component={BotActivity} />
         <Route path="/events" component={EventsDashboard} />
         <Route path="/channels" component={Channels} />
         <Route path="/questions">{() => { window.location.replace('/channels'); return null; }}</Route>
@@ -165,8 +169,6 @@ function Router() {
         <Route path="/bookmarks" component={Bookmarks} />
         <Route path="/review" component={ReviewSession} />
         <Route path="/flashcards" component={Flashcards} />
-        <Route path="/voice-interview" component={VoicePractice} />
-        <Route path="/training">{() => { window.location.replace('/voice-interview'); return null; }}</Route>
         <Route path="/voice-session" component={VoiceSession} />
         <Route path="/voice-session/:questionId" component={VoiceSession} />
         <Route path="/admin/docs" component={Documentation} />

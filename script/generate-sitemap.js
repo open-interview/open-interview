@@ -99,6 +99,8 @@ const staticPages = [
   { path: '/stats', priority: '0.7', changefreq: 'weekly', title: 'Statistics' },
   { path: '/documentation', priority: '0.6', changefreq: 'monthly', title: 'Documentation' },
   { path: '/bot-activity', priority: '0.6', changefreq: 'daily', title: 'Bot Activity' },
+  { path: '/study', priority: '0.8', changefreq: 'weekly', title: 'Swipe Study Mode' },
+  { path: '/minimal-profile', priority: '0.5', changefreq: 'weekly', title: 'Study Profile' },
 ];
 
 function generateSitemap() {

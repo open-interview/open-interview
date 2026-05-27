@@ -440,43 +440,37 @@ export const CacheUtils = {
 // FLASHCARD SERVICE
 // ============================================
 export interface DbFlashcard {
-  id: string;
-  questionId: string | null;
-  channel: string | null;
-  difficulty: string | null;
-  tags: string[] | null;
-  front: string;
-  back: string;
-  hint: string | null;
-  mnemonic: string | null;
-  createdAt: string;
-}
-
-let _flashcardsCache: DbFlashcard[] | null = null;
-
-async function loadAllFlashcards(): Promise<DbFlashcard[]> {
-  if (_flashcardsCache) return _flashcardsCache;
-  try {
-    const res = await fetch(`${DATA_BASE}/flashcards.json`);
-    if (!res.ok) return [];
-    _flashcardsCache = await res.json();
-    return _flashcardsCache!;
-  } catch {
-    return [];
-  }
+  id: string
+  channel: string
+  front: string
+  back: string
+  hint?: string
+  mnemonic?: string
+  palaceScene?: string
+  tags?: string[]
+  difficulty?: 'beginner' | 'intermediate' | 'advanced'
 }
 
 export const FlashcardService = {
-  async getByChannel(channel: string, limit = 100, offset = 0): Promise<DbFlashcard[]> {
-    const all = await loadAllFlashcards();
-    return all.filter(f => f.channel === channel).slice(offset, offset + limit);
+  async getAll(): Promise<DbFlashcard[]> {
+    try {
+      const data = await fetchJson<any[]>(`${DATA_BASE}/flashcards.json`)
+      return (data || []).map(f => ({
+        ...f,
+        type: 'flashcard' as const,
+        tags: f.tags || []
+      }))
+    } catch (e) {
+      console.warn('FlashcardService.getAll failed:', e)
+      return []
+    }
   },
 
-  async getAll(limit = 200, offset = 0): Promise<DbFlashcard[]> {
-    const all = await loadAllFlashcards();
-    return all.slice(offset, offset + limit);
-  },
-};
+  async getByChannel(channelId: string): Promise<DbFlashcard[]> {
+    const all = await this.getAll()
+    return all.filter(f => f.channel === channelId || f.tags?.includes(channelId))
+  }
+}
 
 // ============================================
 // EXPORT DEFAULT API OBJECT

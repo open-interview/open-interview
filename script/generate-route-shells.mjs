@@ -48,6 +48,7 @@ const staticRoutes = [
   'flashcards', 'tests', 'history',
   'voice-interview', 'whats-new', 'certifications',
   'manage-subscriptions',
+  'study', 'minimal-profile',
 ];
 
 for (const route of staticRoutes) {
