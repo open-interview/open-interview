@@ -135,7 +135,7 @@ export function CreateCardModal({
     <div className="space-y-5">
       {/* Front */}
       <div>
-        <label htmlFor="card-front" className="block text-sm font-medium text-zinc-300 mb-1.5">
+        <label htmlFor="card-front" className="block text-sm font-medium text-[var(--fg)] mb-1.5">
           What's the question/concept?
         </label>
         <textarea
@@ -146,7 +146,7 @@ export function CreateCardModal({
           }}
           onBlur={() => markTouched('front')}
           placeholder="e.g. What is a closure in JavaScript?"
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-600 resize-none h-20"
+          className="w-full bg-[var(--surface-elevated)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--border-light)] resize-none h-20"
           aria-describedby={showError('front') ? 'card-front-error' : undefined}
         />
         <div className="flex items-center justify-between mt-1">
@@ -161,7 +161,7 @@ export function CreateCardModal({
 
       {/* Back */}
       <div>
-        <label htmlFor="card-back" className="block text-sm font-medium text-zinc-300 mb-1.5">
+        <label htmlFor="card-back" className="block text-sm font-medium text-[var(--fg)] mb-1.5">
           Answer / Explanation
         </label>
         <textarea
@@ -170,7 +170,7 @@ export function CreateCardModal({
           onChange={(e) => setBack(e.target.value)}
           onBlur={() => markTouched('back')}
           placeholder="e.g. A closure is a function that remembers its outer variables..."
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-600 resize-none h-24"
+          className="w-full bg-[var(--surface-elevated)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--border-light)] resize-none h-24"
           aria-describedby={showError('back') ? 'card-back-error' : undefined}
         />
         <div className="flex items-center gap-2 mt-1">
@@ -190,22 +190,22 @@ export function CreateCardModal({
 
       {/* Hint */}
       <div>
-        <label htmlFor="card-hint" className="block text-sm font-medium text-zinc-300 mb-1.5">
-          Hint <span className="text-zinc-500">(optional)</span>
+        <label htmlFor="card-hint" className="block text-sm font-medium text-[var(--fg)] mb-1.5">
+          Hint <span className="text-[var(--fg-muted)]">(optional)</span>
         </label>
         <input
           id="card-hint"
           value={hint}
           onChange={(e) => setHint(e.target.value)}
           placeholder="A subtle hint to help recall"
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-600"
+          className="w-full bg-[var(--surface-elevated)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--border-light)]"
         />
       </div>
 
       {/* Palace Scene */}
       <div>
-        <label htmlFor="card-palace" className="block text-sm font-medium text-zinc-300 mb-1.5">
-          Palace Scene <span className="text-zinc-500">(optional)</span>
+        <label htmlFor="card-palace" className="block text-sm font-medium text-[var(--fg)] mb-1.5">
+          Palace Scene <span className="text-[var(--fg-muted)]">(optional)</span>
         </label>
         <input
           id="card-palace"
@@ -214,16 +214,16 @@ export function CreateCardModal({
             if (e.target.value.length <= 60) setPalaceScene(e.target.value)
           }}
           placeholder="e.g. 🏰 A giant JS engine in the throne room"
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-600"
+          className="w-full bg-[var(--surface-elevated)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--border-light)]"
         />
-        <div className={`text-xs mt-1 ${palaceScene.length > 50 ? 'text-amber-400' : 'text-zinc-500'}`}>
+        <div className={`text-xs mt-1 ${palaceScene.length > 50 ? 'text-amber-400' : 'text-[var(--fg-muted)]'}`}>
           {palaceScene.length}/60
         </div>
       </div>
 
       {/* Channel */}
       <div>
-        <label htmlFor="card-channel" className="block text-sm font-medium text-zinc-300 mb-1.5">
+        <label htmlFor="card-channel" className="block text-sm font-medium text-[var(--fg)] mb-1.5">
           Topic
         </label>
         <select
@@ -231,7 +231,7 @@ export function CreateCardModal({
           value={channel}
           onChange={(e) => setChannel(e.target.value)}
           onBlur={() => markTouched('channel')}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-600 appearance-none"
+          className="w-full bg-[var(--surface-elevated)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--fg)] focus:outline-none focus:ring-1 focus:ring-[var(--border-light)] appearance-none"
           aria-describedby={showError('channel') ? 'card-channel-error' : undefined}
         >
           <option value="" disabled>Select a topic</option>
@@ -248,15 +248,15 @@ export function CreateCardModal({
 
       {/* Tags */}
       <div>
-        <label htmlFor="card-tags" className="block text-sm font-medium text-zinc-300 mb-1.5">
-          Tags <span className="text-zinc-500">(comma-separated)</span>
+        <label htmlFor="card-tags" className="block text-sm font-medium text-[var(--fg)] mb-1.5">
+          Tags <span className="text-[var(--fg-muted)]">(comma-separated)</span>
         </label>
         <input
           id="card-tags"
           value={tagsInput}
           onChange={(e) => setTagsInput(e.target.value)}
           placeholder="e.g. javascript, closures, fundamentals"
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-600"
+          className="w-full bg-[var(--surface-elevated)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--fg)] placeholder:text-[var(--fg-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--border-light)]"
         />
       </div>
 
@@ -264,13 +264,13 @@ export function CreateCardModal({
       <div className="flex items-center justify-end gap-3 pt-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+          className="px-4 py-2 text-sm text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
-          className="px-5 py-2 text-sm font-medium bg-zinc-100 text-zinc-900 rounded-lg hover:bg-zinc-200 transition-colors"
+          className="px-5 py-2 text-sm font-medium bg-[var(--accent)] text-[var(--accent-fg)] rounded-lg hover:opacity-90 transition-colors"
         >
           Create Card
         </button>
@@ -281,10 +281,10 @@ export function CreateCardModal({
   if (isMobile) {
     return (
       <Drawer open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
-        <DrawerContent className="bg-[#141414] border-[#2a2a2a]">
+        <DrawerContent className="bg-[var(--surface)] border-[var(--border)]">
           <DrawerHeader>
-            <DrawerTitle className="text-zinc-100">Create Custom Card</DrawerTitle>
-            <DrawerDescription className="text-zinc-400">
+            <DrawerTitle className="text-[var(--fg)]">Create Custom Card</DrawerTitle>
+            <DrawerDescription className="text-[var(--fg-muted)]">
               Add your own flashcard to study
             </DrawerDescription>
           </DrawerHeader>
@@ -298,10 +298,10 @@ export function CreateCardModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="bg-[#141414] border-[#2a2a2a] sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-[var(--surface)] border-[var(--border)] sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-zinc-100">Create Custom Card</DialogTitle>
-          <DialogDescription className="text-zinc-400">
+          <DialogTitle className="text-[var(--fg)]">Create Custom Card</DialogTitle>
+          <DialogDescription className="text-[var(--fg-muted)]">
             Add your own flashcard to study
           </DialogDescription>
         </DialogHeader>

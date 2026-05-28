@@ -46,17 +46,17 @@ export default function StudyTips({ onDismiss }: StudyTipsProps) {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.1 }}
-        className="flex flex-col items-center gap-5 rounded-2xl bg-[#141414] border border-[#2a2a2a] p-6 max-w-sm mx-4"
+        className="flex flex-col items-center gap-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-6 max-w-sm mx-4"
       >
-        <h2 className="text-lg font-bold text-white">Study Tips</h2>
+        <h2 className="text-lg font-bold text-[var(--fg)]">Study Tips</h2>
         <div className="flex flex-col gap-3 w-full">
           {tips.map((tip) => (
             <div
               key={tip.text}
-              className="flex items-center gap-3 rounded-xl bg-black/40 px-4 py-3"
+              className="flex items-center gap-3 rounded-xl bg-[var(--surface-elevated)] px-4 py-3"
             >
               <span className={tip.color}>{tip.icon}</span>
-              <span className="text-sm text-gray-300">{tip.text}</span>
+              <span className="text-sm text-[var(--fg-secondary)]">{tip.text}</span>
             </div>
           ))}
         </div>

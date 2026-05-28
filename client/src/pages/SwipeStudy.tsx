@@ -366,7 +366,7 @@ export default function SwipeStudy() {
 
   return (
     <Layout hideHeader>
-      <div data-pagefind-body className="flex flex-col min-h-dvh bg-[#0F111A]">
+      <div data-pagefind-body className="flex flex-col min-h-dvh bg-[var(--bg)]">
         {/* SmartChips */}
         {!currentCard && !isComplete && !loading && !error && (
           <div className="px-4 pt-3 pb-2">

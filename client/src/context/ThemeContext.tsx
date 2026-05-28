@@ -30,7 +30,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // migrate legacy theme values
     if (saved === 'genz-dark') return 'dark';
     if (saved === 'genz-light') return 'light';
-    return (saved === 'dark' || saved === 'light') ? saved : 'dark';
+    return (saved === 'dark' || saved === 'light') ? saved : 'light';
   });
 
   const [autoRotate, setAutoRotate] = useState(false);
@@ -53,6 +53,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.setAttribute("data-theme", theme);
     localStorage.setItem('theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) {
+      meta.setAttribute('content', theme === 'dark' ? '#161512' : '#F7F6F3')
+    }
+  }, [theme])
 
   const setTheme = (newTheme: Theme) => setThemeState(newTheme);
   const toggleTheme = () => setThemeState(current => current === 'dark' ? 'light' : 'dark');

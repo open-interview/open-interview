@@ -20,7 +20,7 @@ function generateStackPositions(count: number) {
     y: i * -16,
     scale: Math.max(0.75, 1 - i * 0.05),
     opacity: Math.max(0.25, 1 - i * 0.3),
-    surfaceTone: i === 0 ? 'var(--surface-elevated)' : i === 1 ? 'var(--surface-raised)' : 'var(--surface-base)',
+    surfaceTone: i === 0 ? 'var(--surface-elevated)' : i === 1 ? 'var(--surface)' : 'var(--bg)',
   }));
 }
 
@@ -45,16 +45,16 @@ function ProgressHeader({ current, total }: { current: number; total: number }) 
   const pct = total > 0 ? Math.round(((current + 1) / total) * 100) : 0;
   return (
     <div className="w-full flex items-center gap-3 px-4 pt-3 pb-1 shrink-0">
-      <div className="flex-1 h-1.5 rounded-full bg-[#1d1f23] overflow-hidden">
+      <div className="flex-1 h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
         <motion.div
-          className="h-full rounded-full bg-gradient-to-r from-violet-500 to-indigo-500"
+          className="h-full rounded-full bg-[var(--accent)]"
           initial={false}
           animate={{ width: `${pct}%` }}
           transition={{ type: 'spring', stiffness: 200, damping: 30 }}
         />
       </div>
-      <span className="text-[12px] text-[#71767b] tabular-nums shrink-0">
-        {current + 1}<span className="text-[#2f3336]"> / </span>{total}
+      <span className="text-[12px] text-[var(--fg-secondary)] tabular-nums shrink-0">
+        {current + 1}<span className="text-[var(--fg-muted)]"> / </span>{total}
       </span>
     </div>
   );
@@ -151,7 +151,6 @@ export const CardFan = React.memo(function CardFan({
         style={{ perspective: '1200px' }}
       >
         <div className="relative" style={{ width: 520, height: 390 }}>
-          <div className="absolute inset-0 bg-gradient-to-b from-violet-500/3 via-transparent to-transparent rounded-3xl pointer-events-none" />
           <AnimatePresence mode="popLayout">
             {visibleCards.map(({ card, cardIndex, positionIndex, isActive }) => {
               const pos = positions[positionIndex];
@@ -159,7 +158,7 @@ export const CardFan = React.memo(function CardFan({
               return (
                 <motion.div
                   key={card.id}
-                  className="absolute inset-0 cursor-pointer rounded-2xl"
+                  className="absolute inset-0 cursor-pointer rounded-[12px]"
                   style={{
                     zIndex: isActive ? 50 : cardIndex,
                     backgroundColor: pos.surfaceTone,

@@ -8,14 +8,14 @@ const shimmerKeyframes = `
 `;
 
 const shimmerBg = {
-  background: 'linear-gradient(90deg, #1d1f23 25%, #2f3336 50%, #1d1f23 75%)',
+  background: 'linear-gradient(90deg, var(--surface-elevated) 25%, var(--border) 50%, var(--surface-elevated) 75%)',
   backgroundSize: '200% 100%',
   animation: 'shimmer 1.5s ease-in-out infinite',
 };
 
 export function SkeletonCard() {
   return (
-    <div className="w-full border-b border-[var(--tw-border)] px-4 py-3">
+    <div className="w-full border-b border-[var(--border)] px-4 py-3">
       <style>{shimmerKeyframes}</style>
       <div className="flex items-start gap-3 mb-3">
         <div

@@ -1,22 +1,23 @@
 import { Toaster as Sonner } from 'sonner'
-
-const isDark = typeof window !== 'undefined'
-  ? localStorage.getItem('theme') !== 'light'
-  : true
+import { useTheme } from '@/context/ThemeContext'
 
 export function Toaster() {
+  const { theme } = useTheme()
+
   return (
     <Sonner
-      theme={isDark ? 'dark' : 'light'}
+      theme={theme}
       className="toaster group"
       toastOptions={{
+        role: 'status',
+        'aria-live': 'polite',
         classNames: {
           toast: 'group toast !bg-[var(--surface-2)] !border-[var(--color-border)] !text-[var(--text-primary)]',
           description: '!text-[var(--text-secondary)]',
           actionButton: '!bg-[var(--color-accent-violet)] !text-white',
           cancelButton: '!bg-[var(--surface-3)] !text-[var(--text-secondary)]',
         },
-      }}
+      } as any}
     />
   )
 }

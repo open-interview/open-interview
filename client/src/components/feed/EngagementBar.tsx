@@ -92,7 +92,7 @@ export const EngagementBar = memo(function EngagementBar({ questionId, tags }: E
     <button
       onClick={onClick}
       className={`group flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all ${
-        active ? activeClass : 'text-[#71767b] hover:text-[#e7e9ea] hover:bg-[#1d1f23]'
+        active ? activeClass : 'text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
       }`}
     >
       <motion.div
@@ -111,7 +111,7 @@ export const EngagementBar = memo(function EngagementBar({ questionId, tags }: E
   );
 
   return (
-    <div className="flex items-center gap-1 mt-3 pt-3 border-t border-[var(--tw-border)] -mx-1">
+    <div className="flex items-center gap-1 mt-3 pt-3 border-t border-[var(--border)] -mx-1">
       <ActionBtn
         onClick={handleLike}
         active={liked}
@@ -132,7 +132,7 @@ export const EngagementBar = memo(function EngagementBar({ questionId, tags }: E
         href={`https://github.com/open-interview/open-interview/issues/new?title=Discuss: ${encodeURIComponent(questionId)}&labels=discussion`}
         target="_blank"
         rel="noopener noreferrer"
-        className="group flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-[#71767b] hover:text-indigo-400 hover:bg-indigo-500/10 transition-all"
+        className="group flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-[var(--fg-muted)] hover:text-indigo-400 hover:bg-indigo-500/10 transition-all"
         onClick={(e) => e.stopPropagation()}
       >
         <MessageCircle className="w-[17px] h-[17px]" strokeWidth={1.5} />
@@ -140,7 +140,7 @@ export const EngagementBar = memo(function EngagementBar({ questionId, tags }: E
       </a>
       <button
         onClick={handleShare}
-        className="group flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-[#71767b] hover:text-[#e7e9ea] hover:bg-[#1d1f23] transition-all ml-auto"
+        className="group flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)] transition-all ml-auto"
       >
         <Share2 className="w-[17px] h-[17px]" strokeWidth={1.5} />
         <span className="text-[12px] hidden sm:inline">Share</span>

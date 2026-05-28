@@ -2,7 +2,7 @@ export function SkipToContent() {
   return (
     <a
       href="#main-content"
-      className="sr-only focus:not-sr-only fixed top-2 left-2 z-50 rounded-md bg-white px-4 py-2 text-sm font-medium text-black shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+      className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-[var(--accent)] focus:text-[var(--accent-fg)] focus:rounded-[8px] focus:text-sm focus:font-medium"
     >
       Skip to content
     </a>

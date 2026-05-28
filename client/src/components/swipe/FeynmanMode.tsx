@@ -67,16 +67,16 @@ export function FeynmanMode({ card, onComplete, onCancel }: FeynmanModeProps) {
       transition={{ duration: 0.2 }}
     >
       <div
-        className="relative w-full max-w-2xl bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        className="relative w-full max-w-2xl bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col"
         style={{ maxHeight: '90vh' }}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#2a2a2a]">
-          <h2 className="text-sm font-semibold text-[#a0a0a0] uppercase tracking-wider">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
+          <h2 className="text-sm font-semibold text-[var(--fg-muted)] uppercase tracking-wider">
             Feynman Technique
           </h2>
           <button
             onClick={onCancel}
-            className="text-[#666] hover:text-white transition-colors text-lg leading-none"
+            className="text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors text-lg leading-none"
             aria-label="Cancel"
           >
             ✕
@@ -85,11 +85,11 @@ export function FeynmanMode({ card, onComplete, onCancel }: FeynmanModeProps) {
 
         <div className="overflow-y-auto flex-1">
           <div className="px-6 py-5">
-            <div className="mb-6 bg-[#141414] border border-[#2a2a2a] rounded-xl p-5 min-h-[100px]">
-              <p className="text-xs text-[#666] mb-2 uppercase tracking-wider font-medium">
+            <div className="mb-6 bg-[var(--surface-elevated)] border border-[var(--border)] rounded-xl p-5 min-h-[100px]">
+              <p className="text-xs text-[var(--fg-muted)] mb-2 uppercase tracking-wider font-medium">
                 Question
               </p>
-              <p className="text-white text-base leading-relaxed whitespace-pre-wrap">
+              <p className="text-[var(--fg)] text-base leading-relaxed whitespace-pre-wrap">
                 {card.front}
               </p>
             </div>
@@ -103,7 +103,7 @@ export function FeynmanMode({ card, onComplete, onCancel }: FeynmanModeProps) {
                   exit={{ opacity: 0, y: -12 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <label htmlFor="feynman-explain" className="block text-sm text-[#a0a0a0] mb-3">
+                  <label htmlFor="feynman-explain" className="block text-sm text-[var(--fg-muted)] mb-3">
                     Explain this in your own words
                   </label>
                   <textarea
@@ -112,10 +112,10 @@ export function FeynmanMode({ card, onComplete, onCancel }: FeynmanModeProps) {
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Type your explanation..."
-                    className="w-full h-48 bg-[#141414] border border-[#2a2a2a] rounded-xl p-4 text-white font-mono text-sm resize-none focus:outline-none focus:border-[#4a4a4a] focus-visible:ring-2 focus-visible:ring-purple-500 transition-colors"
+                    className="w-full h-48 bg-[var(--surface-elevated)] border border-[var(--border)] rounded-xl p-4 text-[var(--fg)] font-mono text-sm resize-none focus:outline-none focus:border-[var(--border-light)] focus-visible:ring-2 focus-visible:ring-purple-500 transition-colors"
                   />
                   <div className="flex justify-between items-center mt-3">
-                    <span className="text-xs text-[#555]">
+                    <span className="text-xs text-[var(--fg-muted)]">
                       {text.trim().length} characters
                     </span>
                     <motion.button
@@ -124,7 +124,7 @@ export function FeynmanMode({ card, onComplete, onCancel }: FeynmanModeProps) {
                       className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
                         canReveal
                           ? 'bg-[#4f46e5] text-white hover:bg-[#6366f1] shadow-lg shadow-indigo-500/20'
-                          : 'bg-[#2a2a2a] text-[#555] cursor-not-allowed'
+                          : 'bg-[var(--surface-elevated)] text-[var(--fg-muted)] cursor-not-allowed'
                       }`}
                       whileTap={canReveal ? { scale: 0.97 } : undefined}
                     >
@@ -142,43 +142,43 @@ export function FeynmanMode({ card, onComplete, onCancel }: FeynmanModeProps) {
                   exit={{ opacity: 0, y: -12 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <div className="mb-5 bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
-                    <p className="text-xs text-[#666] mb-2 uppercase tracking-wider font-medium">
+                  <div className="mb-5 bg-[var(--surface-elevated)] border border-[var(--border)] rounded-xl p-5">
+                    <p className="text-xs text-[var(--fg-muted)] mb-2 uppercase tracking-wider font-medium">
                       Your Explanation
                     </p>
-                    <p className="text-white text-sm leading-relaxed whitespace-pre-wrap font-mono">
+                    <p className="text-[var(--fg)] text-sm leading-relaxed whitespace-pre-wrap font-mono">
                       {text.trim()}
                     </p>
                   </div>
 
-                  <div className="mb-6 bg-[#141414] border border-[#2a2a2a] rounded-xl p-5">
-                    <p className="text-xs text-[#666] mb-2 uppercase tracking-wider font-medium">
+                  <div className="mb-6 bg-[var(--surface-elevated)] border border-[var(--border)] rounded-xl p-5">
+                    <p className="text-xs text-[var(--fg-muted)] mb-2 uppercase tracking-wider font-medium">
                       Answer
                     </p>
-                    <p className="text-white text-sm leading-relaxed whitespace-pre-wrap">
+                    <p className="text-[var(--fg)] text-sm leading-relaxed whitespace-pre-wrap">
                       {card.back}
                     </p>
                   </div>
 
-                  <p className="text-sm text-[#a0a0a0] mb-3 text-center">
+                  <p className="text-sm text-[var(--fg-muted)] mb-3 text-center">
                     How close was your explanation?
                   </p>
                   <div className="flex gap-3">
                     <button
                       onClick={() => handleRate('again')}
-                      className="flex-1 py-3 rounded-xl bg-[#2a2a2a] hover:bg-[#dc2626]/20 border border-[#3a3a3a] hover:border-[#dc2626]/40 text-sm text-[#ccc] hover:text-red-400 font-medium transition-all"
+                      className="flex-1 py-3 rounded-xl bg-[var(--surface-elevated)] hover:bg-[#dc2626]/20 border border-[var(--border)] hover:border-[#dc2626]/40 text-sm text-[var(--fg-muted)] hover:text-red-400 font-medium transition-all"
                     >
                       Way off
                     </button>
                     <button
                       onClick={() => handleRate('hard')}
-                      className="flex-1 py-3 rounded-xl bg-[#2a2a2a] hover:bg-[#f59e0b]/20 border border-[#3a3a3a] hover:border-[#f59e0b]/40 text-sm text-[#ccc] hover:text-amber-400 font-medium transition-all"
+                      className="flex-1 py-3 rounded-xl bg-[var(--surface-elevated)] hover:bg-[#f59e0b]/20 border border-[var(--border)] hover:border-[#f59e0b]/40 text-sm text-[var(--fg-muted)] hover:text-amber-400 font-medium transition-all"
                     >
                       Partially
                     </button>
                     <button
                       onClick={() => handleRate('easy')}
-                      className="flex-1 py-3 rounded-xl bg-[#2a2a2a] hover:bg-[#22c55e]/20 border border-[#3a3a3a] hover:border-[#22c55e]/40 text-sm text-[#ccc] hover:text-green-400 font-medium transition-all"
+                      className="flex-1 py-3 rounded-xl bg-[var(--surface-elevated)] hover:bg-[#22c55e]/20 border border-[var(--border)] hover:border-[#22c55e]/40 text-sm text-[var(--fg-muted)] hover:text-green-400 font-medium transition-all"
                     >
                       Nailed it
                     </button>

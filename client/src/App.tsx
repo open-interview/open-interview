@@ -19,14 +19,14 @@ const MinimalProfile = React.lazy(() => import('@/pages/MinimalProfile'));
 
 function LoadingScreen() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background gap-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[var(--bg)] gap-4">
       <div className="relative">
         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-violet-500/25 animate-pulse-ring">
           <Code2 className="w-6 h-6 text-white" />
         </div>
       </div>
       <div className="flex flex-col items-center gap-2">
-        <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading Open Interview...</p>
+        <p className="text-sm font-medium text-[var(--fg-secondary)] animate-pulse">Loading Open Interview...</p>
         <div className="flex gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-bounce" style={{ animationDelay: '0ms' }} />
           <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -82,8 +82,25 @@ function Router() {
   );
 }
 
+function usePageTitle() {
+  const [location] = useLocation();
+  useEffect(() => {
+    const titles: Record<string, string> = {
+      '/': 'Feed — OpenInterview',
+      '/feed': 'Feed — OpenInterview',
+      '/study': 'Study — OpenInterview',
+      '/profile': 'Profile — OpenInterview',
+    };
+    const base = Object.entries(titles).find(([path]) =>
+      location.startsWith(path)
+    )?.[1] || 'OpenInterview';
+    document.title = base;
+  }, [location]);
+}
+
 function AppContent() {
   useSpaRedirect();
+  usePageTitle();
   return <Router />;
 }
 

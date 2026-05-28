@@ -19,9 +19,9 @@ interface StudyCardProps {
 }
 
 const difficultyDot: Record<string, string> = {
-  beginner: 'bg-emerald-500',
-  intermediate: 'bg-amber-500',
-  advanced: 'bg-rose-500',
+  beginner: 'bg-[var(--success)]',
+  intermediate: 'bg-[var(--warning)]',
+  advanced: 'bg-[var(--error)]',
 };
 
 const modeLabels: Record<string, string> = {
@@ -32,10 +32,10 @@ const modeLabels: Record<string, string> = {
 };
 
 const modeColors: Record<string, { bg: string; text: string; border: string }> = {
-  recall: { bg: 'bg-violet-500/15', text: 'text-violet-300', border: 'border-violet-500/20' },
-  feynman: { bg: 'bg-emerald-500/15', text: 'text-emerald-300', border: 'border-emerald-500/20' },
-  palace: { bg: 'bg-amber-500/15', text: 'text-amber-300', border: 'border-amber-500/20' },
-  standard: { bg: 'bg-blue-500/15', text: 'text-blue-300', border: 'border-blue-500/20' },
+  recall: { bg: 'bg-[var(--accent-subtle)]', text: 'text-[var(--accent)]', border: 'border-[var(--accent-subtle)]' },
+  feynman: { bg: 'bg-[var(--success-subtle)]', text: 'text-[var(--success)]', border: 'border-[var(--success-subtle)]' },
+  palace: { bg: 'bg-[var(--warning-subtle)]', text: 'text-[var(--warning)]', border: 'border-[var(--warning-subtle)]' },
+  standard: { bg: 'bg-[var(--accent-subtle)]', text: 'text-[var(--accent)]', border: 'border-[var(--accent-subtle)]' },
 };
 
 
@@ -141,16 +141,16 @@ export const StudyCard = React.memo(function StudyCard({
           }
         }}
         whileTap={prefersReducedMotion ? {} : { scale: 0.97 }}
-        className="w-full max-w-md min-h-[300px] sm:min-h-[360px] relative rounded-2xl select-none bg-[var(--swipe-bg-card)] border border-[var(--swipe-border)] shadow-xl flex flex-col overflow-hidden gradient-border-subtle"
+        className="w-full max-w-md min-h-[300px] sm:min-h-[360px] relative rounded-[12px] select-none bg-[var(--surface)] border border-[var(--border)] flex flex-col overflow-hidden"
       >
         {/* Drag tint overlays */}
         <motion.div
           style={{ opacity: leftGlow }}
-          className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-rose-500/20 via-transparent to-transparent z-10"
+          className="pointer-events-none absolute inset-0 rounded-[12px] bg-gradient-to-r from-rose-500/20 via-transparent to-transparent z-10"
         />
         <motion.div
           style={{ opacity: rightGlow }}
-          className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-l from-cyan-500/20 via-transparent to-transparent z-10"
+          className="pointer-events-none absolute inset-0 rounded-[12px] bg-gradient-to-l from-cyan-500/20 via-transparent to-transparent z-10"
         />
 
         <motion.div
@@ -167,11 +167,11 @@ export const StudyCard = React.memo(function StudyCard({
           {/* Front */}
           <div
             style={{ backfaceVisibility: 'hidden' }}
-            className="absolute inset-0 rounded-2xl p-5 flex flex-col"
+            className="absolute inset-0 rounded-[12px] p-5 flex flex-col"
           >
             {/* Inline pill tags at top (no absolute positioning) */}
             <div className="flex items-center gap-2 mb-3 shrink-0">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[var(--swipe-chip-bg)] text-[var(--swipe-chip-text)] border border-violet-500/15">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[var(--accent-subtle)] text-[var(--accent)]">
                 {card.channel}
               </span>
               <span className={cn('w-2 h-2 rounded-full shrink-0', difficultyDot[card.difficulty])} />
@@ -181,9 +181,9 @@ export const StudyCard = React.memo(function StudyCard({
             </div>
 
             {card.mode === 'palace' && card.palaceImage && (
-              <div className="mb-4 p-3 rounded-xl bg-gradient-to-br from-violet-500/10 to-indigo-500/10 border border-violet-500/15 text-center shrink-0">
+              <div className="mb-4 p-3 rounded-xl bg-gradient-to-br from-[var(--accent-subtle)] to-[var(--accent-subtle)] border border-[var(--accent-subtle)] text-center shrink-0">
                 <p className="text-2xl mb-1">{card.palaceImage}</p>
-                <p className="text-[11px] text-violet-300/60">visualize the scene...</p>
+                <p className="text-[11px] text-[var(--accent)]">visualize the scene...</p>
               </div>
             )}
 
@@ -195,7 +195,7 @@ export const StudyCard = React.memo(function StudyCard({
                   setExpanded((v) => !v);
                 }}
                 className={cn(
-                  'text-[17px] sm:text-[18px] leading-relaxed text-[var(--text-primary)] cursor-pointer transition-all font-semibold',
+                  'text-[17px] sm:text-[18px] leading-relaxed text-[var(--fg)] cursor-pointer transition-all font-[var(--font-heading)] font-semibold',
                   card.front.length > 100 ? 'text-left' : 'text-center w-full',
                   expanded ? '' : 'line-clamp-6',
                 )}
@@ -205,18 +205,18 @@ export const StudyCard = React.memo(function StudyCard({
               {!expanded && card.front.length > 320 && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
-                  className="mt-2 text-[11px] font-medium text-violet-400/70 hover:text-violet-300 transition-colors"
+                  className="mt-2 text-[11px] font-medium text-[var(--accent)] hover:opacity-80 transition-colors"
                 >
                   Read more ↓
                 </button>
               )}
             </div>
 
-            <div className="mt-3 pt-3 border-t border-[var(--swipe-border)] shrink-0">
+            <div className="mt-3 pt-3 border-t border-[var(--border)] shrink-0">
               <div className="flex items-center justify-center gap-2">
-                <span className="w-4 h-px bg-[var(--swipe-border)]" />
-                <p className="text-[13px] font-medium text-muted-foreground/60">Tap anywhere to flip</p>
-                <span className="w-4 h-px bg-[var(--swipe-border)]" />
+                <span className="w-4 h-px bg-[var(--border)]" />
+                <p className="text-[13px] font-medium text-[var(--fg-muted)]">Tap anywhere to flip</p>
+                <span className="w-4 h-px bg-[var(--border)]" />
               </div>
             </div>
           </div>
@@ -224,17 +224,17 @@ export const StudyCard = React.memo(function StudyCard({
           {/* Back */}
           <div
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
-            className="absolute inset-0 rounded-2xl p-6 flex flex-col"
+            className="absolute inset-0 rounded-[12px] p-6 flex flex-col"
           >
             <div className="flex items-center gap-2 mb-4 shrink-0">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/15">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[var(--success-subtle)] text-[var(--success)] border border-[var(--success-subtle)]">
                 Answer
               </span>
             </div>
 
             <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-4 pr-1 custom-scrollbar">
-              <div className="rounded-xl bg-gradient-to-br from-[var(--surface-raised)] to-[var(--surface-elevated)] border border-border/30 p-4">
-                <p className="text-sm leading-relaxed text-[var(--text-primary)] whitespace-pre-wrap">
+              <div className="rounded-xl bg-gradient-to-br from-[var(--surface-elevated)] to-[var(--surface-elevated)] border border-[var(--border)] p-4">
+                <p className="text-sm leading-relaxed text-[var(--fg)] whitespace-pre-wrap font-[var(--font-body)]">
                   {card.back}
                 </p>
               </div>
@@ -243,13 +243,13 @@ export const StudyCard = React.memo(function StudyCard({
                 <div>
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowExplanation(v => !v); }}
-                    className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-violet-400/70 hover:text-violet-300 transition-all duration-300"
+                    className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--accent)] hover:opacity-80 transition-all duration-300"
                   >
                     {showExplanation ? '\u25BE' : '\u25B8'} Explanation
                   </button>
                   {showExplanation && (
-                    <div className="mt-2 p-4 rounded-xl bg-gradient-to-br from-violet-500/5 to-indigo-500/5 border border-violet-500/10">
-                      <p className="text-[13px] leading-relaxed text-[var(--text-secondary)] whitespace-pre-wrap">
+                    <div className="mt-2 p-4 rounded-xl bg-gradient-to-br from-[var(--accent-subtle)] to-transparent border border-[var(--accent-subtle)]">
+                      <p className="text-[13px] leading-relaxed text-[var(--fg-secondary)] whitespace-pre-wrap">
                         {card.explanation}
                       </p>
                     </div>
@@ -270,8 +270,8 @@ export const StudyCard = React.memo(function StudyCard({
             </div>
 
             {onRate && (
-              <div className="mt-4 pt-4 border-t border-[var(--swipe-border)] shrink-0">
-                <p className="text-[11px] text-muted-foreground/50 text-center">Press [1-4] or swipe to grade</p>
+              <div className="mt-4 pt-4 border-t border-[var(--border)] shrink-0">
+                <p className="text-[11px] text-[var(--fg-muted)] text-center">Press [1-4] or swipe to grade</p>
               </div>
             )}
           </div>

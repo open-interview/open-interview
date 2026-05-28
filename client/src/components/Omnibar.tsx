@@ -5,6 +5,7 @@ import { Search, BookOpen, Layers, User, Hash, ArrowRight, Github } from 'lucide
 import Fuse from 'fuse.js';
 import type { Question } from '@/types';
 import { getAllQuestions } from '@/lib/questions-loader';
+import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { channels } from '@/lib/data';
 import type { Channel } from '@/lib/data';
 
@@ -56,6 +57,7 @@ export function Omnibar() {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const focusTrapRef = useFocusTrap(open);
   const [, setLocation] = useLocation();
 
   // Keyboard: Cmd+K and /
@@ -145,11 +147,11 @@ export function Omnibar() {
       {/* Inline trigger — lives inside the Layout's sticky header */}
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-3 w-full max-w-[480px] mx-auto px-4 py-2 rounded-full bg-[#1d1f23] border border-[var(--tw-border)] text-[14px] text-[#71767b] hover:bg-[#2f3336] hover:border-[#71767b] transition-all cursor-pointer"
+        className="flex items-center gap-3 w-full max-w-[480px] mx-auto px-4 py-2 rounded-full bg-[var(--surface-elevated)] border border-[var(--border)] text-[14px] text-[var(--fg-muted)] hover:bg-[var(--border)] hover:border-[var(--fg-muted)] transition-all cursor-pointer"
       >
         <Search className="w-4 h-4 shrink-0" />
         <span className="flex-1 text-left">Search questions, channels...</span>
-        <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#2f3336] border border-[var(--tw-border)]">
+        <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-mono bg-[var(--surface-elevated)] border border-[var(--border)] text-[var(--fg-muted)]">
           ⌘K
         </kbd>
       </button>
@@ -158,6 +160,10 @@ export function Omnibar() {
       <AnimatePresence>
         {open && (
           <motion.div
+            ref={focusTrapRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Search questions"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -170,32 +176,32 @@ export function Omnibar() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: -12 }}
               transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-              className="w-full max-w-xl bg-[#16181c] border border-[var(--tw-border)] rounded-2xl shadow-2xl overflow-hidden mx-4"
+              className="w-full max-w-xl bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden mx-4"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Input */}
-              <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--tw-border)]">
-                <Search className="w-5 h-5 text-[#71767b] shrink-0" />
+              <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--border)]">
+                <Search className="w-5 h-5 text-[var(--fg-muted)] shrink-0" />
                 <input
                   ref={inputRef}
                   value={query}
                   onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
                   onKeyDown={handleKey}
                   placeholder="Search questions, channels, topics..."
-                  className="flex-1 bg-transparent text-[15px] text-[#e7e9ea] placeholder:text-[#71767b] outline-none"
+                  className="flex-1 bg-transparent text-[15px] text-[var(--fg)] placeholder:text-[var(--fg-muted)] outline-none"
                 />
                 {query && (
-                  <button onClick={() => { setQuery(''); setSelectedIndex(0); }} className="text-[11px] text-[#71767b] hover:text-[#e7e9ea] px-2 py-0.5 rounded border border-[var(--tw-border)] transition-colors">
+                  <button onClick={() => { setQuery(''); setSelectedIndex(0); }} className="text-[11px] text-[var(--fg-muted)] hover:text-[var(--fg)] px-2 py-0.5 rounded border border-[var(--border)] transition-colors">
                     Clear
                   </button>
                 )}
-                <kbd className="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#2f3336] text-[#71767b] border border-[var(--tw-border)]">ESC</kbd>
+                <kbd className="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[10px] font-mono bg-[var(--surface-elevated)] text-[var(--fg-muted)] border border-[var(--border)]">ESC</kbd>
               </div>
 
               {/* Section label */}
               {items.length > 0 && (
                 <div className="px-4 pt-2 pb-0.5">
-                  <span className="text-[10px] uppercase tracking-widest text-[#71767b] font-semibold">
+                  <span className="text-[10px] uppercase tracking-widest text-[var(--fg-muted)] font-semibold">
                     {query ? (searchResults.length > 0 ? 'Questions & Channels' : 'Channels') : 'Quick Navigation'}
                   </span>
                 </div>
@@ -205,12 +211,12 @@ export function Omnibar() {
               <div className="max-h-[400px] overflow-y-auto p-2">
                 {items.length === 0 ? (
                   <div className="flex flex-col items-center py-10 px-4">
-                    <Search className="w-8 h-8 text-[#71767b] mb-3" />
-                    <p className="text-[14px] text-[#71767b]">No results for &ldquo;{query}&rdquo;</p>
+                    <Search className="w-8 h-8 text-[var(--fg-muted)] mb-3" />
+                    <p className="text-[14px] text-[var(--fg-muted)]">No results for &ldquo;{query}&rdquo;</p>
                     <a
                       href={`https://github.com/open-interview/open-interview/issues/new?title=Suggest: ${encodeURIComponent(query)}&labels=suggestion`}
                       target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-xs text-[#71767b] hover:text-[#e7e9ea] mt-3 transition-colors"
+                      className="flex items-center gap-1.5 text-xs text-[var(--fg-muted)] hover:text-[var(--fg)] mt-3 transition-colors"
                     >
                       <Github className="w-3.5 h-3.5" />
                       Suggest on GitHub
@@ -224,31 +230,31 @@ export function Omnibar() {
                       key={`${item.type}-${item.id}`}
                       onClick={() => navigate(item)}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
-                        sel ? 'bg-[#1d1f23] text-[#e7e9ea]' : 'text-[#71767b] hover:text-[#e7e9ea] hover:bg-[#1d1f23]'
+                        sel ? 'bg-[var(--surface-elevated)] text-[var(--fg)]' : 'text-[var(--fg-muted)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)]'
                       }`}
                     >
                       <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                        item.type === 'question' ? 'bg-indigo-500/15' : 'bg-[#2f3336]'
+                        item.type === 'question' ? 'bg-indigo-500/15' : 'bg-[var(--surface-elevated)]'
                       }`}>
-                        <Icon className={`w-3.5 h-3.5 ${item.type === 'question' ? 'text-indigo-400' : 'text-[#71767b]'}`} />
+                        <Icon className={`w-3.5 h-3.5 ${item.type === 'question' ? 'text-indigo-400' : 'text-[var(--fg-muted)]'}`} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="truncate text-[14px] leading-tight">{item.label}</p>
-                        {item.sub && <p className="text-[12px] text-[#71767b] truncate capitalize">{item.sub}</p>}
+                        {item.sub && <p className="text-[12px] text-[var(--fg-muted)] truncate capitalize">{item.sub}</p>}
                       </div>
-                      {item.type === 'channel'  && <span className="text-[10px] uppercase tracking-wider text-[#71767b] shrink-0">Channel</span>}
+                      {item.type === 'channel'  && <span className="text-[10px] uppercase tracking-wider text-[var(--fg-muted)] shrink-0">Channel</span>}
                       {item.type === 'question' && <span className="text-[10px] uppercase tracking-wider text-indigo-400/70 shrink-0">Q&A</span>}
-                      {sel && <ArrowRight className="w-3.5 h-3.5 text-[#71767b] shrink-0" />}
+                      {sel && <ArrowRight className="w-3.5 h-3.5 text-[var(--fg-muted)] shrink-0" />}
                     </button>
                   );
                 })}
               </div>
 
               {/* Footer hints */}
-              <div className="px-4 py-2 border-t border-[var(--tw-border)] flex items-center gap-4 text-[11px] text-[#71767b]">
-                <span><kbd className="bg-[#2f3336] border border-[var(--tw-border)] rounded px-1 mr-1">↑↓</kbd>navigate</span>
-                <span><kbd className="bg-[#2f3336] border border-[var(--tw-border)] rounded px-1 mr-1">↵</kbd>open</span>
-                <span><kbd className="bg-[#2f3336] border border-[var(--tw-border)] rounded px-1 mr-1">esc</kbd>close</span>
+              <div className="px-4 py-2 border-t border-[var(--border)] flex items-center gap-4 text-[11px] text-[var(--fg-muted)]">
+                <span><kbd className="bg-[var(--surface-elevated)] border border-[var(--border)] rounded px-1 mr-1">↑↓</kbd>navigate</span>
+                <span><kbd className="bg-[var(--surface-elevated)] border border-[var(--border)] rounded px-1 mr-1">↵</kbd>open</span>
+                <span><kbd className="bg-[var(--surface-elevated)] border border-[var(--border)] rounded px-1 mr-1">esc</kbd>close</span>
               </div>
             </motion.div>
           </motion.div>

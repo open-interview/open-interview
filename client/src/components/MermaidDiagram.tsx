@@ -7,21 +7,47 @@ interface MermaidDiagramProps {
   className?: string;
 }
 
-let mermaidInitialized = false;
-
 async function renderMermaid(id: string, chart: string): Promise<string> {
   const mod = await import('mermaid');
   const mermaid = mod.default || (mod as any);
 
-  if (!mermaidInitialized) {
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: 'dark',
-      maxTextSize: 100000,
-      securityLevel: 'loose',
-    });
-    mermaidInitialized = true;
-  }
+  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: isDark ? 'dark' : 'base',
+    maxTextSize: 100000,
+    securityLevel: 'loose',
+    themeVariables: isDark ? {
+      primaryTextColor: '#e7e9ea',
+      primaryColor: '#1e1e1e',
+      primaryBorderColor: '#2f3336',
+      lineColor: '#6b7280',
+      secondaryColor: '#2d2d2d',
+      secondaryTextColor: '#c9d1d9',
+      tertiaryColor: '#16181c',
+      clusterBkg: '#16181c',
+      clusterBorder: '#2f3336',
+      clusterTitleTextColor: '#e7e9ea',
+      nodeTextColor: '#e7e9ea',
+      edgeLabelBackground: '#1e1e1e',
+      labelBoxBkgColor: '#2d2d2d',
+      labelBoxBorderColor: '#2f3336',
+      noteBkgColor: '#2d2d2d',
+      noteTextColor: '#c9d1d9',
+      noteBorderColor: '#2f3336',
+    } : {
+      primaryTextColor: '#1A1A18',
+      primaryBorderColor: '#E8E7E2',
+      lineColor: '#D0CFC8',
+      tertiaryColor: '#F7F6F3',
+      clusterBkg: '#F0EFEA',
+      clusterBorder: '#E8E7E2',
+      clusterTitleTextColor: '#1A1A18',
+      nodeTextColor: '#1A1A18',
+      labelBoxBorderColor: '#D0CFC8',
+      noteBorderColor: '#D0CFC8',
+    },
+  });
 
   // Create an off-screen container as mermaid v9 needs a real DOM element
   const container = document.createElement('div');
@@ -74,9 +100,12 @@ export function MermaidDiagram({ chart, className }: MermaidDiagramProps) {
         el.innerHTML = svg;
         const svgEl = el.querySelector('svg');
         if (svgEl) {
-          svgEl.setAttribute('width', '100%');
-          svgEl.style.maxWidth = '100%';
+          svgEl.removeAttribute('width');
           svgEl.removeAttribute('height');
+          svgEl.style.maxWidth = '100%';
+          svgEl.style.maxHeight = '280px';
+          svgEl.style.width = 'auto';
+          svgEl.style.height = 'auto';
         }
       })
       .catch(() => {
@@ -93,7 +122,7 @@ export function MermaidDiagram({ chart, className }: MermaidDiagramProps) {
 
   if (error) {
     return (
-      <pre className={`text-xs text-[#9ca3af] font-mono overflow-x-auto p-3 bg-[#1e1e1e] rounded-xl ${className ?? ''}`}>
+      <pre className={`text-xs text-[var(--fg-muted)] font-mono overflow-x-auto p-3 bg-[var(--surface-elevated)] rounded-xl ${className ?? ''}`}>
         {chart}
       </pre>
     );
@@ -102,10 +131,10 @@ export function MermaidDiagram({ chart, className }: MermaidDiagramProps) {
   return (
     <>
       <div className={`relative group ${className ?? ''}`}>
-        <div ref={ref} className="w-full overflow-x-auto min-h-[80px]" />
+        <div ref={ref} className="mermaid-container w-full min-h-[80px]" />
         <button
           onClick={handleExpand}
-          className="absolute top-2 right-2 p-1.5 rounded-lg bg-[#1e1e1e]/80 backdrop-blur-sm border border-white/10 text-[#71767b] hover:text-[#e7e9ea] opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute top-2 right-2 p-1.5 rounded-lg bg-[var(--surface-elevated)]/80 backdrop-blur-sm border border-[var(--border)] text-[var(--fg-muted)] hover:text-[var(--fg)] opacity-30 group-hover:opacity-100 transition-opacity"
           aria-label="Expand diagram"
         >
           <Maximize2 className="w-3.5 h-3.5" />
@@ -125,12 +154,12 @@ export function MermaidDiagram({ chart, className }: MermaidDiagramProps) {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative w-full max-w-4xl max-h-[85vh] overflow-auto rounded-2xl bg-[#1e1e1e] border border-white/10 p-6 shadow-2xl"
+              className="relative w-full max-w-4xl max-h-[85vh] overflow-auto rounded-2xl bg-[var(--surface-elevated)] border border-[var(--border)] p-6 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 onClick={() => setExpanded(false)}
-                className="absolute top-3 right-3 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-[#71767b] hover:text-[#e7e9ea] transition-all z-10"
+                className="absolute top-3 right-3 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-[var(--fg-muted)] hover:text-[var(--fg)] transition-all z-10"
               >
                 <Minimize2 className="w-4 h-4" />
               </button>

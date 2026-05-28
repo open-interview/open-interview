@@ -14,23 +14,23 @@ const OVERSCAN = 3;
 
 function DiscoveryCard({ topTag, onDismiss }: { topTag: string; onDismiss: () => void }) {
   return (
-    <div className="w-full border-b border-[var(--tw-border)] px-4 py-3">
+    <div className="w-full border-b border-[var(--border)] px-4 py-3">
       <div className="p-4 rounded-2xl bg-gradient-to-br from-violet-500/10 via-indigo-500/10 to-cyan-500/10 border border-violet-500/20">
         <div className="flex items-start gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center shrink-0">
             <Sparkles className="w-4 h-4 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-[15px] font-bold text-[#e7e9ea] mb-1">You&apos;ve been mastering {topTag}</h4>
-            <p className="text-[13px] text-[#71767b] leading-relaxed">
-              Show more <strong className="text-[#e7e9ea]">#{topTag}</strong> in your feed?
+            <h4 className="text-[15px] font-bold text-[var(--fg)] mb-1">You&apos;ve been mastering {topTag}</h4>
+            <p className="text-[13px] text-[var(--fg-secondary)] leading-relaxed">
+              Show more <strong className="text-[var(--fg)]">#{topTag}</strong> in your feed?
             </p>
             <div className="flex items-center gap-2 mt-3">
               <button className="px-4 py-2 rounded-full text-[14px] font-semibold bg-gradient-to-r from-violet-500 to-indigo-500 text-white hover:from-violet-600 hover:to-indigo-600 transition-all">
                 <Hash className="w-[18px] h-[18px] inline mr-1" />
                 Show more
               </button>
-              <button onClick={onDismiss} className="px-4 py-2 rounded-full text-[14px] text-[#71767b] hover:text-[#e7e9ea] hover:bg-[#1d1f23] transition-all">
+              <button onClick={onDismiss} className="px-4 py-2 rounded-full text-[14px] text-[var(--fg-secondary)] hover:text-[var(--fg)] hover:bg-[var(--surface-elevated)] transition-all">
                 Dismiss
               </button>
             </div>
@@ -162,8 +162,8 @@ export default function KnowledgeFeed() {
           <div className="w-14 h-14 rounded-2xl bg-rose-500/10 flex items-center justify-center mb-4">
             <RefreshCw className="w-6 h-6 text-rose-400" />
           </div>
-          <h2 className="text-[18px] font-bold text-[#e7e9ea] mb-2">No Questions Available</h2>
-          <p className="text-[15px] text-[#71767b] text-center max-w-md mb-6">{error}</p>
+          <h2 className="text-[18px] font-bold text-[var(--fg)] mb-2">No Questions Available</h2>
+          <p className="text-[15px] text-[var(--fg-secondary)] text-center max-w-md mb-6">{error}</p>
         </div>
       </Layout>
     );
@@ -173,11 +173,11 @@ export default function KnowledgeFeed() {
     return (
       <Layout>
         <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
-          <div className="w-14 h-14 rounded-2xl bg-[#1d1f23] flex items-center justify-center mb-4">
-            <Hash className="w-6 h-6 text-[#71767b]" />
+          <div className="w-14 h-14 rounded-2xl bg-[var(--surface-elevated)] flex items-center justify-center mb-4">
+            <Hash className="w-6 h-6 text-[var(--fg-secondary)]" />
           </div>
-          <h2 className="text-[18px] font-bold text-[#e7e9ea] mb-2">No Results Found</h2>
-          <p className="text-[15px] text-[#71767b] text-center max-w-md mb-6">
+          <h2 className="text-[18px] font-bold text-[var(--fg)] mb-2">No Results Found</h2>
+          <p className="text-[15px] text-[var(--fg-secondary)] text-center max-w-md mb-6">
             {channelFilter
               ? `No questions for "${channelFilter}".`
               : 'No questions match your filters.'
@@ -187,7 +187,7 @@ export default function KnowledgeFeed() {
             href="https://github.com/open-interview/open-interview/issues/new?title=Suggest topic: &labels=suggestion"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-[14px] font-semibold bg-[#1d1f23] text-[#e7e9ea] hover:bg-[#2f3336] transition-all"
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-[14px] font-semibold bg-[var(--surface-elevated)] text-[var(--fg)] hover:bg-[var(--border)] transition-all"
           >
             <Github className="w-[18px] h-[18px]" />
             Suggest on GitHub
@@ -199,8 +199,10 @@ export default function KnowledgeFeed() {
 
   return (
     <Layout>
-      <div ref={parentRef} className="h-[calc(100dvh-52px)] overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div ref={parentRef} className="h-[calc(100dvh-48px)] overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div
+          role="list"
+          aria-label="Question feed"
           style={{
             height: `${virtualizer.getTotalSize()}px`,
             width: '100%',
@@ -216,6 +218,15 @@ export default function KnowledgeFeed() {
                 key={item.type === 'question' ? item.q.id : item.id}
                 data-index={virtualItem.index}
                 ref={virtualizer.measureElement}
+                role="listitem"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const focusable = (e.currentTarget as HTMLElement).querySelector<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                    focusable?.focus();
+                  }
+                }}
                 style={{
                   position: 'absolute',
                   top: 0,
