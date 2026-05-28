@@ -199,7 +199,7 @@ export default function KnowledgeFeed() {
 
   return (
     <Layout>
-      <div ref={parentRef} className="h-dvh overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div ref={parentRef} className="h-[calc(100dvh-52px)] overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div
           style={{
             height: `${virtualizer.getTotalSize()}px`,

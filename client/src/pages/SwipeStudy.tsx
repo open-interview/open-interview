@@ -429,7 +429,7 @@ export default function SwipeStudy() {
 
         {showChannelPicker && <ChannelPicker onClose={handleChannelPickerClose} />}
         <UndoToast show={showUndo} onUndo={handleUndo} onTimeout={handleUndoTimeout} duration={3000} />
-        {showHints && <SwipeHints onDismiss={dismissHints} />}
+        {showHints && !!currentCard && !loading && <SwipeHints onDismiss={dismissHints} />}
         <CreateCardModal isOpen={showCreateCardModal} onClose={handleCloseCreateCard} onCreate={handleCreateCard} channels={filterChannels} />
       </div>
     </Layout>

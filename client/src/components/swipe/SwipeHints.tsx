@@ -4,8 +4,8 @@ import {
   ChevronRight,
   ChevronLeft,
   ChevronUp,
-  ChevronDown,
   Maximize2,
+  X,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
@@ -19,21 +19,19 @@ interface HintCard {
   label: string;
   description: string;
   color: string;
-  bgClass: string;
 }
 
 const MOBILE_HINTS: HintCard[] = [
-  { icon: <ChevronRight className="w-5 h-5" />, label: 'Right', description: 'Easy — longer interval', color: 'text-emerald-400', bgClass: 'bg-emerald-500/10 border-emerald-500/20' },
-  { icon: <ChevronLeft className="w-5 h-5" />, label: 'Left', description: 'Again — review soon', color: 'text-rose-400', bgClass: 'bg-rose-500/10 border-rose-500/20' },
-  { icon: <ChevronUp className="w-5 h-5" />, label: 'Up', description: 'Feynman — explain yourself', color: 'text-amber-400', bgClass: 'bg-amber-500/10 border-amber-500/20' },
-  { icon: <ChevronDown className="w-5 h-5" />, label: 'Down', description: 'Skip — bury for later', color: 'text-indigo-400', bgClass: 'bg-indigo-500/10 border-indigo-500/20' },
+  { icon: <ChevronRight className="w-4 h-4" />, label: 'Swipe right', description: 'Easy',   color: 'text-emerald-400' },
+  { icon: <ChevronLeft  className="w-4 h-4" />, label: 'Swipe left',  description: 'Again',  color: 'text-rose-400' },
+  { icon: <ChevronUp    className="w-4 h-4" />, label: 'Swipe up',    description: 'Feynman', color: 'text-amber-400' },
 ];
 
 const DESKTOP_HINTS: HintCard[] = [
-  { icon: <Maximize2 className="w-5 h-5" />, label: '[Space]', description: 'Flip card', color: 'text-blue-400', bgClass: 'bg-blue-500/10 border-blue-500/20' },
-  { icon: <ChevronRight className="w-5 h-5" />, label: '[→] or [D]', description: 'Easy', color: 'text-emerald-400', bgClass: 'bg-emerald-500/10 border-emerald-500/20' },
-  { icon: <ChevronLeft className="w-5 h-5" />, label: '[←] or [A]', description: 'Again', color: 'text-rose-400', bgClass: 'bg-rose-500/10 border-rose-500/20' },
-  { icon: <ChevronUp className="w-5 h-5" />, label: '[E]', description: 'Feynman mode', color: 'text-amber-400', bgClass: 'bg-amber-500/10 border-amber-500/20' },
+  { icon: <Maximize2    className="w-4 h-4" />, label: 'Space',   description: 'Flip card',    color: 'text-blue-400' },
+  { icon: <ChevronRight className="w-4 h-4" />, label: '→ / D',   description: 'Easy',         color: 'text-emerald-400' },
+  { icon: <ChevronLeft  className="w-4 h-4" />, label: '← / A',   description: 'Again',        color: 'text-rose-400' },
+  { icon: <ChevronUp    className="w-4 h-4" />, label: 'E',       description: 'Feynman mode', color: 'text-amber-400' },
 ];
 
 export function SwipeHints({ onDismiss }: SwipeHintsProps) {
@@ -51,28 +49,30 @@ export function SwipeHints({ onDismiss }: SwipeHintsProps) {
   return (
     <AnimatePresence>
       <motion.div
-        initial={prefersReducedMotion ? {} : { opacity: 0 }}
-        animate={prefersReducedMotion ? {} : { opacity: 1 }}
-        exit={prefersReducedMotion ? {} : { opacity: 0 }}
-        transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.3 }}
-        onClick={dismiss}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm cursor-default"
+        initial={prefersReducedMotion ? {} : { opacity: 0, y: 16 }}
+        animate={prefersReducedMotion ? {} : { opacity: 1, y: 0 }}
+        exit={prefersReducedMotion ? {} : { opacity: 0, y: 16 }}
+        transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.25, ease: 'easeOut' }}
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 px-4 py-2.5 rounded-2xl bg-[#1d1f23]/95 border border-[var(--tw-border)] shadow-2xl backdrop-blur-sm"
       >
-        <div onClick={(e) => e.stopPropagation()} className={isMobile ? 'grid grid-cols-2 gap-3 p-4 max-w-xs' : 'flex gap-4 p-6 flex-wrap justify-center'}>
+        <div className="flex items-center gap-4 mr-2">
           {hints.map((hint) => (
-            <motion.div
-              key={hint.label}
-              initial={prefersReducedMotion ? {} : { opacity: 0, y: 12, scale: 0.95 }}
-              animate={prefersReducedMotion ? {} : { opacity: 1, y: 0, scale: 1 }}
-              transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.3 }}
-              className={`flex flex-col items-center gap-2 rounded-xl px-4 py-3.5 text-center backdrop-blur-sm border ${hint.bgClass} ${isMobile ? 'min-w-[120px]' : 'min-w-[130px]'}`}
-            >
+            <div key={hint.label} className="flex items-center gap-1.5">
               <span className={hint.color}>{hint.icon}</span>
-              <span className="text-xs font-semibold text-white">{hint.label}</span>
-              <span className="text-[10px] leading-tight text-muted-foreground">{hint.description}</span>
-            </motion.div>
+              <span className="text-[11px] text-[#71767b]">
+                <span className="font-semibold text-[#e7e9ea]">{hint.label}</span>
+                {' '}{hint.description}
+              </span>
+            </div>
           ))}
         </div>
+        <button
+          onClick={dismiss}
+          className="w-5 h-5 flex items-center justify-center rounded-full text-[#71767b] hover:text-[#e7e9ea] hover:bg-[#2f3336] transition-colors ml-1 shrink-0"
+          aria-label="Dismiss"
+        >
+          <X className="w-3 h-3" />
+        </button>
       </motion.div>
     </AnimatePresence>
   );

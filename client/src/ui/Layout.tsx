@@ -1,8 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { BookOpen, User, Code2, Search, Download, Upload, Github, Flame, Layers } from 'lucide-react';
+import { BookOpen, User, Code2, Download, Upload, Github, Flame, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { Omnibar } from '@/components/Omnibar';
 import { ToastQueue, useBackupReminder } from '@/components/ToastQueue';
 import { getSRSStats } from '@/lib/spaced-repetition';
@@ -11,13 +10,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  Drawer,
-  DrawerTrigger,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-} from '@/components/ui/drawer';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -29,12 +21,14 @@ interface LayoutProps {
 
 const NAV_ITEMS = [
   { icon: BookOpen, label: 'Feed', path: '/feed' },
-  { icon: Layers, label: 'Study', path: '/study' },
-  { icon: User, label: 'Profile', path: '/profile' },
+  { icon: Layers,   label: 'Study', path: '/study' },
+  { icon: User,     label: 'Profile', path: '/profile' },
 ];
 
+/** Height in px of the sticky top search header — must match the `h-[52px]` class below */
+export const HEADER_HEIGHT = 52;
+
 function TrendList() {
-  const [stats] = useState(() => getSRSStats());
   return (
     <div className="p-3 rounded-2xl border border-[var(--tw-border)] bg-transparent">
       <h3 className="text-[15px] font-bold text-[#e7e9ea] mb-3">Trending Topics</h3>
@@ -89,12 +83,12 @@ function DataHub() {
       const data = {
         version: 2,
         exportedAt: new Date().toISOString(),
-        cards: JSON.parse(localStorage.getItem('code-reels-srs') || '{}'),
-        fcCards: JSON.parse(localStorage.getItem('code-reels-fc-srs') || '{}'),
-        stats: JSON.parse(localStorage.getItem('code-reels-srs-stats') || '{}'),
-        liked: JSON.parse(localStorage.getItem('oi-liked-questions') || '[]'),
+        cards:      JSON.parse(localStorage.getItem('code-reels-srs') || '{}'),
+        fcCards:    JSON.parse(localStorage.getItem('code-reels-fc-srs') || '{}'),
+        stats:      JSON.parse(localStorage.getItem('code-reels-srs-stats') || '{}'),
+        liked:      JSON.parse(localStorage.getItem('oi-liked-questions') || '[]'),
         bookmarked: JSON.parse(localStorage.getItem('oi-bookmarked-questions') || '[]'),
-        settings: JSON.parse(localStorage.getItem('oi-profile-settings') || '{}'),
+        settings:   JSON.parse(localStorage.getItem('oi-profile-settings') || '{}'),
       };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
@@ -114,12 +108,12 @@ function DataHub() {
       try {
         const text = await file.text();
         const data = JSON.parse(text);
-        if (data.cards) localStorage.setItem('code-reels-srs', JSON.stringify(data.cards));
-        if (data.fcCards) localStorage.setItem('code-reels-fc-srs', JSON.stringify(data.fcCards));
-        if (data.stats) localStorage.setItem('code-reels-srs-stats', JSON.stringify(data.stats));
-        if (data.liked) localStorage.setItem('oi-liked-questions', JSON.stringify(data.liked));
+        if (data.cards)      localStorage.setItem('code-reels-srs',       JSON.stringify(data.cards));
+        if (data.fcCards)    localStorage.setItem('code-reels-fc-srs',    JSON.stringify(data.fcCards));
+        if (data.stats)      localStorage.setItem('code-reels-srs-stats', JSON.stringify(data.stats));
+        if (data.liked)      localStorage.setItem('oi-liked-questions',   JSON.stringify(data.liked));
         if (data.bookmarked) localStorage.setItem('oi-bookmarked-questions', JSON.stringify(data.bookmarked));
-        if (data.settings) localStorage.setItem('oi-profile-settings', JSON.stringify(data.settings));
+        if (data.settings)   localStorage.setItem('oi-profile-settings',  JSON.stringify(data.settings));
         window.location.reload();
       } catch {}
     };
@@ -128,7 +122,7 @@ function DataHub() {
 
   return (
     <div className="p-3 rounded-2xl border border-[var(--tw-border)] bg-transparent">
-      <h3 className="text-[15px] font-bold text-[#e7e9ea] mb-3">Data & Sync</h3>
+      <h3 className="text-[15px] font-bold text-[#e7e9ea] mb-3">Data &amp; Sync</h3>
       <div className="space-y-1">
         <button onClick={handleExport} className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] text-[#71767b] hover:text-[#e7e9ea] hover:bg-[#1d1f23] transition-all">
           <Download className="w-[18px] h-[18px]" />
@@ -151,47 +145,34 @@ const editorialGridStyles = `
 .editorial-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-areas:
-    "text      text"
-    "diagram   text"
-    "pullquote text";
   gap: 1rem;
 }
-.editorial-grid > [data-area="text"] { grid-area: text; }
-.editorial-grid > [data-area="diagram"] { grid-area: diagram; }
-.editorial-grid > [data-area="pullquote"] { grid-area: pullquote; }
 .shape-outside-diagram {
   float: left;
   shape-outside: polygon(0 0, 100% 0, 85% 100%, 0 100%);
-  clip-path: polygon(0 0, 100% 0, 85% 100%, 0 100%);
   shape-margin: 1rem;
-}
-@container (min-width: 600px) {
-  .editorial-grid { gap: 1.5rem; }
 }
 `;
 
 export const Layout = React.memo(function Layout({ children, hideHeader }: LayoutProps) {
   const [location, setLocation] = useLocation();
-  const isMobile = useIsMobile();
-  const [drawerOpen, setDrawerOpen] = useState(false);
   useBackupReminder();
 
   const isActive = useCallback((path: string) => {
     if (path === '/feed') return location === '/' || location === '/feed' || location.startsWith('/feed/');
+    if (path === '/study') return location === '/study' || location.startsWith('/study/');
     return location === path;
   }, [location]);
 
   return (
     <div className="flex justify-center min-h-dvh bg-black">
-      <Omnibar />
-
       <style>{editorialGridStyles}</style>
 
-      <div className="flex w-full max-w-[1460px] min-h-dvh border-x border-[var(--tw-border)]" style={{ borderLeft: '1px solid var(--tw-border)', borderRight: '1px solid var(--tw-border)' }}>
+      <div className="flex w-full max-w-[1460px] min-h-dvh border-x border-[var(--tw-border)]">
 
-        <div className="hidden md:flex flex-col sticky top-0 h-dvh w-[68px] min-w-[68px] border-r border-[var(--tw-border)] py-2 items-center gap-1" style={{ borderRight: '1px solid var(--tw-border)' }}>
-          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 via-violet-500 to-cyan-500 flex items-center justify-center mb-2">
+        {/* Left icon nav (desktop) */}
+        <div className="hidden md:flex flex-col sticky top-0 h-dvh w-[68px] min-w-[68px] border-r border-[var(--tw-border)] py-2 items-center gap-1 z-10">
+          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 via-violet-500 to-cyan-500 flex items-center justify-center mb-2 shrink-0">
             <Code2 className="w-5 h-5 text-white" />
           </div>
           {NAV_ITEMS.slice(0, 2).map(({ icon: Icon, label, path }) => (
@@ -231,31 +212,29 @@ export const Layout = React.memo(function Layout({ children, hideHeader }: Layou
           </Tooltip>
         </div>
 
-        <div className="flex flex-col flex-1 max-w-[800px] min-w-0 border-r border-[var(--tw-border)]" style={{ borderRight: '1px solid var(--tw-border)' }}>
-          <main id="main-content" className="flex-1 min-h-dvh">
+        {/* Center content column */}
+        <div className="flex flex-col flex-1 max-w-[800px] min-w-0 border-r border-[var(--tw-border)]">
+          {/* Sticky search header — hidden on pages that opt out */}
+          {!hideHeader && (
+            <header className="sticky top-0 z-20 h-[52px] shrink-0 flex items-center px-3 border-b border-[var(--tw-border)] bg-black/95 backdrop-blur-md">
+              <Omnibar />
+            </header>
+          )}
+          <main id="main-content" className="flex-1">
             {children}
           </main>
         </div>
 
+        {/* Right sidebar (xl+ only) */}
         <div className="hidden xl:flex flex-col sticky top-0 h-dvh w-[350px] min-w-[350px] py-3 px-4 gap-4 overflow-y-auto">
-          <button
-            onClick={() => {
-              const event = new KeyboardEvent('keydown', { metaKey: true, key: 'k' });
-              document.dispatchEvent(event);
-            }}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-full border border-[var(--tw-border)] bg-transparent text-[15px] text-[#71767b] hover:border-[#71767b] transition-all cursor-text text-left"
-          >
-            <Search className="w-[18px] h-[18px]" strokeWidth={1.5} />
-            <span>Search</span>
-          </button>
-
           <TrendList />
           <StreakWidget />
           <DataHub />
         </div>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden h-14 bg-black border-t border-[var(--tw-border)] flex items-center justify-around px-2 safe-bottom">
+      {/* Mobile bottom nav */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden h-14 bg-black border-t border-[var(--tw-border)] flex items-center justify-around px-2">
         {NAV_ITEMS.map(({ icon: Icon, label, path }) => (
           <button
             key={path}
@@ -269,6 +248,7 @@ export const Layout = React.memo(function Layout({ children, hideHeader }: Layou
           </button>
         ))}
       </nav>
+
       <ToastQueue />
     </div>
   );
