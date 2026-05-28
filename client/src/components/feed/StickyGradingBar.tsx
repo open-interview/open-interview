@@ -15,15 +15,15 @@ export function StickyGradingBar({ show, onRate }: StickyGradingBarProps) {
     <AnimatePresence>
       {show && (
         <motion.div
-          initial={{ y: 80, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 80, opacity: 0 }}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 8 }}
           transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50"
+          className="mt-4 mb-2"
         >
-          <div className="bg-[#1d1f23]/95 backdrop-blur-md border border-[var(--tw-border)] rounded-2xl px-4 py-3 shadow-2xl">
+          <div className="bg-[#1d1f23] border border-[var(--tw-border)] rounded-2xl px-4 py-3">
             <p className="text-[13px] text-[#71767b] text-center mb-2">How well did you know this?</p>
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2 flex-wrap">
               {ratings.map((r, i) => (
                 <motion.button
                   key={r}

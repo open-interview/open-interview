@@ -84,13 +84,17 @@ export default function KnowledgeFeed() {
     return () => { cancelled = true; };
   }, []);
 
-  // Filter
+  // Filter — case-insensitive exact match first, then partial match fallback
   const filteredQuestions = useMemo(() => {
-    let result = questions;
-    if (channelFilter) {
-      result = result.filter(q => q.channel === channelFilter);
-    }
-    return result;
+    if (!channelFilter) return questions;
+    const filterLower = channelFilter.toLowerCase();
+    const exact = questions.filter(q => q.channel.toLowerCase() === filterLower);
+    if (exact.length > 0) return exact;
+    // Partial: channel contains filter keyword OR filter contains channel id
+    return questions.filter(q =>
+      q.channel.toLowerCase().includes(filterLower) ||
+      filterLower.includes(q.channel.toLowerCase())
+    );
   }, [questions, channelFilter]);
 
   const virtualCount = filteredQuestions.length + Math.floor(filteredQuestions.length / DISCOVERY_INTERVAL);

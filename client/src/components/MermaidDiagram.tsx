@@ -1,131 +1,143 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Maximize2, Minimize2, Sparkles } from 'lucide-react';
+import { Maximize2, Minimize2 } from 'lucide-react';
 
 interface MermaidDiagramProps {
   chart: string;
   className?: string;
 }
 
+let mermaidInitialized = false;
+
+async function renderMermaid(id: string, chart: string): Promise<string> {
+  const mod = await import('mermaid');
+  const mermaid = mod.default || (mod as any);
+
+  if (!mermaidInitialized) {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      maxTextSize: 100000,
+      securityLevel: 'loose',
+    });
+    mermaidInitialized = true;
+  }
+
+  // Create an off-screen container as mermaid v9 needs a real DOM element
+  const container = document.createElement('div');
+  container.id = `mermaid-container-${id}`;
+  container.style.cssText = 'position:fixed;top:-9999px;left:-9999px;visibility:hidden;width:800px;';
+  document.body.appendChild(container);
+
+  try {
+    let svgResult: string;
+
+    // renderAsync exists in v9.4+ and v10; v10 returns { svg }, v9 returns string
+    if (typeof mermaid.renderAsync === 'function') {
+      const result = await mermaid.renderAsync(id, chart, undefined, container);
+      svgResult = typeof result === 'string' ? result : (result as any)?.svg ?? '';
+    } else {
+      // Fallback to callback-based render
+      svgResult = await new Promise<string>((resolve, reject) => {
+        try {
+          mermaid.render(id, chart, (svg: string) => resolve(svg), container);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }
+
+    return svgResult;
+  } finally {
+    try { document.body.removeChild(container); } catch {}
+  }
+}
+
 export function MermaidDiagram({ chart, className }: MermaidDiagramProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const uid = useId().replace(/:/g, '');
   const [expanded, setExpanded] = useState(false);
-  const [showAi, setShowAi] = useState(false);
+  const [expandedSvg, setExpandedSvg] = useState('');
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!ref.current || !chart) return;
     const el = ref.current;
     let cancelled = false;
+    setError(false);
 
-    import('mermaid')
-      .then((mod) => {
-        if (cancelled) return;
-        const mermaid = mod.default || mod;
-        mermaid.initialize({ startOnLoad: false, theme: 'dark', maxTextSize: 100000 });
-        const id = `mermaid-${Math.random().toString(36).slice(2, 10)}`;
+    const id = `mmd-${uid}-${Math.random().toString(36).slice(2, 6)}`;
 
-        mermaid
-          .renderAsync(id, chart)
-          .then((svg: string) => {
-            if (cancelled || !el) return;
-            el.innerHTML = svg;
-            const svgEl = el.querySelector('svg');
-            if (svgEl) {
-              svgEl.setAttribute('width', '100%');
-              svgEl.style.maxWidth = '100%';
-              svgEl.removeAttribute('height');
-            }
-          })
-          .catch(() => {
-            if (!cancelled) {
-              el.textContent = chart;
-            }
-          });
+    renderMermaid(id, chart)
+      .then((svg) => {
+        if (cancelled || !el) return;
+        el.innerHTML = svg;
+        const svgEl = el.querySelector('svg');
+        if (svgEl) {
+          svgEl.setAttribute('width', '100%');
+          svgEl.style.maxWidth = '100%';
+          svgEl.removeAttribute('height');
+        }
       })
       .catch(() => {
-        if (!cancelled) {
-          el.textContent = chart;
-        }
+        if (!cancelled && el) setError(true);
       });
 
-    return () => {
-      cancelled = true;
-    };
-  }, [chart]);
+    return () => { cancelled = true; };
+  }, [chart, uid]);
+
+  const handleExpand = () => {
+    setExpandedSvg(ref.current?.innerHTML || '');
+    setExpanded(true);
+  };
+
+  if (error) {
+    return (
+      <pre className={`text-xs text-[#9ca3af] font-mono overflow-x-auto p-3 bg-[#1e1e1e] rounded-xl ${className ?? ''}`}>
+        {chart}
+      </pre>
+    );
+  }
 
   return (
     <>
       <div className={`relative group ${className ?? ''}`}>
-        <div ref={ref} className="w-full overflow-x-auto min-h-[200px]" />
-        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={() => setShowAi(!showAi)}
-            className="p-1.5 rounded-lg bg-[var(--surface-elevated)]/80 backdrop-blur-sm border border-border/20 text-muted-foreground hover:text-cyan-400 hover:border-cyan-500/30 transition-all"
-            aria-label="Explain with AI"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => setExpanded(true)}
-            className="p-1.5 rounded-lg bg-[var(--surface-elevated)]/80 backdrop-blur-sm border border-border/20 text-muted-foreground hover:text-foreground transition-all"
-            aria-label="Expand diagram"
-          >
-            <Maximize2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        <div ref={ref} className="w-full overflow-x-auto min-h-[80px]" />
+        <button
+          onClick={handleExpand}
+          className="absolute top-2 right-2 p-1.5 rounded-lg bg-[#1e1e1e]/80 backdrop-blur-sm border border-white/10 text-[#71767b] hover:text-[#e7e9ea] opacity-0 group-hover:opacity-100 transition-opacity"
+          aria-label="Expand diagram"
+        >
+          <Maximize2 className="w-3.5 h-3.5" />
+        </button>
       </div>
 
-      {showAi && (
-        <div className="mt-2 p-3 rounded-xl ai-shimmer border border-cyan-500/10">
-          <p className="text-xs text-cyan-300/80 leading-relaxed">
-            This diagram shows the flow from client request through load balancing to response.
-            Each node represents a system component in the architecture.
-          </p>
-        </div>
-      )}
-
-      {/* Fullscreen modal */}
       <AnimatePresence>
         {expanded && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setExpanded(false)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative w-full max-w-4xl max-h-[85vh] overflow-auto rounded-2xl bg-[var(--surface-raised)] border border-border/20 p-6 shadow-2xl"
+              className="relative w-full max-w-4xl max-h-[85vh] overflow-auto rounded-2xl bg-[#1e1e1e] border border-white/10 p-6 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 onClick={() => setExpanded(false)}
-                className="absolute top-3 right-3 p-2 rounded-lg bg-accent/50 hover:bg-accent/80 text-muted-foreground hover:text-foreground transition-all z-10"
-                aria-label="Close expanded view"
+                className="absolute top-3 right-3 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-[#71767b] hover:text-[#e7e9ea] transition-all z-10"
               >
                 <Minimize2 className="w-4 h-4" />
               </button>
               <div
-                ref={(el) => {
-                  if (!el) return;
-                  const inner = el.querySelector('.mermaid-expand-content');
-                  if (!inner) return;
-                  const mermaidEl = inner.querySelector('svg');
-                  if (mermaidEl) {
-                    mermaidEl.style.maxWidth = '100%';
-                    mermaidEl.style.width = '100%';
-                    mermaidEl.style.height = 'auto';
-                  }
-                }}
-              >
-                <div
-                  className="mermaid-expand-content"
-                  dangerouslySetInnerHTML={{ __html: ref.current?.innerHTML || '' }}
-                />
-              </div>
+                className="w-full overflow-x-auto"
+                dangerouslySetInnerHTML={{ __html: expandedSvg }}
+              />
             </motion.div>
           </motion.div>
         )}
