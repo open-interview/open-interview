@@ -29,25 +29,21 @@ const NAV_ITEMS = [
 export const HEADER_HEIGHT = 52;
 
 function TrendList() {
+  const topics = [
+    { category: 'Cloud / DevOps', name: 'Kubernetes (CKA)', id: 'cka' },
+    { category: 'System Design', name: 'Distributed Systems', id: 'system-design' },
+    { category: 'Algorithms', name: 'Dynamic Programming', id: 'algorithms' },
+  ];
   return (
     <div className="p-3 rounded-2xl border border-[var(--tw-border)] bg-transparent">
-      <h3 className="text-[15px] font-bold text-[#e7e9ea] mb-3">Trending Topics</h3>
+      <h3 className="text-[15px] font-bold text-[#e7e9ea] mb-3">Popular Channels</h3>
       <div className="space-y-3">
-        <div>
-          <p className="text-[13px] text-[#71767b]">Technology</p>
-          <p className="text-[15px] font-bold text-[#e7e9ea]">Kubernetes</p>
-          <p className="text-[13px] text-[#71767b]">2,847 cards</p>
-        </div>
-        <div>
-          <p className="text-[13px] text-[#71767b]">System Design</p>
-          <p className="text-[15px] font-bold text-[#e7e9ea]">Distributed Systems</p>
-          <p className="text-[13px] text-[#71767b]">1,932 cards</p>
-        </div>
-        <div>
-          <p className="text-[13px] text-[#71767b]">Algorithms</p>
-          <p className="text-[15px] font-bold text-[#e7e9ea]">Dynamic Programming</p>
-          <p className="text-[13px] text-[#71767b]">1,456 cards</p>
-        </div>
+        {topics.map(t => (
+          <a key={t.id} href={`/feed/${t.id}`} className="block group">
+            <p className="text-[12px] text-[#71767b]">{t.category}</p>
+            <p className="text-[14px] font-semibold text-[#e7e9ea] group-hover:text-white transition-colors">{t.name}</p>
+          </a>
+        ))}
       </div>
     </div>
   );

@@ -141,7 +141,7 @@ export const StudyCard = React.memo(function StudyCard({
           }
         }}
         whileTap={prefersReducedMotion ? {} : { scale: 0.97 }}
-        className="w-full max-w-md min-h-[50vh] sm:min-h-[420px] lg:min-h-[500px] relative rounded-2xl select-none bg-[var(--swipe-bg-card)] border border-[var(--swipe-border)] shadow-xl flex flex-col overflow-hidden gradient-border-subtle"
+        className="w-full max-w-md min-h-[300px] sm:min-h-[360px] relative rounded-2xl select-none bg-[var(--swipe-bg-card)] border border-[var(--swipe-border)] shadow-xl flex flex-col overflow-hidden gradient-border-subtle"
       >
         {/* Drag tint overlays */}
         <motion.div
@@ -167,10 +167,10 @@ export const StudyCard = React.memo(function StudyCard({
           {/* Front */}
           <div
             style={{ backfaceVisibility: 'hidden' }}
-            className="absolute inset-0 rounded-2xl p-6 flex flex-col"
+            className="absolute inset-0 rounded-2xl p-5 flex flex-col"
           >
             {/* Inline pill tags at top (no absolute positioning) */}
-            <div className="flex items-center gap-2 mb-4 shrink-0">
+            <div className="flex items-center gap-2 mb-3 shrink-0">
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[var(--swipe-chip-bg)] text-[var(--swipe-chip-text)] border border-violet-500/15">
                 {card.channel}
               </span>
@@ -187,39 +187,37 @@ export const StudyCard = React.memo(function StudyCard({
               </div>
             )}
 
-            <div className="flex-1 flex flex-col items-center justify-center min-h-0 px-2">
+            {/* Question text — grows to fill, footer is pushed to bottom */}
+            <div className="flex-1 min-h-0 px-1 overflow-hidden">
               <p
                 onClick={(e) => {
                   e.stopPropagation();
                   setExpanded((v) => !v);
                 }}
                 className={cn(
-                  'text-base leading-relaxed text-[var(--text-primary)] text-center cursor-pointer transition-all font-medium',
-                  expanded ? '' : 'line-clamp-3',
+                  'text-[17px] sm:text-[18px] leading-relaxed text-[var(--text-primary)] cursor-pointer transition-all font-semibold',
+                  card.front.length > 100 ? 'text-left' : 'text-center w-full',
+                  expanded ? '' : 'line-clamp-6',
                 )}
               >
                 {card.front}
               </p>
-              {!expanded && card.front.length > 200 && (
+              {!expanded && card.front.length > 320 && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
                   className="mt-2 text-[11px] font-medium text-violet-400/70 hover:text-violet-300 transition-colors"
                 >
-                  Tap to read more
-                </button>
-              )}
-              {expanded && card.front.length > 200 && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
-                  className="mt-2 text-[11px] font-medium text-muted-foreground/70 hover:text-foreground transition-colors"
-                >
-                  Show less
+                  Read more ↓
                 </button>
               )}
             </div>
 
-            <div className="mt-4 pt-3 border-t border-[var(--swipe-border)] text-center shrink-0">
-              <p className="text-[11px] text-muted-foreground/60">Tap to reveal answer</p>
+            <div className="mt-3 pt-3 border-t border-[var(--swipe-border)] shrink-0">
+              <div className="flex items-center justify-center gap-2">
+                <span className="w-4 h-px bg-[var(--swipe-border)]" />
+                <p className="text-[13px] font-medium text-muted-foreground/60">Tap anywhere to flip</p>
+                <span className="w-4 h-px bg-[var(--swipe-border)]" />
+              </div>
             </div>
           </div>
 

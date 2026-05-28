@@ -53,7 +53,7 @@ export function SwipeHints({ onDismiss }: SwipeHintsProps) {
         animate={prefersReducedMotion ? {} : { opacity: 1, y: 0 }}
         exit={prefersReducedMotion ? {} : { opacity: 0, y: 16 }}
         transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.25, ease: 'easeOut' }}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 px-4 py-2.5 rounded-2xl bg-[#1d1f23]/95 border border-[var(--tw-border)] shadow-2xl backdrop-blur-sm"
+        className="fixed bottom-[72px] md:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 px-4 py-2.5 rounded-2xl bg-[#1d1f23]/95 border border-[var(--tw-border)] shadow-2xl backdrop-blur-sm"
       >
         <div className="flex items-center gap-4 mr-2">
           {hints.map((hint) => (

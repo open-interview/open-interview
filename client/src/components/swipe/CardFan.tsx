@@ -26,7 +26,6 @@ function generateStackPositions(count: number) {
 
 function useStackCardCount() {
   const [count, setCount] = useState(3);
-
   useEffect(() => {
     const handleResize = () => {
       const w = window.innerWidth;
@@ -38,8 +37,27 @@ function useStackCardCount() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
   return count;
+}
+
+/** Progress bar + counter shown above the card stack */
+function ProgressHeader({ current, total }: { current: number; total: number }) {
+  const pct = total > 0 ? Math.round(((current + 1) / total) * 100) : 0;
+  return (
+    <div className="w-full flex items-center gap-3 px-4 pt-3 pb-1 shrink-0">
+      <div className="flex-1 h-1.5 rounded-full bg-[#1d1f23] overflow-hidden">
+        <motion.div
+          className="h-full rounded-full bg-gradient-to-r from-violet-500 to-indigo-500"
+          initial={false}
+          animate={{ width: `${pct}%` }}
+          transition={{ type: 'spring', stiffness: 200, damping: 30 }}
+        />
+      </div>
+      <span className="text-[12px] text-[#71767b] tabular-nums shrink-0">
+        {current + 1}<span className="text-[#2f3336]"> / </span>{total}
+      </span>
+    </div>
+  );
 }
 
 export const CardFan = React.memo(function CardFan({
@@ -94,25 +112,28 @@ export const CardFan = React.memo(function CardFan({
     if (!card) return null;
 
     return (
-      <div className="flex items-center justify-center w-full px-4">
-        <div className="w-full max-w-lg mx-auto">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={card.id}
-              initial={prefersReducedMotion ? {} : { opacity: 0, x: 100 }}
-              animate={prefersReducedMotion ? {} : { opacity: 1, x: 0 }}
-              exit={prefersReducedMotion ? {} : { opacity: 0, x: -100 }}
-              transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 28 }}
-            >
-              <StudyCard
-                card={card}
-                onSwipe={onSwipe}
-                onRate={onRate}
-                isFlipped={isFlipped}
-                setIsFlipped={setIsFlipped}
-              />
-            </motion.div>
-          </AnimatePresence>
+      <div className="flex flex-col w-full h-full">
+        <ProgressHeader current={currentIndex} total={cards.length} />
+        <div className="flex-1 flex items-center justify-center w-full px-4 pb-4 min-h-0">
+          <div className="w-full max-w-lg mx-auto">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={card.id}
+                initial={prefersReducedMotion ? {} : { opacity: 0, x: 60 }}
+                animate={prefersReducedMotion ? {} : { opacity: 1, x: 0 }}
+                exit={prefersReducedMotion ? {} : { opacity: 0, x: -60 }}
+                transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 28 }}
+              >
+                <StudyCard
+                  card={card}
+                  onSwipe={onSwipe}
+                  onRate={onRate}
+                  isFlipped={isFlipped}
+                  setIsFlipped={setIsFlipped}
+                />
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
       </div>
     );
@@ -121,54 +142,48 @@ export const CardFan = React.memo(function CardFan({
   const positions = generateStackPositions(stackCardCount);
 
   return (
-    <div
-      ref={containerRef}
-      onWheel={handleWheel}
-      className="flex items-center justify-center w-full h-full select-none"
-      style={{ perspective: '1200px' }}
-    >
-      <div className="relative" style={{ width: 520, height: 440 }}>
-        <div className="absolute inset-0 bg-gradient-to-b from-violet-500/3 via-transparent to-transparent rounded-3xl pointer-events-none" />
-        <AnimatePresence mode="popLayout">
-          {visibleCards.map(({ card, cardIndex, positionIndex, isActive }) => {
-            const pos = positions[positionIndex];
-            if (!pos) return null;
-
-            return (
-              <motion.div
-                key={card.id}
-                className="absolute inset-0 cursor-pointer rounded-2xl"
-                style={{
-                  zIndex: isActive ? 50 : cardIndex,
-                  backgroundColor: pos.surfaceTone,
-                  willChange: 'transform, opacity',
-                }}
-                initial={prefersReducedMotion ? {} : { opacity: 0, scale: 0.8, y: -30 }}
-                animate={{
-                  y: pos.y,
-                  scale: pos.scale,
-                  opacity: pos.opacity,
-                }}
-                exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.8, x: -100, transition: { duration: 0.2 } }}
-                transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 28, mass: 0.8 }}
-                {...(prefersReducedMotion ? {} : { layout: true })}
-                onClick={() => {
-                  if (!isActive) {
-                    onIndexChange(cardIndex);
-                  }
-                }}
-              >
-                <StudyCard
-                  card={card}
-                  onSwipe={isActive ? onSwipe : () => {}}
-                  onRate={isActive ? onRate : () => {}}
-                  isFlipped={isActive ? isFlipped : false}
-                  setIsFlipped={isActive ? setIsFlipped : () => {}}
-                />
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+    <div className="flex flex-col w-full h-full">
+      <ProgressHeader current={currentIndex} total={cards.length} />
+      <div
+        ref={containerRef}
+        onWheel={handleWheel}
+        className="flex-1 flex items-center justify-center w-full select-none min-h-0"
+        style={{ perspective: '1200px' }}
+      >
+        <div className="relative" style={{ width: 520, height: 390 }}>
+          <div className="absolute inset-0 bg-gradient-to-b from-violet-500/3 via-transparent to-transparent rounded-3xl pointer-events-none" />
+          <AnimatePresence mode="popLayout">
+            {visibleCards.map(({ card, cardIndex, positionIndex, isActive }) => {
+              const pos = positions[positionIndex];
+              if (!pos) return null;
+              return (
+                <motion.div
+                  key={card.id}
+                  className="absolute inset-0 cursor-pointer rounded-2xl"
+                  style={{
+                    zIndex: isActive ? 50 : cardIndex,
+                    backgroundColor: pos.surfaceTone,
+                    willChange: 'transform, opacity',
+                  }}
+                  initial={prefersReducedMotion ? {} : { opacity: 0, scale: 0.8, y: -30 }}
+                  animate={{ y: pos.y, scale: pos.scale, opacity: pos.opacity }}
+                  exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.8, x: -100, transition: { duration: 0.2 } }}
+                  transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 28, mass: 0.8 }}
+                  {...(prefersReducedMotion ? {} : { layout: true })}
+                  onClick={() => { if (!isActive) onIndexChange(cardIndex); }}
+                >
+                  <StudyCard
+                    card={card}
+                    onSwipe={isActive ? onSwipe : () => {}}
+                    onRate={isActive ? onRate : () => {}}
+                    isFlipped={isActive ? isFlipped : false}
+                    setIsFlipped={isActive ? setIsFlipped : () => {}}
+                  />
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );

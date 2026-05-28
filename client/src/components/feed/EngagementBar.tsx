@@ -1,6 +1,6 @@
 import { memo, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, Bookmark, MessageCircle, Code2 } from 'lucide-react';
+import { Heart, Bookmark, MessageCircle, Share2 } from 'lucide-react';
 import { useHaptic } from '@/hooks/use-haptic';
 
 interface EngagementBarProps {
@@ -18,8 +18,14 @@ function getBookmarkedIds(): string[] {
 }
 function setBookmarkedIds(ids: string[]) { localStorage.setItem('oi-bookmarked-questions', JSON.stringify(ids)); }
 
+function getLikeCount(id: string): number {
+  try { return JSON.parse(localStorage.getItem(`oi-likes-${id}`) || '0'); } catch { return 0; }
+}
+function setLikeCount(id: string, n: number) { localStorage.setItem(`oi-likes-${id}`, JSON.stringify(n)); }
+
 export const EngagementBar = memo(function EngagementBar({ questionId, tags }: EngagementBarProps) {
   const [liked, setLiked] = useState(() => getLikedIds().includes(questionId));
+  const [likeCount, setLikeCountState] = useState(() => getLikeCount(questionId));
   const [bookmarked, setBookmarked] = useState(() => getBookmarkedIds().includes(questionId));
   const [animating, setAnimating] = useState(false);
   const haptic = useHaptic();
@@ -27,6 +33,7 @@ export const EngagementBar = memo(function EngagementBar({ questionId, tags }: E
   useEffect(() => {
     setLiked(getLikedIds().includes(questionId));
     setBookmarked(getBookmarkedIds().includes(questionId));
+    setLikeCountState(getLikeCount(questionId));
   }, [questionId]);
 
   const handleLike = useCallback(() => {
@@ -34,14 +41,20 @@ export const EngagementBar = memo(function EngagementBar({ questionId, tags }: E
     if (!liked) {
       ids.push(questionId);
       setLikedIds(ids);
+      const newCount = likeCount + 1;
+      setLikeCount(questionId, newCount);
       setLiked(true);
+      setLikeCountState(newCount);
       setAnimating(true);
       haptic.medium();
     } else {
       setLikedIds(ids.filter(id => id !== questionId));
+      const newCount = Math.max(0, likeCount - 1);
+      setLikeCount(questionId, newCount);
       setLiked(false);
+      setLikeCountState(newCount);
     }
-  }, [liked, questionId]);
+  }, [liked, questionId, likeCount, haptic]);
 
   const handleBookmark = useCallback(() => {
     const ids = getBookmarkedIds();
@@ -54,70 +67,84 @@ export const EngagementBar = memo(function EngagementBar({ questionId, tags }: E
       setBookmarked(true);
       haptic.light();
     }
-  }, [bookmarked, questionId]);
+  }, [bookmarked, questionId, haptic]);
+
+  const handleShare = useCallback(() => {
+    const text = `Interview question: ${window.location.href}`;
+    if (navigator.share) {
+      navigator.share({ text }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(window.location.href).catch(() => {});
+    }
+  }, []);
+
+  const ActionBtn = ({
+    onClick, active, activeClass, Icon, label, count, animateScale,
+  }: {
+    onClick: () => void;
+    active?: boolean;
+    activeClass?: string;
+    Icon: React.ElementType;
+    label: string;
+    count?: number;
+    animateScale?: boolean;
+  }) => (
+    <button
+      onClick={onClick}
+      className={`group flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all ${
+        active ? activeClass : 'text-[#71767b] hover:text-[#e7e9ea] hover:bg-[#1d1f23]'
+      }`}
+    >
+      <motion.div
+        whileTap={{ scale: 0.75 }}
+        animate={animateScale ? { scale: [1, 0.75, 1.25, 1] } : { scale: 1 }}
+        transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+        onAnimationComplete={() => animateScale && setAnimating(false)}
+      >
+        <Icon className="w-[17px] h-[17px]" strokeWidth={1.5} />
+      </motion.div>
+      {(count !== undefined && count > 0) && (
+        <span className="text-[12px] tabular-nums">{count}</span>
+      )}
+      <span className="text-[12px] hidden sm:inline">{label}</span>
+    </button>
+  );
 
   return (
-    <div className="flex items-center justify-between mt-2 -mx-2">
-      {/* Like — 48x48 hitbox */}
-      <button
+    <div className="flex items-center gap-1 mt-3 pt-3 border-t border-[var(--tw-border)] -mx-1">
+      <ActionBtn
         onClick={handleLike}
-        className="group flex items-center gap-1.5"
-        style={{ minWidth: 48, minHeight: 48 }}
-      >
-        <div className={`flex items-center justify-center w-9 h-9 rounded-full transition-colors ${liked ? 'text-pink-500 bg-pink-500/10' : 'text-[#71767b] group-hover:text-pink-500 group-hover:bg-pink-500/10'}`}>
-          <motion.div
-            whileTap={{ scale: 0.75 }}
-            animate={animating ? { scale: [1, 0.75, 1.15, 1] } : { scale: 1 }}
-            transition={{ type: 'spring', stiffness: 500, damping: 15 }}
-            onAnimationComplete={() => setAnimating(false)}
-          >
-            <Heart
-              className={`w-[18px] h-[18px] ${liked ? 'fill-pink-500' : ''}`}
-              strokeWidth={1.5}
-            />
-          </motion.div>
-        </div>
-        <span className={`text-[13px] ${liked ? 'text-pink-500' : 'text-[#71767b]'}`}>{liked ? 1 : 0}</span>
-      </button>
-
-      {/* Bookmark — 48x48 hitbox */}
-      <button
+        active={liked}
+        activeClass="text-pink-500 bg-pink-500/10"
+        Icon={Heart}
+        label="Like"
+        count={likeCount}
+        animateScale={animating}
+      />
+      <ActionBtn
         onClick={handleBookmark}
-        className="group flex items-center gap-1.5"
-        style={{ minWidth: 48, minHeight: 48 }}
-      >
-        <div className={`flex items-center justify-center w-9 h-9 rounded-full transition-colors ${bookmarked ? 'text-cyan-500 bg-cyan-500/10' : 'text-[#71767b] group-hover:text-cyan-500 group-hover:bg-cyan-500/10'}`}>
-          <motion.div whileTap={{ scale: 0.8 }} transition={{ type: 'spring', stiffness: 400, damping: 10 }}>
-            <Bookmark className={`w-[18px] h-[18px] ${bookmarked ? 'fill-cyan-500' : ''}`} strokeWidth={1.5} />
-          </motion.div>
-        </div>
-      </button>
-
-      {/* Run Code — 48x48 hitbox */}
-      <motion.button
-        whileTap={{ scale: 0.95 }}
-        onClick={(e) => e.stopPropagation()}
-        className="group flex items-center gap-1.5"
-        style={{ minWidth: 48, minHeight: 48 }}
-      >
-        <div className="flex items-center justify-center w-9 h-9 rounded-full text-[#71767b] group-hover:text-emerald-500 group-hover:bg-emerald-500/10 transition-colors">
-          <Code2 className="w-[18px] h-[18px]" strokeWidth={1.5} />
-        </div>
-      </motion.button>
-
-      {/* Discuss — links to GitHub, 48x48 hitbox */}
+        active={bookmarked}
+        activeClass="text-cyan-400 bg-cyan-500/10"
+        Icon={Bookmark}
+        label={bookmarked ? 'Saved' : 'Save'}
+      />
       <a
         href={`https://github.com/open-interview/open-interview/issues/new?title=Discuss: ${encodeURIComponent(questionId)}&labels=discussion`}
         target="_blank"
         rel="noopener noreferrer"
-        className="group flex items-center gap-1.5"
-        style={{ minWidth: 48, minHeight: 48 }}
+        className="group flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-[#71767b] hover:text-indigo-400 hover:bg-indigo-500/10 transition-all"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-center w-9 h-9 rounded-full text-[#71767b] group-hover:text-indigo-500 group-hover:bg-indigo-500/10 transition-colors">
-          <MessageCircle className="w-[18px] h-[18px]" strokeWidth={1.5} />
-        </div>
+        <MessageCircle className="w-[17px] h-[17px]" strokeWidth={1.5} />
+        <span className="text-[12px] hidden sm:inline">Discuss</span>
       </a>
+      <button
+        onClick={handleShare}
+        className="group flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-[#71767b] hover:text-[#e7e9ea] hover:bg-[#1d1f23] transition-all ml-auto"
+      >
+        <Share2 className="w-[17px] h-[17px]" strokeWidth={1.5} />
+        <span className="text-[12px] hidden sm:inline">Share</span>
+      </button>
     </div>
   );
 });

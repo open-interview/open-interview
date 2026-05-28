@@ -64,7 +64,7 @@ export function ToastQueue() {
   }, [handleDismiss]);
 
   return (
-    <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none">
+    <div className="fixed bottom-[76px] md:bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none">
       <AnimatePresence mode="wait">
         {current && (
           <motion.div
