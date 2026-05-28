@@ -1,89 +1,41 @@
 [
   {
-    "id": "otca-otel-fundamentals-1779888939760-0",
+    "id": "otca-otel-fundamentals-1779896462596-0",
     "channel": "otca",
     "subChannel": "otel-fundamentals",
-    "question": "A production microservice processes 10,000 requests per second and must retain 100% of traces for the first hour of every deployment, then automatically reduce to 5% sampling after the rollout window closes. Which OpenTelemetry SDK configuration achieves this without deploying new code or restarting services?",
-    "answer": "Implement a custom Sampler that reads the sampling ratio from an external key-value store, and the OpenTelemetry SDK's Sampler is checked on each span creation at runtime",
-    "explanation": "## Correct Answer\n\nOption D is correct. The OpenTelemetry SDK calls the `Sampler.shouldSample()` method synchronously for each span when it is created. By implementing a custom `Sampler` that reads the sampling decision logic from an external key-value store (etcd, Redis, Consul), the sampling ratio can be changed dynamically without a restart. The Sampler interface is invoked for every new span, so pulling from an external store allows the behavior to change at runtime.\n\n## Why Other Options Are Wrong\n\n- **Option A**: The `ConsistentProbabilityBasedSampler` uses a fixed probability, and the OpenTelemetry Collector's batch processor does not modify SDK-level sampling decisions — it only processes spans already emitted by the SDK. Changing the Collector config does not retroactively change SDK behavior.\n- **Option B**: The `IdGenerator` interface in OpenTelemetry is only called once per trace at root span creation to produce the `traceId` and `spanId`. It cannot serve as a dynamic sampling mechanism because the trace ID is generated before the Sampler runs, and adjusting thresholds afterwards would produce inconsistent sampling decisions within the same trace.\n- **Option C**: The HeadSampler and RateLimitingSampler are Collector processors, not SDK samplers. They operate on spans already exported to the Collector and do not control which spans are created at the SDK level. Additionally, exposing a Prometheus metric does not change sampling behavior; it only observes it.\n\n## Key Concepts\n\n- **Sampler Interface**: Called per span at creation time via `shouldSample()`. Custom samplers can implement arbitrary decision logic.\n- **SDK vs Collector Sampling**: SDK samplers control which spans are created; Collector processors can further filter spans after export. To avoid creating unwanted spans at the source, use SDK-level sampling.\n- **Dynamic Configuration**: OpenTelemetry SDK does not have built-in hot-reload for sampling ratios. The idiomatic solution is a custom Sampler backed by an external configuration source.\n\n## Real-World Application\n\nThis pattern is common in high-volume production deployments where teams want full observability during canary or blue-green deployment windows, then automatically dial back to head-based sampling once confidence is established. Companies like Uber and Lyft use dynamic sampling strategies where the SDK reads from a centralized configuration service, enabling per-service or per-endpoint sampling ratios to be adjusted in real time without redeployment.",
+    "question": "When should a BatchSpanProcessor be preferred over SimpleSpanProcessor?",
+    "answer": "In high-throughput systems to reduce export overhead",
+    "explanation": "BatchSpanProcessor buffers spans and exports in batches, reducing overhead. SimpleSpanProcessor exports each span immediately, making it costly in high-throughput systems but useful when instant span availability is required.",
     "difficulty": "intermediate",
     "tags": [
       "opentelemetry",
-      "sampling",
-      "head-sampling",
-      "sdk-configuration",
-      "dynamic-configuration",
-      "custom-sampler",
-      "certification",
-      "domain-weight-25"
+      "span-processor",
+      "otel-sdk",
+      "certification"
     ],
     "options": [
       {
         "id": "a",
-        "text": "Configure a ParentBasedSampler with a ConsistentProbabilityBasedSampler, and update the sampling probability via the OpenTelemetry Collector's batch processor every hour",
-        "isCorrect": false
+        "text": "In high-throughput systems to reduce export overhead",
+        "isCorrect": true
       },
       {
         "id": "b",
-        "text": "Use a custom IdGenerator that deterministically selects trace IDs matching a dynamic percentile, and adjust the percentile threshold via a runtime environment variable reloaded by the Sampler",
+        "text": "When spans must be available immediately after creation",
         "isCorrect": false
       },
       {
         "id": "c",
-        "text": "Register a HeadSampler that delegates to a RateLimitingSampler, and expose a Prometheus metric endpoint to trigger sampling changes from the monitoring system",
+        "text": "For short-lived serverless functions with quick exits",
         "isCorrect": false
       },
       {
         "id": "d",
-        "text": "Implement a custom Sampler that reads the sampling ratio from an external key-value store, and the OpenTelemetry SDK's Sampler is checked on each span creation at runtime",
-        "isCorrect": true
-      }
-    ],
-    "status": "active",
-    "lastUpdated": "2026-05-27T13:39:11.210Z"
-  },
-  {
-    "id": "otca-otel-fundamentals-1779888939760-1",
-    "channel": "otca",
-    "subChannel": "otel-fundamentals",
-    "question": "A team is instrumenting a Java batch processing job that runs for 4 hours and produces thousands of spans per minute. They configured a BatchSpanProcessor with default settings. After 30 minutes, they notice spans are no longer being exported and memory usage is growing unbounded. What is the most likely cause?",
-    "answer": "The default max export batch size is 512 spans and the default scheduled delay is 5 seconds, but the exporter cannot keep up with the throughput, causing the internal queue to fill and spans to be dropped",
-    "explanation": "## Correct Answer\n\nOption C is correct. The default OpenTelemetry Java `BatchSpanProcessor` settings are: `maxQueueSize = 2048`, `maxExportBatchSize = 512`, and `scheduledDelayMillis = 5000`. For a high-throughput batch job that produces thousands of spans per minute, the exporter cannot flush 512-span batches every 5 seconds fast enough. Once the queue reaches 2048 spans, the `BatchSpanProcessor` drops newly created spans (the default `exportTimeoutMillis` is 30 seconds per export). The memory growth occurs because spans accumulate in any secondary buffering or within the application's own data structures waiting to be exported.\n\n## Why Other Options Are Wrong\n\n- **Option A**: The `BatchSpanProcessor` does not implement a circuit-breaker pattern that permanently halts exports. If an exporter times out, the processor retries the batch (with backoff via the internal `exportTimeout`). It does not silently drop subsequent batches after a single timeout.\n- **Option B**: The `BatchSpanProcessor` does not use blocking behavior by default when the queue is full. The `BlockingQueue` is configured with `maxQueueSize` and once exceeded, the `onEnd()` callback discards the span (configurable via `setExporterTimeout`). There is no deadlock — it simply drops spans after the queue is exhausted.\n- **Option D**: The `BatchSpanProcessor` includes built-in retry logic via the `exportTimeoutMillis` setting. When an export fails (timeout or network error), the processor retries the same batch up to the `maxExportBatchSize` limit. A single network failure does not permanently stop exports; the processor will continue trying on the next scheduled interval.\n\n## Key Concepts\n\n- **BatchSpanProcessor Defaults**: `maxQueueSize = 2048`, `maxExportBatchSize = 512`, `scheduledDelay = 5000ms`, `exportTimeout = 30000ms`.\n- **Queue Overflow Behavior**: When `maxQueueSize` is exceeded, spans are dropped by default. The `setBatchScheduleDelay` and `setMaxQueueSize` should be tuned for high-throughput workloads.\n- **Exporter Backpressure**: If the exporter is slower than span creation, the queue fills. Increasing `maxQueueSize` alone masks the problem — the actual solution is to increase export batch sizes, shorten scheduled delays, or use a more performant exporter.\n\n## Real-World Application\n\nBatch processing and high-throughput streaming applications often require tuning the `BatchSpanProcessor` parameters. Common adjustments include raising `maxQueueSize` to 8192, increasing `maxExportBatchSize` to 2048, and reducing `scheduledDelayMillis` to 1000ms to keep up with throughput. Teams should also monitor `processedSpans`, `droppedSpans`, and `exportedSpans` metrics exposed by the SDK to detect queue saturation before spans are lost.",
-    "difficulty": "intermediate",
-    "tags": [
-      "opentelemetry",
-      "batchspanprocessor",
-      "sdk-configuration",
-      "java",
-      "performance",
-      "span-export",
-      "backpressure",
-      "certification",
-      "domain-weight-25"
-    ],
-    "options": [
-      {
-        "id": "a",
-        "text": "The BatchSpanProcessor's exporter timed out and the processor has no circuit-breaker to recover, causing all subsequent batches to be dropped silently",
-        "isCorrect": false
-      },
-      {
-        "id": "b",
-        "text": "The default max queue size was exceeded, the blocking behavior overflowed into the unprocessed span buffer, and the processor entered a deadlock state waiting for export acknowledgment",
-        "isCorrect": false
-      },
-      {
-        "id": "c",
-        "text": "The default max export batch size is 512 spans and the default scheduled delay is 5 seconds, but the exporter cannot keep up with the throughput, causing the internal queue to fill and spans to be dropped",
-        "isCorrect": true
-      },
-      {
-        "id": "d",
-        "text": "The BatchSpanProcessor's exporter is not configured with retry logic, so a single network failure permanently stops all future exports and spans accumulate indefinitely",
+        "text": "When using only the LoggingSpanExporter",
         "isCorrect": false
       }
     ],
     "status": "active",
-    "lastUpdated": "2026-05-27T13:39:11.210Z"
+    "lastUpdated": "2026-05-27T15:41:12.891Z"
   }
 ]

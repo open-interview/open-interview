@@ -293,6 +293,35 @@ export async function preloadQuestions(): Promise<void> {
   }
 }
 
+// Fast bulk load from pre-built all-questions.json (single HTTP request)
+export async function loadAllQuestionsFast(): Promise<Question[]> {
+  if (questionsCache.size > 0) {
+    return getAllQuestions();
+  }
+
+  try {
+    const response = await fetch(`${DATA_BASE}/all-questions.json`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const questions: Question[] = await response.json();
+
+    for (const q of questions) {
+      questionsCache.set(q.id, q);
+      const ch = q.channel;
+      if (!channelQuestionsCache.has(ch)) {
+        channelQuestionsCache.set(ch, []);
+      }
+      channelQuestionsCache.get(ch)!.push(q);
+    }
+
+    initialized = true;
+    return questions;
+  } catch (error) {
+    console.error('Failed to load all-questions.json, falling back to per-channel:', error);
+    await preloadQuestions();
+    return getAllQuestions();
+  }
+}
+
 // Get all questions async
 export async function getAllQuestionsAsync(): Promise<Question[]> {
   if (!initialized) {

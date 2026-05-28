@@ -1,21 +1,17 @@
 import React, { useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { BookOpen, User, ArrowLeft, Menu, Zap, Code2 } from 'lucide-react';
+import { BookOpen, User, Menu, Code2, Search, Download, Upload, Github, Hash, Flame } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useCredits } from '@/context/RewardContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Omnibar } from '@/components/Omnibar';
+import { ToastQueue, useBackupReminder } from '@/components/ToastQueue';
+import { getSRSStats } from '@/lib/spaced-repetition';
+import Balancer from 'react-wrap-balancer';
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarHeader,
-  SidebarFooter,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarProvider,
-} from '@/components/ui/sidebar';
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   Drawer,
   DrawerTrigger,
@@ -29,185 +25,254 @@ interface LayoutProps {
   title?: string;
   showBack?: boolean;
   onBack?: () => void;
+  hideHeader?: boolean;
 }
 
 const NAV_ITEMS = [
-  { icon: BookOpen, label: 'Study', path: '/study' },
+  { icon: BookOpen, label: 'Feed', path: '/feed' },
+  { icon: Search, label: 'Search', path: '/feed' },
   { icon: User, label: 'Profile', path: '/profile' },
 ];
 
-export const Layout = React.memo(function Layout({ children, title, showBack, onBack }: LayoutProps) {
-  const [location, setLocation] = useLocation();
-  const { balance, formatCredits } = useCredits();
-  const isMobile = useIsMobile();
-  const [drawerOpen, setDrawerOpen] = useState(false);
-
-  const heading = title ?? (NAV_ITEMS.find(i => location.startsWith(i.path))?.label ?? 'Study');
-
-  const isActive = useCallback(
-    (path: string) => {
-      if (path === '/study') return location === '/study' || location.startsWith('/study/');
-      return location === path;
-    },
-    [location],
+function TrendList() {
+  const [stats] = useState(() => getSRSStats());
+  return (
+    <div className="p-3 rounded-2xl border border-[var(--tw-border)] bg-transparent">
+      <h3 className="text-[15px] font-bold text-[#e7e9ea] mb-3">Trending Topics</h3>
+      <div className="space-y-3">
+        <div>
+          <p className="text-[13px] text-[#71767b]">Technology</p>
+          <p className="text-[15px] font-bold text-[#e7e9ea]">Kubernetes</p>
+          <p className="text-[13px] text-[#71767b]">2,847 cards</p>
+        </div>
+        <div>
+          <p className="text-[13px] text-[#71767b]">System Design</p>
+          <p className="text-[15px] font-bold text-[#e7e9ea]">Distributed Systems</p>
+          <p className="text-[13px] text-[#71767b]">1,932 cards</p>
+        </div>
+        <div>
+          <p className="text-[13px] text-[#71767b]">Algorithms</p>
+          <p className="text-[15px] font-bold text-[#e7e9ea]">Dynamic Programming</p>
+          <p className="text-[13px] text-[#71767b]">1,456 cards</p>
+        </div>
+      </div>
+    </div>
   );
+}
 
-  const handleNav = useCallback(
-    (path: string) => {
-      setLocation(path);
-      setDrawerOpen(false);
-    },
-    [setLocation],
+function StreakWidget() {
+  const [stats] = useState(() => getSRSStats());
+  const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  return (
+    <div className="p-3 rounded-2xl border border-[var(--tw-border)] bg-transparent">
+      <div className="flex items-center gap-2 mb-3">
+        <Flame className="w-4 h-4 text-amber-400" />
+        <h3 className="text-[15px] font-bold text-[#e7e9ea]">{stats.reviewStreak} day streak</h3>
+      </div>
+      <div className="flex gap-1">
+        {days.map((d, i) => (
+          <div key={i} className="flex flex-col items-center gap-1">
+            <span className="text-[10px] text-[#71767b]">{d}</span>
+            <div className={cn(
+              'w-3 h-3 rounded-[3px]',
+              i < stats.reviewStreak % 7 ? 'bg-emerald-500' : 'bg-[#2f3336]'
+            )} />
+          </div>
+        ))}
+      </div>
+    </div>
   );
+}
 
-  const handleBack = useCallback(() => {
-    if (onBack) onBack();
-    else window.history.back();
-  }, [onBack]);
+function DataHub() {
+  const handleExport = useCallback(() => {
+    try {
+      const data = {
+        version: 2,
+        exportedAt: new Date().toISOString(),
+        cards: JSON.parse(localStorage.getItem('code-reels-srs') || '{}'),
+        fcCards: JSON.parse(localStorage.getItem('code-reels-fc-srs') || '{}'),
+        stats: JSON.parse(localStorage.getItem('code-reels-srs-stats') || '{}'),
+        liked: JSON.parse(localStorage.getItem('oi-liked-questions') || '[]'),
+        bookmarked: JSON.parse(localStorage.getItem('oi-bookmarked-questions') || '[]'),
+        settings: JSON.parse(localStorage.getItem('oi-profile-settings') || '{}'),
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `code-reels-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+    } catch {}
+  }, []);
+
+  const handleImport = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (data.cards) localStorage.setItem('code-reels-srs', JSON.stringify(data.cards));
+        if (data.fcCards) localStorage.setItem('code-reels-fc-srs', JSON.stringify(data.fcCards));
+        if (data.stats) localStorage.setItem('code-reels-srs-stats', JSON.stringify(data.stats));
+        if (data.liked) localStorage.setItem('oi-liked-questions', JSON.stringify(data.liked));
+        if (data.bookmarked) localStorage.setItem('oi-bookmarked-questions', JSON.stringify(data.bookmarked));
+        if (data.settings) localStorage.setItem('oi-profile-settings', JSON.stringify(data.settings));
+        window.location.reload();
+      } catch {}
+    };
+    input.click();
+  }, []);
 
   return (
-    <SidebarProvider
-      defaultOpen={true}
-      style={{ '--sidebar-width': '18rem' } as React.CSSProperties}
-    >
-      {/* Desktop sidebar */}
-      <Sidebar collapsible="none" className="hidden lg:flex border-r border-border/50">
-        <SidebarHeader className="p-4">
-          <button onClick={() => setLocation('/study')} className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-              <Code2 className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-lg">Open Interview</span>
-          </button>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {NAV_ITEMS.map(({ icon: Icon, label, path }) => (
-                  <SidebarMenuItem key={path}>
-                    <SidebarMenuButton
-                      isActive={isActive(path)}
-                      onClick={() => setLocation(path)}
-                      size="lg"
-                    >
-                      <Icon className="w-5 h-5" />
-                      <span>{label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-        <SidebarFooter className="p-4 border-t border-border/50">
-          <button
-            onClick={() => setLocation('/profile')}
-            className="flex items-center gap-3 p-2 rounded-lg hover:bg-sidebar-accent hover:text-sidebar-accent-foreground w-full text-sm"
-          >
-            <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
-              <User className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1 text-left">
-              <p className="font-medium">Profile</p>
-              <p className="text-xs text-amber-500 flex items-center gap-1">
-                <Zap className="w-3 h-3 fill-amber-500" />
-                {formatCredits(balance)}
-              </p>
-            </div>
-          </button>
-        </SidebarFooter>
-      </Sidebar>
-
-      {/* Main content area */}
-      <div className="flex flex-col flex-1 min-w-0">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 h-12 glass-nav flex items-center px-4 gap-3">
-          {showBack && (
-            <button
-              aria-label="Go back"
-              onClick={handleBack}
-              className="flex items-center justify-center w-9 h-9 -ml-1 rounded-lg hover:bg-accent"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-          )}
-          <h1 className="text-base font-semibold flex-1 truncate">{heading}</h1>
-
-          <button
-            aria-label={`Credits: ${formatCredits(balance)}`}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-bold text-amber-500"
-          >
-            <Zap className="w-3.5 h-3.5 fill-amber-500" />
-            {formatCredits(balance)}
-          </button>
-
-          {/* Mobile hamburger menu */}
-          <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-            <DrawerTrigger className="flex lg:hidden items-center justify-center w-9 h-9 rounded-lg hover:bg-accent">
-              <Menu className="w-5 h-5" />
-            </DrawerTrigger>
-            <DrawerContent>
-              <DrawerHeader>
-                <DrawerTitle>Navigation</DrawerTitle>
-              </DrawerHeader>
-              <div className="px-4 pb-6 space-y-1">
-                {NAV_ITEMS.map(({ icon: Icon, label, path }) => (
-                  <button
-                    key={path}
-                    onClick={() => handleNav(path)}
-                    className={cn(
-                      'w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left',
-                      isActive(path)
-                        ? 'bg-primary/10 text-primary font-medium'
-                        : 'hover:bg-accent text-muted-foreground',
-                    )}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span>{label}</span>
-                  </button>
-                ))}
-              </div>
-            </DrawerContent>
-          </Drawer>
-        </header>
-
-        {/* Skip to content */}
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-primary focus:text-primary-foreground focus:px-4 focus:py-2 focus:rounded-lg"
-        >
-          Skip to main content
+    <div className="p-3 rounded-2xl border border-[var(--tw-border)] bg-transparent">
+      <h3 className="text-[15px] font-bold text-[#e7e9ea] mb-3">Data & Sync</h3>
+      <div className="space-y-1">
+        <button onClick={handleExport} className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] text-[#71767b] hover:text-[#e7e9ea] hover:bg-[#1d1f23] transition-all">
+          <Download className="w-[18px] h-[18px]" />
+          <span>Export Backup</span>
+        </button>
+        <button onClick={handleImport} className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] text-[#71767b] hover:text-[#e7e9ea] hover:bg-[#1d1f23] transition-all">
+          <Upload className="w-[18px] h-[18px]" />
+          <span>Import Backup</span>
+        </button>
+        <a href="https://github.com/open-interview/open-interview" target="_blank" rel="noopener noreferrer" className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] text-[#71767b] hover:text-[#e7e9ea] hover:bg-[#1d1f23] transition-all">
+          <Github className="w-[18px] h-[18px]" />
+          <span>GitHub Sync</span>
         </a>
+      </div>
+    </div>
+  );
+}
 
-        {/* Content */}
-        <main id="main-content" className="flex-1 pb-14 lg:pb-0 overflow-y-auto">
-          {children}
-        </main>
+const editorialGridStyles = `
+.editorial-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas:
+    "text      text"
+    "diagram   text"
+    "pullquote text";
+  gap: 1rem;
+}
+.editorial-grid > [data-area="text"] { grid-area: text; }
+.editorial-grid > [data-area="diagram"] { grid-area: diagram; }
+.editorial-grid > [data-area="pullquote"] { grid-area: pullquote; }
+.shape-outside-diagram {
+  float: left;
+  shape-outside: polygon(0 0, 100% 0, 85% 100%, 0 100%);
+  clip-path: polygon(0 0, 100% 0, 85% 100%, 0 100%);
+  shape-margin: 1rem;
+}
+@container (min-width: 600px) {
+  .editorial-grid { gap: 1.5rem; }
+}
+`;
+
+export const Layout = React.memo(function Layout({ children, hideHeader }: LayoutProps) {
+  const [location, setLocation] = useLocation();
+  const isMobile = useIsMobile();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  useBackupReminder();
+
+  const isActive = useCallback((path: string) => {
+    if (path === '/feed') return location === '/' || location === '/feed' || location.startsWith('/feed/');
+    return location === path;
+  }, [location]);
+
+  return (
+    <div className="flex justify-center min-h-dvh bg-black">
+      <Omnibar />
+
+      <style>{editorialGridStyles}</style>
+
+      <div className="flex w-full max-w-[1460px] min-h-dvh border-x border-[var(--tw-border)]" style={{ borderLeft: '1px solid var(--tw-border)', borderRight: '1px solid var(--tw-border)' }}>
+
+        <div className="hidden md:flex flex-col sticky top-0 h-dvh w-[68px] min-w-[68px] border-r border-[var(--tw-border)] py-2 items-center gap-1" style={{ borderRight: '1px solid var(--tw-border)' }}>
+          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 via-violet-500 to-cyan-500 flex items-center justify-center mb-2">
+            <Code2 className="w-5 h-5 text-white" />
+          </div>
+          {NAV_ITEMS.slice(0, 2).map(({ icon: Icon, label, path }) => (
+            <Tooltip key={path}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setLocation(path)}
+                  className={cn(
+                    'flex items-center justify-center w-11 h-11 rounded-2xl transition-all duration-200',
+                    isActive(path) ? 'text-[#e7e9ea] bg-[#1d1f23]' : 'text-[#71767b] hover:text-[#e7e9ea] hover:bg-[#1d1f23]',
+                  )}
+                >
+                  <Icon className="w-[22px] h-[22px]" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="text-xs font-medium bg-[#1d1f23] text-[#e7e9ea] border border-[var(--tw-border)] ml-1">
+                {label}
+              </TooltipContent>
+            </Tooltip>
+          ))}
+          <div className="flex-1" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation('/profile')}
+                className={cn(
+                  'flex items-center justify-center w-11 h-11 rounded-2xl transition-all duration-200',
+                  isActive('/profile') ? 'text-[#e7e9ea] bg-[#1d1f23]' : 'text-[#71767b] hover:text-[#e7e9ea] hover:bg-[#1d1f23]',
+                )}
+              >
+                <User className="w-[22px] h-[22px]" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs font-medium bg-[#1d1f23] text-[#e7e9ea] border border-[var(--tw-border)] ml-1">
+              Profile
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
+        <div className="flex flex-col flex-1 max-w-[800px] min-w-0 border-r border-[var(--tw-border)]" style={{ borderRight: '1px solid var(--tw-border)' }}>
+          <main id="main-content" className="flex-1 min-h-dvh">
+            <Balancer>
+              {children}
+            </Balancer>
+          </main>
+        </div>
+
+        <div className="hidden xl:flex flex-col sticky top-0 h-dvh w-[350px] min-w-[350px] py-3 px-4 gap-4 overflow-y-auto">
+          <button
+            onClick={() => {
+              const event = new KeyboardEvent('keydown', { metaKey: true, key: 'k' });
+              document.dispatchEvent(event);
+            }}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-full border border-[var(--tw-border)] bg-transparent text-[15px] text-[#71767b] hover:border-[#71767b] transition-all cursor-text text-left"
+          >
+            <Search className="w-[18px] h-[18px]" strokeWidth={1.5} />
+            <span>Search</span>
+          </button>
+
+          <TrendList />
+          <StreakWidget />
+          <DataHub />
+        </div>
       </div>
 
-      {/* Mobile bottom navigation */}
-      <nav
-        aria-label="Mobile navigation"
-        className="fixed bottom-0 left-0 right-0 z-50 lg:hidden h-14 glass-nav border-t border-white/5 safe-bottom flex items-center justify-around px-2"
-      >
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden h-14 bg-black border-t border-[var(--tw-border)] flex items-center justify-around px-2 safe-bottom">
         {NAV_ITEMS.map(({ icon: Icon, label, path }) => (
           <button
             key={path}
-            aria-current={isActive(path) ? 'page' : undefined}
             onClick={() => setLocation(path)}
             className={cn(
-              'flex flex-col items-center justify-center gap-0.5 px-4 min-w-[72px] h-full rounded-lg transition-colors',
-              isActive(path)
-                ? 'text-primary glow-violet'
-                : 'text-muted-foreground hover:text-foreground',
+              'flex items-center justify-center w-12 h-12 rounded-2xl transition-all duration-200',
+              isActive(path) ? 'text-[#e7e9ea]' : 'text-[#71767b]',
             )}
           >
-            <Icon className="w-5 h-5" aria-hidden="true" />
-            <span className="text-[10px] font-medium">{label}</span>
+            <Icon className="w-[22px] h-[22px]" strokeWidth={1.5} />
           </button>
         ))}
       </nav>
-    </SidebarProvider>
+      <ToastQueue />
+    </div>
   );
 });

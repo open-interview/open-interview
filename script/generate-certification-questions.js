@@ -132,10 +132,9 @@ async function saveCertQuestion(question) {
     const answerText = correctOption?.text || question.explanation || '';
     
     const tags = [
-      ...(question.tags || []),
-      'certification',
-      `domain-weight-${question.domainWeight || 0}`
-    ];
+      ...(question.tags || []).filter(t => !t.startsWith('domain-weight')),
+      'certification'
+    ].slice(0, 10);
     
     // Build MCQ options as structured data for potential UI use
     const mcqOptions = (question.options || []).map(o => ({

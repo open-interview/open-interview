@@ -56,17 +56,20 @@ function buildPrompt(channel, subChannel, difficulty, companies) {
 
 Return ONLY a single valid JSON object with exactly these fields (no markdown, no extra text):
 {
-  "question": "A specific, practical interview question ending with ?",
-  "answer": "Comprehensive answer (200-400 words). Plain text only, no markdown.",
-  "explanation": "Deeper explanation covering why this matters, edge cases, and real-world usage (150-300 words). Plain text only.",
+  "question": "A short, direct interview question ending with ? (max 120 chars)",
+  "answer": "Concise answer (max 150 characters). One sentence. No markdown.",
+  "explanation": "Brief explanation (max 250 characters, 2-3 sentences). Direct and concise.",
   "diagram": "flowchart TD\\n  A[Start] --> B[Step]\\n  B --> C[End]",
   "companies": ${JSON.stringify(companies)},
   "tags": ["${subChannel}", "${channel}"]
 }
 
 Requirements:
+- Question must be max 120 characters
+- Answer must be max 150 characters (one sentence)
+- Keep everything SHORT and direct
 - The question must be something actually asked in real technical interviews at ${companies.join(', ')}
-- Answer should demonstrate deep expertise and include specific details
+- Answer should be concise and factual
 - Diagram must be a valid Mermaid flowchart with at least 4 nodes
 - Do not include "candidate", "interviewer", or meta-commentary`;
 }
@@ -76,7 +79,7 @@ Requirements:
 function validateQuestion(q) {
   if (!q || typeof q !== 'object') return false;
   if (!q.question || !q.question.endsWith('?') || q.question.length < 20) return false;
-  if (!q.answer || q.answer.length < 100) return false;
+  if (!q.answer || q.answer.length < 10) return false;
   if (!q.explanation || q.explanation.length < 50) return false;
   return true;
 }

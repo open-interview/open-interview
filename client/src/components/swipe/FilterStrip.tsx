@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import type { FilterState } from '@/types/swipe';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ import {
   DrawerTitle,
   DrawerClose,
 } from '@/components/ui/drawer';
+import { ChevronDown, Plus } from 'lucide-react';
 
 interface Channel {
   id: string;
@@ -50,8 +51,9 @@ export const FilterStrip = React.memo(function FilterStrip({
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const topicChannels = channels.filter((c) => c.category === 'topic');
-  const visibleChannels = isMobile ? topicChannels.slice(0, 4) : topicChannels;
-  const hasMore = isMobile && topicChannels.length > 4;
+  const maxVisible = isMobile ? 4 : 7;
+  const visibleChannels = topicChannels.length > maxVisible ? topicChannels.slice(0, maxVisible) : topicChannels;
+  const hasMore = topicChannels.length > maxVisible;
 
   const isAllActive = activeFilter.scope === 'all';
   const isChannelActive = (id: string) =>
@@ -69,24 +71,19 @@ export const FilterStrip = React.memo(function FilterStrip({
     onFilterChange({ ...activeFilter, mode });
 
   const chipBase = cn(
-    'inline-flex items-center justify-center h-8 px-3 rounded-full text-sm font-medium whitespace-nowrap',
-    'bg-muted transition-colors cursor-pointer select-none',
+    'inline-flex items-center justify-center h-8 px-3.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200 cursor-pointer select-none border',
   );
 
-  const chipActive = 'bg-purple-600/20 text-purple-400';
-
-  const chip = (active: boolean, color?: string) =>
+  const chip = (active: boolean) =>
     cn(
       chipBase,
       active
-        ? chipActive
-        : 'text-muted-foreground hover:text-foreground hover:bg-accent',
-      active && color && 'shadow-[inset_0_-2px_0]',
+        ? 'bg-gradient-to-r from-indigo-500/15 to-violet-500/15 border-violet-500/25 text-violet-300 shadow-sm'
+        : 'bg-transparent border-border/20 text-muted-foreground hover:text-foreground hover:border-border/40 hover:bg-accent/30',
     );
 
   const modeBtnBase = cn(
-    'inline-flex items-center justify-center h-7 px-2.5 rounded-md text-xs font-medium whitespace-nowrap',
-    'transition-colors cursor-pointer',
+    'inline-flex items-center justify-center h-7 px-3 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 cursor-pointer border',
   );
 
   const moreChannels = isMobile ? topicChannels.slice(4) : [];
@@ -94,29 +91,13 @@ export const FilterStrip = React.memo(function FilterStrip({
 
   if (channels.length === 0) {
     return (
-      <div className="flex items-center gap-2 py-1" data-pagefind-ignore>
-        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar scroll-smooth scroll-snap-x snap-x mandatory flex-1">
-          <button
-            type="button"
-            className={cn(chip(isAllActive), 'snap-start')}
-            onClick={handleAll}
-          >
-            All
-          </button>
+      <div className="flex items-center gap-2 py-1.5" data-pagefind-ignore>
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide scroll-smooth flex-1">
+          <button type="button" className={cn(chip(isAllActive))} onClick={handleAll}>All</button>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {MODE_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              className={cn(
-                modeBtnBase,
-                activeFilter.mode === opt.value
-                  ? 'bg-purple-600/20 text-purple-400'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent',
-              )}
-              onClick={() => handleMode(opt.value)}
-            >
+            <button key={opt.value} type="button" className={cn(modeBtnBase, activeFilter.mode === opt.value ? 'bg-violet-500/15 border-violet-500/25 text-violet-300' : 'bg-transparent border-border/20 text-muted-foreground hover:text-foreground hover:border-border/40')} onClick={() => handleMode(opt.value)}>
               {opt.label}
             </button>
           ))}
@@ -126,74 +107,26 @@ export const FilterStrip = React.memo(function FilterStrip({
   }
 
   return (
-    <div className="flex items-center gap-2 py-1" data-pagefind-ignore>
-      <div
-        ref={scrollRef}
-        className={cn(
-          'flex items-center gap-2 overflow-x-auto hide-scrollbar scroll-smooth',
-          'scroll-snap-x snap-x mandatory',
-          isMobile ? 'flex-1' : 'flex-1',
-        )}
-      >
-        {/* All */}
-        <button
-          type="button"
-          className={cn(chip(isAllActive), 'snap-start')}
-          onClick={handleAll}
-        >
+    <div className="flex items-center gap-2 py-1.5" data-pagefind-ignore>
+      <div ref={scrollRef} className={cn('flex items-center gap-2 overflow-x-auto scrollbar-hide scroll-smooth flex-1')}>
+        <button type="button" className={cn(chip(isAllActive))} onClick={handleAll}>
           All
         </button>
-
-        {/* Topic channels */}
         {visibleChannels.map((ch) => (
-          <button
-            key={ch.id}
-            type="button"
-            className={cn(
-              chip(isChannelActive(ch.id), ch.color),
-              'snap-start',
-            )}
-            style={
-              isChannelActive(ch.id) && ch.color
-                ? { boxShadow: `inset 0 -2px 0 ${ch.color}` }
-                : undefined
-            }
-            onClick={() => handleChannel(ch.id)}
-          >
+          <button key={ch.id} type="button" className={cn(chip(isChannelActive(ch.id)))} style={isChannelActive(ch.id) && ch.color ? { boxShadow: `inset 0 -2px 0 ${ch.color}` } : undefined} onClick={() => handleChannel(ch.id)}>
             {ch.name}
           </button>
         ))}
-
-        {/* Certifications (desktop only inline) */}
-        {!isMobile &&
-          certifications.map((cert) => (
-            <button
-              key={cert.id}
-              type="button"
-              className={cn(
-                chip(isCertActive(cert.id), cert.color),
-                'snap-start',
-              )}
-              style={
-                isCertActive(cert.id) && cert.color
-                  ? { boxShadow: `inset 0 -2px 0 ${cert.color}` }
-                  : undefined
-              }
-              onClick={() => handleCert(cert.id)}
-            >
-              {cert.name}
-            </button>
-          ))}
-
-        {/* More (mobile only) */}
+        {!isMobile && certifications.map((cert) => (
+          <button key={cert.id} type="button" className={cn(chip(isCertActive(cert.id)))} style={isCertActive(cert.id) && cert.color ? { boxShadow: `inset 0 -2px 0 ${cert.color}` } : undefined} onClick={() => handleCert(cert.id)}>
+            {cert.name}
+          </button>
+        ))}
         {hasMore && (
           <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
             <DrawerTrigger asChild>
-              <button
-                type="button"
-                className={cn(chipBase, 'text-muted-foreground snap-start')}
-              >
-                More ▾
+              <button type="button" className={cn(chipBase, 'bg-transparent border-border/20 text-muted-foreground hover:text-foreground hover:border-border/40 flex items-center gap-1')}>
+                More <ChevronDown className="w-3.5 h-3.5" />
               </button>
             </DrawerTrigger>
             <DrawerContent>
@@ -203,27 +136,11 @@ export const FilterStrip = React.memo(function FilterStrip({
               <div className="px-4 pb-6 space-y-4">
                 {moreChannels.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                      Topics
-                    </h4>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Topics</h4>
                     <div className="flex flex-wrap gap-2">
                       {moreChannels.map((ch) => (
                         <DrawerClose key={ch.id} asChild>
-                          <button
-                            type="button"
-                            className={cn(
-                              chipBase,
-                              isChannelActive(ch.id)
-                                ? chipActive
-                                : 'text-muted-foreground',
-                            )}
-                            style={
-                              isChannelActive(ch.id) && ch.color
-                                ? { boxShadow: `inset 0 -2px 0 ${ch.color}` }
-                                : undefined
-                            }
-                            onClick={() => handleChannel(ch.id)}
-                          >
+                          <button type="button" className={cn(chipBase, isChannelActive(ch.id) ? 'bg-violet-500/15 border-violet-500/25 text-violet-300' : 'bg-transparent border-border/20 text-muted-foreground', 'text-sm')} onClick={() => handleChannel(ch.id)}>
                             {ch.name}
                           </button>
                         </DrawerClose>
@@ -232,27 +149,11 @@ export const FilterStrip = React.memo(function FilterStrip({
                   </div>
                 )}
                 <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    Certifications
-                  </h4>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Certifications</h4>
                   <div className="flex flex-wrap gap-2">
                     {moreCerts.map((cert) => (
                       <DrawerClose key={cert.id} asChild>
-                        <button
-                          type="button"
-                          className={cn(
-                            chipBase,
-                            isCertActive(cert.id)
-                              ? chipActive
-                              : 'text-muted-foreground',
-                          )}
-                          style={
-                            isCertActive(cert.id) && cert.color
-                              ? { boxShadow: `inset 0 -2px 0 ${cert.color}` }
-                              : undefined
-                          }
-                          onClick={() => handleCert(cert.id)}
-                        >
+                        <button type="button" className={cn(chipBase, isCertActive(cert.id) ? 'bg-violet-500/15 border-violet-500/25 text-violet-300' : 'bg-transparent border-border/20 text-muted-foreground', 'text-sm')} onClick={() => handleCert(cert.id)}>
                           {cert.name}
                         </button>
                       </DrawerClose>
@@ -260,18 +161,10 @@ export const FilterStrip = React.memo(function FilterStrip({
                   </div>
                 </div>
                 {onCreateCard && (
-                  <div className="pt-3 border-t border-[var(--border-default)]">
+                  <div className="pt-3 border-t border-border/20">
                     <DrawerClose asChild>
-                      <button
-                        type="button"
-                        className={cn(
-                          chipBase,
-                          'w-full justify-center text-muted-foreground hover:text-foreground',
-                        )}
-                        onClick={onCreateCard}
-                        aria-label="Create card"
-                      >
-                        +
+                      <button type="button" className={cn(chipBase, 'w-full justify-center text-muted-foreground hover:text-foreground hover:bg-accent/30')} onClick={onCreateCard} aria-label="Create card">
+                        <Plus className="w-4 h-4 mr-1" /> Create Card
                       </button>
                     </DrawerClose>
                   </div>
@@ -282,34 +175,15 @@ export const FilterStrip = React.memo(function FilterStrip({
         )}
       </div>
 
-      {/* Mode toggles + create button */}
       <div className="flex items-center gap-1 shrink-0">
         {MODE_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            className={cn(
-              modeBtnBase,
-              activeFilter.mode === opt.value
-                ? 'bg-purple-600/20 text-purple-400'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent',
-            )}
-            onClick={() => handleMode(opt.value)}
-          >
+          <button key={opt.value} type="button" className={cn(modeBtnBase, activeFilter.mode === opt.value ? 'bg-violet-500/15 border-violet-500/25 text-violet-300' : 'bg-transparent border-border/20 text-muted-foreground hover:text-foreground hover:border-border/40')} onClick={() => handleMode(opt.value)}>
             {opt.label}
           </button>
         ))}
         {onCreateCard && (
-          <button
-            type="button"
-            className={cn(
-              modeBtnBase,
-              'w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-accent',
-            )}
-            onClick={onCreateCard}
-            aria-label="Create card"
-          >
-            +
+          <button type="button" className={cn('inline-flex items-center justify-center w-7 h-7 rounded-full transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-accent/30')} onClick={onCreateCard} aria-label="Create card">
+            <Plus className="w-4 h-4" />
           </button>
         )}
       </div>

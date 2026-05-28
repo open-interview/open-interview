@@ -9,16 +9,16 @@ export const schema = {
   id: "cert-xxx-001",
   certificationId: "aws-saa",
   domain: "design-secure",
-  question: "Question text ending with ?",
+  question: "Short question under 120 chars?",
   options: [
-    { id: "a", text: "Option A (plain text, no markdown)", isCorrect: false },
-    { id: "b", text: "Option B (plain text, no markdown)", isCorrect: true },
-    { id: "c", text: "Option C (plain text, no markdown)", isCorrect: false },
-    { id: "d", text: "Option D (plain text, no markdown)", isCorrect: false }
+    { id: "a", text: "Option A under 60 chars", isCorrect: false },
+    { id: "b", text: "Option B under 60 chars", isCorrect: true },
+    { id: "c", text: "Option C under 60 chars", isCorrect: false },
+    { id: "d", text: "Option D under 60 chars", isCorrect: false }
   ],
-  explanation: "Detailed explanation with proper markdown formatting. Use ## for headings, - for lists, and proper code blocks.",
+  explanation: "Brief 2-3 sentence explanation under 250 chars.",
   difficulty: "intermediate",
-  tags: ["tag1", "tag2"]
+  tags: ["tag1"]
 };
 
 export const certificationDomains = {
@@ -465,7 +465,11 @@ export const guidelines = [
   'Explanation should reference why wrong options are incorrect',
   'Include relevant AWS/K8s/Terraform service names in tags',
   'Difficulty should match domain complexity',
-  'Questions should test practical knowledge, not memorization'
+  'Questions should test practical knowledge, not memorization',
+  'QUESTION must be VERY SHORT — max 120 characters, direct, no fluff',
+  'ANSWER options must be SHORT — each option text max 60 characters',
+  'EXPLANATION must be VERY BRIEF — max 250 characters, 2-3 sentences max',
+  'PRIORITY: Conciseness. Real exam questions are short. So should yours.'
 ];
 
 export const explanationFormat = `## Correct Answer
@@ -493,26 +497,33 @@ export function build(context) {
   const domains = certificationDomains[certificationId] || [];
   const targetDomain = domains.find(d => d.id === domain);
   
-  return `You are an expert certification exam question writer. Generate ${count} high-quality MCQ questions.
+  return `You are an expert certification exam question writer. Generate ${count} MCQ questions. CRITICAL: Keep EVERYTHING short.
 
 CERTIFICATION: ${certificationId.toUpperCase()}
 DOMAIN: ${targetDomain?.name || domain} (${targetDomain?.weight || 0}% of exam)
 DIFFICULTY: ${difficulty}
 
-Generate questions that:
-- Test practical, real-world knowledge
-- Use scenario-based format for intermediate/advanced
-- Have exactly 4 options with ONE correct answer
-- Include detailed explanations
+CONCISENESS RULES (MANDATORY):
+- QUESTION: max 120 characters. Short scenario + direct question.
+  GOOD: "What is the minimum S3 storage class duration?" (46 chars)
+  GOOD: "Which AWS service provides a fully managed Kafka-compatible messaging service?" (72 chars)
+  BAD: "A company is deploying a three-tier web application in a VPC. The web tier runs in public subnets. The application tier runs in private subnets..." (too long)
+
+- ANSWER OPTIONS: each max 60 characters. Short, no fluff.
+  GOOD: "S3 Standard-IA"
+  GOOD: "Modify the security group inbound rule"
+  BAD: "Create a VPC Gateway Endpoint for S3 and a VPC Interface Endpoint for Secrets Manager" (too long)
+
+- EXPLANATION: max 250 characters. 2-3 sentences. Brief and direct.
+  GOOD: "S3 Standard-IA has a 30-day minimum. Objects deleted before 30 days incur the full 30-day charge. Use S3 One Zone-IA for lower cost if availability needs are lower."
+  BAD: Long paragraphs with multiple sections.
 
 ${markdownFormattingRules}
 
 FIELD-SPECIFIC RULES:
-- "question": Plain text, ends with ?
-- "options[].text": Plain text ONLY, NO markdown, NO bold (**)
-- "explanation": Well-formatted markdown following this structure:
-
-${explanationFormat}
+- "question": Plain text, ends with ?, max 120 chars
+- "options[].text": Plain text ONLY, NO markdown, max 60 chars each
+- "explanation": Plain text max 250 chars, 2-3 sentences, no headings
 
 Return a JSON array:
 ${JSON.stringify([schema], null, 2)}

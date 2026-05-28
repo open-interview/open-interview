@@ -106,7 +106,7 @@ async function main() {
   console.log(`   ✓ ${channelStats.length} channel files`);
 
   fs.writeFileSync(path.join(OUTPUT_DIR, 'channels.json'), JSON.stringify(channelStats, null, 0));
-  fs.writeFileSync(path.join(OUTPUT_DIR, 'all-questions.json'), JSON.stringify(questions.map(q => ({ id: q.id, question: q.question, channel: q.channel, subChannel: q.subChannel, difficulty: q.difficulty, tags: q.tags, companies: q.companies })), null, 0));
+  fs.writeFileSync(path.join(OUTPUT_DIR, 'all-questions.json'), JSON.stringify(questions.map(q => ({ id: q.id, question: q.question, answer: q.answer, explanation: q.explanation, diagram: q.diagram, channel: q.channel, subChannel: q.subChannel, difficulty: q.difficulty, tags: q.tags, companies: q.companies, sourceUrl: q.sourceUrl, videos: q.videos, eli5: q.eli5, tldr: q.tldr, createdAt: q.createdAt, lastUpdated: q.lastUpdated })), null, 0));
   fs.writeFileSync(path.join(OUTPUT_DIR, 'stats.json'), JSON.stringify({ totalQuestions: questions.length, totalChannels: channelStats.length, channels: channelStats, lastUpdated: new Date().toISOString() }, null, 0));
   console.log('   ✓ channels.json, all-questions.json, stats.json');
 

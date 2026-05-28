@@ -15,7 +15,7 @@ export const VALIDATION_RULES = {
     required: true
   },
   answer: {
-    minLength: 50,
+    minLength: 20,
     maxLength: 10000,
     required: true,
     // CRITICAL: Answer must be plain text, NOT JSON
@@ -25,7 +25,7 @@ export const VALIDATION_RULES = {
     ]
   },
   explanation: {
-    minLength: 100,
+    minLength: 30,
     maxLength: 15000,
     required: true
   },

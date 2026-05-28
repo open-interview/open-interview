@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, PanInfo, useMotionValue, useTransform, type MotionValue } from 'framer-motion';
 import type { SwipeCard } from '@/types/swipe';
-import { RecallRatingBar } from '@/components/shared/RecallRatingBar';
+import { MermaidDiagram } from '@/components/MermaidDiagram';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 
@@ -19,9 +19,9 @@ interface StudyCardProps {
 }
 
 const difficultyDot: Record<string, string> = {
-  beginner: 'bg-green-500',
-  intermediate: 'bg-yellow-500',
-  advanced: 'bg-red-500',
+  beginner: 'bg-emerald-500',
+  intermediate: 'bg-amber-500',
+  advanced: 'bg-rose-500',
 };
 
 const modeLabels: Record<string, string> = {
@@ -31,12 +31,14 @@ const modeLabels: Record<string, string> = {
   standard: 'Standard',
 };
 
-const modeColors: Record<string, { bg: string; text: string }> = {
-  recall: { bg: 'bg-violet-500/20', text: 'text-violet-300' },
-  feynman: { bg: 'bg-emerald-500/20', text: 'text-emerald-300' },
-  palace: { bg: 'bg-amber-500/20', text: 'text-amber-300' },
-  standard: { bg: 'bg-blue-500/20', text: 'text-blue-300' },
+const modeColors: Record<string, { bg: string; text: string; border: string }> = {
+  recall: { bg: 'bg-violet-500/15', text: 'text-violet-300', border: 'border-violet-500/20' },
+  feynman: { bg: 'bg-emerald-500/15', text: 'text-emerald-300', border: 'border-emerald-500/20' },
+  palace: { bg: 'bg-amber-500/15', text: 'text-amber-300', border: 'border-amber-500/20' },
+  standard: { bg: 'bg-blue-500/15', text: 'text-blue-300', border: 'border-blue-500/20' },
 };
+
+
 
 export const StudyCard = React.memo(function StudyCard({
   card,
@@ -57,7 +59,6 @@ export const StudyCard = React.memo(function StudyCard({
 
   const internalX = useMotionValue(0);
   const x = dragXProp ?? internalX;
-  const y = useMotionValue(0);
 
   const rightGlow = useTransform(x, [0, SWIPE_THRESHOLD], [0, 1]);
   const leftGlow = useTransform(x, [-SWIPE_THRESHOLD, 0], [1, 0]);
@@ -118,8 +119,8 @@ export const StudyCard = React.memo(function StudyCard({
         drag={prefersReducedMotion ? false : (exiting ? false : 'x')}
         dragConstraints={prefersReducedMotion ? undefined : { left: 0, right: 0 }}
         dragElastic={prefersReducedMotion ? 0 : 0.2}
-        style={{ x, y }}
-        initial={prefersReducedMotion ? {} : { opacity: 0, scale: 0.9, y: 40 }}
+        style={{ x }}
+        initial={prefersReducedMotion ? {} : { opacity: 0, scale: 0.92, y: 30 }}
         animate={
           exiting
             ? exitVariants[exiting]
@@ -128,8 +129,8 @@ export const StudyCard = React.memo(function StudyCard({
         exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.85, transition: { duration: 0.2 } }}
         transition={
           exiting
-            ? { duration: prefersReducedMotion ? 0 : 0.3, ease: 'easeIn' }
-            : prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 30, mass: 0.8 }
+            ? { duration: prefersReducedMotion ? 0 : 0.25, ease: 'easeIn' }
+            : prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 28, mass: 0.8 }
         }
         onDragEnd={handleDragEnd}
         onAnimationComplete={handleSwipeComplete}
@@ -139,54 +140,61 @@ export const StudyCard = React.memo(function StudyCard({
             onFlip?.();
           }
         }}
-        whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
-        className="w-full max-w-md min-h-[50vh] sm:min-h-[420px] lg:min-h-[500px] relative rounded-2xl select-none bg-[var(--swipe-bg-card)] border border-[var(--swipe-border)] shadow-[0_8px_30px_rgba(0,0,0,0.4)] flex flex-col"
+        whileTap={prefersReducedMotion ? {} : { scale: 0.97 }}
+        className="w-full max-w-md min-h-[50vh] sm:min-h-[420px] lg:min-h-[500px] relative rounded-2xl select-none bg-[var(--swipe-bg-card)] border border-[var(--swipe-border)] shadow-xl flex flex-col overflow-hidden gradient-border-subtle"
       >
-        <motion.div
-          style={{ opacity: rightGlow }}
-          className="pointer-events-none absolute inset-0 rounded-2xl border-2 border-green-500/40 bg-green-500/10 shadow-[0_0_40px_rgba(34,197,94,0.2)]"
-        />
+        {/* Drag tint overlays */}
         <motion.div
           style={{ opacity: leftGlow }}
-          className="pointer-events-none absolute inset-0 rounded-2xl border-2 border-red-500/40 bg-red-500/10 shadow-[0_0_40px_rgba(239,68,68,0.2)]"
+          className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-rose-500/20 via-transparent to-transparent z-10"
+        />
+        <motion.div
+          style={{ opacity: rightGlow }}
+          className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-l from-cyan-500/20 via-transparent to-transparent z-10"
         />
 
         <motion.div
           animate={prefersReducedMotion ? {} : { rotateY: isFlipped ? 180 : 0 }}
-          transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.4, ease: 'easeInOut' }}
-          className="flex-1"
+          transition={prefersReducedMotion ? { duration: 0 } : {
+            type: 'spring',
+            stiffness: 200,
+            damping: 16,
+            mass: 1.2,
+          }}
+          className="flex-1 relative"
           style={{ transformStyle: 'preserve-3d', perspective: 1200 }}
         >
+          {/* Front */}
           <div
             style={{ backfaceVisibility: 'hidden' }}
-            className="absolute inset-0 rounded-2xl p-5 flex flex-col"
+            className="absolute inset-0 rounded-2xl p-6 flex flex-col"
           >
-            <div className="flex items-center gap-2 mb-3">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[var(--swipe-chip-bg)] text-[var(--swipe-chip-text)]">
+            {/* Inline pill tags at top (no absolute positioning) */}
+            <div className="flex items-center gap-2 mb-4 shrink-0">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[var(--swipe-chip-bg)] text-[var(--swipe-chip-text)] border border-violet-500/15">
                 {card.channel}
               </span>
-              <span className={cn('w-2 h-2 rounded-full', difficultyDot[card.difficulty])} />
+              <span className={cn('w-2 h-2 rounded-full shrink-0', difficultyDot[card.difficulty])} />
+              <span className={cn('ml-auto inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border', mc.bg, mc.text, mc.border)}>
+                {modeLabels[card.mode] ?? card.mode}
+              </span>
             </div>
 
-            <span className={`absolute top-4 right-4 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${mc.bg} ${mc.text}`}>
-              {modeLabels[card.mode] ?? card.mode}
-            </span>
-
             {card.mode === 'palace' && card.palaceImage && (
-              <div className="mb-3 p-3 rounded-xl bg-violet-500/10 border border-violet-500/20 text-center">
+              <div className="mb-4 p-3 rounded-xl bg-gradient-to-br from-violet-500/10 to-indigo-500/10 border border-violet-500/15 text-center shrink-0">
                 <p className="text-2xl mb-1">{card.palaceImage}</p>
-                <p className="text-[11px] text-violet-300/70">visualize the scene…</p>
+                <p className="text-[11px] text-violet-300/60">visualize the scene...</p>
               </div>
             )}
 
-            <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+            <div className="flex-1 flex flex-col items-center justify-center min-h-0 px-2">
               <p
                 onClick={(e) => {
                   e.stopPropagation();
                   setExpanded((v) => !v);
                 }}
                 className={cn(
-                  'text-[15px] leading-relaxed text-[var(--text-primary)] text-center cursor-pointer transition-all',
+                  'text-base leading-relaxed text-[var(--text-primary)] text-center cursor-pointer transition-all font-medium',
                   expanded ? '' : 'line-clamp-3',
                 )}
               >
@@ -194,72 +202,40 @@ export const StudyCard = React.memo(function StudyCard({
               </p>
               {!expanded && card.front.length > 200 && (
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setExpanded(true);
-                  }}
-                  className="mt-2 text-[11px] font-medium text-violet-400 hover:text-violet-300 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+                  className="mt-2 text-[11px] font-medium text-violet-400/70 hover:text-violet-300 transition-colors"
                 >
                   Tap to read more
                 </button>
               )}
               {expanded && card.front.length > 200 && (
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setExpanded(false);
-                  }}
-                  className="mt-2 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
+                  className="mt-2 text-[11px] font-medium text-muted-foreground/70 hover:text-foreground transition-colors"
                 >
                   Show less
                 </button>
               )}
             </div>
 
-            {(card.subChannel || card.tags?.length > 0) && (
-              <div className="mt-3 flex flex-wrap items-center gap-1.5 justify-center">
-                {card.subChannel && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-violet-500/10 text-violet-300 border border-violet-500/20">
-                    {card.subChannel}
-                  </span>
-                )}
-                {card.tags?.slice(0, 3).filter(t => t !== card.channel && t !== card.subChannel).map(tag => (
-                  <span key={tag} className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-800 text-zinc-400 border border-zinc-700/50">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {showHint && card.hint && (
-              <div className="mt-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setRevealed(v => !v);
-                  }}
-                  className="flex items-center gap-1 text-[11px] font-medium text-amber-400 hover:text-amber-300 transition-colors"
-                >
-                  {revealed ? '▾' : '▸'} {revealed ? 'Hint' : 'Show hint'}
-                </button>
-                {revealed && (
-                  <div className="mt-1 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                    <p className="text-[12px] text-amber-300/80">{card.hint}</p>
-                  </div>
-                )}
-              </div>
-            )}
+            <div className="mt-4 pt-3 border-t border-[var(--swipe-border)] text-center shrink-0">
+              <p className="text-[11px] text-muted-foreground/60">Tap to reveal answer</p>
+            </div>
           </div>
 
+          {/* Back */}
           <div
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
-            className="absolute inset-0 rounded-2xl p-5 flex flex-col"
+            className="absolute inset-0 rounded-2xl p-6 flex flex-col"
           >
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
-              <div className="border-b border-white/5 pb-3">
-                <h4 className="text-[11px] font-semibold uppercase tracking-wider gradient-text mb-1">
-                  Answer
-                </h4>
+            <div className="flex items-center gap-2 mb-4 shrink-0">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/15">
+                Answer
+              </span>
+            </div>
+
+            <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-4 pr-1 custom-scrollbar">
+              <div className="rounded-xl bg-gradient-to-br from-[var(--surface-raised)] to-[var(--surface-elevated)] border border-border/30 p-4">
                 <p className="text-sm leading-relaxed text-[var(--text-primary)] whitespace-pre-wrap">
                   {card.back}
                 </p>
@@ -269,12 +245,12 @@ export const StudyCard = React.memo(function StudyCard({
                 <div>
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowExplanation(v => !v); }}
-                    className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-violet-400 hover:text-violet-300 glow-violet transition-all duration-300"
+                    className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-violet-400/70 hover:text-violet-300 transition-all duration-300"
                   >
-                    {showExplanation ? '▾' : '▸'} Explanation
+                    {showExplanation ? '\u25BE' : '\u25B8'} Explanation
                   </button>
                   {showExplanation && (
-                    <div className="mt-1 p-3 rounded-xl glass-card">
+                    <div className="mt-2 p-4 rounded-xl bg-gradient-to-br from-violet-500/5 to-indigo-500/5 border border-violet-500/10">
                       <p className="text-[13px] leading-relaxed text-[var(--text-secondary)] whitespace-pre-wrap">
                         {card.explanation}
                       </p>
@@ -284,22 +260,20 @@ export const StudyCard = React.memo(function StudyCard({
               )}
 
               {card.diagram && (
-                <div className="p-3 rounded-lg glass-card">
-                  <h4 className="text-[11px] font-semibold uppercase tracking-wider text-cyan-400 mb-2">
-                    Diagram
-                  </h4>
-                  <div className="overflow-x-auto">
-                    <pre className="text-[12px] text-[var(--text-secondary)] font-mono whitespace-pre leading-relaxed">
-                      {card.diagram}
-                    </pre>
+                <div className="rounded-xl bg-gradient-to-br from-cyan-500/5 to-blue-500/5 border border-cyan-500/10 overflow-hidden">
+                  <div className="px-4 pt-3 pb-1">
+                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-cyan-400/70">Diagram</h4>
+                  </div>
+                  <div className="p-3">
+                    <MermaidDiagram chart={card.diagram} />
                   </div>
                 </div>
               )}
             </div>
 
             {onRate && (
-              <div className="mt-4 pt-3 border-t border-[var(--swipe-border)] shrink-0">
-                <RecallRatingBar onRate={(r) => onRate(r)} size="md" />
+              <div className="mt-4 pt-4 border-t border-[var(--swipe-border)] shrink-0">
+                <p className="text-[11px] text-muted-foreground/50 text-center">Press [1-4] or swipe to grade</p>
               </div>
             )}
           </div>

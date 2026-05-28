@@ -55,7 +55,7 @@ export const channelIds: string[] = allChannelsConfig.map(c => c.id);
 // Format channel ID to display name
 function formatChannelName(id: string, configName: string): string {
   const nameMap: Record<string, string> = {
-    'system-design': 'System.Design',
+    'system-design': 'System Design',
     'sre': 'SRE',
     'devops': 'DevOps',
     'aws': 'AWS',

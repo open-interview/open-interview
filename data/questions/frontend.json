@@ -1,46 +1,19 @@
 [
   {
-    "id": "frontend-1779190848941-1",
+    "id": "frontend-1779896712409-2",
     "channel": "frontend",
-    "subChannel": "css",
-    "question": "How does CSS containment via the contain property interact with the browser's rendering pipeline, and what specific performance guarantees does content-visibility: auto provide over manual contain values for long-scrolling pages?",
-    "answer": "CSS containment tells the browser to isolate a subtree from the rest of the page, limiting how far rendering effects can propagate. The contain property accepts layout, paint, size, and style keywords. Layout containment establishes its own formatting context and prevents descendant positioned elements from affecting outside scrollable overflow or absolute positioning calculations; the browser skips layout invalidation outside the container when interior content changes. Paint containment clips descendant content to the container's box and prevents descendants from painting outside its bounds; the browser can skip painting the entire subtree when the container is offscreen. Size containment makes the element assume it has no intrinsic size unless explicitly set, meaning percentage-based children resolve against specified or explicit dimensions. Style containment scopes counters and quotes to the container. The value content-visibility: auto applies contain: layout paint style and adds a size-containment-like behavior, but instead of requiring explicit dimensions, it treats the element as having zero intrinsic size when offscreen and swaps to full containment as it approaches the viewport. Auto also adds visibility checks: offscreen subtrees skip layout, paint, and style recalculation entirely. The key benefit over manual contain values is that content-visibility: auto automatically manages based on viewport proximity, eliminating the need to juggle contain values across breakpoints or dynamic content heights. However, the zero-offscreen-size tradeoff means content above the fold that shifts layout forces the browser to recalculate sizes for elided offscreen sections, potentially causing Cumulative Layout Shift if contain-intrinsic-size is not provided. Content-visibility: auto also causes synchronous forced rendering if scripts query offsetHeight on offscreen elements, eliminating the performance benefit. The practical pattern is: apply content-visibility: auto to repeatable list items or card components, and set contain-intrinsic-size to each item's estimated block size so scrollbar thumb size remains accurate. This delivers the same subtree isolation that virtualized lists provide, but at the rendering-engine level with zero JavaScript overhead.",
-    "explanation": "CSS containment matters because modern web applications render hundreds of components that the browser must constantly check for cross-boundary effects. Without containment, any style change anywhere can trigger layout recalculations across the entire document tree. Stripe's dashboard uses containment on data rows to isolate table rendering when updating individual cells. Uber applies paint containment on map overlay list items to prevent repaints of off-screen entries during scroll. Airbnb uses content-visibility: auto on search result cards to sustain 60fps scrolling across hundreds of listings. The core engineering insight is that containment provides rendering isolation comparable to React virtualization but at the browser engine level with zero runtime cost. The most common mistake is applying content-visibility: auto without contain-intrinsic-size, which causes scrollbar jitter since elided elements report zero height. Another pitfall is using it on elements with scroll-driven animations or intersection observer callbacks that expect measurable dimensions at all times. Additionally, content-visibility: auto lazily renders subtrees, so browser find-in-page searches require forcing full render of matching sections, temporarily degrading performance. In production, the pattern is: use contain: paint style on fixed-position panels, use contain: layout on independently scrollable areas, and use content-visibility: auto on repeatable feed items with contain-intrinsic-size matching typical content height.",
-    "diagram": "flowchart TD\n  A[DOM update received] --> B{Inside contained subtree?}\n  B -->|Yes| C[Recalculate styles within container]\n  B -->|No| D[Global style recalc - expensive]\n  C --> E[Layout constraint: layout containment]\n  E --> F{Is subtree offscreen?}\n  F -->|Yes| G[Skip paint: no rendering work]\n  F -->|No| H[Paint subtree to composited layer]\n  G --> I[content-visibility: auto activates]\n  I --> J[Zero intrinsic size offscreen]\n  J --> K[Placeholder via contain-intrinsic-size]\n  K --> L[Near viewport?]\n  L -->|No| M[Keep zero-size, still no paint]\n  L -->|Yes| N[Swap to full render cycle]\n  N --> O[Layout, paint, composition complete]\n  H --> P[No style propagation to siblings or ancestors]",
+    "subChannel": "performance",
+    "question": "What is the difference between reflow and repaint?",
+    "answer": "Reflow recalculates element positions and sizes; repaint redraws pixels. Reflow always causes repaint, but repaint can happen without reflow.",
+    "explanation": "Reflow is triggered when DOM geometry changes, forcing the browser to recalculate layout positions. Repaint occurs for visual changes that don't affect layout, like color changes. Minimizing reflow is critical for smooth rendering performance.",
+    "diagram": "flowchart TD\n  A[DOM Change] --> B{Layout changed?}\n  B -->|Yes| C[Reflow - Recalculate Layout]\n  B -->|No| D[Repaint - Redraw Pixels]\n  C --> D\n  D --> E[Composite Layers]\n  E --> F[Screen Update]",
     "companies": [
       "Stripe",
       "Uber",
       "Airbnb"
     ],
     "tags": [
-      "css",
-      "frontend"
-    ],
-    "difficulty": "advanced",
-    "status": "active",
-    "sourceUrl": null,
-    "videos": {
-      "shortVideo": null,
-      "longVideo": null
-    },
-    "createdAt": "2026-05-19T11:40:48.941Z",
-    "lastUpdated": "2026-05-19T11:40:48.941Z"
-  },
-  {
-    "id": "frontend-1779191149908-2",
-    "channel": "frontend",
-    "subChannel": "react",
-    "question": "When updating state in React based on the previous state, why should you use the functional updater form (setCount(prev => prev + 1)) over directly referencing the current value (setCount(count + 1))?",
-    "answer": "The functional updater form should be used because React state updates are asynchronous and batched. When you write setCount(count + 1), you are closing over the value of count at the time the component rendered. If multiple state updates are batched together or if the user rapidly triggers updates (like clicking a button multiple times in quick succession), each call will capture the same stale count value, leading to incorrect results. For example, if count is 0 and you call setCount(count + 1) three times in the same synchronous block, all three see count = 0, so the final state is 1, not 3. With setCount(prev => prev + 1), each call receives the most recent pending state from React's internal queue, so three calls correctly produce 3. This is critical in event handlers, useEffect callbacks, and any scenario where multiple state updates may coalesce. React 18 with automatic batching makes this even more important, as updates inside timeouts, promises, and native event handlers are now batched alongside synthetic event updates. The functional updater also eliminates the need to list the state variable in the dependency array of useEffect when you only need the previous value, avoiding unnecessary re-runs. In practice, every senior React developer at companies like Stripe or Airbnb understands this distinction: the direct form is acceptable only when the next state does not depend on the previous state, like toggling a boolean, or when the update happens in a place guaranteed to run once per user action. For any derived update, the functional form is the safe, correct choice.",
-    "explanation": "This question targets understanding of React's rendering lifecycle and closure behavior. When a component function runs, all variables (including state values) are captured in that render's closure. Calling setCount triggers a re-render, but the current function continues executing with its original closure. This is why console.log(count) right after setCount still shows the old value. The functional updater solves this by giving you access to React's internal pending state queue, which is updated synchronously within React's reconciler even though the render is deferred. This pattern is not just academic — it directly prevents bugs in real-world scenarios like optimistic updates, polling intervals, WebSocket handlers, and debounced inputs. For instance, when building a collaborative cursor feature like Figma or a real-time comment counter like Disqus, stale closures from direct state access can cause off-by-one errors that are hard to reproduce. The functional updater also plays well with useReducer, which is built on the same principle of passing a reducer function rather than a value. Understanding this concept separates developers who can build reliable, bug-free UIs at scale from those who introduce subtle state corruption bugs that only surface under load.",
-    "diagram": "flowchart TD\n  A[User clicks button] --> B[Event handler fires]\n  B --> C{Update method?}\n  C -->|Direct: setCount(count+1)| D[Captures stale count from current render]\n  C -->|Functional: setCount(p=>p+1)| E[Reads pending state from React queue]\n  D --> F[Three rapid clicks, all see count=0]\n  F --> G[Final state: 1 - BUG]\n  E --> H[Each call sees incremented pending value]\n  H --> I[Final state: 3 - CORRECT]",
-    "companies": [
-      "Stripe",
-      "Airbnb",
-      "Uber"
-    ],
-    "tags": [
-      "react",
+      "performance",
       "frontend"
     ],
     "difficulty": "beginner",
@@ -50,44 +23,44 @@
       "shortVideo": null,
       "longVideo": null
     },
-    "createdAt": "2026-05-19T11:45:49.908Z",
-    "lastUpdated": "2026-05-19T11:45:49.908Z"
+    "createdAt": "2026-05-27T15:45:12.409Z",
+    "lastUpdated": "2026-05-27T15:45:12.409Z"
   },
   {
-    "id": "frontend-1779191322556-3",
+    "id": "frontend-1779896717152-3",
     "channel": "frontend",
-    "subChannel": "web-apis",
-    "question": "How would you implement a system to aggregate multiple cancellation signals from different sources (e.g., user action, component unmount, timeout) using the AbortController and AbortSignal APIs, and what are the key considerations for ensuring correct cleanup?",
-    "answer": "The AbortController interface provides an abort method that updates its associated AbortSignal. The signal can be passed to fetch and any custom async operations that accept it. To aggregate signals, you can use either AbortSignal.any() (available in modern browsers) or manually attach listeners to each individual signal. Using AbortSignal.any([timeoutSignal, userCancelSignal, parentSignal]) creates a new signal that aborts when any of the input signals abort. This is the cleanest approach. When one source aborts, the aggregated signal propagates the abort to the fetch call. Manual aggregation involves creating a single AbortController and listening to each source signal. When any source fires, you call controller.abort() and set up the reasons via the cause property. You must also remove listeners to avoid memory leaks: in the abort event handler, remove all listeners from source signals. Key considerations: always check signal.aborted before attaching listeners to avoid calling aborted signals. In React's useEffect, return a cleanup function that calls controller.abort() and removes listeners. Use AbortSignal.timeout() for simple timeouts. In cases where AbortSignal.any() is unsupported, provide a polyfill that creates a new controller and reacts to the fastest abort. Caveats: signals are one-shot; after abort() is called, the signal stays aborted. Do not reuse aborted controllers. The abort event fires asynchronously, so synchronous checks after calling abort() are safe. When using AbortSignal.any() with fetch, be aware that the stream is consumed; aborting mid-stream might leave the connection open in some browsers.",
-    "explanation": "AbortController is critical for modern web apps because it allows cancellation of fetch requests and any promise-based tasks. This prevents wasted bandwidth when a user navigates away, performs a new search, or when components unmount in SPA frameworks. Real-world usage includes search autocomplete: each keystroke aborts the previous request. Or lazy loading images: aborting when the user quickly scrolls past thumbnails. The aggregation pattern is especially useful for combining timeout, user gesture, and component lifecycle signals. Edge cases: if you forget to remove event listeners from source signals, you will have memory leaks. If you reuse a single controller across multiple fetches, aborting will cancel all of them, which might not be desired. Always create a new controller per operation. The AbortSignal.any() API is relatively new (Chrome 95+). For older browsers, you must manually implement aggregation. In React, the cleanup function in useEffect should call abort() on the controller and optionally set an isCancelled flag for non-fetch async operations. For stream data, aborting fetch will reject the promise, but you may need to also stop processing the stream explicitly.",
-    "diagram": "flowchart TD\n    A[Component mounts] --> B[Create parent AbortController]\n    B --> C[Define signals: timeout, unmount, user]\n    C --> D[Use AbortSignal.any() to aggregate]\n    D --> E[Pass aggregated signal to fetch]\n    E --> F{Any signal aborted?}\n    F -- Yes --> G[Fetch rejects with AbortError]\n    G --> H[Cleanup: remove event listeners]\n    F -- No --> I[Response fully streamed]\n    I --> J[Process and render data]\n    J --> H",
+    "subChannel": "performance",
+    "question": "What is the difference between reflow and repaint?",
+    "answer": "Reflow recalculates layout positions; repaint redraws visual changes without layout recalculation.",
+    "explanation": "Reflow is expensive as it recalculates element positions affecting other elements. Repaint occurs for visual-only changes like color. Minimizing reflows is critical for rendering performance.",
+    "diagram": "flowchart TD\n  A[DOM Change] --> B{CSS Layout Affected?}\n  B -->|Yes| C[Reflow]\n  B -->|No| D[Repaint]\n  C --> E[Recalculate positions]\n  E --> F[Update render tree]\n  D --> F\n  F --> G[Paint to screen]",
     "companies": [
       "Google",
       "Meta",
       "Amazon"
     ],
     "tags": [
-      "web-apis",
+      "performance",
       "frontend"
     ],
-    "difficulty": "advanced",
+    "difficulty": "beginner",
     "status": "active",
     "sourceUrl": null,
     "videos": {
       "shortVideo": null,
       "longVideo": null
     },
-    "createdAt": "2026-05-19T11:48:42.556Z",
-    "lastUpdated": "2026-05-19T11:48:42.556Z"
+    "createdAt": "2026-05-27T15:45:17.152Z",
+    "lastUpdated": "2026-05-27T15:45:17.152Z"
   },
   {
-    "id": "frontend-1779191496705-4",
+    "id": "frontend-1779896771529-1",
     "channel": "frontend",
     "subChannel": "css",
-    "question": "How does the CSS @layer rule interact with the cascade, and how would you architect a layer strategy for a design system serving multiple products with conflicting style requirements?",
-    "answer": "The CSS @layer rule adds an explicit ordering dimension to the cascade, controlling which declarations win regardless of specificity or source order within those layers. Normal declarations in later layers override earlier layers, while important declarations reverse this — earlier layers override later layers. Unlayered normal styles beat all layered normal styles, acting as if they belong to the highest-priority implicit layer declared last. For a design system serving multiple products, I would architect layers as: reset (normalize browser defaults), tokens (design tokens as CSS custom properties), base (semantic element styles like headings and links), components (consistent single-class selectors for all reusable UI), utilities (atomic classes for layout and spacing), and products (product-specific overrides and customizations). This ordering ensures that components have predictable defaults, utilities enable rapid layout without touching component internals, and product teams can safely override any style without resorting to important or specificity arms races. Each layer uses identical specificity, so layer order is the sole arbiter of conflicts. Key edge cases include: imported stylesheets must declare their layer before the import statement; layers can nest as sub-layers like reset.base, creating a hierarchy that complicates resolution; the revert-layer keyword rolls back to the previous layer's value; legacy unlayered CSS always overrides layered CSS in normal flow, making incremental adoption dangerous without wrapping existing code; and keyframes and font-face declarations ignore layering entirely. Real-world adoption: Cloudflare Dashboard uses this pattern to separate their design system from product-specific dashboard features, Databricks applies layered CSS to their component library for workspace-level theming, and Snowflake's Snowsight uses layered strategies to manage their visualization component styles across multiple product surfaces. The strategy eliminates specificity wars that typically plague large applications and makes CSS predictable at scale.",
-    "explanation": "The @layer rule fundamentally alters the CSS cascade by introducing an explicit architectural dimension between origin and specificity in the cascade resolution order. Before @layer, large-scale design systems faced an unsolvable tradeoff: low-specificity selectors that consumers could override but risked breaking encapsulation, BEM-style high-specificity selectors that required important to override, or CSS-in-JS solutions that introduced runtime cost and server-side rendering complexity. None provided a clean dependency injection pattern for styles. @layer solves this by letting the design system ship all component styles in an early layer with identical specificity, while consumers declare overrides in a later layer with identical specificity. The layer order resolves conflicts predictably, not selector specificity or source order. This is the CSS equivalent of a dependency injection container — consumers customize behavior through clearly defined extension points rather than hacking around internals. Critical edge cases require team awareness: the !important property reverses layer priority, which often surprises developers who expect it to always win; legacy unlayered code deceptively overrides layered code, making gradual migration unsafe unless all existing CSS is wrapped in a catch-all layer; and the revert-layer keyword provides granular rollback but has limited browser support for complex multi-layer scenarios. Additionally, keyframes and font-face do not participate in layering, meaning multiple definitions still resolve by last declared wins. Nested layers create a sub-layer resolution order that adds cognitive overhead. Teams adopting @layer must enforce linting to prevent accidental layer ordering, ensure build tools output layers in the correct sequence, and audit existing CSS for unlayered styles that silently override layered ones. Properly implemented, @layer eliminates the primary source of CSS fragility in large applications and is now supported in all modern browsers.",
-    "diagram": "flowchart TD\n  A[CSS Declaration] --> B{Source Origin?}\n  B -->|Normal Author| C{In @layer?}\n  B -->|Important Author| D{In @layer?}\n  C -->|No - Unlayered| E[Highest Priority Layer]\n  C -->|Yes, Layer 1| F[Medium Priority]\n  C -->|Yes, Layer 2 later| G[Lower Priority]\n  D -->|Yes, Layer 1| H[Highest Priority - Reversed]\n  D -->|Yes, Layer 2 later| I[Lower Priority - Reversed]\n  D -->|No - Unlayered| J[Lowest Priority - Important]\n  E --> K{!important present?}\n  F --> K\n  G --> K\n  H --> K\n  I --> K\n  J --> K\n  K -->|Yes| L[Important wins in earliest layer]\n  K -->|No| M[Last layer or unlayered wins]\n  L --> N[Final Computed Value]\n  M --> N",
+    "question": "What creates a new CSS stacking context and how does it affect z-index?",
+    "answer": "Opacity under 1, transforms, filters, will-change, contain, isolation, and positioned elements with z-index create new stacking contexts, isolating child z-index from parent.",
+    "explanation": "Each stacking context is an independent unit. A child's z-index only competes within its parent context, not globally, which causes common bugs when CSS properties like transform or opacity are applied to parent elements.",
+    "diagram": "flowchart TD\n  A[Element in normal flow] --> B{Has z-index != auto?}\n  B -->|No| C{Has opacity < 1?}\n  B -->|Yes| D[New stacking context]\n  C -->|No| E{Has transform/filter?}\n  C -->|Yes| D\n  E -->|No| F[Normal z-index behavior]\n  E -->|Yes| D\n  D --> G[Child z-index scoped to context]",
     "companies": [
       "Cloudflare",
       "Databricks",
@@ -104,115 +77,7 @@
       "shortVideo": null,
       "longVideo": null
     },
-    "createdAt": "2026-05-19T11:51:36.705Z",
-    "lastUpdated": "2026-05-19T11:51:36.705Z"
-  },
-  {
-    "id": "frontend-1779192318914-6",
-    "channel": "frontend",
-    "subChannel": "web-apis",
-    "question": "How would you implement request deduplication using the AbortController API to prevent race conditions when multiple components request the same data simultaneously?",
-    "answer": "Request deduplication prevents redundant network calls when the same endpoint is requested concurrently. Using AbortController, you can cancel in-flight requests when a newer request supersedes them or when a component unmounts. A common implementation maintains a Map of in-flight requests keyed by a normalized request identifier (method + URL + body). When a request starts, check if an identical request is already pending. If so, either wait for the existing promise or abort the old request and start fresh, depending on the use case. For the abort-on-stale pattern, store the AbortController instance in the map. When a new request arrives with the same key, call abort() on the existing controller and replace it with a new one. This ensures only the latest request completes. Proper cleanup is essential: remove entries from the map in the finally block of the fetch promise to avoid memory leaks. The AbortController signal must be passed to fetch and any downstream consumers. Important edge cases include handling partial response races where aborting mid-stream leaves the connection in an inconsistent state, and ensuring aborted requests throw AbortError which should be caught and silently ignored rather than surfaced as application errors. Real-world implementations often combine this with a stale-while-revalidate pattern where a cached response is returned immediately while a fresh request silently updates the cache in the background.",
-    "explanation": "Request deduplication addresses a fundamental challenge in single-page applications where multiple components mount simultaneously and independently trigger the same API call. Without deduplication, the server receives N identical requests, wasting bandwidth and database resources. AbortController provides the mechanism to cancel redundant in-flight requests, but its real power is in coordinating complex request lifecycles. The AbortSignal can be propagated through the entire async chain — not just fetch, but also subsequent data transformations, allowing immediate cancellation of expensive post-processing when the result is no longer needed. In React, the useEffect cleanup function is the natural place to abort component-scoped requests, preventing state updates on unmounted components and the associated memory leaks. A key architectural consideration is whether to use eager abort (cancel old, start new) or lazy deduplication (reuse the same promise). Eager abort is appropriate for autocomplete search where only the latest keystroke matters. Lazy deduplication is better for cache-first data where the result is the same regardless of who requested it. Libraries like TanStack Query and SWR implement these patterns internally, but understanding the underlying mechanism is critical for debugging performance issues and for scenarios where full query management libraries are overkill. The pattern also extends to websocket reconnection logic and progressive image loading where partial results should be discardable.",
-    "diagram": "flowchart TD\n  A[Component Mounts] --> B{Request Key in Map?}\n  B -->|No| C[Create New AbortController]\n  B -->|Yes| D{Strategy?}\n  D -->|Eager Abort| E[Abort Existing Controller]\n  D -->|Lazy Dedup| F[Return Existing Promise]\n  E --> C\n  C --> G[Store Controller in Map]\n  G --> H[fetch with AbortSignal]\n  H --> I{Response}\n  I -->|Success| J[Remove from Map]\n  I -->|AbortError| K[Silently Catch]\n  J --> L[Return Data]\n  K --> M[Ignore - Component Aborted]\n  F --> L",
-    "companies": [
-      "Google",
-      "Meta",
-      "Amazon"
-    ],
-    "tags": [
-      "web-apis",
-      "frontend"
-    ],
-    "difficulty": "intermediate",
-    "status": "active",
-    "sourceUrl": null,
-    "videos": {
-      "shortVideo": null,
-      "longVideo": null
-    },
-    "createdAt": "2026-05-19T12:05:18.914Z",
-    "lastUpdated": "2026-05-19T12:05:18.914Z"
-  },
-  {
-    "id": "frontend-1779192356814-5",
-    "channel": "frontend",
-    "subChannel": "css",
-    "question": "How do CSS Cascade Layers (`@layer`) interact with specificity and source order to resolve conflicts, and how would you structure layers in a large-scale design system to allow for third-party overrides without `!important`?",
-    "answer": "CSS Cascade Layers (`@layer`) provide explicit control over the cascade order, overriding both specificity and source order within the same origin. The cascade priority becomes: browser styles, user styles, author styles (with layers), then animations. Within author styles, the order in which layers are declared determines the winning style. For example, if you declare `@layer base, components, utilities;`, any style in `utilities` will always beat a style in `base` or `components`, regardless of selector specificity. A universal selector `* { color: red }` in `utilities` will override `#main .card .title { color: blue }` in `base` because the `utilities` layer is declared later. This fundamentally changes CSS architecture. In a design system, you can structure layers to achieve perfect priority: a `reset` layer for normalization, a `framework` layer for third-party CSS like Bootstrap, a `components` layer for your design system's reusable patterns, a `utilities` layer for atomic one-off adjustments, and a `custom` layer for page-specific or user overrides. Since layer order beats specificity, you can safely import Material UI into the `framework` layer and write component styles in `components` without ever needing to inspect or out-spec the library. Third-party overrides become trivial: simply place their styles in an earlier layer than your customization layer. This completely eliminates the need for `!important` in normal code, allowing `!important` to return to its original purpose of enforcing a value across all layers or origins. Edge cases include the reversed effect of `!important` inside layers: an `!important` declaration in an earlier layer beats a normal declaration in a later layer. Unlayered styles form an implicit final layer, meaning any style declared outside of `@layer` will always beat layered ones. This makes `@layer` a powerful but strict architectural tool that requires upfront planning in your entry CSS file.",
-    "explanation": "CSS Cascade Layers matter because they solve the fundamental scalability problem of CSS: a globally flat selector space where every new feature or component must fight for specificity. Without layers, the only escalation paths are higher specificity and `!important`, leading to brittle, unmaintainable codebases that grow combinatorially worse with team size. Layers provide architectural confidence by making cascade order a deliberate, visible decision rather than an accidental side-effect of import order or selector weight. The most impactful real-world scenario is integrating Tailwind CSS with a component library. Before layers, Tailwind's utility classes required `!important` to guarantee they beat component selectors. With layers, you declare `@layer base, components, utilities;` and Tailwind's utilities automatically win by layer position without a single `!important`. Another powerful use case is legacy code migration: wrap all old CSS in an `@layer legacy` and write new code in a later `@layer current`. Every new style automatically wins, allowing incremental refactoring without specificity hacking. The edge case most engineers miss is the interaction with `!important`: an `!important` declaration in an earlier layer beats a normal declaration in a later layer. This prevents layers from causing a pure order stampede and preserves the escape hatch for critical overrides. Limitations include the requirement to declare all layer names upfront before first use, which can conflict with code-splitting strategies. Despite this, Cascade Layers represent the most important advancement in CSS authoring specificity since the language was created, directly addressing the root cause of CSS pain at scale.",
-    "diagram": "flowchart TD\n    A[CSS Architecture with Layers] --> B[Declare Layer Order\n@layer base, comps, utils;]\n    B --> C[base layer\nResets, Vars]\n    B --> D[components layer\nDesign System]\n    B --> E[utilities layer\nTailwind / Atomic]\n    B --> F[custom layer\nUser Overrides]\n    C --> G[Later Layer Always Wins\nRegardless of Specificity]\n    E --> H[.hidden beats .card .title]\n    F --> I[!important in earlier layer\nbeats normal in later layer]\n    G --> J[Result: Predictable Cascade,\nZero Specificity Wars]",
-    "companies": [
-      "Google",
-      "Meta",
-      "Amazon"
-    ],
-    "tags": [
-      "css",
-      "frontend"
-    ],
-    "difficulty": "advanced",
-    "status": "active",
-    "sourceUrl": null,
-    "videos": {
-      "shortVideo": null,
-      "longVideo": null
-    },
-    "createdAt": "2026-05-19T12:05:56.814Z",
-    "lastUpdated": "2026-05-19T12:05:56.814Z"
-  },
-  {
-    "id": "frontend-1779192384342-8",
-    "channel": "frontend",
-    "subChannel": "css",
-    "question": "Explain the CSS box model. How does changing box-sizing from content-box (the default) to border-box affect the rendered width of an element set to width: 100% with padding: 20px?",
-    "answer": "The CSS Box Model is the foundational layout algorithm that governs how every visible element on a webpage occupies space. It defines four concentric layers around an element's content: the content area, padding (clear space around the content), border (line around the padding), and margin (external space separating the element from its neighbors). By default, the width property in CSS applies only to the content area (box-sizing: content-box). This means that if you set a div with width: 100%, padding: 20px, and border: 1px solid black, the total rendered width of the div is 100% + 40px (left and right padding) + 2px (left and right border), causing it to overflow its parent container by 42 pixels. This is the most common source of unexpected horizontal scrollbars in CSS. Setting box-sizing: border-box changes this behavior entirely. The width property now applies to the sum of the content, padding, and border. Using the same example, the div will fit exactly within its parent at 100% width, because the browser automatically calculates the content width accordingly. This makes responsive design predictable and intuitive. Because of this benefit, the universal CSS reset applying border-box to all elements is considered a non-negotiable best practice and is the default in modern CSS frameworks like Tailwind CSS, Bootstrap 5, and Bulma. A critical detail is that margin is always outside the box model calculation regardless of the box-sizing value. Another is that replaced elements (like img and input) have intrinsic dimensions that interact with box-sizing differently, often requiring explicit width resets. Understanding the box model deeply allows developers to debug layout issues by instinct, first checking the computed styles in DevTools to see exactly how the box model is rendering.",
-    "explanation": "The box model is more than just a theory—it is the single most practical CSS concept you will use every day. The decision to use border-box globally solves the overwhelming majority of layout breaking bugs that plague web apps, particularly those using percentage-based widths alongside padding. In real-world applications, almost every card, button, form input, and layout grid column relies on this behavior. Why do top-tier companies like Stripe, Uber, and Airbnb care so much about this in a beginner interview? Because a deep understanding here prevents entire categories of bugs from ever being written. It demonstrates that the engineer thinks about layout from the ground up. Edge cases matter: when using CSS Grid or Flexbox, the gap property creates space between items that is not part of the item's box model, so grid items still fit perfectly. Replaced elements like text inputs or select dropdowns have their own internal styling that can override the box model, which is why you often see explicit width resets applied to form controls. Another nuance involves min-width and max-width: these override the width property even with border-box. If an element has box-sizing: border-box, width: 100%, and min-width: 600px inside a 500px container, the element will overflow. The box model is also the reason CSS resets like normalize.css or sanitize.css explicitly set border-box on all elements. Finally, the scrollbar-gutter: stable property can be combined with border-box to reserve space for scrollbars, preventing content reflow when scrollbars appear. Mastery of the box model means you can predict exactly how an element will behave in any layout context, which is what separates junior from senior CSS engineers.",
-    "diagram": "flowchart TD\n    A[Start: Element Width Calculation] --> B{box-sizing value?}\n    B -->|content-box default| C[Width applies to content only]\n    B -->|border-box| D[Width applies to content + padding + border]\n    C --> E[Total width = width + padding + border]\n    D --> F[Total width = specified width]\n    E --> G[Element overflows at width: 100%]\n    F --> H[Element fits inside parent]\n    G --> I[Layout breaks, scrollbar appears]\n    H --> J[Layout stable and predictable]",
-    "companies": [
-      "Stripe",
-      "Uber",
-      "Airbnb"
-    ],
-    "tags": [
-      "css",
-      "frontend"
-    ],
-    "difficulty": "beginner",
-    "status": "active",
-    "sourceUrl": null,
-    "videos": {
-      "shortVideo": null,
-      "longVideo": null
-    },
-    "createdAt": "2026-05-19T12:06:24.342Z",
-    "lastUpdated": "2026-05-19T12:06:24.342Z"
-  },
-  {
-    "id": "frontend-1779192399346-9",
-    "channel": "frontend",
-    "subChannel": "react",
-    "question": "In a React application rendering a dynamic list using `array.map()`, what specific problems can occur when using the array index as the `key` prop, particularly if items can be inserted, removed, or reordered?",
-    "answer": "Using the array index as the `key` prop in React lists leads to subtle bugs and degraded performance when the list is dynamic. React's reconciliation algorithm uses the `key` prop to identify which components changed, were added, or were removed. When the key is the index, React matches components solely by their position in the rendered array. For instance, a list `[A, B, C]` maps to indices `[0, 1, 2]`. If item `A` is deleted, the list becomes `[B, C]` with keys `[0, 1]`. React sees that the component with key `0` now represents `B`. Instead of recognizing `B` as a distinct entity that already existed, React mutates the existing DOM node that belonged to `A` to display the data of `B`. Critically, any internal React state bound to that component instance (such as an uncontrolled input value, a checkbox toggle, or an expanded accordion state) remains tied to key `0`. The state from `A` incorrectly leaks into the component that now renders `B`. This is known as state leaking. The same phenomenon occurs on reordering. Every component effectively gets new state, destroying any user interaction or animation context. Performance optimizations like `React.memo` or `useMemo` are bypassed because React treats every item as a new or mutated instance, defeating shallow comparison. Index keys should only be used for static, non-filterable, non-reorderable lists with no component state. A stable unique identifier from the data, such as a database ID or a UUID, must be used for any list that can change.",
-    "explanation": "The root cause is how React's `reconcileChildrenArray` algorithm operates. With stable keys, React performs an O(n) diff by mapping old children to new children in a single pass. It can perfectly identify insertions, deletions, and moves while preserving the component instance and its state. With index keys, React reverts to a position-based mutation algorithm. This algorithm treats the component tree as a sequence being mutated in place rather than a set of persistent identities. It cannot distinguish between a mutated item and a completely different item placed in the same position. In complex applications, this manifests as broken controlled inputs, lost focus when prepending items to a feed, incorrect checkboxes when filtering results, or broken drag-and-drop reordering. In a real-world scenario at a company like Airbnb, a user filtering search results would see their selected saved listing states and expanded details jump erratically. At Uber, reordering ride mode preferences on the settings page would cause toggle states to shift to the wrong options. At Stripe, loading fresh transactions via a real-time subscription could reset inline editing or expansion state across the entire visible list. The lesson is that `key` is not an optimization hint but a fundamental identity contract with React. Breaking this contract guarantees unpredictable state behavior and suboptimal rendering performance.",
-    "diagram": "flowchart TD\n    subgraph Index[\"Index as Key\"]\n        direction TB\n        I1[\"Initial List: [A, B, C] Keys: [0, 1, 2]\"] --> I2[\"Remove A\"]\n        I2 --> I3[\"React sees key 0 now holds data B\"]\n        I3 --> I4[\"Mutates A DOM node to B text\"]\n        I4 --> I5[\"State from A persists incorrectly in B\"]\n    end\n    subgraph Stable[\"Stable Unique Key\"]\n        direction TB\n        S1[\"Initial List: [A, B, C] Keys: [a, b, c]\"] --> S2[\"Remove A\"]\n        S2 --> S3[\"React matches keys b and c identity\"]\n        S3 --> S4[\"B and C components preserved with state\"]\n        S4 --> S5[\"Component A cleanly removed from DOM\"]\n    end",
-    "companies": [
-      "Stripe",
-      "Uber",
-      "Airbnb"
-    ],
-    "tags": [
-      "react",
-      "frontend"
-    ],
-    "difficulty": "beginner",
-    "status": "active",
-    "sourceUrl": null,
-    "videos": {
-      "shortVideo": null,
-      "longVideo": null
-    },
-    "createdAt": "2026-05-19T12:06:39.346Z",
-    "lastUpdated": "2026-05-19T12:06:39.346Z"
+    "createdAt": "2026-05-27T15:46:11.529Z",
+    "lastUpdated": "2026-05-27T15:46:11.529Z"
   }
 ]

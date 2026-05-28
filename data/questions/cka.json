@@ -1,92 +1,81 @@
 [
   {
-    "id": "cka-troubleshoot-1779889007843-0",
+    "id": "cka-troubleshoot-1779896372459-0",
     "channel": "cka",
     "subChannel": "troubleshoot",
-    "question": "A pod running on a worker node has been crashing intermittently over the past hour. The pod logs show no application errors before the container exits, and restartPolicy is Always. Running kubectl describe pod shows the container has terminated with exit code 137 multiple times. The Node and cluster otherwise appear healthy. What is the most likely cause of these crashes?",
-    "answer": "The container is exceeding its memory limit and is killed by the OOM killer",
-    "explanation": "## Correct Answer\n\nThe correct answer is Option B: **The container is exceeding its memory limit and is killed by the OOM killer**.\n\nExit code 137 (SIGKILL) means the container was forcefully killed by the kernel's Out-Of-Memory (OOM) killer. This happens when a container's memory usage exceeds its `resources.limits.memory` value. The kubelet enforces these limits via cgroups, and when the cgroup memory limit is reached, the kernel OOM-kills the container's process.\n\nThe intermittent pattern (crashes over time, not immediately on startup) is consistent with the application gradually consuming more memory until it hits the limit, rather than a startup crash.\n\n## Why Other Options Are Wrong\n\n- **Option A**: Liveness probe failures do not result in exit code 137. When kubelet kills a container due to a failed liveness probe, it sends SIGTERM (exit code 143) first, then SIGKILL after the grace period, but the `kubectl describe` output would show a liveness probe failure reason. The exit code description would also differ.\n\n- **Option C**: Disk pressure on a node causes the kubelet to evict pods, but the pod would show an `Evicted` status with reason set to `Evicted` or `NodePressure`, not a crash loop with exit code 137. Node-level disk issues would also affect multiple pods.\n\n- **Option D**: ServiceAccount token expiration causes authentication errors when the container tries to call the API server, but this results in HTTP/connection errors in the application logs, not a SIGKILL termination with exit code 137. The container process would continue running.\n\n## Key Concepts\n\n- **Exit code 137 (SIGKILL)**: Indicates the process was killed by the OOM killer or manually via `kill -9`\n- **Exit code 143 (SIGTERM)**: Indicates graceful termination request\n- **Exit code 139 (SIGSEGV)**: Indicates segmentation fault (application bug)\n- **resources.limits.memory**: The maximum memory a container can use before being OOM-killed\n- **requests.memory vs limits.memory**: Requests guarantee minimum memory, limits cap maximum usage\n\n## Real-World Application\n\nIn production Kubernetes clusters, OOM kills are a common SRE alert. The standard debugging workflow is:\n\n1. Check exit code via `kubectl get pods -o wide` and `kubectl describe pod <name>`\n2. Check current vs. limit memory usage: `kubectl top pod <name>`\n3. Check previous container logs for clues before the crash: `kubectl logs <name> --previous`\n4. Adjust memory limits or profile the application for memory leaks\n\nIf the container genuinely needs more memory, increase `resources.limits.memory`. If it has a memory leak, fix the application code. For node-level OOM kills (where limits are not set), the machine itself may be oversubscribed.",
+    "question": "Node NotReady. kubelet certificate expired. Which command renews it?",
+    "answer": "kubeadm certs renew all && systemctl restart kubelet",
+    "explanation": "kubeadm certs renew all regenerates all PKI certificates. The kubelet then needs a restart to pick up the renewed certificate. kubectl approve handles CSRs, not renewal.",
     "difficulty": "intermediate",
     "tags": [
-      "cka",
-      "troubleshooting",
-      "crashloopbackoff",
-      "oom",
-      "exit-codes",
-      "resource-limits",
       "kubelet",
-      "cgroups",
-      "certification",
-      "domain-weight-30"
+      "certificates",
+      "kubeadm",
+      "certification"
     ],
     "options": [
       {
         "id": "a",
-        "text": "The pod is failing its liveness probe, causing the kubelet to forcefully terminate it",
-        "isCorrect": false
-      },
-      {
-        "id": "b",
-        "text": "The container is exceeding its memory limit and is killed by the OOM killer",
+        "text": "kubeadm certs renew all && systemctl restart kubelet",
         "isCorrect": true
       },
       {
+        "id": "b",
+        "text": "kubectl certificate approve kubelet-serving",
+        "isCorrect": false
+      },
+      {
         "id": "c",
-        "text": "The node has run out of disk space, preventing the container from writing logs",
+        "text": "systemctl restart kubelet",
         "isCorrect": false
       },
       {
         "id": "d",
-        "text": "The pod's ServiceAccount token has expired, causing API authentication failures",
+        "text": "kubeadm upgrade apply",
         "isCorrect": false
       }
     ],
     "status": "active",
-    "lastUpdated": "2026-05-27T13:38:12.540Z"
+    "lastUpdated": "2026-05-27T15:41:12.885Z"
   },
   {
-    "id": "cka-troubleshoot-1779889007843-1",
+    "id": "cka-troubleshoot-1779896372459-1",
     "channel": "cka",
     "subChannel": "troubleshoot",
-    "question": "Users report that a Service of type ClusterIP is unreachable from within the cluster. The Service selects pods that are all running and Ready. The Endpoints object exists and lists the correct pod IPs. Running kubectl exec into any pod on the same node as a backend pod, curl to the ClusterIP succeeds. Running the same curl from a pod on a different node timeouts. What is the root cause?",
-    "answer": "The kube-proxy pod on the second node is failing to sync iptables rules correctly",
-    "explanation": "## Correct Answer\n\nThe correct answer is Option A: **The kube-proxy pod on the second node is failing to sync iptables rules correctly**.\n\nService traffic routing in Kubernetes relies on kube-proxy running on each node to maintain iptables (or IPVS/ebpf) rules that direct ClusterIP traffic to backend pods. The symptom — connectivity works from the same node as the backend pod but fails from a different node — is a classic sign that the node-level proxy rules are either missing or incorrect on the second node.\n\nWhen curl succeeds from the same node, it means the backend pod is healthy and the targetPort is correct (this eliminates Option B). The fact that curl targets the ClusterIP directly (not DNS) eliminates DNS issues (Option D).\n\n## Why Other Options Are Wrong\n\n- **Option B**: An incorrect `targetPort` would cause connectivity to fail from ALL nodes, not just a specific one. Since the Endpoints object lists the correct pod IPs and the connection works from the same node, the targetPort mapping is functioning correctly.\n\n- **Option C**: A NetworkPolicy restricting outbound traffic on the client pod/namespace would block traffic regardless of which node the client is on. The symptom is node-specific, not pod/namespace-specific. Also, the question states the Service is \"unreachable\" — a NetworkPolicy would affect the client pod's ability to initiate connections, but would not be node-dependent.\n\n- **Option D**: The question states that the curl command targets the Service's ClusterIP directly, not a DNS name. CoreDNS is only needed for name resolution; if you curl an IP address directly, DNS is completely bypassed. Additionally, CoreDNS issues would affect all nodes equally, not selectively.\n\n## Key Concepts\n\n- **kube-proxy**: Runs as a DaemonSet on every node, responsible for maintaining network rules for Service traffic routing\n- **iptables mode**: Default mode where kube-proxy creates DNAT rules to redirect ClusterIP traffic to pod IPs\n- **IPVS mode**: Alternative mode using Linux IP Virtual Server for better scalability\n- **Node-local traffic routing**: Pods on the same node as a backend pod may route directly via the local cgroup/network namespace, bypassing iptables rules\n- **Endpoints / EndpointSlice**: API objects that track which pods back each Service; must be populated for kube-proxy to create correct rules\n\n## Real-World Application\n\nThe standard CKA debugging workflow for Service connectivity issues:\n\n1. **Check Endpoints**: `kubectl get endpoints <service>` — verifies the Service selects correct pods\n2. **Check kube-proxy**: `kubectl get pods -n kube-system -l k8s-app=kube-proxy` — ensure a pod runs on every node\n3. **Check kube-proxy logs**: `kubectl logs -n kube-system kube-proxy-<hash>` — look for sync errors\n4. **Inspect iptables rules on the affected node**: `iptables-save | grep <cluster-ip>` — verify DNAT rules exist\n5. **Test connectivity**: Use `busybox` or `netshoot` pods on each node to isolate the broken node\n\nCommon causes of broken kube-proxy include: the kube-proxy pod being OOM-killed, misconfigured `kube-proxy` ConfigMap, CNI plugin incompatibility, or the node missing the `conntrack` binary required for iptables tracking.",
+    "question": "Pod stuck in ContainerCreating with image pull error. Best debug command?",
+    "answer": "kubectl describe pod my-pod",
+    "explanation": "kubectl describe pod shows Events with specific image pull errors. logs requires a running container. exec fails if the container never started. -o yaml shows status but errors are less readable.",
     "difficulty": "intermediate",
     "tags": [
-      "cka",
-      "troubleshooting",
-      "service",
-      "kube-proxy",
-      "iptables",
-      "networking",
-      "cluster-ip",
-      "node-level-debugging",
-      "certification",
-      "domain-weight-30"
+      "kubectl",
+      "pods",
+      "image-pull",
+      "debugging",
+      "certification"
     ],
     "options": [
       {
         "id": "a",
-        "text": "The kube-proxy pod on the second node is failing to sync iptables rules correctly",
+        "text": "kubectl describe pod my-pod",
         "isCorrect": true
       },
       {
         "id": "b",
-        "text": "The Service YAML has an incorrect targetPort that does not match the container port",
+        "text": "kubectl logs my-pod",
         "isCorrect": false
       },
       {
         "id": "c",
-        "text": "The pods on the second node have a restrictive NetworkPolicy blocking outbound traffic",
+        "text": "kubectl exec my-pod -- ls",
         "isCorrect": false
       },
       {
         "id": "d",
-        "text": "The CoreDNS pod on the second node is crashing, preventing DNS resolution",
+        "text": "kubectl get pod my-pod -o yaml",
         "isCorrect": false
       }
     ],
     "status": "active",
-    "lastUpdated": "2026-05-27T13:38:12.541Z"
+    "lastUpdated": "2026-05-27T15:41:12.886Z"
   }
 ]

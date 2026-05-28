@@ -15,24 +15,22 @@ interface CardFanProps {
   setIsFlipped: (v: boolean) => void;
 }
 
-function generateFanPositions(count: number) {
+function generateStackPositions(count: number) {
   return Array.from({ length: count }, (_, i) => ({
-    x: i * 100,
-    y: i * 10,
-    rotate: i * 8,
-    scale: Math.max(0.75, 1 - i * 0.07),
-    opacity: Math.max(0.4, 1 - i * 0.25),
+    y: i * -16,
+    scale: Math.max(0.75, 1 - i * 0.05),
+    opacity: Math.max(0.25, 1 - i * 0.3),
+    surfaceTone: i === 0 ? 'var(--surface-elevated)' : i === 1 ? 'var(--surface-raised)' : 'var(--surface-base)',
   }));
 }
 
-function useFanCardCount() {
+function useStackCardCount() {
   const [count, setCount] = useState(3);
 
   useEffect(() => {
     const handleResize = () => {
       const w = window.innerWidth;
-      if (w >= 1536) setCount(5);
-      else if (w >= 1280) setCount(4);
+      if (w >= 1280) setCount(4);
       else if (w >= 1024) setCount(3);
       else setCount(1);
     };
@@ -55,16 +53,16 @@ export const CardFan = React.memo(function CardFan({
 }: CardFanProps) {
   const isMobile = useIsMobile();
   const prefersReducedMotion = useReducedMotion();
-  const fanCardCount = useFanCardCount();
+  const stackCardCount = useStackCardCount();
   const containerRef = useRef<HTMLDivElement>(null);
   const lastScrollTime = useRef(0);
 
-  const useFanLayout = !isMobile && fanCardCount > 1;
+  const useStackLayout = !isMobile && stackCardCount > 1;
 
   const visibleCards: { card: SwipeCard; cardIndex: number; positionIndex: number; isActive: boolean }[] = [];
 
-  if (useFanLayout) {
-    for (let i = 0; i < fanCardCount; i++) {
+  if (useStackLayout) {
+    for (let i = 0; i < stackCardCount; i++) {
       const idx = currentIndex + i;
       if (idx >= 0 && idx < cards.length) {
         visibleCards.push({
@@ -91,20 +89,20 @@ export const CardFan = React.memo(function CardFan({
     [currentIndex, cards.length, onIndexChange],
   );
 
-  if (!useFanLayout) {
+  if (!useStackLayout) {
     const card = cards[currentIndex];
     if (!card) return null;
 
     return (
       <div className="flex items-center justify-center w-full px-4">
-        <div className="w-full">
+        <div className="w-full max-w-lg mx-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={card.id}
               initial={prefersReducedMotion ? {} : { opacity: 0, x: 100 }}
               animate={prefersReducedMotion ? {} : { opacity: 1, x: 0 }}
               exit={prefersReducedMotion ? {} : { opacity: 0, x: -100 }}
-              transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 30 }}
+              transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 28 }}
             >
               <StudyCard
                 card={card}
@@ -116,43 +114,43 @@ export const CardFan = React.memo(function CardFan({
             </motion.div>
           </AnimatePresence>
         </div>
-    </div>
-  );
+      </div>
+    );
   }
 
-  const visiblePositions = generateFanPositions(fanCardCount);
+  const positions = generateStackPositions(stackCardCount);
 
   return (
     <div
       ref={containerRef}
       onWheel={handleWheel}
       className="flex items-center justify-center w-full h-full select-none"
-      style={{ perspective: '1000px' }}
+      style={{ perspective: '1200px' }}
     >
-      <div className="relative" style={{ width: 500, height: 420 }}>
+      <div className="relative" style={{ width: 520, height: 440 }}>
+        <div className="absolute inset-0 bg-gradient-to-b from-violet-500/3 via-transparent to-transparent rounded-3xl pointer-events-none" />
         <AnimatePresence mode="popLayout">
           {visibleCards.map(({ card, cardIndex, positionIndex, isActive }) => {
-            const pos = visiblePositions[positionIndex];
+            const pos = positions[positionIndex];
             if (!pos) return null;
 
             return (
               <motion.div
                 key={card.id}
-                className="absolute inset-0 cursor-pointer"
+                className="absolute inset-0 cursor-pointer rounded-2xl"
                 style={{
                   zIndex: isActive ? 50 : cardIndex,
+                  backgroundColor: pos.surfaceTone,
+                  willChange: 'transform, opacity',
                 }}
-                initial={prefersReducedMotion ? {} : { opacity: 0, scale: 0.8 }}
+                initial={prefersReducedMotion ? {} : { opacity: 0, scale: 0.8, y: -30 }}
                 animate={{
-                  x: pos.x,
                   y: pos.y,
-                  rotate: pos.rotate,
                   scale: pos.scale,
                   opacity: pos.opacity,
-                  filter: isActive ? 'none' : 'blur(1.5px)',
                 }}
                 exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.8, x: -100, transition: { duration: 0.2 } }}
-                transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 30, mass: 0.8 }}
+                transition={prefersReducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 350, damping: 28, mass: 0.8 }}
                 {...(prefersReducedMotion ? {} : { layout: true })}
                 onClick={() => {
                   if (!isActive) {

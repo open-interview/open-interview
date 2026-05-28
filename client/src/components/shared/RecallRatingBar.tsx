@@ -85,7 +85,7 @@ export const RecallRatingBar = React.memo(function RecallRatingBar({ onRate, dis
               }}
             >
               <span className="font-bold">{cfg.label}</span>
-              <span className={`font-normal leading-tight mt-0.5 ${size === 'sm' ? 'text-[10px]' : 'text-[11px]'}`} style={{ opacity: 0.75 }}>
+              <span className={`font-normal leading-tight mt-0.5 ${size === 'sm' ? 'text-[10px]' : 'text-[11px]'}`}>
                 {cfg.description}
               </span>
             </motion.button>
