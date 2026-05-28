@@ -210,6 +210,8 @@ export default function KnowledgeFeed() {
             return (
               <div
                 key={item.type === 'question' ? item.q.id : item.id}
+                data-index={virtualItem.index}
+                ref={virtualizer.measureElement}
                 style={{
                   position: 'absolute',
                   top: 0,
@@ -217,7 +219,6 @@ export default function KnowledgeFeed() {
                   width: '100%',
                   transform: `translateY(${virtualItem.start}px)`,
                 }}
-                ref={virtualizer.measureElement}
               >
                 {item.type === 'discovery' ? (
                   <DiscoveryCard topTag={item.discoveryTag} onDismiss={dismissDiscovery} />

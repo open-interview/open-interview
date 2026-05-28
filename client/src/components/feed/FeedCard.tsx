@@ -145,11 +145,9 @@ export const FeedCard = memo(function FeedCard({ question, index, onRate }: Feed
           </div>
         </div>
 
-        <Balancer>
-          <h3 className="text-[24px] sm:text-[28px] font-bold text-[#e7e9ea] font-serif leading-tight mb-3 mt-2">
-            {question.question}
-          </h3>
-        </Balancer>
+        <h3 className="text-[24px] sm:text-[28px] font-bold text-[#e7e9ea] font-serif leading-tight mb-3 mt-2">
+          <Balancer>{question.question}</Balancer>
+        </h3>
 
         {!revealed && question.diagram && (
           <div className="relative mb-3">

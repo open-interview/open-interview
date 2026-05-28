@@ -1,5 +1,9 @@
 # Complete UI Redesign Implementation Plan
 
+> **SUPERSEDED** — Knowledge Feed PRD replaced this plan. See [2026-05-28-knowledge-feed-prd.md](../specs/2026-05-28-knowledge-feed-prd.md).
+>
+> This plan targeted a visual facelift of the MD3 swipe-based study app (SwipeStudy, StudyCard, CardFan, FilterStrip, SessionSummary, EmptyState). The app has since pivoted to an X/Twitter-style infinite editorial feed (KnowledgeFeed / FeedCard / three-pane layout). None of the components listed in this plan ("SwipeStudy", "StudyCard", "CardFan", "FilterStrip", "SessionSummary") exist in the current architecture. The facelift.css token system, sidebar navigation, and glassmorphism design language have been replaced by a borderless Twitter/X-inspired dark theme with spring physics, DOM virtualization, and container queries. This plan is retained for historical reference only.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Complete ground-up visual redesign of Open Interview — a premium, dark-mode, developer-focused interview prep SPA (React 19 + Vite + wouter + Tailwind CSS + shadcn/ui).

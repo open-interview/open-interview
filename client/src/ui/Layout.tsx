@@ -1,12 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { BookOpen, User, Menu, Code2, Search, Download, Upload, Github, Hash, Flame } from 'lucide-react';
+import { BookOpen, User, Code2, Search, Download, Upload, Github, Flame, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Omnibar } from '@/components/Omnibar';
 import { ToastQueue, useBackupReminder } from '@/components/ToastQueue';
 import { getSRSStats } from '@/lib/spaced-repetition';
-import Balancer from 'react-wrap-balancer';
 import {
   Tooltip,
   TooltipContent,
@@ -30,7 +29,7 @@ interface LayoutProps {
 
 const NAV_ITEMS = [
   { icon: BookOpen, label: 'Feed', path: '/feed' },
-  { icon: Search, label: 'Search', path: '/feed' },
+  { icon: Layers, label: 'Study', path: '/study' },
   { icon: User, label: 'Profile', path: '/profile' },
 ];
 
@@ -234,9 +233,7 @@ export const Layout = React.memo(function Layout({ children, hideHeader }: Layou
 
         <div className="flex flex-col flex-1 max-w-[800px] min-w-0 border-r border-[var(--tw-border)]" style={{ borderRight: '1px solid var(--tw-border)' }}>
           <main id="main-content" className="flex-1 min-h-dvh">
-            <Balancer>
-              {children}
-            </Balancer>
+            {children}
           </main>
         </div>
 

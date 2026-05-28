@@ -1,5 +1,9 @@
 # Full Polish Sweep — App-Wide Fix Plan
 
+> **DEPRECATED** — Pivot to Knowledge Feed supersedes this. See [2026-05-28-knowledge-feed-prd.md](./2026-05-28-knowledge-feed-prd.md).
+>
+> The app pivoted from a Material Design 3 / MD3 swipe-based study app to an X/Twitter-style infinite editorial feed ("Code Reels — The Knowledge Feed"). This sweep was designed for the old architecture. The new architecture (three-pane layout, FeedCard, KnowledgeFeed, DOM virtualization, spring physics, container queries) replaces most of the components this plan targeted. Individual polish items (state consolidation, a11y, brand consistency) may still apply but should be reassessed against the current codebase.
+
 ## Goal
 Fix all 102+ known UI/UX issues across the Open Interview app using subagent-driven development with 37+ parallel subagents.
 
@@ -105,7 +109,7 @@ Complete app rewrite from a multi-page SPA (~15 routes) to a focused 3-route swi
    - Created `StorageService` wrapper with JSON parse safety, quota error handling, and LRU eviction
 
 2. **Critical Bug Fixes (WP2)**
-   - Deleted orphaned `VoiceInterview.tsx` (1,457 lines) 
+   - Deleted orphaned `VoiceInterview.tsx` (1,457 lines)
    - Deleted orphaned `TopBar.tsx` (73 lines)
    - Removed `ProgressiveOnboarding` references
    - Fixed `getActiveSection()` bug in mobile nav
