@@ -25,7 +25,7 @@ export default function BlogSearchPage() {
     setLoading(true);
     setSearched(true);
     searchPosts(query)
-      .then((data) => setResults(data))
+      .then((data) => setResults(data.map(({ coverImage, ...p }) => ({ ...p, coverImage: coverImage ?? undefined })) as PostCardData[]))
       .finally(() => setLoading(false));
   }, [query]);
 

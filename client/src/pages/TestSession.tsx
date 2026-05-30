@@ -192,8 +192,8 @@ export default function TestSessionPage() {
   }, [channelId]);
 
   // Keep a stable ref to submitTest so the interval always calls the latest version
-  const submitTestRef = useRef(submitTest);
-  useEffect(() => { submitTestRef.current = submitTest; }, [submitTest]);
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  const submitTestRef = useRef<() => void>(() => {});
 
   // Timer countdown — only depends on sessionState so a single interval runs per session
   useEffect(() => {
@@ -289,6 +289,9 @@ export default function TestSessionPage() {
     calcResult.passed ? mascotEvents.celebrate() : mascotEvents.disappointed();
     setTimeout(() => resultsHeadingRef.current?.focus(), 100);
   }, [test, questions, answers, startTime]);
+
+  // Keep submitTestRef in sync with the latest version
+  useEffect(() => { submitTestRef.current = submitTest; }, [submitTest]);
 
   const OPTION_LABELS = ['A', 'B', 'C', 'D', 'E', 'F'];
 

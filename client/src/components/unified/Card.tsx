@@ -88,7 +88,7 @@ export function Card({
       `}
       whileHover={hoverable ? { scale: 1.02 } : undefined}
       whileTap={clickable ? { scale: 0.98 } : undefined}
-      transition={{ hover: spring, tap: bounce }}
+      transition={spring}
       {...motionProps}
     >
       {children}

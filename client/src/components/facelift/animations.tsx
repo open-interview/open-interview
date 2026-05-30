@@ -20,10 +20,9 @@ export const useScrollAnimation = () => {
   return scrollData;
 };
 
-export const useInView = (ref: React.RefObject<HTMLElement>, options = {}) => {
-  return framerUseInView(ref, {
-    threshold: 0.1,
-    triggerOnce: true,
+export const useInView = (ref: React.RefObject<Element | null>, options = {}) => {
+  return framerUseInView(ref as React.RefObject<HTMLElement>, {
+    once: true,
     ...options,
   });
 };

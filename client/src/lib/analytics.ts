@@ -409,7 +409,7 @@ export function trackGestureSuccess(
  * @param page - Page where metric was measured
  */
 export function trackMobilePerformance(
-  metric: 'animation_fps' | 'gesture_latency' | 'load_time',
+  metric: 'animation_fps' | 'gesture_latency' | 'load_time' | 'blog_post_fmp',
   value: number,
   page: string
 ) {

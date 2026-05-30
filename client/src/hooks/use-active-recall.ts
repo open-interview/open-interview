@@ -44,7 +44,7 @@ export function useActiveRecall(): UseActiveRecallReturn {
       const results = await runParallelAgents(
         channels,
         { parallelAgents: 20 },
-        (channelId, progress) => {
+        (channelId: string, progress: number) => {
           setGenerationProgress(progress);
           onProgress?.(channelId, progress);
         }
@@ -82,7 +82,7 @@ export function useActiveRecall(): UseActiveRecallReturn {
       const results = await runParallelAgents(
         [{ id: channelId, name: channelName, questions }],
         { parallelAgents: 1 },
-        (_, progress) => {
+        (_: string, progress: number) => {
           setGenerationProgress(progress);
           onProgress?.(progress);
         }

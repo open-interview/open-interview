@@ -109,7 +109,7 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
           excerpt: apiPost.excerpt || '',
           content: apiPost.content,
           subtitle: undefined,
-          coverImage: apiPost.coverImage,
+          coverImage: apiPost.coverImage ?? undefined,
           category: apiPost.category || 'Uncategorized',
           tags: apiPost.tags || [],
           difficulty: (apiPost as PostData).difficulty,
@@ -118,9 +118,10 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
           readingTimeMinutes: apiPost.readingTimeMinutes || 0,
         };
         setPost(transformedPost);
-        setRelated(data.related || []);
-        setPrevPost(data.prev || null);
-        setNextPost(data.next || null);
+        const toCard = ({ coverImage, ...p }: typeof data.related[0]): PostCardData => ({ ...p, coverImage: coverImage ?? undefined }) as PostCardData;
+        setRelated((data.related || []).map(toCard));
+        setPrevPost(data.prev ? toCard(data.prev) : null);
+        setNextPost(data.next ? toCard(data.next) : null);
         markFMP();
       })
       .catch(() => setNotFound(true))
