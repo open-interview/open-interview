@@ -125,16 +125,22 @@ export function parseResponse(output) {
     throw err;
   }
   
+  // Strip markdown code block markers before attempting JSON parse
+  let cleaned = text.trim();
+  cleaned = cleaned.replace(/^```(?:json)?\s*/, '');
+  cleaned = cleaned.replace(/\s*```$/m, '');
+  cleaned = cleaned.trim();
+
   // Try to parse as JSON
   try {
-    const parsed = JSON.parse(text.trim());
+    const parsed = JSON.parse(cleaned);
     return parsed;
   } catch (e) {
     console.log('⚠️ parseResponse: Direct JSON parse failed:', e.message);
-    console.log('   Text preview:', text.substring(0, 200));
+    console.log('   Text preview:', cleaned.substring(0, 200));
   }
   
-  // Try to extract JSON from code blocks
+  // Try to extract JSON from code blocks (fallback for malformed blocks)
   const codeBlockPatterns = [/```json\s*([\s\S]*?)\s*```/, /```\s*([\s\S]*?)\s*```/];
   for (const p of codeBlockPatterns) {
     const m = text.match(p);

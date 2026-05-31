@@ -167,7 +167,8 @@ async function run(taskType, context, options = {}) {
     if (Array.isArray(response)) {
       console.log(`   ℹ️ Array response (${response.length} items) - skipping schema validation`);
     } else {
-      const validation = validate(taskType, response, template.schema);
+      const schemaToValidate = options.schema || template.schema;
+      const validation = validate(taskType, response, schemaToValidate);
       
       if (!validation.valid) {
         console.log(`⚠️ Validation issues for ${taskType}:`);

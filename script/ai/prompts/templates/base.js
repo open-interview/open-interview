@@ -17,7 +17,6 @@ export function parseArrayField(value) {
       const parsed = JSON.parse(value);
       return Array.isArray(parsed) ? parsed : [];
     } catch {
-      // If not valid JSON, try splitting by comma
       return value.includes(',') ? value.split(',').map(s => s.trim()) : [value];
     }
   }
@@ -26,7 +25,6 @@ export function parseArrayField(value) {
 
 /**
  * STRICT MARKDOWN FORMATTING RULES
- * These rules MUST be followed for all generated content to ensure proper rendering.
  */
 export const markdownFormattingRules = `
 STRICT MARKDOWN FORMATTING RULES (MUST FOLLOW):
@@ -77,37 +75,53 @@ export const qualityRules = {
   technical: `
 - Be technically accurate and precise
 - Use industry-standard terminology
-- Include specific examples where helpful`,
-  
+- Anchor abstract concepts with a concrete production example
+- Show the trade-off, not just the mechanism`,
+
   beginner: `
-- Use simple, everyday language
-- Avoid technical jargon
-- Use relatable analogies`,
-  
+- Use simple, everyday language a non-programmer would understand
+- Avoid technical jargon — if a term must appear, define it in the same sentence
+- Use a relatable analogy that creates a lasting mental image
+- Connect the analogy explicitly back to the technical concept`,
+
   concise: `
-- Be direct and to the point
-- No filler words or phrases
-- Focus on the key insight`
+- Write the single most important insight, not a summary
+- Prefer specific and concrete over abstract and general
+- No filler words (basically, essentially, simply, in other words)
+- Should work as a standalone recall trigger 24 hours later`
 };
 
 /**
  * Build the system context for a prompt
+ * Each context is tuned for retention and deep understanding, not just correctness.
  */
 export function buildSystemContext(taskType) {
   const contexts = {
-    eli5: 'You are an expert at explaining complex technical concepts in simple terms that anyone can understand.',
-    tldr: 'You are an expert at distilling complex information into concise, actionable one-liners.',
-    diagram: 'You are an expert at creating clear, meaningful technical diagrams using Mermaid syntax.',
+    eli5: 'You are a master teacher who builds lasting mental models. Your analogies don\'t just simplify — they create a vivid, memorable image that learners recall weeks later without effort. You always bridge the analogy back to the real concept.',
+
+    tldr: 'You are an expert at forging memory hooks. Your one-liners aren\'t summaries — they\'re triggers: specific, concrete, and phrased so a learner can reconstruct the full concept from a single sentence recalled days later.',
+
+    diagram: 'You are an expert at creating insight-driven technical diagrams in Mermaid. Your diagrams tell a story: they show the normal flow AND what breaks. Visual learners should grasp both the mechanism and its failure modes from your diagram alone.',
+
     company: 'You are an expert recruiter who knows which companies ask specific interview questions.',
+
     classify: 'You are an expert at categorizing technical interview questions into appropriate channels.',
-    improve: 'You are a senior technical interviewer who creates high-quality interview content.',
-    generate: 'You are a senior technical interviewer at a top tech company creating realistic interview questions.',
+
+    improve: 'You are a senior engineer who has both passed and conducted hundreds of technical interviews. You write content that builds genuine understanding, not just memorised facts. Explanations you write always include the \'why it matters\', a common mistake to avoid, and a concrete code example.',
+
+    generate: 'You are a senior technical interviewer at a top tech company. Your questions test conceptual depth, not trivia. The content you produce follows learning science: concrete before abstract, common mistakes surfaced, real-world stakes made explicit.',
+
     relevance: 'You are an expert at evaluating interview question quality and relevance.',
+
+    rewrite: 'You are an expert technical educator who reduces cognitive load without sacrificing accuracy. You make the implicit explicit, cut jargon, and restructure sentences so the key insight lands in the first clause.',
+
     blog: 'You are a senior tech writer who creates engaging, story-driven technical blog posts that developers love to read.',
-    'blog-image': 'You are a creative director who designs engaging comic-style illustrations for tech blogs. You understand developer culture, technical concepts, and how to visualize abstract ideas in memorable ways.',
-    'real-world-case': 'You are a tech industry analyst with deep knowledge of how major companies solve technical challenges. You know the famous incidents, scaling stories, and engineering decisions at companies like Netflix, Uber, Stripe, and others.'
+
+    'blog-image': 'You are a creative director who designs engaging comic-style illustrations for tech blogs.',
+
+    'real-world-case': 'You are a tech industry analyst with deep knowledge of how major companies solve technical challenges.',
   };
-  
+
   return contexts[taskType] || 'You are a helpful AI assistant.';
 }
 
@@ -123,7 +137,6 @@ export function buildOutputFormat(schema) {
  */
 export function buildExamplesSection(examples) {
   if (!examples || examples.length === 0) return '';
-  
   let section = '\n\nEXAMPLES:\n';
   examples.forEach((ex, i) => {
     section += `\nExample ${i + 1}:\nInput: ${JSON.stringify(ex.input)}\nOutput: ${JSON.stringify(ex.output)}\n`;

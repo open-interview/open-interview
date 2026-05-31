@@ -27,7 +27,11 @@ function auditEli5(v) {
   const issues = [];
   if (v.eli5.length < eli5T.minLength) issues.push('ELI5_TOO_SHORT');
   if (v.eli5.length > eli5T.maxLength) issues.push('ELI5_TOO_LONG');
-  if (!/\blike\b|imagine|think of/i.test(v.eli5)) issues.push('ELI5_JARGON_NO_ANALOGY');
+  // Broad analogy-bridge check: accepts "like", "imagine", "think of", "picture",
+  // "same way", "works exactly", "just like", "works the same" — all indicate
+  // an analogy was used and bridged back to the concept.
+  const analogyPattern = /\blike\b|imagine|think of|picture|same way|works exactly|just like|works the same/i;
+  if (!analogyPattern.test(v.eli5)) issues.push('ELI5_JARGON_NO_ANALOGY');
   return issues;
 }
 
@@ -163,10 +167,10 @@ export const STANDARDS = {
     rules: [
       `Plain text only — no markdown`,
       `Length: ${tldrT.minLength}–${tldrT.maxLength} characters`,
-      'Start with a verb or key concept',
-      'Be direct and actionable',
-      'No filler words like "basically", "essentially", "simply"',
-      'Capture the single most important takeaway',
+      'Write a MEMORY HOOK, not a summary — must let a learner reconstruct the concept 24 h later',
+      'Prefer specific and concrete over abstract ("Redis stores data in RAM" beats "caching is fast")',
+      'Capture the key TRADE-OFF or CRITICAL DISTINCTION when possible',
+      'No filler: no "basically", "essentially", "simply", "in other words"',
     ],
     schema: { type: 'object', properties: { tldr: { type: 'string' } } },
     audit: auditTldr,
@@ -176,10 +180,10 @@ export const STANDARDS = {
     rules: [
       `Plain text only — no markdown`,
       `Length: ${eli5T.minLength}–${eli5T.maxLength} characters`,
-      'Must contain an analogy — use "like", "imagine", or "think of"',
-      'No technical jargon',
-      'Use concrete examples over abstract concepts',
-      'Keep sentences short and simple',
+      'Open with a vivid, concrete, everyday analogy — not a definition',
+      'Analogy MUST bridge back to the technical concept in the final sentence',
+      'Use sensory or spatial language — physical objects, movement, or places',
+      'Zero technical jargon; define any term in the same sentence if it must appear',
     ],
     schema: { type: 'object', properties: { eli5: { type: 'string' } } },
     audit: auditEli5,
@@ -191,9 +195,11 @@ export const STANDARDS = {
       'ALWAYS use TD (top-down) layout — NEVER LR',
       `Minimum ${diagT.minNodes} nodes (-->) — target 6-8`,
       'Must include at least 2-4 style lines for key nodes',
+      'Must show at least one failure or error path (❌ emoji, dashed arrow, or error node)',
+      'Edge labels must use action verbs: "validates", "caches", "rejects", "retries"',
       'No trivial diagrams (Start → End only)',
-      'No generic labels (Step 1, Concept, Implementation)',
-      'Add emojis and color styling to nodes',
+      'No generic labels (Step 1, Process, Handle)',
+      'Add emojis and color styling — red (#fce4ec) for error paths',
     ],
     schema: {
       type: 'object',
@@ -208,10 +214,10 @@ export const STANDARDS = {
 
   flashcard: {
     rules: [
-      'front: core term/concept being tested, max 100 chars',
-      'back: clear, self-contained explanation, max 300 chars',
-      'hint: one-line clue that nudges recall without giving it away',
-      'mnemonic: memory trick, acronym, or analogy to make it stick',
+      'front: application challenge or scenario, NOT a "define X" prompt — max 100 chars',
+      'back: WHAT (1 sentence) → WHY (1 sentence) → EXAMPLE (1 sentence) — max 300 chars',
+      'hint: "Think about what happens when [scenario]…" — forces active recall, not recognition',
+      'mnemonic: vivid story-based or spatial mental image — NOT just an acronym',
     ],
     schema: {
       type: 'object',
