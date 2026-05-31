@@ -15,8 +15,7 @@ import {
   Home, BookOpen, Award, Mic, Code, Target, Flame,
   Trophy, Bookmark, Brain, Layers,
   GraduationCap, BarChart3, ChevronLeft, ChevronRight,
-  Search, User, Info, Settings, Zap, Activity, Palette,
-  Bell, Sparkles, FileText, Bot
+  User, Settings, Zap, Activity, Bell, Sparkles, FileText, Bot
 } from 'lucide-react';
 
 interface NavItem {
@@ -28,7 +27,7 @@ interface NavItem {
   shortcut?: string;
 }
 
-const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] = [
+const sections: { label: string; icon: React.ElementType; items: NavItem[]; adminOnly?: boolean }[] = [
   {
     label: 'Learn',
     icon: GraduationCap,
@@ -53,36 +52,27 @@ const sections: { label: string; icon: React.ElementType; items: NavItem[] }[] =
     label: 'Progress',
     icon: BarChart3,
     items: [
-      { id: 'badges',    label: 'Badges',       icon: Trophy,    path: '/badges' },
-      { id: 'bookmarks', label: 'Bookmarks',    icon: Bookmark,  path: '/bookmarks' },
-      { id: 'notifications', label: 'Notifications', icon: Bell, path: '/notifications' },
-      { id: 'whats-new', label: "What's New",   icon: Sparkles,  path: '/whats-new' },
-      { id: 'profile',   label: 'Profile',      icon: User,      path: '/profile' },
-      { id: 'about',     label: 'About',        icon: Info,      path: '/about' },
+      { id: 'badges',    label: 'Badges',        icon: Trophy,    path: '/badges' },
+      { id: 'bookmarks', label: 'Bookmarks',     icon: Bookmark,  path: '/bookmarks' },
+      { id: 'whats-new', label: "What's New",    icon: Sparkles,  path: '/whats-new' },
+      { id: 'notifications', label: 'Notifications', icon: Bell,  path: '/notifications' },
     ],
   },
   {
     label: 'Resources',
     icon: BookOpen,
     items: [
-      { id: 'blog',  label: 'Blog',  icon: FileText, path: '/blog' },
-    ],
-  },
-  {
-    label: 'Tools',
-    icon: Palette,
-    items: [
-      { id: 'art-studio', label: 'Art Studio', icon: Palette, path: '/generate' },
+      { id: 'blog', label: 'Blog', icon: FileText, path: '/blog' },
     ],
   },
   {
     label: 'Admin',
     icon: Activity,
+    adminOnly: true,
     items: [
-      { id: 'bot-activity', label: 'Bot Activity', icon: Bot, path: '/bot-activity' },
+      { id: 'bot-activity', label: 'Bot Activity', icon: Bot,      path: '/bot-activity' },
       { id: 'events',       label: 'Activity Log', icon: Activity, path: '/events' },
-      { id: 'settings',     label: 'Settings',     icon: Settings,  path: '/profile' },
-      { id: 'docs',         label: 'Docs',         icon: BookOpen,  path: '/admin/docs' },
+      { id: 'docs',         label: 'Docs',         icon: BookOpen, path: '/admin/docs' },
     ],
   },
 ];
@@ -206,17 +196,15 @@ export function Sidebar() {
 
   const handleGoHome = useCallback(() => setLocation('/'), [setLocation]);
   const handleGoProfile = useCallback(() => setLocation('/profile'), [setLocation]);
-  const handleGoBotActivity = useCallback(() => setLocation('/bot-activity'), [setLocation]);
 
-  const filteredSections = sections.map(s => {
-    if (s.label === 'Learn' && preferences.hideCertifications) {
-      return { ...s, items: s.items.filter(i => i.id !== 'certifications') };
-    }
-    if (s.label === 'Admin' && !isAdmin) {
-      return { ...s, items: s.items.filter(i => i.id !== 'bot-activity' && i.id !== 'events' && i.id !== 'docs') };
-    }
-    return s;
-  });
+  const filteredSections = sections
+    .filter(s => !s.adminOnly || isAdmin)
+    .map(s => {
+      if (s.label === 'Learn' && preferences.hideCertifications) {
+        return { ...s, items: s.items.filter(i => i.id !== 'certifications') };
+      }
+      return s;
+    });
 
   return (
     <motion.aside
@@ -298,7 +286,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Bottom: Level/XP + Credits + settings */}
+      {/* Bottom: Level/XP + profile + settings */}
       <div className={cn('border-t border-border shrink-0', isCollapsed ? 'p-1.5' : 'p-2')}>
         <button
           onClick={handleGoProfile}
@@ -332,22 +320,20 @@ export function Sidebar() {
         </button>
 
         {!isCollapsed && (
-          <div className="mt-1 space-y-0.5">
-            {isAdmin && (
-            <button
-              onClick={handleGoBotActivity}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs"
-            >
-              <Bot className="w-3.5 h-3.5" />
-              <span>Bot Activity</span>
-            </button>
-            )}
+          <div className="mt-1">
             <button
               onClick={handleGoProfile}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs"
             >
               <Settings className="w-3.5 h-3.5" />
               <span>Settings</span>
+            </button>
+            <button
+              onClick={() => setLocation('/about')}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs"
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>About</span>
             </button>
           </div>
         )}
