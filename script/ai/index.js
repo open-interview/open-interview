@@ -42,6 +42,7 @@ import certificationQuestionTemplate from './prompts/templates/certification-que
 import linkedinPollMcqTemplate from './prompts/templates/linkedin-poll-mcq.js';
 import linkedinPollUsecaseTemplate from './prompts/templates/linkedin-poll-usecase.js';
 import flashcardTemplate from './prompts/templates/flashcard.js';
+import rewriteTemplate from './prompts/templates/rewrite.js';
 
 // Template registry
 const templates = {
@@ -70,7 +71,8 @@ const templates = {
   'certification-question': certificationQuestionTemplate,
   'linkedinPollMcq': linkedinPollMcqTemplate,
   'linkedinPollUsecase': linkedinPollUsecaseTemplate,
-  'flashcard': flashcardTemplate
+  'flashcard': flashcardTemplate,
+  'rewrite': rewriteTemplate
 };
 
 // Provider registry

@@ -113,60 +113,63 @@ function CertDetail({
         exit={{ y: 60, opacity: 0 }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
         onClick={e => e.stopPropagation()}
-        className="relative w-full sm:max-w-lg bg-card border border-border rounded-t-2xl sm:rounded-2xl p-6 max-h-[85vh] overflow-y-auto custom-scrollbar"
+        className="relative w-full sm:max-w-lg bg-card border border-border rounded-t-2xl sm:rounded-2xl max-h-[85vh] flex flex-col overflow-hidden"
       >
-        <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-muted/50 text-muted-foreground transition-colors duration-150 ease-out cursor-pointer">
-          <X className="w-4 h-4" />
-        </button>
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+          <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-muted/50 text-muted-foreground transition-colors duration-150 ease-out cursor-pointer z-10">
+            <X className="w-4 h-4" />
+          </button>
 
-        {/* Header */}
-        <div className="flex items-start gap-4 mb-5">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--color-accent-violet)]/20 to-[var(--color-accent-cyan)]/20 border border-[var(--color-accent-violet)]/30 flex items-center justify-center flex-shrink-0">
-            <Icon className="w-7 h-7 text-[var(--color-accent-violet-light)]" />
+          {/* Header */}
+          <div className="flex items-start gap-4 mb-5 pr-8">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--color-accent-violet)]/20 to-[var(--color-accent-cyan)]/20 border border-[var(--color-accent-violet)]/30 flex items-center justify-center flex-shrink-0">
+              <Icon className="w-7 h-7 text-[var(--color-accent-violet-light)]" />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-0.5">{cert.provider}</div>
+              <h2 className="text-lg font-bold leading-tight">{cert.name}</h2>
+              {cert.examCode && <div className="text-xs text-[var(--color-accent-cyan)] font-mono mt-0.5">{cert.examCode}</div>}
+            </div>
           </div>
-          <div>
-            <div className="text-xs text-muted-foreground mb-0.5">{cert.provider}</div>
-            <h2 className="text-lg font-bold leading-tight">{cert.name}</h2>
-            {cert.examCode && <div className="text-xs text-[var(--color-accent-cyan)] font-mono mt-0.5">{cert.examCode}</div>}
+
+          {/* Description */}
+          <p className="text-sm text-muted-foreground mb-5 leading-relaxed">{cert.description}</p>
+
+          {/* Stats grid */}
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            {[
+              { icon: BookOpen, label: 'Questions', value: cert.questionCount },
+              { icon: Clock, label: 'Study Time', value: `${cert.estimatedHours}h` },
+              { icon: Target, label: 'Pass Score', value: `${cert.passingScore}%` },
+              { icon: BarChart2, label: 'Difficulty', value: cert.difficulty },
+            ].map(({ icon: I, label, value }) => (
+              <div key={label} className="p-3 rounded-xl bg-muted/40 flex items-center gap-2.5">
+                <I className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <div>
+                  <div className="text-xs text-muted-foreground">{label}</div>
+                  <div className={`text-sm font-semibold capitalize ${label === 'Difficulty' ? DIFFICULTY_COLOR[cert.difficulty] : ''}`}>{value}</div>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
 
-        {/* Description */}
-        <p className="text-sm text-muted-foreground mb-5 leading-relaxed">{cert.description}</p>
-
-        {/* Stats grid */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
-          {[
-            { icon: BookOpen, label: 'Questions', value: cert.questionCount },
-            { icon: Clock, label: 'Study Time', value: `${cert.estimatedHours}h` },
-            { icon: Target, label: 'Pass Score', value: `${cert.passingScore}%` },
-            { icon: BarChart2, label: 'Difficulty', value: cert.difficulty },
-          ].map(({ icon: I, label, value }) => (
-            <div key={label} className="p-3 rounded-xl bg-muted/40 flex items-center gap-2.5">
-              <I className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              <div>
-                <div className="text-xs text-muted-foreground">{label}</div>
-                <div className={`text-sm font-semibold capitalize ${label === 'Difficulty' ? DIFFICULTY_COLOR[cert.difficulty] : ''}`}>{value}</div>
+          {/* Progress bar if started */}
+          {isStarted && (
+            <div className="p-3 rounded-xl bg-[var(--color-accent-violet)]/10 border border-[var(--color-accent-violet)]/20">
+              <div className="flex justify-between text-xs mb-1.5">
+                <span className="text-muted-foreground">Practice Progress</span>
+                <span className="font-semibold text-[var(--color-accent-violet-light)]">In Progress</span>
+              </div>
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-full w-1/3 bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] rounded-full" />
               </div>
             </div>
-          ))}
+          )}
         </div>
 
-        {/* Progress bar if started */}
-        {isStarted && (
-          <div className="mb-5 p-3 rounded-xl bg-[var(--color-accent-violet)]/10 border border-[var(--color-accent-violet)]/20">
-            <div className="flex justify-between text-xs mb-1.5">
-              <span className="text-muted-foreground">Practice Progress</span>
-              <span className="font-semibold text-[var(--color-accent-violet-light)]">In Progress</span>
-            </div>
-            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-              <div className="h-full w-1/3 bg-gradient-to-r from-[var(--color-accent-violet)] to-[var(--color-accent-cyan)] rounded-full" />
-            </div>
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="flex gap-2">
+        {/* Sticky action buttons — always visible */}
+        <div className="flex-shrink-0 p-4 border-t border-border bg-card flex gap-2">
           <button
             onClick={onToggle}
             className={`flex-1 min-h-[44px] rounded-xl text-sm font-bold transition-all duration-150 ease-out flex items-center justify-center gap-2 cursor-pointer ${
