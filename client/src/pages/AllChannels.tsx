@@ -3,6 +3,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
@@ -294,7 +295,7 @@ function ChannelDetail({ channel, questionCount, isSubscribed: subscribed, onTog
   const { completed } = useProgress(channel.id);
   const progress = questionCount > 0 ? Math.round((completed.length / Math.max(questionCount, 1)) * 100) : 0;
 
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[var(--z-modal)] flex items-end sm:items-center justify-center p-0 sm:p-4"
@@ -380,7 +381,7 @@ function ChannelDetail({ channel, questionCount, isSubscribed: subscribed, onTog
         </div>
       </motion.div>
     </motion.div>
-  );
+  , document.body);
 }
 
 export default function AllChannels() {

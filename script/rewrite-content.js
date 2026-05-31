@@ -29,7 +29,7 @@ import ai from './ai/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
-const QUESTIONS_DIR = join(ROOT, 'client', 'public', 'data', 'questions');
+const DATA_DIR = join(ROOT, 'client', 'public', 'data');
 
 // ── Argument parsing ──────────────────────────────────────────────────────────
 
@@ -52,26 +52,55 @@ if (!CHANNEL_ARG && !ALL_CHANNELS) {
 }
 
 // ── File helpers ──────────────────────────────────────────────────────────────
+// Question files live at client/public/data/{channel}.json
+// Structure: { questions: [...], subChannels: [...], ... }
 
 function readChannelFile(channel) {
-  const p = join(QUESTIONS_DIR, `${channel}.json`);
+  const p = join(DATA_DIR, `${channel}.json`);
   if (!existsSync(p)) return [];
-  try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return []; }
+  try {
+    const raw = JSON.parse(readFileSync(p, 'utf8'));
+    // Handle both array files (legacy) and { questions: [] } object files
+    return Array.isArray(raw) ? raw : (raw.questions || []);
+  } catch { return []; }
 }
 
 function writeChannelFile(channel, questions) {
-  const p = join(QUESTIONS_DIR, `${channel}.json`);
-  writeFileSync(p, JSON.stringify(questions, null, 2));
+  const p = join(DATA_DIR, `${channel}.json`);
+  // Preserve the full file structure — only replace the questions array
+  let existing = {};
+  try { existing = JSON.parse(readFileSync(p, 'utf8')); } catch {}
+  if (Array.isArray(existing)) {
+    writeFileSync(p, JSON.stringify(questions, null, 2));
+  } else {
+    writeFileSync(p, JSON.stringify({ ...existing, questions }, null, 2));
+  }
 }
 
 function getChannelIds() {
-  if (!existsSync(QUESTIONS_DIR)) {
-    console.error(`Questions directory not found: ${QUESTIONS_DIR}`);
+  if (!existsSync(DATA_DIR)) {
+    console.error(`Data directory not found: ${DATA_DIR}`);
     process.exit(1);
   }
-  return readdirSync(QUESTIONS_DIR)
+  // Use channels.json as the authoritative channel list
+  const channelsFile = join(DATA_DIR, 'channels.json');
+  if (existsSync(channelsFile)) {
+    try {
+      const ch = JSON.parse(readFileSync(channelsFile, 'utf8'));
+      return (Array.isArray(ch) ? ch : []).map(c => c.id).filter(Boolean);
+    } catch {}
+  }
+  // Fallback: scan directory for files that look like question channels
+  const skipFiles = new Set([
+    'all-questions', 'channels', 'certifications', 'flashcards', 'blog-posts',
+    'posts', 'events', 'stats', 'github-analytics', 'bot-activity', 'bot-monitor',
+    'changelog', 'voice-sessions', 'coding-challenges', 'learning-paths',
+    'similar-questions', 'tests', 'interviewercomments', 'history',
+  ]);
+  return readdirSync(DATA_DIR)
     .filter(f => f.endsWith('.json') && !f.startsWith('_'))
-    .map(f => f.replace('.json', ''));
+    .map(f => f.replace('.json', ''))
+    .filter(id => !skipFiles.has(id));
 }
 
 // ── Worker pool ───────────────────────────────────────────────────────────────

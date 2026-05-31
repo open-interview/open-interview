@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
@@ -98,7 +99,7 @@ function CertDetail({
   onClose: () => void;
 }) {
   const Icon = iconMap[cert.icon] || Award;
-  return (
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -191,7 +192,7 @@ function CertDetail({
         </div>
       </motion.div>
     </motion.div>
-  );
+  , document.body);
 }
 
 // ── Cert Card ─────────────────────────────────────────────────────────────────
