@@ -314,9 +314,9 @@ function AchievementCard({
             <div className="text-[10px] font-bold text-white/80 uppercase tracking-wider">
               Achievement Unlocked
             </div>
-            <h3 className="text-base font-bold text-white leading-tight">
+            <div className="text-base font-bold text-white leading-tight">
               {achievement.name}
-            </h3>
+            </div>
             <p className="text-xs text-white/90 mt-0.5 line-clamp-2">
               {achievement.description}
             </p>
@@ -420,14 +420,14 @@ function LevelUpCard({
           <span className="text-4xl font-black text-white">{notification.to}</span>
         </motion.div>
 
-        <motion.h2
+        <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="text-lg font-black text-white mb-0.5"
         >
           {notification.title}
-        </motion.h2>
+        </motion.div>
         <p className="text-xs text-white/70 mb-3">Level {notification.from} → {notification.to}</p>
 
         {notification.rewards.length > 0 && (
@@ -506,9 +506,9 @@ function ToastCard({
           </div>
           
           <div className="flex-1 min-w-0">
-            <h4 className={cn("text-sm font-semibold", variantText[notification.variant])}>
+            <div className={cn("text-sm font-semibold", variantText[notification.variant])}>
               {notification.title}
-            </h4>
+            </div>
             {notification.description && (
               <p className="text-xs text-white/70 mt-0.5">
                 {notification.description}
@@ -570,9 +570,9 @@ function BadgeCard({
             <div className="text-[10px] font-bold text-white/80 uppercase tracking-wider">
               🏆 Badge Unlocked
             </div>
-            <h3 className="text-base font-bold text-white leading-tight">
+            <div className="text-base font-bold text-white leading-tight">
               {badge.name}
-            </h3>
+            </div>
             <p className="text-xs text-white/90 mt-0.5 line-clamp-2">
               {badge.description}
             </p>
@@ -618,9 +618,9 @@ function SystemCard({
           </div>
           
           <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-semibold text-white">
+            <div className="text-sm font-semibold text-white">
               {notification.title}
-            </h4>
+            </div>
             {notification.description && (
               <p className="text-xs text-white/70 mt-0.5">
                 {notification.description}

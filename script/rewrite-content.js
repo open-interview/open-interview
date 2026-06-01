@@ -16,7 +16,7 @@
  *   --channel <id>    Channel(s) to rewrite, comma-separated
  *   --all             Process all channels
  *   --limit <n>       Max questions per channel (default: 50)
- *   --workers <n>     Parallel workers (default: 3)
+ *   --workers <n>     Parallel workers (default: adaptive — CPU cores × RAM)
  *   --dry-run         Preview without saving
  *   --field <name>    Only rewrite one field: question | answer | eli5 | tldr
  *   --min-score <n>   Skip questions with relevance score >= N (default: 70)
@@ -25,11 +25,37 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import os from 'os';
 import ai from './ai/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const DATA_DIR = join(ROOT, 'client', 'public', 'data');
+
+// ── Adaptive worker detection ─────────────────────────────────────────────────
+
+function detectOptimalWorkers() {
+  const cpuCount = os.cpus().length;
+  const totalMb  = Math.floor(os.totalmem() / 1024 / 1024);
+  const memPerProc = parseInt(process.env.OPENCODE_MEMORY_MB || '512');
+
+  // CPU-bound: leave at least 1 core for system overhead
+  const cpuLimit = Math.max(1, cpuCount - 1);
+
+  // Memory-bound: use 80 % of total RAM, each proc consumes memPerProc MB
+  const usableMb = Math.floor(totalMb * 0.8);
+  const memLimit = Math.max(1, Math.floor(usableMb / memPerProc));
+
+  const optimal = Math.min(cpuLimit, memLimit);
+  return Math.max(1, optimal);
+}
+
+function machineSpecs() {
+  const cpuCount = os.cpus().length;
+  const totalGb  = (os.totalmem() / 1024 / 1024 / 1024).toFixed(0);
+  const memPerProc = parseInt(process.env.OPENCODE_MEMORY_MB || '512');
+  return `${cpuCount} vCPUs, ${totalGb} GB RAM — ${memPerProc} MB/proc`;
+}
 
 // ── Argument parsing ──────────────────────────────────────────────────────────
 
@@ -37,13 +63,14 @@ const args = process.argv.slice(2);
 const getArg  = name => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : null; };
 const hasFlag = name => args.includes(`--${name}`);
 
-const CHANNEL_ARG  = getArg('channel');
-const ALL_CHANNELS = hasFlag('all');
-const LIMIT        = parseInt(getArg('limit')     || '50', 10);
-const WORKERS      = parseInt(getArg('workers')   || '3',  10);
-const DRY_RUN      = hasFlag('dry-run');
-const FIELD_FILTER = getArg('field');
-const MIN_SCORE    = parseInt(getArg('min-score') || '70', 10);
+const CHANNEL_ARG   = getArg('channel');
+const ALL_CHANNELS  = hasFlag('all');
+const LIMIT         = parseInt(getArg('limit')     || '50', 10);
+const WORKERS_EXPLICIT = hasFlag('workers');
+const WORKERS       = WORKERS_EXPLICIT ? parseInt(getArg('workers'), 10) : detectOptimalWorkers();
+const DRY_RUN       = hasFlag('dry-run');
+const FIELD_FILTER  = getArg('field');
+const MIN_SCORE     = parseInt(getArg('min-score') || '70', 10);
 
 if (!CHANNEL_ARG && !ALL_CHANNELS) {
   console.error('Usage: node script/rewrite-content.js --channel <id> [--limit 50] [--dry-run]');
@@ -97,6 +124,12 @@ function getChannelIds() {
     .filter(f => f.endsWith('.json') && !f.startsWith('_'))
     .map(f => f.replace('.json', ''))
     .filter(id => !skipFiles.has(id));
+}
+
+// ── Progress output helpers ────────────────────────────────────────────────────
+
+function writeLine(text) {
+  console.log(text);
 }
 
 // ── Stats helpers ──────────────────────────────────────────────────────────────
@@ -222,19 +255,94 @@ function createStatsCollector() {
   };
 }
 
-// ── Worker pool ───────────────────────────────────────────────────────────────
+// ── Resource monitor ───────────────────────────────────────────────────────────
 
-async function runWorkerPool(tasks, workerFn, concurrency) {
-  const results = new Array(tasks.length);
-  let idx = 0;
-  async function worker() {
-    while (idx < tasks.length) {
-      const i = idx++;
-      try { results[i] = await workerFn(tasks[i], i); }
-      catch (err) { results[i] = { error: err.message }; }
-    }
+class ResourceMonitor {
+  constructor(sampleIntervalMs = 10000) {
+    this.intervalMs = sampleIntervalMs;
+    this._interval = null;
+    this.cpuLoad = 0;
+    this.freeMemRatio = 0;
   }
-  await Promise.all(Array.from({ length: concurrency }, worker));
+
+  start() {
+    this._sample();
+    this._interval = setInterval(() => this._sample(), this.intervalMs);
+  }
+
+  stop() {
+    if (this._interval) clearInterval(this._interval);
+  }
+
+  _sample() {
+    this.cpuLoad = os.loadavg()[0] / os.cpus().length;
+    this.freeMemRatio = os.freemem() / os.totalmem();
+  }
+}
+
+// ── Dynamic worker pool ───────────────────────────────────────────────────────
+
+async function runWorkerPool(tasks, workerFn, initialConcurrency, onTick) {
+  const results = new Array(tasks.length);
+  let taskIndex = 0;
+  let activeWorkers = 0;
+
+  // Ceilings: never exceed 2× CPU cores, never exceed available RAM
+  const cpuCount = os.cpus().length;
+  const totalMb = Math.floor(os.totalmem() / 1024 / 1024);
+  const memPerProc = parseInt(process.env.OPENCODE_MEMORY_MB || '512');
+  const ramCap = Math.floor(totalMb * 0.8 / memPerProc);
+  const maxWorkers = Math.min(cpuCount * 2, ramCap);
+  const minWorkers = 1;
+
+  let concurrency = Math.min(initialConcurrency, maxWorkers);
+
+  const monitor = new ResourceMonitor();
+  monitor.start();
+
+  async function runWorker() {
+    activeWorkers++;
+    while (taskIndex < tasks.length) {
+      const i = taskIndex++;
+      try {
+        results[i] = await workerFn(tasks[i], i);
+      } catch (err) {
+        results[i] = { error: err.message };
+      }
+    }
+    activeWorkers--;
+  }
+
+  // Launch initial worker batch
+  const pool = Array.from({ length: Math.min(concurrency, tasks.length) }, () => runWorker());
+
+  // Periodically sample resources and adjust concurrency
+  const adjustInterval = setInterval(() => {
+    monitor._sample();
+    const cpu = monitor.cpuLoad;
+    const mem = monitor.freeMemRatio;
+
+    let action = null;
+
+    // Scale up: CPU < 60 % AND enough free RAM
+    if (cpu < 0.6 && mem > 0.3 && concurrency < maxWorkers && taskIndex < tasks.length) {
+      concurrency++;
+      runWorker();
+      action = '▲';
+    }
+    // Scale down: CPU > 85 % OR RAM tight
+    else if ((cpu > 0.85 || mem < 0.15) && concurrency > minWorkers) {
+      concurrency--;
+      action = '▼';
+    }
+
+    if (onTick) onTick({ concurrency, activeWorkers, cpuLoad: cpu, freeMem: mem, action });
+  }, 10000);
+
+  await Promise.all(pool);
+  clearInterval(adjustInterval);
+  monitor.stop();
+
   return results;
 }
 
@@ -300,26 +408,59 @@ async function processChannel(channelId, fields, dryRun, stats) {
   stats.global.totalCandidates += candidates.length;
   stats.global.totalSkipped += questions.length - candidates.length;
 
-  process.stdout.write(`  📝 ${channelId}: ${candidates.length}/${questions.length} candidates`);
+  const dataPath = join('client', 'public', 'data', `${channelId}.json`);
+  writeLine(`  📝 ${channelId}: ${candidates.length}/${questions.length} candidates → ${dataPath}`);
+
+  // Shared resource state updated by the control loop
+  const resState = { concurrency: WORKERS, cpuLoad: 0, freeMem: 0, action: null };
+
+  console.log(`  [0/${candidates.length}] ${channelId} · ${WORKERS} wrk`);
+
+  let serial = 0;
 
   const results = await runWorkerPool(candidates, async (q, i) => {
     const t0 = Date.now();
 
-    if (!dryRun) {
-      process.stdout.write('\r' + ' '.repeat(60) + '\r');
-    }
-
     const rewritten = await rewriteQuestion(q, fields);
 
-    if (!dryRun) {
-      const progress = `  [${i + 1}/${candidates.length}] ${channelId}`;
-      process.stdout.write(`\r${progress.padEnd(50)}`);
-    }
     const durationMs = Date.now() - t0;
+
+    if (!dryRun) {
+      serial++;
+      const tag = (q.question || q.id || '').substring(0, 50).replace(/\s+\?.*$/, '').trim();
+      let suffix = ` · ${resState.concurrency} wrk`;
+      if (resState.action) {
+        const cpuPct = (resState.cpuLoad * 100).toFixed(0);
+        const memPct = ((1 - resState.freeMem) * 100).toFixed(0);
+        suffix += ` ${resState.action} cpu ${cpuPct}% mem ${memPct}%`;
+        resState.action = null;
+      }
+      const pct = Math.floor(serial / candidates.length * 100);
+      console.log(`  [${serial}/${candidates.length}] (${pct}%) ${tag}${suffix}`);
+    }
 
     if (!rewritten) {
       stats.recordAttempt(channelId, { ok: false, error: 'no content', durationMs });
       return { skipped: true };
+    }
+
+    // Incremental write — update this question in the file immediately
+    try {
+      const fpath = join(DATA_DIR, `${channelId}.json`);
+      let raw = JSON.parse(readFileSync(fpath, 'utf8'));
+      const arr = Array.isArray(raw) ? raw : raw.questions;
+      const idx = arr.findIndex(d => d.id === q.id);
+      if (idx >= 0) {
+        arr[idx] = {
+          ...arr[idx],
+          ...rewritten,
+          lastRewritten: new Date().toISOString(),
+          rewriteVersion: (arr[idx].rewriteVersion || 0) + 1,
+        };
+        writeFileSync(fpath, JSON.stringify(Array.isArray(raw) ? arr : { ...raw, questions: arr }, null, 2));
+      }
+    } catch (e) {
+      // best-effort — file will be written fully at end regardless
     }
 
     if (dryRun) {
@@ -336,9 +477,12 @@ async function processChannel(channelId, fields, dryRun, stats) {
 
     stats.recordAttempt(channelId, { ok: true, fields: rewritten, durationMs });
     return { ok: true, id: q.id, rewritten };
-  }, WORKERS);
-
-  process.stdout.write('\r' + ' '.repeat(60) + '\r');
+  }, WORKERS, (tick) => {
+    resState.concurrency = tick.concurrency;
+    resState.cpuLoad = tick.cpuLoad;
+    resState.freeMem = tick.freeMem;
+    if (tick.action) resState.action = tick.action;
+  });
 
   let processed = 0, errors = 0;
 
@@ -374,6 +518,7 @@ async function processChannel(channelId, fields, dryRun, stats) {
   console.log(`  │ ${bar(ch.success, ch.total)}  ${ch.success}/${ch.total} rewrites  (${ch.successRate})`);
   console.log(`  │ Latency : ${ch.avgLatency} avg  │  p50: ${formatMs(ch.p50Ms)}  │  p95: ${formatMs(ch.p95Ms)}`);
   console.log(`  │ Throughput: ${ch.throughput}/s  │  Duration: ${ch.duration}  │  Errors: ${ch.errors}`);
+  console.log(`  │ File: ${dataPath}`);
   if (ch.total > 0) {
     const fieldsLine = Object.entries(ch.fieldCounts)
       .filter(([, v]) => v > 0)
@@ -415,7 +560,10 @@ async function main() {
   console.log('╠' + '═'.repeat(58) + '╣');
   console.log(`║  Channels : ${(ALL_CHANNELS ? `ALL (${allIds.length})` : channelIds.join(', ')).padEnd(41)}║`);
   console.log(`║  Limit    : ${String(LIMIT).padEnd(10)} questions per channel${' '.repeat(22)}║`);
-  console.log(`║  Workers  : ${String(WORKERS).padEnd(10)} parallel${' '.repeat(28)}║`);
+  const workersLabel = WORKERS_EXPLICIT
+    ? `${String(WORKERS).padEnd(10)} (explicit)${' '.repeat(17)}`
+    : `${String(WORKERS).padEnd(10)} (auto: ${machineSpecs()})${' '.repeat(6)}`;
+  console.log(`║  Workers  : ${workersLabel}║`);
   console.log(`║  Score    : rewrite if score < ${String(MIN_SCORE).padEnd(10)}${' '.repeat(18)}║`);
   console.log(`║  Fields   : ${fields.join(', ').padEnd(41)}║`);
   console.log(`║  Dry Run  : ${String(DRY_RUN).padEnd(41)}║`);

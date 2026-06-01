@@ -1,16 +1,18 @@
-{
-  "question": "A long-running daemon on your production system accumulates hundreds of zombie processes. What causes zombie processes, how would you identify them, and what steps would you take to eliminate them without restarting the parent daemon?",
-  "answer": "A zombie is a terminated process whose exit status was not read by its parent via wait or waitpid. Identify zombies using ps aux with awk filtering for Z in the STAT column or check the State field in the /proc filesystem. Zombies cannot be killed with SIGKILL since they are already dead. Attach to the parent with gdb and call waitpid(-1, 0, WNOHANG) to reap them, or send SIGCHLD if the parent has a handler. The remaining options are restarting the parent or reparenting to init which reaps orphans.",
-  "explanation": "## How It Works\n\nWhen a child process terminates, it transitions to a **zombie** state (Z). The kernel retains the exit status in the process table entry so the parent can retrieve it via `wait()` or `waitpid()`. Until the parent does so, the zombie persists. Zombies consume almost no CPU or memory, but they occupy a PID table slot. A large accumulation can exhaust the system PID limit (set in `/proc/sys/kernel/pid_max`), preventing new processes from starting.\n\n## Diagnosis\n\n```bash\n# List all zombie processes\nps aux | awk '$8 ~ /Z/'\n\n# Count zombies\nps aux | awk '$8 ~ /Z/' | wc -l\n\n# Show zombie PIDs with their parent\nps -eo pid,ppid,stat,cmd | awk '$3 ~ /Z/'\n\n# Inspect a specific zombie\ncat /proc/<zombie_pid>/status | grep -E '^(Name|State|PPid):'\n```\n\nThe STAT column shows Z for zombies. The PPid field in /proc gives the parent PID that must reap them.\n\n## Resolution\n\n- **Send SIGCHLD**: If the parent has a SIGCHLD handler, `kill -CHLD <parent_pid>` triggers it to reap zombies.\n- **Attach with gdb**: If no handler exists, use `gdb -p <parent_pid>` then call `waitpid(-1, 0, WNOHANG)` to reap without restarting.\n- **Kill the parent**: Zombies are adopted by init (PID 1), which reaps them automatically. This is equivalent to restarting the parent.\n- **Fix the root cause**: The parent process should register a SIGCHLD handler or use a loop with waitpid() to prevent future zombies.\n\n## Example\n\n```c\n#include <sys/wait.h>\n#include <signal.h>\n\nvoid handle_sigchld(int sig) {\n    // Reap all terminated children immediately\n    while (waitpid(-1, NULL, WNOHANG) > 0);\n}\n\nint main() {\n    signal(SIGCHLD, handle_sigchld);\n    // fork() calls will no longer leave zombies\n}\n```",
-  "diagram": "flowchart TD\n  A[Parent forks child] --> B[Child runs and exits]\n  B --> C{Parent calls waitpid?}\n  C -->|Yes| D[Process table entry freed]\n  C -->|No| E[Child becomes ZOMBIE state Z]\n  E --> F[Zombie cannot be killed with SIGKILL]\n  F --> G{Resolution path}\n  G -->|Send SIGCHLD| H[Parent handler reaps zombie]\n  G -->|Attach gdb + waitpid call| H\n  G -->|Kill parent| I[Orphan adopted by init]\n  G -->|Restart parent| J[Fixed parent reaps orphans]\n  I --> K[Init calls waitpid, reaps zombie]\n  H --> D\n  J --> D\n  K --> D",
-  "companies": [
-    "Slack",
-    "Coinbase",
-    "Meta"
-  ],
-  "sourceUrl": null,
-  "videos": {
-    "shortVideo": null,
-    "longVideo": null
+[
+  {
+    "question": "A long-running daemon on your production system accumulates hundreds of zombie processes. What causes zombie processes, how would you identify them, and what steps would you take to eliminate them without restarting the parent daemon?",
+    "answer": "A zombie is a terminated process whose exit status was not read by its parent via wait or waitpid. Identify zombies using ps aux with awk filtering for Z in the STAT column or check the State field in the /proc filesystem. Zombies cannot be killed with SIGKILL since they are already dead. Attach to the parent with gdb and call waitpid(-1, 0, WNOHANG) to reap them, or send SIGCHLD if the parent has a handler. The remaining options are restarting the parent or reparenting to init which reaps orphans.",
+    "explanation": "## How It Works\n\nWhen a child process terminates, it transitions to a **zombie** state (Z). The kernel retains the exit status in the process table entry so the parent can retrieve it via `wait()` or `waitpid()`. Until the parent does so, the zombie persists. Zombies consume almost no CPU or memory, but they occupy a PID table slot. A large accumulation can exhaust the system PID limit (set in `/proc/sys/kernel/pid_max`), preventing new processes from starting.\n\n## Diagnosis\n\n```bash\n# List all zombie processes\nps aux | awk '$8 ~ /Z/'\n\n# Count zombies\nps aux | awk '$8 ~ /Z/' | wc -l\n\n# Show zombie PIDs with their parent\nps -eo pid,ppid,stat,cmd | awk '$3 ~ /Z/'\n\n# Inspect a specific zombie\ncat /proc/<zombie_pid>/status | grep -E '^(Name|State|PPid):'\n```\n\nThe STAT column shows Z for zombies. The PPid field in /proc gives the parent PID that must reap them.\n\n## Resolution\n\n- **Send SIGCHLD**: If the parent has a SIGCHLD handler, `kill -CHLD <parent_pid>` triggers it to reap zombies.\n- **Attach with gdb**: If no handler exists, use `gdb -p <parent_pid>` then call `waitpid(-1, 0, WNOHANG)` to reap without restarting.\n- **Kill the parent**: Zombies are adopted by init (PID 1), which reaps them automatically. This is equivalent to restarting the parent.\n- **Fix the root cause**: The parent process should register a SIGCHLD handler or use a loop with waitpid() to prevent future zombies.\n\n## Example\n\n```c\n#include <sys/wait.h>\n#include <signal.h>\n\nvoid handle_sigchld(int sig) {\n    // Reap all terminated children immediately\n    while (waitpid(-1, NULL, WNOHANG) > 0);\n}\n\nint main() {\n    signal(SIGCHLD, handle_sigchld);\n    // fork() calls will no longer leave zombies\n}\n```",
+    "diagram": "flowchart TD\n  A[Parent forks child] --> B[Child runs and exits]\n  B --> C{Parent calls waitpid?}\n  C -->|Yes| D[Process table entry freed]\n  C -->|No| E[Child becomes ZOMBIE state Z]\n  E --> F[Zombie cannot be killed with SIGKILL]\n  F --> G{Resolution path}\n  G -->|Send SIGCHLD| H[Parent handler reaps zombie]\n  G -->|Attach gdb + waitpid call| H\n  G -->|Kill parent| I[Orphan adopted by init]\n  G -->|Restart parent| J[Fixed parent reaps orphans]\n  I --> K[Init calls waitpid, reaps zombie]\n  H --> D\n  J --> D\n  K --> D",
+    "companies": [
+      "Slack",
+      "Coinbase",
+      "Meta"
+    ],
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    }
   }
-}
+]

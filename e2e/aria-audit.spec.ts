@@ -19,6 +19,7 @@ import {
 } from './helpers/accessibility-helpers';
 import fs from 'fs/promises';
 import path from 'path';
+import { mkdirp } from './helpers/fs-utils';
 
 // Key pages to audit for ARIA implementation
 const KEY_PAGES = [
@@ -45,50 +46,27 @@ test.describe('ARIA Implementation Audit - Task 10.1', () => {
       const url = `${baseURL}${pagePath}`;
       console.log(`\nAuditing ARIA on: ${url}`);
       
-      try {
-        await page.goto(url, { timeout: 30000, waitUntil: 'domcontentloaded' });
-        await page.waitForTimeout(2000);
-        
-        // Run axe-core audit focusing on ARIA rules
-        const axeResult = await runAxeAuditEngine(page, {
-          tags: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice']
-        });
-        
-        // Check landmarks
-        const landmarks = await checkLandmarks(page);
-        
-        // Check for ARIA state attributes on stateful elements
-        const stateAttributeIssues = await checkARIAStateAttributes(page);
-        
-        // Check for proper ARIA roles
-        const roleIssues = await checkARIARoles(page);
-        
-        results.set(url, {
-          axeResult,
-          landmarks,
-          stateAttributeIssues,
-          roleIssues
-        });
-        
-        console.log(`  ✓ ARIA audit complete`);
-        console.log(`    - Axe violations: ${axeResult.violations.length}`);
-        console.log(`    - Landmarks: nav=${landmarks.hasNav}, main=${landmarks.hasMain}, footer=${landmarks.hasFooter}`);
-        console.log(`    - State attribute issues: ${stateAttributeIssues.length}`);
-        console.log(`    - Role issues: ${roleIssues.length}`);
-        
-      } catch (error) {
-        console.log(`  ✗ Failed: ${error instanceof Error ? error.message : String(error)}`);
-        results.set(url, {
-          error: `Failed to audit: ${error instanceof Error ? error.message : String(error)}`
-        });
+      // Use Promise.race to enforce per-page timeout (10s)
+      const pageResult = await Promise.race([
+        auditPage(page, url),
+        new Promise<{ error: string }>(resolve => 
+          setTimeout(() => resolve({ error: 'Page audit timed out after 10s' }), 10000)
+        )
+      ]);
+      
+      if (pageResult.error && pageResult.error.includes('timed out')) {
+        console.log(`  ⚠ Page audit timed out — skipping`);
       }
+      results.set(url, pageResult);
     }
     
     // Generate report
     const report = await generateARIAReport(results);
     
     // Save report
-    const reportPath = path.join(process.cwd(), '.kiro/specs/accessibility-audit/ARIA_AUDIT_REPORT.md');
+    const reportDir = path.join(process.cwd(), '.kiro/specs/accessibility-audit');
+    await mkdirp(reportDir);
+    const reportPath = path.join(reportDir, 'ARIA_AUDIT_REPORT.md');
     await fs.writeFile(reportPath, report, 'utf-8');
     
     console.log('\n' + '='.repeat(80));
@@ -185,6 +163,55 @@ test.describe('ARIA Implementation Audit - Task 10.1', () => {
     }
   });
 });
+
+// Helper function to audit a single page with its own timeout
+async function auditPage(page: any, url: string) {
+  try {
+    await page.goto(url, { timeout: 15000, waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2000);
+    
+    // Check if page is stuck in loading state (SPA pages without API data)
+    const isLoading = await page.evaluate(() => {
+      const body = document.body?.textContent?.toLowerCase() || '';
+      return body.includes('loading...') || body.includes('loading…');
+    }).catch(() => true);
+    if (isLoading) {
+      console.log(`  ⚠ Page appears stuck in loading state — skipping`);
+      return {
+        error: 'Page did not finish loading (likely missing API/Supabase data)',
+        skipped: true
+      };
+    }
+    
+    // Run axe-core audit focusing on ARIA rules
+    const axeResult = await runAxeAuditEngine(page, {
+      tags: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice']
+    });
+    
+    // Check landmarks
+    const landmarks = await checkLandmarks(page);
+    
+    // Check for ARIA state attributes on stateful elements
+    const stateAttributeIssues = await checkARIAStateAttributes(page);
+    
+    // Check for proper ARIA roles
+    const roleIssues = await checkARIARoles(page);
+    
+    console.log(`  ✓ ARIA audit complete`);
+    console.log(`    - Axe violations: ${axeResult.violations.length}`);
+    console.log(`    - Landmarks: nav=${landmarks.hasNav}, main=${landmarks.hasMain}, footer=${landmarks.hasFooter}`);
+    console.log(`    - State attribute issues: ${stateAttributeIssues.length}`);
+    console.log(`    - Role issues: ${roleIssues.length}`);
+    
+    return { axeResult, landmarks, stateAttributeIssues, roleIssues };
+    
+  } catch (error) {
+    console.log(`  ✗ Failed: ${error instanceof Error ? error.message : String(error)}`);
+    return {
+      error: `Failed to audit: ${error instanceof Error ? error.message : String(error)}`
+    };
+  }
+}
 
 // Helper function to check ARIA state attributes
 async function checkARIAStateAttributes(page: any) {

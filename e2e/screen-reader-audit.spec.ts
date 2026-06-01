@@ -23,6 +23,7 @@ import {
 } from './helpers/accessibility-helpers';
 import fs from 'fs/promises';
 import path from 'path';
+import { mkdirp } from './helpers/fs-utils';
 
 // Key pages to audit
 const KEY_PAGES = [
@@ -81,7 +82,9 @@ test.describe('Screen Reader Accessibility Audit - Task 6.1', () => {
     const report = await generateScreenReaderReport(results, summary);
     
     // Save report to file
-    const reportPath = path.join(process.cwd(), '.kiro/specs/accessibility-audit/SCREEN_READER_AUDIT_REPORT.md');
+    const reportDir = path.join(process.cwd(), '.kiro/specs/accessibility-audit');
+    await mkdirp(reportDir);
+    const reportPath = path.join(reportDir, 'SCREEN_READER_AUDIT_REPORT.md');
     await fs.writeFile(reportPath, report, 'utf-8');
     
     console.log('\n' + '='.repeat(80));
