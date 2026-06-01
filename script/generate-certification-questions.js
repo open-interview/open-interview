@@ -14,6 +14,8 @@
 import { generateCertificationsParallel } from './ai/graphs/certification-question-graph.js';
 import { certificationDomains } from './ai/prompts/templates/certification-question.js';
 import { saveQuestion, getQuestionsForChannel } from './utils.js';
+import ragService from './ai/services/rag-enhanced-generation.js';
+import vectorDB from './ai/services/vector-db.js';
 
 // Get certification channels from environment or use defaults
 const CERT_CHANNELS = process.env.CERT_CHANNELS?.split(',') || Object.keys(certificationDomains);
@@ -186,7 +188,21 @@ async function main() {
     return { certificationId: certId, domain, difficulty: 'intermediate', count: QUESTIONS_PER_CERT };
   }))).filter(Boolean);
 
-  const poolResults = await generateCertificationsParallel(certs);
+  let ragContexts = {};
+  try {
+    await vectorDB.init();
+    for (const cert of certs) {
+      const ctx = await ragService.getGenerationContext(
+        `${cert.certificationId} ${cert.domain || ''} certification questions`,
+        { channel: cert.certificationId, limit: 5, includeAnswers: true }
+      );
+      if (ctx) ragContexts[cert.certificationId] = ctx;
+    }
+    console.log(`  📚 RAG context loaded for ${Object.keys(ragContexts).length} certifications`);
+  } catch {}
+
+  const enriched = certs.map(c => ({ ...c, ragContext: ragContexts[c.certificationId] || null }));
+  const poolResults = await generateCertificationsParallel(enriched);
 
   for (const task of poolResults.completed) {
     const result = task.result;

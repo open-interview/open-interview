@@ -13,6 +13,8 @@
 import 'dotenv/config';
 import { getDb, initBotTables } from './bots/shared/db.js';
 import { runWithRetries, parseJson } from './utils.js';
+import ragService from './ai/services/rag-enhanced-generation.js';
+import vectorDB from './ai/services/vector-db.js';
 
 const BOT_NAME = 'test-generator';
 const QUESTIONS_PER_TEST = 30; // questions to sample per channel
@@ -46,11 +48,25 @@ async function generateMCQs(questions, channelId) {
     `${i + 1}. Q: ${q.question.substring(0, 120)} A: ${q.answer.substring(0, 200)}`
   ).join('\n');
 
+  let ragContext = '';
+  try {
+    await vectorDB.init();
+    const similar = await ragService.findCrossChannelLinks(
+      questions.map(q => q.question).join(' '),
+      channelId,
+      { limit: 3 }
+    );
+    if (similar?.length > 0) {
+      ragContext = '\n\nRelated questions from across the platform:\n' +
+        similar.map(s => `- ${s.question}`).join('\n');
+    }
+  } catch {}
+
   const prompt = `You are a JSON generator. Output ONLY valid JSON, no explanations, no markdown.
 
 Create ${questions.length} multiple choice questions from these Q&As for a ${channelId} knowledge test:
 
-${summaries}
+${summaries}${ragContext}
 
 Return a JSON array:
 [

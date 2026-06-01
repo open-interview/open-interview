@@ -334,7 +334,7 @@ export default function PersonalizedPath() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 + idx * 0.05 }}
-                    onClick={() => setLocation(`/certifications/${cert}`)}
+                    onClick={() => setLocation(`/certification/${cert}`)}
                     className="group bg-card border border-border rounded-lg p-4 min-h-[72px] hover:border-yellow-500/50 hover:shadow-lg hover:shadow-yellow-500/10 cursor-pointer transition-all duration-200"
                   >
                     <div className="flex items-start justify-between mb-2">
