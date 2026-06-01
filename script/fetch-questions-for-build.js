@@ -64,7 +64,8 @@ async function main() {
   const allQuestions = [];
   const channelFiles = fs.readdirSync(questionsDir).filter(f => f.endsWith('.json') && f !== '.gitkeep');
   for (const file of channelFiles) {
-    const questions = JSON.parse(fs.readFileSync(path.join(questionsDir, file), 'utf8'));
+    let questions = JSON.parse(fs.readFileSync(path.join(questionsDir, file), 'utf8'));
+    if (!Array.isArray(questions)) questions = [questions];
     allQuestions.push(...questions);
   }
   console.log(`   Found ${allQuestions.length} questions`);
