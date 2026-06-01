@@ -30,7 +30,8 @@ async function fetchQuestionHistory() {
 
     for (const file of files) {
       const channel = file.replace(/\.json$/, '');
-      const questions = JSON.parse(readFileSync(join(QUESTIONS_DIR, file), 'utf8'));
+      let questions = JSON.parse(readFileSync(join(QUESTIONS_DIR, file), 'utf8'));
+      if (!Array.isArray(questions)) questions = [questions];
 
       for (const row of questions) {
         questionCount++;
