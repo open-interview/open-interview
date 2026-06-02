@@ -5,6 +5,7 @@ import { useLocation } from 'wouter';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { useUnifiedToast } from '@/hooks/use-unified-toast';
+import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { allChannelsConfig } from '../lib/channels-config';
 
 // Pagefind types
@@ -76,7 +77,12 @@ export function PagefindSearch({ isOpen, onClose }: PagefindSearchProps) {
   
   const inputRef = useRef<HTMLInputElement>(null);
   const pagefindRef = useRef<Pagefind | null>(null);
+  const mobilePanelRef = useRef<HTMLDivElement>(null);
+  const desktopPanelRef = useRef<HTMLDivElement>(null);
   const [, setLocation] = useLocation();
+
+  useFocusTrap(mobilePanelRef, { enabled: isOpen && isMobile, initialFocus: inputRef });
+  useFocusTrap(desktopPanelRef, { enabled: isOpen && !isMobile, initialFocus: inputRef });
   const { isSubscribed, subscribeChannel } = useUserPreferences();
   const { toast } = useUnifiedToast();
   
@@ -276,10 +282,12 @@ export function PagefindSearch({ isOpen, onClose }: PagefindSearchProps) {
         </div>
       )}
       {!isSearching && results.length > 0 && (
-        <div className="py-2">
+        <div className="py-2" role="listbox" aria-label={`${results.length} search results`}>
           {results.map((result, index) => (
             <button
               key={result.id}
+              role="option"
+              aria-selected={index === selectedIndex}
               onClick={() => navigateToQuestion(result)}
               className={`w-full px-4 py-4 text-left flex items-start gap-3 transition-colors active:bg-primary/10 ${
                 index === selectedIndex ? 'bg-primary/20' : 'hover:bg-muted/50'
@@ -326,6 +334,10 @@ export function PagefindSearch({ isOpen, onClose }: PagefindSearchProps) {
     return (
       <AnimatePresence>
         <motion.div
+          ref={mobilePanelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Search questions"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -335,7 +347,7 @@ export function PagefindSearch({ isOpen, onClose }: PagefindSearchProps) {
           {/* Mobile Header */}
           <div className="flex items-center justify-between px-4 h-14 border-b border-border bg-card flex-shrink-0 pt-safe">
             <h2 className="font-semibold text-lg">Search</h2>
-            <button onClick={onClose} className="p-2 -mr-2 hover:bg-muted rounded-full" data-testid="search-close-btn">
+            <button onClick={onClose} aria-label="Close search" className="p-2 -mr-2 hover:bg-muted rounded-full" data-testid="search-close-btn">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -394,14 +406,18 @@ export function PagefindSearch({ isOpen, onClose }: PagefindSearchProps) {
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[200] bg-background/80 backdrop-blur-sm flex items-start justify-center pt-[10vh] px-4"
-        onClick={onClose}
-        data-testid="pagefind-search-desktop"
-      >
-        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[200] bg-background/80 backdrop-blur-sm flex items-start justify-center pt-[10vh] px-4"
+          onClick={onClose}
+          data-testid="pagefind-search-desktop"
+        >
+          <motion.div
+            ref={desktopPanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Search questions"
           initial={{ opacity: 0, y: -20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -20, scale: 0.95 }}

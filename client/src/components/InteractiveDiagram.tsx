@@ -181,7 +181,7 @@ async function loadMermaid(): Promise<any> {
   if (!mermaidLoadPromise) {
     // @ts-ignore
     mermaidLoadPromise = import('mermaid').then((m) => {
-      mermaidInstance = m.default;
+      mermaidInstance = m.default ?? m;
       return mermaidInstance;
     });
   }

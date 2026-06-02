@@ -47,17 +47,17 @@ interface InterviewLoaderProps {
   showTip?: boolean;
 }
 
-export function InterviewLoader({ message = 'Loading...', showTip = true }: InterviewLoaderProps) {
-  // Try to get subscribed channels — gracefully falls back if context unavailable
-  let channelIds: string[] = [];
+function useOptionalSubscribedChannels(): string[] {
   try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     const { getSubscribedChannels } = useUserPreferences();
-    channelIds = getSubscribedChannels().map((c: { id: string }) => c.id);
+    return getSubscribedChannels().map((c: { id: string }) => c.id);
   } catch {
-    // context not available (e.g. Suspense fallback outside provider)
+    return [];
   }
+}
 
+export function InterviewLoader({ message = 'Loading...', showTip = true }: InterviewLoaderProps) {
+  const channelIds = useOptionalSubscribedChannels();
   const [facts] = useState(() => getFactsForChannels(channelIds));
   const [idx, setIdx] = useState(0);
   const [visible, setVisible] = useState(true);

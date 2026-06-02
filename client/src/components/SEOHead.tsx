@@ -90,7 +90,7 @@ export function SEOHead({
   tags,
 }: SEOHeadProps) {
   useEffect(() => {
-    // Update title
+    try {
     document.title = title;
 
     // Update meta tags
@@ -194,6 +194,9 @@ export function SEOHead({
     return () => {
       // Keep essential meta tags, only clean up page-specific ones if needed
     };
+    } catch {
+      // Silently fail if document is unavailable (e.g., SSR)
+    }
   }, [title, description, keywords, ogImage, ogImageWidth, ogImageHeight, ogType, canonical, noindex, structuredData, publishedAt, author, tags]);
 
   return null;

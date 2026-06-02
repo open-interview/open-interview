@@ -22,7 +22,14 @@ function writeJsonFile(filepath, data) {
 }
 
 function readChannelFile(channel) {
-  return readJsonFile(path.join(QUESTIONS_DIR, `${channel}.json`)) || [];
+  const data = readJsonFile(path.join(QUESTIONS_DIR, `${channel}.json`));
+  if (!Array.isArray(data)) {
+    if (data) {
+      console.warn(`⚠️ Channel file ${channel}.json is not an array, resetting to []`);
+    }
+    return [];
+  }
+  return data;
 }
 
 function writeChannelFile(channel, data) {
@@ -170,18 +177,18 @@ export async function getPrioritizedChannels(channelList, limit = 10) {
 export async function saveQuestion(question) {
   const { validateBeforeInsert, sanitizeQuestion } = await import('./bots/shared/validation.js');
   
-  try {
-    validateBeforeInsert(question, 'utils.saveQuestion');
-  } catch (error) {
-    console.error(`\n❌ VALIDATION FAILED - Question rejected by saveQuestion:`);
-    console.error(error.message);
-    throw error;
-  }
-  
   const sanitized = sanitizeQuestion(question);
   
   if (sanitized._sanitized) {
     console.warn(`⚠️  Question ${question.id} had JSON in answer field - sanitized automatically`);
+  }
+  
+  try {
+    validateBeforeInsert(sanitized, 'utils.saveQuestion');
+  } catch (error) {
+    console.error(`\n❌ VALIDATION FAILED - Question rejected by saveQuestion:`);
+    console.error(error.message);
+    throw error;
   }
   
   const channel = sanitized.channel || 'uncategorized';
@@ -209,12 +216,13 @@ export async function saveUnifiedQuestions(questions) {
   
   for (const [id, q] of Object.entries(questions)) {
     try {
-      validateBeforeInsert(q, 'utils.saveUnifiedQuestions');
       const sanitized = sanitizeQuestion(q);
       
       if (sanitized._sanitized) {
         console.warn(`⚠️  Question ${id} had JSON in answer field - sanitized automatically`);
       }
+      
+      validateBeforeInsert(sanitized, 'utils.saveUnifiedQuestions');
       
       const channel = sanitized.channel || 'uncategorized';
       if (!byChannel[channel]) byChannel[channel] = {};

@@ -105,19 +105,10 @@ export function AppLayout({
       {/* Facelift Navbar (top header for all breakpoints) */}
       {useFacelift && <div className="lg:hidden"><FaceliftNavbar onSearchOpen={() => setSearchOpen(true)} /></div>}
 
-      {/* Desktop Sidebar — offset below the facelift navbar */}
-      {useFacelift && (
-        <div className="hidden lg:block">
-          <Sidebar />
-        </div>
-      )}
-
-      {/* Desktop Sidebar (legacy mode, full-height) */}
-      {!useFacelift && (
-        <div className="hidden lg:block">
-          <Sidebar />
-        </div>
-      )}
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:block">
+        <Sidebar />
+      </div>
 
       {/* Mobile Header (legacy mode) */}
       {!useFacelift && (

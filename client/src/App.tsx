@@ -8,6 +8,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { StagingBanner } from "./components/StagingBanner";
 import NotFound from "@/pages/not-found";
 import { InterviewLoader } from "@/components/ui/InterviewLoader";
+import { PageTransition } from "@/components/ui/page-transition";
 
 // Lazy loaded pages with React.lazy for code splitting
 const Home = React.lazy(() => import("@/pages/home-facelift"));
@@ -226,7 +227,8 @@ function AppContent() {
   useEffect(() => {
     preloadQuestions().catch(console.error);
   }, []);
-  
+
+  const [location] = useLocation();
 
   if (isSearchRedirecting) {
     return null;
@@ -234,7 +236,9 @@ function AppContent() {
 
   return (
     <>
-      <Router />
+      <PageTransition locationKey={location}>
+        <Router />
+      </PageTransition>
       <GlobalCreditSplash />
       <AchievementNotificationManager />
     </>

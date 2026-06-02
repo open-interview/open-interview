@@ -45,6 +45,41 @@ export function getDb() {
     writeArray: (f, d) => writeArray(f, d),
     appendToArray: (f, e) => appendToArray(f, e),
     getNextId: (arr) => getNextId(arr),
+    execute: async (query) => {
+      if (typeof query === 'string') {
+        const upper = query.toUpperCase();
+        if (upper.includes('CREATE TABLE') || upper.includes('CREATE INDEX')) {
+          return {};
+        }
+      }
+      if (typeof query === 'object' && query.sql) {
+        const sql = query.sql;
+        const upper = sql.toUpperCase();
+        const tableMatch = sql.match(/INTO\s+(\w+)/i);
+        if (tableMatch && upper.includes('INSERT')) {
+          const file = `${tableMatch[1]}.json`;
+          const colMatch = sql.match(/\(([^)]+)\)\s*VALUES/i);
+          if (colMatch) {
+            const cols = colMatch[1].split(',').map(c => c.trim().replace(/"/g, ''));
+            const entry = {};
+            cols.forEach((c, i) => { entry[c] = query.args[i] ?? null; });
+            if (upper.includes('ON CONFLICT DO NOTHING')) {
+              const existing = readArray(file);
+              if (existing.some(e => e[cols[0]] === entry[cols[0]])) {
+                return { rowsAffected: 0 };
+              }
+            }
+            appendToArray(file, entry);
+            return { rowsAffected: 1 };
+          }
+        }
+        if (upper.includes('SELECT')) {
+          const fromMatch = sql.match(/FROM\s+(\w+)/i);
+          if (fromMatch) return readArray(`${fromMatch[1]}.json`);
+        }
+      }
+      return {};
+    },
   };
 }
 
