@@ -1,0 +1,117 @@
+[
+  {
+    "id": "cert-aws-dva-001",
+    "certificationId": "aws-dva",
+    "domain": "development-with-aws-services",
+    "question": "A developer is building a serverless e-commerce platform using DynamoDB. Shopping cart items have a TTL of 24 hours. When a cart item expires, the system must decrement the reserved-stock count in a separate Products table to restock inventory. DynamoDB Streams is enabled with NEW_AND_OLD_IMAGES. The solution must guarantee at-least-once processing and handle duplicate stream records correctly. Which approach should the developer implement?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Subscribe a Lambda function to the DynamoDB stream. Use a conditional update with a timestamp-based idempotency key on the Products table to ensure each expiration is processed exactly once.",
+        "isCorrect": true
+      },
+      {
+        "id": "b",
+        "text": "Subscribe a Lambda function to the DynamoDB stream. Configure the Lambda event source mapping with a batch size of 1 and maximum retry count of 0 to prevent duplicate processing.",
+        "isCorrect": false
+      },
+      {
+        "id": "c",
+        "text": "Configure DynamoDB TTL to publish expiration events directly to an SNS topic. Subscribe a Lambda function to the SNS topic to update the Products table inventory count.",
+        "isCorrect": false
+      },
+      {
+        "id": "d",
+        "text": "Run a scheduled Lambda function via EventBridge Scheduler every hour to scan the Carts table using a GSI on the TTL attribute, identify expired items, delete them, and update the Products table.",
+        "isCorrect": false
+      }
+    ],
+    "explanation": "## Correct Answer\n\n**Option A** is correct. DynamoDB Streams emits a stream record when TTL deletes an item. The Lambda function processes this and updates Products. Because DynamoDB Streams guarantees at-least-once delivery (duplicates can occur), the update must be idempotent — using a conditional update with an idempotency key (e.g., `ConditionExpression: \"attribute_not_exists(processedBy)\"` with a unique expiration event ID) prevents double-counting inventory restocks.\n\n## Why Other Options Are Wrong\n\n- **Option B**: Setting batch size to 1 does not prevent duplicate processing — DynamoDB Streams can still deliver the same stream record multiple times. A retry count of 0 would cause the function to drop messages on the first failure, losing data permanently.\n- **Option C**: DynamoDB TTL does not publish events to SNS. TTL works by marking items for deletion, and the actual deletion is processed asynchronously by DynamoDB. The only way to react to TTL deletions is through DynamoDB Streams.\n- **Option D**: Scanning the entire Carts table every hour is inefficient, costly in terms of read capacity, and introduces up to 60 minutes of delay. It also does not leverage DynamoDB Streams, which is the native mechanism for reacting to TTL deletions in near-real time.\n\n## Key Concepts\n\n- **DynamoDB TTL**: Automatically deletes expired items after the TTL expiry time. Deletions are recorded in DynamoDB Streams.\n- **DynamoDB Streams**: Captures a time-ordered sequence of item-level changes. Supports at-least-once delivery semantics, meaning consumers must be idempotent.\n- **Idempotent Processing**: Using conditional expressions or idempotency keys ensures that processing the same event multiple times produces the same result.\n- **Conditional Updates**: DynamoDB's `ConditionExpression` allows writes to succeed only when a condition is met, making it ideal for implementing idempotency guarantees.\n\n## Real-World Application\n\nThis pattern is common in e-commerce, reservations, and inventory management systems where TTL expiration triggers secondary side effects. The key architectural insight is that stream processors must always be idempotent because DynamoDB Streams can redeliver records (e.g., during Lambda retries or shard rebalancing). Using conditional writes or a dedicated idempotency table is the production-standard approach.",
+    "difficulty": "intermediate",
+    "tags": [
+      "aws-dva",
+      "dynamodb",
+      "dynamodb-streams",
+      "lambda",
+      "ttl",
+      "idempotency"
+    ]
+  },
+  {
+    "id": "cert-aws-dva-002",
+    "certificationId": "aws-dva",
+    "domain": "development-with-aws-services",
+    "question": "A company exposes a REST API through Amazon API Gateway backed by Lambda functions. The API is consumed by mobile and web clients that authenticate using a custom JWT token issued by the company's own identity provider (IdP). The developer needs to enforce role-based access control (admin, viewer, editor) and pass the caller's role and user ID to the Lambda integration without modifying the client application. What is the MOST scalable and secure approach?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Implement a Lambda authorizer that validates the JWT, extracts role and user ID from claims, returns an IAM policy, and passes the role and user ID via the authorizer context map to the Lambda integration.",
+        "isCorrect": true
+      },
+      {
+        "id": "b",
+        "text": "Configure API Gateway to pass the raw JWT token as a header to the Lambda function. Decode and validate the JWT, extract the role, and enforce authorization logic inside each Lambda function handler.",
+        "isCorrect": false
+      },
+      {
+        "id": "c",
+        "text": "Use a Cognito user pool authorizer in API Gateway. Set up an OIDC identity provider federation between the company IdP and Cognito, then map group claims from Cognito to the Lambda integration.",
+        "isCorrect": false
+      },
+      {
+        "id": "d",
+        "text": "Configure API Gateway to use IAM authorization with resource policies that map to user roles stored in an external identity provider.",
+        "isCorrect": false
+      }
+    ],
+    "explanation": "## Correct Answer\n\n**Option A** is correct. A Lambda authorizer (formerly custom authorizer) validates the JWT token from the company's IdP, returns a cached IAM policy to authorize the request, and passes custom context data (role and user ID) to the backend Lambda via the `context` output map. This centralizes authorization logic, reduces duplication across functions, and allows caching of authorization decisions for improved performance.\n\n## Why Other Options Are Wrong\n\n- **Option B**: Offloading JWT validation to each Lambda function duplicates authorization logic across every handler, increases code maintenance burden, and introduces security risk if any function omits or misimplements validation. It also wastes Lambda invocation time on authentication tasks that could be handled at the API Gateway layer.\n- **Option C**: Cognito user pool authorizer requires federating the existing IdP through Cognito, which adds unnecessary complexity and infrastructure. If the company already has its own IdP, a Lambda authorizer is more direct and avoids forcing the architecture through Cognito.\n- **Option D**: IAM authorization with resource policies cannot interpret custom JWT claims like role or user ID. IAM auth works with AWS signature V4 signed requests and AWS IAM principals — it has no knowledge of application-level roles in external IdPs.\n\n## Key Concepts\n\n- **Lambda Authorizer**: A Lambda function that validates incoming JWT tokens and returns an IAM policy document that grants or denies access. Can also return a context map (key-value pairs) passed to the backend integration.\n- **Authorizer Context**: Output from a Lambda authorizer that is passed transparently to the Lambda function in `event.requestContext.authorizer`, enabling backend code to access user identity without re-parsing tokens.\n- **Caching**: Lambda authorizer results can be cached by API Gateway using a configurable TTL, reducing authorizer invocations for subsequent requests with the same token.\n\n## Real-World Application\n\nThis pattern is standard when organizations have existing identity infrastructure (Okta, Auth0, Ping, or custom OAuth2/OIDC providers). A Lambda authorizer acts as a bridge between any IdP and API Gateway, allowing centralized token validation and authorization without modifying client applications. The authorizer context is especially valuable for passing user attributes that the backend needs for data filtering, audit logging, or tenant isolation.",
+    "difficulty": "intermediate",
+    "tags": [
+      "aws-dva",
+      "api-gateway",
+      "lambda-authorizer",
+      "jwt",
+      "authorization",
+      "serverless"
+    ]
+  },
+  {
+    "id": "cert-aws-dva-003",
+    "certificationId": "aws-dva",
+    "domain": "development-with-aws-services",
+    "question": "A developer is building a serverless image-processing service. Users upload original images to an S3 bucket (source-bucket). For each upload, the system must create three resized thumbnails (small, medium, large) and store them in a separate S3 bucket (thumbnails-bucket). The system must handle sudden spikes of hundreds of concurrent uploads without data loss and must route failed processing attempts to a dead-letter queue for manual inspection. Which implementation meets these requirements with minimal operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure S3 event notifications on source-bucket to send s3:ObjectCreated:* events to an SQS queue. Subscribe a Lambda function to the queue to generate thumbnails. Configure a redrive policy on the queue to send failed messages to a DLQ after the specified retry count is exceeded.",
+        "isCorrect": false
+      },
+      {
+        "id": "b",
+        "text": "Configure S3 event notifications on source-bucket to invoke a Lambda function directly on s3:ObjectCreated:* events. Enable Lambda reserved concurrency and configure the function's DLQ to send failed invocation events to an SQS dead-letter queue.",
+        "isCorrect": false
+      },
+      {
+        "id": "c",
+        "text": "Configure S3 event notifications on source-bucket to invoke a Lambda function directly on s3:ObjectCreated:* events. Configure the S3 event notification destination with a dead-letter queue ARN for failed event deliveries.",
+        "isCorrect": true
+      },
+      {
+        "id": "d",
+        "text": "Configure S3 event notifications on source-bucket to send s3:ObjectCreated:* events to an SNS topic. Subscribe a Lambda function to the SNS topic. Enable SNS dead-letter queue for failed deliveries to Lambda.",
+        "isCorrect": false
+      }
+    ],
+    "explanation": "## Correct Answer\n\n**Option C** is correct. S3 event notifications can invoke Lambda functions directly. For production workloads, S3 event notifications support an optional **destination-level dead-letter queue** (SQS or SNS) that captures events that failed to be delivered to the Lambda function after all retry attempts. Asynchronous Lambda invocations also have their own retry behavior (3 retries with backoff), and a Lambda function-level DLQ can be configured for processing failures, but the question specifically requires handling **failed S3 event deliveries** — S3 cannot guarantee delivery of event notifications. The on-failure destination on the S3 event notification configuration is the correct mechanism for this.\n\n## Why Other Options Are Wrong\n\n- **Option A**: Inserting SQS between S3 and Lambda adds unnecessary complexity and cost. While it does provide a DLQ, S3 can invoke Lambda directly with built-in failure handling. The SQS approach is valid for throttling or batching scenarios but is not the most minimal approach when the requirement is straightforward thumbnail generation.\n- **Option B**: Lambda reserved concurrency and a Lambda DLQ handle processing failures *after* the function is invoked (e.g., code errors, timeouts), but they do not address the requirement of handling S3 event notification delivery failures. If S3 fails to invoke Lambda due to service limits or network issues, the Lambda DLQ is never triggered.\n- **Option D**: SNS adds an unnecessary hop. While SNS does support DLQ configuration, S3 can directly invoke Lambda without the intermediate SNS topic. More critically, the question asks to capture failed **processing** attempts, not just delivery failures. SNS only knows about delivery to Lambda, not whether Lambda successfully processed the thumbnail.\n\n## Key Concepts\n\n- **S3 Event Notifications**: S3 can send events to Lambda, SQS, or SNS on object creation, deletion, or restoration events. The Lambda invocation is asynchronous.\n- **Destination Dead-Letter Queue**: S3 event notification configurations support an optional `DestinationConfig` with `OnFailure` attribute pointing to an SQS queue or SNS topic for events that could not be delivered after all retries.\n- **Asynchronous Lambda Invocation**: When Lambda is invoked asynchronously (by S3, SNS, EventBridge), it retries up to 3 times. A function-level DLQ captures events that exhausted all retries.\n- **Dual DLQ Strategy**: For production resilience, configure both an S3 destination DLQ (for delivery failures) and a Lambda function DLQ (for processing failures) — though they serve different failure modes.\n\n## Real-World Application\n\nThis pattern is the foundation for serverless image, video, and document processing pipelines. Services like thumbnail generation, OCR, PDF conversion, and media transcoding all follow this S3-triggered Lambda architecture. The dual-DLQ approach (S3 destination DLQ + Lambda function DLQ) is the production best practice because it separates infrastructure-level failures (event not delivered) from application-level failures (processing logic error), enabling teams to triage and debug each category independently.",
+    "difficulty": "intermediate",
+    "tags": [
+      "aws-dva",
+      "s3",
+      "lambda",
+      "s3-event-notifications",
+      "dead-letter-queue",
+      "serverless",
+      "image-processing"
+    ]
+  }
+]
