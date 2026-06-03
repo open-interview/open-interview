@@ -13,6 +13,7 @@ import { marked } from 'marked';
 import { fileURLToPath } from 'url';
 import { generateBlogPost } from './ai/graphs/blog-graph.js';
 import { generateIllustration, generatePixelIllustration } from './ai/utils/blog-illustration-generator.js';
+import { generateBlogSVG, generateBlogBatchSVGs, detectScene } from './ai/utils/svg-integration.js';
 import { dbClient as client } from './db/pg-client.js';
 import { serializeMD } from './ai/utils/md-serializer.js';
 
@@ -2316,8 +2317,8 @@ ${sitemapEntriesFb}
     return;
   }
   
-  // Write SVG images - use cached from DB or generate new ones
-  console.log('\n🎨 Processing cartoon illustrations...');
+  // Write SVG images - use cached from DB or generate new ones with scene-aware selection
+  console.log('\n🎨 Processing blog illustrations (scene-aware generation)...');
   let cachedCount = 0;
   let generatedCount = 0;
   
@@ -2325,6 +2326,9 @@ ${sitemapEntriesFb}
     if (article.images && article.images.length > 0) {
       const svgContent = article.svgContent || {};
       let needsUpdate = false;
+      
+      // Detect scene from article content for intelligent generator selection
+      const articleScene = detectScene(article.blogTitle, article.blogIntro || '');
       
       for (const img of article.images) {
         if (img && img.url && img.url.startsWith('/images/') && img.url.endsWith('.svg')) {
@@ -2334,28 +2338,41 @@ ${sitemapEntriesFb}
           
           // Check if SVG is cached in database
           if (svgContent[filename]) {
-            // Write cached SVG to file
             fs.writeFileSync(outputPath, svgContent[filename]);
             cachedCount++;
           } else {
-            // Generate new SVG - use pixel art style for social/hero images
             try {
-              // Use pixel art for hero/social images, default for others
+              // Scene-aware generator selection based on placement and content
               const usePixelArt = img.placement === 'hero' || img.placement === 'social' || img.placement === 'after-intro';
+              const useModernStyle = ['api', 'frontend', 'cloud', 'deployment', 'security'].includes(articleScene);
+              const useDataStyle = ['performance', 'data', 'monitoring', 'scaling'].includes(articleScene);
+              const useCartoonStyle = ['collaboration', 'meeting', 'interview'].includes(articleScene);
               
-              const result = usePixelArt 
-                ? await generatePixelIllustration(
-                    article.blogTitle,
-                    img.alt || article.blogIntro || article.blogTitle,
-                    filenameNoExt,
-                    { channel: article.channel }
-                  )
-                : await generateIllustration(
-                    article.blogTitle,
-                    img.alt || article.blogIntro || article.blogTitle,
-                    filenameNoExt,
-                    { placement: img.placement || 'after-intro', channel: article.channel }
-                  );
+              let result;
+              
+              // Try the scene-aware SVG integration for richer illustrations
+              if (useDataStyle || useModernStyle || useCartoonStyle) {
+                const preferred = useDataStyle ? 'd3' : useModernStyle ? 'modern' : useCartoonStyle ? 'cartoon' : 'blog';
+                result = await generateBlogSVG(
+                  article.blogTitle,
+                  img.alt || article.blogIntro || '',
+                  { preferred, filename: filenameNoExt }
+                );
+              } else if (usePixelArt) {
+                result = await generatePixelIllustration(
+                  article.blogTitle,
+                  img.alt || article.blogIntro || article.blogTitle,
+                  filenameNoExt,
+                  { channel: article.channel }
+                );
+              } else {
+                result = await generateIllustration(
+                  article.blogTitle,
+                  img.alt || article.blogIntro || article.blogTitle,
+                  filenameNoExt,
+                  { placement: img.placement || 'after-intro', channel: article.channel }
+                );
+              }
               
               // Read the generated SVG and cache it
               const svgData = fs.readFileSync(result.path, 'utf-8');
@@ -2364,7 +2381,6 @@ ${sitemapEntriesFb}
               generatedCount++;
             } catch (err) {
               console.log(`   ⚠️ Failed to generate ${img.url}: ${err.message}`);
-              // Fallback: copy generic pixel SVG so the image slot is never empty
               if (!svgContent[filename]) {
                 const genericSvg = channelToPixelSvg(article.channel);
                 const srcPath = path.join(__dirname, '..', 'test-svg-output', 'pixel', genericSvg);
@@ -2377,7 +2393,6 @@ ${sitemapEntriesFb}
         }
       }
       
-      // Update database with new SVG content if any were generated
       if (needsUpdate) {
         try {
           await updateSvgContent(article.id, svgContent);
@@ -2387,7 +2402,7 @@ ${sitemapEntriesFb}
       }
     }
   }
-  console.log(`   ✅ ${cachedCount} from cache, ${generatedCount} newly generated`);
+  console.log(`   ✅ ${cachedCount} from cache, ${generatedCount} newly generated (scene: ${articles.length > 0 ? detectScene(articles[0].blogTitle, '') : 'n/a'})`);
   
   // Generate CSS with default theme
   fs.writeFileSync(path.join(OUTPUT_DIR, 'style.css'), generateCSS());
