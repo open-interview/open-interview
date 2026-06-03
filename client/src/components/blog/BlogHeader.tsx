@@ -31,7 +31,7 @@ export function BlogHeader() {
   }, [mobileOpen]);
 
   return (
-    <header role="banner" className="sticky top-0 z-50 w-full border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur-md shadow-sm">
+    <header role="banner" className="sticky top-0 z-50 w-full border-b border-[var(--color-border)] bg-[var(--color-surface)]/95 backdrop-blur-md shadow-sm pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/blog" className="flex items-center gap-2 font-bold text-lg text-[var(--color-ink)] hover:opacity-80 transition-opacity">
@@ -62,20 +62,20 @@ export function BlogHeader() {
         <div className="flex items-center gap-1">
           <Link
             href="/blog/search"
-            className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:border-[var(--color-accent)] hover:bg-[var(--color-surface-raised)] transition-all"
+            className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:border-[var(--color-accent)] hover:bg-[var(--color-surface-raised)] transition-[color,background-color,border-color]"
             aria-label="Search articles"
           >
             <Search size={15} strokeWidth={1.5} />
             <span className="hidden sm:inline text-xs">Search</span>
           </Link>
-          <button
+          <button type="button"
             onClick={toggle}
             className="rounded-md p-2 text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-surface-raised)] transition-colors"
             aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           >
             {theme === "dark" ? <Sun size={18} strokeWidth={1.5} aria-hidden /> : <Moon size={18} strokeWidth={1.5} aria-hidden />}
           </button>
-          <button
+          <button type="button"
             className="md:hidden rounded-md p-2 text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-surface-raised)] transition-colors"
             onClick={() => setMobileOpen((v) => !v)}
             aria-label={mobileOpen ? "Close menu" : "Open menu"}

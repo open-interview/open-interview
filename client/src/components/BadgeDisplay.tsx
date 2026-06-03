@@ -56,7 +56,7 @@ export function BadgeRing({ progress, size = 'md', showProgress = true, onClick 
           <circle cx={s.ring / 2} cy={s.ring / 2} r={radius} fill="none" stroke="currentColor" strokeWidth={s.stroke} className="text-muted/30" />
           <motion.circle
             cx={s.ring / 2} cy={s.ring / 2} r={radius} fill="none"
-            stroke={isUnlocked ? tierColor : 'hsl(var(--muted-foreground))'}
+            stroke={isUnlocked ? tierColor : 'var(--muted-foreground)'}
             strokeWidth={s.stroke} strokeLinecap="round"
             strokeDasharray={circumference}
             initial={{ strokeDashoffset: circumference }}

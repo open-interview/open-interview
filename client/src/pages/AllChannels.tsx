@@ -1,8 +1,13 @@
 /**
  * All Channels — Browse & subscribe to topics
+ *
+ * NOTE: No skeleton loaders needed — channel data is imported synchronously
+ * from channels-config.ts. The only async fetch is for question counts (fallback),
+ * which doesn't block rendering. This fixes issue P5.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -89,7 +94,7 @@ function ProgressRing({ progress, size = 44, stroke = 3 }: { progress: number; s
   );
 }
 
-function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSubscription, onSelect }: {
+const ChannelCard = React.memo(function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSubscription, onSelect }: {
   channel: ChannelConfig;
   questionCount: number;
   navigate: (path: string) => void;
@@ -208,7 +213,7 @@ function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSub
                 whileTap={{ scale: 0.9 }}
                 onClick={e => { e.stopPropagation(); toggleSubscription(channel.id); }}
                 className="px-3 min-h-[44px] rounded-2xl transition-all duration-150 ease-out hover:bg-muted/80 border border-border text-muted-foreground cursor-pointer"
-                title="Unsubscribe"
+                aria-label={`Unsubscribe from ${channel.name}`}
               >
                 <X className="w-3.5 h-3.5" />
               </motion.button>
@@ -227,9 +232,9 @@ function ChannelCard({ channel, questionCount, navigate, isSubscribed, toggleSub
       </div>
     </motion.div>
   );
-}
+});
 
-function CategorySection({ categoryKey, channels, questionCounts, navigate, isSubscribed, toggleSubscription, onSelect }: {
+const CategorySection = React.memo(function CategorySection({ categoryKey, channels, questionCounts, navigate, isSubscribed, toggleSubscription, onSelect }: {
   categoryKey: string;
   channels: ChannelConfig[];
   questionCounts: Record<string, number>;
@@ -244,7 +249,7 @@ function CategorySection({ categoryKey, channels, questionCounts, navigate, isSu
 
   return (
     <div className="mb-6">
-      <button onClick={() => setOpen(o => !o)} className="w-full min-h-[44px] flex items-center justify-between px-1 py-2 mb-3 group cursor-pointer">
+      <button onClick={() => setOpen(o => !o)} aria-label={`Toggle ${meta.label} section`} className="w-full min-h-[44px] flex items-center justify-between px-1 py-2 mb-3 group cursor-pointer">
         <div className="flex items-center gap-2.5">
           <span className="text-xl">{meta.emoji}</span>
           <div className="text-left">
@@ -280,7 +285,7 @@ function CategorySection({ categoryKey, channels, questionCounts, navigate, isSu
       </AnimatePresence>
     </div>
   );
-}
+});
 
 function ChannelDetail({ channel, questionCount, isSubscribed: subscribed, onToggle, onNavigate, onClose }: {
   channel: ChannelConfig;
@@ -310,7 +315,7 @@ function ChannelDetail({ channel, questionCount, isSubscribed: subscribed, onTog
       >
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-          <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-muted/50 text-muted-foreground transition-colors duration-150 ease-out cursor-pointer z-10">
+          <button onClick={onClose} aria-label="Close channel details" className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-muted/50 text-muted-foreground transition-colors duration-150 ease-out cursor-pointer z-10">
             <X className="w-4 h-4" />
           </button>
 
@@ -397,12 +402,14 @@ export default function AllChannels() {
   );
   const [selectedChannel, setSelectedChannel] = useState<ChannelConfig | null>(null);
   const [fallbackCounts, setFallbackCounts] = useState<Record<string, number>>({});
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const subscribedIds = new Set(preferences.subscribedChannels);
+  const subscribedIds = useMemo(() => new Set(preferences.subscribedChannels), [preferences.subscribedChannels]);
   const hasSubscriptions = subscribedIds.size > 0;
 
   useEffect(() => {
     if (stats.length === 0) {
+      setFetchError(null);
       fetch('/data/channels.json')
         .then(r => r.json())
         .then((channels: any[]) => {
@@ -410,12 +417,15 @@ export default function AllChannels() {
           channels.forEach((ch: any) => { counts[ch.id] = ch.total || ch.questionCount || 0; });
           setFallbackCounts(counts);
         })
-        .catch(() => { console.warn('Failed to load channel counts'); });
+        .catch(() => { console.warn('Failed to load channel counts'); setFetchError('Could not load question counts for some channels'); });
     }
   }, [stats]);
 
-  const questionCounts: Record<string, number> = { ...fallbackCounts };
-  stats.forEach(s => { questionCounts[s.id] = s.total; });
+  const questionCounts = useMemo<Record<string, number>>(() => {
+    const counts: Record<string, number> = { ...fallbackCounts };
+    stats.forEach(s => { counts[s.id] = s.total; });
+    return counts;
+  }, [fallbackCounts, stats]);
 
   const getCompletedCount = (channelId: string): number => {
     try {
@@ -424,24 +434,27 @@ export default function AllChannels() {
     } catch { return 0; }
   };
 
-  const channels = allChannelsConfig.filter(ch => {
-    if (subscribedOnly && hasSubscriptions && !subscribedIds.has(ch.id)) return false;
-    const matchSearch = ch.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        ch.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchCat = !selectedCategory || ch.category === selectedCategory;
-    const total = questionCounts[ch.id] || 0;
-    const done = getCompletedCount(ch.id);
-    const matchProgress =
-      progressFilter === 'all' ? true :
-      progressFilter === 'not-started' ? done === 0 :
-      progressFilter === 'in-progress' ? done > 0 && done < total :
-      done > 0 && done >= total;
-    return matchSearch && matchCat && matchProgress;
-  }).sort((a, b) => {
-    if (sortKey === 'az') return a.name.localeCompare(b.name);
-    if (sortKey === 'count') return (questionCounts[b.id] || 0) - (questionCounts[a.id] || 0);
-    return 0;
-  });
+  const channels = useMemo(() =>
+    allChannelsConfig.filter(ch => {
+      if (subscribedOnly && hasSubscriptions && !subscribedIds.has(ch.id)) return false;
+      const matchSearch = ch.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          ch.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchCat = !selectedCategory || ch.category === selectedCategory;
+      const total = questionCounts[ch.id] || 0;
+      const done = getCompletedCount(ch.id);
+      const matchProgress =
+        progressFilter === 'all' ? true :
+        progressFilter === 'not-started' ? done === 0 :
+        progressFilter === 'in-progress' ? done > 0 && done < total :
+        done > 0 && done >= total;
+      return matchSearch && matchCat && matchProgress;
+    }).sort((a, b) => {
+      if (sortKey === 'az') return a.name.localeCompare(b.name);
+      if (sortKey === 'count') return (questionCounts[b.id] || 0) - (questionCounts[a.id] || 0);
+      return 0;
+    }),
+    [allChannelsConfig, subscribedOnly, hasSubscriptions, subscribedIds, searchQuery, selectedCategory, progressFilter, sortKey, questionCounts]
+  );
 
   // Stats bar values (shown when subscribedIds has entries)
   const subscribedCount = subscribedIds.size;
@@ -449,18 +462,17 @@ export default function AllChannels() {
 
   // Cert-view provider grouping
   const isCertView = selectedCategory === 'certification' && !searchQuery && progressFilter === 'all';
-  const certProviderGroups: [string, ChannelConfig[]][] = [];
-  if (isCertView) {
+  const certProviderGroups = useMemo<[string, ChannelConfig[]][]>(() => {
+    if (!isCertView) return [];
     const byProvider: Record<string, ChannelConfig[]> = {};
     channels.forEach(ch => {
       const p = getChannelProvider(ch.id);
       if (!byProvider[p]) byProvider[p] = [];
       byProvider[p].push(ch);
     });
-    Object.entries(byProvider)
-      .sort(([a], [b]) => (CERT_PROVIDER_META[a]?.order ?? 99) - (CERT_PROVIDER_META[b]?.order ?? 99))
-      .forEach(entry => certProviderGroups.push(entry));
-  }
+    return Object.entries(byProvider)
+      .sort(([a], [b]) => (CERT_PROVIDER_META[a]?.order ?? 99) - (CERT_PROVIDER_META[b]?.order ?? 99));
+  }, [isCertView, channels]);
 
   const categoryMeta: Record<string, { label: string; icon: React.ElementType; color: string }> = {
     engineering:   { label: 'Engineering',  icon: Code,        color: 'var(--color-accent-violet)' },
@@ -604,7 +616,7 @@ export default function AllChannels() {
   return (
     <>
       <SEOHead
-        title="Browse Channels - Level Up Your Skills"
+        title="Browse Channels - Ace your next tech interview"
         description="Explore all topics and start learning. Frontend, backend, DevOps, and more."
         canonical="https://open-interview.github.io/channels"
       />
@@ -653,14 +665,14 @@ export default function AllChannels() {
               <div className="flex gap-3 flex-wrap">
                 <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search channels…" id="channel-search" />
                 <select value={progressFilter} onChange={e => setProgressFilter(e.target.value as typeof progressFilter)}
-                  className="min-h-[44px] px-3 py-2.5 rounded-xl text-sm focus:outline-none bg-muted border border-border text-foreground cursor-pointer">
+                  className="min-h-[44px] px-3 py-2.5 rounded-xl text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring bg-muted border border-border text-foreground cursor-pointer">
                   <option value="all">All Progress</option>
                   <option value="not-started">Not Started</option>
                   <option value="in-progress">In Progress</option>
                   <option value="completed">Completed</option>
                 </select>
                 <select value={sortKey} onChange={e => setSortKey(e.target.value as SortKey)}
-                  className="min-h-[44px] px-3 py-2.5 rounded-xl text-sm focus:outline-none bg-muted border border-border text-foreground cursor-pointer">
+                  className="min-h-[44px] px-3 py-2.5 rounded-xl text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring bg-muted border border-border text-foreground cursor-pointer">
                   <option value="az">A–Z</option>
                   <option value="count">Most Questions</option>
                   <option value="progress">Progress</option>
@@ -669,6 +681,13 @@ export default function AllChannels() {
               <FilterPills options={[{id:'',label:'All'}, ...categories.filter(c=>c.id!=='certification').map(c=>({id:c.id,label:c.name}))]}
                 active={selectedCategory||''} onChange={id => setSelectedCategory(id||null)} />
             </motion.div>
+
+            {fetchError && (
+              <div className="mb-4 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{fetchError}</span>
+              </div>
+            )}
 
             {renderContent()}
 

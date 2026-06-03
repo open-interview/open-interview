@@ -158,7 +158,7 @@ export function StatCard({ stat, className, animate = true, duration = 1200 }: S
       transition={spring}
       whileHover={!prefersReducedMotion ? { y: -2, transition: spring } : undefined}
       className={cn(
-        'group relative overflow-hidden rounded-xl border border-border/50 bg-card p-5 transition-all hover:border-border/80',
+        'group relative overflow-hidden rounded-xl border border-border/50 bg-card p-5 transition-colors hover:border-border/80',
         className,
       )}
     >

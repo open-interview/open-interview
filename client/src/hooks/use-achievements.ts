@@ -3,7 +3,7 @@
  * React hook for achievement system integration
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Achievement,
   AchievementProgress,
@@ -38,6 +38,8 @@ export function useAchievements() {
     loadProgress();
   }, []);
 
+  const clearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Listen for new achievements
   useEffect(() => {
     const unsubscribe = addAchievementListener((achievements) => {
@@ -46,10 +48,13 @@ export function useAchievements() {
       setProgress(calculateAchievementProgress());
       
       // Clear notification after 5 seconds
-      setTimeout(() => setNewlyUnlocked([]), 5000);
+      clearTimeoutRef.current = setTimeout(() => setNewlyUnlocked([]), 5000);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      if (clearTimeoutRef.current) clearTimeout(clearTimeoutRef.current);
+    };
   }, []);
 
   // Process user event

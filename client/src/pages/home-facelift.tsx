@@ -31,7 +31,6 @@ import {
   Cloud,
 } from "lucide-react";
 import { SEOHead } from "../components/SEOHead";
-import { OnboardingFlow } from "../components/OnboardingFlow";
 import { useUserPreferences } from "../context/UserPreferencesContext";
 import { getFeaturedPosts } from "@/lib/blog-loader";
 
@@ -876,13 +875,6 @@ function LandingFooter() {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function HomeFacelift() {
-  const { needsOnboarding } = useUserPreferences();
-  const [onboardingDone, setOnboardingDone] = useState(false);
-
-  if (needsOnboarding && !onboardingDone) {
-    return <OnboardingFlow onComplete={() => setOnboardingDone(true)} />;
-  }
-
   return (
     <>
       <SEOHead

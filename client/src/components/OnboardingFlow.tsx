@@ -211,13 +211,22 @@ export function OnboardingFlow({ onComplete }: Props) {
             <span className="font-bold text-white text-sm">Open Interview</span>
           </div>
           <span className="hidden lg:block text-sm font-semibold text-white/70">personalize</span>
-          <button onClick={() => { skipOnboarding(); onComplete(); }}
+          <button onClick={() => { skipOnboarding(); onComplete(); }} aria-label="Skip onboarding"
             className="flex items-center gap-1 text-xs text-white/30 hover:text-white/60 transition-colors px-2 py-1">
             Skip <X className="w-3 h-3" />
           </button>
         </div>
 
         <div className="flex-1 flex flex-col overflow-hidden px-4 sm:px-8 py-4 gap-3">
+          {/* Mobile brand header — shown when LeftPanel is hidden */}
+          <div className="lg:hidden flex items-center gap-2.5 mb-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black text-white"
+              style={{ background: `linear-gradient(135deg, ${accentColor}, #06b6d4)` }}>
+              OI
+            </div>
+            <span className="font-bold text-white text-sm">Open Interview</span>
+          </div>
+
           <motion.div className="flex-shrink-0"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -379,7 +388,7 @@ export function OnboardingFlow({ onComplete }: Props) {
           >
             <Sparkles className="w-4 h-4" /> Start Learning
           </motion.button>
-          <button onClick={() => { skipOnboarding(); onComplete(); }}
+          <button onClick={() => { skipOnboarding(); onComplete(); }} aria-label="Skip onboarding"
             className="block mx-auto mt-1 text-[10px] text-white/20 hover:text-white/50 transition-colors">
             Skip →
           </button>

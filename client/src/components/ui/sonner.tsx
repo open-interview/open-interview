@@ -1,13 +1,11 @@
 import { Toaster as Sonner } from 'sonner'
-
-const isDark = typeof window !== 'undefined'
-  ? localStorage.getItem('theme') !== 'light'
-  : true
+import { useTheme } from '@/context/ThemeContext'
 
 export function Toaster() {
+  const { theme } = useTheme()
   return (
     <Sonner
-      theme={isDark ? 'dark' : 'light'}
+      theme={theme === 'dark' ? 'dark' : 'light'}
       className="toaster group"
       toastOptions={{
         classNames: {

@@ -26,7 +26,6 @@ import {
 import { rewardStorage, rewardEngine } from '../lib/rewards';
 
 interface CreditsContextType {
-  balance: number;
   state: CreditsState;
   history: CreditTransaction[];
   // Credit change splash
@@ -206,7 +205,6 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   return (
     <CreditsContext.Provider
       value={{
-        balance: state.balance,
         state,
         history,
         creditChange,

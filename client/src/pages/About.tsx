@@ -424,7 +424,9 @@ export default function About() {
                     ))}
                     <div className="flex items-center gap-2">
                       <span className="text-cyan-400">$</span>
+                      <label htmlFor="terminal-command-input" className="sr-only">Terminal command</label>
                       <input
+                        id="terminal-command-input"
                         type="text"
                         value={currentCommand}
                         onChange={(e) => setCurrentCommand(e.target.value)}

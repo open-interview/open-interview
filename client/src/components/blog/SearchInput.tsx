@@ -40,11 +40,12 @@ export function SearchInput({ defaultValue = "", onSearch, placeholder = "Search
         onChange={(e) => setValue(e.target.value)}
         placeholder={placeholder}
         autoFocus={autoFocus}
+        autoComplete="off"
         aria-label="Search posts"
         className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] pl-9 pr-9 py-2 text-sm text-[var(--color-ink)] placeholder:text-[var(--color-ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent transition"
       />
       {value && (
-        <button
+        <button type="button"
           onClick={() => setValue("")}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors"
           aria-label="Clear search"

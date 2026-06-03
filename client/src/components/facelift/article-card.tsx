@@ -352,7 +352,7 @@ function CardContent({ article, variant, imageError, onImageError }: {
           )}
 
           <div className="mt-6 flex items-center gap-4">
-            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary transition-all group-hover:gap-3">
+            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary transition-[gap] group-hover:gap-3">
               Read article
               <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
             </span>

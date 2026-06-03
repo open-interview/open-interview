@@ -6,7 +6,7 @@ import { BlogLayout } from "@/components/blog/BlogLayout";
 import { ArticleCard, ArticleCardSkeleton, type ArticleCardData, type ArticleDifficulty } from "@/components/facelift/article-card";
 import { motion } from "framer-motion";
 import { useReducedMotion, getSpringTransition } from "@/hooks/use-reduced-motion";
-import { ChevronRight, Filter, BookOpen, Tag, Grid3x3, X } from "lucide-react";
+import { ChevronRight, Filter, BookOpen, Tag, Grid3x3, X, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { Breadcrumb } from "@/components/blog/Breadcrumb";
@@ -205,6 +205,19 @@ export default function BlogListPage({ categorySlug, tag }: BlogListPageProps) {
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+        {/* Back to App */}
+        <div className="mb-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/')}
+            className="gap-1.5 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft size={16} />
+            Back to App
+          </Button>
+        </div>
+
         {/* Breadcrumb */}
         <motion.div
           initial={{ opacity: 0, x: -8 }}

@@ -44,6 +44,7 @@ export type AnnouncementPriority = 'polite' | 'assertive';
  */
 export function useAnnouncer() {
   const announcerRef = useRef<HTMLDivElement | null>(null);
+  const clearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   useEffect(() => {
     // Create live region if it doesn't exist
@@ -94,7 +95,8 @@ export function useAnnouncer() {
     
     // Clear the message after a delay to allow for repeated announcements
     // of the same message
-    setTimeout(() => {
+    if (clearTimeoutRef.current) clearTimeout(clearTimeoutRef.current);
+    clearTimeoutRef.current = setTimeout(() => {
       if (announcerRef.current) {
         announcerRef.current.textContent = '';
       }

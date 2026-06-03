@@ -76,7 +76,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
             {/* Error details in development */}
             {import.meta.env.DEV && this.state.error && (
-              <div className="text-left bg-muted/50 rounded-lg p-4 overflow-auto max-h-48">
+              <details className="text-left bg-muted/50 rounded-lg p-4 overflow-auto max-h-48 cursor-pointer">
+                <summary className="text-sm font-medium text-muted-foreground mb-2">
+                  Error Details
+                </summary>
                 <p className="text-sm font-mono text-destructive mb-2">
                   {this.state.error.message}
                 </p>
@@ -85,7 +88,7 @@ export class ErrorBoundary extends Component<Props, State> {
                     {this.state.errorInfo.componentStack}
                   </pre>
                 )}
-              </div>
+              </details>
             )}
 
             <div className="flex gap-3 justify-center">

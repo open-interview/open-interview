@@ -3,7 +3,7 @@
  * React hook for user level and XP tracking
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   UserLevel,
   LevelProgress,
@@ -50,6 +50,8 @@ export function useLevel() {
     return getStreakMultiplier(metrics.currentStreak);
   }, [metrics.currentStreak]);
 
+  const levelUpTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Award XP (with refresh and level-up detection)
   const addXP = useCallback((amount: number) => {
     awardXP(amount);
@@ -58,10 +60,17 @@ export function useLevel() {
       if (newMetrics.level > prev.level) {
         setPreviousLevel(prev.level);
         setShowLevelUp(true);
-        setTimeout(() => setShowLevelUp(false), 5000);
+        if (levelUpTimeoutRef.current) clearTimeout(levelUpTimeoutRef.current);
+        levelUpTimeoutRef.current = setTimeout(() => setShowLevelUp(false), 5000);
       }
       return newMetrics;
     });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (levelUpTimeoutRef.current) clearTimeout(levelUpTimeoutRef.current);
+    };
   }, []);
 
   // Dismiss level up notification

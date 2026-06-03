@@ -13,7 +13,7 @@ interface CreditsDisplayProps {
 }
 
 export function CreditsDisplay({ compact = false, onClick }: CreditsDisplayProps) {
-  const { balance, formatCredits } = useCredits();
+  const { state, formatCredits } = useCredits();
 
   if (compact) {
     return (
@@ -22,7 +22,7 @@ export function CreditsDisplay({ compact = false, onClick }: CreditsDisplayProps
         className="flex items-center gap-1 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full hover:bg-amber-500/20 transition-colors"
       >
         <Coins className="w-3.5 h-3.5 text-amber-500" />
-        <span className="text-xs font-bold text-amber-500">{formatCredits(balance)}</span>
+        <span className="text-xs font-bold text-amber-500">{formatCredits(state.balance)}</span>
       </button>
     );
   }
@@ -39,7 +39,7 @@ export function CreditsDisplay({ compact = false, onClick }: CreditsDisplayProps
       </div>
       <div className="text-left">
         <div className="text-xs text-muted-foreground">Credits</div>
-        <div className="text-sm font-bold text-amber-500">{formatCredits(balance)}</div>
+        <div className="text-sm font-bold text-amber-500">{formatCredits(state.balance)}</div>
       </div>
     </motion.button>
   );

@@ -72,7 +72,7 @@ function CodeBlock({ code, language }: { code: string; language?: string }) {
     <div className="relative group my-6 rounded-xl overflow-hidden border border-slate-700/60 bg-[#0d1117] shadow-lg">
       <div className="flex items-center justify-between px-4 py-2.5 bg-[#161b22] border-b border-slate-700/60">
         <span className="text-xs text-slate-400 font-mono select-none tracking-wide">{language || "code"}</span>
-        <button onClick={copy}
+        <button type="button" onClick={copy}
           className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors rounded px-2 py-1 hover:bg-slate-700/50"
           aria-label="Copy code">
           {copied

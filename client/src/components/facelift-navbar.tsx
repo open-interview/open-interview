@@ -240,7 +240,7 @@ function Logo({ onHome }: { onHome: () => void }) {
           </span>
         </div>
         <div className="text-[10px] text-muted-foreground leading-none mt-0.5 -tracking-wide">
-          Engineering Knowledge Hub
+          Ace your next tech interview
         </div>
       </div>
     </motion.button>
@@ -280,7 +280,7 @@ function DesktopNav({
             onMouseEnter={() => setHoveredLink(link.id)}
             onMouseLeave={() => setHoveredLink(null)}
             className={cn(
-              'relative flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+              'relative flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2',
               isActive
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'

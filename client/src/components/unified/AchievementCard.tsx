@@ -96,7 +96,7 @@ export function AchievementCard({
             cy={s.ring / 2}
             r={radius}
             fill="none"
-            stroke={isUnlocked ? tierColor : 'hsl(var(--muted-foreground))'}
+            stroke={isUnlocked ? tierColor : 'var(--muted-foreground)'}
             strokeWidth={s.stroke}
             strokeLinecap="round"
             strokeDasharray={circumference}

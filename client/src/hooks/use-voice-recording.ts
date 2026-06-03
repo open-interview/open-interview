@@ -152,6 +152,7 @@ export function useVoiceRecording(options: VoiceRecordingOptions = {}): VoiceRec
     recognitionRef.current = recognition;
 
     return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();

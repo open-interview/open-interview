@@ -53,7 +53,7 @@ export function MobileHeader({
   showSearch = true,
 }: MobileHeaderProps) {
   const [location, setLocation] = useLocation();
-  const { balance, formatCredits } = useCredits();
+  const { state, formatCredits } = useCredits();
   const [scrolled, setScrolled] = useState(false);
   const isNested = useIsNestedRoute();
   const shouldShowBack = showBack ?? isNested;
@@ -125,7 +125,7 @@ export function MobileHeader({
             className="flex items-center gap-1 px-2 py-1.5 bg-amber-500/15 border border-amber-500/30 rounded-lg"
           >
             <Coins className="w-3.5 h-3.5 text-amber-400" strokeWidth={2.5} />
-            <span className="text-xs font-bold text-amber-400">{formatCredits(balance)}</span>
+            <span className="text-xs font-bold text-amber-400">{formatCredits(state.balance)}</span>
           </button>
 
           {showSearch && (

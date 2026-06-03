@@ -10,7 +10,7 @@ import { blogQuizzes } from "@/data/blog-quizzes";
 import { measureBlogPostLoad } from "@/lib/performance";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { ArrowLeft, ArrowRight, Twitter, Linkedin, Link2, Check, Calendar, Clock, List, Share2, BookmarkPlus, ThumbsUp, ImageIcon, Printer } from "lucide-react";
+import { ArrowLeft, ArrowRight, Twitter, Linkedin, Link2, Check, Calendar, Clock, List, Share2, BookmarkPlus, ThumbsUp, ImageIcon, Printer, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ImageWithFallback } from "@/components/blog/ImageWithFallback";
 import { AuthorCard } from "@/components/blog/AuthorCard";
@@ -256,15 +256,27 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
     </div>
   );
 
-  const sidebar = (
+  const sidebar = toc ? (
     <div className="flex flex-col gap-6">
       {toc}
       {shareSidebar}
     </div>
-  );
+  ) : shareSidebar;
 
   return (
     <BlogLayout>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setLocation('/')}
+          className="gap-1.5 text-muted-foreground hover:text-foreground"
+        >
+          <Home size={16} />
+          Back to App
+        </Button>
+      </div>
+
       <ReadingProgressBar />
 
       {/* Cover image with gradient overlay */}
@@ -407,7 +419,7 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
         <article
           ref={articleRef}
           className="blog-article min-w-0"
-          style={{ maxWidth: "68ch" }}
+          style={{ maxWidth: "65ch" }}
         >
           <Suspense fallback={
             <div className="animate-pulse space-y-3">
@@ -451,7 +463,7 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
             {prevPost ? (
               <Link
                 href={`/blog/${prevPost.slug}`}
-                className="flex-1 flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-5 py-4 text-sm hover:border-[var(--color-accent)] hover:shadow-md transition-all group"
+                className="flex-1 flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-5 py-4 text-sm hover:border-[var(--color-accent)] hover:shadow-md transition-[color,background-color,border-color,box-shadow] group"
               >
                 <ArrowLeft size={16} strokeWidth={1.5} className="shrink-0 text-[var(--color-ink-muted)] group-hover:text-[var(--color-accent)] transition-colors" />
                 <div className="min-w-0">
@@ -463,7 +475,7 @@ export default function PostFaceliftPage({ slug }: PostFaceliftPageProps) {
             {nextPost ? (
               <Link
                 href={`/blog/${nextPost.slug}`}
-                className="flex-1 flex items-center justify-end gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-5 py-4 text-sm hover:border-[var(--color-accent)] hover:shadow-md transition-all group text-right"
+                className="flex-1 flex items-center justify-end gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-5 py-4 text-sm hover:border-[var(--color-accent)] hover:shadow-md transition-[color,background-color,border-color,box-shadow] group text-right"
               >
                 <div className="min-w-0">
                   <p className="text-[var(--color-ink-muted)] text-xs mb-0.5">Next</p>

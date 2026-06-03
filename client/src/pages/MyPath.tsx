@@ -331,26 +331,30 @@ export default function MyPath() {
                   </div>
                   
                   {/* Path Name Input */}
+                  <label htmlFor="path-name-input" className="block text-sm font-semibold text-foreground mb-2">Path name</label>
                   <input
+                    id="path-name-input"
                     type="text"
                     placeholder="Path Name"
                     value={editForm.name}
                     onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-6 py-4 bg-muted/50 border border-border rounded-[16px] text-xl focus:outline-none focus:border-primary transition-all"
+                    className="w-full px-6 py-4 bg-muted/50 border border-border rounded-[16px] text-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-primary transition-all"
                   />
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-8 space-y-8">
                   {/* Search */}
+                  <label htmlFor="search-paths-input" className="sr-only">Search paths</label>
                   <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <input
+                      id="search-paths-input"
                       type="text"
                       placeholder="Search channels and certifications..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 bg-muted/50 border border-border rounded-[12px] focus:outline-none focus:border-primary transition-all"
+                      className="w-full pl-12 pr-4 py-3 bg-muted/50 border border-border rounded-[12px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-primary transition-all"
                     />
                   </div>
 
@@ -557,10 +561,10 @@ export default function MyPath() {
                           >
                             {isActive ? 'Deactivate' : 'Activate'}
                           </button>
-                          <button onClick={() => openEditModal(path)} className="px-4 py-3 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-[16px] transition-all" title="Edit path">
+                          <button onClick={() => openEditModal(path)} aria-label="Edit path" className="px-4 py-3 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-[16px] transition-all" title="Edit path">
                             <Edit className="w-5 h-5 text-blue-400" />
                           </button>
-                          <button onClick={() => deletePath(path.id)} className="px-4 py-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-[16px] transition-all" title="Delete path">
+                          <button onClick={() => deletePath(path.id)} aria-label="Delete path" className="px-4 py-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-[16px] transition-all" title="Delete path">
                             <Trash2 className="w-5 h-5 text-red-500" />
                           </button>
                         </div>

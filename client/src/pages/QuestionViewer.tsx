@@ -521,7 +521,7 @@ function FilterSelect({ label, value, onChange, children }: { label: string; val
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
       <div className="relative">
         <select value={value} onChange={e => onChange(e.target.value)}
-          className="appearance-none bg-background border border-border rounded-lg px-3 py-1.5 pr-7 min-h-[44px] text-sm focus:outline-none focus:border-primary transition-colors duration-150 ease-out cursor-pointer">
+          className="appearance-none bg-background border border-border rounded-lg px-3 py-1.5 pr-7 min-h-[44px] text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-primary transition-colors duration-150 ease-out cursor-pointer">
           {children}
         </select>
         <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />

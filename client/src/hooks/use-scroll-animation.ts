@@ -12,6 +12,7 @@ export function useScrollAnimation<T extends Element = HTMLDivElement>(
   const { threshold = 0.1, delay = 0, direction = "up" } = options;
   const ref = useRef<T>(null);
   const [inView, setInView] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const prefersReduced =
     typeof window !== "undefined" &&
@@ -30,7 +31,7 @@ export function useScrollAnimation<T extends Element = HTMLDivElement>(
       ([entry]) => {
         if (entry.isIntersecting) {
           if (delay) {
-            setTimeout(() => setInView(true), delay);
+            timeoutRef.current = setTimeout(() => setInView(true), delay);
           } else {
             setInView(true);
           }
@@ -41,7 +42,10 @@ export function useScrollAnimation<T extends Element = HTMLDivElement>(
     );
 
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
   }, [threshold, delay, prefersReduced]);
 
   const translate = {

@@ -289,7 +289,7 @@ export default function UnifiedLearningPaths() {
   };
 
   const personalized = isPersonalized(onboardingComplete, subscribedChannels);
-  const defaultTab = location.startsWith('/my-path') ? 'all' : personalized ? 'for-you' : 'all';
+  const defaultTab = personalized ? 'for-you' : 'curated';
   const [view, setView] = useState<'all' | 'custom' | 'curated' | 'for-you'>(defaultTab as any);
   const [customPaths, setCustomPaths] = useState<CustomPath[]>([]);
   const [certifications, setCertifications] = useState<Certification[]>([]);
@@ -716,7 +716,7 @@ export default function UnifiedLearningPaths() {
                 <div className="flex flex-col sm:flex-row gap-3 mb-6">
                   <SearchBar value={curatedSearchQuery} onChange={setCuratedSearchQuery} placeholder="Search paths…" className="flex-1" />
                   <select value={filterDifficulty} onChange={e => setFilterDifficulty(e.target.value)}
-                    className="px-3 py-2.5 rounded-xl text-sm focus:outline-none cursor-pointer min-h-[44px]"
+                    className="px-3 py-2.5 rounded-xl text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer min-h-[44px]"
                     style={{ background: 'var(--surface-3)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}>
                     <option value="">All Levels</option>
                     <option value="Beginner">Beginner</option>
@@ -724,7 +724,7 @@ export default function UnifiedLearningPaths() {
                     <option value="Advanced">Advanced</option>
                   </select>
                   <select value={filterRole} onChange={e => setFilterRole(e.target.value)}
-                    className="px-3 py-2.5 rounded-xl text-sm focus:outline-none cursor-pointer min-h-[44px]"
+                    className="px-3 py-2.5 rounded-xl text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer min-h-[44px]"
                     style={{ background: 'var(--surface-3)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}>
                     <option value="">All Types</option>
                     <option value="job-title">Job Title</option>
@@ -784,7 +784,7 @@ export default function UnifiedLearningPaths() {
                     <input type="text" placeholder="Path name…"
                       value={modalMode === 'create' ? customForm.name : editForm.name}
                       onChange={(e) => modalMode === 'create' ? setCustomForm(p => ({ ...p, name: e.target.value })) : setEditForm(p => ({ ...p, name: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none transition-all"
+                      className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all"
                       style={{ background: 'var(--surface-3)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }} />
                   )}
                   {isReadonly && selectedPath && (
@@ -856,7 +856,7 @@ export default function UnifiedLearningPaths() {
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-tertiary)' }} />
                       <input type="text" placeholder={`Search ${modalTab}…`} value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                        className="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         style={{ background: 'var(--surface-3)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }} />
                     </div>
                   </div>

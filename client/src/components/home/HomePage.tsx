@@ -313,7 +313,7 @@ function MyTopicsFeed({ onNavigate }: { onNavigate: (path: string) => void }) {
 export function HomePage() {
   const [, setLocation] = useLocation();
   const { stats: activityStats } = useGlobalStats();
-  const { balance, level, streak: ctxStreak } = useCredits();
+  const { state, level, streak: ctxStreak } = useCredits();
   const prefersReducedMotion = useReducedMotion();
 
   const totalCompleted = ProgressStorage.getAllCompletedIds().size;
@@ -390,7 +390,7 @@ export function HomePage() {
   }, [activityStats, ctxStreak]);
 
   // ── XP / level ──
-  const xpInLevel = balance % 100;
+  const xpInLevel = state.balance % 100;
 
   // ── Resume state (continue widget) ──
   const resumeState = React.useMemo(() => {
@@ -494,7 +494,7 @@ export function HomePage() {
             </div>
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-500/15 border border-violet-500/25 shadow-clay-sm">
               <Sparkles className="w-4 h-4 text-violet-400" />
-              <span className="font-bold text-sm">{balance}</span>
+              <span className="font-bold text-sm">{state.balance}</span>
               <span className="text-[10px] text-muted-foreground">XP</span>
             </div>
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/25 shadow-clay-sm">

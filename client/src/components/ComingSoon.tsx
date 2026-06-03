@@ -16,8 +16,8 @@ const illustrations = {
     <svg viewBox="0 0 200 200" className="w-full h-full">
       <defs>
         <linearGradient id="robotGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.8" />
-          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.4" />
+          <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.8" />
+          <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.4" />
         </linearGradient>
       </defs>
       {/* Robot body */}
@@ -27,15 +27,15 @@ const illustrations = {
       {/* Eyes */}
       <circle cx="85" cy="58" r="8" fill="white" />
       <circle cx="115" cy="58" r="8" fill="white" />
-      <circle cx="85" cy="58" r="4" fill="hsl(var(--foreground))">
+      <circle cx="85" cy="58" r="4" fill="var(--foreground)">
         <animate attributeName="cx" values="83;87;83" dur="2s" repeatCount="indefinite" />
       </circle>
-      <circle cx="115" cy="58" r="4" fill="hsl(var(--foreground))">
+      <circle cx="115" cy="58" r="4" fill="var(--foreground)">
         <animate attributeName="cx" values="113;117;113" dur="2s" repeatCount="indefinite" />
       </circle>
       {/* Antenna */}
-      <line x1="100" y1="40" x2="100" y2="25" stroke="hsl(var(--primary))" strokeWidth="3" />
-      <circle cx="100" cy="20" r="6" fill="hsl(var(--primary))">
+      <line x1="100" y1="40" x2="100" y2="25" stroke="var(--primary)" strokeWidth="3" />
+      <circle cx="100" cy="20" r="6" fill="var(--primary)">
         <animate attributeName="opacity" values="1;0.3;1" dur="1s" repeatCount="indefinite" />
       </circle>
       {/* Arms */}
@@ -49,8 +49,8 @@ const illustrations = {
       <rect x="75" y="150" width="15" height="30" rx="5" fill="url(#robotGrad)" />
       <rect x="110" y="150" width="15" height="30" rx="5" fill="url(#robotGrad)" />
       {/* Screen on chest */}
-      <rect x="80" y="95" width="40" height="25" rx="3" fill="hsl(var(--background))" />
-      <text x="100" y="112" textAnchor="middle" fontSize="10" fill="hsl(var(--primary))" fontFamily="monospace">
+      <rect x="80" y="95" width="40" height="25" rx="3" fill="var(--background)" />
+      <text x="100" y="112" textAnchor="middle" fontSize="10" fill="var(--primary)" fontFamily="monospace">
         <tspan>{'</>'}
           <animate attributeName="opacity" values="1;0;1" dur="0.8s" repeatCount="indefinite" />
         </tspan>
@@ -68,7 +68,7 @@ const illustrations = {
         </linearGradient>
       </defs>
       {/* Cup */}
-      <path d="M50 80 L60 160 L140 160 L150 80 Z" fill="white" stroke="hsl(var(--border))" strokeWidth="2" />
+      <path d="M50 80 L60 160 L140 160 L150 80 Z" fill="white" stroke="var(--border)" strokeWidth="2" />
       {/* Coffee */}
       <path d="M55 90 L62 155 L138 155 L145 90 Z" fill="url(#coffeeGrad)">
         <animate attributeName="d" 
@@ -77,22 +77,22 @@ const illustrations = {
       </path>
       {/* Handle */}
       <path d="M150 95 Q175 95 175 120 Q175 145 150 145" fill="none" stroke="white" strokeWidth="8" />
-      <path d="M150 100 Q170 100 170 120 Q170 140 150 140" fill="none" stroke="hsl(var(--border))" strokeWidth="2" />
+      <path d="M150 100 Q170 100 170 120 Q170 140 150 140" fill="none" stroke="var(--border)" strokeWidth="2" />
       {/* Steam */}
-      <path d="M75 75 Q80 60 75 45" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="2" strokeLinecap="round" opacity="0.6">
+      <path d="M75 75 Q80 60 75 45" fill="none" stroke="var(--muted-foreground)" strokeWidth="2" strokeLinecap="round" opacity="0.6">
         <animate attributeName="d" values="M75 75 Q80 60 75 45;M75 75 Q70 60 75 45;M75 75 Q80 60 75 45" dur="2s" repeatCount="indefinite" />
         <animate attributeName="opacity" values="0.6;0.2;0.6" dur="2s" repeatCount="indefinite" />
       </path>
-      <path d="M100 70 Q105 50 100 35" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="2" strokeLinecap="round" opacity="0.6">
+      <path d="M100 70 Q105 50 100 35" fill="none" stroke="var(--muted-foreground)" strokeWidth="2" strokeLinecap="round" opacity="0.6">
         <animate attributeName="d" values="M100 70 Q105 50 100 35;M100 70 Q95 50 100 35;M100 70 Q105 50 100 35" dur="2.5s" repeatCount="indefinite" />
         <animate attributeName="opacity" values="0.6;0.2;0.6" dur="2.5s" repeatCount="indefinite" />
       </path>
-      <path d="M125 75 Q130 55 125 40" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="2" strokeLinecap="round" opacity="0.6">
+      <path d="M125 75 Q130 55 125 40" fill="none" stroke="var(--muted-foreground)" strokeWidth="2" strokeLinecap="round" opacity="0.6">
         <animate attributeName="d" values="M125 75 Q130 55 125 40;M125 75 Q120 55 125 40;M125 75 Q130 55 125 40" dur="1.8s" repeatCount="indefinite" />
         <animate attributeName="opacity" values="0.6;0.2;0.6" dur="1.8s" repeatCount="indefinite" />
       </path>
       {/* Saucer */}
-      <ellipse cx="100" cy="165" rx="60" ry="10" fill="hsl(var(--muted))" />
+      <ellipse cx="100" cy="165" rx="60" ry="10" fill="var(--muted)" />
     </svg>
   ),
 
@@ -101,12 +101,12 @@ const illustrations = {
     <svg viewBox="0 0 200 200" className="w-full h-full">
       <defs>
         <linearGradient id="brickGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.6" />
+          <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.6" />
         </linearGradient>
       </defs>
       {/* Ground */}
-      <rect x="20" y="160" width="160" height="20" fill="hsl(var(--muted))" rx="2" />
+      <rect x="20" y="160" width="160" height="20" fill="var(--muted)" rx="2" />
       {/* Bricks stacked */}
       <g>
         <rect x="40" y="140" width="40" height="20" fill="url(#brickGrad)" rx="2" />
@@ -117,10 +117,10 @@ const illustrations = {
         <rect x="80" y="100" width="40" height="20" fill="url(#brickGrad)" rx="2" />
       </g>
       {/* Crane */}
-      <rect x="155" y="60" width="8" height="100" fill="hsl(var(--muted-foreground))" />
-      <rect x="100" y="55" width="70" height="8" fill="hsl(var(--muted-foreground))" />
+      <rect x="155" y="60" width="8" height="100" fill="var(--muted-foreground)" />
+      <rect x="100" y="55" width="70" height="8" fill="var(--muted-foreground)" />
       {/* Crane hook with brick */}
-      <line x1="120" y1="63" x2="120" y2="85" stroke="hsl(var(--muted-foreground))" strokeWidth="2" />
+      <line x1="120" y1="63" x2="120" y2="85" stroke="var(--muted-foreground)" strokeWidth="2" />
       <rect x="105" y="85" width="30" height="15" fill="url(#brickGrad)" rx="2">
         <animateTransform attributeName="transform" type="translate" values="0 0;0 -20;0 0" dur="2s" repeatCount="indefinite" />
       </rect>
@@ -129,9 +129,9 @@ const illustrations = {
       <path d="M30 75 Q30 60 50 55 Q70 60 70 75" fill="#FFD700" />
       {/* Worker face */}
       <circle cx="50" cy="90" r="12" fill="#FFDAB9" />
-      <circle cx="46" cy="88" r="2" fill="hsl(var(--foreground))" />
-      <circle cx="54" cy="88" r="2" fill="hsl(var(--foreground))" />
-      <path d="M46 95 Q50 98 54 95" fill="none" stroke="hsl(var(--foreground))" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="46" cy="88" r="2" fill="var(--foreground)" />
+      <circle cx="54" cy="88" r="2" fill="var(--foreground)" />
+      <path d="M46 95 Q50 98 54 95" fill="none" stroke="var(--foreground)" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   ),
 
@@ -140,8 +140,8 @@ const illustrations = {
     <svg viewBox="0 0 200 200" className="w-full h-full">
       <defs>
         <linearGradient id="rocketGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="hsl(var(--primary))" />
-          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.7" />
+          <stop offset="0%" stopColor="var(--primary)" />
+          <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.7" />
         </linearGradient>
         <linearGradient id="flameGrad" x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#FF6B35" />
@@ -155,13 +155,13 @@ const illustrations = {
         {/* Main body */}
         <path d="M100 30 Q85 50 85 100 L115 100 Q115 50 100 30" fill="url(#rocketGrad)" />
         {/* Window */}
-        <circle cx="100" cy="65" r="12" fill="hsl(var(--background))" stroke="hsl(var(--border))" strokeWidth="2" />
+        <circle cx="100" cy="65" r="12" fill="var(--background)" stroke="var(--border)" strokeWidth="2" />
         <circle cx="100" cy="65" r="8" fill="#87CEEB" />
         {/* Fins */}
         <path d="M85 85 L65 110 L85 100 Z" fill="url(#rocketGrad)" />
         <path d="M115 85 L135 110 L115 100 Z" fill="url(#rocketGrad)" />
         {/* Bottom */}
-        <rect x="85" y="100" width="30" height="15" fill="hsl(var(--muted-foreground))" />
+        <rect x="85" y="100" width="30" height="15" fill="var(--muted-foreground)" />
         {/* Flame */}
         <path d="M90 115 Q100 150 110 115 Q105 140 100 160 Q95 140 90 115" fill="url(#flameGrad)">
           <animate attributeName="d" 
@@ -170,16 +170,16 @@ const illustrations = {
         </path>
       </g>
       {/* Stars */}
-      <circle cx="40" cy="50" r="2" fill="hsl(var(--muted-foreground))">
+      <circle cx="40" cy="50" r="2" fill="var(--muted-foreground)">
         <animate attributeName="opacity" values="1;0.3;1" dur="1.5s" repeatCount="indefinite" />
       </circle>
-      <circle cx="160" cy="70" r="2" fill="hsl(var(--muted-foreground))">
+      <circle cx="160" cy="70" r="2" fill="var(--muted-foreground)">
         <animate attributeName="opacity" values="0.3;1;0.3" dur="1.2s" repeatCount="indefinite" />
       </circle>
-      <circle cx="150" cy="40" r="1.5" fill="hsl(var(--muted-foreground))">
+      <circle cx="150" cy="40" r="1.5" fill="var(--muted-foreground)">
         <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite" />
       </circle>
-      <circle cx="50" cy="90" r="1.5" fill="hsl(var(--muted-foreground))">
+      <circle cx="50" cy="90" r="1.5" fill="var(--muted-foreground)">
         <animate attributeName="opacity" values="0.5;1;0.5" dur="1.8s" repeatCount="indefinite" />
       </circle>
     </svg>

@@ -4,7 +4,7 @@ import React from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ErrorBoundary, ComponentErrorBoundary } from "./components/ErrorBoundary";
 import { StagingBanner } from "./components/StagingBanner";
 import NotFound from "@/pages/not-found";
 import { InterviewLoader } from "@/components/ui/InterviewLoader";
@@ -40,7 +40,9 @@ const ManageSubscriptions = React.lazy(() => import("@/pages/ManageSubscriptions
 import { ThemeProvider } from "./context/ThemeContext";
 import { UserPreferencesProvider, useUserPreferences } from "./context/UserPreferencesContext";
 import { BadgeProvider } from "./context/BadgeContext";
+import { RewardProvider } from "./context/RewardContext";
 import { CreditsProvider, useCredits } from "./context/CreditsContext";
+import { SubscriptionGate } from "./components/SubscriptionGate";
 import { AchievementProvider, useAchievementContext } from "./context/AchievementContext";
 import { SidebarProvider } from "./context/SidebarContext";
 import { CreditSplash } from "./components/CreditsDisplay";
@@ -121,7 +123,6 @@ function useSearchParamRedirect() {
   return isRedirecting;
 }
 
-const StatsRedirect = React.lazy(() => import('@/pages/StatsRedirect'));
 const ChallengeHome = React.lazy(() => import('@/pages/ChallengeHome'));
 const ChallengeWorkspace = React.lazy(() => import('@/pages/ChallengeWorkspace'));
 
@@ -133,72 +134,77 @@ const BlogSearchPage = React.lazy(() => import('@/pages/blog/BlogSearchPage'));
 const AboutBlogPage = React.lazy(() => import('@/pages/blog/AboutBlogPage'));
 const AdminBlogPage = React.lazy(() => import('@/pages/admin/AdminBlogPage'));
 
+// Blog route wrapper components for Suspense compatibility
+function BlogCategoryPage({ params }: { params: { slug: string } }) {
+  return <BlogListPage categorySlug={params.slug} />;
+}
+function BlogTagPage({ params }: { params: { tag: string } }) {
+  return <BlogListPage tag={params.tag} />;
+}
+function BlogPostPage({ params }: { params: { slug: string } }) {
+  return <PostFaceliftPage slug={params.slug} />;
+}
+
 function Router() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><InterviewLoader message="Loading..." showTip={false} /></div>}>
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/history" component={AnswerHistory} />
-        <Route path="/about" component={About} />
-        <Route path="/whats-new" component={WhatsNew} />
-        <Route path="/stats" component={StatsRedirect} />
-        <Route path="/badges" component={Badges} />
-        <Route path="/tests" component={Tests} />
-        <Route path="/test/:channelId" component={TestSession} />
-        <Route path="/coding" component={CodingChallenge} />
-        <Route path="/coding/:id" component={CodingChallenge} />
-        <Route path="/code" component={ChallengeHome} />
-        <Route path="/code/challenges"><Redirect to="/code" /></Route>
-        <Route path="/code/challenges/:id" component={ChallengeWorkspace} />
-        <Route path="/bot-activity" component={BotActivity} />
-        <Route path="/events" component={EventsDashboard} />
-        <Route path="/channels" component={Channels} />
-        <Route path="/questions">{() => { window.location.replace('/channels'); return null; }}</Route>
-        <Route path="/learning-paths">{() => { window.location.replace('/my-path'); return null; }}</Route>
-        <Route path="/my-path" component={MyPath} />
-        <Route path="/personalized-path" component={PersonalizedPath} />
-        <Route path="/profile" component={Profile} />
-        <Route path="/settings">{() => { window.location.replace('/profile'); return null; }}</Route>
-        <Route path="/notifications" component={Notifications} />
-        <Route path="/bookmarks" component={Bookmarks} />
-        <Route path="/review" component={ReviewSession} />
-        <Route path="/flashcards" component={Flashcards} />
-        <Route path="/voice-interview" component={VoicePractice} />
-        <Route path="/training">{() => { window.location.replace('/voice-interview'); return null; }}</Route>
-        <Route path="/voice-session" component={VoiceSession} />
-        <Route path="/voice-session/:questionId" component={VoiceSession} />
-        <Route path="/admin/docs" component={Documentation} />
-        <Route path="/docs">{() => { window.location.replace('/admin/docs'); return null; }}</Route>
-        <Route path="/certifications" component={Certifications} />
-        <Route path="/manage-subscriptions" component={ManageSubscriptions} />
-        <Route path="/certification/:id" component={CertificationPractice} />
-        <Route path="/certification/:id/exam" component={CertificationExam} />
-        <Route path="/certification/:id/:questionIndex" component={CertificationPractice} />
-        <Route path="/channel/:id" component={QuestionViewer} />
-        <Route path="/channel/:id/:index" component={QuestionViewer} />
-        {/* Blog routes */}
-        <Route path="/blog" component={BlogHomePage} />
-        <Route path="/blog/search" component={BlogSearchPage} />
-        <Route path="/blog/category/:slug">{(params) => (
-          <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><InterviewLoader message="Loading..." showTip={false} /></div>}>
-            <BlogListPage categorySlug={params.slug} />
-          </Suspense>
-        )}</Route>
-        <Route path="/blog/tag/:tag">{(params) => (
-          <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><InterviewLoader message="Loading..." showTip={false} /></div>}>
-            <BlogListPage tag={params.tag} />
-          </Suspense>
-        )}</Route>
-        <Route path="/blog/:slug">{(params) => (
-          <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><InterviewLoader message="Loading..." showTip={false} /></div>}>
-            <PostFaceliftPage slug={params.slug} />
-          </Suspense>
-        )}</Route>
-        <Route path="/about-blog" component={AboutBlogPage} />
-        <Route path="/admin/blog" component={AdminBlogPage} />
-        <Route component={NotFound} />
-      </Switch>
-    </Suspense>
+    <ComponentErrorBoundary fallbackMessage="Failed to load page">
+      <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><InterviewLoader message="Loading..." showTip={false} /></div>}>
+        <Switch>
+          <Route path="/" component={Home} />
+          <Route path="/history" component={AnswerHistory} />
+          <Route path="/about" component={About} />
+          <Route path="/whats-new" component={WhatsNew} />
+          <Route path="/stats"><Redirect to="/profile" /></Route>
+          <Route path="/badges" component={Badges} />
+          <Route path="/tests" component={Tests} />
+          <Route path="/test/:channelId" component={TestSession} />
+          <Route path="/coding" component={CodingChallenge} />
+          <Route path="/coding/:id" component={CodingChallenge} />
+          <Route path="/code" component={ChallengeHome} />
+          <Route path="/code/challenges"><Redirect to="/code" /></Route>
+          <Route path="/code/challenges/:id" component={ChallengeWorkspace} />
+          <Route path="/bot-activity" component={BotActivity} />
+          <Route path="/events" component={EventsDashboard} />
+          <Route path="/channels" component={Channels} />
+          <Route path="/questions"><Redirect to="/channels" /></Route>
+          <Route path="/learning-paths"><Redirect to="/my-path" /></Route>
+          <Route path="/my-path" component={MyPath} />
+          <Route path="/personalized-path" component={PersonalizedPath} />
+          <Route path="/profile" component={Profile} />
+          <Route path="/settings"><Redirect to="/profile" /></Route>
+          <Route path="/notifications" component={Notifications} />
+          <Route path="/bookmarks" component={Bookmarks} />
+          <Route path="/review">
+            <ErrorBoundary>
+              <ReviewSession />
+            </ErrorBoundary>
+          </Route>
+          <Route path="/flashcards" component={Flashcards} />
+          <Route path="/voice-interview" component={VoicePractice} />
+          <Route path="/training"><Redirect to="/voice-interview" /></Route>
+          <Route path="/voice-session" component={VoiceSession} />
+          <Route path="/voice-session/:questionId" component={VoiceSession} />
+          <Route path="/admin/docs" component={Documentation} />
+          <Route path="/docs">{() => { window.location.replace('/admin/docs'); return null; }}</Route>
+          <Route path="/certifications" component={Certifications} />
+          <Route path="/manage-subscriptions" component={ManageSubscriptions} />
+          <Route path="/certification/:id" component={CertificationPractice} />
+          <Route path="/certification/:id/exam" component={CertificationExam} />
+          <Route path="/certification/:id/:questionIndex" component={CertificationPractice} />
+          <Route path="/channel/:id" component={QuestionViewer} />
+          <Route path="/channel/:id/:index" component={QuestionViewer} />
+          {/* Blog routes */}
+          <Route path="/blog" component={BlogHomePage} />
+          <Route path="/blog/search" component={BlogSearchPage} />
+          <Route path="/blog/category/:slug">{(params) => <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><InterviewLoader message="Loading..." showTip={false} /></div>}><BlogCategoryPage params={params} /></Suspense>}</Route>
+          <Route path="/blog/tag/:tag">{(params) => <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><InterviewLoader message="Loading..." showTip={false} /></div>}><BlogTagPage params={params} /></Suspense>}</Route>
+          <Route path="/blog/:slug">{(params) => <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><InterviewLoader message="Loading..." showTip={false} /></div>}><BlogPostPage params={params} /></Suspense>}</Route>
+          <Route path="/about-blog" component={AboutBlogPage} />
+          <Route path="/admin/blog" component={AdminBlogPage} />
+          <Route component={NotFound} />
+        </Switch>
+      </Suspense>
+    </ComponentErrorBoundary>
   );
 }
 
@@ -235,13 +241,13 @@ function AppContent() {
   }
 
   return (
-    <>
+    <main id="main-content">
       <PageTransition locationKey={location}>
         <Router />
       </PageTransition>
       <GlobalCreditSplash />
       <AchievementNotificationManager />
-    </>
+    </main>
   );
 }
 
@@ -260,8 +266,12 @@ function GlobalCreditSplash() {
 function App() {
   return (
     <ErrorBoundary>
+      <a href="#main-content" className="skip-to-content">
+        Skip to content
+      </a>
       <ThemeProvider>
         <UserPreferencesProvider>
+          <RewardProvider>
           <SidebarProvider>
             <QueryClientProvider client={queryClient}>
               <TooltipProvider>
@@ -270,7 +280,9 @@ function App() {
                     <AchievementProvider>
                       <UnifiedNotificationProvider>
                         <StagingBanner />
-                        <AppContent />
+                        <SubscriptionGate>
+                          <AppContent />
+                        </SubscriptionGate>
                       </UnifiedNotificationProvider>
                     </AchievementProvider>
                   </CreditsProvider>
@@ -278,6 +290,7 @@ function App() {
               </TooltipProvider>
             </QueryClientProvider>
           </SidebarProvider>
+          </RewardProvider>
         </UserPreferencesProvider>
       </ThemeProvider>
     </ErrorBoundary>

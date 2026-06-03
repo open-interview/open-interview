@@ -115,7 +115,7 @@ export function TopicCard({ topic, className, index = 0 }: TopicCardProps) {
   const content = (
     <div
       className={cn(
-        'group relative flex flex-col overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br p-5 transition-all duration-300',
+        'group relative flex flex-col overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br p-5 transition-colors duration-300',
         gradient,
         className,
       )}

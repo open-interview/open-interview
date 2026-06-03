@@ -17,7 +17,7 @@ import {
   calculateXP, addXP,
   type ReviewCard, type ConfidenceRating 
 } from '../lib/spaced-repetition';
-import { getQuestionById } from '../lib/questions-loader';
+import { getQuestionById, getQuestionByIdAsync } from '../lib/questions-loader';
 import { useCredits } from '../context/CreditsContext';
 import { useAchievementContext } from '../context/AchievementContext';
 import type { Question } from '../types';
@@ -68,6 +68,13 @@ export default function ReviewSessionOptimized() {
   const { onSRSReview } = useCredits();
   const { trackEvent } = useAchievementContext();
 
+  // Safety timeout: force session out of loading after 5s
+  useEffect(() => {
+    if (sessionState !== 'loading') return;
+    const timer = setTimeout(() => setSessionState('completed'), 5000);
+    return () => clearTimeout(timer);
+  }, [sessionState]);
+
   // Haptic feedback
   const triggerHaptic = useCallback((type: 'light' | 'medium' | 'heavy' = 'light') => {
     if ('vibrate' in navigator) {
@@ -95,6 +102,17 @@ export default function ReviewSessionOptimized() {
       setCurrentCard(card);
       setSessionState('reviewing');
       setShowAnswer(false);
+    } else {
+      getQuestionByIdAsync(card.questionId).then(question => {
+        if (question) {
+          setCurrentQuestion(question);
+          setCurrentCard(card);
+          setSessionState('reviewing');
+          setShowAnswer(false);
+        } else {
+          setSessionState('completed');
+        }
+      });
     }
   }, []);
 

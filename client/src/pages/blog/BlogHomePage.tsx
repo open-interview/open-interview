@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { getFeaturedPosts, getPosts, getCategories } from "@/lib/blog-loader";
 import { useBlogSEO } from "@/hooks/use-blog-seo";
 import { BlogLayout } from "@/components/blog/BlogLayout";
@@ -9,7 +9,8 @@ import { StatGrid, StatCard, StatCardSkeleton, type StatCardData } from "@/compo
 import { TopicCard, TopicCardSkeleton, type TopicCardData } from "@/components/facelift/topic-card";
 import { motion } from "framer-motion";
 import { useReducedMotion, getSpringTransition } from "@/hooks/use-reduced-motion";
-import { BookOpen, Clock, TrendingUp, Filter, ChevronDown, Grid3x3, Loader2 } from "lucide-react";
+import { BookOpen, Clock, TrendingUp, Filter, ChevronDown, Grid3x3, Loader2, ArrowLeft } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/blog/EmptyState";
@@ -19,6 +20,7 @@ interface Category {
   name: string;
   slug: string;
   count?: number;
+  icon?: string;
 }
 
 function getDifficultyFromCategory(category: string): ArticleDifficulty {
@@ -51,14 +53,18 @@ const difficultyLabels: Record<ArticleDifficulty, string> = {
 };
 
 export default function BlogHomePage() {
+  const [, setLocation] = useLocation();
+  const search = useSearch();
+  const params = new URLSearchParams(search);
   const [featured, setFeatured] = useState<ArticleCardData[]>([]);
   const [recent, setRecent] = useState<ArticleCardData[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [stats, setStats] = useState<StatCardData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDifficulty, setSelectedDifficulty] = useState<ArticleDifficulty | 'all'>('all');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<ArticleDifficulty | 'all'>((params.get('difficulty') as ArticleDifficulty) || 'all');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(params.get('category') || null);
   const [displayCount, setDisplayCount] = useState(6);
+  const [loadingMore, setLoadingMore] = useState(false);
   const prefersReducedMotion = useReducedMotion();
   const spring = getSpringTransition(prefersReducedMotion);
 
@@ -105,8 +111,20 @@ export default function BlogHomePage() {
   }, []);
 
   const handleLoadMore = useCallback(() => {
+    if (loadingMore) return;
+    setLoadingMore(true);
     setDisplayCount((prev) => Math.min(prev + 6, filteredRecent.length));
-  }, [filteredRecent.length]);
+    requestAnimationFrame(() => setLoadingMore(false));
+  }, [filteredRecent.length, loadingMore]);
+
+  const updateUrlParams = useCallback((difficulty: ArticleDifficulty | 'all', category: string | null) => {
+    const sp = new URLSearchParams();
+    if (difficulty !== 'all') sp.set('difficulty', difficulty);
+    if (category) sp.set('category', category);
+    const qs = sp.toString();
+    setLocation(qs ? `/blog?${qs}` : '/blog', { replace: true });
+    setDisplayCount(6);
+  }, [setLocation]);
 
   return (
     <BlogLayout>
@@ -116,6 +134,19 @@ export default function BlogHomePage() {
       </div>
 
       <div className="relative z-10">
+        {/* Back to App */}
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocation('/')}
+            className="gap-1.5 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft size={16} />
+            Back to App
+          </Button>
+        </div>
+
         {/* Hero Section */}
         <motion.section
           initial={{ opacity: 0 }}
@@ -164,10 +195,7 @@ export default function BlogHomePage() {
               transition={{ ...spring, delay: prefersReducedMotion ? 0 : 0.4 }}
               className="mt-8 flex flex-wrap gap-4 justify-center"
             >
-              <Button asChild size="lg" className="text-white transition-all duration-200" style={{ background: 'var(--gradient-primary)' }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--gradient-primary-hover)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--gradient-primary)')}
-              >
+              <Button asChild size="lg" className="text-white transition-[opacity] duration-200 hover:opacity-90" style={{ background: 'var(--gradient-primary)' }}>
                 <Link href="/blog">
                   <span className="inline-flex items-center gap-2">Explore All Articles <Grid3x3 size={16} /></span>
                 </Link>
@@ -183,7 +211,20 @@ export default function BlogHomePage() {
 
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 space-y-16">
           {/* Stats Section */}
-          {!loading && stats.length > 0 && (
+          {loading ? (
+            <motion.section
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={spring}
+            >
+              <StatGrid columns={4}>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <StatCardSkeleton key={i} />
+                ))}
+              </StatGrid>
+            </motion.section>
+          ) : stats.length > 0 ? (
             <motion.section
               initial={{ opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -204,7 +245,7 @@ export default function BlogHomePage() {
                 ))}
               </StatGrid>
             </motion.section>
-          )}
+          ) : null}
 
           {/* Featured Article */}
           {(loading || featured.length > 0) && (
@@ -281,9 +322,8 @@ export default function BlogHomePage() {
             <Button
               variant={selectedDifficulty === 'all' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setSelectedDifficulty('all')}
-              className={selectedDifficulty === 'all' ? '' : ''}
-              style={selectedDifficulty === 'all' ? { background: 'var(--gradient-primary)', color: '#fff' } : undefined}
+              onClick={() => { setSelectedDifficulty('all'); updateUrlParams('all', selectedCategory); }}
+              className={selectedDifficulty === 'all' ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white' : ''}
               data-testid="button-filter-all"
             >
               All Levels
@@ -293,9 +333,8 @@ export default function BlogHomePage() {
                 key={level}
                 variant={selectedDifficulty === level ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setSelectedDifficulty(level)}
-                className={selectedDifficulty === level ? '' : ''}
-                style={selectedDifficulty === level ? { background: 'var(--gradient-primary)', color: '#fff' } : undefined}
+                onClick={() => { setSelectedDifficulty(level); updateUrlParams(level, selectedCategory); }}
+                className={selectedDifficulty === level ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white' : ''}
                 data-testid={`button-filter-${level}`}
               >
                 {difficultyLabels[level]}
@@ -306,17 +345,20 @@ export default function BlogHomePage() {
               <>
                 <div className="h-6 w-px bg-border mx-2" />
                 {categories.slice(0, 5).map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    aria-pressed={selectedCategory === cat.slug}
-                    className={`cursor-pointer rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors ${selectedCategory === cat.slug ? 'text-white border-transparent' : 'border-border/50 text-muted-foreground hover:text-foreground hover:border-primary/40'}`}
-                    style={selectedCategory === cat.slug ? { background: 'var(--gradient-primary)', border: 'none' } : { borderColor: 'rgba(124, 58, 237, 0.25)' }}
-                    onClick={() => setSelectedCategory(selectedCategory === cat.slug ? null : cat.slug)}
+                  <Button
+                    key={cat.slug}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const next = selectedCategory === cat.slug ? null : cat.slug;
+                      setSelectedCategory(next);
+                      updateUrlParams(selectedDifficulty, next);
+                    }}
+                    className={cn(selectedCategory === cat.slug ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white' : '')}
                     data-testid={`button-category-${cat.slug}`}
                   >
-                    {cat.name}
-                  </button>
+                    {cat.icon} {cat.name}
+                  </Button>
                 ))}
               </>
             )}
@@ -337,10 +379,7 @@ export default function BlogHomePage() {
                   ({filteredRecent.length})
                 </span>
               </h2>
-              <Link href="/blog" className="text-sm flex items-center gap-1 transition-colors" style={{ color: 'var(--brand-violet-400)' }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--brand-violet-300)')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--brand-violet-400)')}
-              >
+              <Link href="/blog" className="text-sm flex items-center gap-1 transition-colors hover:text-[var(--brand-violet-300)]" style={{ color: 'var(--brand-violet-400)' }}>
                 View all <ChevronDown size={14} className="rotate-[-90deg]" />
               </Link>
             </div>
@@ -356,7 +395,7 @@ export default function BlogHomePage() {
                 description="Try broadening your search to find what you're looking for."
                 action={{
                   label: "Reset to all articles",
-                  onClick: () => { setSelectedDifficulty('all'); setSelectedCategory(null); },
+                  onClick: () => { setSelectedDifficulty('all'); setSelectedCategory(null); updateUrlParams('all', null); },
                 }}
               />
             ) : (
@@ -393,12 +432,13 @@ export default function BlogHomePage() {
                       onClick={handleLoadMore}
                       variant="outline"
                       size="lg"
-                      className="transition-colors"
+                      disabled={loadingMore}
+                      className="transition-colors hover:bg-violet-500/20"
                     style={{ borderColor: 'rgba(124, 58, 237, 0.25)', background: 'rgba(124, 58, 237, 0.05)' }}
                       data-testid="button-load-more"
                     >
-                      <Loader2 size={16} className="mr-2" />
-                      Load More ({filteredRecent.length - displayCount} remaining)
+                      <Loader2 size={16} className={cn("mr-2", loadingMore && "animate-spin")} />
+                      {loadingMore ? "Loading..." : `Load More (${filteredRecent.length - displayCount} remaining)`}
                     </Button>
                   </motion.div>
                 )}

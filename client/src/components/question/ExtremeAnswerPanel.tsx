@@ -388,7 +388,7 @@ function ExpandableCard({
       <motion.button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors"
-        whileHover={{ backgroundColor: 'hsl(var(--muted) / 0.3)' }}
+        whileHover={{ backgroundColor: 'color-mix(in srgb, var(--muted) 30%, transparent)' }}
       >
         <div className="flex items-center gap-3">
           <span className={iconStyles[variant]}>{icon}</span>
@@ -587,8 +587,8 @@ export function ExtremeAnswerPanel({ question }: ExtremeAnswerPanelProps) {
                     className="px-3 py-1 bg-muted text-muted-foreground text-xs font-mono rounded-lg border border-border backdrop-blur-xl"
                     whileHover={{ 
                       scale: 1.05, 
-                      borderColor: 'hsl(var(--primary))',
-                      backgroundColor: 'hsl(var(--primary) / 0.1)'
+                      borderColor: 'var(--primary)',
+                      backgroundColor: 'color-mix(in srgb, var(--primary) 10%, transparent)'
                     }}
                   >
                     {formatTag(tag)}

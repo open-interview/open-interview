@@ -19,7 +19,8 @@ function getShownBadges(): string[] {
   try {
     const stored = localStorage.getItem(SHOWN_BADGES_KEY);
     return stored ? JSON.parse(stored) : [];
-  } catch {
+  } catch (e) {
+    console.warn('Corrupted data in localStorage key shown-badge-unlocks:', e);
     return [];
   }
 }
@@ -110,17 +111,22 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
     const allCompletedIds: string[] = [];
     const channelsWithProgress: string[] = [];
     
+    // TODO: Replace with reward system's progress tracking instead of scanning localStorage
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('progress-')) {
         const channelId = key.replace('progress-', '');
-        const completed = JSON.parse(localStorage.getItem(key) || '[]');
-        completed.forEach((id: string) => {
-          if (!allCompletedIds.includes(id)) {
-            allCompletedIds.push(id);
+        try {
+          const completed = JSON.parse(localStorage.getItem(key) || '[]');
+          completed.forEach((id: string) => {
+            if (!allCompletedIds.includes(id)) {
+              allCompletedIds.push(id);
+            }
+          });
+          if (completed.length > 0 && !channelsWithProgress.includes(channelId)) {
+            channelsWithProgress.push(channelId);
           }
-        });
-        if (completed.length > 0 && !channelsWithProgress.includes(channelId)) {
-          channelsWithProgress.push(channelId);
+        } catch (e) {
+          console.warn('Corrupted data in localStorage key ' + key + ':', e);
         }
       }
     });
@@ -157,13 +163,18 @@ export function BadgeProvider({ children }: { children: ReactNode }) {
       channelQuestionCounts[q.channel] = (channelQuestionCounts[q.channel] || 0) + 1;
     });
 
+    // TODO: Replace with reward system's progress tracking instead of scanning localStorage
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('progress-')) {
         const channelId = key.replace('progress-', '');
-        const completed = JSON.parse(localStorage.getItem(key) || '[]');
-        const total = channelQuestionCounts[channelId] || 0;
-        if (total > 0) {
-          channelCompletionPcts.push(Math.round((completed.length / total) * 100));
+        try {
+          const completed = JSON.parse(localStorage.getItem(key) || '[]');
+          const total = channelQuestionCounts[channelId] || 0;
+          if (total > 0) {
+            channelCompletionPcts.push(Math.round((completed.length / total) * 100));
+          }
+        } catch (e) {
+          console.warn('Corrupted data in localStorage key ' + key + ':', e);
         }
       }
     });

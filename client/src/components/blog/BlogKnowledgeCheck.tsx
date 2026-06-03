@@ -55,7 +55,7 @@ export function BlogKnowledgeCheck({ questions }: BlogKnowledgeCheckProps) {
             {recalledCount} / {questions.length}
           </span>
           {answeredCount > 0 && (
-            <button
+            <button type="button"
               onClick={reset}
               className={`cursor-pointer flex items-center gap-1 text-xs text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] ${colorTransitionClass} rounded-lg px-2 py-1 ${focusRing}`}
               aria-label="Reset quiz"
@@ -120,7 +120,7 @@ export function BlogKnowledgeCheck({ questions }: BlogKnowledgeCheckProps) {
               />
 
               <div className="flex flex-wrap items-center gap-2">
-                <button
+                <button type="button"
                   onClick={() => setHints(prev => ({ ...prev, [q.id]: !prev[q.id] }))}
                   className={`cursor-pointer flex items-center gap-1.5 text-xs font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] border border-[var(--color-border)] rounded-lg px-3 py-1.5 ${colorTransitionClass} ${focusRing}`}
                   aria-expanded={hints[q.id] ?? false}
@@ -134,14 +134,14 @@ export function BlogKnowledgeCheck({ questions }: BlogKnowledgeCheckProps) {
 
                 {!isDone && (
                   <>
-                    <button
+                    <button type="button"
                       onClick={() => setRecalled(prev => ({ ...prev, [q.id]: true }))}
                       className={`cursor-pointer flex items-center gap-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg px-3 py-1.5 ${colorTransitionClass} ${focusRing}`}
                       aria-label={`Question ${idx + 1}: Mark as recalled`}
                     >
                       <Check className="w-3.5 h-3.5" aria-hidden="true" /> Got it
                     </button>
-                    <button
+                    <button type="button"
                       onClick={() => setSkipped(prev => ({ ...prev, [q.id]: true }))}
                       className={`cursor-pointer flex items-center gap-1.5 text-xs font-medium text-[var(--color-ink-muted)] hover:text-red-500 border border-[var(--color-border)] rounded-lg px-3 py-1.5 ${colorTransitionClass} ${focusRing}`}
                       aria-label={`Question ${idx + 1}: Mark as missed`}
@@ -196,7 +196,7 @@ export function BlogKnowledgeCheck({ questions }: BlogKnowledgeCheckProps) {
             <p className="text-xs text-[var(--color-ink-muted)] mt-1">
               {scorePercent === 100 ? 'Perfect! You\'ve mastered this topic.' : scorePercent >= 60 ? 'Solid foundation — review the missed questions to lock it in.' : 'Keep at it — each attempt strengthens your recall.'}
             </p>
-            <button
+            <button type="button"
               onClick={reset}
               className={`cursor-pointer mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[var(--color-accent)] rounded-lg px-4 py-2 hover:opacity-90 ${opacityTransitionClass} ${focusRing}`}
               aria-label="Reset quiz and try again"

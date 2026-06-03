@@ -36,6 +36,10 @@ function formatTimeAgo(dateStr: string): string {
 
 export default function AdminBlogPage() {
   const [, setLocation] = useLocation();
+  if (localStorage.getItem('admin_mode') !== 'true') {
+    setLocation('/');
+    return null;
+  }
   const [posts, setPosts] = useState<BlogPostRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

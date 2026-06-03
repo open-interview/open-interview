@@ -548,8 +548,7 @@ function AuditTable({ events }: { events: Event[] }) {
 
 export default function EventsDashboard() {
   const [, setLocation] = useLocation();
-  const isAdmin = localStorage.getItem('admin') === 'true' || window.location.search.includes('admin=true');
-  if (!isAdmin) {
+  if (localStorage.getItem('admin_mode') !== 'true') {
     setLocation('/');
     return null;
   }
@@ -722,22 +721,22 @@ export default function EventsDashboard() {
             <p className="text-xs text-muted-foreground mb-4">Daily event count by outcome</p>
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={chartData} barSize={6} barGap={1}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
                   axisLine={false}
                   tickLine={false}
                   interval="preserveStartEnd"
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
                   axisLine={false}
                   tickLine={false}
                   width={24}
                   allowDecimals={false}
                 />
-                <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted)/0.3)" }} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: "color-mix(in srgb, var(--muted) 30%, transparent)" }} />
                 <Bar dataKey="success" name="Success" fill="#34d399" radius={[2, 2, 0, 0]} />
                 <Bar dataKey="failed" name="Failed" fill="#f87171" radius={[2, 2, 0, 0]} />
               </BarChart>

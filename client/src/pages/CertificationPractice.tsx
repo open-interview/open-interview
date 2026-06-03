@@ -77,7 +77,7 @@ export default function CertificationPractice() {
   const [expandedResults, setExpandedResults] = useState<Set<number>>(new Set());
 
   const { toast } = useUnifiedToast();
-  const { onQuestionSwipe, onQuestionView, balance, formatCredits, refreshBalance } = useCredits();
+  const { onQuestionSwipe, onQuestionView, state, formatCredits, refreshBalance } = useCredits();
 
   const progressKey = `cert-progress-${certificationId}`;
   const checkpointsKey = `cert-checkpoints-${certificationId}`;
@@ -694,7 +694,7 @@ export default function CertificationPractice() {
               </p>
               <div className="flex items-center justify-center gap-2 mb-4 p-2 bg-muted/50 rounded-lg text-sm">
                 <Coins className="w-4 h-4 text-amber-500" />
-                <span>Balance: <b>{formatCredits(balance)}</b></span>
+                <span>Balance: <b>{formatCredits(state.balance)}</b></span>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setShowSkipConfirm(false)} className="flex-1 min-h-[44px] py-2.5 bg-muted rounded-xl font-medium cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80">
@@ -702,7 +702,7 @@ export default function CertificationPractice() {
                 </button>
                 <button
                   onClick={skipTestWithPenalty}
-                  disabled={balance < SKIP_TEST_PENALTY}
+                  disabled={state.balance < SKIP_TEST_PENALTY}
                   className="flex-1 min-h-[44px] py-2.5 bg-red-500 text-foreground rounded-xl font-medium disabled:opacity-50 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90 disabled:cursor-default"
                 >
                   Skip
@@ -785,7 +785,7 @@ export default function CertificationPractice() {
                 ))}
                 <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-md ml-1">
                   <Coins className="w-3 h-3 text-amber-500" />
-                  <span className="text-[10px] font-bold text-amber-500 tabular-nums">{formatCredits(balance)}</span>
+                  <span className="text-[10px] font-bold text-amber-500 tabular-nums">{formatCredits(state.balance)}</span>
                 </div>
                 <button onClick={() => setShowInfo(!showInfo)} className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-muted rounded-md cursor-pointer transition-colors duration-150 ease-out">
                   <Info className="w-3.5 h-3.5" />

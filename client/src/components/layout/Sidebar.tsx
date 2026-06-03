@@ -3,7 +3,7 @@
  * Spring animation, violet active state, tooltip on collapse
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCredits } from '../../context/CreditsContext';
@@ -172,8 +172,8 @@ const NavItemEl = React.memo(function NavItemEl({
 
 export function Sidebar() {
   const [location, setLocation] = useLocation();
-  const { balance, formatCredits, level } = useCredits();
-  const totalXP = balance;
+  const { state, formatCredits, level } = useCredits();
+  const totalXP = state.balance;
   const { isCollapsed, toggleSidebar } = useSidebar();
   const { preferences } = useUserPreferences();
   const [hovered, setHovered] = useState<string | null>(null);
@@ -185,7 +185,7 @@ export function Sidebar() {
     [location]
   );
 
-  const isAdmin = localStorage.getItem('admin') === 'true' || window.location.search.includes('admin=true');
+  const isAdmin = localStorage.getItem('admin_mode') === 'true' || window.location.search.includes('admin=true');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(sections.map(s => [s.label, true]))
   );
@@ -196,15 +196,19 @@ export function Sidebar() {
 
   const handleGoHome = useCallback(() => setLocation('/'), [setLocation]);
   const handleGoProfile = useCallback(() => setLocation('/profile'), [setLocation]);
+  const handleGoAbout = useCallback(() => setLocation('/about'), [setLocation]);
 
-  const filteredSections = sections
-    .filter(s => !s.adminOnly || isAdmin)
-    .map(s => {
-      if (s.label === 'Learn' && preferences.hideCertifications) {
-        return { ...s, items: s.items.filter(i => i.id !== 'certifications') };
-      }
-      return s;
-    });
+  const filteredSections = useMemo(() =>
+    sections
+      .filter(s => !s.adminOnly || isAdmin)
+      .map(s => {
+        if (s.label === 'Learn' && preferences.hideCertifications) {
+          return { ...s, items: s.items.filter(i => i.id !== 'certifications') };
+        }
+        return s;
+      }),
+    [isAdmin, preferences.hideCertifications]
+  );
 
   return (
     <motion.aside
@@ -286,54 +290,47 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Bottom: Level/XP + profile + settings */}
-      <div className={cn('border-t border-border shrink-0', isCollapsed ? 'p-1.5' : 'p-2')}>
-        <button
-          onClick={handleGoProfile}
-          className={cn(
-            'w-full flex items-center rounded-lg hover:bg-muted/50 transition-colors overflow-hidden',
-            isCollapsed ? 'justify-center p-2' : 'gap-2 px-2.5 py-2'
-          )}
-        >
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-violet-400 shrink-0">
-            <Zap className="w-4 h-4 text-white" />
-          </div>
-          {isCollapsed ? (
-            <span className="text-[10px] text-amber-500 font-bold">🪙 {formatCredits(balance)}</span>
-          ) : (
-            <div className="flex-1 min-w-0 text-left">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium">Lvl {level}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-muted-foreground">{totalXP.toLocaleString()} XP</span>
-                  <span className="text-xs font-bold text-amber-500">🪙 {formatCredits(balance)}</span>
-                </div>
-              </div>
-              <div className="mt-1 h-1 rounded-full bg-primary/20 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-primary transition-all duration-500"
-                  style={{ width: `${((totalXP % 1000) / 1000) * 100}%` }}
-                />
-              </div>
-            </div>
-          )}
-        </button>
-
-        {!isCollapsed && (
-          <div className="mt-1">
+      {/* Bottom: Level/XP + Credits + actions — compact single row */}
+      <div className={cn('border-t border-border shrink-0', isCollapsed ? 'p-1.5' : 'px-1.5 py-1')}>
+        {isCollapsed ? (
+          <div className="flex flex-col items-center gap-1">
             <button
               onClick={handleGoProfile}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs"
+              className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
+              title="Profile"
             >
-              <Settings className="w-3.5 h-3.5" />
-              <span>Settings</span>
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-violet-400">
+                <Zap className="w-4 h-4 text-white" />
+              </div>
+            </button>
+            <span className="text-[10px] text-amber-500 font-bold">🪙 {formatCredits(state.balance)}</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={handleGoProfile}
+              className="flex items-center gap-1.5 flex-1 min-w-0 rounded-lg hover:bg-muted/50 transition-colors px-1.5 py-1.5"
+            >
+              <div className="flex items-center justify-center w-6 h-6 rounded-md bg-gradient-to-br from-primary to-violet-400 shrink-0">
+                <Zap className="w-3 h-3 text-white" />
+              </div>
+              <span className="text-[11px] font-medium shrink-0">Lvl {level}</span>
+              <span className="text-[10px] text-muted-foreground">{totalXP.toLocaleString()} XP</span>
+              <span className="text-[10px] font-bold text-amber-500 ml-auto shrink-0">🪙 {formatCredits(state.balance)}</span>
             </button>
             <button
-              onClick={() => setLocation('/about')}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors text-xs"
+              onClick={handleGoProfile}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              title="Settings"
+            >
+              <Settings className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={handleGoAbout}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              title="About"
             >
               <User className="w-3.5 h-3.5" />
-              <span>About</span>
             </button>
           </div>
         )}

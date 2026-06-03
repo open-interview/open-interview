@@ -79,7 +79,7 @@ export function MobileHomeFocused() {
   const { stats: channelStats } = useChannelStats();
   const { getSubscribedChannels, unsubscribeChannel } = useUserPreferences();
   const { stats: activityStats } = useGlobalStats();
-  const { balance, formatCredits, config } = useCredits();
+  const { state, formatCredits, config } = useCredits();
   const subscribedChannels = getSubscribedChannels();
 
   const questionCounts: Record<string, number> = {};
@@ -149,8 +149,8 @@ export function MobileHomeFocused() {
                     <Coins className="w-5 h-5 text-white" />
                   </div>
                   <div className="text-left">
-                    <div className="text-xl font-bold text-white">{formatCredits(balance)}</div>
-                    <div className="text-[10px] text-white/80">Level {Math.floor(balance / 100)} · {balance % 100}/100 XP</div>
+                    <div className="text-xl font-bold text-white">{formatCredits(state.balance)}</div>
+                    <div className="text-[10px] text-white/80">Level {Math.floor(state.balance / 100)} · {state.balance % 100}/100 XP</div>
                   </div>
                 </div>
                 <div className="text-right text-[10px]">
@@ -162,7 +162,7 @@ export function MobileHomeFocused() {
               <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-full transition-all"
-                  style={{ width: `${(balance % 100)}%` }}
+                  style={{ width: `${(state.balance % 100)}%` }}
                 />
               </div>
             </button>

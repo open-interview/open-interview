@@ -12,7 +12,7 @@ on:
         required: true
         default: 'full-pipeline'
         type: choice
-        options: [quick, full-pipeline, intake, blog, specific-stage, editorial-override]
+        options: [quick, full-pipeline, intake, blog, specific-stage, editorial-override, elite-blog]
       stage:
         description: 'Specific stage (for specific-stage mode)'
         required: false
@@ -253,27 +253,65 @@ jobs:
           echo "| ✨ Enrich | ${{ needs.enrich.result == 'success' && '✅' || needs.enrich.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
 
-  daily-blog:
-    name: 📝 Daily Blog
-    if: github.event.schedule == '0 8 * * *'
+  elite-blog:
+    name: 🏆 Elite Blog Generation
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'elite-blog'
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-bot
-      - name: Generate blog post
+      - name: Generate elite blog posts
         env:
           OPENCODE_MODEL: opencode/big-pickle
-        run: pnpm run blog:generate
-      - name: Commit blog post
-        env:
-          OPENCODE_MODEL: opencode/big-pickle
+        run: pnpm run blog:elite:all
+      - name: Commit generated blog posts
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/blog-posts/
-          git diff --staged --quiet || (git commit -m "chore: daily blog post [skip ci]" && git push)
+          git checkout -- . 2>/dev/null || true; git pull --rebase origin main || true
+          git add content/posts/ data/blog-posts.json client/public/blog-data.json 2>/dev/null || true
+          git diff --staged --quiet || (git commit -m "chore: generate elite blog posts [skip ci]" && git push)
+      - name: Log elite blog event
+        if: always()
+        run: |
+          STATUS=$([ "${{ job.status }}" = "success" ] && echo "success" || echo "failed")
+          node script/log-event.js \
+            --type=blog_elite \
+            --title="Elite blog generation" \
+            --status="$STATUS" \
+            --workflow="content.yml" \
+            --description="Elite blog generation pipeline completed" \
+            --links='[{"label":"View blog","url":"https://open-interview.github.io/blog"}]'
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -- . 2>/dev/null || true; git pull --rebase origin main || true
+          git add -f client/public/data/events.json 2>/dev/null || true
+          git diff --cached --quiet || (git commit -m "chore: log elite blog event [skip ci]" && git push)
+
+  daily-blog:
+    name: 📝 Daily Blog
+    if: github.event.schedule == '0 8 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-bot
+      - name: Generate 10 elite blog posts
+        env:
+          OPENCODE_MODEL: opencode/big-pickle
+        run: pnpm run blog:elite:all
+      - name: Commit generated blog posts
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -- . 2>/dev/null || true; git pull --rebase origin main || true
+          git add content/posts/ data/blog-posts.json client/public/blog-data.json 2>/dev/null || true
+          git diff --staged --quiet || (git commit -m "chore: daily elite blog posts [skip ci]" && git push)
       - name: Trigger deploy
         uses: actions/github-script@v7
         with:

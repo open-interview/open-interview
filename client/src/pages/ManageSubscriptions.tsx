@@ -81,7 +81,7 @@ export default function ManageSubscriptionsPage() {
             placeholder="Search topics or certifications..."
             value={query}
             onChange={e => setQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-3 min-h-[44px] bg-muted/50 border border-border rounded-lg text-base focus:outline-none focus:border-primary transition-colors duration-150 ease-out"
+            className="w-full pl-9 pr-4 py-3 min-h-[44px] bg-muted/50 border border-border rounded-lg text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-primary transition-colors duration-150 ease-out"
           />
         </div>
 

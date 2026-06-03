@@ -25,7 +25,7 @@ export function RecallGate({ onReveal }: RecallGateProps) {
         onChange={e => setAttempt(e.target.value)}
         rows={3}
         placeholder="Write what you remember... (optional)"
-        className="w-full rounded-xl border border-border bg-background text-sm p-3 resize-none focus:outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
+        className="w-full rounded-xl border border-border bg-background text-sm p-3 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-primary transition-colors placeholder:text-muted-foreground/50"
       />
 
       <div className="flex items-center justify-between gap-3">

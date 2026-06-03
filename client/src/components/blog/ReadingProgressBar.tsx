@@ -1,22 +1,38 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function ReadingProgressBar() {
   const [progress, setProgress] = useState(0);
+  const rafId = useRef<number>(0);
 
   useEffect(() => {
     const article = document.querySelector("article");
     if (!article) return;
 
+    let articleHeight = article.offsetHeight;
+
     const update = () => {
       const rect = article.getBoundingClientRect();
-      const articleHeight = article.offsetHeight;
       const scrolled = -rect.top;
       const pct = Math.min(100, Math.max(0, (scrolled / (articleHeight - window.innerHeight)) * 100));
       setProgress(pct);
     };
 
-    window.addEventListener("scroll", update, { passive: true });
-    return () => window.removeEventListener("scroll", update);
+    const handleScroll = () => {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = requestAnimationFrame(update);
+    };
+
+    const ro = new ResizeObserver(() => {
+      articleHeight = article.offsetHeight;
+    });
+    ro.observe(article);
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      cancelAnimationFrame(rafId.current);
+      ro.disconnect();
+    };
   }, []);
 
   if (progress === 0) return null;

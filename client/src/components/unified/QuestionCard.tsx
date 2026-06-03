@@ -8,7 +8,7 @@
  * ReviewSession, TrainingMode, VoiceSession, VoiceInterview, Bookmarks, and more
  */
 
-import { ReactNode } from 'react';
+import React, { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Bookmark, Building2, Hash, Clock, Check, Sparkles
@@ -162,7 +162,7 @@ function BackgroundMascot({ difficulty }: { difficulty: string }) {
   );
 }
 
-export function QuestionCard({
+export const QuestionCard = React.memo(function QuestionCard({
   question,
   variant = 'default',
   size = 'md',
@@ -373,7 +373,7 @@ export function QuestionCard({
   }
 
   return content;
-}
+});
 
 /**
  * Compact Question Card - For lists and grids
@@ -389,7 +389,7 @@ interface CompactQuestionCardProps {
   className?: string;
 }
 
-export function CompactQuestionCard({
+export const CompactQuestionCard = React.memo(function CompactQuestionCard({
   question,
   onClick,
   isMarked = false,
@@ -451,7 +451,7 @@ export function CompactQuestionCard({
       </div>
     </motion.div>
   );
-}
+});
 
 /**
  * Minimal Question Card - For inline display
@@ -462,7 +462,7 @@ interface MinimalQuestionCardProps {
   className?: string;
 }
 
-export function MinimalQuestionCard({
+export const MinimalQuestionCard = React.memo(function MinimalQuestionCard({
   question,
   onClick,
   className = ''
@@ -484,4 +484,4 @@ export function MinimalQuestionCard({
       <span className="text-sm flex-1 truncate">{question.question}</span>
     </div>
   );
-}
+});

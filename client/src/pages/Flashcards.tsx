@@ -325,7 +325,7 @@ export default function Flashcards() {
                           value={recallAttempt}
                           onChange={e => setRecallAttempt(e.target.value)}
                           placeholder="What did you actually recall? (reflection only)"
-                          className="w-full rounded-xl border border-border bg-background/80 text-xs p-2 resize-none focus:outline-none placeholder:text-muted-foreground/50 text-foreground"
+                          className="w-full rounded-xl border border-border bg-background/80 text-xs p-2 resize-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground/50 text-foreground"
                           style={{ fontSize: '11px' }}
                         />
                       </div>

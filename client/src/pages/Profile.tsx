@@ -106,7 +106,7 @@ function HeatmapTooltip({ date, count }: { date: string; count: number }) {
 function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted: number }) {
   const [, setLocation] = useLocation();
   const { preferences, toggleShuffleQuestions, togglePrioritizeUnvisited } = useUserPreferences();
-  const { balance } = useCredits();
+  const { state } = useCredits();
   const { unlocked: unlockedBadges } = useAchievements();
 
   const [editingName, setEditingName] = useState(false);
@@ -141,7 +141,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
   }, []);
 
   const exportData = () => {
-    const data: Record<string, unknown> = { exportedAt: new Date().toISOString(), xp: balance, totalCompleted };
+    const data: Record<string, unknown> = { exportedAt: new Date().toISOString(), xp: state.balance, totalCompleted };
     try { Object.keys(localStorage).forEach(k => { data[k] = localStorage.getItem(k); }); } catch {}
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -149,8 +149,8 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
     URL.revokeObjectURL(url);
   };
 
-  const level = Math.floor(balance / 100);
-  const xpInLevel = balance % 100;
+  const level = Math.floor(state.balance / 100);
+  const xpInLevel = state.balance % 100;
   const initials = getInitials(displayName);
 
   const saveName = () => {
@@ -185,22 +185,22 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
                 onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditingName(false); }}
                 className="text-center text-xl font-bold bg-transparent border-b-2 outline-none px-2"
                 style={{ borderColor: 'var(--color-accent-violet)', color: 'var(--text-primary)' }} />
-              <button onClick={saveName} className="p-1 rounded-full hover:bg-green-500/20 text-green-400"><Check className="w-4 h-4" /></button>
-              <button onClick={() => setEditingName(false)} className="p-1 rounded-full hover:bg-red-500/20 text-red-400"><X className="w-4 h-4" /></button>
+              <button onClick={saveName} aria-label="Save" className="p-1 rounded-full hover:bg-green-500/20 text-green-400"><Check className="w-4 h-4" aria-hidden={true} /></button>
+              <button onClick={() => setEditingName(false)} aria-label="Cancel" className="p-1 rounded-full hover:bg-red-500/20 text-red-400"><X className="w-4 h-4" aria-hidden={true} /></button>
             </div>
           ) : (
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold">{displayName}</h2>
               <button onClick={() => { setNameInput(displayName); setEditingName(true); }}
                 className="p-1 rounded-full transition-colors hover:bg-white/10" style={{ color: 'var(--text-tertiary)' }}>
-                <Edit2 className="w-3.5 h-3.5" />
+                <Edit2 className="w-3.5 h-3.5" aria-hidden={true} />
               </button>
             </div>
           )}
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Member since {memberSince}</p>
           <div className="flex gap-6 pt-2 border-t w-full justify-center" style={{ borderColor: 'var(--color-border)' }}>
             {[
-              { label: 'XP', value: balance, color: 'var(--color-xp)' },
+              { label: 'XP', value: state.balance, color: 'var(--color-xp)' },
               { label: 'Level', value: level, color: 'var(--color-accent-violet-light)' },
               { label: 'Done', value: totalCompleted, color: 'var(--color-accent-cyan)' },
               { label: 'Badges', value: unlockedBadges.length, color: 'var(--color-success)' },
@@ -350,7 +350,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
 function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: number }) {
   const [, setLocation] = useLocation();
   const { stats } = useGlobalStats();
-  const { balance } = useCredits();
+  const { state } = useCredits();
   const { unlocked: unlockedBadges } = useAchievements();
   const [hoveredCell, setHoveredCell] = useState<{ date: string; count: number; x: number; y: number } | null>(null);
 
@@ -379,7 +379,7 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
     };
   }, [stats]);
 
-  const level = Math.floor(balance / 100);
+  const level = Math.floor(state.balance / 100);
   const topicsMastered = moduleProgress.filter(m => m.pct === 100).length;
 
   const { heatmapCells, monthLabels } = useMemo(() => {

@@ -118,8 +118,8 @@ function CertDetail({
       >
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-          <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-muted/50 text-muted-foreground transition-colors duration-150 ease-out cursor-pointer z-10">
-            <X className="w-4 h-4" />
+          <button onClick={onClose} aria-label="Close modal" className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-muted/50 text-muted-foreground transition-colors duration-150 ease-out cursor-pointer z-10">
+            <X className="w-4 h-4" aria-hidden={true} />
           </button>
 
           {/* Header */}
@@ -295,7 +295,7 @@ function ProviderSection({
           </div>
         </div>
         <motion.div animate={{ rotate: open ? 0 : -90 }} transition={{ duration: 0.2 }}>
-          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          <ChevronDown className="w-4 h-4 text-muted-foreground" aria-hidden={true} />
         </motion.div>
       </button>
 

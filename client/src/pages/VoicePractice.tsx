@@ -66,7 +66,7 @@ const roleQuestionWeights: Record<string, { primary: string[]; multiplier: numbe
 
 export default function VoicePractice() {
   const [, setLocation] = useLocation();
-  const { getSubscribedChannels, preferences } = useUserPreferences();
+  const { getSubscribedChannels, preferences, subscribeChannel } = useUserPreferences();
 
   const [started, setStarted] = useState(false);
   const [mode, setMode] = useState<PracticeMode>('interview');
@@ -300,13 +300,18 @@ export default function VoicePractice() {
                 <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
                   <Mic className="w-10 h-10 text-primary" />
                 </div>
-                <h2 className="text-2xl font-bold mb-6">Pick a topic to start practicing</h2>
+                <h2 className="text-2xl font-bold mb-2">Pick a topic to practice voice interviews</h2>
+                <p className="text-muted-foreground text-sm mb-6 max-w-xs mx-auto">
+                  Choose a topic below to subscribe and instantly load practice questions. Stay right here and start speaking.
+                </p>
                 <div className="flex flex-wrap justify-center gap-2 mb-6">
-                  <button onClick={() => setLocation('/channel/system-design')} className="px-4 py-2 rounded-full bg-purple-500/20 text-purple-400 text-sm font-semibold hover:bg-purple-500/30 transition-colors">System Design</button>
-                  <button onClick={() => setLocation('/channel/aws')} className="px-4 py-2 rounded-full bg-orange-500/20 text-orange-400 text-sm font-semibold hover:bg-orange-500/30 transition-colors">AWS</button>
-                  <button onClick={() => setLocation('/channel/behavioral')} className="px-4 py-2 rounded-full bg-pink-500/20 text-pink-400 text-sm font-semibold hover:bg-pink-500/30 transition-colors">Behavioral</button>
+                  <button onClick={() => subscribeChannel('system-design')} className="px-4 py-2 rounded-full bg-purple-500/20 text-purple-400 text-sm font-semibold hover:bg-purple-500/30 transition-colors cursor-pointer">System Design</button>
+                  <button onClick={() => subscribeChannel('aws')} className="px-4 py-2 rounded-full bg-orange-500/20 text-orange-400 text-sm font-semibold hover:bg-orange-500/30 transition-colors cursor-pointer">AWS</button>
+                  <button onClick={() => subscribeChannel('behavioral')} className="px-4 py-2 rounded-full bg-pink-500/20 text-pink-400 text-sm font-semibold hover:bg-pink-500/30 transition-colors cursor-pointer">Behavioral</button>
+                  <button onClick={() => subscribeChannel('frontend')} className="px-4 py-2 rounded-full bg-blue-500/20 text-blue-400 text-sm font-semibold hover:bg-blue-500/30 transition-colors cursor-pointer">Frontend</button>
+                  <button onClick={() => subscribeChannel('algorithms')} className="px-4 py-2 rounded-full bg-green-500/20 text-green-400 text-sm font-semibold hover:bg-green-500/30 transition-colors cursor-pointer">Algorithms</button>
                 </div>
-                <Button onClick={() => setLocation('/channels')} className="cursor-pointer">Browse all channels</Button>
+                <Button onClick={() => setLocation('/channels')} className="cursor-pointer">Browse all 40+ channels</Button>
               </div>
             </div>
           </div>
