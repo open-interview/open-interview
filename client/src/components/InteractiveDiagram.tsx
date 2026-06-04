@@ -8,7 +8,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { X, ZoomIn, ZoomOut, Maximize2, RotateCcw, Palette, AlertTriangle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { fetchCachedSvg } from '../lib/diagram-cache';
 
 // ─── Mermaid theme configs ────────────────────────────────────────────────────
 
@@ -299,22 +298,9 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
     if (!code) { setError('Empty diagram'); setIsLoading(false); return; }
 
     (async () => {
-      // Try pre-rendered SVG cache first (offline, no mermaid runtime needed)
-      if (!cancelled && id === renderIdRef.current) {
-        try {
-          const cached = await fetchCachedSvg(chart);
-          if (cached && !cancelled && id === renderIdRef.current) {
-            setSvgContent(cached);
-            setIsLoading(false);
-            onRenderResult?.(true);
-            return;
-          }
-        } catch { /* cache miss or unavailable — fall through to mermaid */ }
-      }
-
       if (cancelled) return;
 
-      // Fall back to mermaid runtime render
+      // Render via mermaid runtime
       const renderId = `mermaid-${id}-${Math.random().toString(36).slice(2, 9)}`;
       try {
         await initMermaid(effectiveTheme, true);
