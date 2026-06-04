@@ -307,27 +307,21 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
     renderQueue = renderQueue.then(async () => {
       if (cancelled) return;
 
-      // mermaid v10 requires an explicit DOM container to reliably return SVG.
-      // Without it, the internal temp-element path can return an empty svg string.
-      const tempContainer = document.createElement('div');
-      tempContainer.style.cssText =
-        'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;overflow:visible;pointer-events:none;';
-      document.body.appendChild(tempContainer);
-
       const renderId = `mermaid-${id}-${Math.random().toString(36).slice(2, 9)}`;
       try {
         await initMermaid(effectiveTheme);
         const mermaid = await loadMermaid();
         if (cancelled) return;
 
-        const result = await mermaid.render(renderId, code, tempContainer);
-        let svg: string = result?.svg ?? '';
+        // The Vite-pre-bundled mermaid exposes renderAsync (not run/render which
+        // silently returns { svg: '' } in this environment). renderAsync handles
+        // all diagram types including mindmap, gitGraph, etc.
+        const renderFn: (id: string, text: string) => Promise<{ svg: string }> =
+          mermaid.renderAsync ?? mermaid.render;
 
-        // Fallback: if mermaid didn't populate result.svg, read from container
-        if (!svg.trim()) {
-          const el = tempContainer.querySelector('svg');
-          if (el) svg = tempContainer.innerHTML;
-        }
+        const result = await renderFn.call(mermaid, renderId, code);
+        const svg: string = result?.svg ?? '';
+        if (!svg.trim()) console.warn('[mermaid] empty SVG from', renderFn === mermaid.renderAsync ? 'renderAsync' : 'render', renderId);
 
         if (!cancelled && id === renderIdRef.current) {
           if (svg.trim()) {
@@ -346,7 +340,6 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
           onRenderResult?.(false, errMsg);
         }
       } finally {
-        try { document.body.removeChild(tempContainer); } catch (_) {}
         if (!cancelled && id === renderIdRef.current) setIsLoading(false);
       }
     });

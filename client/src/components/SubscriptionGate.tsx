@@ -11,7 +11,10 @@ export function SubscriptionGate({ children }: Props) {
   const { needsOnboarding } = useUserPreferences();
   const [onboardingDone, setOnboardingDone] = useState(false);
 
-  if (needsOnboarding && !onboardingDone) {
+  // Admin/debug routes bypass onboarding gate
+  const isAdminRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+
+  if (needsOnboarding && !onboardingDone && !isAdminRoute) {
     return <OnboardingFlow onComplete={() => setOnboardingDone(true)} />;
   }
 
