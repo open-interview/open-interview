@@ -307,27 +307,46 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
     renderQueue = renderQueue.then(async () => {
       if (cancelled) return;
 
-      // Render via mermaid runtime
+      // mermaid v10 requires an explicit DOM container to reliably return SVG.
+      // Without it, the internal temp-element path can return an empty svg string.
+      const tempContainer = document.createElement('div');
+      tempContainer.style.cssText =
+        'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;overflow:visible;pointer-events:none;';
+      document.body.appendChild(tempContainer);
+
       const renderId = `mermaid-${id}-${Math.random().toString(36).slice(2, 9)}`;
       try {
         await initMermaid(effectiveTheme);
         const mermaid = await loadMermaid();
         if (cancelled) return;
 
-        let svg: string;
-        ({ svg } = await mermaid.render(renderId, code));
+        const result = await mermaid.render(renderId, code, tempContainer);
+        let svg: string = result?.svg ?? '';
+
+        // Fallback: if mermaid didn't populate result.svg, read from container
+        if (!svg.trim()) {
+          const el = tempContainer.querySelector('svg');
+          if (el) svg = tempContainer.innerHTML;
+        }
+
         if (!cancelled && id === renderIdRef.current) {
-          setSvgContent(svg);
-          onRenderResult?.(true);
+          if (svg.trim()) {
+            setSvgContent(svg);
+            onRenderResult?.(true);
+          } else {
+            setError('Render returned empty SVG');
+            onRenderResult?.(false, 'Empty SVG');
+          }
         }
       } catch (err: any) {
         const errMsg = err?.message ?? 'Render failed';
-        console.warn('Mermaid render failed for diagram:', '\n' + code);
+        console.warn('Mermaid render failed:', errMsg, '\n' + code);
         if (!cancelled && id === renderIdRef.current) {
           setError(errMsg);
           onRenderResult?.(false, errMsg);
         }
       } finally {
+        try { document.body.removeChild(tempContainer); } catch (_) {}
         if (!cancelled && id === renderIdRef.current) setIsLoading(false);
       }
     });
