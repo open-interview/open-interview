@@ -38,7 +38,11 @@ function setupDOM() {
   const w = dom.window;
   global.document = w.document;
   global.window = w;
-  global.navigator = w.navigator;
+  if (Object.getOwnPropertyDescriptor(global, 'navigator')?.get) {
+    Object.defineProperty(global, 'navigator', { value: w.navigator, writable: true, configurable: true });
+  } else {
+    global.navigator = w.navigator;
+  }
   global.HTMLElement = w.HTMLElement;
   global.SVGElement = w.SVGElement;
   global.Element = w.Element;
