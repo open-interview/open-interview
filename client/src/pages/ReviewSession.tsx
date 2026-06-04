@@ -686,6 +686,15 @@ export default function ReviewSession() {
                                   code({ className, children }) {
                                     const match = /language-(\w+)/.exec(className || '');
                                     const isInline = !match && !String(children).includes('\n');
+                                    const lang = match ? match[1] : null;
+                                    
+                                    if (lang === 'mermaid') {
+                                      return (
+                                        <div className="my-4">
+                                          <EnhancedMermaid chart={String(children).replace(/\n$/, '')} />
+                                        </div>
+                                      );
+                                    }
                                     
                                     if (isInline) {
                                       return (
@@ -776,6 +785,15 @@ export default function ReviewSession() {
                                   code({ className, children }) {
                                     const match = /language-(\w+)/.exec(className || '');
                                     const isInline = !match && !String(children).includes('\n');
+                                    const lang = match ? match[1] : null;
+                                    
+                                    if (lang === 'mermaid') {
+                                      return (
+                                        <div className="my-4">
+                                          <EnhancedMermaid chart={String(children).replace(/\n$/, '')} />
+                                        </div>
+                                      );
+                                    }
                                     
                                     if (isInline) {
                                       return (
@@ -808,14 +826,14 @@ export default function ReviewSession() {
                                   h1({ children }) {
                                     return <h1 className="text-xl font-bold mb-3 mt-4 text-foreground">{children}</h1>;
                                   },
-                                  h2({ children }) {
-                                    return <h2 className="text-lg font-bold mb-2 mt-4 text-foreground">{children}</h2>;
-                                  },
                                   strong({ children }) {
                                     return <strong className="font-bold text-foreground">{children}</strong>;
                                   },
                                   ul({ children }) {
                                     return <ul className="space-y-2 mb-3">{children}</ul>;
+                                  },
+                                  h2({ children }) {
+                                    return <h2 className="text-lg font-bold mb-2 mt-4 text-foreground">{children}</h2>;
                                   },
                                   li({ children }) {
                                     return (
