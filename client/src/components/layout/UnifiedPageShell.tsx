@@ -4,11 +4,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { Sidebar } from "./Sidebar";
 import { MobileBottomNav } from "./UnifiedNav";
 import { MobileHeader } from "./MobileHeader";
 import { FaceliftNavbar } from "../facelift-navbar";
 import { UnifiedSearch } from "../UnifiedSearch";
+import { CommandPalette } from "../CommandPalette";
 import { cn } from "../../lib/utils";
 
 interface UnifiedPageShellProps {
@@ -37,11 +39,13 @@ export function UnifiedPageShell({
   chromeHidden = false,
 }: UnifiedPageShellProps) {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
   const [location] = useLocation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const prefersReducedMotion = useReducedMotion();
   const { direction: scrollDirection } = useScrollDirection({ threshold: 16 });
+  useGlobalShortcuts();
 
   const transition = prefersReducedMotion ? { duration: 0 } : {
     type: "spring" as const,
@@ -85,7 +89,7 @@ export function UnifiedPageShell({
         )}
       >
         {useFacelift ? (
-          <FaceliftNavbar onSearchOpen={() => setSearchOpen(true)} />
+          <FaceliftNavbar onSearchOpen={() => setSearchOpen(true)} onCommandOpen={() => setCommandOpen(true)} />
         ) : (
           <MobileHeader
             title={title}
@@ -141,6 +145,7 @@ export function UnifiedPageShell({
       </footer>
 
       <UnifiedSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+      <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Variants } from 'framer-motion';
+import { Variants, type TargetAndTransition, type Transition } from 'framer-motion';
 
 export const fadeUp: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -21,3 +21,37 @@ export const scaleIn: Variants = {
 };
 
 export const DURATION = { micro: 0.15, standard: 0.25, complex: 0.35 } as const;
+
+// ─── Micro-interactions (whileHover / whileTap) ──────────────────────────────
+
+export const springTap: Transition = {
+  type: 'spring',
+  stiffness: 500,
+  damping: 20,
+  mass: 0.5,
+};
+
+export const springHover: Transition = {
+  type: 'spring',
+  stiffness: 400,
+  damping: 25,
+  mass: 0.8,
+};
+
+export const microInteractions = {
+  card: {
+    whileHover: { scale: 1.01, transition: springHover } satisfies TargetAndTransition,
+    whileTap: { scale: 0.98, transition: springTap } satisfies TargetAndTransition,
+  },
+  button: {
+    whileHover: { scale: 1.03, transition: springHover } satisfies TargetAndTransition,
+    whileTap: { scale: 0.97, transition: springTap } satisfies TargetAndTransition,
+  },
+  iconButton: {
+    whileHover: { scale: 1.05, transition: springHover } satisfies TargetAndTransition,
+    whileTap: { scale: 0.95, transition: springTap } satisfies TargetAndTransition,
+  },
+  press: {
+    whileTap: { scale: 0.97, transition: springTap } satisfies TargetAndTransition,
+  },
+} as const;

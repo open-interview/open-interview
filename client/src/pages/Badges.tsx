@@ -6,6 +6,7 @@ import { useAchievements } from '../hooks/use-achievements';
 import { AchievementProgress } from '../lib/achievements/types';
 import { Trophy, Lock, Sparkles, Share2, X, Star, Award } from 'lucide-react';
 import { UnifiedEmptyState } from '@/components/ui/UnifiedEmptyState';
+import { BadgeGridSkeleton } from '@/components/ui/skeleton-loaders';
 import { UnifiedCard } from '@/components/ui/UnifiedCard';
 
 const TIER_GRADIENT: Record<string, string> = {
@@ -312,8 +313,22 @@ export default function BadgesPage() {
   if (isLoading) {
     return (
       <AppLayout title="Badges" fullWidth>
-        <div className="flex items-center justify-center min-h-[40vh]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        <div className="min-h-screen pb-24 lg:pb-8">
+          <div className="max-w-7xl mx-auto px-4 py-4 sm:py-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center" />
+              <div>
+                <div className="h-6 w-24 bg-primary/10 rounded animate-pulse" />
+                <div className="h-4 w-32 bg-primary/10 rounded animate-pulse mt-1" />
+              </div>
+            </div>
+            <div className="flex gap-2 mb-6">
+              <div className="h-9 w-20 rounded-full bg-primary/10 animate-pulse" />
+              <div className="h-9 w-20 rounded-full bg-primary/10 animate-pulse" />
+              <div className="h-9 w-24 rounded-full bg-primary/10 animate-pulse" />
+            </div>
+            <BadgeGridSkeleton />
+          </div>
         </div>
       </AppLayout>
     );

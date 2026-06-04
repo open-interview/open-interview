@@ -1,31 +1,23 @@
-/**
- * Profile & Stats — merged page with tabs
- */
-
 import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'wouter';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid
 } from 'recharts';
-import { AppLayout } from '../components/layout/AppLayout';
+import { UnifiedPageShell } from '../components/layout/UnifiedPageShell';
 import { SEOHead } from '../components/SEOHead';
-import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { useCredits } from '../context/CreditsContext';
 import { useAchievements } from '../hooks/use-achievements';
 import { useGlobalStats } from '../hooks/use-progress';
-import { getAllQuestions, channels, getQuestions } from '../lib/data';
+import { getAllQuestions, channels } from '../lib/data';
 import {
-  User, Settings, Zap, Trophy, Target, Sparkles,
-  Volume2, Shuffle, Eye, ChevronRight, Edit2, Check, X, Download,
-  BookOpen, Code2, GraduationCap, Flame, Calendar, BarChart2,
-  Award, Mic, TrendingUp, Clock, UserCircle, AlertCircle
+  User, Trophy, Target, Sparkles, Flame, BookOpen, BarChart2,
+  Award, Mic, TrendingUp, Clock, Lock, AlertCircle, Share2,
+  Code2, GraduationCap, Zap, ChevronRight, Check
 } from 'lucide-react';
-import * as LucideIcons from 'lucide-react';
-
-// ── helpers ───────────────────────────────────────────────────────────────────
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
@@ -35,52 +27,10 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
-  return (
-    <div className="flex rounded-full overflow-hidden border" style={{ borderColor: 'var(--color-border)', background: 'var(--surface-3)' }}>
-      {(['On', 'Off'] as const).map((label) => {
-        const active = label === 'On' ? on : !on;
-        return (
-          <button
-            key={label}
-            onClick={() => { if (label === 'On' ? !on : on) onToggle(); }}
-            className="px-4 py-2 min-h-[44px] text-xs font-semibold transition-all duration-200 cursor-pointer"
-            style={{
-              background: active ? 'var(--gradient-primary)' : 'transparent',
-              color: active ? '#fff' : 'var(--text-tertiary)',
-            }}
-          >
-            {label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function SettingRow({ icon, label, description, children }: {
-  icon: React.ReactNode; label: string; description?: string; children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between py-3 px-4 min-h-[44px] rounded-[var(--radius-md)] transition-colors duration-200 hover:bg-[var(--surface-3)]">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--surface-3)' }}>
-          {icon}
-        </div>
-        <div>
-          <div className="text-sm font-medium">{label}</div>
-          {description && <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{description}</div>}
-        </div>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-const HEATMAP_LEVELS = ['bg-white/5','bg-violet-500/30','bg-violet-500/55','bg-violet-500/80','bg-violet-400'];
-const CHART_COLORS = ['#7c3aed','#6366f1','#06b6d4','#10b981','#f59e0b','#f43f5e','#8b5cf6','#0891b2'];
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAY_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const HEATMAP_LEVELS = ['bg-white/5','bg-violet-500/30','bg-violet-500/55','bg-violet-500/80','bg-violet-400'];
+const CHART_COLORS = ['#7c3aed','#6366f1','#06b6d4','#10b981','#f59e0b','#f43f5e','#8b5cf6','#0891b2'];
 
 function activityLevel(count: number) {
   if (!count) return 0;
@@ -90,304 +40,285 @@ function activityLevel(count: number) {
   return 4;
 }
 
-function HeatmapTooltip({ date, count }: { date: string; count: number }) {
+const fadeUp = (delay = 0) => ({ initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.35 } });
+
+const tiers: Record<string, string> = {
+  bronze: '#cd7f32', silver: '#c0c0c0', gold: '#ffd700', platinum: '#e5e4e2', diamond: '#b9f2ff'
+};
+
+export default function ProfilePage() {
+  const [, setLocation] = useLocation();
+  const { stats } = useGlobalStats();
+  const { state } = useCredits();
+  const { unlocked: unlockedBadges, progress: allProgress, stats: badgeStats } = useAchievements();
+  const [displayName] = useState(() => { try { return localStorage.getItem('user-display-name') || 'Learner'; } catch { return 'Learner'; } });
+
+  const [totalCompleted, setTotalCompleted] = useState(0);
+  useEffect(() => {
+    try {
+      const allQ = getAllQuestions();
+      const ids = new Set<string>();
+      allQ.forEach(q => {
+        try {
+          const s = localStorage.getItem(`progress-${q.channel}`);
+          if (s && new Set(JSON.parse(s)).has(q.id)) ids.add(q.id);
+        } catch {}
+      });
+      setTotalCompleted(ids.size);
+    } catch { setTotalCompleted(0); }
+  }, []);
+
+  const streak = useMemo(() => {
+    let s = 0;
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      if (stats.find(x => x.date === d.toISOString().split('T')[0])) s++; else break;
+    }
+    return s;
+  }, [stats]);
+
+  const level = Math.floor(state.balance / 100);
+  const xpInLevel = state.balance % 100;
+  const initials = getInitials(displayName);
+
   return (
-    <div className="px-2 py-1 rounded-md text-xs font-medium pointer-events-none"
-      style={{ background: 'var(--surface-4)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}>
-      {formatDate(date)} · {count} {count === 1 ? 'activity' : 'activities'}
+    <ErrorBoundary fallback={
+      <UnifiedPageShell fullWidth>
+        <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-8">
+          <div className="max-w-md text-center space-y-4">
+            <AlertCircle className="w-12 h-12 mx-auto text-destructive" />
+            <h2 className="text-xl font-bold">Something went wrong</h2>
+            <p className="text-muted-foreground">Your profile data could not be loaded. This is usually caused by corrupted localStorage data.</p>
+            <button onClick={() => { try { localStorage.clear(); } catch {} window.location.reload(); }}
+              className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 transition-opacity cursor-pointer">
+              Reset & Reload
+            </button>
+          </div>
+        </div>
+      </UnifiedPageShell>
+    }>
+      <SEOHead title="Profile & Stats" description="Your profile, settings and learning statistics" canonical="https://open-interview.github.io/profile" />
+      <UnifiedPageShell fullWidth>
+        <div className="max-w-4xl mx-auto py-4 sm:py-6 space-y-5">
+
+          {/* Header card — avatar + name + level + XP bar */}
+          <div className="flex items-center gap-4 p-5 rounded-2xl border border-border bg-card">
+            <div className="p-0.5 rounded-full bg-gradient-to-r from-primary to-cyan-500 shrink-0">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold text-white bg-background">
+                {initials}
+              </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-lg font-bold truncate">{displayName}</h1>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary font-semibold">Lv.{level}</span>
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden max-w-[160px]">
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${xpInLevel}%` }} transition={{ duration: 1 }}
+                    className="h-full rounded-full bg-gradient-to-r from-primary to-cyan-500" />
+                </div>
+                <span className="text-xs text-muted-foreground">{xpInLevel}/100 XP</span>
+              </div>
+            </div>
+            <button
+              onClick={() => { /* share stats */ }}
+              className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-muted/50 border border-border hover:bg-muted transition-colors cursor-pointer"
+              aria-label="Share stats"
+            >
+              <Share2 className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+
+          {/* Tab strip */}
+          <TabsContent level={level} streak={streak} totalCompleted={totalCompleted} stats={stats} state={state}
+            unlockedBadges={unlockedBadges} allProgress={allProgress} badgeStats={badgeStats}
+            setLocation={setLocation} displayName={displayName} />
+        </div>
+      </UnifiedPageShell>
+    </ErrorBoundary>
+  );
+}
+
+function TabsContent({ level, streak, totalCompleted, stats, state, unlockedBadges, allProgress, badgeStats, setLocation, displayName }: any) {
+  const [activeTab, setActiveTab] = useState<'overview' | 'stats' | 'badges'>('overview');
+
+  const tabs = [
+    { id: 'overview' as const, label: 'Overview', icon: User },
+    { id: 'stats' as const, label: 'Stats', icon: BarChart2 },
+    { id: 'badges' as const, label: 'Badges', icon: Award },
+  ];
+
+  return (
+    <>
+      <div className="flex gap-1 p-1 rounded-xl bg-muted/50 border border-border">
+        {tabs.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={`flex-1 flex items-center justify-center gap-2 min-h-[44px] rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+              activeTab === id
+                ? 'bg-card text-foreground shadow-sm border border-border'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <AnimatePresence mode="wait">
+        <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}>
+          {activeTab === 'overview' && <OverviewTab stats={stats} level={level} streak={streak} totalCompleted={totalCompleted} state={state} unlockedBadges={unlockedBadges} setLocation={setLocation} />}
+          {activeTab === 'stats' && <StatsTab stats={stats} totalCompleted={totalCompleted} streak={streak} state={state} setLocation={setLocation} />}
+          {activeTab === 'badges' && <BadgesTab unlocked={unlockedBadges} allProgress={allProgress} badgeStats={badgeStats} setLocation={setLocation} />}
+        </motion.div>
+      </AnimatePresence>
+    </>
+  );
+}
+
+function OverviewTab({ stats, level, streak, totalCompleted, state, unlockedBadges, setLocation }: any) {
+  const todayCount = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return stats.find((s: any) => s.date === today)?.count || 0;
+  }, [stats]);
+
+  const weeklyData = useMemo(() => Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (6 - i));
+    const iso = d.toISOString().split('T')[0];
+    return { day: d.toLocaleDateString('en-US', { weekday: 'short' }), count: stats.find((s: any) => s.date === iso)?.count || 0 };
+  }), [stats]);
+
+  const moduleProgress = useMemo(() => {
+    return channels.map(ch => {
+      let completedIds = new Set<string>();
+      try { const stored = localStorage.getItem(`progress-${ch.id}`); if (stored) completedIds = new Set(JSON.parse(stored)); } catch {}
+      const questions = (() => { try { return JSON.parse(localStorage.getItem(`questions-${ch.id}`) || '[]'); } catch { return []; } })();
+      const valid = Math.min(completedIds.size, questions.length || 1);
+      const pct = questions.length > 0 ? Math.min(100, Math.round((valid / questions.length) * 100)) : 0;
+      return { id: ch.id, name: ch.name, pct };
+    }).filter(m => m.pct > 0).sort((a, b) => b.pct - a.pct).slice(0, 3);
+  }, []);
+
+  const statCards = [
+    { icon: Zap, label: 'XP', value: state.balance, color: 'text-amber-400', bg: 'from-amber-500/15 to-amber-600/5', border: 'border-amber-500/20' },
+    { icon: Target, label: 'Completed', value: totalCompleted, sub: `+${todayCount}`, color: 'text-cyan-400', bg: 'from-cyan-500/15 to-cyan-600/5', border: 'border-cyan-500/20' },
+    { icon: Flame, label: 'Streak', value: `${streak}d`, color: 'text-rose-400', bg: 'from-rose-500/15 to-rose-600/5', border: 'border-rose-500/20' },
+    { icon: Trophy, label: 'Badges', value: unlockedBadges.length, color: 'text-violet-400', bg: 'from-violet-500/15 to-violet-600/5', border: 'border-violet-500/20' },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <motion.div variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.05 } } }} initial="hidden" animate="visible"
+        className="grid grid-cols-2 gap-3">
+        {statCards.map((s, i) => (
+          <motion.div key={s.label} variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
+            className={`p-4 rounded-xl border bg-gradient-to-br ${s.bg} ${s.border}`}>
+            <div className={`text-lg font-black ${s.color}`}>{s.value}</div>
+            <div className="text-xs text-muted-foreground">{s.label}</div>
+            {(s as any).sub && <div className="text-[10px] font-semibold mt-0.5 text-cyan-400">{(s as any).sub} today</div>}
+          </motion.div>
+        ))}
+      </motion.div>
+
+      {/* 7-day activity strip */}
+      <div className="p-4 rounded-xl border border-border bg-card">
+        <div className="text-xs font-semibold text-muted-foreground mb-3">This Week</div>
+        <div className="flex items-end gap-2 h-20">
+          {weeklyData.map((d: any) => {
+            const maxCount = Math.max(...weeklyData.map((w: any) => w.count), 1);
+            const h = Math.max(8, (d.count / maxCount) * 64);
+            return (
+              <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+                <div className="w-full rounded-md bg-gradient-to-t from-primary to-cyan-500 transition-all duration-300"
+                  style={{ height: h, opacity: d.count > 0 ? 1 : 0.2 }} />
+                <span className="text-[10px] text-muted-foreground">{d.day[0]}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Top channels */}
+      <div className="p-4 rounded-xl border border-border bg-card">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-semibold text-muted-foreground">Top Channels</span>
+          <button onClick={() => setLocation('/channels')} className="text-xs text-primary flex items-center gap-1 cursor-pointer min-h-[44px]">
+            All <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+        {moduleProgress.length > 0 ? (
+          <div className="space-y-2">
+            {moduleProgress.map((m: any) => (
+              <button key={m.id} onClick={() => setLocation(`/channel/${m.id}`)}
+                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer min-h-[44px]">
+                <div className="flex-1 text-left min-w-0">
+                  <div className="text-sm font-medium truncate">{m.name}</div>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden mt-1">
+                    <div className="h-full rounded-full bg-gradient-to-r from-primary to-cyan-500" style={{ width: `${m.pct}%` }} />
+                  </div>
+                </div>
+                <span className="text-xs font-semibold text-muted-foreground shrink-0">{m.pct}%</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground text-center py-4">No progress yet — start learning!</p>
+        )}
+      </div>
     </div>
   );
 }
 
-// ── Profile Tab ───────────────────────────────────────────────────────────────
-
-function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted: number }) {
-  const [, setLocation] = useLocation();
-  const { preferences, toggleShuffleQuestions, togglePrioritizeUnvisited } = useUserPreferences();
-  const { state } = useCredits();
-  const { unlocked: unlockedBadges } = useAchievements();
-
-  const [editingName, setEditingName] = useState(false);
-  const [displayName, setDisplayName] = useState(() => { try { return localStorage.getItem('user-display-name') || 'Learner'; } catch { return 'Learner'; } });
-  const [nameInput, setNameInput] = useState(displayName);
-
-  const memberSince = useMemo(() => {
-    try {
-      const p = JSON.parse(localStorage.getItem('user-preferences') || '{}');
-      if (p.createdAt) return new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-    } catch { /* ignore */ }
-    return 'Recently';
+function StatsTab({ stats, totalCompleted, streak, state, setLocation }: any) {
+  const topicsMastered = useMemo(() => {
+    let count = 0;
+    channels.forEach(ch => {
+      try {
+        const s = localStorage.getItem(`progress-${ch.id}`);
+        if (!s) return;
+        const completed = JSON.parse(s) as string[];
+        const questions = (() => { try { return JSON.parse(localStorage.getItem(`questions-${ch.id}`) || '[]'); } catch { return []; } })();
+        if (completed.length > 0 && completed.length >= (questions.length || 1)) count++;
+      } catch {}
+    });
+    return count;
   }, []);
 
-  const learningSummary = useMemo(() => {
+  const certCount = useMemo(() => {
     const certKw = ['aws','kubernetes','terraform','gcp','azure','comptia','cisco','cka','ckad','cks'];
-    const codeKw = ['algorithm','coding','frontend','backend'];
-    let topicsStudied = 0, certsPracticed = 0, codingDone = 0;
+    let c = 0;
     channels.forEach(ch => {
       try {
         const s = localStorage.getItem(`progress-${ch.id}`);
         if (!s) return;
         const completed = JSON.parse(s) as string[];
         if (!completed.length) return;
-        topicsStudied++;
-        const id = ch.id.toLowerCase();
-        if (certKw.some(k => id.includes(k))) certsPracticed++;
-        if (codeKw.some(k => id.includes(k))) codingDone += completed.length;
-      } catch { /* corrupted data */ }
+        if (certKw.some(k => ch.id.toLowerCase().includes(k))) c++;
+      } catch {}
     });
-    return { topicsStudied, certsPracticed, codingDone };
+    return c;
   }, []);
 
-  const exportData = () => {
-    const data: Record<string, unknown> = { exportedAt: new Date().toISOString(), xp: state.balance, totalCompleted };
-    try { Object.keys(localStorage).forEach(k => { data[k] = localStorage.getItem(k); }); } catch {}
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'open-interview-data.json'; a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const level = Math.floor(state.balance / 100);
-  const xpInLevel = state.balance % 100;
-  const initials = getInitials(displayName);
-
-  const saveName = () => {
-    const t = nameInput.trim() || 'Learner';
-    setDisplayName(t); localStorage.setItem('user-display-name', t); setEditingName(false);
-  };
-
-  const fadeUp = (delay = 0) => ({ initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.35 } });
-
-  return (
-    <div className="space-y-4 md:space-y-6">
-      {/* Profile Card */}
-      <motion.div {...fadeUp(0)} 
-        className="rounded-[28px] p-4 sm:p-6"
-        style={{
-          background: 'rgba(15, 22, 41, 0.75)',
-          backdropFilter: 'blur(20px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-          border: '1px solid rgba(99, 102, 241, 0.2)',
-          boxShadow: '12px 12px 40px rgba(0,0,0,0.35), -6px -6px 24px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.1)'
-        }}
-      >
-        <div className="flex flex-col items-center gap-4">
-          <div className="p-0.5 rounded-full" style={{ background: 'var(--gradient-primary)' }}>
-            <div className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold text-white" style={{ background: 'var(--surface-2)' }}>
-              {initials}
-            </div>
-          </div>
-          {editingName ? (
-            <div className="flex items-center gap-2">
-              <input autoFocus value={nameInput} onChange={e => setNameInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditingName(false); }}
-                className="text-center text-xl font-bold bg-transparent border-b-2 outline-none px-2"
-                style={{ borderColor: 'var(--color-accent-violet)', color: 'var(--text-primary)' }} />
-              <button onClick={saveName} aria-label="Save" className="p-1 rounded-full hover:bg-green-500/20 text-green-400"><Check className="w-4 h-4" aria-hidden={true} /></button>
-              <button onClick={() => setEditingName(false)} aria-label="Cancel" className="p-1 rounded-full hover:bg-red-500/20 text-red-400"><X className="w-4 h-4" aria-hidden={true} /></button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold">{displayName}</h2>
-              <button onClick={() => { setNameInput(displayName); setEditingName(true); }}
-                className="p-1 rounded-full transition-colors hover:bg-white/10" style={{ color: 'var(--text-tertiary)' }}>
-                <Edit2 className="w-3.5 h-3.5" aria-hidden={true} />
-              </button>
-            </div>
-          )}
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Member since {memberSince}</p>
-          <div className="flex gap-6 pt-2 border-t w-full justify-center" style={{ borderColor: 'var(--color-border)' }}>
-            {[
-              { label: 'XP', value: state.balance, color: 'var(--color-xp)' },
-              { label: 'Level', value: level, color: 'var(--color-accent-violet-light)' },
-              { label: 'Done', value: totalCompleted, color: 'var(--color-accent-cyan)' },
-              { label: 'Badges', value: unlockedBadges.length, color: 'var(--color-success)' },
-              { label: 'Streak', value: streak, color: 'var(--color-streak)' },
-            ].map(({ label, value, color }) => (
-              <div key={label} className="text-center">
-                <div className="text-lg font-bold" style={{ color }}>{value}</div>
-                <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{label}</div>
-              </div>
-            ))}
-          </div>
-          <div className="w-full">
-            <div className="flex justify-end text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
-              <span>{xpInLevel}/100 XP</span>
-            </div>
-            <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-4)' }}>
-              <motion.div initial={{ width: 0 }} animate={{ width: `${xpInLevel}%` }} transition={{ duration: 1 }}
-                className="h-full rounded-full" style={{ background: 'var(--gradient-primary)' }} />
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Achievements */}
-      <motion.div {...fadeUp(0.1)} className="glass-card rounded-[var(--radius-2xl)] p-4 sm:p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold flex items-center gap-2"><Trophy className="w-4 h-4" style={{ color: 'var(--color-xp)' }} />Achievements</h2>
-          <button onClick={() => setLocation('/badges')} className="text-xs flex items-center gap-1 min-h-[44px] px-2 cursor-pointer hover:opacity-80 transition-opacity duration-200" style={{ color: 'var(--color-accent-violet-light)' }}>
-            View All <ChevronRight className="w-3 h-3" />
-          </button>
-        </div>
-        {unlockedBadges.length > 0 ? (
-          <div className="grid grid-cols-3 gap-4">
-            {unlockedBadges.slice(0, 6).map((badge, i) => {
-              const { achievement } = badge;
-              // Tier ring colors
-              const tierRing: Record<string, string> = {
-                bronze: '#cd7f32', silver: '#c0c0c0', gold: '#ffd700', platinum: '#e5e4e2', diamond: '#b9f2ff'
-              };
-              const ringColor = tierRing[achievement.tier] || achievement.color || '#7c3aed';
-              // Resolve lucide icon
-              const iconName = (achievement.icon || 'star').split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join('');
-              const IconComp = (LucideIcons as any)[iconName] || Trophy;
-              return (
-                <motion.div
-                  key={achievement.id}
-                  initial={{ opacity: 0, scale: 0.7 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.1 + i * 0.06, type: 'spring', stiffness: 200 }}
-                  className="flex flex-col items-center gap-2 cursor-pointer group transition-opacity duration-200"
-                  title={achievement.description}
-                  onClick={() => setLocation('/badges')}
-                >
-                  {/* Medal circle — Apple Watch style */}
-                  <div className="relative" style={{ width: 72, height: 72 }}>
-                    {/* Outer glow ring */}
-                    <div className="absolute inset-0 rounded-full opacity-30 blur-sm group-hover:opacity-60 transition-opacity"
-                      style={{ background: ringColor }} />
-                    {/* Tier ring */}
-                    <svg width={72} height={72} className="absolute inset-0 -rotate-90">
-                      <circle cx={36} cy={36} r={32} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={4} />
-                      <circle cx={36} cy={36} r={32} fill="none" stroke={ringColor} strokeWidth={4}
-                        strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 32}`} strokeDashoffset={0} />
-                    </svg>
-                    {/* Inner medal face */}
-                    <div className={`absolute rounded-full flex items-center justify-center bg-gradient-to-br ${achievement.gradient || 'from-violet-500 to-purple-700'} shadow-lg`}
-                      style={{ inset: 6 }}>
-                      <IconComp className="text-white drop-shadow" style={{ width: 28, height: 28 }} />
-                    </div>
-                    {/* Tier badge dot */}
-                    <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center text-[8px] font-black shadow"
-                      style={{ background: ringColor, borderColor: 'var(--surface-1)', color: achievement.tier === 'silver' || achievement.tier === 'platinum' ? '#333' : '#fff' }}>
-                      {achievement.tier[0].toUpperCase()}
-                    </div>
-                  </div>
-                  {/* Name */}
-                  <span className="text-[10px] font-semibold text-center leading-tight line-clamp-2 w-full"
-                    style={{ color: 'var(--text-primary)' }}>
-                    {achievement.name}
-                  </span>
-                </motion.div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-sm text-center py-4" style={{ color: 'var(--text-tertiary)' }}>Complete challenges to earn badges</p>
-        )}
-      </motion.div>
-
-      {/* Learning Preferences */}
-      <motion.div {...fadeUp(0.2)} className="glass-card rounded-[var(--radius-2xl)] p-4 sm:p-6">
-        <h2 className="text-lg font-bold flex items-center gap-2"><Settings className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />Learning Preferences</h2>
-        <div className="space-y-1">
-          <SettingRow icon={<Shuffle className="w-4 h-4" style={{ color: 'var(--color-accent-violet-light)' }} />} label="Shuffle Questions" description="Randomize question order">
-            <Toggle on={preferences.shuffleQuestions !== false} onToggle={toggleShuffleQuestions} />
-          </SettingRow>
-          <SettingRow icon={<Eye className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />} label="Prioritize New" description="Show unvisited questions first">
-            <Toggle on={preferences.prioritizeUnvisited !== false} onToggle={togglePrioritizeUnvisited} />
-          </SettingRow>
-          <SettingRow icon={<Volume2 className="w-4 h-4" style={{ color: 'var(--color-accent-violet-light)' }} />} label="Auto-play Audio" description="Automatically read questions">
-            <Toggle on={!!((preferences as unknown as Record<string, unknown>)['autoPlayTTS'])}
-              onToggle={() => {
-                try {
-                  const p = JSON.parse(localStorage.getItem('user-preferences') || '{}');
-                  p.autoPlayTTS = !p.autoPlayTTS;
-                  localStorage.setItem('user-preferences', JSON.stringify(p));
-                  window.location.reload();
-                } catch { /* ignore */ }
-              }} />
-          </SettingRow>
-        </div>
-      </motion.div>
-
-      {/* Learning Summary */}
-      <motion.div {...fadeUp(0.25)} className="glass-card rounded-[var(--radius-2xl)] p-4 sm:p-6">
-        <h2 className="text-lg font-bold flex items-center gap-2 mb-4"><BookOpen className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />Learning Summary</h2>
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { icon: Target, label: 'Topics Studied', value: learningSummary.topicsStudied, color: 'var(--color-accent-violet-light)', bg: 'rgba(124,58,237,0.1)' },
-            { icon: GraduationCap, label: 'Certs Practiced', value: learningSummary.certsPracticed, color: 'var(--color-xp)', bg: 'rgba(245,158,11,0.1)' },
-            { icon: Code2, label: 'Coding Done', value: learningSummary.codingDone, color: 'var(--color-accent-cyan)', bg: 'rgba(6,182,212,0.1)' },
-          ].map(({ icon: Icon, label, value, color, bg }) => (
-            <div key={label} className="rounded-[var(--radius-xl)] p-4 text-center" style={{ background: bg, border: `1px solid ${bg.replace('0.1', '0.25')}` }}>
-              <Icon className="w-5 h-5 mx-auto mb-1" style={{ color }} />
-              <div className="text-2xl font-black">{value}</div>
-              <div className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{label}</div>
-            </div>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Data Export */}
-      <motion.div {...fadeUp(0.28)} className="glass-card rounded-[var(--radius-2xl)] p-4 sm:p-6">
-        <h2 className="text-lg font-bold flex items-center gap-2 mb-4"><Download className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />Data</h2>
-        <button onClick={exportData} className="w-full flex items-center justify-between px-4 py-3 min-h-[44px] rounded-[var(--radius-lg)] cursor-pointer transition-opacity duration-200 hover:opacity-80"
-          style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', color: 'var(--color-accent-cyan)' }}>
-          <span className="text-sm font-medium">Export my data</span>
-          <Download className="w-4 h-4" />
-        </button>
-      </motion.div>
-    </div>
-  );
-}
-
-// ── Stats Tab ─────────────────────────────────────────────────────────────────
-
-function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: number }) {
-  const [, setLocation] = useLocation();
-  const { stats } = useGlobalStats();
-  const { state } = useCredits();
-  const { unlocked: unlockedBadges } = useAchievements();
-  const [hoveredCell, setHoveredCell] = useState<{ date: string; count: number; x: number; y: number } | null>(null);
+  const voiceSessions = useMemo(() => {
+    try { return parseInt(localStorage.getItem('voice-sessions-count') || '0', 10); } catch { return 0; }
+  }, []);
 
   const todayCount = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    return stats.find(s => s.date === today)?.count || 0;
+    return stats.find((s: any) => s.date === today)?.count || 0;
   }, [stats]);
-
-  const { moduleProgress, certCount, voiceSessions } = useMemo(() => {
-    const modProgress = channels.map(ch => {
-      const questions = getQuestions(ch.id);
-      let completedIds = new Set<string>();
-      try {
-        const stored = localStorage.getItem(`progress-${ch.id}`);
-        if (stored) completedIds = new Set(JSON.parse(stored));
-      } catch { /* corrupted data */ }
-      const valid = Math.min(completedIds.size, questions.length);
-      const pct = questions.length > 0 ? Math.min(100, Math.round((valid / questions.length) * 100)) : 0;
-      return { id: ch.id, name: ch.name, completed: valid, total: questions.length, pct };
-    }).filter(m => m.total > 0).sort((a, b) => b.pct - a.pct);
-
-    return {
-      moduleProgress: modProgress,
-      certCount: modProgress.filter(m => m.pct === 100).length,
-      voiceSessions: (() => { try { return parseInt(localStorage.getItem('voice-sessions-count') || '0', 10); } catch { return 0; } })(),
-    };
-  }, [stats]);
-
-  const level = Math.floor(state.balance / 100);
-  const topicsMastered = moduleProgress.filter(m => m.pct === 100).length;
 
   const { heatmapCells, monthLabels } = useMemo(() => {
     const today = new Date();
     const startDate = new Date(today);
     startDate.setDate(today.getDate() - 364);
     startDate.setDate(startDate.getDate() - startDate.getDay());
-    const statsMap = new Map(stats.map(s => [s.date, s.count]));
-    const cells: { date: string; count: number; col: number; row: number }[] = [];
-    const months: { label: string; col: number }[] = [];
+    const statsMap = new Map(stats.map((s: any) => [s.date, s.count]));
+    const cells: any[] = [];
+    const months: any[] = [];
     let lastMonth = -1;
     for (let col = 0; col < 53; col++) {
       for (let row = 0; row < 7; row++) {
@@ -401,73 +332,63 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
     return { heatmapCells: cells, monthLabels: months };
   }, [stats]);
 
-  const weeklyData = useMemo(() => Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - (6 - i));
-    const iso = d.toISOString().split('T')[0];
-    return { day: d.toLocaleDateString('en-US', { weekday: 'short' }), count: stats.find(s => s.date === iso)?.count || 0 };
-  }), [stats]);
-
   const dailyData = useMemo(() => Array.from({ length: 30 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (29 - i));
     const iso = d.toISOString().split('T')[0];
-    return { date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), count: stats.find(s => s.date === iso)?.count || 0 };
+    return { date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), count: stats.find((s: any) => s.date === iso)?.count || 0 };
   }), [stats]);
 
-  const recentSessions = useMemo(() => [...stats]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5)
-    .map(s => ({ date: s.date, count: s.count, mode: s.count >= 10 ? 'test' : s.count >= 5 ? 'voice' : 'swipe' })), [stats]);
+  const moduleProgress = useMemo(() => channels.map(ch => {
+    let completedIds = new Set<string>();
+    try { const stored = localStorage.getItem(`progress-${ch.id}`); if (stored) completedIds = new Set(JSON.parse(stored)); } catch {}
+    const questions = (() => { try { return JSON.parse(localStorage.getItem(`questions-${ch.id}`) || '[]'); } catch { return []; } })();
+    const valid = Math.min(completedIds.size, questions.length);
+    const pct = questions.length > 0 ? Math.min(100, Math.round((valid / questions.length) * 100)) : 0;
+    return { id: ch.id, name: ch.name, completed: valid, total: questions.length, pct };
+  }).filter(m => m.total > 0).sort((a, b) => b.pct - a.pct), []);
 
   const topicData = useMemo(() => moduleProgress.filter(m => m.completed > 0).slice(0, 8)
     .map((m, i) => ({ name: m.name, value: m.completed, color: CHART_COLORS[i % CHART_COLORS.length] })), [moduleProgress]);
 
-  const { calendarDays, calendarMonth } = useMemo(() => {
-    const now = new Date();
-    const year = now.getFullYear(); const month = now.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const statsSet = new Set(stats.map(s => s.date));
-    return {
-      calendarDays: Array.from({ length: daysInMonth }, (_, i) => {
-        const d = i + 1;
-        const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        return { day: d, iso, active: statsSet.has(iso), isToday: d === now.getDate() };
-      }),
-      calendarMonth: now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-    };
-  }, [stats]);
+  const weeklyData = useMemo(() => Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (6 - i));
+    const iso = d.toISOString().split('T')[0];
+    return { day: d.toLocaleDateString('en-US', { weekday: 'short' }), count: stats.find((s: any) => s.date === iso)?.count || 0 };
+  }), [stats]);
 
-  const fadeUp = (delay = 0) => ({ initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.4 } });
+  const recentSessions = useMemo(() => [...stats]
+    .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 5)
+    .map((s: any) => ({ date: s.date, count: s.count, mode: s.count >= 10 ? 'test' : s.count >= 5 ? 'voice' : 'swipe' })), [stats]);
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-
-      {/* 4 stat chips */}
+    <div className="grid grid-cols-2 gap-3">
+      {/* Stat chips */}
       {[
-        { icon: Target,    label: 'Questions',  value: totalCompleted, sub: `+${todayCount}`, color: '#06b6d4', bg: 'rgba(6,182,212,0.08)'  },
-        { icon: BarChart2, label: 'Mastered',   value: topicsMastered, sub: undefined,        color: '#7c3aed', bg: 'rgba(124,58,237,0.08)' },
-        { icon: Trophy,    label: 'Certs',      value: certCount,      sub: undefined,        color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
-        { icon: Mic,       label: 'Voice',      value: voiceSessions,  sub: undefined,        color: '#10b981', bg: 'rgba(16,185,129,0.08)' },
+        { icon: Target, label: 'Questions', value: totalCompleted, sub: `+${todayCount}`, color: '#06b6d4', bg: 'rgba(6,182,212,0.08)' },
+        { icon: Award, label: 'Mastered', value: topicsMastered, color: '#7c3aed', bg: 'rgba(124,58,237,0.08)' },
+        { icon: Trophy, label: 'Certs', value: certCount, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
+        { icon: Mic, label: 'Voice', value: voiceSessions, color: '#10b981', bg: 'rgba(16,185,129,0.08)' },
       ].map(({ icon: Icon, label, value, sub, color, bg }, i) => (
-        <motion.div key={label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-          className="rounded-2xl p-3 flex flex-col gap-0.5" style={{ background: bg, border: `1px solid ${color}20` }}>
+        <div key={label} className="rounded-xl p-3 flex flex-col gap-0.5 border" style={{ background: bg, borderColor: `${color}20` }}>
           <Icon style={{ color, width: 13, height: 13 }} />
           <div className="text-lg font-black leading-none mt-1">{value}</div>
-          <div className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>{label}</div>
+          <div className="text-[10px] text-muted-foreground">{label}</div>
           {sub && <div className="text-[9px] font-semibold" style={{ color }}>{sub}</div>}
-        </motion.div>
+        </div>
       ))}
 
-      {/* Heatmap — full width */}
-      <motion.div {...fadeUp(0.2)} className="glass-card rounded-2xl p-3 col-span-2 sm:col-span-4">
+      {/* Heatmap */}
+      <div className="col-span-2 rounded-xl border border-border bg-card p-3">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Activity</span>
-          <span className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>52 weeks</span>
+          <span className="text-xs font-semibold text-muted-foreground">Activity</span>
+          <span className="text-[10px] text-muted-foreground">52 weeks</span>
         </div>
         <div className="overflow-x-auto">
           <div className="min-w-[520px]">
             <div className="relative h-3.5 mb-0.5 pl-6">
-              {monthLabels.map(({ label, col }) => (
-                <span key={`${label}-${col}`} className="text-[9px] absolute" style={{ color: 'var(--text-tertiary)', left: `${24 + col * 9}px` }}>{label}</span>
+              {monthLabels.map(({ label, col }: any) => (
+                <span key={`${label}-${col}`} className="text-[9px] absolute text-muted-foreground" style={{ left: `${24 + col * 9}px` }}>{label}</span>
               ))}
             </div>
             <div className="flex gap-0.5">
@@ -480,12 +401,9 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
                 {Array.from({ length: 53 }, (_, col) => (
                   <div key={col} className="flex flex-col gap-0.5">
                     {Array.from({ length: 7 }, (_, row) => {
-                      const cell = heatmapCells.find(c => c.col === col && c.row === row);
+                      const cell = heatmapCells.find((c: any) => c.col === col && c.row === row);
                       if (!cell) return <div key={row} style={{ width: 8, height: 8 }} />;
-                      return <div key={row} className={`rounded-[1px] cursor-pointer hover:scale-125 transition-transform ${HEATMAP_LEVELS[activityLevel(cell.count)]}`}
-                        style={{ width: 8, height: 8 }}
-                        onMouseEnter={e => { const r = (e.target as HTMLElement).getBoundingClientRect(); setHoveredCell({ date: cell.date, count: cell.count, x: r.left, y: r.top }); }}
-                        onMouseLeave={() => setHoveredCell(null)} />;
+                      return <div key={row} className={`rounded-[1px] ${HEATMAP_LEVELS[activityLevel(cell.count)]}`} style={{ width: 8, height: 8 }} />;
                     })}
                   </div>
                 ))}
@@ -493,16 +411,11 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
             </div>
           </div>
         </div>
-        {hoveredCell && (
-          <div className="fixed z-50 pointer-events-none" style={{ left: hoveredCell.x + 12, top: hoveredCell.y - 28 }}>
-            <HeatmapTooltip date={hoveredCell.date} count={hoveredCell.count} />
-          </div>
-        )}
-      </motion.div>
+      </div>
 
-      {/* Weekly bar widget */}
-      <motion.div {...fadeUp(0.25)} className="glass-card rounded-2xl p-3 col-span-1 sm:col-span-2">
-        <div className="text-[10px] font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>This Week</div>
+      {/* Weekly bar */}
+      <div className="col-span-1 rounded-xl border border-border bg-card p-3" style={{ maxHeight: 200 }}>
+        <div className="text-[10px] font-semibold text-muted-foreground mb-2">This Week</div>
         <ResponsiveContainer width="100%" height={90}>
           <BarChart data={weeklyData} barSize={12} margin={{ top: 0, right: 0, left: -28, bottom: 0 }}>
             <XAxis dataKey="day" tick={{ fill: 'var(--text-tertiary)', fontSize: 9 }} axisLine={false} tickLine={false} />
@@ -512,40 +425,37 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
             <defs><linearGradient id="bG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#7c3aed"/><stop offset="100%" stopColor="#06b6d4"/></linearGradient></defs>
           </BarChart>
         </ResponsiveContainer>
-      </motion.div>
+      </div>
 
-      {/* Topic distribution widget */}
-      <motion.div {...fadeUp(0.28)} className="glass-card rounded-2xl p-3 col-span-1 sm:col-span-2">
-        <div className="text-[10px] font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>Topics</div>
+      {/* Topic distribution */}
+      <div className="col-span-1 rounded-xl border border-border bg-card p-3" style={{ maxHeight: 200 }}>
+        <div className="text-[10px] font-semibold text-muted-foreground mb-2">Topics</div>
         {topicData.length > 0 ? (() => {
-          const total = topicData.reduce((s, d) => s + d.value, 0);
+          const total = topicData.reduce((s: number, d: any) => s + d.value, 0);
           return (
             <div className="space-y-1.5">
-              {topicData.slice(0, 5).map((d, i) => {
+              {topicData.slice(0, 5).map((d: any, i: number) => {
                 const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
                 return (
                   <div key={i}>
                     <div className="flex justify-between text-[9px] mb-0.5">
-                      <span className="truncate max-w-[65%]" style={{ color: 'var(--text-secondary)' }}>{d.name}</span>
+                      <span className="truncate max-w-[65%] text-muted-foreground">{d.name}</span>
                       <span style={{ color: d.color }}>{pct}%</span>
                     </div>
-                    <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--surface-3)' }}>
-                      <motion.div className="h-full rounded-full" style={{ background: d.color }}
-                        initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.5, delay: i * 0.04 }} />
+                    <div className="h-1 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full" style={{ background: d.color, width: `${pct}%` }} />
                     </div>
                   </div>
                 );
               })}
             </div>
           );
-        })() : <div className="text-[10px] text-center py-4" style={{ color: 'var(--text-tertiary)' }}>No data yet</div>}
-      </motion.div>
+        })() : <div className="text-[10px] text-center py-4 text-muted-foreground">No data yet</div>}
+      </div>
 
-      {/* 30-day line — spans full width */}
-      <motion.div {...fadeUp(0.32)} className="glass-card rounded-2xl p-3 col-span-2 sm:col-span-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-semibold" style={{ color: 'var(--text-tertiary)' }}>30-day trend</span>
-        </div>
+      {/* 30-day line */}
+      <div className="col-span-2 rounded-xl border border-border bg-card p-3" style={{ maxHeight: 200 }}>
+        <div className="text-[10px] font-semibold text-muted-foreground mb-2">30-day Trend</div>
         <ResponsiveContainer width="100%" height={80}>
           <LineChart data={dailyData} margin={{ top: 2, right: 2, left: -28, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
@@ -555,148 +465,160 @@ function StatsTab({ streak, totalCompleted }: { streak: number; totalCompleted: 
             <Line type="monotone" dataKey="count" stroke="#7c3aed" strokeWidth={1.5} dot={false} activeDot={{ r: 2, fill: '#7c3aed' }} />
           </LineChart>
         </ResponsiveContainer>
-      </motion.div>
+      </div>
 
-      {/* Recent sessions widget */}
-      <motion.div {...fadeUp(0.36)} className="glass-card rounded-2xl p-3 col-span-1 sm:col-span-2">
-        <div className="text-[10px] font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>Recent Sessions</div>
+      {/* Recent sessions */}
+      <div className="col-span-1 rounded-xl border border-border bg-card p-3" style={{ maxHeight: 200 }}>
+        <div className="text-[10px] font-semibold text-muted-foreground mb-2">Recent Sessions</div>
         {recentSessions.length > 0 ? (
           <div className="space-y-1">
-            {recentSessions.slice(0, 4).map(s => {
-              const cfg = { swipe: { label: 'Swipe', color: '#7c3aed' }, voice: { label: 'Voice', color: '#10b981' }, test: { label: 'Test', color: '#f59e0b' } }[s.mode];
+            {recentSessions.slice(0, 4).map((s: any) => {
+              const cfg = { swipe: { label: 'Swipe', color: '#7c3aed' }, voice: { label: 'Voice', color: '#10b981' }, test: { label: 'Test', color: '#f59e0b' } }[s.mode as string];
               return (
                 <div key={s.date} className="flex items-center justify-between text-[10px]">
-                  <span style={{ color: 'var(--text-tertiary)' }}>{formatDate(s.date)}</span>
+                  <span className="text-muted-foreground">{formatDate(s.date)}</span>
                   <span className="font-semibold" style={{ color: cfg?.color }}>{cfg?.label}</span>
                   <span className="font-bold">{s.count}q</span>
                 </div>
               );
             })}
           </div>
-        ) : <div className="text-[10px] text-center py-2" style={{ color: 'var(--text-tertiary)' }}>No sessions yet</div>}
-      </motion.div>
+        ) : <div className="text-[10px] text-center py-2 text-muted-foreground">No sessions yet</div>}
+      </div>
 
-      {/* Calendar widget */}
-      <motion.div {...fadeUp(0.38)} className="glass-card rounded-2xl p-3 col-span-1 sm:col-span-2">
+      {/* Calendar */}
+      <div className="col-span-1 rounded-xl border border-border bg-card p-3" style={{ maxHeight: 200 }}>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-semibold" style={{ color: 'var(--text-tertiary)' }}>{calendarMonth}</span>
-          <span className="text-[10px] font-bold" style={{ color: 'var(--color-streak)' }}>{streak}d 🔥</span>
+          <span className="text-[10px] font-semibold text-muted-foreground">{new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+          <span className="text-[10px] font-bold text-rose-400">{streak}d 🔥</span>
         </div>
         <div className="grid grid-cols-7 gap-0.5 mb-0.5">
           {['S','M','T','W','T','F','S'].map((d, i) => (
-            <div key={i} className="text-center text-[8px]" style={{ color: 'var(--text-tertiary)' }}>{d}</div>
+            <div key={i} className="text-center text-[8px] text-muted-foreground">{d}</div>
           ))}
         </div>
         <div className="grid grid-cols-7 gap-0.5">
-          {Array.from({ length: new Date(new Date().getFullYear(), new Date().getMonth(), 1).getDay() }, (_, i) => <div key={`e-${i}`} />)}
-          {calendarDays.map(({ day, active, isToday }) => (
-            <div key={day} className={`flex items-center justify-center rounded text-[9px] font-medium ${isToday ? 'ring-1 ring-violet-500' : ''}`}
-              style={{
-                aspectRatio: '1',
-                background: active ? (isToday ? '#7c3aed' : 'rgba(124,58,237,0.5)') : isToday ? 'rgba(124,58,237,0.12)' : 'var(--surface-2)',
-                color: active ? '#fff' : isToday ? '#a78bfa' : 'var(--text-tertiary)',
-              }}>
-              {day}
-            </div>
-          ))}
+          {Array.from({ length: new Date().getDay() }, (_, i) => <div key={`e-${i}`} />)}
+          {(() => {
+            const now = new Date();
+            const year = now.getFullYear(); const month = now.getMonth();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const statsSet = new Set(stats.map((s: any) => s.date));
+            return Array.from({ length: daysInMonth }, (_, i) => {
+              const d = i + 1;
+              const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+              const active = statsSet.has(iso);
+              const isToday = d === now.getDate();
+              return (
+                <div key={d} className={`flex items-center justify-center rounded text-[9px] font-medium ${isToday ? 'ring-1 ring-violet-500' : ''}`}
+                  style={{ aspectRatio: '1', background: active ? (isToday ? '#7c3aed' : 'rgba(124,58,237,0.5)') : isToday ? 'rgba(124,58,237,0.12)' : '', color: active ? '#fff' : isToday ? '#a78bfa' : 'var(--text-tertiary)' }}>
+                  {d}
+                </div>
+              );
+            });
+          })()}
         </div>
-      </motion.div>
+      </div>
 
-      {/* Channel progress — full width */}
-      <motion.div {...fadeUp(0.42)} className="glass-card rounded-2xl p-3 col-span-2 sm:col-span-4">
-        <div className="text-[10px] font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>Channel Progress</div>
+      {/* Channel progress */}
+      <div className="col-span-2 rounded-xl border border-border bg-card p-3" style={{ maxHeight: 200 }}>
+        <div className="text-[10px] font-semibold text-muted-foreground mb-2">Channel Progress</div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {moduleProgress.slice(0, 8).map((mod, i) => (
-            <motion.button key={mod.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.44 + i * 0.03 }}
-              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+          {(moduleProgress as any[]).slice(0, 8).map((mod, i) => (
+            <button key={mod.id}
               onClick={() => setLocation(`/channel/${mod.id}`)}
-              className="p-3 min-h-[56px] rounded-2xl text-left cursor-pointer" style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)' }}>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-medium truncate max-w-[75%]">{mod.name}</span>
-                <span className="text-[9px] font-bold flex-shrink-0" style={{ color: mod.pct === 100 ? '#f59e0b' : 'var(--text-tertiary)' }}>
+              className="p-2 min-h-[44px] rounded-xl text-left cursor-pointer bg-muted/30 border border-border hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-medium truncate max-w-[70%]">{mod.name}</span>
+                <span className="text-[9px] font-bold shrink-0" style={{ color: mod.pct === 100 ? '#f59e0b' : 'var(--text-tertiary)' }}>
                   {mod.pct === 100 ? '✓' : `${mod.pct}%`}
                 </span>
               </div>
-              <div className="h-0.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-4)' }}>
-                <motion.div initial={{ width: 0 }} animate={{ width: `${mod.pct}%` }} transition={{ duration: 0.6, delay: 0.5 + i * 0.04 }}
-                  className="h-full rounded-full" style={{ background: mod.pct === 100 ? '#f59e0b' : '#7c3aed' }} />
+              <div className="h-1 rounded-full bg-muted overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${mod.pct}%`, background: mod.pct === 100 ? '#f59e0b' : '#7c3aed' }} />
               </div>
-            </motion.button>
+            </button>
           ))}
         </div>
-      </motion.div>
-
+      </div>
     </div>
   );
 }
 
-// ── Main export ───────────────────────────────────────────────────────────────
+function BadgesTab({ unlocked, allProgress, badgeStats, setLocation }: any) {
+  const locked = useMemo(() => allProgress.filter((p: any) => !p.isUnlocked), [allProgress]);
 
-export default function ProfilePage() {
-  const { stats } = useGlobalStats();
+  const allOrdered = useMemo(() => {
+    const u = unlocked.map((p: any) => ({ ...p.achievement, unlocked: true }));
+    const l = locked.map((p: any) => ({ ...p.achievement, unlocked: false, progress: p.progress, maxProgress: p.maxProgress }));
+    return [...u, ...l];
+  }, [unlocked, locked]);
 
-  const streak = useMemo(() => {
-    let s = 0;
-    for (let i = 0; i < 365; i++) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      if (stats.find(x => x.date === d.toISOString().split('T')[0])) s++; else break;
-    }
-    return s;
-  }, [stats]);
-
-  const [totalCompleted, setTotalCompleted] = useState(0);
-  useEffect(() => {
-    try {
-      const allQ = getAllQuestions();
-      const ids = new Set<string>();
-      allQ.forEach(q => {
-        try {
-          const s = localStorage.getItem(`progress-${q.channel}`);
-          if (s && new Set(JSON.parse(s)).has(q.id)) ids.add(q.id);
-        } catch { /* corrupted data */ }
-      });
-      setTotalCompleted(ids.size);
-    } catch {
-      setTotalCompleted(0);
-    }
-  }, []);
+  const tierRing = (tier: string) => tiers[tier] || '#7c3aed';
+  const iconName = (icon: string) => {
+    const name = (icon || 'star').split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+    const icons: Record<string, any> = { Trophy, Award, Star: Award, Zap, Flame, Target, Check, Code2, BookOpen, Mic, TrendingUp, Clock, User, BarChart2, Sparkles };
+    return icons[name] || Trophy;
+  };
 
   return (
-    <ErrorBoundary fallback={
-      <AppLayout fullWidth>
-        <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-8">
-          <div className="max-w-md text-center space-y-4">
-            <LucideIcons.AlertCircle className="w-12 h-12 mx-auto text-destructive" />
-            <h2 className="text-xl font-bold">Something went wrong</h2>
-            <p className="text-muted-foreground">Your profile data could not be loaded. This is usually caused by corrupted localStorage data.</p>
-            <button onClick={() => { try { localStorage.clear(); } catch {} window.location.reload(); }}
-              className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 transition-opacity cursor-pointer">
-              Reset & Reload
-            </button>
+    <div className="space-y-4">
+      {/* Badge stats */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: 'Unlocked', value: badgeStats.unlocked, color: 'text-violet-400' },
+          { label: 'Total', value: badgeStats.total, color: 'text-cyan-400' },
+          { label: 'Progress', value: `${badgeStats.percentage}%`, color: 'text-amber-400' },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="p-3 rounded-xl bg-muted/30 border border-border text-center">
+            <div className={`text-lg font-black ${color}`}>{value}</div>
+            <div className="text-[10px] text-muted-foreground">{label}</div>
           </div>
-        </div>
-      </AppLayout>
-    }>
-      <SEOHead title="Profile & Stats" description="Your profile, settings and learning statistics" canonical="https://open-interview.github.io/profile" />
-      <AppLayout fullWidth>
-        <div className="min-h-screen bg-background text-foreground">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12 pb-20 sm:pb-24">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center">
-                <User className="w-6 h-6 text-white" />
+        ))}
+      </div>
+
+      {/* Badge grid */}
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+        {allOrdered.map((badge: any) => {
+          const Icon = iconName(badge.icon || badge.name);
+          const ringColor = tierRing(badge.tier);
+          return (
+            <div key={badge.id}
+              className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-center transition-all ${
+                badge.unlocked ? 'bg-card border-border hover:border-primary/30' : 'bg-muted/20 border-border/50'
+              }`}
+            >
+              <div className="relative" style={{ width: 56, height: 56 }}>
+                <svg width={56} height={56} className="absolute inset-0 -rotate-90">
+                  <circle cx={28} cy={28} r={24} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={3} />
+                  {badge.unlocked && (
+                    <circle cx={28} cy={28} r={24} fill="none" stroke={ringColor} strokeWidth={3}
+                      strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 24}`} strokeDashoffset={0} />
+                  )}
+                </svg>
+                <div className={`absolute inset-0 rounded-full flex items-center justify-center ${badge.unlocked ? '' : 'grayscale opacity-40'}`}
+                  style={{ background: badge.unlocked ? `${ringColor}18` : 'var(--surface-3)' }}>
+                  <Icon className="w-5 h-5" style={{ color: badge.unlocked ? ringColor : 'var(--text-tertiary)' }} />
+                </div>
+                {!badge.unlocked && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Lock className="w-3 h-3 text-muted-foreground/60" />
+                  </div>
+                )}
               </div>
-              <div>
-                <h1 className="text-2xl font-bold">Profile &amp; Stats</h1>
-                <p className="text-sm text-muted-foreground">Your settings, achievements and learning progress</p>
-              </div>
+              <span className={`text-[9px] font-semibold leading-tight line-clamp-2 ${badge.unlocked ? '' : 'text-muted-foreground/60'}`}>
+                {badge.name}
+              </span>
             </div>
-            <ProfileTab streak={streak} totalCompleted={totalCompleted} />
-            <div className="mt-6 lg:mt-12">
-              <StatsTab streak={streak} totalCompleted={totalCompleted} />
-            </div>
-          </div>
+          );
+        })}
+      </div>
+
+      {allOrdered.length === 0 && (
+        <div className="text-center py-10 text-sm text-muted-foreground">
+          No badges available yet
         </div>
-      </AppLayout>
-    </ErrorBoundary>
+      )}
+    </div>
   );
 }

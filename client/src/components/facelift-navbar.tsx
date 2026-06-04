@@ -59,7 +59,7 @@ function ThemeToggle() {
       whileHover={{ scale: 1.05 }}
       onClick={toggleTheme}
       className={cn(
-        'relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all',
+        'relative w-11 h-11 rounded-xl flex items-center justify-center transition-all',
         'bg-muted/50 hover:bg-muted/80 border border-border/50',
         'overflow-hidden'
       )}
@@ -113,7 +113,7 @@ function MobileMenu({ isOpen, onClose, onSearchOpen, activeLink, onNavigate }: M
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm lg:hidden"
-            onClick={onClose}
+            onClick={onClose} aria-hidden="true"
           />
         )}
       </AnimatePresence>
@@ -125,7 +125,7 @@ function MobileMenu({ isOpen, onClose, onSearchOpen, activeLink, onNavigate }: M
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 250 }}
-            className="fixed top-0 right-0 bottom-0 z-[70] w-[300px] max-w-[85vw] lg:hidden flex flex-col"
+            role="dialog" aria-modal="true" className="fixed top-0 right-0 bottom-0 z-[70] w-[300px] max-w-[85vw] lg:hidden flex flex-col"
           >
             <div className="absolute inset-0 bg-background/95 backdrop-blur-xl border-l border-border/50" />
 
@@ -133,7 +133,8 @@ function MobileMenu({ isOpen, onClose, onSearchOpen, activeLink, onNavigate }: M
               <span className="font-semibold text-lg">Menu</span>
               <button
                 onClick={onClose}
-                className="w-10 h-10 rounded-xl flex items-center justify-center bg-muted/50 hover:bg-muted transition-colors"
+                className="w-11 h-11 rounded-xl flex items-center justify-center bg-muted/50 hover:bg-muted transition-colors"
+                aria-label="Close menu"
               >
                 <X className="size-5" />
               </button>
@@ -160,6 +161,7 @@ function MobileMenu({ isOpen, onClose, onSearchOpen, activeLink, onNavigate }: M
                         ? 'bg-primary/10 text-primary font-semibold'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                     )}
+                    aria-current={isActive ? 'page' : undefined}
                   >
                     <Icon className="size-5 shrink-0" strokeWidth={isActive ? 2.5 : 2} />
                     <span className="flex-1 text-left text-sm">{link.label}</span>
@@ -214,7 +216,7 @@ function Logo({ onHome }: { onHome: () => void }) {
   return (
     <motion.button
       onClick={onHome}
-      className="flex items-center gap-2.5 shrink-0"
+      className="flex items-center gap-2.5 shrink-0 min-h-[44px] min-w-[44px]"
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       aria-label="Go to home page"
@@ -321,9 +323,10 @@ function DesktopNav({
 
 interface FaceliftNavbarProps {
   onSearchOpen: () => void;
+  onCommandOpen?: () => void;
 }
 
-export function FaceliftNavbar({ onSearchOpen }: FaceliftNavbarProps) {
+export function FaceliftNavbar({ onSearchOpen, onCommandOpen }: FaceliftNavbarProps) {
   const [location, setLocation] = useLocation();
   const { theme } = useTheme();
   const [scrolled, setScrolled] = useState(false);
@@ -351,12 +354,12 @@ export function FaceliftNavbar({ onSearchOpen }: FaceliftNavbarProps) {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        onSearchOpen();
+        (onCommandOpen ?? onSearchOpen)();
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [onSearchOpen]);
+  }, [onSearchOpen, onCommandOpen]);
 
   // Determine active link
   const getActiveLink = useCallback((): string => {
@@ -430,7 +433,7 @@ export function FaceliftNavbar({ onSearchOpen }: FaceliftNavbarProps) {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={onSearchOpen}
-              className="sm:hidden size-9 rounded-xl flex items-center justify-center bg-muted/50 hover:bg-muted transition-colors"
+              className="sm:hidden size-11 rounded-xl flex items-center justify-center bg-muted/50 hover:bg-muted transition-colors"
               aria-label="Open search"
               data-testid="button-search-open-mobile"
             >
@@ -444,7 +447,7 @@ export function FaceliftNavbar({ onSearchOpen }: FaceliftNavbarProps) {
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => setMobileOpen(true)}
-              className="lg:hidden size-9 rounded-xl flex items-center justify-center bg-muted/50 hover:bg-muted transition-colors relative overflow-hidden"
+              className="lg:hidden size-11 rounded-xl flex items-center justify-center bg-muted/50 hover:bg-muted transition-colors relative overflow-hidden"
               aria-label="Open menu"
               data-testid="button-menu-open"
             >

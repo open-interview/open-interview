@@ -1,8 +1,11 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { SEOHead } from "../../components/SEOHead";
 import { AppLayout } from "../../components/layout/AppLayout";
 import { EnhancedMermaid } from "../../components/EnhancedMermaid";
+import { UnifiedCard } from "../../components/ui/UnifiedCard";
 import { cn } from "../../lib/utils";
+import { microInteractions } from "../../lib/motion";
 import { AlertCircle, CheckCircle, ChevronDown } from "lucide-react";
 
 const DIAGRAMS = [
@@ -140,8 +143,8 @@ export default function DiagramTest() {
             {DIAGRAMS.map((diagram, index) => {
               const status = statuses[index] ?? "pending";
               return (
-                <div key={index} className="bg-card border border-border rounded-lg overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <UnifiedCard key={index} className="overflow-hidden p-0" hover={false} press={false}>
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--card-border,var(--border-default))]">
                     <h2 className="text-sm font-semibold">{diagram.name}</h2>
                     <StatusBadge status={status} />
                   </div>
@@ -153,16 +156,19 @@ export default function DiagramTest() {
                     />
                   </div>
 
-                  <details className="border-t border-border group">
-                    <summary className="flex items-center gap-2 px-4 py-2.5 text-xs text-muted-foreground hover:bg-muted/30 cursor-pointer min-h-[44px]">
+                  <details className="border-t border-[var(--card-border,var(--border-default))] group">
+                    <motion.summary
+                      className="flex items-center gap-2 px-4 py-2.5 text-xs text-muted-foreground hover:bg-muted/30 cursor-pointer min-h-[44px]"
+                      {...microInteractions.press}
+                    >
                       <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
                       Source
-                    </summary>
+                    </motion.summary>
                     <div className="px-4 pb-3">
                       <pre className="text-[11px] leading-relaxed text-muted-foreground bg-muted/50 rounded p-3 overflow-x-auto font-mono whitespace-pre">{diagram.code}</pre>
                     </div>
                   </details>
-                </div>
+                </UnifiedCard>
               );
             })}
           </div>

@@ -7,11 +7,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
+import { useGlobalShortcuts } from '@/hooks/use-global-shortcuts';
 import { Sidebar } from './Sidebar';
 import { MobileBottomNav } from './UnifiedNav';
 import { MobileHeader } from './MobileHeader';
 import { UnifiedSearch } from '../UnifiedSearch';
 import { FaceliftNavbar } from '../facelift-navbar';
+import { CommandPalette } from '../CommandPalette';
 import { useSidebar } from '../../context/SidebarContext';
 import { cn } from '../../lib/utils';
 
@@ -45,12 +47,14 @@ export function AppLayout({
   useFacelift = true,
 }: AppLayoutProps) {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
   const [location] = useLocation();
   const { isCollapsed } = useSidebar();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
   const prefersReducedMotion = useReducedMotion();
   const transition = prefersReducedMotion ? { duration: 0 } : pageTransition;
+  useGlobalShortcuts();
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1023px)');
@@ -60,12 +64,12 @@ export function AppLayout({
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  // Keyboard shortcut: ⌘K / Ctrl+K
+  // Keyboard shortcut: ⌘K / Ctrl+K → command palette
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        setSearchOpen(true);
+        setCommandOpen(true);
       }
     };
     window.addEventListener('keydown', handler);
@@ -158,6 +162,7 @@ export function AppLayout({
       </footer>
 
       <UnifiedSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+      <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
     </div>
   );
 }

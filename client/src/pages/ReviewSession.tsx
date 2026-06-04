@@ -232,10 +232,32 @@ export default function ReviewSession() {
   if (loadingCards) {
     return (
       <AppLayout fullWidth>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="flex flex-col items-center justify-center gap-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-            <p className="text-muted-foreground text-sm">Loading review cards...</p>
+        <div className="min-h-screen max-w-2xl mx-auto px-4 py-8">
+          <div className="flex flex-col items-center gap-6">
+            <div className="h-6 w-48 bg-primary/10 rounded animate-pulse" />
+            <div className="h-1.5 w-full bg-primary/10 rounded-full animate-pulse" />
+            <div className="w-full rounded-2xl border border-border p-6 sm:p-8 space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="h-5 w-5 bg-primary/10 rounded animate-pulse" />
+                <div className="h-4 w-24 bg-primary/10 rounded animate-pulse" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-5 w-full bg-primary/10 rounded animate-pulse" />
+                <div className="h-5 w-3/4 bg-primary/10 rounded animate-pulse" />
+                <div className="h-5 w-1/2 bg-primary/10 rounded animate-pulse" />
+              </div>
+              <div className="h-px bg-border" />
+              <div className="space-y-2">
+                <div className="h-4 w-full bg-primary/10 rounded animate-pulse" />
+                <div className="h-4 w-5/6 bg-primary/10 rounded animate-pulse" />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <div className="h-11 flex-1 bg-primary/10 rounded-xl animate-pulse" />
+                <div className="h-11 flex-1 bg-primary/10 rounded-xl animate-pulse" />
+                <div className="h-11 flex-1 bg-primary/10 rounded-xl animate-pulse" />
+                <div className="h-11 flex-1 bg-primary/10 rounded-xl animate-pulse" />
+              </div>
+            </div>
           </div>
         </div>
       </AppLayout>

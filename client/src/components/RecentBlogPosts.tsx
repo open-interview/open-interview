@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { FileText, ChevronRight, Sparkles, Zap } from 'lucide-react';
-import { PageLoader, SectionHeader } from './ui/page';
 import { getPosts } from '../lib/blog-loader';
 
 interface BlogPost {
@@ -42,9 +41,9 @@ export function RecentBlogPosts({ limit = 3, className = '' }: RecentBlogPostsPr
       <section className={`mb-3 ${className}`}>
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
           <div className="px-4 py-3 border-b border-border">
-            <SectionHeader title="From the Blog" icon={<Sparkles className="w-4 h-4 text-primary" />} />
+            <h2 className="text-lg font-bold flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />From the Blog</h2>
           </div>
-          <div className="p-3"><PageLoader message="" /></div>
+          <div className="p-3 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
         </div>
       </section>
     );

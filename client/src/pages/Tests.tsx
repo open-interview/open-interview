@@ -111,8 +111,45 @@ export default function TestsPage() {
   if (loading) {
     return (
       <AppLayout fullWidth>
-        <div className="flex items-center justify-center min-h-[40vh]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        <div className="min-h-screen pb-24 lg:pb-8">
+          <div className="max-w-7xl mx-auto px-4 py-4 sm:py-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center" />
+              <div>
+                <div className="h-7 w-48 bg-primary/10 rounded animate-pulse" />
+                <div className="h-4 w-36 bg-primary/10 rounded animate-pulse mt-1" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-border p-4 space-y-2">
+                  <div className="h-3 w-16 bg-primary/10 rounded animate-pulse" />
+                  <div className="h-8 w-12 bg-primary/10 rounded animate-pulse" />
+                  <div className="h-3 w-20 bg-primary/10 rounded animate-pulse" />
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 flex-1 bg-primary/10 rounded-xl animate-pulse" />
+              <div className="h-10 w-24 bg-primary/10 rounded-full animate-pulse" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-border p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-5 w-5 rounded bg-primary/10 animate-pulse" />
+                    <div className="h-4 w-32 bg-primary/10 rounded animate-pulse" />
+                  </div>
+                  <div className="h-3 w-full bg-primary/10 rounded animate-pulse" />
+                  <div className="h-3 w-2/3 bg-primary/10 rounded animate-pulse" />
+                  <div className="flex justify-between items-center pt-2">
+                    <div className="h-3 w-20 bg-primary/10 rounded animate-pulse" />
+                    <div className="h-8 w-8 rounded-full bg-primary/10 animate-pulse" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </AppLayout>
     );

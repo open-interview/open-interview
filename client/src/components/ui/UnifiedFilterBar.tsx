@@ -1,5 +1,7 @@
 import { Search, X } from "lucide-react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { microInteractions } from "@/lib/motion";
 
 interface FilterOption {
   id: string;
@@ -56,20 +58,21 @@ export function UnifiedFilterBar({
             className="w-full pl-9 pr-8 h-10 rounded-xl text-sm bg-[var(--color-surface-2,var(--surface-raised))] border border-[var(--color-border,var(--border-default))] text-[var(--color-text-primary,var(--text-primary))] placeholder:text-[var(--color-text-muted,var(--text-tertiary))] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary,var(--brand-500))]/40 transition-all"
           />
           {search && (
-            <button
+            <motion.button
               onClick={() => onSearchChange("")}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted,var(--text-tertiary))] hover:text-[var(--color-text-primary,var(--text-primary))] transition-colors"
               tabIndex={-1}
+              {...microInteractions.iconButton}
             >
               <X className="w-3.5 h-3.5" />
-            </button>
+            </motion.button>
           )}
         </div>
       )}
 
       <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-2 px-2 flex-1">
         {options.map((opt) => (
-          <button
+          <motion.button
             key={opt.id}
             onClick={() => onFilterChange(opt.id)}
             className={cn(
@@ -78,6 +81,7 @@ export function UnifiedFilterBar({
                 ? "bg-[var(--color-primary,var(--brand-500))] text-white"
                 : "bg-[var(--color-surface-2,var(--surface-raised))] border border-[var(--color-border,var(--border-default))] text-[var(--color-text-secondary,var(--text-secondary))] hover:bg-[var(--color-surface-3,var(--surface-elevated))]"
             )}
+            {...microInteractions.button}
           >
             {opt.label}
             {opt.badge !== undefined && (
@@ -90,7 +94,7 @@ export function UnifiedFilterBar({
                 {opt.badge}
               </span>
             )}
-          </button>
+          </motion.button>
         ))}
       </div>
     </div>

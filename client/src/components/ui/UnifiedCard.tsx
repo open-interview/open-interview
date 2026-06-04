@@ -1,4 +1,6 @@
+import { motion } from 'framer-motion';
 import { cn } from "@/lib/utils";
+import { microInteractions } from "@/lib/motion";
 
 interface UnifiedCardProps extends React.HTMLAttributes<HTMLDivElement> {
   hover?: boolean;
@@ -13,14 +15,35 @@ export function UnifiedCard({
   compact = false,
   ...props
 }: UnifiedCardProps) {
+  const isInteractive = hover || press;
+
+  if (isInteractive) {
+    // Safe cast: motion.div accepts all HTML div props; gesture type differences
+    // (e.g. onDrag) don't occur in practice for card components.
+    const motionProps = props as unknown as React.ComponentProps<typeof motion.div>;
+    return (
+      <motion.div
+        className={cn(
+          "rounded-[var(--card-radius,16px)] border border-[var(--card-border,var(--border-default))]",
+          "bg-[var(--card-bg,var(--surface-raised))]",
+          "transition-all duration-200",
+          hover && "hover:border-[var(--card-border-hover,var(--border-strong))] hover:shadow-md",
+          press && "active:scale-[0.98]",
+          compact ? "p-3" : "p-4 sm:p-6",
+          className
+        )}
+        {...(hover ? { whileHover: microInteractions.card.whileHover } : {})}
+        {...(press ? { whileTap: microInteractions.card.whileTap } : {})}
+        {...motionProps}
+      />
+    );
+  }
+
   return (
     <div
       className={cn(
         "rounded-[var(--card-radius,16px)] border border-[var(--card-border,var(--border-default))]",
         "bg-[var(--card-bg,var(--surface-raised))]",
-        "transition-all duration-200",
-        hover && "hover:border-[var(--card-border-hover,var(--border-strong))] hover:shadow-md",
-        press && "active:scale-[0.98]",
         compact ? "p-3" : "p-4 sm:p-6",
         className
       )}

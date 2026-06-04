@@ -7,6 +7,7 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { UnifiedFilterBar } from '@/components/ui/UnifiedFilterBar';
 import { UnifiedEmptyState } from '@/components/ui/UnifiedEmptyState';
 import { UnifiedCard, UnifiedCardContent } from '@/components/ui/UnifiedCard';
+import { SkeletonList } from '@/components/ui/skeleton-loaders';
 import { allChannelsConfig } from '../lib/channels-config';
 import { getQuestionById } from '../lib/questions-loader';
 
@@ -84,7 +85,7 @@ export default function AnswerHistory() {
     if (dateRange !== 'all') {
       const now = Date.now();
       const cutoff = { today: now - 86400000, week: now - 604800000, month: now - 2592000000 }[dateRange];
-      filtered = filtered.filter(h => h.timestamp >= cutoff);
+      filtered = filtered.filter(h => h.timestamp >= cutoff!);
     }
 
     if (searchQuery) {
@@ -125,8 +126,11 @@ export default function AnswerHistory() {
   if (loading) {
     return (
       <AppLayout fullWidth>
-        <div className="flex items-center justify-center min-h-[40vh]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        <div className="min-h-screen pb-24 lg:pb-8">
+          <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
+            <div className="h-8 w-48 bg-primary/10 rounded animate-pulse mb-4" />
+            <SkeletonList count={6} />
+          </div>
         </div>
       </AppLayout>
     );

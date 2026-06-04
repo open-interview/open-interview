@@ -34,7 +34,7 @@ function InlineThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="w-9 h-9 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted transition-colors"
+      className="w-11 h-11 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted transition-colors"
       aria-label="Toggle theme"
     >
       {isDark
@@ -91,7 +91,7 @@ export function MobileHeader({
           {shouldShowBack ? (
             <button
               onClick={() => window.history.back()}
-              className="w-9 h-9 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted transition-colors shrink-0"
+              className="w-11 h-11 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted transition-colors shrink-0"
               aria-label="Go back"
             >
               <ArrowLeft className="w-5 h-5 text-foreground/80" strokeWidth={2} />
@@ -122,7 +122,7 @@ export function MobileHeader({
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={() => setLocation('/profile')}
-            className="flex items-center gap-1 px-2 py-1.5 bg-amber-500/15 border border-amber-500/30 rounded-lg"
+            className="flex items-center gap-1 px-2 min-h-[44px] bg-amber-500/15 border border-amber-500/30 rounded-lg"
           >
             <Coins className="w-3.5 h-3.5 text-amber-400" strokeWidth={2.5} />
             <span className="text-xs font-bold text-amber-400">{formatCredits(state.balance)}</span>
@@ -131,7 +131,7 @@ export function MobileHeader({
           {showSearch && (
             <button
               onClick={onSearchClick}
-              className="w-9 h-9 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted transition-colors"
+              className="w-11 h-11 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-muted transition-colors"
               aria-label="Search"
             >
               <Search className="w-4 h-4 text-foreground/80" strokeWidth={2} />
