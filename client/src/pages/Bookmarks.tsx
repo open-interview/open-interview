@@ -11,6 +11,7 @@ import { useUserPreferences } from '../context/UserPreferencesContext';
 import { ProgressStorage } from '../services/storage.service';
 import { STORAGE_KEYS } from '../lib/constants';
 import type { Question } from '../types';
+import { BookmarkItemSkeleton } from '@/components/ui/skeleton-loaders';
 import { Bookmark, Play, Trash2, CheckCircle, X } from 'lucide-react';
 
 interface BookmarkedQuestion extends Question {
@@ -42,12 +43,15 @@ const FILTER_OPTIONS = [
 export default function Bookmarks() {
   const [, setLocation] = useLocation();
   const { getSubscribedChannels } = useUserPreferences();
+  const [mounted, setMounted] = useState(false);
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState<BookmarkedQuestion[]>([]);
   const [search, setSearch] = useState('');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     try {
@@ -147,6 +151,10 @@ export default function Bookmarks() {
       <AppLayout fullWidth>
         <div className="min-h-screen pb-24 lg:pb-8">
           <div className="max-w-3xl mx-auto px-4 py-4 sm:py-6">
+            {!mounted ? (
+              <BookmarkItemSkeleton />
+            ) : (
+            <>
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -332,6 +340,8 @@ export default function Bookmarks() {
                 </motion.div>
               )}
             </AnimatePresence>
+            </>
+          )}
           </div>
         </div>
       </AppLayout>

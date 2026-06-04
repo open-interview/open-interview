@@ -162,3 +162,31 @@ export function ProfileSkeleton({ className }: { className?: string }) {
     </div>
   );
 }
+
+export function BookmarkItemSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("space-y-2", className)}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-[var(--card-radius,16px)] border border-[var(--card-border,var(--border-default))] bg-[var(--card-bg,var(--surface-raised))] p-4 sm:p-6"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0 space-y-2.5">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-3 w-16 rounded" />
+                <Skeleton className="h-4 w-10 rounded-full" />
+              </div>
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+            </div>
+            <div className="flex items-center gap-1 pt-1">
+              <Skeleton className="h-11 w-11 rounded-lg" />
+              <Skeleton className="h-11 w-11 rounded-lg" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

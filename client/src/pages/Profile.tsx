@@ -18,6 +18,7 @@ import {
   Code2, GraduationCap, Zap, ChevronRight, Check
 } from 'lucide-react';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { ProfileSkeleton } from '@/components/ui/skeleton-loaders';
 
 function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
@@ -48,10 +49,13 @@ const tiers: Record<string, string> = {
 
 export default function ProfilePage() {
   const [, setLocation] = useLocation();
+  const [mounted, setMounted] = useState(false);
   const { stats } = useGlobalStats();
   const { state } = useCredits();
   const { unlocked: unlockedBadges, progress: allProgress, stats: badgeStats } = useAchievements();
   const [displayName] = useState(() => { try { return localStorage.getItem('user-display-name') || 'Learner'; } catch { return 'Learner'; } });
+
+  useEffect(() => { setMounted(true); }, []);
 
   const [totalCompleted, setTotalCompleted] = useState(0);
   useEffect(() => {
@@ -100,7 +104,8 @@ export default function ProfilePage() {
       <SEOHead title="Profile & Stats" description="Your profile, settings and learning statistics" canonical="https://open-interview.github.io/profile" />
       <UnifiedPageShell fullWidth>
         <div className="max-w-4xl mx-auto py-4 sm:py-6 space-y-5">
-
+          {!mounted ? <ProfileSkeleton /> : (
+          <>
           {/* Header card — avatar + name + level + XP bar */}
           <div className="flex items-center gap-4 p-5 rounded-2xl border border-border bg-card">
             <div className="p-0.5 rounded-full bg-gradient-to-r from-primary to-cyan-500 shrink-0">
@@ -134,6 +139,8 @@ export default function ProfilePage() {
           <TabsContent level={level} streak={streak} totalCompleted={totalCompleted} stats={stats} state={state}
             unlockedBadges={unlockedBadges} allProgress={allProgress} badgeStats={badgeStats}
             setLocation={setLocation} displayName={displayName} />
+          </>
+          )}
         </div>
       </UnifiedPageShell>
     </ErrorBoundary>

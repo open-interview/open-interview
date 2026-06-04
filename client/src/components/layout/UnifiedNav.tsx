@@ -76,7 +76,7 @@ const SubNavItem = React.memo(function SubNavItem({ item, index, location, onSel
 }) {
   const Icon = item.icon;
   const isActive = location === item.path || location.startsWith(item.path + '/');
-  const handleClick = useCallback(() => onSelect(item.path), [onSelect, item.path]);
+  const handleClick = useCallback(() => { navigator.vibrate?.(10); onSelect(item.path); }, [onSelect, item.path]);
 
   return (
     <motion.button
@@ -205,6 +205,7 @@ export function MobileBottomNav() {
     if (['practice', 'learn', 'progress'].includes(item.id)) {
       setShowMenu(showMenu === item.id ? null : item.id);
     } else {
+      navigator.vibrate?.(10);
       setShowMenu(null);
       setLocation(item.path);
     }
@@ -281,7 +282,7 @@ export function MobileBottomNav() {
               {currentSubNav.map((item, i) => (
                 <SubNavItem key={item.id} item={item} index={i}
                   location={location}
-                  onSelect={(path) => { setLocation(path); setShowMenu(null); }} />
+                  onSelect={(path) => { navigator.vibrate?.(10); setLocation(path); setShowMenu(null); }} />
               ))}
             </div>
           </motion.div>
