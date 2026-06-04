@@ -7,6 +7,7 @@
 import React from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { EnhancedMermaid } from '../components/EnhancedMermaid';
 
 interface RichTextRendererProps {
   content: string;
@@ -358,6 +359,13 @@ function renderBlock(block: Block, index: number): React.ReactNode {
       );
       
     case 'code':
+      if (block.language === 'mermaid') {
+        return (
+          <div key={index} className="my-6">
+            <EnhancedMermaid chart={block.content} />
+          </div>
+        );
+      }
       return (
         <div key={index} className="my-6 rounded-[16px] overflow-hidden border border-white/10">
           <SyntaxHighlighter
