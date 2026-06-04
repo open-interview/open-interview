@@ -313,14 +313,8 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
         const mermaid = await loadMermaid();
         if (cancelled) return;
 
-        const origError = console.error;
-        console.error = () => {};
         let svg: string;
-        try {
-          ({ svg } = await mermaid.render(renderId, code));
-        } finally {
-          console.error = origError;
-        }
+        ({ svg } = await mermaid.render(renderId, code));
         if (!cancelled && id === renderIdRef.current) {
           setSvgContent(svg);
           onRenderResult?.(true);
