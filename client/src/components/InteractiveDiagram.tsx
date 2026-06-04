@@ -305,7 +305,6 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
       try {
         await initMermaid(effectiveTheme, true);
         const mermaid = await loadMermaid();
-        await new Promise((r) => setTimeout(r, 50));
         if (cancelled) return;
 
         const origError = console.error;
@@ -316,16 +315,11 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
         } finally {
           console.error = origError;
         }
-        document.getElementById(`d${renderId}`)?.remove();
-        document.getElementById(renderId)?.remove();
-
         if (!cancelled && id === renderIdRef.current) {
           setSvgContent(svg);
           onRenderResult?.(true);
         }
       } catch (err: any) {
-        document.getElementById(`d${renderId}`)?.remove();
-        document.getElementById(renderId)?.remove();
         const errMsg = err?.message ?? 'Render failed';
         if (!cancelled && id === renderIdRef.current) {
           setError(errMsg);
