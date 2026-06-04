@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { getRoleCertPriority } from '../lib/personalization';
-import { PageHeader, SearchBar, FilterPills } from '@/components/ui/page';
+
 import { ChannelCardSkeleton } from '@/components/ui/skeleton-loaders';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
@@ -395,7 +395,15 @@ export default function CertificationsPage() {
         <div className="min-h-screen bg-background text-foreground">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-24">
 
-            <PageHeader title="Certifications" subtitle="Get certified, get hired" />
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0">
+                <Award className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-foreground">Certifications</h1>
+                <p className="text-sm text-muted-foreground">Get certified, get hired</p>
+              </div>
+            </div>
 
             {loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -429,12 +437,22 @@ export default function CertificationsPage() {
                 {/* Search */}
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="max-w-2xl mx-auto mb-4">
                   <div className="flex gap-2">
-                    <SearchBar
-                      value={searchQuery}
-                      onChange={setSearchQuery}
-                      placeholder="Search certifications..."
-                      className="flex-1"
-                    />
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                      <input
+                        id="cert-search"
+                        type="text"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        placeholder="Search certifications..."
+                        className="w-full pl-9 pr-8 min-h-[44px] rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground"
+                      />
+                      {searchQuery && (
+                        <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                     <button
                       onClick={() => setSubscribedOnly(s => !s)}
                       className={`min-h-[44px] px-3 py-2.5 rounded-lg text-xs font-semibold border transition-all duration-150 ease-out whitespace-nowrap cursor-pointer ${
@@ -450,11 +468,19 @@ export default function CertificationsPage() {
 
                 {/* Category filters */}
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="flex flex-wrap gap-2 justify-center mb-8">
-                  <FilterPills
-                    options={[{ id: '', label: 'All' }, ...categories.map(cat => ({ id: cat, label: cat }))]}
-                    active={selectedCategory ?? ''}
-                    onChange={id => setSelectedCategory(id || null)}
-                  />
+                  {[{ id: '', label: 'All' }, ...categories.map(cat => ({ id: cat, label: cat }))].map(opt => (
+                    <button
+                      key={opt.id}
+                      onClick={() => setSelectedCategory(opt.id || null)}
+                      className={`px-4 min-h-[44px] rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-150 cursor-pointer ${
+                        (selectedCategory ?? '') === opt.id
+                          ? 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground'
+                          : 'bg-muted/50 border border-border text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                 </motion.div>
 
                 {/* Provider sections */}

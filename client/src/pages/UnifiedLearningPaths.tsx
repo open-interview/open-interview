@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
 import { SEOHead } from '../components/SEOHead';
 import { allChannelsConfig } from '../lib/channels-config';
-import { PageHeader, SearchBar, FilterPills } from '@/components/ui/page';
+import { UnifiedEmptyState } from '@/components/ui/UnifiedEmptyState';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { isPersonalized } from '../lib/personalization';
 import {
@@ -522,21 +522,27 @@ export default function UnifiedLearningPaths() {
         <div className="min-h-screen bg-background text-foreground pb-24">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 w-full overflow-x-hidden">
 
-            <PageHeader
-              title="Learning Paths"
-              subtitle={`${activePaths.length > 0 ? `${activePaths.length} active · ` : ''}${customPaths.length} custom · ${curatedPaths.length} curated`}
-            >
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center">
+                  <Zap className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold">Learning Paths</h1>
+                  <p className="text-sm text-muted-foreground">{`${activePaths.length > 0 ? `${activePaths.length} active · ` : ''}${customPaths.length} custom · ${curatedPaths.length} curated`}</p>
+                </div>
+              </div>
               <motion.button
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => openPathModal(null, 'create')}
-                className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 rounded-full text-sm font-bold text-white cursor-pointer transition-all duration-150 shadow-lg hover:shadow-violet-500/30"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold text-white cursor-pointer transition-all duration-150 shadow-lg hover:shadow-violet-500/30"
                 style={{ background: 'var(--gradient-primary)' }}
               >
                 <Plus className="w-4 h-4" strokeWidth={3} />
                 Create Custom Path
               </motion.button>
-            </PageHeader>
+            </div>
 
             {/* Stats bar */}
             {activePaths.length > 0 && (
@@ -556,17 +562,26 @@ export default function UnifiedLearningPaths() {
             )}
 
             {/* View Tabs */}
-            <FilterPills
-              options={[
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-6">
+              {[
                 ...(personalized ? [{ id: 'for-you', label: 'For You' }] : []),
                 { id: 'all', label: 'All Paths' },
                 { id: 'custom', label: 'My Custom' },
                 { id: 'curated', label: 'Curated' },
-              ]}
-              active={view}
-              onChange={id => setView(id as any)}
-              className="px-1 mb-6"
-            />
+              ].map(opt => (
+                <button
+                  key={opt.id}
+                  onClick={() => setView(opt.id as any)}
+                  className={`shrink-0 px-4 h-10 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-150 cursor-pointer ${
+                    view === opt.id
+                      ? 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground'
+                      : 'bg-muted/50 border border-border text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
 
             {/* Create New Path Button — moved to page header */}
 
@@ -714,7 +729,11 @@ export default function UnifiedLearningPaths() {
               <div>
                 {/* Filters */}
                 <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                  <SearchBar value={curatedSearchQuery} onChange={setCuratedSearchQuery} placeholder="Search paths…" className="flex-1" />
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                    <input type="text" value={curatedSearchQuery} onChange={e => setCuratedSearchQuery(e.target.value)} placeholder="Search paths…"
+                      className="w-full pl-9 pr-4 h-10 rounded-xl text-sm bg-[var(--color-surface-2,var(--surface-raised))] border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all" />
+                  </div>
                   <select value={filterDifficulty} onChange={e => setFilterDifficulty(e.target.value)}
                     className="px-3 py-2.5 rounded-xl text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer min-h-[44px]"
                     style={{ background: 'var(--surface-3)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}>

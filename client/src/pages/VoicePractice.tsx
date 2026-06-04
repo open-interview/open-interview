@@ -9,7 +9,7 @@ import {
   ArrowLeft, Eye, EyeOff, Volume2, Trophy, RotateCcw,
   ChevronLeft, ChevronRight, BookOpen, Mic
 } from 'lucide-react';
-import { PageHeader, PageLoader } from '@/components/ui/page';
+
 import { SEOHead } from '../components/SEOHead';
 import { AppLayout } from '../components/layout/AppLayout';
 import { useUserPreferences } from '../context/UserPreferencesContext';
@@ -278,23 +278,55 @@ export default function VoicePractice() {
 
   if (loading) {
     return (
-      <AppLayout fullWidth>
-        <div className="min-h-screen bg-background text-foreground">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-24">
-            <PageHeader title="Voice Practice" subtitle="Speak your answers out loud and get instant feedback" />
-            <PageLoader message="Loading questions..." />
+      <>
+        <SEOHead
+          title="Voice Practice | Open Interview"
+          description="Practice answering interview questions with voice recording and feedback"
+          canonical="https://open-interview.github.io/voice-practice"
+        />
+        <AppLayout fullWidth>
+          <div className="min-h-screen bg-background text-foreground">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-24">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0">
+                  <Mic className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-foreground">Voice Practice</h1>
+                  <p className="text-sm text-muted-foreground">Speak your answers out loud and get instant feedback</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-center justify-center py-20">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                <p className="text-muted-foreground text-sm mt-4">Loading questions...</p>
+              </div>
+            </div>
           </div>
-        </div>
-      </AppLayout>
+        </AppLayout>
+      </>
     );
   }
 
   if (questions.length === 0) {
     return (
-      <AppLayout fullWidth>
-        <div className="min-h-screen bg-background text-foreground">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-24">
-            <PageHeader title="Voice Practice" subtitle="Speak your answers out loud and get instant feedback" />
+      <>
+        <SEOHead
+          title="Voice Practice | Open Interview"
+          description="Practice answering interview questions with voice recording and feedback"
+          canonical="https://open-interview.github.io/voice-practice"
+        />
+        <AppLayout fullWidth>
+          <div className="min-h-screen bg-background text-foreground">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-24">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0">
+                  <Mic className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-foreground">Voice Practice</h1>
+                  <p className="text-sm text-muted-foreground">Speak your answers out loud and get instant feedback</p>
+                </div>
+              </div>
             <div className="flex items-center justify-center py-20">
               <div className="text-center max-w-md">
                 <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
@@ -317,15 +349,30 @@ export default function VoicePractice() {
           </div>
         </div>
       </AppLayout>
+      </>
     );
   }
 
   if (!isSpeechSupported) {
     return (
-      <AppLayout fullWidth>
-        <div className="min-h-screen bg-background text-foreground">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-24">
-            <PageHeader title="Voice Practice" subtitle="Speak your answers out loud and get instant feedback" />
+      <>
+        <SEOHead
+          title="Voice Practice | Open Interview"
+          description="Practice answering interview questions with voice recording and feedback"
+          canonical="https://open-interview.github.io/voice-practice"
+        />
+        <AppLayout fullWidth>
+          <div className="min-h-screen bg-background text-foreground">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-24">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0">
+                  <Mic className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-foreground">Voice Practice</h1>
+                  <p className="text-sm text-muted-foreground">Speak your answers out loud and get instant feedback</p>
+                </div>
+              </div>
             <div className="flex items-center justify-center py-20">
               <div className="max-w-md text-center">
                 <div className="w-20 h-20 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-6">
@@ -351,6 +398,7 @@ export default function VoicePractice() {
           </div>
         </div>
       </AppLayout>
+      </>
     );
   }
 

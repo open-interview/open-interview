@@ -7,11 +7,9 @@ import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
   LineChart, Line, CartesianGrid
 } from 'recharts';
 import { AppLayout } from '../components/layout/AppLayout';
-import { PageHeader, SectionHeader } from '@/components/ui/page';
 import { SEOHead } from '../components/SEOHead';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useUserPreferences } from '../context/UserPreferencesContext';
@@ -23,7 +21,7 @@ import {
   User, Settings, Zap, Trophy, Target, Sparkles,
   Volume2, Shuffle, Eye, ChevronRight, Edit2, Check, X, Download,
   BookOpen, Code2, GraduationCap, Flame, Calendar, BarChart2,
-  Award, Mic, TrendingUp, Clock
+  Award, Mic, TrendingUp, Clock, UserCircle, AlertCircle
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 
@@ -227,7 +225,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
       {/* Achievements */}
       <motion.div {...fadeUp(0.1)} className="glass-card rounded-[var(--radius-2xl)] p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">
-          <SectionHeader title="Achievements" icon={<Trophy className="w-4 h-4" style={{ color: 'var(--color-xp)' }} />} />
+          <h2 className="text-lg font-bold flex items-center gap-2"><Trophy className="w-4 h-4" style={{ color: 'var(--color-xp)' }} />Achievements</h2>
           <button onClick={() => setLocation('/badges')} className="text-xs flex items-center gap-1 min-h-[44px] px-2 cursor-pointer hover:opacity-80 transition-opacity duration-200" style={{ color: 'var(--color-accent-violet-light)' }}>
             View All <ChevronRight className="w-3 h-3" />
           </button>
@@ -292,7 +290,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
 
       {/* Learning Preferences */}
       <motion.div {...fadeUp(0.2)} className="glass-card rounded-[var(--radius-2xl)] p-4 sm:p-6">
-        <SectionHeader title="Learning Preferences" icon={<Settings className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />} />
+        <h2 className="text-lg font-bold flex items-center gap-2"><Settings className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />Learning Preferences</h2>
         <div className="space-y-1">
           <SettingRow icon={<Shuffle className="w-4 h-4" style={{ color: 'var(--color-accent-violet-light)' }} />} label="Shuffle Questions" description="Randomize question order">
             <Toggle on={preferences.shuffleQuestions !== false} onToggle={toggleShuffleQuestions} />
@@ -316,7 +314,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
 
       {/* Learning Summary */}
       <motion.div {...fadeUp(0.25)} className="glass-card rounded-[var(--radius-2xl)] p-4 sm:p-6">
-        <SectionHeader title="Learning Summary" icon={<BookOpen className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />} />
+        <h2 className="text-lg font-bold flex items-center gap-2 mb-4"><BookOpen className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />Learning Summary</h2>
         <div className="grid grid-cols-3 gap-3">
           {[
             { icon: Target, label: 'Topics Studied', value: learningSummary.topicsStudied, color: 'var(--color-accent-violet-light)', bg: 'rgba(124,58,237,0.1)' },
@@ -334,7 +332,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
 
       {/* Data Export */}
       <motion.div {...fadeUp(0.28)} className="glass-card rounded-[var(--radius-2xl)] p-4 sm:p-6">
-        <SectionHeader title="Data" icon={<Download className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />} />
+        <h2 className="text-lg font-bold flex items-center gap-2 mb-4"><Download className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />Data</h2>
         <button onClick={exportData} className="w-full flex items-center justify-between px-4 py-3 min-h-[44px] rounded-[var(--radius-lg)] cursor-pointer transition-opacity duration-200 hover:opacity-80"
           style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', color: 'var(--color-accent-cyan)' }}>
           <span className="text-sm font-medium">Export my data</span>
@@ -683,7 +681,15 @@ export default function ProfilePage() {
       <AppLayout fullWidth>
         <div className="min-h-screen bg-background text-foreground">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12 pb-20 sm:pb-24">
-            <PageHeader title="Profile & Stats" subtitle="Your settings, achievements and learning progress" />
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center">
+                <User className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">Profile &amp; Stats</h1>
+                <p className="text-sm text-muted-foreground">Your settings, achievements and learning progress</p>
+              </div>
+            </div>
             <ProfileTab streak={streak} totalCompleted={totalCompleted} />
             <div className="mt-6 lg:mt-12">
               <StatsTab streak={streak} totalCompleted={totalCompleted} />

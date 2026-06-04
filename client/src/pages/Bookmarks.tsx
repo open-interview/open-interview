@@ -1,51 +1,28 @@
-/**
- * Bookmarks Page
- * Shows all bookmarked/tagged questions across all channels
- */
-
 import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'wouter';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
 import { SEOHead } from '../components/SEOHead';
-import { EmptyState, Button } from '../components/unified';
-import { PageHeader, SearchBar } from '@/components/ui/page';
+import { UnifiedFilterBar } from '@/components/ui/UnifiedFilterBar';
+import { UnifiedEmptyState } from '@/components/ui/UnifiedEmptyState';
+import { UnifiedCard, UnifiedCardContent } from '@/components/ui/UnifiedCard';
 import { getAllQuestions } from '../lib/questions-loader';
 import { useUserPreferences } from '../context/UserPreferencesContext';
 import { ProgressStorage } from '../services/storage.service';
 import { STORAGE_KEYS } from '../lib/constants';
 import type { Question } from '../types';
-import {
-  Bookmark, Trash2, Play, Filter,
-  Zap, Target, Flame, Building2, CheckCircle,
-  Cpu, Terminal, Layout, Database, Activity, GitBranch, Server,
-  Layers, X, ArrowUpDown, ChevronDown, ChevronUp, ChevronLeft, ChevronRight
-} from 'lucide-react';
-import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
-
-const channelIcons: Record<string, React.ReactNode> = {
-  'system-design': <Cpu className="w-4 h-4" />,
-  'algorithms': <Terminal className="w-4 h-4" />,
-  'frontend': <Layout className="w-4 h-4" />,
-  'backend': <Server className="w-4 h-4" />,
-  'database': <Database className="w-4 h-4" />,
-  'devops': <GitBranch className="w-4 h-4" />,
-  'sre': <Activity className="w-4 h-4" />,
-  'default': <Layers className="w-4 h-4" />,
-};
+import { Bookmark, Play, Trash2, CheckCircle, X } from 'lucide-react';
 
 interface BookmarkedQuestion extends Question {
   channelId: string;
   savedAt: number;
 }
 
-const DIFFICULTY_CONFIG = {
-  beginner:     { icon: Zap,    color: 'text-green-400',  bg: 'bg-green-500/10',  border: 'border-green-500/30',  label: 'Easy' },
-  intermediate: { icon: Target, color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', label: 'Medium' },
-  advanced:     { icon: Flame,  color: 'text-red-400',    bg: 'bg-red-500/10',    border: 'border-red-500/30',    label: 'Hard' },
-} as const;
-
-type SortKey = 'newest' | 'oldest' | 'topic';
+const DIFFICULTY_CONFIG: Record<string, { color: string; label: string }> = {
+  beginner: { color: 'bg-green-500/20 text-green-400', label: 'Easy' },
+  intermediate: { color: 'bg-yellow-500/20 text-yellow-400', label: 'Medium' },
+  advanced: { color: 'bg-red-500/20 text-red-400', label: 'Hard' },
+};
 
 function timeAgo(ts: number): string {
   const diff = Date.now() - ts;
@@ -55,15 +32,22 @@ function timeAgo(ts: number): string {
   return `${Math.floor(diff / 86_400_000)}d ago`;
 }
 
+const FILTER_OPTIONS = [
+  { id: 'all', label: 'All' },
+  { id: 'beginner', label: 'Easy' },
+  { id: 'intermediate', label: 'Medium' },
+  { id: 'advanced', label: 'Hard' },
+];
+
 export default function Bookmarks() {
   const [, setLocation] = useLocation();
   const { getSubscribedChannels } = useUserPreferences();
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState<BookmarkedQuestion[]>([]);
   const [search, setSearch] = useState('');
-  const [filterChannel, setFilterChannel] = useState<string>('all');
-  const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
-  const [sort, setSort] = useState<SortKey>('newest');
+  const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     try {
@@ -73,7 +57,6 @@ export default function Bookmarks() {
 
       const channelIds = new Set<string>();
       subscribedChannels.forEach(c => channelIds.add(c.id));
-
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key?.startsWith(STORAGE_KEYS.MARKED_PREFIX)) {
@@ -92,7 +75,7 @@ export default function Bookmarks() {
               bookmarked.push({ ...question, channelId, savedAt: storedTs ? parseInt(storedTs, 10) : Date.now() });
             }
           });
-        } catch { /* skip channel with corrupted data */ }
+        } catch { /* skip */ }
       });
 
       setBookmarkedQuestions(bookmarked);
@@ -101,13 +84,8 @@ export default function Bookmarks() {
     }
   }, []);
 
-  const channelsWithBookmarks = useMemo(() => {
-    return Array.from(new Set(bookmarkedQuestions.map(q => q.channelId)));
-  }, [bookmarkedQuestions]);
-
   const filteredQuestions = useMemo(() => {
     let result = bookmarkedQuestions.filter(q => {
-      if (filterChannel !== 'all' && q.channelId !== filterChannel) return false;
       if (filterDifficulty !== 'all' && q.difficulty !== filterDifficulty) return false;
       if (search.trim()) {
         const s = search.toLowerCase();
@@ -115,284 +93,245 @@ export default function Bookmarks() {
       }
       return true;
     });
-
-    if (sort === 'newest') result = [...result].reverse();
-    else if (sort === 'topic') result = [...result].sort((a, b) => a.channelId.localeCompare(b.channelId));
-
-    return result;
-  }, [bookmarkedQuestions, filterChannel, filterDifficulty, search, sort]);
+    return result.reverse();
+  }, [bookmarkedQuestions, filterDifficulty, search]);
 
   const removeBookmark = (question: BookmarkedQuestion) => {
     ProgressStorage.toggleMarked(question.channelId, question.id);
     setBookmarkedQuestions(prev => prev.filter(q => q.id !== question.id));
+    selected.delete(question.id);
+  };
+
+  const bulkDelete = () => {
+    selected.forEach(id => {
+      const q = bookmarkedQuestions.find(b => b.id === id);
+      if (q) ProgressStorage.toggleMarked(q.channelId, q.id);
+    });
+    setBookmarkedQuestions(prev => prev.filter(q => !selected.has(q.id)));
+    setSelected(new Set());
+    setSelectMode(false);
+  };
+
+  const bulkReview = () => {
+    const q = selected.values().next().value;
+    const question = bookmarkedQuestions.find(b => b.id === q);
+    if (question) setLocation(`/channel/${question.channelId}/${question.id}`);
+  };
+
+  const toggleSelect = (id: string) => {
+    const next = new Set(selected);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setSelected(next);
   };
 
   const goToQuestion = (question: BookmarkedQuestion) => {
     setLocation(`/channel/${question.channelId}/${question.id}`);
   };
 
-  const hasFilters = filterChannel !== 'all' || filterDifficulty !== 'all' || search.trim();
+  const hasFilters = filterDifficulty !== 'all' || search.trim();
+  const channels = Array.from(new Set(bookmarkedQuestions.map(q => q.channelId)));
+  const channelFilterOptions = [
+    { id: 'all', label: 'All Channels' },
+    ...channels.map(ch => ({ id: ch, label: ch.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') })),
+  ];
+  const [channelFilter, setChannelFilter] = useState('all');
+
+  const filteredByChannel = channelFilter === 'all'
+    ? filteredQuestions
+    : filteredQuestions.filter(q => q.channelId === channelFilter);
 
   return (
     <>
-      <SEOHead
-        title="Bookmarked Questions - Open Interview"
-        description="View and manage your bookmarked interview questions"
-      />
+      <SEOHead title="Bookmarked Questions - Open Interview"
+        description="View and manage your bookmarked interview questions" />
       <AppLayout fullWidth>
-        <div className="min-h-screen bg-background text-foreground overflow-x-hidden pb-24 lg:pb-8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-            <PageHeader
-              title="Bookmarks"
-              subtitle={`${bookmarkedQuestions.length} saved question${bookmarkedQuestions.length !== 1 ? 's' : ''}`}
-            />
-
-            <div className="max-w-3xl mx-auto">
-              {/* Filter Bar */}
-              {bookmarkedQuestions.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 }}
-                  className="flex flex-wrap gap-2 mb-5"
-                >
-                  <SearchBar value={search} onChange={setSearch} placeholder="Search bookmarks…" />
-
-                  <select
-                    value={filterChannel}
-                    onChange={e => setFilterChannel(e.target.value)}
-                    className="px-3 py-2 text-sm rounded-lg outline-none cursor-pointer min-h-[44px]"
-                    style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}
-                  >
-                    <option value="all">All Topics</option>
-                    {channelsWithBookmarks.map(ch => (
-                      <option key={ch} value={ch}>
-                        {ch.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                      </option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={filterDifficulty}
-                    onChange={e => setFilterDifficulty(e.target.value)}
-                    className="px-3 py-2 text-sm rounded-lg outline-none cursor-pointer min-h-[44px]"
-                    style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}
-                  >
-                    <option value="all">All Levels</option>
-                    <option value="beginner">Easy</option>
-                    <option value="intermediate">Medium</option>
-                    <option value="advanced">Hard</option>
-                  </select>
-
-                  <select
-                    value={sort}
-                    onChange={e => setSort(e.target.value as SortKey)}
-                    className="px-3 py-2 text-sm rounded-lg outline-none cursor-pointer min-h-[44px]"
-                    style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)', color: 'var(--text-primary)' }}
-                  >
-                    <option value="newest">Newest</option>
-                    <option value="oldest">Oldest</option>
-                    <option value="topic">By Topic</option>
-                  </select>
-
-                  {hasFilters && (
-                    <button
-                      onClick={() => { setSearch(''); setFilterChannel('all'); setFilterDifficulty('all'); }}
-                      className="px-3 py-2 text-sm flex items-center gap-1 rounded-lg transition-colors duration-150 hover:bg-white/5 cursor-pointer min-h-[44px]"
-                      style={{ color: 'var(--text-tertiary)' }}
-                    >
-                      <X className="w-3.5 h-3.5" /> Clear
-                    </button>
-                  )}
-                </motion.div>
-              )}
-
-              {/* Empty state */}
-              {bookmarkedQuestions.length === 0 ? (
-                <EmptyState
-                  icon={<Bookmark className="w-10 h-10" />}
-                  title="No bookmarks yet"
-                  description="Tap the bookmark icon on any question to save it for later review"
-                  action={<Button variant="primary" onClick={() => setLocation('/channels')}>Browse Questions</Button>}
-                  size="lg"
-                  animated={true}
-                />
-              ) : filteredQuestions.length === 0 ? (
-                <div className="text-center py-16">
-                  <Filter className="w-8 h-8 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No questions match your filters</p>
+        <div className="min-h-screen pb-24 lg:pb-8">
+          <div className="max-w-3xl mx-auto px-4 py-4 sm:py-6">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1 className="text-2xl font-bold">Bookmarks</h1>
+                <p className="text-sm text-muted-foreground">{bookmarkedQuestions.length} saved question{bookmarkedQuestions.length !== 1 ? 's' : ''}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {bookmarkedQuestions.length > 0 && (
                   <button
-                    onClick={() => { setSearch(''); setFilterChannel('all'); setFilterDifficulty('all'); }}
-                    className="mt-4 px-4 py-2 text-sm rounded-lg transition-colors duration-150 hover:bg-white/5 cursor-pointer min-h-[44px]"
-                    style={{ color: 'var(--color-accent-violet-light)' }}
+                    onClick={() => { setSelectMode(v => !v); setSelected(new Set()); }}
+                    className="min-h-[44px] px-4 py-2 rounded-xl text-sm font-semibold bg-muted/50 border border-border text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   >
-                    Clear filters
+                    {selectMode ? 'Cancel' : 'Select'}
                   </button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {filteredQuestions.map((question, index) => {
-                    const diff = DIFFICULTY_CONFIG[question.difficulty as keyof typeof DIFFICULTY_CONFIG]
-                      || { icon: Target, color: 'text-muted-foreground', bg: 'bg-muted', border: 'border-muted', label: 'Unknown' };
-                    const DiffIcon = diff.icon;
+                )}
+                <button
+                  onClick={() => {
+                    const ids = selected.size > 0 ? Array.from(selected) : filteredByChannel.map(q => q.id);
+                    setLocation(`/review?bookmarks=${ids.join(',')}`);
+                  }}
+                  className="min-h-[44px] px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary to-cyan-500 text-black cursor-pointer"
+                >
+                  {selected.size > 0 ? `Review (${selected.size})` : 'Start Session'}
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Bar */}
+            {bookmarkedQuestions.length > 0 && (
+              <UnifiedFilterBar
+                search={search}
+                onSearchChange={setSearch}
+                searchPlaceholder="Search bookmarks..."
+                options={channelFilterOptions}
+                activeFilter={channelFilter}
+                onFilterChange={setChannelFilter}
+                className="mb-2"
+              />
+            )}
+
+            {/* Content */}
+            {bookmarkedQuestions.length === 0 ? (
+              <UnifiedEmptyState
+                icon={<Bookmark className="w-6 h-6" />}
+                title="No bookmarks yet"
+                description="Tap the bookmark icon on any question to save it for later review"
+                action={{ label: 'Browse Questions', onClick: () => setLocation('/channels') }}
+              />
+            ) : filteredByChannel.length === 0 ? (
+              <UnifiedEmptyState
+                icon={<X className="w-6 h-6" />}
+                title="No matches"
+                description={hasFilters ? 'Try different search terms or filters.' : 'Questions you bookmark will appear here.'}
+                action={hasFilters ? { label: 'Clear filters', onClick: () => { setSearch(''); setFilterDifficulty('all'); setChannelFilter('all'); } } : undefined}
+              />
+            ) : (
+              <div className="space-y-2">
+                <AnimatePresence>
+                  {filteredByChannel.map((question, index) => {
+                    const diff = DIFFICULTY_CONFIG[question.difficulty] || { color: 'bg-muted text-muted-foreground', label: 'Unknown' };
                     const isCompleted = ProgressStorage.getCompleted(question.channelId).includes(question.id);
                     const isExpanded = expandedId === question.id;
                     const previewText = question.tldr ?? (question.answer ? question.answer.slice(0, 200) + '...' : '');
-                    const currentIdx = isExpanded ? filteredQuestions.findIndex(q => q.id === expandedId) : -1;
-
-                    const cardContent = (
-                      <motion.div
-                        key={question.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.03 }}
-                        onClick={() => goToQuestion(question)}
-                        className="rounded-[var(--radius-xl)] p-4 cursor-pointer transition-all duration-200 ease-out hover:border-violet-500/40 hover:scale-[1.01] hover:shadow-lg"
-                        style={{ background: 'var(--surface-2)', border: '1px solid var(--color-border)' }}
-                      >
-                        <div className="flex items-start gap-3">
-                          {/* Channel icon */}
-                          <div
-                            className="p-2 rounded-lg flex-shrink-0 hidden sm:flex"
-                            style={{ background: 'rgba(99,102,241,0.12)', color: 'var(--color-accent-violet-light)' }}
-                          >
-                            {channelIcons[question.channelId] || channelIcons.default}
-                          </div>
-
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                              <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>
-                                {question.channelId.split('-').join(' ')}
-                              </span>
-                              <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs border ${diff.bg} ${diff.color} ${diff.border}`}>
-                                <DiffIcon className="w-3 h-3" />
-                                {diff.label}
-                              </span>
-                              {isCompleted && (
-                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-green-500/10 text-green-400 border border-green-500/30">
-                                  <CheckCircle className="w-3 h-3" />
-                                  Done
-                                </span>
-                              )}
-                              <span className="text-[10px] ml-auto" style={{ color: 'var(--text-tertiary)' }}>
-                                {timeAgo(question.savedAt)}
-                              </span>
-                            </div>
-
-                            <h3 className="font-medium text-sm sm:text-base line-clamp-2 mb-2" style={{ color: 'var(--text-primary)' }}>
-                              {question.question}
-                            </h3>
-
-                            {question.companies && question.companies.length > 0 && (
-                              <div className="flex items-center gap-1.5">
-                                <Building2 className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }} />
-                                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                                  {question.companies.slice(0, 3).join(', ')}
-                                  {question.companies.length > 3 && ` +${question.companies.length - 3}`}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Actions — min 44px touch targets */}
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <button
-                              onClick={e => { e.stopPropagation(); setExpandedId(isExpanded ? null : question.id); }}
-                              className="w-11 h-11 flex items-center justify-center rounded-lg transition-colors duration-150 hover:bg-white/5 cursor-pointer sm:hidden"
-                              style={{ color: 'var(--text-tertiary)' }}
-                              aria-label={isExpanded ? 'Collapse' : 'Expand'}
-                            >
-                              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                            </button>
-                            <button
-                              onClick={e => { e.stopPropagation(); removeBookmark(question); }}
-                              className="w-11 h-11 flex items-center justify-center rounded-lg transition-colors duration-150 hover:bg-red-500/10 hover:text-red-400 cursor-pointer"
-                              style={{ color: 'var(--text-tertiary)' }}
-                              title="Remove bookmark"
-                              aria-label="Remove bookmark"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={e => { e.stopPropagation(); goToQuestion(question); }}
-                              className="w-11 h-11 flex items-center justify-center rounded-lg transition-colors duration-150 hover:opacity-80 cursor-pointer"
-                              style={{ background: 'rgba(99,102,241,0.15)', color: 'var(--color-accent-violet-light)' }}
-                              title="Review question"
-                              aria-label="Review question"
-                            >
-                              <Play className="w-4 h-4" fill="currentColor" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Mobile inline detail panel */}
-                        {isExpanded && previewText && (
-                          <div className="mt-3 pt-3 border-t border-border sm:hidden" onClick={e => e.stopPropagation()}>
-                            <p className="text-xs leading-relaxed mb-2" style={{ color: 'var(--text-secondary)' }}>{previewText}</p>
-                            <button
-                              onClick={() => goToQuestion(question)}
-                              className="text-xs text-violet-400 hover:text-violet-300 transition-colors duration-150 cursor-pointer"
-                            >
-                              Go to question →
-                            </button>
-                            <div className="flex items-center justify-between mt-3 pt-2 border-t border-border">
-                              <button
-                                disabled={currentIdx <= 0}
-                                onClick={() => setExpandedId(filteredQuestions[currentIdx - 1].id)}
-                                className="flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 cursor-pointer"
-                                style={{ color: 'var(--text-secondary)' }}
-                              >
-                                <ChevronLeft className="w-3.5 h-3.5" /> Prev
-                              </button>
-                              <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                                {currentIdx + 1} / {filteredQuestions.length}
-                              </span>
-                              <button
-                                disabled={currentIdx >= filteredQuestions.length - 1}
-                                onClick={() => setExpandedId(filteredQuestions[currentIdx + 1].id)}
-                                className="flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 cursor-pointer"
-                                style={{ color: 'var(--text-secondary)' }}
-                              >
-                                Next <ChevronRight className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </motion.div>
-                    );
 
                     return (
-                      <HoverCard key={question.id} openDelay={300}>
-                        <HoverCardTrigger asChild>
-                          {cardContent}
-                        </HoverCardTrigger>
-                        <HoverCardContent className="w-80 hidden sm:block" onClick={e => e.stopPropagation()}>
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium leading-snug">{question.question}</p>
-                            {previewText && (
-                              <p className="text-xs text-muted-foreground leading-relaxed">{previewText}</p>
-                            )}
-                            <div className="flex items-center justify-between pt-1">
-                              <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs border ${diff.bg} ${diff.color} ${diff.border}`}>
-                                <DiffIcon className="w-3 h-3" />
-                                {diff.label}
-                              </span>
-                              <button
-                                onClick={() => goToQuestion(question)}
-                                className="text-xs text-violet-400 hover:text-violet-300 transition-colors duration-150 cursor-pointer"
-                              >
-                                Go to question →
-                              </button>
+                      <motion.div
+                        key={question.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.02 }}
+                      >
+                        <UnifiedCard hover={!selectMode} compact>
+                          <UnifiedCardContent>
+                            <div className="flex items-start gap-3">
+                              {selectMode && (
+                                <input
+                                  type="checkbox"
+                                  checked={selected.has(question.id)}
+                                  onChange={() => toggleSelect(question.id)}
+                                  className="mt-1 w-5 h-5 rounded accent-primary cursor-pointer"
+                                />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                                    {question.channelId}
+                                  </span>
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${diff.color}`}>
+                                    {diff.label}
+                                  </span>
+                                  {isCompleted && (
+                                    <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-green-500/10 text-green-400 border border-green-500/30">
+                                      <CheckCircle className="w-3 h-3" /> Done
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] text-muted-foreground ml-auto">
+                                    {timeAgo(question.savedAt)}
+                                  </span>
+                                </div>
+                                <h3
+                                  className="font-medium text-sm sm:text-base line-clamp-2 mb-1 cursor-pointer hover:text-primary transition-colors"
+                                  onClick={() => goToQuestion(question)}
+                                >
+                                  {question.question}
+                                </h3>
+                                {question.companies && question.companies.length > 0 && (
+                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                    {question.companies.slice(0, 3).join(', ')}
+                                    {question.companies.length > 3 && ` +${question.companies.length - 3}`}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {!selectMode && (
+                                  <>
+                                    <button
+                                      onClick={() => setExpandedId(isExpanded ? null : question.id)}
+                                      className="w-11 h-11 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground transition-colors sm:hidden cursor-pointer"
+                                      aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                                    >
+                                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d={isExpanded ? "M18 15l-6-6-6 6" : "M6 9l6 6 6-6"} />
+                                      </svg>
+                                    </button>
+                                    <button
+                                      onClick={() => removeBookmark(question)}
+                                      className="w-11 h-11 flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                                      title="Remove bookmark"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => goToQuestion(question)}
+                                      className="w-11 h-11 flex items-center justify-center rounded-lg text-primary hover:opacity-80 transition-colors cursor-pointer"
+                                      title="Review question"
+                                    >
+                                      <Play className="w-4 h-4" fill="currentColor" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </HoverCardContent>
-                      </HoverCard>
+
+                            {isExpanded && previewText && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                className="mt-3 pt-3 border-t border-border sm:hidden overflow-hidden"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <p className="text-xs leading-relaxed mb-2 text-muted-foreground">{previewText}</p>
+                                <button
+                                  onClick={() => goToQuestion(question)}
+                                  className="text-xs text-primary hover:opacity-80 transition-colors cursor-pointer"
+                                >
+                                  Go to question &rarr;
+                                </button>
+                              </motion.div>
+                            )}
+                          </UnifiedCardContent>
+                        </UnifiedCard>
+                      </motion.div>
                     );
                   })}
-                </div>
+                </AnimatePresence>
+              </div>
+            )}
+
+            {/* Bulk action bar */}
+            <AnimatePresence>
+              {selectMode && selected.size > 0 && (
+                <motion.div
+                  initial={{ y: 60, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 60, opacity: 0 }}
+                  className="fixed bottom-20 left-4 right-4 z-50 max-w-md mx-auto"
+                >
+                  <div className="flex items-center gap-2 p-3 rounded-2xl bg-card border border-border shadow-lg backdrop-blur-xl">
+                    <span className="text-sm font-semibold flex-1">{selected.size} selected</span>
+                    <button onClick={bulkReview} className="min-h-[44px] px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary to-cyan-500 text-black cursor-pointer">Review</button>
+                    <button onClick={bulkDelete} className="min-h-[44px] px-4 py-2 rounded-xl text-sm font-semibold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors cursor-pointer">Delete</button>
+                  </div>
+                </motion.div>
               )}
-            </div>
+            </AnimatePresence>
           </div>
         </div>
       </AppLayout>

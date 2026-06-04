@@ -156,6 +156,14 @@ export function UnifiedAnswerPanel({
                           const isBlock = !!(match || String(children).includes('\n'));
 
                           if (isBlock && match) {
+                            const lang = match[1];
+                            if (lang === 'mermaid') {
+                              return (
+                                <div className="my-4">
+                                  <EnhancedMermaid chart={codeString} />
+                                </div>
+                              );
+                            }
                             return (
                               <div className="relative group my-4">
                                 <button
@@ -218,7 +226,19 @@ export function UnifiedAnswerPanel({
                 {expandedSections.has('explanation') && (
                   <div className="px-4 pb-4">
                     <div className="prose prose-sm max-w-none">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          code({ className, children }) {
+                            const match = /language-(\w+)/.exec(className || '');
+                            const isInline = !match && !String(children).includes('\n');
+                            if (!isInline && match && match[1] === 'mermaid') {
+                              return <div className="my-4"><EnhancedMermaid chart={String(children).replace(/\n$/, '')} /></div>;
+                            }
+                            return <code className="px-1.5 py-0.5 rounded bg-primary/15 text-primary text-sm font-mono">{children}</code>;
+                          },
+                        }}
+                      >
                         {preprocessMarkdown(question.explanation)}
                       </ReactMarkdown>
                     </div>

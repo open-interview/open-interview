@@ -1,7 +1,3 @@
-/**
- * Tests Page — revamped with filter/sort, pass/fail badges, difficulty, estimated time
- */
-
 import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,10 +8,12 @@ import {
 } from '../lib/tests';
 import {
   Target, Clock, CheckCircle, XCircle, Search, Star,
-  AlertTriangle, ChevronRight, SlidersHorizontal
+  AlertTriangle, ChevronRight, SlidersHorizontal, Swords
 } from 'lucide-react';
 import { useUserPreferences } from '../context/UserPreferencesContext';
-import { PageHeader, SearchBar, FilterPills, StatCard } from '@/components/ui/page';
+import { UnifiedFilterBar } from '@/components/ui/UnifiedFilterBar';
+import { UnifiedEmptyState } from '@/components/ui/UnifiedEmptyState';
+import { UnifiedCard } from '@/components/ui/UnifiedCard';
 
 type FilterTab = 'all' | 'passed' | 'failed' | 'not-attempted';
 type SortKey = 'name' | 'last-attempt' | 'score';
@@ -31,6 +29,13 @@ const DIFFICULTY_COLOR: Record<string, string> = {
   intermediate: 'text-[var(--color-difficulty-intermediate)]',
   advanced: 'text-[var(--color-difficulty-advanced)]',
 };
+
+const FILTER_OPTIONS = [
+  { id: 'all', label: 'All' },
+  { id: 'passed', label: 'Passed' },
+  { id: 'failed', label: 'Failed' },
+  { id: 'not-attempted', label: 'Not Attempted' },
+];
 
 function getDominantDifficulty(test: Test): string {
   const counts: Record<string, number> = {};
@@ -78,7 +83,6 @@ export default function TestsPage() {
       t.channelName.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // Subscribed-only filter
     if (subscribedOnly && subscribedIds.size > 0) {
       list = list.filter(t => subscribedIds.has(t.channelId));
     }
@@ -102,14 +106,17 @@ export default function TestsPage() {
     });
 
     return list;
-  }, [tests, searchQuery, filter, sort, progress]);
+  }, [tests, searchQuery, filter, sort, progress, subscribedOnly, subscribedIds]);
 
-  const FILTERS: { id: FilterTab; label: string }[] = [
-    { id: 'all', label: 'All' },
-    { id: 'passed', label: 'Passed' },
-    { id: 'failed', label: 'Failed' },
-    { id: 'not-attempted', label: 'Not Attempted' },
-  ];
+  if (loading) {
+    return (
+      <AppLayout fullWidth>
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <>
@@ -119,22 +126,55 @@ export default function TestsPage() {
         canonical="https://open-interview.github.io/tests"
       />
       <AppLayout fullWidth>
-        <div className="min-h-screen bg-background text-foreground pb-20 lg:pb-0">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
-            <PageHeader title="Channel Tests" subtitle="Prove what you know across every topic" />
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 md:grid-cols-4 gap-3 mb-4 md:mb-6">
-              <StatCard icon={CheckCircle} bgColor="from-green-500/20 to-green-600/10" borderColor="border-green-500/30" color="text-green-500" value={passedCount} label="Passed" />
-              <StatCard icon={XCircle} bgColor="from-red-500/20 to-red-600/10" borderColor="border-red-500/30" color="text-red-500" value={failedCount} label="Failed" />
-              <StatCard icon={Target} bgColor="from-blue-500/20 to-blue-600/10" borderColor="border-blue-500/30" color="text-blue-500" value={notStartedCount} label="Not Started" />
-              <StatCard icon={Star} bgColor="from-purple-500/20 to-purple-600/10" borderColor="border-purple-500/30" color="text-purple-500" value={`${stats.averageScore}%`} label="Avg Score" />
+        <div className="min-h-screen pb-24 lg:pb-8">
+          <div className="max-w-7xl mx-auto px-4 py-4 sm:py-6">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center">
+                <Swords className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">Channel Tests</h1>
+                <p className="text-sm text-muted-foreground">Prove what you know across every topic</p>
+              </div>
             </div>
 
-            {/* Search + Sort */}
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex gap-2 mb-4">
-              <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search tests..." className="flex-1" />
-              {/* Subscribed toggle */}
+            {/* Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <UnifiedCard compact className="text-center">
+                <CheckCircle className="w-5 h-5 mx-auto mb-1 text-green-500" />
+                <div className="text-2xl font-bold text-green-500">{passedCount}</div>
+                <div className="text-xs text-muted-foreground">Passed</div>
+              </UnifiedCard>
+              <UnifiedCard compact className="text-center">
+                <XCircle className="w-5 h-5 mx-auto mb-1 text-red-500" />
+                <div className="text-2xl font-bold text-red-500">{failedCount}</div>
+                <div className="text-xs text-muted-foreground">Failed</div>
+              </UnifiedCard>
+              <UnifiedCard compact className="text-center">
+                <Target className="w-5 h-5 mx-auto mb-1 text-blue-500" />
+                <div className="text-2xl font-bold text-blue-500">{notStartedCount}</div>
+                <div className="text-xs text-muted-foreground">Not Started</div>
+              </UnifiedCard>
+              <UnifiedCard compact className="text-center">
+                <Star className="w-5 h-5 mx-auto mb-1 text-purple-500" />
+                <div className="text-2xl font-bold text-purple-500">{stats.averageScore}%</div>
+                <div className="text-xs text-muted-foreground">Avg Score</div>
+              </UnifiedCard>
+            </div>
+
+            {/* Search + Sort + Subscribed toggle */}
+            <div className="flex items-center gap-2 mb-4">
+              <div className="relative flex-1 max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search tests..."
+                  className="w-full pl-9 pr-4 h-10 rounded-xl text-sm bg-[var(--color-surface-2,var(--surface-raised))] border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+                />
+              </div>
               <button
                 onClick={() => setSubscribedOnly(s => !s)}
                 className={`cursor-pointer px-3 min-h-[44px] rounded-lg text-xs font-semibold border transition-all duration-150 whitespace-nowrap ${
@@ -174,42 +214,33 @@ export default function TestsPage() {
                   )}
                 </AnimatePresence>
               </div>
-            </motion.div>
+            </div>
 
             {/* Filter Tabs */}
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="flex gap-2 mb-4 md:mb-6 overflow-x-auto pb-1 scrollbar-none">
-              <FilterPills options={FILTERS} active={filter} onChange={id => setFilter(id as FilterTab)} />
-            </motion.div>
-
-            {/* Grid */}
-            {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="p-5 bg-card border border-border rounded-xl space-y-3 animate-pulse">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 space-y-2">
-                        <div className="h-3 w-20 bg-muted rounded-full" />
-                        <div className="h-5 w-3/4 bg-muted rounded-lg" />
-                      </div>
-                      <div className="w-12 h-12 rounded-full bg-muted" />
-                    </div>
-                    <div className="h-3 w-1/2 bg-muted rounded-full" />
-                    <div className="h-4 w-24 bg-muted rounded-full" />
-                  </div>
-                ))}
-              </div>
-            ) : filtered.length === 0 ? (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
-                <Search className="w-12 h-12 mx-auto mb-3 text-muted-foreground/40" />
-                <h3 className="text-xl font-bold mb-1">No tests found</h3>
-                <p className="text-sm text-muted-foreground mb-4">Try a different filter or search term</p>
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-4">
+              {FILTER_OPTIONS.map(opt => (
                 <button
-                  onClick={() => { setSearchQuery(''); setFilter('all'); setSubscribedOnly(false); }}
-                  className="cursor-pointer min-h-[44px] px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-95 transition-all duration-150"
+                  key={opt.id}
+                  onClick={() => setFilter(opt.id as FilterTab)}
+                  className={`shrink-0 px-4 h-10 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-150 cursor-pointer ${
+                    filter === opt.id
+                      ? 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground'
+                      : 'bg-muted/50 border border-border text-muted-foreground hover:bg-muted'
+                  }`}
                 >
-                  Clear filters
+                  {opt.label}
                 </button>
-              </motion.div>
+              ))}
+            </div>
+
+            {/* Content */}
+            {filtered.length === 0 ? (
+              <UnifiedEmptyState
+                icon={<Search className="w-6 h-6" />}
+                title="No tests found"
+                description="Try a different filter or search term"
+                action={{ label: 'Clear filters', onClick: () => { setSearchQuery(''); setFilter('all'); setSubscribedOnly(false); } }}
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <AnimatePresence mode="popLayout">
@@ -242,17 +273,14 @@ export default function TestsPage() {
                           : 'border-[var(--color-border)] hover:border-primary/50'
                         }`}
                       >
-                        {/* Hover bg */}
                         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
 
                         <div className="relative space-y-3">
-                          {/* Top row */}
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               <div className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-0.5">{test.channelName}</div>
                               <h3 className="text-base font-bold leading-tight">{test.title}</h3>
                             </div>
-                            {/* Score ring + status */}
                             <div className="flex flex-col items-center gap-1 flex-shrink-0">
                               {p ? (
                                 <div className="relative w-12 h-12 flex items-center justify-center">
@@ -295,14 +323,12 @@ export default function TestsPage() {
                             </div>
                           </div>
 
-                          {/* Meta row */}
                           <div className="flex items-center gap-3 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{sessionCount}q · ~{mins}m</span>
                             <span className={`font-semibold ${DIFFICULTY_COLOR[difficulty]}`}>{DIFFICULTY_LABEL[difficulty]}</span>
                             {lastDate && <span>Last: {lastDate}</span>}
                           </div>
 
-                          {/* CTA */}
                           <div className="flex items-center justify-between pt-1">
                             <span className="text-xs font-semibold text-primary">
                               {isPassed ? 'Retake Test' : isExpired ? 'Retake (Expired)' : p ? 'Try Again' : 'Start Test'}

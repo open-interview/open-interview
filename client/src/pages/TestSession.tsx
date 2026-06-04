@@ -14,6 +14,7 @@ import {
   Home, Check, X, Zap, Share2, RotateCcw, ChevronRight,
   Lightbulb, SkipForward, SplitSquareHorizontal
 } from 'lucide-react';
+import { EnhancedMermaid } from '../components/EnhancedMermaid';
 import { SEOHead } from '../components/SEOHead';
 import { Card, Button } from '../components/practice-ui';
 import {
@@ -527,6 +528,9 @@ export default function TestSessionPage() {
                                   code: ({className, children}) => {
                                     const m = /language-(\w+)/.exec(className || '');
                                     const isInline = !m && !String(children).includes('\n');
+                                    if (!isInline && m && m[1] === 'mermaid') {
+                                      return <div className="my-4"><EnhancedMermaid chart={String(children).replace(/\n$/, '')} /></div>;
+                                    }
                                     return isInline
                                       ? <code className="bg-muted/40 px-1 rounded">{children}</code>
                                       : <pre className="bg-muted/40 p-2 rounded-lg my-1 overflow-x-auto"><code>{children}</code></pre>;
@@ -647,20 +651,23 @@ export default function TestSessionPage() {
                                   remarkPlugins={[remarkGfm]}
                                   components={{
                                     p: ({children}) => <span className="block mb-1 last:mb-0">{children}</span>,
-                                    code: ({className, children}) => {
-                                      const m = /language-(\w+)/.exec(className || '');
-                                      const isInline = !m && !String(children).includes('\n');
-                                      return isInline
-                                        ? <code className="bg-muted/40 px-1 rounded">{children}</code>
-                                        : <pre className="bg-muted/40 p-2 rounded-lg my-1 overflow-x-auto"><code>{children}</code></pre>;
-                                    },
-                                    ul: ({children}) => <ul className="list-disc ml-4 my-1">{children}</ul>,
-                                    ol: ({children}) => <ol className="list-decimal ml-4 my-1">{children}</ol>,
-                                    a: ({href, children}) => <a href={href} className="underline" target="_blank" rel="noopener noreferrer">{children}</a>,
-                                  }}
-                                >
-                                  {currentQuestion.explanation}
-                                </ReactMarkdown>
+                                  code: ({className, children}) => {
+                                    const m = /language-(\w+)/.exec(className || '');
+                                    const isInline = !m && !String(children).includes('\n');
+                                    if (!isInline && m && m[1] === 'mermaid') {
+                                      return <div className="my-4"><EnhancedMermaid chart={String(children).replace(/\n$/, '')} /></div>;
+                                    }
+                                    return isInline
+                                      ? <code className="bg-muted/40 px-1 rounded">{children}</code>
+                                      : <pre className="bg-muted/40 p-2 rounded-lg my-1 overflow-x-auto"><code>{children}</code></pre>;
+                                  },
+                                  ul: ({children}) => <ul className="list-disc ml-4 my-1">{children}</ul>,
+                                  ol: ({children}) => <ol className="list-decimal ml-4 my-1">{children}</ol>,
+                                  a: ({href, children}) => <a href={href} className="underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+                                }}
+                              >
+                                {currentQuestion.explanation}
+                              </ReactMarkdown>
                               </span>
                             </motion.div>
                           )}

@@ -18,7 +18,7 @@ import { useUserPreferences } from '../context/UserPreferencesContext';
 import { useChannelStats } from '../hooks/use-stats';
 import { useProgress } from '../hooks/use-progress';
 import { SEOHead } from '../components/SEOHead';
-import { PageHeader, SearchBar, FilterPills } from '@/components/ui/page';
+
 
 import {
   Plus, Sparkles, TrendingUp, ChevronRight, ChevronDown, X, Check,
@@ -624,11 +624,18 @@ export default function AllChannels() {
         <div className="min-h-screen bg-background text-foreground">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12 pb-20 sm:pb-24">
 
-            <PageHeader title="Channels" subtitle={`${channels.length} ${subscribedOnly && hasSubscriptions ? 'subscribed' : ''} channels`}>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0">
+                <Layout className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h1 className="text-xl font-bold text-foreground">Channels</h1>
+                <p className="text-sm text-muted-foreground">{channels.length} {subscribedOnly && hasSubscriptions ? 'subscribed' : ''} channels</p>
+              </div>
               {hasSubscriptions && (
                 <button
                   onClick={() => setSubscribedOnly(s => !s)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all shrink-0 ${
                     subscribedOnly
                       ? 'bg-[var(--color-accent-violet)]/15 border-[var(--color-accent-violet)] text-[var(--color-accent-violet-light)]'
                       : 'bg-muted/50 border-border text-muted-foreground'
@@ -637,7 +644,7 @@ export default function AllChannels() {
                   {subscribedOnly ? '★ My Topics' : 'All Topics'}
                 </button>
               )}
-            </PageHeader>
+            </div>
 
             {/* Stats bar */}
             {subscribedIds.size > 0 && (
@@ -663,7 +670,22 @@ export default function AllChannels() {
             {/* Filter bar */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-4 space-y-2">
               <div className="flex gap-3 flex-wrap">
-                <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search channels…" id="channel-search" />
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                  <input
+                    id="channel-search"
+                    type="text"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Search channels…"
+                    className="w-full pl-9 pr-8 min-h-[44px] rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground"
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
                 <select value={progressFilter} onChange={e => setProgressFilter(e.target.value as typeof progressFilter)}
                   className="min-h-[44px] px-3 py-2.5 rounded-xl text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring bg-muted border border-border text-foreground cursor-pointer">
                   <option value="all">All Progress</option>
@@ -678,8 +700,21 @@ export default function AllChannels() {
                   <option value="progress">Progress</option>
                 </select>
               </div>
-              <FilterPills options={[{id:'',label:'All'}, ...categories.filter(c=>c.id!=='certification').map(c=>({id:c.id,label:c.name}))]}
-                active={selectedCategory||''} onChange={id => setSelectedCategory(id||null)} />
+              <div className="flex gap-2 flex-wrap">
+                {[{id:'',label:'All'}, ...categories.filter(c=>c.id!=='certification').map(c=>({id:c.id,label:c.name}))].map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setSelectedCategory(opt.id || null)}
+                    className={`px-4 min-h-[44px] rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-150 cursor-pointer ${
+                      (selectedCategory||'') === opt.id
+                        ? 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground'
+                        : 'bg-muted/50 border border-border text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </motion.div>
 
             {fetchError && (

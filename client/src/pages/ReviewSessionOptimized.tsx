@@ -26,6 +26,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { EnhancedMermaid } from '../components/EnhancedMermaid';
 
 type SessionState = 'loading' | 'reviewing' | 'checkpoint' | 'completed';
 
@@ -359,6 +360,9 @@ export default function ReviewSessionOptimized() {
                                 const inline = !match;
 
                                 if (!inline && match) {
+                                  if (match[1] === 'mermaid') {
+                                    return <div className="my-2"><EnhancedMermaid chart={codeString} /></div>;
+                                  }
                                   return (
                                     <div className="relative group my-2">
                                       <button
@@ -419,6 +423,9 @@ export default function ReviewSessionOptimized() {
                                   const inline = !match;
 
                                   if (!inline && match) {
+                                    if (match[1] === 'mermaid') {
+                                      return <div className="my-2"><EnhancedMermaid chart={codeString} /></div>;
+                                    }
                                     return (
                                       <div className="relative group my-2">
                                         <button
@@ -677,6 +684,9 @@ function CheckpointTest({
                           const inline = !match;
 
                           if (!inline && match) {
+                            if (match[1] === 'mermaid') {
+                              return <div className="my-2"><EnhancedMermaid chart={codeString} /></div>;
+                            }
                             return (
                               <div className="relative group my-2">
                                 <button

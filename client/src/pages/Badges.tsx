@@ -1,17 +1,13 @@
-/**
- * Badges Page — spectacular gamification UI
- */
-
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '../components/layout/AppLayout';
 import { SEOHead } from '../components/SEOHead';
 import { useAchievements } from '../hooks/use-achievements';
 import { AchievementProgress } from '../lib/achievements/types';
-import { Trophy, Lock, Sparkles, Share2, X, Star } from 'lucide-react';
-import { PageHeader, FilterPills, PageLoader } from '@/components/ui/page';
+import { Trophy, Lock, Sparkles, Share2, X, Star, Award } from 'lucide-react';
+import { UnifiedEmptyState } from '@/components/ui/UnifiedEmptyState';
+import { UnifiedCard } from '@/components/ui/UnifiedCard';
 
-// ── Tier config ──────────────────────────────────────────────
 const TIER_GRADIENT: Record<string, string> = {
   bronze:   'from-[#cd7f32] to-[#8b4513]',
   silver:   'from-[#c0c0c0] to-[#808080]',
@@ -35,7 +31,6 @@ const TIER_XP: Record<string, number> = {
 const CATEGORY_TABS = ['all', 'unlocked', 'locked', 'streak', 'completion', 'mastery', 'explorer', 'special'] as const;
 type CategoryTab = typeof CATEGORY_TABS[number];
 
-// ── Confetti burst (CSS-only, no extra dep) ──────────────────
 function ConfettiBurst({ active }: { active: boolean }) {
   if (!active) return null;
   const pieces = Array.from({ length: 18 }, (_, i) => i);
@@ -66,7 +61,6 @@ function ConfettiBurst({ active }: { active: boolean }) {
   );
 }
 
-// ── Badge Card ───────────────────────────────────────────────
 function BadgeCard({
   bp,
   index,
@@ -125,7 +119,6 @@ function BadgeCard({
         )}
       </AnimatePresence>
 
-      {/* Icon circle */}
       <div
         className={`w-14 h-14 mb-3 rounded-full flex items-center justify-center flex-shrink-0 relative ${
           isUnlocked
@@ -145,12 +138,10 @@ function BadgeCard({
         )}
       </div>
 
-      {/* Info */}
       <div className="text-center space-y-1 w-full">
         <p className="font-bold text-xs leading-tight line-clamp-1">{badge.name}</p>
         <p className="text-[11px] text-[var(--text-tertiary)] line-clamp-2 leading-snug">{badge.description}</p>
 
-        {/* Progress bar (locked) */}
         {!isUnlocked && bp.current > 0 && bp.target > 0 && (
           <div className="pt-1 space-y-0.5">
             <div className="h-1 bg-[var(--surface-3)] rounded-full overflow-hidden">
@@ -163,7 +154,6 @@ function BadgeCard({
           </div>
         )}
 
-        {/* Tier pill */}
         <div
           className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold capitalize mt-1 ${
             isUnlocked
@@ -178,7 +168,6 @@ function BadgeCard({
   );
 }
 
-// ── Badge Detail Modal ───────────────────────────────────────
 function BadgeModal({
   bp,
   onClose,
@@ -200,7 +189,6 @@ function BadgeModal({
     <AnimatePresence>
       {bp && (
         <>
-          {/* Backdrop */}
           <motion.div
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[var(--z-modal)]"
             initial={{ opacity: 0 }}
@@ -209,7 +197,6 @@ function BadgeModal({
             onClick={onClose}
           />
 
-          {/* Panel */}
           <motion.div
             className="fixed inset-x-4 bottom-0 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-96 z-[var(--z-modal)] bg-[var(--surface-2)] border border-[var(--color-border)] rounded-t-2xl md:rounded-2xl p-6 shadow-2xl"
             initial={{ y: '100%', opacity: 0 }}
@@ -219,7 +206,6 @@ function BadgeModal({
           >
             <ConfettiBurst active={confetti} />
 
-            {/* Close — 44px touch target */}
             <button
               onClick={onClose}
               className="absolute top-4 right-4 w-11 h-11 rounded-full bg-[var(--surface-3)] flex items-center justify-center hover:bg-[var(--surface-4)] transition-colors duration-150 cursor-pointer"
@@ -228,7 +214,6 @@ function BadgeModal({
               <X className="w-4 h-4" />
             </button>
 
-            {/* Icon */}
             <div className="flex flex-col items-center text-center space-y-4">
               <div
                 className={`w-24 h-24 rounded-full flex items-center justify-center ${
@@ -250,14 +235,12 @@ function BadgeModal({
                 <p className="text-sm text-[var(--text-secondary)] mt-1">{bp.achievement.description}</p>
               </div>
 
-              {/* XP reward */}
               <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--surface-3)] border border-[var(--color-border)]">
                 <Star className="w-4 h-4 text-[var(--color-xp)]" />
                 <span className="text-sm font-bold text-[var(--color-xp)]">+{TIER_XP[bp.achievement.tier] ?? 50} XP</span>
                 <span className="text-xs text-[var(--text-tertiary)] capitalize">· {bp.achievement.tier}</span>
               </div>
 
-              {/* Earned date or how to earn */}
               {bp.isUnlocked && bp.unlockedAt ? (
                 <p className="text-sm text-[var(--color-success)]">
                   ✓ Earned {new Date(bp.unlockedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
@@ -280,7 +263,6 @@ function BadgeModal({
                 </div>
               )}
 
-              {/* Share */}
               {bp.isUnlocked && (
                 <button
                   onClick={() => {
@@ -305,7 +287,6 @@ function BadgeModal({
   );
 }
 
-// ── Main Page ────────────────────────────────────────────────
 export default function BadgesPage() {
   const { progress: allBadges, unlocked: unlockedBadges, stats, nextUp, isLoading } = useAchievements();
   const [activeTab, setActiveTab] = useState<CategoryTab>('all');
@@ -331,7 +312,9 @@ export default function BadgesPage() {
   if (isLoading) {
     return (
       <AppLayout title="Badges" fullWidth>
-        <PageLoader message="Loading achievements..." />
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
       </AppLayout>
     );
   }
@@ -339,16 +322,22 @@ export default function BadgesPage() {
   if (!allBadges || allBadges.length === 0) {
     return (
       <AppLayout title="Badges" fullWidth>
-        <div className="min-h-screen bg-background text-foreground overflow-x-hidden pb-20 lg:pb-8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
-            <PageHeader title="Badges" />
-            <div className="flex items-center justify-center py-12 sm:py-20">
-              <div className="text-center">
-                <Trophy className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                <h2 className="text-2xl font-bold mb-2">No badges yet</h2>
-                <p className="text-muted-foreground mb-6">Start completing challenges to earn badges!</p>
+        <div className="min-h-screen pb-24 lg:pb-8">
+          <div className="max-w-7xl mx-auto px-4 py-4 sm:py-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                <Award className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">Badges</h1>
+                <p className="text-sm text-muted-foreground">Your achievements</p>
               </div>
             </div>
+            <UnifiedEmptyState
+              icon={<Trophy className="w-6 h-6" />}
+              title="No badges yet"
+              description="Start completing challenges to earn badges!"
+            />
           </div>
         </div>
       </AppLayout>
@@ -364,32 +353,40 @@ export default function BadgesPage() {
       />
 
       <AppLayout title="Badges" fullWidth>
-        <div className="min-h-screen bg-background text-foreground w-full overflow-x-hidden pb-20 lg:pb-8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12 space-y-4 sm:space-y-6">
+        <div className="min-h-screen pb-24 lg:pb-8">
+          <div className="max-w-7xl mx-auto px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
 
-            {/* ── Header ── */}
-            <PageHeader title="Badges" subtitle="Your achievements" />
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                <Award className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">Badges</h1>
+                <p className="text-sm text-muted-foreground">Your achievements</p>
+              </div>
+            </div>
 
-            {/* ── Stats Header ── */}
+            {/* Stats */}
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
               className="grid grid-cols-3 gap-3"
             >
-              <div className="glass-card rounded-xl p-4 text-center space-y-1">
+              <UnifiedCard compact className="text-center">
                 <p className="text-2xl font-black text-[var(--color-xp)]">
                   {stats.unlocked}<span className="text-[var(--text-tertiary)] font-normal text-base">/{stats.total}</span>
                 </p>
                 <p className="text-xs text-[var(--text-tertiary)]">Badges Earned</p>
-              </div>
+              </UnifiedCard>
 
-              <div className="glass-card rounded-xl p-4 text-center space-y-1">
+              <UnifiedCard compact className="text-center">
                 <p className="text-2xl font-black text-[var(--color-accent-violet-light)]">+{xpFromBadges.toLocaleString()}</p>
                 <p className="text-xs text-[var(--text-tertiary)]">XP from Badges</p>
-              </div>
+              </UnifiedCard>
 
-              <div className="glass-card rounded-xl p-4 text-center space-y-1">
+              <UnifiedCard compact className="text-center">
                 {rarestBadge ? (
                   <>
                     <p className={`text-sm font-black capitalize bg-gradient-to-r ${TIER_GRADIENT[rarestBadge.achievement.tier]} bg-clip-text text-transparent`}>
@@ -401,10 +398,10 @@ export default function BadgesPage() {
                   <p className="text-xs text-[var(--text-tertiary)]">No badges yet</p>
                 )}
                 <p className="text-xs text-[var(--text-tertiary)]">Rarest Badge</p>
-              </div>
+              </UnifiedCard>
             </motion.div>
 
-            {/* ── Overall progress bar ── */}
+            {/* Overall progress bar */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -426,21 +423,41 @@ export default function BadgesPage() {
               </div>
             </motion.div>
 
-            {/* ── Category Tabs ── */}
-            <FilterPills
-              options={CATEGORY_TABS.map(t => ({ id: t, label: t.charAt(0).toUpperCase() + t.slice(1) }))}
-              active={activeTab}
-              onChange={id => setActiveTab(id as CategoryTab)}
-            />
-
-            {/* ── Badge Grid — 2 cols on mobile, 3 on sm, 4 on lg ── */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-              {filteredBadges.map((bp, i) => (
-                <BadgeCard key={bp.achievement.id} bp={bp} index={i} onClick={setSelectedBadge} />
+            {/* Category Tabs */}
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+              {CATEGORY_TABS.map(t => (
+                <button
+                  key={t}
+                  onClick={() => setActiveTab(t as CategoryTab)}
+                  className={`shrink-0 px-4 h-10 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-150 cursor-pointer ${
+                    activeTab === t
+                      ? 'bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground'
+                      : 'bg-muted/50 border border-border text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                </button>
               ))}
             </div>
 
-            {/* ── Next Up ── */}
+            {/* Badge Grid */}
+            <motion.div layout className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+              {filteredBadges.length === 0 ? (
+                <div className="col-span-full">
+                  <UnifiedEmptyState
+                    icon={<Trophy className="w-6 h-6" />}
+                    title="No badges in this category"
+                    compact
+                  />
+                </div>
+              ) : (
+                filteredBadges.map((bp, i) => (
+                  <BadgeCard key={bp.achievement.id} bp={bp} index={i} onClick={setSelectedBadge} />
+                ))
+              )}
+            </motion.div>
+
+            {/* Next Up */}
             {nextUp.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -481,7 +498,6 @@ export default function BadgesPage() {
         </div>
       </AppLayout>
 
-      {/* ── Badge Detail Modal ── */}
       <BadgeModal bp={selectedBadge} onClose={() => setSelectedBadge(null)} />
     </>
   );

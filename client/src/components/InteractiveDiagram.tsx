@@ -262,6 +262,7 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
     return saved ? (saved as MermaidTheme) : null;
   });
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   const renderIdRef = useRef(0);
   const inlineSvgRef = useRef<HTMLDivElement>(null);
@@ -321,6 +322,7 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
         }
       } catch (err: any) {
         const errMsg = err?.message ?? 'Render failed';
+        console.warn('Mermaid render failed for diagram:', '\n' + code);
         if (!cancelled && id === renderIdRef.current) {
           setError(errMsg);
           onRenderResult?.(false, errMsg);
@@ -331,7 +333,7 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
     });
 
     return () => { cancelled = true; };
-  }, [chart, effectiveTheme]);
+  }, [chart, effectiveTheme, retryKey]);
 
   // Attach svg-pan-zoom to inline view
   useEffect(() => {
@@ -433,9 +435,25 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
 
   if (error) {
     return (
-      <div className={`w-full flex items-center gap-2 py-3 px-3 rounded-lg bg-red-500/10 border border-red-500/20 ${className}`}>
-        <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-        <span className="text-xs text-red-400/80">Diagram failed to render</span>
+      <div className={`w-full rounded-lg bg-red-500/5 border border-red-500/20 p-3 ${className}`}>
+        <div className="flex items-center gap-2 mb-1">
+          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+          <span className="text-xs font-semibold text-red-400">Diagram unavailable</span>
+        </div>
+        <details className="mt-1">
+          <summary className="text-[10px] text-red-400/60 cursor-pointer hover:text-red-400/80">
+            Show diagram source
+          </summary>
+          <pre className="mt-2 p-2 bg-black/40 rounded text-[10px] text-red-300/80 font-mono overflow-x-auto max-h-32">
+            {extractCode(chart)}
+          </pre>
+        </details>
+        <button
+          onClick={() => setRetryKey(k => k + 1)}
+          className="mt-2 text-[10px] px-2 py-1 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }
