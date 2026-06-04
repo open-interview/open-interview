@@ -133,6 +133,7 @@ const PostFaceliftPage = React.lazy(() => import('@/pages/blog/post-facelift'));
 const BlogSearchPage = React.lazy(() => import('@/pages/blog/BlogSearchPage'));
 const AboutBlogPage = React.lazy(() => import('@/pages/blog/AboutBlogPage'));
 const AdminBlogPage = React.lazy(() => import('@/pages/admin/AdminBlogPage'));
+const DiagramTest = React.lazy(() => import('@/pages/admin/DiagramTest'));
 
 // Blog route wrapper components for Suspense compatibility
 function BlogCategoryPage({ params }: { params: { slug: string } }) {
@@ -201,6 +202,7 @@ function Router() {
           <Route path="/blog/:slug">{(params) => <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><InterviewLoader message="Loading..." showTip={false} /></div>}><BlogPostPage params={params} /></Suspense>}</Route>
           <Route path="/about-blog" component={AboutBlogPage} />
           <Route path="/admin/blog" component={AdminBlogPage} />
+          <Route path="/admin/diagrams" component={DiagramTest} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>
