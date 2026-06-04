@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { X, ZoomIn, ZoomOut, Maximize2, RotateCcw, Palette, AlertTriangle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { fetchCachedSvg } from '../lib/diagram-cache';
+import { fetchCachedSvg, fixMermaidSyntax } from '../lib/diagram-cache';
 
 // ─── Mermaid theme configs ────────────────────────────────────────────────────
 
@@ -294,7 +294,7 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
     setError(null); setSvgContent(null); setIsLoading(true);
 
     let cancelled = false;
-    const code = extractCode(chart);
+    const code = fixMermaidSyntax(extractCode(chart));
 
     if (!code) { setError('Empty diagram'); setIsLoading(false); return; }
 
