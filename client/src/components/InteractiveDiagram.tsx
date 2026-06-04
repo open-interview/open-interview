@@ -175,6 +175,7 @@ const appThemeToMermaid: Record<string, MermaidTheme> = {
 let mermaidInstance: any = null;
 let mermaidLoadPromise: Promise<any> | null = null;
 let currentMermaidTheme: MermaidTheme | null = null;
+let renderQueue = Promise.resolve();
 
 async function loadMermaid(): Promise<any> {
   if (mermaidInstance) return mermaidInstance;
@@ -285,6 +286,11 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
     return raw.trim();
   };
 
+  // Initialize mermaid theme separately (no render trigger)
+  useEffect(() => {
+    initMermaid(effectiveTheme);
+  }, [effectiveTheme]);
+
   // Render mermaid → SVG
   useEffect(() => {
     if (!chart) { setError('Empty diagram'); setIsLoading(false); return; }
@@ -297,13 +303,13 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
 
     if (!code) { setError('Empty diagram'); setIsLoading(false); return; }
 
-    (async () => {
+    renderQueue = renderQueue.then(async () => {
       if (cancelled) return;
 
       // Render via mermaid runtime
       const renderId = `mermaid-${id}-${Math.random().toString(36).slice(2, 9)}`;
       try {
-        await initMermaid(effectiveTheme, true);
+        await initMermaid(effectiveTheme);
         const mermaid = await loadMermaid();
         if (cancelled) return;
 
@@ -328,7 +334,7 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
       } finally {
         if (!cancelled && id === renderIdRef.current) setIsLoading(false);
       }
-    })();
+    });
 
     return () => { cancelled = true; };
   }, [chart, effectiveTheme]);
