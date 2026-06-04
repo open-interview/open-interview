@@ -38,7 +38,7 @@ function saveToNotifications(title: string, description?: string, variant?: stri
     const updated = [newNotification, ...notifications].slice(0, MAX_NOTIFICATIONS);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     
-    // Dispatch custom event so NotificationsContext can update
+    // Dispatch custom event for notifications
     window.dispatchEvent(new CustomEvent('notification-added'));
   } catch (e) {
     console.error('Failed to save notification:', e);

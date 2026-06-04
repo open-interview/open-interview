@@ -82,8 +82,8 @@ export function AppLayout({
     return <>{children}</>;
   }
 
-  // Desktop sidebar width: 280px expanded, 72px collapsed
-  const sidebarWidth = isCollapsed ? 72 : 280;
+  // Desktop sidebar width: 240px expanded, 64px collapsed
+  const sidebarWidth = isCollapsed ? 64 : 240;
 
   return (
     <div
@@ -137,10 +137,12 @@ export function AppLayout({
             className={cn(
               'w-full overflow-x-hidden',
               fullWidth
-                ? ''
-                : 'mx-auto px-4 py-4 max-w-6xl',
-              isMobile && useFacelift && 'pt-16',
-              isMobile && 'pb-[calc(80px+env(safe-area-inset-bottom,0px))]',
+                ? 'px-3 sm:px-4'
+                : 'md:mx-auto md:px-3 md:py-3 md:max-w-6xl',
+              isMobile && useFacelift && 'pt-14',
+              isMobile && 'pb-[calc(72px+env(safe-area-inset-bottom,0px))]',
+              isMobile && 'px-3',
+              !isMobile && 'px-4',
             )}
           >
             {children}

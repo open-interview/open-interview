@@ -284,7 +284,7 @@ export default function CertificationExam() {
         description={`Practice exam for ${certification.name} certification`} 
       />
 
-      <div className="min-h-screen bg-background pt-14 lg:pt-0">
+      <div className="min-h-screen bg-background">
         {/* Setup Screen */}
         {sessionState === 'setup' && (
           <SetupScreen
@@ -385,10 +385,10 @@ function SetupScreen({
         className="w-full max-w-lg"
       >
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 sm:mb-8">
           <button
             onClick={onBack}
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 min-h-[44px] cursor-pointer transition-colors duration-150 ease-out"
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-3 sm:mb-4 min-h-[36px] sm:min-h-[44px] cursor-pointer transition-colors duration-150 ease-out"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to certification
@@ -427,7 +427,7 @@ function SetupScreen({
         )}
 
         {/* Mode Selection */}
-        <div className="space-y-3 mb-6">
+        <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
           <h3 className="font-semibold">Practice Mode</h3>
           
           <button
@@ -603,12 +603,12 @@ function ActiveExam({
 
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border shadow-lg shadow-primary/5">
-        <div className="max-w-4xl mx-auto px-4 py-3">
+        <div className="max-w-4xl mx-auto px-4 py-2 sm:py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowExitConfirm(true)}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-muted rounded-lg transition-colors duration-150 ease-out cursor-pointer"
+                className="min-h-[36px] min-w-[36px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center hover:bg-muted rounded-lg transition-colors duration-150 ease-out cursor-pointer"
                 title="Exit and save progress"
               >
                 <Home className="w-4 h-4 text-muted-foreground" />
@@ -621,7 +621,7 @@ function ActiveExam({
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowNav(!showNav)}
-                className="min-h-[44px] px-3 py-1.5 bg-muted rounded-lg text-sm font-medium cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80"
+                className="min-h-[36px] sm:min-h-[44px] px-2 sm:px-3 py-1 sm:py-1.5 bg-muted rounded-lg text-xs sm:text-sm font-medium cursor-pointer transition-colors duration-150 ease-out hover:bg-muted/80"
               >
                 {currentIndex + 1}/{totalQuestions}
               </button>
@@ -629,7 +629,7 @@ function ActiveExam({
           </div>
 
           {/* Progress bar */}
-          <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
+          <div className="mt-1.5 h-1 bg-muted rounded-full overflow-hidden">
             <div 
               className="h-full bg-gradient-to-r from-primary to-cyan-500 transition-all"
               style={{ width: `${((currentIndex + 1) / totalQuestions) * 100}%` }}
@@ -709,9 +709,9 @@ function ActiveExam({
       </AnimatePresence>
 
       {/* Question Content */}
-      <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-6">
+      <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-4 sm:py-6">
         {/* Domain & Difficulty */}
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-3">
           <span className="px-2 py-1 bg-gradient-to-r from-primary/10 to-cyan-500/10 text-primary text-xs rounded-full font-medium">
             {currentQuestion.domain.replace(/-/g, ' ')}
           </span>
@@ -724,7 +724,7 @@ function ActiveExam({
           </span>
           <button
             onClick={onToggleFlag}
-            className={`ml-auto min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-colors duration-150 ease-out cursor-pointer ${
+            className={`ml-auto min-h-[36px] min-w-[36px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center rounded-lg transition-colors duration-150 ease-out cursor-pointer ${
               isFlagged ? 'bg-amber-500/10 text-amber-500' : 'hover:bg-muted text-muted-foreground'
             }`}
           >
@@ -733,12 +733,12 @@ function ActiveExam({
         </div>
 
         {/* Question */}
-        <h2 className="text-lg font-medium mb-6 leading-relaxed">
+        <h2 className="text-base sm:text-lg font-medium mb-4 sm:mb-6 leading-relaxed">
           {currentQuestion.question}
         </h2>
 
         {/* Options */}
-        <div className="space-y-3 mb-6">
+        <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
           {currentQuestion.options.map((option) => {
             const isSelected = selectedOption === option.id;
             const showResult = isAnswered && (examMode === 'practice' || examMode === 'review');
@@ -939,7 +939,7 @@ function ResultsScreen({
         </motion.div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="bg-muted/50 border border-border rounded-xl p-4 text-center">
             <Target className="w-5 h-5 mx-auto mb-2 text-primary" />
             <div className="text-2xl font-bold">{results.correct}</div>
@@ -957,10 +957,10 @@ function ResultsScreen({
           </div>
         </div>
 
-        {/* Domain Breakdown */}
+          {/* Domain Breakdown */}
         {examConfig && Object.keys(results.domainResults).length > 0 && (
-          <div className="bg-muted/50 border border-border rounded-xl p-4 mb-6">
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
+          <div className="bg-muted/50 border border-border rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
+            <h3 className="font-semibold mb-3 sm:mb-4 flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-primary" />
               Domain Performance
             </h3>
@@ -995,7 +995,7 @@ function ResultsScreen({
         )}
 
         {/* Actions */}
-        <div className="space-y-3 pb-24">
+        <div className="space-y-3 pb-20 sm:pb-24">
           <button
             onClick={onReview}
             className="w-full min-h-[44px] py-3 bg-gradient-to-r from-primary to-cyan-500 text-primary-foreground rounded-xl font-medium flex items-center justify-center gap-2 cursor-pointer transition-opacity duration-150 ease-out hover:opacity-90"

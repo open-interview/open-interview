@@ -6,8 +6,9 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, ZoomIn, ZoomOut, Maximize2, RotateCcw, Palette } from 'lucide-react';
+import { X, ZoomIn, ZoomOut, Maximize2, RotateCcw, Palette, AlertTriangle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { fetchCachedSvg } from '../lib/diagram-cache';
 
 // ─── Mermaid theme configs ────────────────────────────────────────────────────
 
@@ -293,12 +294,28 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
     setError(null); setSvgContent(null); setIsLoading(true);
 
     let cancelled = false;
-    const renderId = `mermaid-${id}-${Math.random().toString(36).slice(2, 9)}`;
     const code = extractCode(chart);
 
     if (!code) { setError('Empty diagram'); setIsLoading(false); return; }
 
     (async () => {
+      // Try pre-rendered SVG cache first (offline, no mermaid runtime needed)
+      if (!cancelled && id === renderIdRef.current) {
+        try {
+          const cached = await fetchCachedSvg(chart);
+          if (cached && !cancelled && id === renderIdRef.current) {
+            setSvgContent(cached);
+            setIsLoading(false);
+            onRenderResult?.(true);
+            return;
+          }
+        } catch { /* cache miss or unavailable — fall through to mermaid */ }
+      }
+
+      if (cancelled) return;
+
+      // Fall back to mermaid runtime render
+      const renderId = `mermaid-${id}-${Math.random().toString(36).slice(2, 9)}`;
       try {
         await initMermaid(effectiveTheme, true);
         const mermaid = await loadMermaid();
@@ -434,7 +451,14 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
     { id: 'base',        name: 'Base',         color: '#f9a825' },
   ];
 
-  if (error) return null;
+  if (error) {
+    return (
+      <div className={`w-full flex items-center gap-2 py-3 px-3 rounded-lg bg-red-500/10 border border-red-500/20 ${className}`}>
+        <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+        <span className="text-xs text-red-400/80">Diagram failed to render</span>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -444,7 +468,14 @@ export function InteractiveDiagram({ chart, themeOverride, className = '', onRen
     );
   }
 
-  if (!svgContent) return null;
+  if (!svgContent) {
+    return (
+      <div className={`w-full flex items-center gap-2 py-3 px-3 rounded-lg bg-amber-500/10 border border-amber-500/20 ${className}`}>
+        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+        <span className="text-xs text-amber-400/80">No diagram content</span>
+      </div>
+    );
+  }
 
   // Expanded fullscreen overlay
   if (isExpanded) {

@@ -7,9 +7,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { useLocation, useParams } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   ArrowLeft, ArrowRight, CheckCircle, XCircle, Trophy,
-  Home, Check, X, Zap, Share2, RotateCcw, ChevronRight
+  Home, Check, X, Zap, Share2, RotateCcw, ChevronRight,
+  Lightbulb, SkipForward, SplitSquareHorizontal
 } from 'lucide-react';
 import { SEOHead } from '../components/SEOHead';
 import { Card, Button } from '../components/practice-ui';
@@ -19,6 +22,7 @@ import {
   getChannelTheme, checkTestExpiration
 } from '../lib/tests';
 import { mascotEvents } from '../components/PixelMascot';
+import { useLifelines } from '../hooks/useLifelines';
 
 type SessionState = 'loading' | 'ready' | 'in-progress' | 'review';
 
@@ -182,6 +186,12 @@ export default function TestSessionPage() {
   const questionHeadingRef = useRef<HTMLHeadingElement>(null);
   const feedbackRef = useRef<HTMLDivElement>(null);
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
+  const skipBtnRef = useRef<HTMLButtonElement>(null);
+
+  const {
+    eliminatedOptions, hints, fiftyFiftyUsed, hintUsed, skipUsed,
+    activateFiftyFifty, activateHint, activateSkip, resetLifelines,
+  } = useLifelines();
 
   useEffect(() => {
     if (!channelId) return;
@@ -223,7 +233,8 @@ export default function TestSessionPage() {
     setTotalTime(secs);
     setReviewIndex(0);
     setSessionState('in-progress');
-  }, [test]);
+    resetLifelines();
+  }, [test, resetLifelines]);
 
   const handleOptionSelect = (optionId: string) => {
     if (!currentQuestion || showFeedback) return;
@@ -233,16 +244,7 @@ export default function TestSessionPage() {
       setAnswers(prev => ({ ...prev, [currentQuestion.id]: [optionId] }));
       const isCorrect = currentQuestion.options.find(o => o.id === optionId)?.isCorrect ?? false;
       setShowFeedback(isCorrect ? 'correct' : 'incorrect');
-      // Move focus to feedback element
       setTimeout(() => feedbackRef.current?.focus(), 50);
-      setTimeout(() => {
-        setShowFeedback(null);
-        if (currentIndex < questions.length - 1) {
-          setCurrentIndex(i => i + 1);
-          // Focus next question heading after state update
-          setTimeout(() => questionHeadingRef.current?.focus(), 50);
-        }
-      }, 700);
     } else {
       setAnswers(prev => ({
         ...prev,
@@ -261,14 +263,21 @@ export default function TestSessionPage() {
     const isCorrect = correctIds.every(id => userAnswers.includes(id)) && userAnswers.every(id => correctIds.includes(id));
     setShowFeedback(isCorrect ? 'correct' : 'incorrect');
     setTimeout(() => feedbackRef.current?.focus(), 50);
-    setTimeout(() => {
-      setShowFeedback(null);
-      if (currentIndex < questions.length - 1) {
-        setCurrentIndex(i => i + 1);
-        setTimeout(() => questionHeadingRef.current?.focus(), 50);
-      }
-    }, 800);
   };
+
+  const goNext = useCallback(() => {
+    if (!currentQuestion || currentIndex >= questions.length - 1) return;
+    setShowFeedback(null);
+    setCurrentIndex(i => i + 1);
+    setTimeout(() => questionHeadingRef.current?.focus(), 50);
+  }, [currentIndex, questions.length, currentQuestion]);
+
+  const goPrev = useCallback(() => {
+    if (currentIndex <= 0) return;
+    setShowFeedback(null);
+    setCurrentIndex(i => i - 1);
+    setTimeout(() => questionHeadingRef.current?.focus(), 50);
+  }, [currentIndex]);
 
   const submitTest = useCallback(() => {
     if (!test) return;
@@ -300,13 +309,13 @@ export default function TestSessionPage() {
     return (
       <AppLayout fullWidth>
         <div className="min-h-screen bg-background text-foreground">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-            <div className="text-center mb-10">
-              <h1 className="text-5xl md:text-6xl font-black mb-3">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
+            <div className="text-center mb-6">
+              <h1 className="text-3xl md:text-6xl font-black mb-3">
                 <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">Test Session</span>
               </h1>
             </div>
-            <div className="flex items-center justify-center py-20">
+            <div className="flex items-center justify-center py-12 sm:py-20">
               <div className="text-center">
                 <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
                 <p className="text-muted-foreground text-sm">{!test ? 'No test available for this channel yet' : 'Loading...'}</p>
@@ -327,7 +336,7 @@ export default function TestSessionPage() {
         canonical={`https://open-interview.github.io/test/${channelId}`}
       />
       <AppLayout fullWidth>
-        <div className="min-h-screen bg-background text-foreground pt-14 lg:pt-0">
+        <div className="min-h-screen bg-background text-foreground">
 
           {/* ── Ready screen ── */}
           {sessionState === 'ready' && (
@@ -370,14 +379,13 @@ export default function TestSessionPage() {
 
           {/* ── In-progress ── */}
           {sessionState === 'in-progress' && currentQuestion && (
-            <div className="min-h-screen flex flex-col">
+            <div className="min-h-screen lg:h-dvh flex flex-col lg:overflow-hidden">
               {/* Header */}
-              <header className="border-b border-border px-4 py-2 flex items-center justify-between gap-3">
-                <button onClick={() => setLocation('/')} className="min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer text-muted-foreground hover:text-foreground transition duration-150 ease-out">
+              <header className="border-b border-border px-3 py-1.5 flex items-center justify-between gap-2 flex-shrink-0">
+                <button onClick={() => setLocation('/')} className="min-h-[36px] min-w-[36px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center cursor-pointer text-muted-foreground hover:text-foreground transition duration-150 ease-out">
                   <Home className="w-4 h-4" />
                 </button>
 
-                {/* Progress bar + counter */}
                 <div className="flex-1 flex items-center gap-2">
                   <span className="text-xs font-semibold tabular-nums text-muted-foreground">{currentIndex + 1} / {questions.length}</span>
                   <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
@@ -389,11 +397,51 @@ export default function TestSessionPage() {
                   </div>
                 </div>
 
+                <div className="flex items-center gap-1 mr-1">
+                  <button
+                    onClick={() => activateFiftyFifty(currentQuestion)}
+                    disabled={fiftyFiftyUsed}
+                    title="50/50 — eliminate half the wrong options"
+                    data-testid="lifeline-50"
+                    className="min-h-[32px] min-w-[32px] flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:cursor-not-allowed transition duration-150 ease-out rounded-lg hover:bg-muted/50"
+                  >
+                    <SplitSquareHorizontal className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => activateHint(currentQuestion)}
+                    disabled={hintUsed}
+                    title="Hint — show a clue"
+                    data-testid="lifeline-hint"
+                    className="min-h-[32px] min-w-[32px] flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:cursor-not-allowed transition duration-150 ease-out rounded-lg hover:bg-muted/50"
+                  >
+                    <Lightbulb className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    ref={skipBtnRef}
+                    onClick={() => {
+                      if (skipUsed) return;
+                      activateSkip();
+                      if (currentIndex < questions.length - 1) {
+                        setShowFeedback(null);
+                        setCurrentIndex(i => i + 1);
+                        setTimeout(() => questionHeadingRef.current?.focus(), 50);
+                      } else {
+                        submitTest();
+                      }
+                    }}
+                    disabled={skipUsed}
+                    title="Skip — move to next question"
+                    data-testid="lifeline-skip"
+                    className="min-h-[32px] min-w-[32px] flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:cursor-not-allowed transition duration-150 ease-out rounded-lg hover:bg-muted/50"
+                  >
+                    <SkipForward className="w-3.5 h-3.5" />
+                  </button>
+                </div>
                 <div data-testid="test-timer"><CircularTimer seconds={timeLeft} total={totalTime} /></div>
               </header>
 
-              {/* Question */}
-              <div className="flex-1 overflow-y-auto p-4 pb-24 lg:pb-4">
+              {/* ── MOBILE: single-column scroll ── */}
+              <div className="lg:hidden flex-1 overflow-y-auto p-3 sm:p-4 pb-20 lg:pb-4">
                 <div className="max-w-2xl mx-auto">
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -403,8 +451,7 @@ export default function TestSessionPage() {
                       exit={{ opacity: 0, x: -24 }}
                       transition={{ duration: 0.2 }}
                     >
-                      {/* Badges */}
-                      <div className="flex items-center gap-2 mb-4">
+                      <div className="flex items-center gap-2 mb-3">
                         <span className={`px-2 py-0.5 text-[10px] uppercase font-semibold rounded-md ${
                           currentQuestion.type === 'multiple' ? 'bg-[var(--color-accent-violet)]/20 text-[var(--color-accent-violet-light)]' : 'bg-[var(--color-accent-cyan)]/20 text-[var(--color-accent-cyan)]'
                         }`}>
@@ -419,10 +466,10 @@ export default function TestSessionPage() {
                         </span>
                       </div>
 
-                      <h2 ref={questionHeadingRef} tabIndex={-1} id={`question-${currentQuestion.id}`} className="text-lg font-bold mb-5 leading-snug">{currentQuestion.question}</h2>
+                      <h2 ref={questionHeadingRef} tabIndex={-1} id={`question-${currentQuestion.id}`} className="text-base sm:text-lg font-bold mb-3 sm:mb-5 leading-snug">{currentQuestion.question}</h2>
 
                       <div className="space-y-2.5" role="group" aria-describedby={`question-${currentQuestion.id}`}>
-                        {currentQuestion.options.map((opt, idx) => {
+                        {currentQuestion.options.filter(opt => !(eliminatedOptions[currentQuestion.id] || []).includes(opt.id)).map((opt, idx) => {
                           const isSelected = (answers[currentQuestion.id] || []).includes(opt.id);
                           const showCorrect = !!showFeedback && opt.isCorrect;
                           const showWrong = showFeedback === 'incorrect' && isSelected && !opt.isCorrect;
@@ -446,7 +493,17 @@ export default function TestSessionPage() {
                         <p className="mt-3 text-xs text-muted-foreground text-center">Select all correct answers, then confirm</p>
                       )}
 
-                      {/* Explanation on reveal */}
+                      {hints[currentQuestion.id] && !showFeedback && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="mt-3 p-3 rounded-xl text-xs leading-relaxed border bg-amber-500/10 border-amber-500/25 text-amber-600 dark:text-amber-400"
+                        >
+                          <span className="font-semibold">Hint: </span>
+                          {hints[currentQuestion.id]}
+                        </motion.div>
+                      )}
+
                       <AnimatePresence>
                         {showFeedback && currentQuestion.explanation && (
                           <motion.div
@@ -462,7 +519,26 @@ export default function TestSessionPage() {
                             }`}
                           >
                             <span className="font-semibold">{showFeedback === 'correct' ? '✓ ' : '✗ '}</span>
-                            <span className="text-foreground/80">{currentQuestion.explanation}</span>
+                            <span className="text-foreground/80">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  p: ({children}) => <span className="block mb-1 last:mb-0">{children}</span>,
+                                  code: ({className, children}) => {
+                                    const m = /language-(\w+)/.exec(className || '');
+                                    const isInline = !m && !String(children).includes('\n');
+                                    return isInline
+                                      ? <code className="bg-muted/40 px-1 rounded">{children}</code>
+                                      : <pre className="bg-muted/40 p-2 rounded-lg my-1 overflow-x-auto"><code>{children}</code></pre>;
+                                  },
+                                  ul: ({children}) => <ul className="list-disc ml-4 my-1">{children}</ul>,
+                                  ol: ({children}) => <ol className="list-decimal ml-4 my-1">{children}</ol>,
+                                  a: ({href, children}) => <a href={href} className="underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+                                }}
+                              >
+                                {currentQuestion.explanation}
+                              </ReactMarkdown>
+                            </span>
                           </motion.div>
                         )}
                       </AnimatePresence>
@@ -471,19 +547,153 @@ export default function TestSessionPage() {
                 </div>
               </div>
 
+              {/* ── DESKTOP: two-column split, no page scroll ── */}
+              <div className="hidden lg:flex flex-1 min-h-0 overflow-hidden">
+                <div className="w-[42%] flex-shrink-0 border-r border-border/60 overflow-y-auto p-6 xl:p-8">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentQuestion.id}
+                      initial={{ opacity: 0, x: 24 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -24 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 text-[10px] uppercase font-semibold rounded-md ${
+                            currentQuestion.type === 'multiple' ? 'bg-[var(--color-accent-violet)]/20 text-[var(--color-accent-violet-light)]' : 'bg-[var(--color-accent-cyan)]/20 text-[var(--color-accent-cyan)]'
+                          }`}>
+                            {currentQuestion.type === 'multiple' ? 'Select all' : 'Single choice'}
+                          </span>
+                          <span className={`px-2 py-0.5 text-[10px] uppercase font-semibold rounded-md ${
+                            currentQuestion.difficulty === 'beginner' ? 'bg-[var(--color-success)]/20 text-[var(--color-success)]'
+                            : currentQuestion.difficulty === 'intermediate' ? 'bg-[var(--color-warning)]/20 text-[var(--color-warning)]'
+                            : 'bg-[var(--color-error)]/20 text-[var(--color-error)]'
+                          }`}>
+                            {currentQuestion.difficulty}
+                          </span>
+                        </div>
+                        <h2 ref={questionHeadingRef} tabIndex={-1} id={`question-${currentQuestion.id}`} className="text-lg xl:text-xl font-bold leading-snug">
+                          {currentQuestion.question}
+                        </h2>
+                      </div>
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 xl:p-8">
+                  <div className="max-w-2xl">
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={currentQuestion.id}
+                        initial={{ opacity: 0, x: 24 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -24 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <div className="space-y-2.5" role="group" aria-describedby={`question-${currentQuestion.id}`}>
+                          {currentQuestion.options.filter(opt => !(eliminatedOptions[currentQuestion.id] || []).includes(opt.id)).map((opt, idx) => {
+                            const isSelected = (answers[currentQuestion.id] || []).includes(opt.id);
+                            const showCorrect = !!showFeedback && opt.isCorrect;
+                            const showWrong = showFeedback === 'incorrect' && isSelected && !opt.isCorrect;
+                            return (
+                              <OptionButton
+                                key={`${currentIndex}-${opt.id}`}
+                                label={OPTION_LABELS[idx]}
+                                text={opt.text}
+                                selected={isSelected}
+                                showCorrect={showCorrect}
+                                showWrong={showWrong}
+                                disabled={!!showFeedback}
+                                onClick={() => handleOptionSelect(opt.id)}
+                                testId={`answer-option-${idx}`}
+                              />
+                            );
+                          })}
+                        </div>
+
+                        {currentQuestion.type === 'multiple' && !showFeedback && (
+                          <p className="mt-3 text-xs text-muted-foreground text-center">Select all correct answers, then confirm</p>
+                        )}
+
+                        {hints[currentQuestion.id] && !showFeedback && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mt-3 p-3 rounded-xl text-xs leading-relaxed border bg-amber-500/10 border-amber-500/25 text-amber-600 dark:text-amber-400"
+                          >
+                            <span className="font-semibold">Hint: </span>
+                            {hints[currentQuestion.id]}
+                          </motion.div>
+                        )}
+
+                        <AnimatePresence>
+                          {showFeedback && currentQuestion.explanation && (
+                            <motion.div
+                              ref={feedbackRef}
+                              tabIndex={-1}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0 }}
+                              className={`mt-3 p-3 rounded-xl text-xs leading-relaxed border ${
+                                showFeedback === 'correct'
+                                  ? 'bg-[var(--color-success)]/10 border-[var(--color-success)]/25 text-[var(--color-success)]'
+                                  : 'bg-[var(--color-error)]/10 border-[var(--color-error)]/25 text-[var(--color-error)]'
+                              }`}
+                            >
+                              <span className="font-semibold">{showFeedback === 'correct' ? '✓ ' : '✗ '}</span>
+                              <span className="text-foreground/80">
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  components={{
+                                    p: ({children}) => <span className="block mb-1 last:mb-0">{children}</span>,
+                                    code: ({className, children}) => {
+                                      const m = /language-(\w+)/.exec(className || '');
+                                      const isInline = !m && !String(children).includes('\n');
+                                      return isInline
+                                        ? <code className="bg-muted/40 px-1 rounded">{children}</code>
+                                        : <pre className="bg-muted/40 p-2 rounded-lg my-1 overflow-x-auto"><code>{children}</code></pre>;
+                                    },
+                                    ul: ({children}) => <ul className="list-disc ml-4 my-1">{children}</ul>,
+                                    ol: ({children}) => <ol className="list-decimal ml-4 my-1">{children}</ol>,
+                                    a: ({href, children}) => <a href={href} className="underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+                                  }}
+                                >
+                                  {currentQuestion.explanation}
+                                </ReactMarkdown>
+                              </span>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </div>
+
               {/* Footer nav */}
-              <footer className="border-t border-border p-3">
-                <div className="max-w-2xl mx-auto flex items-center justify-between gap-2 min-h-[44px]">
-                  <Button size="sm" variant="secondary" onClick={() => setCurrentIndex(i => i - 1)} disabled={currentIndex === 0}>
+              <footer className="border-t border-border p-2 sm:p-3 flex-shrink-0">
+                <div className="max-w-2xl mx-auto flex items-center justify-between gap-2 min-h-[36px] sm:min-h-[44px]">
+                  <Button size="sm" variant="secondary" onClick={goPrev} disabled={currentIndex === 0}>
                     <ArrowLeft className="w-3.5 h-3.5 mr-1" />Prev
                   </Button>
 
                   <span className="text-xs text-muted-foreground">{Object.keys(answers).length}/{questions.length} answered</span>
 
-                  {currentIndex === questions.length - 1 ? (
-                    currentQuestion.type === 'multiple' ? (
-                      <Button size="sm" data-testid="test-submit-button" onClick={confirmMultiple} disabled={!(answers[currentQuestion.id]?.length) || !!showFeedback || submitting}>
+                  {showFeedback ? (
+                    currentIndex === questions.length - 1 ? (
+                      <Button size="sm" data-testid="test-submit-button" onClick={submitTest} disabled={submitting}>
                         {submitting ? <><span className="w-3.5 h-3.5 mr-1 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />Submitting</> : 'Submit'}
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="secondary" onClick={goNext}>
+                        Next<ArrowRight className="w-3.5 h-3.5 ml-1" />
+                      </Button>
+                    )
+                  ) : currentIndex === questions.length - 1 ? (
+                    currentQuestion.type === 'multiple' ? (
+                      <Button size="sm" data-testid="test-submit-button" onClick={confirmMultiple} disabled={!(answers[currentQuestion.id]?.length) || submitting}>
+                        {submitting ? <><span className="w-3.5 h-3.5 mr-1 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />Submitting</> : 'Confirm & Submit'}
                       </Button>
                     ) : (
                       <Button size="sm" data-testid="test-submit-button" onClick={submitTest} disabled={submitting}>
@@ -491,11 +701,11 @@ export default function TestSessionPage() {
                       </Button>
                     )
                   ) : currentQuestion.type === 'multiple' ? (
-                    <Button size="sm" data-testid="test-submit-button" onClick={confirmMultiple} disabled={!(answers[currentQuestion.id]?.length) || !!showFeedback}>
+                    <Button size="sm" data-testid="test-submit-button" onClick={confirmMultiple} disabled={!(answers[currentQuestion.id]?.length)}>
                       Confirm
                     </Button>
                   ) : (
-                    <Button size="sm" variant="secondary" onClick={() => setCurrentIndex(i => i + 1)} disabled={currentIndex >= questions.length - 1}>
+                    <Button size="sm" variant="secondary" onClick={goNext} disabled={currentIndex >= questions.length - 1}>
                       Next<ArrowRight className="w-3.5 h-3.5 ml-1" />
                     </Button>
                   )}

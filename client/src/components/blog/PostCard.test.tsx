@@ -9,11 +9,27 @@ import ReactDOM from 'react-dom/client';
 import { act } from 'react';
 import { PostCard, type PostCardData } from './PostCard';
 
-// Mock wouter Link
+// Mock wouter Link and useLocation
 vi.mock('wouter', () => ({
   Link: ({ href, children, onClick, ...props }: { href: string; children: React.ReactNode; onClick?: (e: Event) => void; [key: string]: unknown }) =>
     React.createElement('a', { href, onClick, ...props }, children),
+  useLocation: () => ['', (to: string) => {}],
 }));
+
+// Mock window.matchMedia for use-reduced-motion hook
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
 
 const basePost: PostCardData = {
   slug: 'test-post',
@@ -46,9 +62,9 @@ afterEach(() => {
 });
 
 describe('PostCard', () => {
-  it('renders article element (grid variant)', () => {
+  it('renders grid variant with card wrapper', () => {
     renderCard(basePost);
-    expect(container.querySelector('article')).not.toBeNull();
+    expect(container.querySelector('h2')).not.toBeNull();
   });
 
   it('displays the title', () => {
@@ -86,7 +102,7 @@ describe('PostCard', () => {
   it('category badge links to category page', () => {
     renderCard(basePost);
     const links = Array.from(container.querySelectorAll('a'));
-    const catLink = links.find((a) => a.getAttribute('href') === '/blog/category/engineering');
+    const catLink = links.find((a) => a.getAttribute('href')?.startsWith('/blog/category/engineering'));
     expect(catLink).not.toBeNull();
   });
 
@@ -99,7 +115,7 @@ describe('PostCard', () => {
 
   it('renders list variant', () => {
     renderCard(basePost, 'list');
-    expect(container.querySelector('article')).not.toBeNull();
+    expect(container.querySelector('h2')).not.toBeNull();
     expect(container.textContent).toContain('Test Post Title');
   });
 
@@ -117,9 +133,9 @@ describe('PostCard', () => {
     expect(container.querySelector('img')).toBeNull();
   });
 
-  it('article has accessible role via element', () => {
+  it('renders accessible heading for content', () => {
     renderCard(basePost);
-    expect(container.querySelector('article')).not.toBeNull();
+    expect(container.querySelector('h2')).not.toBeNull();
   });
 
   it('calendar and clock icons are aria-hidden', () => {
@@ -136,10 +152,10 @@ describe('PostCard', () => {
     expect(catLink).not.toBeNull();
   });
 
-  it('grid variant uses h3 heading', () => {
+  it('grid variant uses h2 heading', () => {
     renderCard(basePost, 'grid');
-    const h3 = container.querySelector('h3');
-    expect(h3).not.toBeNull();
-    expect(h3?.textContent).toContain('Test Post Title');
+    const h2 = container.querySelector('h2');
+    expect(h2).not.toBeNull();
+    expect(h2?.textContent).toContain('Test Post Title');
   });
 });

@@ -157,7 +157,7 @@ const MainNavButton = React.memo(function MainNavButton({ item, activeSection, s
           whileTap={{ scale: 0.96 }}
           transition={{ type: 'spring', stiffness: 400, damping: 17 }}
           className={cn(
-            'w-12 h-12 rounded-2xl flex items-center justify-center -mt-3 transition-all',
+            'w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center -mt-2 sm:-mt-3 transition-all',
             isHighlighted
               ? 'bg-gradient-to-br from-violet-500 to-primary shadow-[0_8px_24px_rgba(124,58,237,0.5),inset_0_1px_0_rgba(255,255,255,0.3)]'
               : 'bg-gradient-to-br from-violet-500 to-primary/90 shadow-[0_4px_16px_rgba(124,58,237,0.35),inset_0_1px_0_rgba(255,255,255,0.2)]'
@@ -168,24 +168,24 @@ const MainNavButton = React.memo(function MainNavButton({ item, activeSection, s
               : '0 4px 16px rgba(124,58,237,0.35), inset 0 1px 0 rgba(255,255,255,0.2)',
           }}
         >
-          <Icon className="w-5 h-5 text-white" strokeWidth={2.5} />
+          <Icon className="w-[18px] h-[18px] sm:w-5 sm:h-5 text-white" strokeWidth={2.5} />
         </motion.div>
       ) : (
         <motion.div
           className={cn(
-            'w-10 h-10 rounded-[20px] flex items-center justify-center transition-all',
+            'w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-[20px] flex items-center justify-center transition-all',
             isHighlighted
               ? 'bg-gradient-to-br from-violet-500/20 via-primary/15 to-cyan-400/20 shadow-[0_4px_16px_rgba(124,58,237,0.2),inset_0_1px_0_rgba(255,255,255,0.15)]'
               : 'hover:bg-muted/50 hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
           )}
         >
-          <Icon className="w-5 h-5" strokeWidth={isHighlighted ? 2.5 : 2} />
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={isHighlighted ? 2.5 : 2} />
         </motion.div>
       )}
 
       <span className={cn(
-        'text-[10px] font-medium leading-none',
-        item.highlight && '-mt-1'
+        'text-[9px] sm:text-[10px] font-medium leading-none',
+        item.highlight && '-mt-0.5 sm:-mt-1'
       )}>
         {item.label}
       </span>
@@ -290,7 +290,7 @@ export function MobileBottomNav() {
       {/* Bottom bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-[70] lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="bg-background/80 backdrop-blur-2xl border-t border-white/20 shadow-[0_-4px_24px_rgba(0,0,0,0.15)]">
-          <div className="flex items-end justify-around h-14 px-1 max-w-md mx-auto">
+          <div className="flex items-end justify-around h-12 sm:h-14 px-1 max-w-md mx-auto">
             {mainNavItems.map((item) => (
               <MainNavButton key={item.id} item={item}
                 activeSection={activeSection} showMenu={showMenu}

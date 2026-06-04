@@ -249,7 +249,7 @@ const CategorySection = React.memo(function CategorySection({ categoryKey, chann
 
   return (
     <div className="mb-6">
-      <button onClick={() => setOpen(o => !o)} aria-label={`Toggle ${meta.label} section`} className="w-full min-h-[44px] flex items-center justify-between px-1 py-2 mb-3 group cursor-pointer">
+      <button onClick={() => setOpen(o => !o)} aria-label={`Toggle ${meta.label} section`} className="w-full min-h-[36px] sm:min-h-[44px] flex items-center justify-between px-1 py-1.5 sm:py-2 mb-2 group cursor-pointer">
         <div className="flex items-center gap-2.5">
           <span className="text-xl">{meta.emoji}</span>
           <div className="text-left">
@@ -490,7 +490,7 @@ export default function AllChannels() {
   const renderContent = () => {
     if (channels.length === 0) {
       return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12 sm:py-20">
           <Search className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
           <h3 className="text-xl font-bold mb-2">
             {subscribedOnly && hasSubscriptions ? 'No subscribed channels match' : 'No channels found'}
@@ -556,14 +556,14 @@ export default function AllChannels() {
     const firstUnsubscribedIdx = sortedEntries.findIndex(([cat]) => !subscribedCats.has(cat));
 
     return (
-      <div className="space-y-10">
+      <div className="space-y-6 md:space-y-10">
         {sortedEntries.map(([cat, catChannels], idx) => {
           const meta = categoryMeta[cat] ?? { label: cat, icon: Layers, color: 'var(--text-secondary)' };
           const CatIcon = meta.icon;
           return (
             <div key={cat}>
               {idx === firstUnsubscribedIdx && firstUnsubscribedIdx > 0 && (
-                <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center gap-3 mb-4">
                   <div className="flex-1 h-px bg-border" />
                   <span className="text-xs font-semibold px-3 py-1 rounded-full bg-muted text-muted-foreground border border-border">
                     Explore More Topics
@@ -571,9 +571,9 @@ export default function AllChannels() {
                   <div className="flex-1 h-px bg-border" />
                 </div>
               )}
-              <div className="flex items-center gap-2 mb-4">
-                <CatIcon className="w-5 h-5" style={{ color: meta.color }} />
-                <h2 className="text-lg font-bold">{meta.label}</h2>
+              <div className="flex items-center gap-2 mb-3 md:mb-4">
+                <CatIcon className="w-4 h-5" style={{ color: meta.color }} />
+                <h2 className="text-base md:text-lg font-bold">{meta.label}</h2>
                 <span className="text-xs px-2 py-0.5 rounded-full ml-1" style={{ background: `${meta.color}18`, color: meta.color }}>
                   {catChannels.length}
                 </span>
@@ -594,7 +594,7 @@ export default function AllChannels() {
         {/* Certifications CTA */}
         <div
           onClick={() => navigate('/certifications')}
-          className="group relative p-6 rounded-2xl border border-[var(--accent-gold)]/30 bg-gradient-to-br from-[var(--accent-gold)]/10 to-transparent cursor-pointer hover:border-[var(--accent-gold)]/60 transition-all duration-200"
+          className="group relative p-4 md:p-6 rounded-2xl border border-[var(--accent-gold)]/30 bg-gradient-to-br from-[var(--accent-gold)]/10 to-transparent cursor-pointer hover:border-[var(--accent-gold)]/60 transition-all duration-200"
         >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-[var(--accent-gold)]/20 border border-[var(--accent-gold)]/30">
@@ -622,7 +622,7 @@ export default function AllChannels() {
       />
       <AppLayout fullWidth>
         <div className="min-h-screen bg-background text-foreground">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-24">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12 pb-20 sm:pb-24">
 
             <PageHeader title="Channels" subtitle={`${channels.length} ${subscribedOnly && hasSubscriptions ? 'subscribed' : ''} channels`}>
               {hasSubscriptions && (
@@ -642,7 +642,7 @@ export default function AllChannels() {
             {/* Stats bar */}
             {subscribedIds.size > 0 && (
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                className="grid grid-cols-3 gap-3 mb-6 max-w-lg mx-auto">
+                className="grid grid-cols-3 gap-3 mb-4 max-w-lg mx-auto">
                 {[
                   { label: 'Subscribed', value: subscribedCount,  colorClass: 'text-[var(--color-accent-violet-light)]' },
                   { label: 'Total',      value: totalCount,        colorClass: 'text-[var(--color-accent-cyan)]' },
@@ -661,7 +661,7 @@ export default function AllChannels() {
             )}
 
             {/* Filter bar */}
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-6 space-y-3">
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-4 space-y-2">
               <div className="flex gap-3 flex-wrap">
                 <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search channels…" id="channel-search" />
                 <select value={progressFilter} onChange={e => setProgressFilter(e.target.value as typeof progressFilter)}

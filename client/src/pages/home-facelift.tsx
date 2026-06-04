@@ -1,871 +1,305 @@
 /**
- * Open Interview Home Facelift — Premium Landing Page
- * Inspired by Linear.app / Vercel.com aesthetic
- * Features: Aurora hero, scroll animations, feature highlights, newsletter signup
+ * Open Interview Home — OLED dark, green accent, clean bento layout
  */
 
 import { useState, useEffect, useRef } from "react";
-import { motion, useScroll, useTransform, useInView } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import { useLocation } from "wouter";
 import {
-  Zap,
-  BookOpen,
-  Code2,
-  Mic,
-  Target,
-  Trophy,
-  Sparkles,
-  ArrowRight,
-  ChevronRight,
-  TrendingUp,
-  Brain,
-  Shield,
-  Layers,
-  Clock,
-  CheckCircle2,
-  Github,
-  Play,
-  ArrowUpRight,
-  Server,
-  Terminal,
-  Cloud,
+  Zap, Code2, Mic, Target, Trophy, Layers,
+  ArrowRight, Brain, Shield, Github, ChevronRight,
+  Server, Terminal, Cloud,
 } from "lucide-react";
 import { SEOHead } from "../components/SEOHead";
-import { useUserPreferences } from "../context/UserPreferencesContext";
-import { getFeaturedPosts } from "@/lib/blog-loader";
 
-// ─── Animation variants ───────────────────────────────────────────────────────
 const fadeUp = {
-  hidden: { opacity: 0, y: 30 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" as const } },
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } },
+};
+const stagger = { show: { transition: { staggerChildren: 0.05 } } };
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.94 },
+  show: { opacity: 1, scale: 1, transition: { duration: 0.35, ease: "easeOut" as const } },
 };
 
-const stagger = {
-  show: { transition: { staggerChildren: 0.1 } },
-};
-
-const scaleFade = {
-  hidden: { opacity: 0, scale: 0.95 },
-  show: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: "easeOut" as const } },
-};
-
-// ─── Scroll-aware section wrapper ─────────────────────────────────────────────
-function AnimatedSection({
-  children,
-  className = "",
-  delay = 0,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  delay?: number;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
-
+function OnView({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  const r = useRef<HTMLDivElement>(null);
+  const v = useInView(r, { once: true, margin: "-40px" });
   return (
-    <motion.div
-      ref={ref}
-      initial="hidden"
-      animate={inView ? "show" : "hidden"}
-      variants={stagger}
-      className={className}
-    >
+    <motion.div ref={r} initial="hidden" animate={v ? "show" : "hidden"} variants={stagger} className={className}>
       {children}
     </motion.div>
   );
 }
 
-// ─── Animated number counter ──────────────────────────────────────────────────
-function AnimatedNumber({ value, suffix = "" }: { value: number; suffix?: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true });
-  const [display, setDisplay] = useState(0);
-
-  useEffect(() => {
-    if (!inView) return;
-    let start = 0;
-    const step = Math.ceil(value / 40);
-    const interval = setInterval(() => {
-      start += step;
-      if (start >= value) {
-        setDisplay(value);
-        clearInterval(interval);
-      } else {
-        setDisplay(start);
-      }
-    }, 25);
-    return () => clearInterval(interval);
-  }, [inView, value]);
-
-  return (
-    <span ref={ref}>
-      {display.toLocaleString()}
-      {suffix}
-    </span>
-  );
-}
-
-// ─── Floating orb (aurora decoration) ─────────────────────────────────────────
-function FloatingOrb({
-  className,
-  color,
-  size,
-  duration,
-}: {
-  className?: string;
-  color: string;
-  size: number;
-  duration: number;
-}) {
-  return (
-    <motion.div
-      className={className}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        background: color,
-        filter: `blur(${size * 0.5}px)`,
-      }}
-      animate={{
-        x: [0, 40, -20, 0],
-        y: [0, -30, 20, 0],
-        scale: [1, 1.15, 0.95, 1],
-        opacity: [0.3, 0.5, 0.3],
-      }}
-      transition={{
-        duration,
-        repeat: Infinity,
-        ease: "easeInOut",
-      }}
-    />
-  );
-}
-
-// ─── Aurora Background ────────────────────────────────────────────────────────
-function AuroraBackground() {
+// ─── Backdrop ────────────────────────────────────────────────────────────────
+function Backdrop() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {/* Grid pattern */}
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-          backgroundSize: "60px 60px",
-        }}
+      <div className="absolute inset-0 opacity-[0.012]" style={{ backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`, backgroundSize: "44px 44px" }} />
+      <motion.div className="absolute -top-32 -left-32 w-[400px] h-[400px] rounded-full bg-emerald-500/10"
+        animate={{ x: [0, 20, -10, 0], y: [0, -12, 8, 0] }}
+        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+        style={{ filter: "blur(100px)" }}
       />
-      {/* Floating orbs */}
-      <FloatingOrb
-        className="absolute -top-32 -left-32"
-        color="radial-gradient(circle, rgba(124,58,237,0.8), transparent)"
-        size={500}
-        duration={12}
-      />
-      <FloatingOrb
-        className="absolute top-1/4 right-0"
-        color="radial-gradient(circle, rgba(6,182,212,0.6), transparent)"
-        size={400}
-        duration={15}
-      />
-      <FloatingOrb
-        className="absolute bottom-0 left-1/3"
-        color="radial-gradient(circle, rgba(99,102,241,0.5), transparent)"
-        size={350}
-        duration={10}
-      />
-      <FloatingOrb
-        className="absolute top-2/3 -right-20"
-        color="radial-gradient(circle, rgba(139,92,246,0.4), transparent)"
-        size={300}
-        duration={18}
+      <motion.div className="absolute top-1/3 -right-20 w-[300px] h-[300px] rounded-full bg-blue-500/8"
+        animate={{ x: [0, -15, 10, 0], y: [0, 12, -8, 0] }}
+        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+        style={{ filter: "blur(80px)" }}
       />
     </div>
   );
 }
 
-// ─── Navbar ───────────────────────────────────────────────────────────────────
-function LandingNavbar() {
-  const [, setLocation] = useLocation();
-  const [scrolled, setScrolled] = useState(false);
+function Glass({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`relative p-[1px] rounded-xl overflow-hidden ${className}`}>
+      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.06] to-white/[0.01] backdrop-blur-xl rounded-xl border border-white/[0.06]" />
+      <div className="relative">{children}</div>
+    </div>
+  );
+}
 
+// ─── Nav ──────────────────────────────────────────────────────────────────────
+function Nav() {
+  const [, setLoc] = useLocation();
+  const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    const h = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", h, { passive: true });
+    return () => window.removeEventListener("scroll", h);
   }, []);
 
   return (
     <motion.nav
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
+      initial={{ y: -80 }} animate={{ y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-[#0a0e1a]/80 backdrop-blur-xl border-b border-white/[0.06]"
-          : "bg-transparent"
-      }`}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? "bg-[#0a0e1a]/70 backdrop-blur-2xl border-b border-white/[0.04]" : "bg-transparent"}`}
     >
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <button
-          onClick={() => setLocation("/")}
-          className="flex items-center gap-2.5 group"
-        >
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-violet-500/20 group-hover:shadow-violet-500/40 transition-shadow">
+      <div className="max-w-7xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between">
+        <button onClick={() => setLoc("/")} className="flex items-center gap-2.5 group">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-400/35 transition-shadow">
             <Zap className="w-4 h-4 text-white" />
           </div>
           <span className="text-lg font-bold text-white tracking-tight">
-            Open<span className="gradient-text">Interview</span>
+            Open<span className="text-emerald-400">Interview</span>
           </span>
         </button>
 
         <div className="hidden md:flex items-center gap-8">
-          <button onClick={() => document.getElementById('features')?.scrollIntoView({behavior:'smooth'})} className="text-sm text-white/60 hover:text-white transition-colors">
-            Features
-          </button>
-          <button onClick={() => document.getElementById('topics')?.scrollIntoView({behavior:'smooth'})} className="text-sm text-white/60 hover:text-white transition-colors">
-            Topics
-          </button>
-          <button onClick={() => document.getElementById('articles')?.scrollIntoView({behavior:'smooth'})} className="text-sm text-white/60 hover:text-white transition-colors">
-            Articles
-          </button>
-          <button onClick={() => document.getElementById('community')?.scrollIntoView({behavior:'smooth'})} className="text-sm text-white/60 hover:text-white transition-colors">
-            Community
-          </button>
+          {["Channels", "Articles", "About"].map(l => (
+            <button key={l} onClick={() => setLoc(`/${l.toLowerCase()}`)}
+              className="text-sm text-white/50 hover:text-white transition-colors"
+            >
+              {l}
+            </button>
+          ))}
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setLocation("/blog")}
-            className="hidden sm:flex text-sm text-white/60 hover:text-white transition-colors px-3 py-2"
-          >
-            Blog
-          </button>
-          <button
-            onClick={() => setLocation("/channels")}
-            className="text-sm font-medium text-white bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.1] px-4 py-2 rounded-lg transition-all"
-          >
-            Get Started
-          </button>
-        </div>
+        <button onClick={() => setLoc("/channels")}
+          className="group relative px-4 py-2 rounded-lg text-white font-medium text-sm overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-emerald-600 hover:bg-emerald-500 transition-colors" />
+          <span className="relative flex items-center gap-1.5">
+            Get Started <ArrowRight className="w-3 h-3" />
+          </span>
+        </button>
       </div>
     </motion.nav>
   );
 }
 
-// ─── Hero Section ─────────────────────────────────────────────────────────────
-function HeroSection() {
-  const [, setLocation] = useLocation();
-  const { scrollY } = useScroll();
-  const y1 = useTransform(scrollY, [0, 500], [0, 150]);
-  const y2 = useTransform(scrollY, [0, 500], [0, -100]);
-  const opacity = useTransform(scrollY, [0, 400], [1, 0]);
-
+// ─── Hero ─────────────────────────────────────────────────────────────────────
+function Hero() {
+  const [, setLoc] = useLocation();
   return (
-    <motion.section
-      style={{ opacity, y: y1 }}
-      className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16"
-    >
-      <AuroraBackground />
+    <section className="relative min-h-[75vh] flex items-center justify-center overflow-hidden pt-14">
+      <Backdrop />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-emerald-500/4" style={{ filter: "blur(80px)" }} />
 
-      <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
-        {/* Badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm mb-8"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-          <span className="text-xs font-medium text-white/70">
-            Proven by the numbers
-          </span>
-          <ChevronRight className="w-3 h-3 text-white/30" />
+      <div className="relative z-10 max-w-2xl mx-auto px-4 text-center">
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.1 }}>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[11px] font-medium text-emerald-300/80">30,000+ questions · 93 topics</span>
+          </div>
         </motion.div>
 
-        {/* Headline */}
         <motion.h1
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-6"
+          initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          className="text-4xl sm:text-5xl lg:text-[3.25rem] font-bold tracking-tight leading-[1.05] mt-4 mb-3"
         >
-          Ace your next
+          <span className="text-white">Ace your next</span>
           <br />
-          <span className="gradient-text">tech interview.</span>
+          <span className="text-emerald-400">tech interview</span>
         </motion.h1>
 
-        {/* Subtitle */}
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
-          className="text-lg sm:text-xl text-white/50 max-w-2xl mx-auto mb-10 leading-relaxed"
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.32 }}
+          className="text-sm sm:text-base text-white/40 max-w-lg mx-auto mb-6 leading-relaxed"
         >
-          Practice system design, algorithms, and behavioral interviews with AI-powered
-          feedback. Join thousands of engineers who landed their dream roles.
+          Practice system design, algorithms, and behavioral interviews with AI-powered feedback. Built by engineers, for engineers.
         </motion.p>
 
-        {/* CTA Buttons */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.42 }}
+          className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8"
         >
-          <motion.button
-            whileHover={{ scale: 1.02, boxShadow: "0 0 40px rgba(124,58,237,0.4)" }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setLocation("/channels")}
-            className="group relative px-8 py-3.5 rounded-xl text-white font-semibold text-base overflow-hidden transition-all"
+          <button onClick={() => setLoc("/channels")}
+            className="group relative px-7 py-3 rounded-xl text-white font-semibold text-sm overflow-hidden"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-indigo-500 to-cyan-500" />
-            <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-indigo-500 to-cyan-500 opacity-0 group-hover:opacity-100 blur-xl transition-opacity" />
+            <div className="absolute inset-0 bg-emerald-600 group-hover:bg-emerald-500 transition-colors" />
+            <div className="absolute inset-0 bg-emerald-400 opacity-0 group-hover:opacity-25 blur-xl transition-opacity" />
             <span className="relative flex items-center gap-2">
-              Start Practicing Free
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              Start Practicing Free <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </span>
-          </motion.button>
-
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setLocation("/blog")}
-            className="group flex items-center gap-2 px-6 py-3.5 rounded-xl text-white/80 font-medium text-base border border-white/[0.1] hover:border-white/[0.2] hover:bg-white/[0.05] transition-all"
+          </button>
+          <button onClick={() => setLoc("/blog")}
+            className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/[0.15] transition-all text-white/70 hover:text-white"
           >
-            <Play className="w-4 h-4" />
-            Read Articles
-          </motion.button>
+            Read Articles <ChevronRight className="w-3 h-3" />
+          </button>
         </motion.div>
 
-        {/* Stats */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-          style={{ y: y2 }}
-          className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl mx-auto"
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.5 }}
         >
-          {[
-            { label: "Practice Questions", value: 30533, suffix: "+" },
-            { label: "Learning Channels",  value: 93,    suffix: "" },
-            { label: "In-depth Articles",  value: 126,   suffix: "+" },
-            { label: "Coding Challenges",  value: 30,    suffix: "" },
-          ].map((stat) => (
-            <div key={stat.label} className="text-center">
-              <div className="text-2xl sm:text-3xl font-bold text-white mb-1">
-                <AnimatedNumber value={stat.value} suffix={stat.suffix} />
-              </div>
-              <div className="text-xs text-white/60 font-medium uppercase tracking-wider">
-                {stat.label}
-              </div>
+          <Glass>
+            <div className="flex items-center justify-center gap-6 sm:gap-10 px-5 py-2.5">
+              {[
+                { label: "Questions", value: "30,533+" },
+                { label: "Topics", value: "93" },
+                { label: "Articles", value: "126+" },
+              ].map(s => (
+                <div key={s.label} className="text-center">
+                  <div className="text-lg sm:text-xl font-bold text-emerald-400">{s.value}</div>
+                  <div className="text-[9px] font-medium text-white/40 uppercase tracking-widest">{s.label}</div>
+                </div>
+              ))}
             </div>
-          ))}
+          </Glass>
         </motion.div>
       </div>
 
-      {/* Bottom fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0a0e1a] to-transparent" />
-    </motion.section>
+      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#0a0e1a] to-transparent" />
+    </section>
   );
 }
 
-// ─── Featured Articles Section ────────────────────────────────────────────────
+// ─── Unified Feature Grid ─────────────────────────────────────────────────────
+const CARDS = [
+  { icon: <Mic className="w-4 h-4" />, title: "AI Voice Interviews", desc: "Real-time feedback on clarity and confidence." },
+  { icon: <Brain className="w-4 h-4" />, title: "Spaced Repetition", desc: "SRS optimizes review intervals for retention." },
+  { icon: <Code2 className="w-4 h-4" />, title: "Code Challenges", desc: "Interactive problems with AI hints across Python, JS, and more." },
+  { icon: <Server className="w-4 h-4" />, title: "System Design", desc: "Whiteboard practice with expert solutions." },
+  { icon: <Terminal className="w-4 h-4" />, title: "Algorithms & DS", desc: "500+ problems with complexity analysis." },
+  { icon: <Target className="w-4 h-4" />, title: "Personalized Paths", desc: "Tailored learning based on your target role." },
+  { icon: <Cloud className="w-4 h-4" />, title: "Behavioral Prep", desc: "STAR coaching with AI response scoring." },
+  { icon: <Trophy className="w-4 h-4" />, title: "Gamified Progress", desc: "XP, achievements, and learning streaks." },
+  { icon: <Layers className="w-4 h-4" />, title: "93 Deep Topics", desc: "Curated by FAANG engineers across every domain." },
+];
 
-interface FeaturedArticle {
-  title: string;
-  description: string;
-  category: string;
-  readTime: string;
-  icon: React.ReactNode;
-  gradient: string;
-  borderColor: string;
-  href: string;
-}
-
-const categoryCardConfig: Record<string, { icon: React.ReactNode; gradient: string; borderColor: string }> = {
-  'System Design': { icon: <Layers className="w-5 h-5" />, gradient: 'from-violet-500/20 to-indigo-500/20', borderColor: 'border-violet-500/20' },
-  'Frontend': { icon: <Code2 className="w-5 h-5" />, gradient: 'from-cyan-500/20 to-blue-500/20', borderColor: 'border-cyan-500/20' },
-  'Database': { icon: <Brain className="w-5 h-5" />, gradient: 'from-amber-500/20 to-orange-500/20', borderColor: 'border-amber-500/20' },
-  'Backend': { icon: <Server className="w-5 h-5" />, gradient: 'from-emerald-500/20 to-teal-500/20', borderColor: 'border-emerald-500/20' },
-  'DevOps': { icon: <Terminal className="w-5 h-5" />, gradient: 'from-red-500/20 to-rose-500/20', borderColor: 'border-red-500/20' },
-  'AI': { icon: <Brain className="w-5 h-5" />, gradient: 'from-pink-500/20 to-purple-500/20', borderColor: 'border-pink-500/20' },
-  'Cloud': { icon: <Cloud className="w-5 h-5" />, gradient: 'from-sky-500/20 to-blue-500/20', borderColor: 'border-sky-500/20' },
-  'Security': { icon: <Shield className="w-5 h-5" />, gradient: 'from-red-500/20 to-orange-500/20', borderColor: 'border-red-500/20' },
-};
-
-const defaultCardConfig = { icon: <BookOpen className="w-5 h-5" />, gradient: 'from-violet-500/20 to-purple-500/20', borderColor: 'border-violet-500/20' };
-
-function getCardConfig(category: string) {
-  return categoryCardConfig[category] || defaultCardConfig;
-}
-
-function FeaturedArticleSkeleton() {
+function FeatureGrid() {
   return (
-    <div className="group relative p-[1px] rounded-2xl overflow-hidden animate-pulse">
-      <div className="relative h-full p-6 rounded-2xl bg-[#0f1629] border border-white/[0.06]">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-white/10" />
-          <div className="h-3 w-20 bg-white/10 rounded" />
-          <div className="h-3 w-3 bg-white/10 rounded-full" />
-          <div className="h-3 w-12 bg-white/10 rounded" />
+    <OnView>
+      <div className="max-w-5xl mx-auto px-4">
+        <motion.div variants={fadeUp} className="text-center mb-5">
+          <p className="text-[11px] font-medium text-emerald-400/70 uppercase tracking-widest mb-1">Everything you need</p>
+          <h2 className="text-lg sm:text-xl font-bold text-white">
+            Built to <span className="text-emerald-400">ace the interview</span>
+          </h2>
+        </motion.div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {CARDS.map(c => (
+            <motion.div key={c.title} variants={scaleIn} className="group">
+              <div className="relative p-[1px] rounded-xl overflow-hidden h-full">
+                <div className="absolute inset-0 rounded-xl bg-[#111827] border border-white/[0.06] group-hover:border-emerald-500/20 transition-colors duration-500" />
+                <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 bg-[radial-gradient(ellipse_at_top_right,rgba(16,185,129,0.06),transparent_60%)] transition-opacity duration-500" />
+                <div className="relative h-full p-3 sm:p-3.5">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center text-emerald-400 mb-2 group-hover:scale-110 transition-transform duration-300">
+                    {c.icon}
+                  </div>
+                  <h3 className="text-xs font-semibold text-white mb-0.5 leading-snug">{c.title}</h3>
+                  <p className="text-[10px] text-white/50 leading-relaxed">{c.desc}</p>
+                </div>
+              </div>
+            </motion.div>
+          ))}
         </div>
-        <div className="h-5 w-full bg-white/10 rounded mb-2" />
-        <div className="h-4 w-3/4 bg-white/10 rounded mb-4" />
-        <div className="h-3 w-full bg-white/10 rounded mb-1" />
-        <div className="h-3 w-2/3 bg-white/10 rounded mb-4" />
-        <div className="h-4 w-24 bg-white/10 rounded" />
+      </div>
+    </OnView>
+  );
+}
+
+// ─── CTA Strip ───────────────────────────────────────────────────────────────
+function CTAStrip() {
+  const [, setLoc] = useLocation();
+  return (
+    <div className="border-t border-white/[0.04]">
+      <div className="max-w-5xl mx-auto px-4 py-5">
+        <Glass>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+              {[
+                { icon: <Github className="w-3.5 h-3.5" />, label: "Open Source" },
+                { icon: <Zap className="w-3.5 h-3.5" />, label: "Free Forever" },
+                { icon: <Shield className="w-3.5 h-3.5" />, label: "Privacy First" },
+              ].map(s => (
+                <div key={s.label} className="flex items-center gap-1.5 text-white/40">
+                  <span className="text-emerald-400/60">{s.icon}</span>
+                  <span className="text-[11px] font-medium">{s.label}</span>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setLoc("/channels")}
+              className="group relative px-4 py-2 rounded-lg text-white font-semibold text-xs overflow-hidden shrink-0"
+            >
+              <div className="absolute inset-0 bg-emerald-600 hover:bg-emerald-500 transition-colors" />
+              <span className="relative flex items-center gap-1.5">
+                Start Practicing <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </button>
+          </div>
+        </Glass>
       </div>
     </div>
   );
 }
 
-function FeaturedArticles() {
-  const [, setLocation] = useLocation();
-  const [articles, setArticles] = useState<FeaturedArticle[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getFeaturedPosts(3)
-      .then(posts => {
-        setArticles(posts.map(p => ({
-          title: p.title,
-          description: p.excerpt,
-          category: p.category,
-          readTime: `${p.readingTimeMinutes} min`,
-          href: `/blog/${p.slug}`,
-          ...getCardConfig(p.category),
-        })));
-      })
-      .catch(() => setArticles([]))
-      .finally(() => setLoading(false));
-  }, []);
-
-  return (
-    <section id="articles" className="py-24 relative">
-      <div className="max-w-7xl mx-auto px-6">
-        <AnimatedSection>
-          <div className="text-center mb-16">
-            <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] mb-4">
-              <BookOpen className="w-3.5 h-3.5 text-violet-400" />
-              <span className="text-xs font-medium text-white/60">Featured Articles</span>
-            </motion.div>
-            <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-bold text-white mb-4">
-              Learn from the <span className="gradient-text">best resources</span>
-            </motion.h2>
-            <motion.p variants={fadeUp} className="text-white/60 max-w-xl mx-auto">
-              Curated engineering articles written by senior engineers from top tech companies.
-            </motion.p>
-          </div>
-        </AnimatedSection>
-
-        <div className="grid md:grid-cols-3 gap-6">
-          {loading ? (
-            Array.from({ length: 3 }).map((_, i) => (
-              <motion.div key={i} variants={scaleFade}>
-                <FeaturedArticleSkeleton />
-              </motion.div>
-            ))
-          ) : articles.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <p className="text-white/60 text-sm">No featured articles available right now.</p>
-              <button onClick={() => setLocation("/blog")} className="mt-3 text-sm text-violet-400 hover:text-violet-300 transition-colors">
-                Browse all articles <ArrowRight className="w-3 h-3 inline" />
-              </button>
-            </div>
-          ) : (
-            articles.map((article, i) => (
-              <motion.div
-                key={article.title}
-                variants={scaleFade}
-                whileHover={{ y: -4 }}
-                className="group relative p-[1px] rounded-2xl overflow-hidden"
-              >
-                <div
-                  className={`absolute inset-0 bg-gradient-to-br ${article.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}
-                />
-                <div className="relative h-full p-6 rounded-2xl bg-[#0f1629] border border-white/[0.06] group-hover:border-white/[0.12] transition-colors">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${article.gradient} flex items-center justify-center`}>
-                      {article.icon}
-                    </div>
-                    <span className="text-xs font-medium text-white/60">{article.category}</span>
-                    <span className="text-xs text-white/20">·</span>
-                    <span className="text-xs text-white/60 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {article.readTime}
-                    </span>
-                  </div>
-
-                  <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-violet-300 transition-colors leading-snug">
-                    {article.title}
-                  </h3>
-                  <p className="text-sm text-white/60 leading-relaxed mb-4 line-clamp-3">
-                    {article.description}
-                  </p>
-
-                  <button
-                    onClick={() => setLocation(article.href)}
-                    className="flex items-center gap-1.5 text-sm font-medium text-violet-400 group-hover:text-violet-300 transition-colors"
-                  >
-                    Read article
-                    <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                  </button>
-                </div>
-              </motion.div>
-            ))
-          )}
-        </div>
-
-        <motion.div variants={fadeUp} className="text-center mt-10">
-          <button
-            onClick={() => setLocation("/blog")}
-            className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors group"
-          >
-            View all articles
-            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </button>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Trending Topics Section ──────────────────────────────────────────────────
-const CHANNEL_ICONS: Record<string, string> = {
-  'algorithms': '\u{1F9EE}',
-  'system-design': '\u{1F3D7}\uFE0F',
-  'react': '\u269B\uFE0F',
-  'javascript': '\u{1F7E8}',
-  'python': '\u{1F40D}',
-  'docker': '\u{1F433}',
-  'kubernetes': '\u2638\uFE0F',
-  'aws': '\u2601\uFE0F',
-  'node-js': '\u{1F7E2}',
-  'postgresql': '\u{1F418}',
-  'redis': '\u{1F534}',
-  'graphql': '\u{1F4CA}',
-};
-
-const CHANNEL_COLORS = [
-  { color: "from-violet-500/20 to-violet-600/10", border: "border-violet-500/20" },
-  { color: "from-cyan-500/20 to-cyan-600/10", border: "border-cyan-500/20" },
-  { color: "from-emerald-500/20 to-emerald-600/10", border: "border-emerald-500/20" },
-  { color: "from-blue-500/20 to-blue-600/10", border: "border-blue-500/20" },
-  { color: "from-indigo-500/20 to-indigo-600/10", border: "border-indigo-500/20" },
-  { color: "from-green-500/20 to-green-600/10", border: "border-green-500/20" },
-  { color: "from-sky-500/20 to-sky-600/10", border: "border-sky-500/20" },
-  { color: "from-red-500/20 to-red-600/10", border: "border-red-500/20" },
-  { color: "from-amber-500/20 to-amber-600/10", border: "border-amber-500/20" },
-  { color: "from-purple-500/20 to-purple-600/10", border: "border-purple-500/20" },
-  { color: "from-pink-500/20 to-pink-600/10", border: "border-pink-500/20" },
-  { color: "from-teal-500/20 to-teal-600/10", border: "border-teal-500/20" },
-];
-
-function TrendingTopics() {
-  const [, setLocation] = useLocation();
-  const [channels, setChannels] = useState<{ id: string; total: number }[]>([]);
-
-  useEffect(() => {
-    fetch("/data/channels.json")
-      .then((r) => r.json())
-      .then((data: { id: string; total: number }[]) => {
-        const sorted = [...data].sort((a, b) => b.total - a.total).slice(0, 12);
-        setChannels(sorted);
-      })
-      .catch(() => setChannels([]));
-  }, []);
-
-  return (
-    <section id="topics" className="py-24 relative">
-      {/* Subtle background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-violet-500/[0.02] to-transparent" />
-
-      <div className="relative max-w-7xl mx-auto px-6">
-        <AnimatedSection>
-          <div className="text-center mb-16">
-            <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] mb-4">
-              <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="text-xs font-medium text-white/60">Trending Topics</span>
-            </motion.div>
-            <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-bold text-white mb-4">
-              Explore <span className="gradient-text">popular topics</span>
-            </motion.h2>
-            <motion.p variants={fadeUp} className="text-white/60 max-w-xl mx-auto">
-              Dive into the most sought-after engineering topics with curated practice questions.
-            </motion.p>
-          </div>
-        </AnimatedSection>
-
-        <AnimatedSection className="flex flex-wrap justify-center gap-3 max-w-4xl mx-auto">
-          {channels.map((ch, i) => (
-            <motion.button
-              key={ch.id}
-              variants={scaleFade}
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setLocation(`/channel/${ch.id}`)}
-              className={`group relative flex items-center gap-2.5 px-5 py-3 rounded-xl bg-gradient-to-br ${CHANNEL_COLORS[i % CHANNEL_COLORS.length].color} border ${CHANNEL_COLORS[i % CHANNEL_COLORS.length].border} hover:border-white/20 transition-all`}
-            >
-              <span className="text-base">{CHANNEL_ICONS[ch.id] || '\u{1F4DA}'}</span>
-              <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">
-                {ch.id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-              </span>
-              <span className="text-xs text-white/60">{ch.total}</span>
-            </motion.button>
-          ))}
-        </AnimatedSection>
-      </div>
-    </section>
-  );
-}
-
-// ─── Why Open Interview Section ──────────────────────────────────────────────────
-const FEATURES = [
-  {
-    icon: <Mic className="w-5 h-5" />,
-    title: "AI Voice Interviews",
-    description:
-      "Practice speaking your answers out loud with AI that provides real-time feedback on clarity, completeness, and confidence.",
-    gradient: "from-violet-600 to-indigo-600",
-    shadow: "shadow-violet-500/20",
-  },
-  {
-    icon: <Brain className="w-5 h-5" />,
-    title: "Spaced Repetition",
-    description:
-      "Our SRS algorithm ensures you review concepts at optimal intervals for maximum long-term retention.",
-    gradient: "from-cyan-600 to-blue-600",
-    shadow: "shadow-cyan-500/20",
-  },
-  {
-    icon: <Target className="w-5 h-5" />,
-    title: "Personalized Paths",
-    description:
-      "Custom learning paths tailored to your target role, experience level, and interview timeline.",
-    gradient: "from-emerald-600 to-teal-600",
-    shadow: "shadow-emerald-500/20",
-  },
-  {
-    icon: <Code2 className="w-5 h-5" />,
-    title: "Code Challenges",
-    description:
-      "Interactive coding problems with AI-powered hints and instant feedback in Python and JavaScript.",
-    gradient: "from-amber-600 to-orange-600",
-    shadow: "shadow-amber-500/20",
-  },
-  {
-    icon: <Trophy className="w-5 h-5" />,
-    title: "Gamified Progress",
-    description:
-      "Earn XP, unlock achievements, and maintain streaks. Learning that feels like play.",
-    gradient: "from-pink-600 to-rose-600",
-    shadow: "shadow-pink-500/20",
-  },
-  {
-    icon: <Shield className="w-5 h-5" />,
-    title: "30,000+ Questions",
-    description:
-      "Comprehensive question bank across 93 topics curated by senior engineers from FAANG companies.",
-    gradient: "from-purple-600 to-violet-600",
-    shadow: "shadow-purple-500/20",
-  },
-];
-
-function WhyOpenInterview() {
-  return (
-    <section id="features" className="py-24 relative">
-      <div className="max-w-7xl mx-auto px-6">
-        <AnimatedSection>
-          <div className="text-center mb-16">
-            <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] mb-4">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-xs font-medium text-white/60">Why Open Interview</span>
-            </motion.div>
-            <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-bold text-white mb-4">
-              Everything you need to <span className="gradient-text">ace the interview</span>
-            </motion.h2>
-            <motion.p variants={fadeUp} className="text-white/60 max-w-xl mx-auto">
-              A complete interview preparation platform built by engineers, for engineers.
-            </motion.p>
-          </div>
-        </AnimatedSection>
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {FEATURES.map((feature, i) => (
-            <motion.div
-              key={feature.title}
-              variants={scaleFade}
-              whileHover={{ y: -4 }}
-              className="group relative p-[1px] rounded-2xl overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-white/[0.06] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="relative h-full p-6 rounded-2xl bg-[#0f1629]/80 border border-white/[0.06] group-hover:border-white/[0.12] transition-all">
-                <div
-                  className={`w-10 h-10 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-4 shadow-lg ${feature.shadow} group-hover:scale-110 transition-transform`}
-                >
-                  {feature.icon}
-                </div>
-                <h3 className="text-base font-semibold text-white mb-2">{feature.title}</h3>
-                <p className="text-sm text-white/60 leading-relaxed">{feature.description}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Social Proof / By the Numbers ─────────────────────────────────────────────
-const STATS = [
-  { value: "93", label: "Learning Channels" },
-  { value: "30,533+", label: "Practice Questions" },
-  { value: "126", label: "In-depth Articles" },
-  { value: "93", label: "Knowledge Tests" },
-];
-
-function SocialProof() {
-  return (
-    <section id="community" className="py-24 relative">
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-500/[0.02] to-transparent" />
-
-      <div className="relative max-w-7xl mx-auto px-6">
-        <AnimatedSection>
-          <div className="text-center mb-16">
-            <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-bold text-white mb-4">
-              By the <span className="gradient-text">numbers</span>
-            </motion.h2>
-            <motion.p variants={fadeUp} className="text-white/60 max-w-xl mx-auto">
-              Real platform metrics that speak for themselves.
-            </motion.p>
-          </div>
-        </AnimatedSection>
-
-        <div className="grid md:grid-cols-4 gap-6 max-w-4xl mx-auto">
-          {STATS.map((s) => (
-            <motion.div
-              key={s.label}
-              variants={scaleFade}
-              whileHover={{ y: -4 }}
-              className="relative p-6 rounded-2xl bg-[#0f1629] border border-white/[0.06] hover:border-white/[0.12] transition-colors text-center"
-            >
-              <div className="text-3xl font-bold gradient-text mb-2">{s.value}</div>
-              <div className="text-sm text-white/50">{s.label}</div>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Trust badges */}
-        <motion.div
-          variants={fadeUp}
-          className="flex flex-wrap items-center justify-center gap-8 mt-16 pt-16 border-t border-white/[0.06]"
-        >
-          {[
-            { label: "Open Source" },
-            { label: "Community Driven" },
-            { label: "Free Forever" },
-          ].map((badge) => (
-            <div key={badge.label} className="flex items-center gap-2 text-white/60">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-              <span className="text-sm font-medium">{badge.label}</span>
-            </div>
-          ))}
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-
-
 // ─── Footer ───────────────────────────────────────────────────────────────────
-function LandingFooter() {
-  const [, setLocation] = useLocation();
-
+function Footer() {
+  const [, setLoc] = useLocation();
   return (
-    <footer className="border-t border-white/[0.06] py-12">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
-          {/* Brand */}
-          <div className="sm:col-span-2 lg:col-span-1">
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center">
-                <Zap className="w-4 h-4 text-white" />
-              </div>
-              <span className="text-lg font-bold text-white">
-                Open<span className="gradient-text">Interview</span>
-              </span>
+    <footer className="pb-6">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-white/[0.04]">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded-md bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center">
+              <Zap className="w-2.5 h-2.5 text-white" />
             </div>
-            <p className="text-sm text-white/60 leading-relaxed max-w-xs">
-              The modern platform for engineering interview preparation. Practice smarter,
-              not harder.
-            </p>
+            <span className="text-xs font-bold text-white/60">Open<span className="text-emerald-400">Interview</span></span>
+            <span className="text-[9px] text-white/20 mx-1">·</span>
+            <span className="text-[9px] text-white/20">&copy; {new Date().getFullYear()}</span>
           </div>
-
-          {/* Links */}
-          {[
-            {
-              title: "Product",
-              links: [
-                { label: "Features", href: "#features" },
-                { label: "Channels", href: "/channels" },
-                { label: "Voice Interviews", href: "/voice-interview" },
-                { label: "Code Challenges", href: "/code" },
-              ],
-            },
-            {
-              title: "Resources",
-              links: [
-                { label: "Blog", href: "/blog" },
-                { label: "Community", href: "#community" },
-              ],
-            },
-            {
-              title: "Company",
-              links: [
-                { label: "About", href: "/about" },
-                { label: "GitHub", href: "https://github.com/open-interview" },
-                { label: "Contact", href: "/about" },
-              ],
-            },
-          ].map((col) => (
-            <div key={col.title}>
-              <h4 className="text-sm font-semibold text-white/60 mb-4">{col.title}</h4>
-              <ul className="space-y-2.5">
-                {col.links.map((link) => (
-                  <li key={link.label}>
-                    <button
-                      onClick={() => {
-                        if (link.href.startsWith("http")) {
-                          window.open(link.href, "_blank");
-                        } else if (link.href.startsWith("#")) {
-                          document.getElementById(link.href.slice(1))?.scrollIntoView({ behavior: "smooth" });
-                        } else {
-                          setLocation(link.href);
-                        }
-                      }}
-                      className="text-sm text-white/60 hover:text-white/70 transition-colors"
-                    >
-                      {link.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-white/[0.06]">
-          <p className="text-xs text-white/60">
-            &copy; {new Date().getFullYear()} Open Interview. All rights reserved.
-          </p>
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => window.open("https://github.com/open-interview", "_blank")}
-              className="text-white/20 hover:text-white/60 transition-colors"
-            >
-              <Github className="w-5 h-5" />
-            </button>
+            {[
+              { label: "Channels", path: "/channels" },
+              { label: "Blog", path: "/blog" },
+              { label: "About", path: "/about" },
+              { label: "GitHub", path: "https://github.com/open-interview", ext: true },
+            ].map(l => (
+              <button key={l.label}
+                onClick={() => l.ext ? window.open(l.path, "_blank") : setLoc(l.path)}
+                className="text-[10px] text-white/40 hover:text-white/60 transition-colors"
+              >
+                {l.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -873,24 +307,25 @@ function LandingFooter() {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function HomeFacelift() {
   return (
     <>
       <SEOHead
         title="Open Interview — Master Engineering Interviews with AI"
-        description="Practice system design, algorithms, and behavioral interviews with AI-powered feedback. 30,000+ questions across 93 learning channels. Join thousands of engineers who landed their dream roles."
+        description="Practice system design, algorithms, and behavioral interviews with AI-powered feedback. 30,000+ questions across 93 learning channels."
         canonical="https://open-interview.github.io/"
       />
-
-      <div className="min-h-screen bg-[#0a0e1a] text-white overflow-x-hidden">
-        <LandingNavbar />
-        <HeroSection />
-        <FeaturedArticles />
-        <TrendingTopics />
-        <WhyOpenInterview />
-        <SocialProof />
-        <LandingFooter />
+      <div className="min-h-screen bg-[#0a0e1a] text-white overflow-x-hidden flex flex-col">
+        <Nav />
+        <Hero />
+        <div className="-mt-12 relative z-10 pb-4">
+          <FeatureGrid />
+        </div>
+        <div className="mt-auto">
+          <CTAStrip />
+          <Footer />
+        </div>
       </div>
     </>
   );

@@ -42,6 +42,7 @@ run('script/export-voice-sessions.js', 'Export voice sessions', true);
 run('script/generate-interview-intelligence.js', 'Generate interview intelligence', true);
 run('script/generate-rss.js', 'Generate RSS', true);
 run('script/generate-sitemap.js', 'Generate sitemap', true);
+run('scripts/pre-render-diagrams.mjs', 'Pre-render mermaid diagrams to SVG');
 runVite();
 run('script/generate-route-shells.mjs', 'Generate static route shells');
 run('script/generate-pagefind-index.js', 'Generate Pagefind index');

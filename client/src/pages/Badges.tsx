@@ -339,10 +339,10 @@ export default function BadgesPage() {
   if (!allBadges || allBadges.length === 0) {
     return (
       <AppLayout title="Badges" fullWidth>
-        <div className="min-h-screen bg-background text-foreground overflow-x-hidden pb-24 lg:pb-8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <div className="min-h-screen bg-background text-foreground overflow-x-hidden pb-20 lg:pb-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
             <PageHeader title="Badges" />
-            <div className="flex items-center justify-center py-20">
+            <div className="flex items-center justify-center py-12 sm:py-20">
               <div className="text-center">
                 <Trophy className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
                 <h2 className="text-2xl font-bold mb-2">No badges yet</h2>
@@ -364,8 +364,8 @@ export default function BadgesPage() {
       />
 
       <AppLayout title="Badges" fullWidth>
-        <div className="min-h-screen bg-background text-foreground w-full overflow-x-hidden pb-24 lg:pb-8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
+        <div className="min-h-screen bg-background text-foreground w-full overflow-x-hidden pb-20 lg:pb-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12 space-y-4 sm:space-y-6">
 
             {/* ── Header ── */}
             <PageHeader title="Badges" subtitle="Your achievements" />

@@ -119,12 +119,12 @@ export default function TestsPage() {
         canonical="https://open-interview.github.io/tests"
       />
       <AppLayout fullWidth>
-        <div className="min-h-screen bg-background text-foreground pb-24 lg:pb-0">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <div className="min-h-screen bg-background text-foreground pb-20 lg:pb-0">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
             <PageHeader title="Channel Tests" subtitle="Prove what you know across every topic" />
 
             {/* Stats */}
-            <div className="grid grid-cols-3 md:grid-cols-4 gap-3 mb-8">
+            <div className="grid grid-cols-3 md:grid-cols-4 gap-3 mb-4 md:mb-6">
               <StatCard icon={CheckCircle} bgColor="from-green-500/20 to-green-600/10" borderColor="border-green-500/30" color="text-green-500" value={passedCount} label="Passed" />
               <StatCard icon={XCircle} bgColor="from-red-500/20 to-red-600/10" borderColor="border-red-500/30" color="text-red-500" value={failedCount} label="Failed" />
               <StatCard icon={Target} bgColor="from-blue-500/20 to-blue-600/10" borderColor="border-blue-500/30" color="text-blue-500" value={notStartedCount} label="Not Started" />
@@ -177,7 +177,7 @@ export default function TestsPage() {
             </motion.div>
 
             {/* Filter Tabs */}
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="flex gap-2 mb-8 overflow-x-auto pb-1 scrollbar-none">
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="flex gap-2 mb-4 md:mb-6 overflow-x-auto pb-1 scrollbar-none">
               <FilterPills options={FILTERS} active={filter} onChange={id => setFilter(id as FilterTab)} />
             </motion.div>
 

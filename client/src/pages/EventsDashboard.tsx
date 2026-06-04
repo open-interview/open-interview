@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, Fragment } from "react";
+import { useState, useMemo, useCallback, Fragment, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
@@ -171,7 +171,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 
 // ─── EventRow (Timeline view) ─────────────────────────────────────────────────
 
-function EventRow({ event, expanded, onToggle }: { event: Event; expanded: boolean; onToggle: () => void }) {
+const EventRow = memo(function EventRow({ event, expanded, onToggle }: { event: Event; expanded: boolean; onToggle: () => void }) {
   const cfg = getEventConfig(event.type);
   const statusCfg = getStatusConfig(event.status);
   const Icon = cfg.icon;
@@ -274,7 +274,7 @@ function EventRow({ event, expanded, onToggle }: { event: Event; expanded: boole
       )}
     </div>
   );
-}
+});
 
 // ─── Chart tooltip ────────────────────────────────────────────────────────────
 

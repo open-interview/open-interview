@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, Calendar, ImageOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -112,7 +112,7 @@ function getCategorySlug(category: string): string {
 
 // ─── Shared sub-components ──────────────────────────────────────────────
 
-export function DifficultyBadge({ level }: { level: ArticleDifficulty }) {
+export const DifficultyBadge = memo(function DifficultyBadge({ level }: { level: ArticleDifficulty }) {
   const config = difficultyConfig[level];
   return (
     <span
@@ -127,9 +127,9 @@ export function DifficultyBadge({ level }: { level: ArticleDifficulty }) {
       {config.label}
     </span>
   );
-}
+});
 
-export function CategoryPill({ category }: { category: string }) {
+export const CategoryPill = memo(function CategoryPill({ category }: { category: string }) {
   const gradient = getCategoryGradient(category);
   return (
     <span
@@ -141,9 +141,9 @@ export function CategoryPill({ category }: { category: string }) {
       {category}
     </span>
   );
-}
+});
 
-export function CategoryBadge({ category }: { category: string }) {
+export const CategoryBadge = memo(function CategoryBadge({ category }: { category: string }) {
   const [, navigate] = useLocation();
   const slug = getCategorySlug(category);
   return (
@@ -160,9 +160,9 @@ export function CategoryBadge({ category }: { category: string }) {
       {category}
     </button>
   );
-}
+});
 
-export function TagPill({ tag }: { tag: string }) {
+export const TagPill = memo(function TagPill({ tag }: { tag: string }) {
   const [, navigate] = useLocation();
   return (
     <button
@@ -172,7 +172,7 @@ export function TagPill({ tag }: { tag: string }) {
       #{tag}
     </button>
   );
-}
+});
 
 // ─── CoverImage with error handling ─────────────────────────────────────
 
@@ -254,7 +254,7 @@ function CoverImage({ coverImage, title, category, variant = 'grid', imageError,
 
 // ─── Meta info ──────────────────────────────────────────────────────────
 
-function ArticleMeta({ article }: { article: ArticleCardData }) {
+const ArticleMeta = memo(function ArticleMeta({ article }: { article: ArticleCardData }) {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
       {article.author && (
@@ -274,7 +274,7 @@ function ArticleMeta({ article }: { article: ArticleCardData }) {
       )}
     </div>
   );
-}
+});
 
 // ─── Card content renderer ──────────────────────────────────────────────
 
@@ -403,7 +403,7 @@ function CardContent({ article, variant, imageError, onImageError }: {
 
 // ─── Main ArticleCard component ─────────────────────────────────────────
 
-export function ArticleCard({ article, href, onClick, className, variant = 'grid' }: ArticleCardProps) {
+export const ArticleCard = memo(function ArticleCard({ article, href, onClick, className, variant = 'grid' }: ArticleCardProps) {
   const prefersReducedMotion = useReducedMotion();
   const spring = getSpringTransition(prefersReducedMotion);
   const [imageError, setImageError] = useState(false);
@@ -456,7 +456,7 @@ export function ArticleCard({ article, href, onClick, className, variant = 'grid
       )}
     </motion.div>
   );
-}
+});
 
 // ─── Skeleton ───────────────────────────────────────────────────────────
 

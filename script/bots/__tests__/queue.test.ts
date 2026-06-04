@@ -5,33 +5,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock the DB module before importing queue
-const mockRows: any[] = [];
+const store: Record<string, any[]> = { 'queue.json': [] };
 const mockDb = {
-  execute: vi.fn(async ({ sql, args }: { sql: string; args?: any[] }) => {
-    // Minimal in-memory simulation
-    if (sql.includes('SELECT id FROM work_queue') && sql.includes('status = \'pending\'')) {
-      const [type, id, action] = args || [];
-      const found = mockRows.find(r => r.item_type === type && r.item_id === id && r.action === action && r.status === 'pending');
-      return { rows: found ? [{ id: found.id }] : [] };
-    }
-    if (sql.includes('INSERT INTO work_queue')) {
-      const newId = mockRows.length + 1;
-      mockRows.push({ id: newId, item_type: args![0], item_id: args![1], action: args![2], priority: args![3], reason: args![4], created_by: args![5], assigned_to: args![6], created_at: args![7], status: 'pending' });
-      return { lastInsertRowid: newId, rowsAffected: 1 };
-    }
-    if (sql.includes('SELECT * FROM work_queue WHERE status = \'pending\'')) {
-      const limit = args?.[0] ?? 1;
-      const pending = mockRows.filter(r => r.status === 'pending').sort((a, b) => a.priority - b.priority || a.created_at.localeCompare(b.created_at)).slice(0, limit);
-      return { rows: pending };
-    }
-    if (sql.includes('UPDATE work_queue SET status = \'processing\'')) {
-      const id = args![0];
-      const row = mockRows.find(r => r.id === id);
-      if (row) row.status = 'processing';
-      return { rows: [] };
-    }
-    return { rows: [], lastInsertRowid: 0, rowsAffected: 0 };
+  readArray: vi.fn((filename: string) => {
+    return store[filename] || [];
   }),
+  writeArray: vi.fn((filename: string, data: any[]) => {
+    store[filename] = [...data];
+  }),
+  getNextId: vi.fn((arr: any[]) => {
+    if (arr.length === 0) return 1;
+    return Math.max(...arr.map((item: any) => item.id || 0)) + 1;
+  }),
+  execute: vi.fn(async () => ({ rows: [], lastInsertRowid: 0, rowsAffected: 0 })),
 };
 
 vi.mock('../shared/db.js', () => ({ getDb: () => mockDb }));
@@ -39,7 +25,7 @@ vi.mock('../shared/db.js', () => ({ getDb: () => mockDb }));
 const { addToQueue, getNextWorkItem, getBatchWorkItems } = await import('../shared/queue.js');
 
 beforeEach(() => {
-  mockRows.length = 0;
+  store['queue.json'] = [];
   vi.clearAllMocks();
 });
 

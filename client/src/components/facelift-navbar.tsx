@@ -28,7 +28,7 @@ const NAV_LINKS: NavLink[] = [
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const SCROLL_THRESHOLD = 20;
-const HEADER_HEIGHT = { expanded: 64, shrunk: 52 };
+const HEADER_HEIGHT = { expanded: 56, shrunk: 48 };
 
 // ─── Scroll Progress Bar ─────────────────────────────────────────────────────
 
@@ -59,7 +59,7 @@ function ThemeToggle() {
       whileHover={{ scale: 1.05 }}
       onClick={toggleTheme}
       className={cn(
-        'relative w-10 h-10 rounded-xl flex items-center justify-center transition-all',
+        'relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all',
         'bg-muted/50 hover:bg-muted/80 border border-border/50',
         'overflow-hidden'
       )}
@@ -74,7 +74,7 @@ function ThemeToggle() {
             exit={{ rotate: 90, opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.2 }}
           >
-            <Sun className="size-[18px] text-amber-400" strokeWidth={2} />
+            <Sun className="size-4 sm:size-[18px] text-amber-400" strokeWidth={2} />
           </motion.div>
         ) : (
           <motion.div
@@ -84,7 +84,7 @@ function ThemeToggle() {
             exit={{ rotate: -90, opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.2 }}
           >
-            <Moon className="size-[18px] text-muted-foreground" strokeWidth={2} />
+            <Moon className="size-4 sm:size-[18px] text-muted-foreground" strokeWidth={2} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -221,7 +221,7 @@ function Logo({ onHome }: { onHome: () => void }) {
       data-testid="button-logo-home"
     >
       <motion.div
-        className="size-9 rounded-xl bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center relative overflow-hidden"
+        className="size-8 sm:size-9 rounded-lg sm:rounded-xl bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center relative overflow-hidden shrink-0"
         style={{ boxShadow: '0 0 20px var(--brand-500/0.3), 0 0 40px var(--brand-500/0.1)' }}
       >
         <motion.div
@@ -229,11 +229,11 @@ function Logo({ onHome }: { onHome: () => void }) {
           animate={{ x: ['-100%', '100%'] }}
           transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
         />
-        <Brain className="size-5 text-white relative z-10" strokeWidth={2.5} />
+        <Brain className="size-4 sm:size-5 text-white relative z-10" strokeWidth={2.5} />
       </motion.div>
 
       <div className="hidden sm:block">
-        <div className="font-bold text-base leading-tight tracking-tight">
+        <div className="font-bold text-sm sm:text-base leading-tight tracking-tight">
           <span className="text-foreground">Open </span>
           <span className="bg-gradient-to-r from-primary to-cyan-500 bg-clip-text text-transparent">
             Interview
@@ -395,7 +395,7 @@ export function FaceliftNavbar({ onSearchOpen }: FaceliftNavbarProps) {
         />
 
         {/* Inner content */}
-        <div className="relative h-full flex items-center justify-between px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="relative h-full flex items-center justify-between px-3 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <Logo onHome={() => setLocation('/')} />
 
           <DesktopNav
@@ -430,11 +430,11 @@ export function FaceliftNavbar({ onSearchOpen }: FaceliftNavbarProps) {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={onSearchOpen}
-              className="sm:hidden size-10 rounded-xl flex items-center justify-center bg-muted/50 hover:bg-muted transition-colors"
+              className="sm:hidden size-9 rounded-xl flex items-center justify-center bg-muted/50 hover:bg-muted transition-colors"
               aria-label="Open search"
               data-testid="button-search-open-mobile"
             >
-              <Search className="size-[18px]" strokeWidth={2} />
+              <Search className="size-4" strokeWidth={2} />
             </motion.button>
 
             {/* Theme toggle */}
@@ -444,7 +444,7 @@ export function FaceliftNavbar({ onSearchOpen }: FaceliftNavbarProps) {
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => setMobileOpen(true)}
-              className="lg:hidden size-10 rounded-xl flex items-center justify-center bg-muted/50 hover:bg-muted transition-colors relative overflow-hidden"
+              className="lg:hidden size-9 rounded-xl flex items-center justify-center bg-muted/50 hover:bg-muted transition-colors relative overflow-hidden"
               aria-label="Open menu"
               data-testid="button-menu-open"
             >

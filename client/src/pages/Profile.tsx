@@ -161,10 +161,10 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
   const fadeUp = (delay = 0) => ({ initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.35 } });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Profile Card */}
       <motion.div {...fadeUp(0)} 
-        className="rounded-[28px] p-6"
+        className="rounded-[28px] p-4 sm:p-6"
         style={{
           background: 'rgba(15, 22, 41, 0.75)',
           backdropFilter: 'blur(20px) saturate(180%)',
@@ -225,7 +225,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
       </motion.div>
 
       {/* Achievements */}
-      <motion.div {...fadeUp(0.1)} className="glass-card rounded-[var(--radius-2xl)] p-6">
+      <motion.div {...fadeUp(0.1)} className="glass-card rounded-[var(--radius-2xl)] p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">
           <SectionHeader title="Achievements" icon={<Trophy className="w-4 h-4" style={{ color: 'var(--color-xp)' }} />} />
           <button onClick={() => setLocation('/badges')} className="text-xs flex items-center gap-1 min-h-[44px] px-2 cursor-pointer hover:opacity-80 transition-opacity duration-200" style={{ color: 'var(--color-accent-violet-light)' }}>
@@ -291,7 +291,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
       </motion.div>
 
       {/* Learning Preferences */}
-      <motion.div {...fadeUp(0.2)} className="glass-card rounded-[var(--radius-2xl)] p-6">
+      <motion.div {...fadeUp(0.2)} className="glass-card rounded-[var(--radius-2xl)] p-4 sm:p-6">
         <SectionHeader title="Learning Preferences" icon={<Settings className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />} />
         <div className="space-y-1">
           <SettingRow icon={<Shuffle className="w-4 h-4" style={{ color: 'var(--color-accent-violet-light)' }} />} label="Shuffle Questions" description="Randomize question order">
@@ -315,7 +315,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
       </motion.div>
 
       {/* Learning Summary */}
-      <motion.div {...fadeUp(0.25)} className="glass-card rounded-[var(--radius-2xl)] p-6">
+      <motion.div {...fadeUp(0.25)} className="glass-card rounded-[var(--radius-2xl)] p-4 sm:p-6">
         <SectionHeader title="Learning Summary" icon={<BookOpen className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />} />
         <div className="grid grid-cols-3 gap-3">
           {[
@@ -333,7 +333,7 @@ function ProfileTab({ streak, totalCompleted }: { streak: number; totalCompleted
       </motion.div>
 
       {/* Data Export */}
-      <motion.div {...fadeUp(0.28)} className="glass-card rounded-[var(--radius-2xl)] p-6">
+      <motion.div {...fadeUp(0.28)} className="glass-card rounded-[var(--radius-2xl)] p-4 sm:p-6">
         <SectionHeader title="Data" icon={<Download className="w-4 h-4" style={{ color: 'var(--color-accent-cyan)' }} />} />
         <button onClick={exportData} className="w-full flex items-center justify-between px-4 py-3 min-h-[44px] rounded-[var(--radius-lg)] cursor-pointer transition-opacity duration-200 hover:opacity-80"
           style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', color: 'var(--color-accent-cyan)' }}>
@@ -682,10 +682,10 @@ export default function ProfilePage() {
       <SEOHead title="Profile & Stats" description="Your profile, settings and learning statistics" canonical="https://open-interview.github.io/profile" />
       <AppLayout fullWidth>
         <div className="min-h-screen bg-background text-foreground">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-24">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12 pb-20 sm:pb-24">
             <PageHeader title="Profile & Stats" subtitle="Your settings, achievements and learning progress" />
             <ProfileTab streak={streak} totalCompleted={totalCompleted} />
-            <div className="mt-12">
+            <div className="mt-6 lg:mt-12">
               <StatsTab streak={streak} totalCompleted={totalCompleted} />
             </div>
           </div>

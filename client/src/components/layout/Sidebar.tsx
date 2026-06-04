@@ -212,7 +212,7 @@ export function Sidebar() {
 
   return (
     <motion.aside
-      animate={{ width: isCollapsed ? 72 : 280 }}
+      animate={{ width: isCollapsed ? 64 : 240 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       className="fixed left-0 top-0 bottom-0 bg-background/80 backdrop-blur-2xl border-r border-white/15 shadow-[4px_0_24px_rgba(0,0,0,0.1)] z-40 flex flex-col overflow-hidden hidden lg:flex"
     >

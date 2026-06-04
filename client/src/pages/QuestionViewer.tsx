@@ -286,7 +286,7 @@ export default function QuestionViewer() {
           description={currentQuestion?.tldr ?? currentQuestion?.answer?.slice(0, 160) ?? 'Practice technical interview questions'}
           canonical={`https://open-interview.github.io/channel/${channelId}/${currentQuestion.id}`}
         />
-        <div className="min-h-screen bg-background text-foreground flex flex-col">
+        <div className="flex flex-col bg-background text-foreground lg:h-dvh lg:overflow-hidden">
 
           {/* Top progress bar */}
           <div className="h-0.5 bg-border w-full flex-shrink-0">
@@ -295,8 +295,7 @@ export default function QuestionViewer() {
 
           {/* Toolbar */}
           <div className="border-b border-border bg-background flex-shrink-0">
-            <div className="max-w-4xl mx-auto px-4 h-12 flex items-center justify-between gap-3">
-              {/* Left: back + channel name */}
+            <div className="px-4 h-12 flex items-center justify-between gap-3 max-w-7xl mx-auto w-full">
               <div className="flex items-center gap-2 min-w-0">
                 <button onClick={() => setLocation('/channels')} className="cursor-pointer p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-muted transition-colors duration-150 ease-out flex-shrink-0" aria-label="Back">
                   <ChevronLeft className="w-4 h-4" />
@@ -304,9 +303,7 @@ export default function QuestionViewer() {
                 <span className="font-semibold text-sm truncate">{channel.name}</span>
                 <span className="text-xs text-muted-foreground tabular-nums flex-shrink-0">{currentIndex + 1}/{totalQuestions}</span>
               </div>
-              {/* Right: actions */}
               <div className="flex items-center gap-1 flex-shrink-0">
-                {/* Recall Mode toggle */}
                 <button
                   onClick={() => setRecallMode(v => !v)}
                   aria-label={recallMode ? 'Recall mode on' : 'Recall mode off'}
@@ -339,7 +336,7 @@ export default function QuestionViewer() {
             {showFilters && (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                 className="border-b border-border bg-muted/30 overflow-hidden flex-shrink-0">
-                <div className="max-w-4xl mx-auto px-4 py-3 flex flex-wrap gap-3 items-end">
+                <div className="px-4 py-3 flex flex-wrap gap-3 items-end max-w-7xl mx-auto w-full">
                   {channel.subChannels && channel.subChannels.length > 1 && (
                     <FilterSelect label="Topic" value={selectedSubChannel} onChange={v => { setSelectedSubChannel(v); setCurrentIndex(0); }}>
                       {channel.subChannels.map((sc: any) => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
@@ -365,130 +362,211 @@ export default function QuestionViewer() {
             )}
           </AnimatePresence>
 
-          {/* Main scrollable content */}
-          <motion.div drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.1} style={{ x, opacity }}
-            onDragEnd={handleDragEnd} className="flex-1 overflow-y-auto">
-            <div className="max-w-4xl mx-auto px-4 py-8 lg:py-12" data-testid="question-card" style={{ background: 'linear-gradient(145deg, var(--card), var(--card))', borderRadius: 24, boxShadow: '20px 20px 60px rgba(0,0,0,0.25), -10px -10px 40px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.06)' }}>
-
-              {/* Meta row */}
-              <div className="flex items-center gap-2 flex-wrap mb-6">
-                {currentQuestion.difficulty && (
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
-                    currentQuestion.difficulty === 'advanced' ? 'border-red-500/40 text-red-500 bg-red-500/8'
-                    : currentQuestion.difficulty === 'intermediate' ? 'border-amber-500/40 text-amber-500 bg-amber-500/8'
-                    : 'border-emerald-500/40 text-emerald-600 bg-emerald-500/8'
-                  }`}>
-                    {currentQuestion.difficulty.charAt(0).toUpperCase() + currentQuestion.difficulty.slice(1)}
-                  </span>
-                )}
-                {currentQuestion.subChannel && (
-                  <span className="text-xs font-medium px-2.5 py-1 rounded-full border border-border text-muted-foreground">
-                    {currentQuestion.subChannel.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                  </span>
-                )}
-                {currentQuestion.companies?.[0] && (
-                  <span className="text-xs font-medium px-2.5 py-1 rounded-full border border-border text-muted-foreground">
-                    {currentQuestion.companies[0]}
-                  </span>
-                )}
-                {isCompleted && (
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-500/40 text-emerald-600 bg-emerald-500/8 flex items-center gap-1">
-                    <Check className="w-3 h-3" /> Done
-                  </span>
-                )}
-              </div>
-
-              {/* Question */}
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight tracking-tight text-foreground mb-8">
-                {currentQuestion.question}
-              </h1>
-
-              {/* Tags */}
-              {currentQuestion.tags && currentQuestion.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-8">
-                  {currentQuestion.tags.slice(0, 6).map((tag: string) => (
-                    <span key={tag} className="text-xs text-muted-foreground/60 font-mono">#{tag}</span>
-                  ))}
+          {/* ── MOBILE: card layout with drag/swipe ── */}
+          <div className="lg:hidden flex-1 overflow-y-auto">
+            <motion.div drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.1} style={{ x, opacity }}
+              onDragEnd={handleDragEnd}>
+              <div className="max-w-4xl mx-auto px-4 py-4 sm:py-8" data-testid="question-card" style={{ background: 'linear-gradient(145deg, var(--card), var(--card))', borderRadius: 24, boxShadow: '20px 20px 60px rgba(0,0,0,0.25), -10px -10px 40px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="flex items-center gap-2 flex-wrap mb-3 sm:mb-6">
+                  {currentQuestion.difficulty && (
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                      currentQuestion.difficulty === 'advanced' ? 'border-red-500/40 text-red-500 bg-red-500/8'
+                      : currentQuestion.difficulty === 'intermediate' ? 'border-amber-500/40 text-amber-500 bg-amber-500/8'
+                      : 'border-emerald-500/40 text-emerald-600 bg-emerald-500/8'
+                    }`}>
+                      {currentQuestion.difficulty.charAt(0).toUpperCase() + currentQuestion.difficulty.slice(1)}
+                    </span>
+                  )}
+                  {currentQuestion.subChannel && (
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full border border-border text-muted-foreground">
+                      {currentQuestion.subChannel.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                    </span>
+                  )}
+                  {currentQuestion.companies?.[0] && (
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full border border-border text-muted-foreground">
+                      {currentQuestion.companies[0]}
+                    </span>
+                  )}
+                  {isCompleted && (
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-500/40 text-emerald-600 bg-emerald-500/8 flex items-center gap-1">
+                      <Check className="w-3 h-3" /> Done
+                    </span>
+                  )}
                 </div>
-              )}
-
-              {/* SRS / feedback row */}
-              <div className="flex items-center gap-3 mb-10 flex-wrap">
-                {hasRated ? (
-                  <span className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
-                    <Check className="w-4 h-4" /> Review recorded
-                  </span>
-                ) : showRatingButtons && srsCard ? (
-                  <div className="flex gap-2">
-                    {(['again', 'hard', 'good', 'easy'] as ConfidenceRating[]).map(r => {
-                      const cfg: Record<string, { bg: string; glow: string; text: string; border: string }> = {
-                        again: { bg: 'linear-gradient(145deg, #fee2e2, #fecaca)', glow: '0 4px 16px rgba(239,68,68,0.3)', text: '#dc2626', border: 'rgba(239,68,68,0.4)' },
-                        hard: { bg: 'linear-gradient(145deg, #fef3c7, #fde68a)', glow: '0 4px 16px rgba(245,158,11,0.3)', text: '#d97706', border: 'rgba(245,158,11,0.4)' },
-                        good: { bg: 'linear-gradient(145deg, #d1fae5, #a7f3d0)', glow: '0 4px 16px rgba(16,185,129,0.3)', text: '#059669', border: 'rgba(16,185,129,0.4)' },
-                        easy: { bg: 'linear-gradient(145deg, #dbeafe, #bfdbfe)', glow: '0 4px 16px rgba(59,130,246,0.3)', text: '#2563eb', border: 'rgba(59,130,246,0.4)' }
-                      };
-                      const testIds: Record<string, string> = { hard: 'srs-button-hard', good: 'srs-button-good', easy: 'srs-button-easy' };
-                      const style = cfg[r];
-                      return (
-                        <motion.button key={r} onClick={() => handleSRSRating(r)}
-                          whileHover={{ scale: 1.05, y: -2 }}
-                          whileTap={{ scale: 0.95 }}
-                          {...(testIds[r] ? { 'data-testid': testIds[r] } : {})}
-                          className={`cursor-pointer px-3 min-h-[44px] text-xs font-semibold border rounded-full capitalize`}
-                          style={{ background: style.bg, color: style.text, borderColor: style.border, boxShadow: style.glow, transition: 'all 0.2s ease-out' }}>
-                          {r}
-                        </motion.button>
-                      );
-                    })}
+                <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold leading-tight tracking-tight text-foreground mb-4 sm:mb-8">
+                  {currentQuestion.question}
+                </h1>
+                {currentQuestion.tags && currentQuestion.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-4 sm:mb-8">
+                    {currentQuestion.tags.slice(0, 6).map((tag: string) => (
+                      <span key={tag} className="text-xs text-muted-foreground/60 font-mono">#{tag}</span>
+                    ))}
                   </div>
-                ) : (
-                  <button onClick={handleAddToSRS}
-                    className="cursor-pointer flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-full px-3 min-h-[44px] transition-colors duration-150 ease-out">
-                    <Brain className="w-3.5 h-3.5" /> Add to SRS
-                  </button>
                 )}
-                <QuestionFeedback questionId={currentQuestion.id} />
+                <div className="flex items-center gap-3 mb-5 sm:mb-10 flex-wrap">
+                  {hasRated ? (
+                    <span className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
+                      <Check className="w-4 h-4" /> Review recorded
+                    </span>
+                  ) : showRatingButtons && srsCard ? (
+                    <div className="flex gap-2">
+                      {(['again', 'hard', 'good', 'easy'] as ConfidenceRating[]).map(r => {
+                        const cfg: Record<string, { bg: string; glow: string; text: string; border: string }> = {
+                          again: { bg: 'linear-gradient(145deg, #fee2e2, #fecaca)', glow: '0 4px 16px rgba(239,68,68,0.3)', text: '#dc2626', border: 'rgba(239,68,68,0.4)' },
+                          hard: { bg: 'linear-gradient(145deg, #fef3c7, #fde68a)', glow: '0 4px 16px rgba(245,158,11,0.3)', text: '#d97706', border: 'rgba(245,158,11,0.4)' },
+                          good: { bg: 'linear-gradient(145deg, #d1fae5, #a7f3d0)', glow: '0 4px 16px rgba(16,185,129,0.3)', text: '#059669', border: 'rgba(16,185,129,0.4)' },
+                          easy: { bg: 'linear-gradient(145deg, #dbeafe, #bfdbfe)', glow: '0 4px 16px rgba(59,130,246,0.3)', text: '#2563eb', border: 'rgba(59,130,246,0.4)' }
+                        };
+                        const testIds: Record<string, string> = { hard: 'srs-button-hard', good: 'srs-button-good', easy: 'srs-button-easy' };
+                        const style = cfg[r];
+                        return (
+                          <motion.button key={r} onClick={() => handleSRSRating(r)}
+                            whileHover={{ scale: 1.05, y: -2 }}
+                            whileTap={{ scale: 0.95 }}
+                            {...(testIds[r] ? { 'data-testid': testIds[r] } : {})}
+                            className={`cursor-pointer px-3 min-h-[44px] text-xs font-semibold border rounded-full capitalize`}
+                            style={{ background: style.bg, color: style.text, borderColor: style.border, boxShadow: style.glow, transition: 'all 0.2s ease-out' }}>
+                            {r}
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <button onClick={handleAddToSRS}
+                      className="cursor-pointer flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-full px-3 min-h-[44px] transition-colors duration-150 ease-out">
+                      <Brain className="w-3.5 h-3.5" /> Add to SRS
+                    </button>
+                  )}
+                  <QuestionFeedback questionId={currentQuestion.id} />
+                </div>
+                <div className="border-t border-border pt-5 sm:pt-8">
+                  {recallMode && !recallRevealed ? (
+                    <RecallGate onReveal={() => { setRecallRevealed(true); setShowAnswer(true); }} />
+                  ) : (
+                    <>
+                      {!recallMode && (
+                        <div className="mb-6">
+                          {!showAnswer ? (
+                            <button onClick={() => setShowAnswer(true)}
+                              data-testid="button-reveal-answer"
+                              className="cursor-pointer w-full flex items-center justify-center gap-2 min-h-[44px] font-semibold rounded-xl text-sm transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.98]"
+                              style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', color: '#fff', boxShadow: '0 4px 16px rgba(99,102,241,0.35), inset 0 1px 0 rgba(255,255,255,0.2)' }}>
+                              <Eye className="w-4 h-4" /> Show Answer
+                            </button>
+                          ) : (
+                            <button onClick={() => setShowAnswer(false)}
+                              className="cursor-pointer flex items-center gap-1.5 min-h-[44px] text-sm text-muted-foreground hover:text-foreground transition-colors duration-150 ease-out">
+                              <ChevronDown className="w-4 h-4" /> Hide answer
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      <div className={showAnswer || recallRevealed ? 'block' : 'hidden'}>
+                        <AnswerPanel question={currentQuestion} isCompleted={isCompleted} />
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
+            </motion.div>
+          </div>
 
-              {/* Answer section */}
-              <div className="border-t border-border pt-8">
+          {/* ── DESKTOP: two-column split, no page scroll ── */}
+          <div className="hidden lg:flex flex-1 min-h-0 overflow-hidden">
+            <div className="w-[42%] flex-shrink-0 border-r border-border/60 overflow-y-auto p-8 xl:p-10">
+              <div className="space-y-5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {currentQuestion.difficulty && (
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                      currentQuestion.difficulty === 'advanced' ? 'border-red-500/40 text-red-500 bg-red-500/8'
+                      : currentQuestion.difficulty === 'intermediate' ? 'border-amber-500/40 text-amber-500 bg-amber-500/8'
+                      : 'border-emerald-500/40 text-emerald-600 bg-emerald-500/8'
+                    }`}>
+                      {currentQuestion.difficulty.charAt(0).toUpperCase() + currentQuestion.difficulty.slice(1)}
+                    </span>
+                  )}
+                  {currentQuestion.subChannel && (
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full border border-border text-muted-foreground">
+                      {currentQuestion.subChannel.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                    </span>
+                  )}
+                  {currentQuestion.companies?.[0] && (
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full border border-border text-muted-foreground">
+                      {currentQuestion.companies[0]}
+                    </span>
+                  )}
+                  {isCompleted && (
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-500/40 text-emerald-600 bg-emerald-500/8 flex items-center gap-1">
+                      <Check className="w-3 h-3" /> Done
+                    </span>
+                  )}
+                </div>
+
+                <h1 className="text-xl xl:text-2xl font-bold leading-tight tracking-tight text-foreground">
+                  {currentQuestion.question}
+                </h1>
+
+                {currentQuestion.tags && currentQuestion.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {currentQuestion.tags.slice(0, 6).map((tag: string) => (
+                      <span key={tag} className="text-xs text-muted-foreground/60 font-mono">#{tag}</span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3 flex-wrap pt-2">
+                  {hasRated ? (
+                    <span className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
+                      <Check className="w-4 h-4" /> Review recorded
+                    </span>
+                  ) : showRatingButtons && srsCard ? (
+                    <div className="flex gap-2">
+                      {(['again', 'hard', 'good', 'easy'] as ConfidenceRating[]).map(r => {
+                        const cfg: Record<string, { bg: string; glow: string; text: string; border: string }> = {
+                          again: { bg: 'linear-gradient(145deg, #fee2e2, #fecaca)', glow: '0 4px 16px rgba(239,68,68,0.3)', text: '#dc2626', border: 'rgba(239,68,68,0.4)' },
+                          hard: { bg: 'linear-gradient(145deg, #fef3c7, #fde68a)', glow: '0 4px 16px rgba(245,158,11,0.3)', text: '#d97706', border: 'rgba(245,158,11,0.4)' },
+                          good: { bg: 'linear-gradient(145deg, #d1fae5, #a7f3d0)', glow: '0 4px 16px rgba(16,185,129,0.3)', text: '#059669', border: 'rgba(16,185,129,0.4)' },
+                          easy: { bg: 'linear-gradient(145deg, #dbeafe, #bfdbfe)', glow: '0 4px 16px rgba(59,130,246,0.3)', text: '#2563eb', border: 'rgba(59,130,246,0.4)' }
+                        };
+                        const testIds: Record<string, string> = { hard: 'srs-button-hard', good: 'srs-button-good', easy: 'srs-button-easy' };
+                        const style = cfg[r];
+                        return (
+                          <motion.button key={r} onClick={() => handleSRSRating(r)}
+                            whileHover={{ scale: 1.05, y: -2 }}
+                            whileTap={{ scale: 0.95 }}
+                            {...(testIds[r] ? { 'data-testid': testIds[r] } : {})}
+                            className={`cursor-pointer px-3 min-h-[44px] text-xs font-semibold border rounded-full capitalize`}
+                            style={{ background: style.bg, color: style.text, borderColor: style.border, boxShadow: style.glow, transition: 'all 0.2s ease-out' }}>
+                            {r}
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <button onClick={handleAddToSRS}
+                      className="cursor-pointer flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-full px-3 min-h-[44px] transition-colors duration-150 ease-out">
+                      <Brain className="w-3.5 h-3.5" /> Add to SRS
+                    </button>
+                  )}
+                  <QuestionFeedback questionId={currentQuestion.id} />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-8 xl:p-10">
+              <div className="max-w-2xl">
                 {recallMode && !recallRevealed ? (
                   <RecallGate onReveal={() => { setRecallRevealed(true); setShowAnswer(true); }} />
                 ) : (
-                  <>
-                    {/* Mobile: hide toggle (only when recall mode is off or already revealed) */}
-                    {!recallMode && (
-                      <div className="lg:hidden mb-6">
-                        {!showAnswer ? (
-                          <button onClick={() => setShowAnswer(true)}
-                            data-testid="button-reveal-answer"
-                            className="cursor-pointer w-full flex items-center justify-center gap-2 min-h-[44px] font-semibold rounded-xl text-sm transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.98]"
-                            style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', color: '#fff', boxShadow: '0 4px 16px rgba(99,102,241,0.35), inset 0 1px 0 rgba(255,255,255,0.2)' }}>
-                            <Eye className="w-4 h-4" /> Show Answer
-                          </button>
-                        ) : (
-                          <button onClick={() => setShowAnswer(false)}
-                            className="cursor-pointer flex items-center gap-1.5 min-h-[44px] text-sm text-muted-foreground hover:text-foreground transition-colors duration-150 ease-out">
-                            <ChevronDown className="w-4 h-4" /> Hide answer
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    <div className={`lg:block ${showAnswer || recallRevealed ? 'block' : 'hidden'}`}>
-                      <AnswerPanel
-                        question={currentQuestion}
-                        isCompleted={isCompleted}
-                      />
-                    </div>
-                  </>
+                  <AnswerPanel question={currentQuestion} isCompleted={isCompleted} />
                 )}
               </div>
             </div>
-          </motion.div>
+          </div>
 
           {/* Bottom nav bar */}
-          <div className="border-t border-border bg-background flex-shrink-0 pb-24">
-            <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="border-t border-border bg-background flex-shrink-0 lg:pb-0 pb-16 sm:pb-24">
+            <div className="px-4 h-12 sm:h-14 flex items-center justify-between max-w-7xl mx-auto w-full">
               <button onClick={prevQuestion} disabled={currentIndex === 0}
                 className="cursor-pointer flex items-center gap-1.5 min-h-[44px] px-2 text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors duration-150 ease-out">
                 <ChevronLeft className="w-4 h-4" /> Prev
