@@ -1,0 +1,152 @@
+---
+id: blog-1780659347627-postgresql-at-1-000-partitions
+title: "PostgreSQL at 1,000 Partitions: The Hidden 12ms Tax Nobody Talks About"
+slug: postgresql-at-1-000-partitions-the-hidden-12ms-tax-nobody-talks-about
+date: "2026-06-05"
+author: "Satishkumar Dhule"
+channel: database
+category: database
+difficulty: intermediate
+tags: ["explain", "query-plan", "partitioning"]
+description: "Discover how PostgreSQL's planning time scales with partitions, why your first query might be 124x slower, and how connection pooling, composite indexes, and CLUSTER fix it."
+question: You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+sources:
+  - title: PostgresAI — How Does Planning Time Depend on Number of Partitions
+    url: "https://postgres.ai/blog/20241003-how-does-planning-time-depend-on-number-of-partitions"
+    type: blog
+  - title: PostgreSQL Documentation — Table Partitioning Best Practices
+    url: "https://www.postgresql.org/docs/current/ddl-partitioning.html"
+    type: documentation
+  - title: PostgreSQL Documentation — Using EXPLAIN
+    url: "https://www.postgresql.org/docs/current/using-explain.html"
+    type: documentation
+  - title: PostgreSQL Documentation — CLUSTER
+    url: "https://www.postgresql.org/docs/current/sql-cluster.html"
+    type: documentation
+  - title: PostgreSQL Documentation — CREATE INDEX
+    url: "https://www.postgresql.org/docs/current/sql-createindex.html"
+    type: documentation
+  - title: PostgreSQL Documentation — pg_stat_statements
+    url: "https://www.postgresql.org/docs/current/pgstatstatements.html"
+    type: documentation
+  - title: Wikipedia — Query Plan
+    url: "https://en.wikipedia.org/wiki/Query_plan"
+    type: article
+  - title: PostgreSQL Documentation — Indexes
+    url: "https://www.postgresql.org/docs/current/indexes.html"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| intermediate | database | explain, query-plan, partitioning |
+
+You've done everything right. You partitioned your massive table by date, celebrated when queries started scanning fewer rows, and thought you had performance nailed. Then one day, a simple lookup starts feeling sluggish — not because of execution, but because of something hiding in plain sight. When PostgresAI engineers ran a controlled experiment on PostgreSQL 16, they discovered an invisible tax on every query that grows linearly with your partition count [1]. For a trivial primary key lookup, planning time jumped from 0.1ms with no partitions to 12.4ms with 1,000 partitions — a 124x slowdown that has nothing to do with how fast your disks are.
+
+---
+
+> ### Real-World Case — PostgresAI
+>
+> PostgresAI engineers conducted a controlled experiment to measure how planning time scales with partition count in PostgreSQL 16. They created a partitioned table and progressively added partitions from 0 to 1,000, running EXPLAIN (ANALYZE, BUFFERS) on a simple primary key lookup query at each step.
+>
+> | | |
+> |---|---|
+> | **Challenge** | With 1,000 partitions, a simple `WHERE id = 1` lookup showed planning time of 12.4ms while execution time was just 0.35ms — planning was 35x slower than execution. This meant that a query on a partitioned table could appear slow even with perfect partition pruning and ideal index usage, because the overhead was entirely in the planner, not the executor. |
+> | **Solution** | The investigation revealed that planning time grows linearly with partition count due to the planner needing to open, lock, and examine each partition's metadata. David Rowley from the PostgreSQL community noted this is primarily a relcache population cost for the first query in a session. For partitioned tables with high partition counts, they recommended: (1) keeping partition counts below 1,000, (2) using connection pooling to avoid cold-cache planning costs, and (3) considering prepared statements to cache plans across executions. |
+> | **Outcome** | For the first query in a session, planning time jumped from ~0.1ms (0 partitions) to ~12.4ms (1,000 partitions), with planning buffer hits growing from ~50 to ~950. Crucially, subsequent queries in the same session showed planning time staying below 0.1ms regardless of partition count, proving the issue was solvable with proper connection management. |
+> | **Lesson** | Partitioning can make queries slower, not faster, if you have too many partitions — but the slowdown is in the planner, not the executor. Always check `Planning Time` in EXPLAIN (ANALYZE, BUFFERS), not just `Execution Time`. The counterintuitive fix isn't always a better index; sometimes it's fewer partitions or persistent connections. |
+
+---
+
+## Hook — What If Your Database Is Spending 35x More Time Planning Than Executing?
+
+Imagine this: you run an EXPLAIN ANALYZE on a query you have tuned to perfection. Execution time: 0.35ms. Planning time: 12.4ms. The database spent 35 times longer figuring out *how* to get your data than actually getting it. That is the reality PostgresAI engineers documented when they tested PostgreSQL 16 across 0 to 1,000 partitions [1]. And here is the plot twist that changes everything: subsequent queries in the *same database session* dropped planning time back below 0.1ms, regardless of partition count. The problem was never the partitions themselves — it was how PostgreSQL's planner warms up its cache for new connections.
+
+## Problem — Partitions Are a Double-Edged Sword
+
+Partitioning is one of the most powerful tools in a PostgreSQL DBA's arsenal. It enables time-based data retention, improves query performance through partition pruning, and makes vacuum manageable on multi-terabyte tables. But it comes with a hidden cost that many developers discover the hard way. The PostgreSQL planner must examine every partition's metadata, lock all indexes involved, and build a plan that accounts for the full inheritance hierarchy. This overhead scales with partition count — linearly, in fact [1]. The official documentation itself warns that planning times grow and memory consumption increases when more partitions survive pruning [2]. The danger zone typically starts around 1,000 partitions and becomes painful past 5,000 to 10,000. For OLTP workloads — web apps, mobile backends, real-time APIs — where every millisecond matters, this planning tax can quietly destroy your p99 latency.
+
+## Real-World Case — PostgresAI
+
+In October 2024, PostgresAI published the results of a meticulously designed experiment that quantified the relationship between partition count and planning time in PostgreSQL 16 [1]. The methodology was elegant: create a partitioned table with a primary key, run EXPLAIN (ANALYZE, BUFFERS) on a simple lookup query, then progressively add partitions from 0 to 1,000 — measuring the impact at each step. The results were striking. For the *first query in a session*, planning buffer hits grew from ~50 to ~950 — a 19x increase in catalog metadata reads. Planning time followed the same trajectory, climbing from ~0.1ms to ~12.4ms. But the most important finding came when they reran the experiment: subsequent queries in the same session showed planning times below 0.1ms consistently. Buffer hits dropped to just 3 (24 KiB) regardless of partition count. The implications are profound for anyone managing connection pools or dealing with connection-per-query patterns in serverless or lambda architectures.
+
+## Deep Dive — What Actually Happens During Planning?
+
+When PostgreSQL plans a query against a partitioned table, it performs several operations that many developers never see. First, the planner opens the relation and discovers all child partitions by scanning pg_inherits — this means more catalog lookups with every new partition. Second, it acquires AccessShareLock on every partition and all their indexes [1]. For 1,000 partitions with 2-3 indexes each, that is 3,000+ lock acquisitions before a single row is read. Third, it builds a partition descriptor in the relcache, which involves memory allocation proportional to the partition count. The PostgresAI experiment showed that the first query in a session bears the full brunt of this work because the relcache starts cold. This is why connection pooling makes such a dramatic difference — persistent connections keep the relcache warm. David Rowley, a PostgreSQL core contributor, confirmed this on social media, calling the initial results misleading because most production systems use connection pooling [1]. This leads to a counterintuitive insight: the planning time problem with many partitions is largely a *cache warming* problem, not a fundamental algorithmic limitation. However, this doesn't mean you can ignore partition counts entirely. More complex queries with multiple joins, subqueries, or window functions amplify the planning overhead because the planner must evaluate path options against every non-pruned partition.
+
+## Workflow — Diagnosing and Fixing Slow Partition Queries
+
+When you encounter a slow query on a partitioned table, follow this systematic diagnostic workflow. The Mermaid diagram below maps the decision tree you will traverse. Start by running EXPLAIN (ANALYZE, BUFFERS) on the problematic query. First, verify partition pruning is working — you should see "Subplans Removed" or only a subset of partitions mentioned. If all partitions appear, your partition key does not align with your WHERE clause. Next, check if the query uses Index Scan or Sequential Scan. A sequential scan on a large partition is your biggest red flag — it needs a composite index covering both the partition key and the filtered columns. Then examine sort and hash operations. Expensive sorts suggest missing indexes on ORDER BY columns. Finally, look at the planning time reported by EXPLAIN ANALYZE. If first-query planning time exceeds 5-10ms and you have hundreds of partitions, the solution is often connection pooling rather than redesign. Retest after each change to isolate the improvement.
+
+The diagnostic workflow follows this structured path from symptom to solution.
+
+## Code Example — EXPLAIN-Driven Optimization in Practice
+
+The following bash script demonstrates the complete diagnostic and optimization workflow you should run when facing slow queries on partitioned tables. Each command targets a specific layer of the problem, from verification to remediation to monitoring.
+
+## Lessons Learned — Five Principles for Partitioned Table Performance
+
+After examining the PostgresAI experiment, the PostgreSQL documentation, and decades of production experience, five clear principles emerge. First, keep your partition count under 1,000 — ideally under 100. The official documentation recommends staying below "a few thousand" [2], and the PostgresAI data shows linear degradation starts immediately [1]. Second, use connection pooling. PgBouncer or similar tools keep relcache entries warm, eliminating the first-query penalty that dominated the PostgresAI results. Third, monitor planning time explicitly. Enable pg_stat_statements.track_planning in postgresql.conf [6] and track mean_plan_time per query — this surfaces issues before users complain. Fourth, create composite indexes that cover both the partition key and your most common filter columns. A single index on (event_date, status) can turn a Sequential Scan into an Index Scan. Fifth, consider CLUSTER for tables where date-range scans are the primary access pattern — physically ordering data on disk can reduce the number of pages read by an order of magnitude [4].
+
+---
+
+## Partition Query Diagnostic Flow
+
+```mermaid
+flowchart TD
+    A[Slow Query on Partitioned Table] --> B{Run EXPLAIN ANALYZE}
+    B --> C[Check Partition Pruning]
+    C -->|All Partitions Visible| D[Partition Key Mismatch]
+    C -->|Subset Pruned| E[Check Scan Type]
+    D --> D1[Redesign Partition Key]
+    D1 --> N[Retest]
+    E -->|Sequential Scan| F[Missing Composite Index]
+    E -->|Index Scan| G[Check Sort / Hash Ops]
+    F --> F1[Add Composite Index:
+(partition_key, filter_cols)]
+    F1 --> N
+    G -->|Expensive Sort| H[Add Index on ORDER BY]
+    G -->|No Issues| I[Check Planning Time]
+    H --> N
+    I -->|>5ms| J{First Query in Session?}
+    I -->|<5ms| K[Check Buffer Hits]
+    J -->|Yes| L[Connection Pooling Fixes This]
+    J -->|No| M[Consider CLUSTER]
+    M --> N
+    L --> N
+    K -->|High Reads| M
+    K -->|Low| N
+    N --> O[Performance Acceptable?]
+    O -->|Yes| P[Done - Monitor with pg_stat_statements]
+    O -->|No| Q[Partition Redesign Needed]
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+
+**A:** Check partition pruning effectiveness, index utilization patterns, and expensive sort operations. Create composite indexes on (date, filtered_columns) and evaluate clustering strategies for optimal data access.
+
+</details>
+
+## Conclusion
+
+The 12ms planning tax at 1,000 partitions is real, but it is also solvable. The PostgresAI experiment taught us something deeper than a simple performance warning: it revealed how PostgreSQL's planner behaves under load and why connection management is just as important as query optimization. The next time you add a partition to your table, ask yourself three questions: Are you monitoring planning time or just execution time? Is your connection pooler configured to keep sessions alive? And does your index strategy match how you actually query the data? The difference between a database that feels sluggish and one that flies is often not about hardware — it is about understanding the hidden work that happens before a single row is fetched.
+
+---
+
+## References
+
+1. [PostgresAI — How Does Planning Time Depend on Number of Partitions](https://postgres.ai/blog/20241003-how-does-planning-time-depend-on-number-of-partitions) — blog
+2. [PostgreSQL Documentation — Table Partitioning Best Practices](https://www.postgresql.org/docs/current/ddl-partitioning.html) — documentation
+3. [PostgreSQL Documentation — Using EXPLAIN](https://www.postgresql.org/docs/current/using-explain.html) — documentation
+4. [PostgreSQL Documentation — CLUSTER](https://www.postgresql.org/docs/current/sql-cluster.html) — documentation
+5. [PostgreSQL Documentation — CREATE INDEX](https://www.postgresql.org/docs/current/sql-createindex.html) — documentation
+6. [PostgreSQL Documentation — pg_stat_statements](https://www.postgresql.org/docs/current/pgstatstatements.html) — documentation
+7. [Wikipedia — Query Plan](https://en.wikipedia.org/wiki/Query_plan) — article
+8. [PostgreSQL Documentation — Indexes](https://www.postgresql.org/docs/current/indexes.html) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
