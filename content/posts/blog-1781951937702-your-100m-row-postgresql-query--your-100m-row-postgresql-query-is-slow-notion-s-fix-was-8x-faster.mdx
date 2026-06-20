@@ -1,0 +1,162 @@
+---
+id: blog-1781951937702-your-100m-row-postgresql-query
+title: "Your 100M Row PostgreSQL Query Is Slow. Notion's Fix Was 8x Faster."
+slug: your-100m-row-postgresql-query-is-slow-notion-s-fix-was-8x-faster
+date: "2026-06-20"
+author: "Satishkumar Dhule"
+channel: database
+category: database
+difficulty: intermediate
+tags: ["explain", "query-plan", "partitioning"]
+description: Learn how Notion cut PostgreSQL query time by 8x (5000ms to 600ms) using composite indexes and EXPLAIN plan analysis on 100M-row partitioned tables.
+question: You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+sources:
+  - title: Notion runs Postgres at scale on Amazon RDS
+    url: "https://pganalyze.com/customers/how-notion-runs-postgres-at-scale-on-amazon-rds"
+    type: blog
+  - title: "PostgreSQL documentation: Using EXPLAIN"
+    url: "https://www.postgresql.org/docs/current/using-explain.html"
+    type: documentation
+  - title: "PostgreSQL documentation: Table Partitioning"
+    url: "https://www.postgresql.org/docs/current/ddl-partitioning.html"
+    type: documentation
+  - title: "PostgreSQL documentation: Indexes"
+    url: "https://www.postgresql.org/docs/current/indexes.html"
+    type: documentation
+  - title: "PostgreSQL documentation: Index-Only Scans and Covering Indexes"
+    url: "https://www.postgresql.org/docs/current/indexes-index-only-scans.html"
+    type: documentation
+  - title: "PostgreSQL documentation: CLUSTER"
+    url: "https://www.postgresql.org/docs/current/sql-cluster.html"
+    type: documentation
+  - title: "PgHero: Composite Index Best Practices"
+    url: "https://github.com/ankane/pghero"
+    type: documentation
+  - title: "PostgreSQL documentation: Routine Database Maintenance Tasks (VACUUM, ANALYZE)"
+    url: "https://www.postgresql.org/docs/current/routine-vacuuming.html"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| intermediate | database | explain, query-plan, partitioning |
+
+It was the kind of problem that makes engineering teams question their architecture choices. You have PostgreSQL. You have a table with 100 million rows partitioned by date. You did everything right — and yet a simple query filtering on a specific date range still drags. CPU spikes, vacuum failures, loading spinners. When Notion scaled their PostgreSQL monolith from millions to billions of blocks, they hit this exact wall. One index change — a single composite index — delivered a 733% performance improvement, dropping query runtime from ~5000ms to ~600ms [1]. Here is how you can do the same.
+
+---
+
+> ### Real-World Case — Notion
+>
+> Notion's PostgreSQL monolith was struggling with CPU spikes, vacuum failures, and growing query latency as they scaled from millions to billions of blocks (their core data unit). Engineers lacked visibility into database internals despite using RDS Performance Insights and application-level logging.
+>
+> | | |
+> |---|---|
+> | **Challenge** | Two critical problems: (1) A GIN index on JSONB columns used for filtering by space_id and permissions stopped being used by the query planner due to poor cardinality and statistics, causing queries to fall back to slow sequential scans. (2) The team couldn't understand why vacuums were stalling and which queries consumed the most resources, making incident response reactive rather than proactive. |
+> | **Solution** | Using pganalyze (PostgreSQL monitoring tool), Notion engineers analyzed query execution plans and discovered the GIN index was ineffective for their access patterns. They switched to a jsonb_path_ops index type that better matched their query patterns, and refined composite index strategies by promoting frequently-queried JSONB keys to typed columns with proper composite B-tree indexes. |
+> | **Outcome** | A 733% performance improvement on the critical index change — query runtime dropped from ~5000ms to ~600ms (over 8x faster). Additionally, pganalyze helped identify a new feature consuming 20% of all query load during pre-production testing, preventing a major incident before it reached users. Overall database CPU spikes and incident frequency decreased dramatically. |
+> | **Lesson** | PostgreSQL's query planner relies heavily on accurate statistics and proper index selection. A GIN index may exist and be 'correct' for the schema but completely unused because cardinality estimates don't match reality. Tools that visualize EXPLAIN plans and surface unused indexes are essential — you can't fix what you can't see. The right index type (jsonb_path_ops vs. default GIN) for your specific query patterns can make orders of magnitude difference. |
+
+---
+
+## Hook — The Query That Would Not Die
+
+You have a PostgreSQL table with 100 million rows. You partitioned it by date — textbook stuff. And yet, a simple query filtering on a specific date range still takes seconds. The database chugs, CPU spikes, and your users stare at loading spinners. Sound familiar? That is the moment when every engineer starts questioning everything: Is partitioning a scam? Did I configure something wrong? Do I need to throw more hardware at this? The answer, as Notion discovered, is almost always in the EXPLAIN plan.
+
+## Problem — Partitioning Is Not a Silver Bullet
+
+Here is the hard truth: partitioning alone is never enough. A 100-million-row table partitioned by date still means each partition can hold millions of rows. If your query filters on both date and a status column — say, 'give me all completed events from January 2024' — but your indexes only cover the date column, the database still has to scan every row in that partition to find the matching statuses. The problem compounds when partition pruning is not working, indexes are missing, or expensive sort operations are hidden in the query plan. Many developers discover that their supposedly optimized database is doing sequential scans across millions of rows, reading data it does not need, and sorting what remains in memory [2]. The database is not broken. Your understanding of what it is doing is.
+
+## Real-World Case — Notion's PostgreSQL Monolith at Scale
+
+Notion's engineering team lived this nightmare. Their PostgreSQL monolith — the heart of their block-based note-taking platform — was showing serious signs of strain. CPU utilization spiked unpredictably. VACUUM operations failed to keep up with write-heavy workloads. Query latency climbed relentlessly as their data set grew from millions to billions of blocks [1]. The breakthrough came when they gained deeper visibility into database internals. One critical index change — a single composite index optimization — delivered a 733% improvement in query performance. Runtime dropped from roughly 5000ms to just 600ms. That is over 8x faster for a single query pattern. But the wins did not stop there. During pre-production testing, pganalyze helped Notion identify a new feature consuming 20% of all query load — catching a major potential incident before it ever reached users [1]. This is the difference between guessing and knowing.
+
+## Deep Dive — Reading the EXPLAIN Plan Like a Detective
+
+To understand why one index change can deliver 8x improvements, you need to know what to look for in an EXPLAIN plan. When you run EXPLAIN (ANALYZE, BUFFERS) on your query, three signals matter most.
+
+First, partition pruning. PostgreSQL should only scan the partitions that match your WHERE clause. If the planner scans all partitions, your query pays the overhead of opening every child table — even empty ones. Look for 'Subplans Removed' in the output or count the partitions actually accessed. If pruning is not working, your query filter probably does not match the partition key in a way PostgreSQL can optimize [3].
+
+Second, index utilization. A sequential scan of a 10-million-row partition means enormous I/O. PostgreSQL's cost-based optimizer prefers index scans for selective queries. If you see a Seq Scan on a large partition with a filtering WHERE clause, your indexes are either missing or not selective enough. This is exactly where Notion found their 8x win [4].
+
+Third, expensive operations. Look for Sort, HashAggregate, or HashJoin nodes processing large row counts. These are hidden culprits — the database might fetch data fast but organize it slowly. A composite index that includes both filter columns and ORDER BY columns can eliminate sorts entirely, turning a Sort node scanning 2 million rows into an Index Only Scan that returns results in milliseconds [5].
+
+## Workflow — The Five-Step Diagnostic Framework
+
+Here is a battle-tested workflow for diagnosing slow queries on partitioned tables. Each step builds on the previous one, replacing guesswork with evidence.
+
+Step 1: Run EXPLAIN (ANALYZE, BUFFERS) on your slow query. Capture the full plan output — every node, every cost estimate, every buffer hit.
+
+Step 2: Verify partition pruning. Check if the planner is eliminating irrelevant partitions. If not, the query filter and partition key are misaligned — fix the query or reconsider the partition strategy.
+
+Step 3: Check index utilization. If the planner chooses a sequential scan on a large partition, you need a better index. A composite index on (partition_key, filtered_column) often solves this.
+
+Step 4: Hunt expensive operations. Look for Sort nodes, Hash nodes, or any step processing more rows than expected. Extend your composite index to cover ORDER BY and GROUP BY columns.
+
+Step 5: Evaluate physical data ordering. If buffer cache hit ratio is low despite good indexes, consider CLUSTER or pg_repack to reorder rows on disk for faster index scans [6].
+
+The Mermaid diagram below visualizes this diagnostic flow — use it as a quick reference the next time a query runs hot.
+
+## Code Example — SQL That Saves the Day
+
+The diagnostic workflow comes alive when you see the actual SQL. Start by capturing a detailed plan to understand what the database is doing under the hood.
+
+## Lessons Learned — Three Takeaways for Your Next Query Optimization
+
+Notion's journey and the patterns explored here distill down to three actionable insights.
+
+First, visibility is everything. Notion used pganalyze to identify a new feature consuming 20% of query load before it hit production [1]. You do not need a third-party tool — pg_stat_statements paired with regular EXPLAIN plan reviews gives you 80% of the insight. The key is making plan reading a habit, not a fire drill.
+
+Second, composite indexes over partitioned keys are your secret weapon. Many developers stop at indexing the partition key alone. A composite index on (partition_key, filtered_column, order_column) can transform a 5-second sequential scan into a 600-millisecond index-only scan. This single pattern was responsible for Notion's 8x improvement [7].
+
+Third, revisit your assumptions quarterly. Data access patterns change as your product evolves. The query that was fast in Q1 might be slow in Q3 because new features shifted the workload. Regular plan analysis catches regression before users do. If you take one thing away, let it be this: the database is telling you exactly what is wrong. You just have to look.
+
+---
+
+## Query Optimization Diagnostic Flowchart
+
+```mermaid
+graph TD
+    A[Slow Query on Partitioned Table] --> B[Run EXPLAIN ANALYZE BUFFERS]
+    B --> C{Partition Pruning Active?}
+    C -->|No| D[Align WHERE clause with partition key]
+    C -->|Yes| E{Index Scan or Seq Scan?}
+    E -->|Seq Scan| F[Create Composite Index on (date, filter_col)]
+    E -->|Index Scan| G{Expensive Sort or Hash?}
+    G -->|Expensive| H[Extend index to cover ORDER BY columns]
+    G -->|Minimal| I{Buffer Cache Hit Ratio Low?}
+    I -->|Low| J[Consider CLUSTER for physical data order]
+    I -->|High| K[Query is healthy — monitor with pg_stat_statements]
+    D --> F
+    H --> J
+    J --> K
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+
+**A:** Check partition pruning effectiveness, index utilization patterns, and expensive sort operations. Create composite indexes on (date, filtered_columns) and evaluate clustering strategies for optimal data access.
+
+</details>
+
+## Conclusion
+
+The next time a query on your partitioned table runs slow, do not throw hardware at it. Do not repartition by a different key. Do not migrate to a different database. Read the EXPLAIN plan. Check for partition pruning, index scans, and expensive sort operations. Apply a composite index. If Notion's 8x win proves anything, it is that the biggest performance gains often come from understanding what your database is already telling you.
+
+---
+
+## References
+
+1. [Notion runs Postgres at scale on Amazon RDS](https://pganalyze.com/customers/how-notion-runs-postgres-at-scale-on-amazon-rds) — blog
+2. [PostgreSQL documentation: Using EXPLAIN](https://www.postgresql.org/docs/current/using-explain.html) — documentation
+3. [PostgreSQL documentation: Table Partitioning](https://www.postgresql.org/docs/current/ddl-partitioning.html) — documentation
+4. [PostgreSQL documentation: Indexes](https://www.postgresql.org/docs/current/indexes.html) — documentation
+5. [PostgreSQL documentation: Index-Only Scans and Covering Indexes](https://www.postgresql.org/docs/current/indexes-index-only-scans.html) — documentation
+6. [PostgreSQL documentation: CLUSTER](https://www.postgresql.org/docs/current/sql-cluster.html) — documentation
+7. [PgHero: Composite Index Best Practices](https://github.com/ankane/pghero) — documentation
+8. [PostgreSQL documentation: Routine Database Maintenance Tasks (VACUUM, ANALYZE)](https://www.postgresql.org/docs/current/routine-vacuuming.html) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
