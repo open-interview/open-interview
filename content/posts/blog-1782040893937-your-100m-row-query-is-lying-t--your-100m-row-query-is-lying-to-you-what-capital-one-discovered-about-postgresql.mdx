@@ -1,0 +1,202 @@
+---
+id: blog-1782040893937-your-100m-row-query-is-lying-t
+title: "Your 100M Row Query Is Lying to You: What Capital One Discovered About PostgreSQL Partitions"
+slug: your-100m-row-query-is-lying-to-you-what-capital-one-discovered-about-postgresql
+date: "2026-06-21"
+author: "Satishkumar Dhule"
+channel: database
+category: database
+difficulty: intermediate
+tags: ["explain", "query-plan", "partitioning"]
+description: "Learn how Capital One optimized 100M-row PostgreSQL queries for millisecond responses. Partition pruning, composite indexes, and the no-vacuum strategy explained with EXPLAIN plan analysis and code examples."
+question: You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+sources:
+  - title: "Capital One: PostgreSQL Partitioning Tips"
+    url: "https://www.capitalone.com/tech/software-engineering/postgresql-partitioning-tips/"
+    type: blog
+  - title: PostgreSQL EXPLAIN Documentation
+    url: "https://www.postgresql.org/docs/current/using-explain.html"
+    type: documentation
+  - title: PostgreSQL Table Partitioning
+    url: "https://www.postgresql.org/docs/current/ddl-partitioning.html"
+    type: documentation
+  - title: PostgreSQL Indexes
+    url: "https://www.postgresql.org/docs/current/indexes.html"
+    type: documentation
+  - title: PostgreSQL CLUSTER Command
+    url: "https://www.postgresql.org/docs/current/sql-cluster.html"
+    type: documentation
+  - title: PostgreSQL Performance Tips
+    url: "https://www.postgresql.org/docs/current/performance-tips.html"
+    type: documentation
+  - title: PostgreSQL Routine Vacuuming
+    url: "https://www.postgresql.org/docs/current/routine-vacuuming.html"
+    type: documentation
+  - title: PostgreSQL CREATE INDEX
+    url: "https://www.postgresql.org/docs/current/sql-createindex.html"
+    type: documentation
+  - title: PostgreSQL ANALYZE
+    url: "https://www.postgresql.org/docs/current/sql-analyze.html"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| intermediate | database | explain, query-plan, partitioning |
+
+At Capital One, engineers faced a challenge that might sound hauntingly familiar: serve millions of customers' identity data in milliseconds while archiving terabytes of data daily [1]. Their Consumer Identity platform required instant access to recent customer data, but conventional approaches buckled under the relentless scale. The solution combined PostgreSQL partitioning, strategic composite indexing, and a counterintuitive insight about vacuuming — eliminating maintenance downtime entirely and delivering 99.9% of queries within milliseconds.
+
+---
+
+> ### Real-World Case — Capital One
+>
+> Capital One's Consumer Identity platform manages millions of customers' identity data in PostgreSQL. Their data ingestion team deals with massive daily volumes, with customers primarily accessing data less than 90 days old. They needed to serve recent customer data within milliseconds while archiving terabytes of data daily.
+>
+> | | |
+> |---|---|
+> | **Challenge** | A single slow query on their date-partitioned customer data tables could cascade into a poor customer experience. The naive approach of running DELETE or VACUUM on large partitions caused table locks that blocked reads/writes. Without proper composite indexes and partition pruning, queries scanning across all partitions took much too long for a customer-facing banking application. |
+> | **Solution** | Capital One partitioned tables by timestamptz (timestamp with time zone) for temporal grouping, created composite indexes on (partition_key, customer_identifier) to enable partition pruning and fast lookups, and detached old partitions instead of deleting rows to avoid costly vacuum operations. They deliberately chose NOT to vacuum because the lock overhead hurt customer experience more than the bloat. |
+> | **Outcome** | 99.9% of recent data queries responded in milliseconds. Terabytes of data archived daily by detaching partitions (instant metadata operation vs. hour-long bulk deletes). Partitioning and composite indexing outperformed NoSQL alternatives for their query patterns. The counterintuitive 'don't vacuum' strategy eliminated maintenance-related downtime entirely. |
+> | **Lesson** | Partitioning alone is not enough — you need composite indexes on the partition key plus filtered columns to enable partition pruning. Also, the most effective optimization can sometimes be deciding what NOT to do (like vacuuming), especially when the operational cost (table locks) exceeds the benefit. |
+
+---
+
+## Hook — The Query That Should Have Been Fast
+
+You have a PostgreSQL table with 100 million rows, partitioned by date. You run a query filtering on a date range, expecting it to fly. Instead, it crawls.
+
+Five seconds. Ten seconds. Thirty seconds.
+
+This moment of cognitive dissonance — when a carefully designed partition strategy fails to deliver — is a rite of passage for any team working at scale. The table is partitioned, the WHERE clause filters by the partition key, yet the database seems determined to touch every row.
+
+Why? Because partitions are not a performance silver bullet. They are a foundation, and most teams stop there. The real performance lives in what you build on top of that foundation: composite indexes that match your query patterns, cluster strategies that align physical data layout with access patterns, and an understanding of how the query planner actually works.
+
+## Problem — The Three Silent Killers of Partitioned Queries
+
+When a partitioned table query runs slow, the instinct is to blame the partition design itself. But more often than not, the partition design is fine — and the real problems lie elsewhere.
+
+Three silent killers haunt most slow partitioned queries:
+
+First, **partition pruning that is not actually happening.** You assume PostgreSQL skips irrelevant partitions, but a poorly constructed WHERE clause — or one that wraps the partition key in a function — causes the planner to scan every partition [3].
+
+Second, **indexes that are ignored.** Even with perfect partitions, if no index covers the filter columns, PostgreSQL falls back to sequential scans. On a 100-million-row partition, that is an eternity.
+
+Third, **expensive operations nobody asked for.** Sort, hash aggregate, and nested loop operations on large intermediate result sets dominate execution time — even when pruning and indexing are working perfectly [2].
+
+Identifying which of these is the culprit is the difference between guessing and optimizing.
+
+## Real-World Case — Capital One's Identity Platform
+
+Capital One's Consumer Identity platform manages identity data for millions of customers at one of the largest banks in the United States [1]. With massive daily data ingestion and a requirement to serve historical customer data within milliseconds, their engineering team pushed PostgreSQL far beyond typical enterprise boundaries.
+
+The critical architectural insight came from analyzing access patterns: customers primarily queried data less than 90 days old. This shaped everything — from how they partitioned data to how they indexed it.
+
+The team implemented daily partitioned tables, with older partitions detached as metadata-only operations. Detaching a partition took milliseconds instead of the hours-long bulk deletes that plagued traditional cleanup approaches. Their counterintuitive 'don't vacuum' strategy — skipping VACUUM on append-only partitions entirely — eliminated maintenance-related downtime [7].
+
+The result? 99.9% of recent-data queries returned within milliseconds. Terabytes of data archived daily without impacting performance. And the combination of partitioning and composite indexing outperformed NoSQL alternatives for their specific query patterns.
+
+## Deep Dive — Reading the EXPLAIN Plan Like a Detective
+
+EXPLAIN (ANALYZE, BUFFERS) is the single most powerful tool in your query optimization arsenal. It reveals not just what PostgreSQL plans to do, but what it actually did — including how many rows it processed, how much memory it used, and whether it pruned partitions as expected [2].
+
+Three diagnostic targets in every EXPLAIN output:
+
+**1. Partition Pruning Confirmation**
+Look for the number of subplans versus partitions removed. If your 12-partition table shows all 12 subplans in the output, pruning failed. Check whether the WHERE clause uses the partition key directly — not wrapped in a function or cast [3].
+
+**2. Scan Type and Row Estimates**
+A sequential scan on a 100M row partition raises immediate alarm. But even an index scan can be deceptive — compare the 'rows' estimate to 'actual rows' in the output. If they diverge significantly, the planner lacks up-to-date statistics [6].
+
+**3. Expensive Sort and Hash Operations**
+Search for 'Sort Method: external merge' or 'HashAggregate' in the plan output. These operations spill to disk when intermediate results exceed work_mem, turning millisecond queries into multi-second disasters.
+
+## Workflow — The Optimization Decision Tree
+
+When facing a slow partitioned query, follow this diagnostic workflow. The diagram below maps every branch of the decision tree — from initial EXPLAIN analysis through partition pruning checks, index verification, and performance tuning. Each decision point eliminates a class of problems before you invest time in the wrong fix.
+
+## Code Example — From Slow to Sub-Millisecond
+
+Let's walk through a real optimization scenario. You have an events table partitioned by event_date with 100 million rows. The query filters by date range and status.
+
+The first step is diagnostic: run EXPLAIN ANALYZE to see what is actually happening. Check for 'Subplans Removed' to verify partition pruning — if you see 'Subplans Removed: 0', your WHERE clause did not match the partition key.
+
+Next, create a composite index on (event_date, status). The column order matters: put the partition key first, then the additional filter columns. This lets PostgreSQL narrow both the partition and the rows within it using a single index.
+
+The CREATE INDEX CONCURRENTLY option is critical for production systems — it builds the index without blocking writes on the table [8].
+
+CLUSTER physically reorders the table data to match the index order, which dramatically improves sequential access patterns. However, this locks the table, so schedule it during maintenance windows [5].
+
+Finally, ANALYZE updates the table statistics so the query planner makes accurate cost estimates. Running ANALYZE after creating indexes or clustering prevents the planner from guessing with stale statistics [9].
+
+## Lessons Learned — What to Do Differently Tomorrow
+
+Here are the actionable takeaways from Capital One's experience and PostgreSQL optimization best practices:
+
+**1. Verify partition pruning before tuning anything else.** The most common mistake is assuming pruning works when it does not.
+
+**2. Composite indexes are your best performance lever for partitioned tables.** A single index on (partition_key, filtered_columns) beats multiple single-column indexes for most query patterns [4].
+
+**3. Use CREATE INDEX CONCURRENTLY in production.** Blocking writes for index creation is not acceptable at scale.
+
+**4. Consider CLUSTER for read-heavy workloads.** The upfront maintenance cost pays off in query performance when physical data order matches access patterns [5].
+
+**5. Question assumptions about VACUUM.** For append-only partitions that are eventually detached, skipping VACUUM entirely can eliminate maintenance windows [7].
+
+**6. EXPLAIN (ANALYZE, BUFFERS) should be your first tool, not your last.** Run it before changing anything to establish a baseline.
+
+The next time a query on your partitioned table feels slow, do not blame the partition scheme. Run EXPLAIN, check the three killers, and optimize surgically.
+
+---
+
+## Query Optimization Decision Tree
+
+```mermaid
+flowchart TD
+    A[Slow Query] --> B[Run EXPLAIN ANALYZE BUFFERS]
+    B --> C{Partitions Pruned?}
+    C -->|No| D[Add partition key to WHERE clause]
+    D --> C
+    C -->|Yes| E{Index Scan Used?}
+    E -->|No| F[Create composite index on (date, filtered_columns)]
+    F --> E
+    E -->|Yes| G{Expensive Sorts?}
+    G -->|Yes| H[Optimize query or add covering index]
+    G -->|No| I{Accurate Row Estimates?}
+    I -->|No| J[Update statistics with ANALYZE]
+    I -->|Yes| K[Millisecond queries]
+    H --> I
+    J --> I
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+
+**A:** Check partition pruning effectiveness, index utilization patterns, and expensive sort operations. Create composite indexes on (date, filtered_columns) and evaluate clustering strategies for optimal data access.
+
+</details>
+
+## Conclusion
+
+Capital One proved that PostgreSQL can handle data at massive scale — when you understand how the query planner thinks [1]. The combination of partition pruning awareness, strategic composite indexing, and maintenance pattern innovation turned a database many dismiss as 'not for big data' into a millisecond query engine serving millions of customers.
+
+The lesson is simple: partitions get you started. Composite indexes and EXPLAIN analysis get you to production at scale. The next time a partitioned query feels slow, resist the urge to throw hardware or a schema redesign at the problem. Run EXPLAIN (ANALYZE, BUFFERS), check the three silent killers, and optimize surgically. Your future self — and your users — will thank you.
+
+---
+
+## References
+
+1. [Capital One: PostgreSQL Partitioning Tips](https://www.capitalone.com/tech/software-engineering/postgresql-partitioning-tips/) — blog
+2. [PostgreSQL EXPLAIN Documentation](https://www.postgresql.org/docs/current/using-explain.html) — documentation
+3. [PostgreSQL Table Partitioning](https://www.postgresql.org/docs/current/ddl-partitioning.html) — documentation
+4. [PostgreSQL Indexes](https://www.postgresql.org/docs/current/indexes.html) — documentation
+5. [PostgreSQL CLUSTER Command](https://www.postgresql.org/docs/current/sql-cluster.html) — documentation
+6. [PostgreSQL Performance Tips](https://www.postgresql.org/docs/current/performance-tips.html) — documentation
+7. [PostgreSQL Routine Vacuuming](https://www.postgresql.org/docs/current/routine-vacuuming.html) — documentation
+8. [PostgreSQL CREATE INDEX](https://www.postgresql.org/docs/current/sql-createindex.html) — documentation
+9. [PostgreSQL ANALYZE](https://www.postgresql.org/docs/current/sql-analyze.html) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
