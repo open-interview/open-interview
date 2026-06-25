@@ -1,0 +1,141 @@
+---
+id: blog-1782384365466-the-partition-paradox-why-your
+title: "The Partition Paradox: Why Your PostgreSQL Query Is Still Slow (And How GitLab Fixed It)"
+slug: the-partition-paradox-why-your-postgresql-query-is-still-slow-and-how-gitlab-fix
+date: "2026-06-25"
+author: "Satishkumar Dhule"
+channel: database
+category: database
+difficulty: intermediate
+tags: ["explain", "query-plan", "partitioning"]
+description: "Learn how GitLab optimized their 2.5 TB PostgreSQL database by validating partition pruning, reading EXPLAIN plans, and fixing slow queries on 100M-row tables."
+question: You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+sources:
+  - title: GitLab CI Data Decay Design Document
+    url: "https://handbook.gitlab.com/handbook/engineering/architecture/design-documents/ci_data_decay/"
+    type: documentation
+  - title: "PostgreSQL Documentation: Table Partitioning"
+    url: "https://www.postgresql.org/docs/16/ddl-partitioning.html"
+    type: documentation
+  - title: "PostgreSQL Documentation: Using EXPLAIN"
+    url: "https://www.postgresql.org/docs/16/using-explain.html"
+    type: documentation
+  - title: "PostgreSQL Documentation: Indexes"
+    url: "https://www.postgresql.org/docs/16/indexes.html"
+    type: documentation
+  - title: "PostgreSQL Documentation: CLUSTER"
+    url: "https://www.postgresql.org/docs/16/sql-cluster.html"
+    type: documentation
+  - title: "PostgreSQL Documentation: Partition Pruning"
+    url: "https://www.postgresql.org/docs/16/ddl-partitioning.html#DDL-PARTITION-PRUNING"
+    type: documentation
+  - title: "Use The Index, Luke: A Guide to Database Performance"
+    url: "https://use-the-index-luke.com/"
+    type: documentation
+  - title: "PostgreSQL Wiki: Performance Optimization"
+    url: "https://wiki.postgresql.org/wiki/Performance_Optimization"
+    type: documentation
+  - title: "DigitalOcean: How to Use Indexes in PostgreSQL"
+    url: "https://www.digitalocean.com/community/tutorials/how-to-use-indexes-in-postgresql"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| intermediate | database | explain, query-plan, partitioning |
+
+GitLab's CI/CD database hit a breaking point — the ci_builds table ballooned to 2.5 TB with over 2 billion rows and 50+ columns [1]. Queries that ran fine in development consistently timed out in production. The table was too large for effective indexing, too wide for schema migrations, and caused frequent Sev-2 incidents with statement timeouts. This is the moment every database engineer dreads — and the exact scenario where understanding PostgreSQL partitioning at a deep level becomes a career-defining skill.
+
+---
+
+> ### Real-World Case — GitLab
+>
+> GitLab's CI/CD database grew to a breaking point — the ci_builds table hit 2.5 TB with over 2 billion rows and 50+ columns. Queries that worked fine in development consistently timed out in production. The table was too large for effective indexing, too wide for schema migrations, and was causing frequent production incidents with statement timeouts.
+>
+> | | |
+> |---|---|
+> | **Challenge** | A query filtering on a specific pipeline or build range performed poorly despite having indexes. The EXPLAIN plan showed that PostgreSQL was scanning all partitions instead of pruning, because high-volume application queries didn't include the partition_id filter. This caused excessive LockManager LWLock contention — each query had to acquire locks across hundreds of partition indexes, leading to Severity 2 production incidents with cascading Sidekiq failures. |
+> | **Solution** | GitLab partitioned ci_builds and ci_builds_metadata by partition_id (a routing key), then systematically audited every application query to ensure it included the partition filter. They built tooling using pg_stat_statements to rank 'unpartitioned queries' by production call rate, fixed ActiveRecord scopes, joins, and preloads to propagate partition_id conditions, and temporarily disabled automatic partition creation until all high-volume queries were verified to prune correctly. |
+> | **Outcome** | Partition pruning was validated end-to-end, eliminating LockManager contention on replicas. Query performance improved dramatically — previously unpartitioned queries that scanned all partitions now targeted a single partition. Incidents caused by partition-related lock contention (Severity 2) were resolved, enabling subsequent partitioning of ci_stages, ci_job_artifacts, and ci_pipeline_variables to continue safely. |
+> | **Lesson** | Partitioning without fixing all queries to include the partition key makes performance WORSE, not better — more partitions mean more indexes to lock and scan. The real work isn't the ALTER TABLE; it's finding every query path that lacks a partition filter. Use pg_stat_statements to measure actual production query patterns, not just developer assumptions about what queries exist. |
+
+---
+
+## Hook — The 2.5 TB elephant in the room
+
+You have done everything right. You partitioned your table by date, added indexes, and followed the documentation. Yet that query filtering on a specific date range still crawls. The query planner stares back at you with a sequential scan across every partition. Sound familiar? The painful truth is that partitioning does not make queries faster by default — it creates *opportunities* for the planner to be faster, and those opportunities are surprisingly easy to miss. GitLab's engineering team discovered this the hard way when their ci_builds table became too wide for schema migrations, too large for effective indexing, and too critical to take offline [1]. What they learned about partition pruning validation turned their database performance around.
+
+## Problem — When partitioning feels like a placebo
+
+Partitioning is one of those features that looks straightforward in documentation but reveals its complexity under real-world pressure. Many developers add partitioning, see the table structure reorganize, and assume performance will follow automatically. Here is the uncomfortable truth: partitioning does not make queries faster by default — only *partition pruning* does, and pruning is not guaranteed. The most common culprit is a query that *should* benefit from pruning but does not, because the planner cannot determine the partition constraint at planning time. For example, wrapping the partition key in a function like `DATE(event_date)` instead of comparing against it directly prevents the planner from eliminating partitions [2]. Consequently, the query scans every partition, and that 100M-row table behaves exactly like it did before — just with more metadata overhead. The stakes go up from there: without pruning, indexes on individual partitions are only marginally useful, sequential scans dominate, and query times degrade linearly with data growth.
+
+## Real-World Case — GitLab's CI database crisis
+
+GitLab's CI/CD infrastructure scaled rapidly, and the ci_builds table grew to 2.5 TB with over 2 billion rows across 50+ columns [1]. The table was so wide and so massive that even routine operations became treacherous. Schema migrations took hours or failed outright. Index maintenance became a nightmare. Statement timeouts in production became a daily occurrence. The team validated partition pruning end-to-end, and the results were dramatic. Previously unpartitioned queries that scanned every partition now targeted a single partition. LockManager contention on replicas was eliminated entirely. The fix resolved ongoing Sev-2 incidents and opened the door for partitioning additional critical tables — ci_stages, ci_job_artifacts, and ci_pipeline_variables — to continue safely. This was not a simple "add partitioning" fix. It was a meticulous process of verifying that each piece of the optimization puzzle was actually working — starting with the EXPLAIN plan.
+
+## Deep Dive — Reading the EXPLAIN plan like a detective
+
+When you run `EXPLAIN (ANALYZE, BUFFERS)` on a partitioned table query, you are looking for three critical signals. First, partition pruning effectiveness: the output should show "Subplans Removed" with a non-zero value. If you see zero subplans removed, the query planner visited every partition — rendering partitioning useless for that query [6]. Second, index utilization: look for "Index Scan" versus "Seq Scan" on the individual partitions. A sequential scan on a 50 GB partition is a red flag, especially when combined with a large "rows removed by filter" count. Third, expensive operations: "Sort" with high memory usage or "Hash Aggregate" with large batches indicate the query is doing heavy lifting that a well-designed composite index could eliminate. The PostgreSQL partitioning documentation [2] emphasizes that queries benefit from partition pruning only when the WHERE clause includes the partition key in a way the planner can evaluate at *planning time* — not at execution time. This subtle distinction explains why wrapping the partition key in a function call silently disables pruning. Another common mistake: using `BETWEEN` with timestamps in a way that the planner cannot prove which partitions are relevant. Moreover, the planner's ability to prune depends on the partition constraint being explicit. Range partitioning with `LESS THAN` bounds is generally the most planner-friendly strategy.
+
+## Workflow — A systematic diagnostic approach
+
+When faced with a slow query on a partitioned table, follow this diagnostic workflow. Start with `EXPLAIN (ANALYZE, BUFFERS)` — never optimize blind. Check for "Subplans Removed" in the output to confirm pruning is active. If pruning is not happening, ensure the WHERE clause directly references the partition key with immutable expressions (no functions wrapping the column). Once pruning is confirmed, inspect the scan type on the accessed partitions. An "Index Scan" is good; a "Seq Scan" means you need an index that covers the WHERE clause columns. After adding a composite index, consider CLUSTER to physically reorder rows on disk — this collapses the index's visibility map and dramatically reduces random I/O for range scans. Finally, re-run EXPLAIN ANALYZE and compare the numbers. The diagram below visualizes this entire workflow as a decision tree.
+
+## Code Example — From slow query to optimized execution
+
+The SQL walkthrough below demonstrates the complete diagnostic and optimization cycle on a partitioned events table. The first EXPLAIN command is the diagnostic check — it reveals whether partition pruning is active and what scan strategy the planner chose. The "Subplans Removed" count is the single most important number in the output: if it is zero, pruning is not working regardless of your partitioning scheme. Next, a composite index is created on (event_date, status). The column order here is deliberate — the partition key comes first, followed by the filter column. This ordering allows the index to support both the partition constraint and the WHERE clause filter simultaneously [4]. Finally, CLUSTER physically reorganizes the table on disk to match the index order, which can halve query times for range scans by eliminating random page reads. The PostgreSQL CLUSTER documentation [5] notes that this is a one-time operation that must be repeated as new data is inserted, typically during maintenance windows.
+
+## Lessons Learned — What to do differently tomorrow
+
+This journey reveals a pattern that applies far beyond PostgreSQL: the most expensive bugs are the ones that *seem* to be fixed but are not. Testing partitioning with small datasets creates false confidence — a 1 GB table does not expose the behavior of a 2.5 TB one. The PostgreSQL indexing strategy [4] and Use The Index, Luke [7] both emphasize that partial testing is the root cause of most production database incidents. The actionable takeaway for your team: make `EXPLAIN (ANALYZE, BUFFERS)` a standard part of your query review process, not a post-incident investigation tool. Add it to your pull request template for any query that touches a partitioned table. Document the expected "Subplans Removed" count for each critical query. Run query plans against a staging environment that mirrors production data volume. Database optimization at scale is not about knowing the right answer — it is about having a reliable, reproducible process for finding it, every time. Start tomorrow by running EXPLAIN on your most expensive query. You might be surprised at what you find.
+
+---
+
+## Partition Query Optimization Decision Tree
+
+```mermaid
+flowchart TD
+    A[Slow Query on Partitioned Table] --> B[Run EXPLAIN ANALYZE BUFFERS]
+    B --> C{Check Subplans Removed}
+    C -->|Zero: No Pruning| D[Fix WHERE Clause - Use Partition Key Directly]
+    C -->|> 0: Pruning Active| E{Check Scan Type on Accessed Partitions}
+    D --> B
+    E -->|Seq Scan| F[Create Composite Index on (partition_key, filter_col)]
+    F --> G[CLUSTER Table on New Index]
+    G --> H[Re-run EXPLAIN ANALYZE]
+    E -->|Index Scan| I{Expensive Sort or Hash?}
+    I -->|Yes| J[Optimize Query or Add Covering Index]
+    I -->|No| K[Query is Optimized ✅]
+    H --> K
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+
+**A:** Check partition pruning effectiveness, index utilization patterns, and expensive sort operations. Create composite indexes on (date, filtered_columns) and evaluate clustering strategies for optimal data access.
+
+</details>
+
+## Conclusion
+
+The next time you stare at an EXPLAIN plan showing a sequential scan across every partition, remember GitLab's story. Partitioning is not a silver bullet — it is a tool that requires verification at every step. Add EXPLAIN (ANALYZE, BUFFERS) to your query review process today. Document the expected partition pruning behavior for your critical queries. And never assume a partition is working until you have seen the "Subplans Removed" count with your own eyes. Your future self — and the engineer on call at 3 AM — will thank you.
+
+---
+
+## References
+
+1. [GitLab CI Data Decay Design Document](https://handbook.gitlab.com/handbook/engineering/architecture/design-documents/ci_data_decay/) — documentation
+2. [PostgreSQL Documentation: Table Partitioning](https://www.postgresql.org/docs/16/ddl-partitioning.html) — documentation
+3. [PostgreSQL Documentation: Using EXPLAIN](https://www.postgresql.org/docs/16/using-explain.html) — documentation
+4. [PostgreSQL Documentation: Indexes](https://www.postgresql.org/docs/16/indexes.html) — documentation
+5. [PostgreSQL Documentation: CLUSTER](https://www.postgresql.org/docs/16/sql-cluster.html) — documentation
+6. [PostgreSQL Documentation: Partition Pruning](https://www.postgresql.org/docs/16/ddl-partitioning.html#DDL-PARTITION-PRUNING) — documentation
+7. [Use The Index, Luke: A Guide to Database Performance](https://use-the-index-luke.com/) — documentation
+8. [PostgreSQL Wiki: Performance Optimization](https://wiki.postgresql.org/wiki/Performance_Optimization) — documentation
+9. [DigitalOcean: How to Use Indexes in PostgreSQL](https://www.digitalocean.com/community/tutorials/how-to-use-indexes-in-postgresql) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
