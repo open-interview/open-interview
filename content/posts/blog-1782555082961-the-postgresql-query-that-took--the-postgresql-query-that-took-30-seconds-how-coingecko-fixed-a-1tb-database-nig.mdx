@@ -1,0 +1,193 @@
+---
+id: blog-1782555082961-the-postgresql-query-that-took
+title: "The PostgreSQL Query That Took 30 Seconds: How CoinGecko Fixed a 1TB Database Nightmare"
+slug: the-postgresql-query-that-took-30-seconds-how-coingecko-fixed-a-1tb-database-nig
+date: "2026-06-27"
+author: "Satishkumar Dhule"
+channel: database
+category: database
+difficulty: intermediate
+tags: ["explain", "query-plan", "partitioning"]
+description: "Learn how CoinGecko slashed PostgreSQL query times by 86% using partitioning, composite indexes, and EXPLAIN plan analysis. Practical database optimization for developers."
+question: You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+sources:
+  - title: Scaling PostgreSQL Performance with Table Partitioning — CoinGecko Case Study
+    url: "https://amree.dev/2025/06/13/scaling-postgresql-performance-with-table-partitioning/"
+    type: blog
+  - title: PostgreSQL Documentation — Table Partitioning
+    url: "https://www.postgresql.org/docs/current/ddl-partitioning.html"
+    type: documentation
+  - title: PostgreSQL Documentation — Using EXPLAIN
+    url: "https://www.postgresql.org/docs/current/using-explain.html"
+    type: documentation
+  - title: PostgreSQL Documentation — Indexes
+    url: "https://www.postgresql.org/docs/current/indexes.html"
+    type: documentation
+  - title: PostgreSQL Documentation — CLUSTER
+    url: "https://www.postgresql.org/docs/current/sql-cluster.html"
+    type: documentation
+  - title: PostgreSQL Wiki — Performance Optimization
+    url: "https://wiki.postgresql.org/wiki/Performance_Optimization"
+    type: documentation
+  - title: Query Optimization — Wikipedia
+    url: "https://en.wikipedia.org/wiki/Query_optimization"
+    type: documentation
+  - title: PostgreSQL Documentation — Server Configuration
+    url: "https://www.postgresql.org/docs/current/runtime-config-query.html"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| intermediate | database | explain, query-plan, partitioning |
+
+Imagine a database table so massive that a single query takes half a minute to return results. Now imagine that table growing by the hour with no end in sight, pushing your infrastructure to its breaking point. This was the reality for CoinGecko, whose 1TB+ PostgreSQL table storing 8 years of crypto price data had queries averaging 30+ seconds, causing daily IOPS breaches and replica lag that kept engineers awake at night [1]. Their journey from slow queries to a 578ms p99 response time is a masterclass in PostgreSQL partitioning—and every developer working with large datasets should understand what they discovered along the way.
+
+---
+
+> ### Real-World Case — CoinGecko
+>
+> CoinGecko's 1TB+ PostgreSQL table storing 8+ years of hourly crypto price data had queries averaging 30+ seconds, causing daily IOPS breaches, Apdex degradation, and replica lag. The table was growing unbounded with no partitioning.
+>
+> | | |
+> |---|---|
+> | **Challenge** | A 1TB+ table with JSONB columns made indexing impractical (different currency keys for different apps). IOPS kept breaching 24K limits, request queues grew, and adding more indexes per query pattern was deemed excessive. |
+> | **Solution** | Implemented monthly range partitioning by date (created_at). Used PostgreSQL Foreign Data Wrappers with a separate prewarmed database for zero-downtime migration. Applied pg_prewarm to all partitions and replicas. To ensure partition pruning, all queries needed explicit date range bounds. |
+> | **Outcome** | 86% reduction in p99 response time (4.13s → 578ms), 20% IOPS reduction, replica lag eliminated, 6-8x query speedup. Prewarming partitions dropped from 10 hours (single table) to 3 hours (partitioned). |
+> | **Lesson** | Partitioning can make queries WORSE if they lack proper date bounds — one query with only `created_at > ?` scanned ALL current + future empty partitions, causing CPU spikes. Future partitions must be created judiciously. Always verify partition pruning in EXPLAIN plans and ensure queries include both lower and upper bounds on the partition key. |
+
+---
+
+## Hook — The Query That Wouldn't Finish
+
+It starts innocently enough. A dashboard query that used to return in a couple of seconds starts taking five. Then ten. Then thirty. Your pager goes off at 2 AM because replica lag is spiking. Your IOPS budget is blown for the third day in a row. And deep down, you know exactly what the problem is: that one table that has been growing unbounded for years. For CoinGecko, that table held over 1TB of hourly crypto price data spanning more than 8 years [1]. Every query against it was a full-table scan in disguise, and partitioning—the feature designed to solve exactly this problem—had never been implemented. Sound familiar?
+
+## Problem — When 100 Million Rows Become a Nightmare
+
+PostgreSQL tables don't come with a warning label that says "you should have partitioned me yesterday." The pain creeps up gradually. At 10 million rows, things are fine. At 50 million, you start noticing. At 100 million, your queries are taking vacations without you. The core issue is that without partitioning, PostgreSQL has no choice but to scan through every row to find what you need—even if you are only looking for data from a single week. This is where understanding the EXPLAIN plan becomes your most valuable debugging skill [3]. Most developers know EXPLAIN exists, but fewer know how to use it as a diagnostic tool for partition-related problems. The real challenge is that partitioning alone isn't a silver bullet; you need the right index strategy, the right partition key, and the right maintenance routines working together.
+
+## Real-World Case — CoinGecko
+
+CoinGecko's infrastructure was under siege. Their main PostgreSQL table had grown past 1TB with over 8 years of accumulated data and no partitioning in place [1]. Queries averaged 30+ seconds, the team was breaching IOPS limits daily, application performance (Apdex) was degrading, and replica lag was a constant threat. The fix? A comprehensive partitioning strategy that broke the massive table into manageable chunks. The results speak for themselves: p99 response time dropped 86% from 4.13 seconds to just 578 milliseconds. IOPS decreased by 20%. Replica lag was completely eliminated. Perhaps most impressively, partition prewarming—the time required to load data into memory—plummeted from 10 hours on the monolithic table to just 3 hours on the partitioned setup [1]. This wasn't a minor optimization. This was the difference between an unstable system and one that could scale.
+
+## Deep Dive — How Partitioning Actually Works (And When It Doesn't)
+
+Table partitioning in PostgreSQL lets you split a large logical table into smaller physical pieces called partitions, based on a partition key like a date range [2]. When you query with a WHERE clause on that key, PostgreSQL performs "partition pruning"—it skips partitions that don't match your filter, reading only the relevant chunks. This is the primary performance benefit, and it is massive when done right. However, partitioning can fail you in subtle ways. If your query doesn't filter on the partition key, PostgreSQL scans every partition anyway. If your partition boundaries don't align with your query patterns, you create unnecessary overhead. And crucially, partitioning does NOT automatically create useful indexes—you still need those [4]. Many developers discover too late that their carefully partitioned table is still slow because (a) the partition key is wrong for their query patterns, or (b) they forgot that each partition needs its own indexes. This is where the EXPLAIN plan becomes your best friend. Check for "Append" nodes and "Subplans"—if you see all partitions listed, pruning is not working [3].
+
+## Workflow — A Methodical Approach to Query Optimization
+
+The path from slow query to fast query follows a repeatable workflow. Here is the diagnostic process that teams like CoinGecko use to systematically eliminate performance bottlenecks:
+
+1. **Always start with EXPLAIN (ANALYZE, BUFFERS)** — This shows you what PostgreSQL actually did, not what it planned to do. Without the real execution data, you are guessing.
+2. **Check partition pruning** — Count the partitions scanned versus total partitions. If they match, your query isn't pruning.
+3. **Check for sequential scans** — If any partition shows a Seq Scan on a large table, you need a better index.
+4. **Look for expensive operations** — Sort, HashAggregate, and Nested Loop operations on large row counts are red flags.
+5. **Design composite indexes** — A single-column index on the partition key helps pruning, but a composite index on (partition_key, filtered_columns) eliminates row-level lookups entirely [4].
+6. **Consider CLUSTER** — Physically reordering data on disk to match your index can dramatically reduce IO for range scans [5].
+7. **Vacuum and analyze** — Stale statistics lead to bad plans. Don't skip maintenance.
+
+This workflow is captured visually below.
+
+## Code Example — From EXPLAIN to Optimization
+
+Let's walk through a concrete example. Imagine a partitioned `events` table with 100M rows where you need data from January 2024 for completed status events. Here is how you diagnose and fix it:
+
+```sql
+-- Step 1: Check what's happening with EXPLAIN ANALYZE
+EXPLAIN (ANALYZE, BUFFERS, TIMING) 
+SELECT * FROM events 
+WHERE event_date BETWEEN '2024-01-01' AND '2024-01-31'
+  AND status = 'completed';
+
+-- Look for: Append (shows partitions scanned)
+-- Look for: Seq Scan on a large partition (bad!)
+-- Look for: actual time vs planning time
+
+-- Step 2: If you see sequential scans, add a composite index
+-- The order matters: put the partition key first, then filters
+CREATE INDEX CONCURRENTLY idx_events_date_status 
+ON events (event_date, status);
+
+-- Step 3: Consider physical reordering with CLUSTER
+-- This rewrites the table to match index order
+-- Warning: locks the table, do during maintenance window
+CLUSTER events USING idx_events_date_status;
+
+-- Step 4: Update statistics and re-analyze
+ANALYZE events;
+
+-- Step 5: Verify improvement
+EXPLAIN (ANALYZE, BUFFERS, TIMING) 
+SELECT * FROM events 
+WHERE event_date BETWEEN '2024-01-01' AND '2024-01-31'
+  AND status = 'completed';
+-- Expect: Index Scan, fewer buffers, lower actual time
+```
+
+The key insight here is the composite index order. Putting `event_date` first allows partition pruning to work efficiently because it aligns with the partition key. Adding `status` second covers the additional WHERE clause filter, turning what would be an Index Scan + Filter into a pure Index Scan—no row-level filtering needed [4]. The `CONCURRENTLY` keyword is critical on production systems: without it, PostgreSQL takes a lock that blocks writes to the table while building the index.
+
+## Lessons Learned — What CoinGecko's Story Teaches Every Developer
+
+CoinGecko's 86% p99 improvement is impressive, but the real lesson is more profound: you don't have to wait until your database is on fire. Partitioning should be part of your initial schema design for any table that will grow over time [2]. Here are the battle-tested takeaways:
+
+- **Partition early, partition often.** Adding partitions to a 1TB table is surgery; adding them to a 10GB table is routine maintenance. Don't wait.
+- **Match your partition key to your query patterns.** If you always query by date, partition by date. If you query by customer_id, hash-partition by customer_id.
+- **Composite indexes are your secret weapon.** A single-column index on the partition key enables pruning but doesn't prevent per-partition row scans. A composite index eliminates both issues [4].
+- **EXPLAIN (ANALYZE, BUFFERS) is your diagnostic scalpel.** Run it on every slow query. Count the partitions. Count the buffers. Look for sequential scans. Then fix what you find.
+- **CLUSTER is powerful but has costs.** It physically rewrites the table to match your index order, dramatically improving range scan performance. But it locks the table and must be run during maintenance windows [5].
+- **Monitor relentlessly.** CoinGecko's IOPS breaches and replica lag were symptoms, not root causes. Monitoring allowed them to quantify the problem and verify the fix.
+
+If you take one thing away from this story, let it be this: the difference between a 30-second query and a 500-millisecond query is rarely magic. It is methodical diagnosis, understanding of fundamentals, and the courage to restructure your data when it needs it.
+
+---
+
+## Query Optimization Diagnostic Flow
+
+```mermaid
+flowchart TD
+    A[Slow Query on Large Table] --> B[Run EXPLAIN ANALYZE]
+    B --> C{Partition Pruning Working?}
+    C -->|No| D[Redesign Partition Key or Boundaries]
+    C -->|Yes| E{Sequential Scan Detected?}
+    E -->|Yes| F[Create Composite Index on (partition_key, filter_columns)]
+    E -->|No| G{Expensive Sort or Hash?}
+    G -->|Yes| H[Optimize ORDER BY / GROUP BY with Covering Index]
+    G -->|No| I[Consider CLUSTER for Physical Reorder]
+    F --> J[Run ANALYZE to Update Statistics]
+    D --> K[Rebuild Partitions]
+    H --> I
+    I --> L[Verify with EXPLAIN ANALYZE]
+    J --> L
+    K --> L
+    L --> M[Query Under 1 Second]
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+
+**A:** Check partition pruning effectiveness, index utilization patterns, and expensive sort operations. Create composite indexes on (date, filtered_columns) and evaluate clustering strategies for optimal data access.
+
+</details>
+
+## Conclusion
+
+The next time you see a query taking 30 seconds, don't just add an index and hope for the best. Run EXPLAIN ANALYZE. Check partition pruning. Look for sequential scans. Build composite indexes that match your real query patterns. CoinGecko's 86% improvement didn't come from a single magic fix—it came from systematically applying database fundamentals that work whether you are storing crypto prices, e-commerce orders, or application logs. Your database is trying to tell you what it needs. Learn to read the EXPLAIN plan, and you will understand its language.
+
+---
+
+## References
+
+1. [Scaling PostgreSQL Performance with Table Partitioning — CoinGecko Case Study](https://amree.dev/2025/06/13/scaling-postgresql-performance-with-table-partitioning/) — blog
+2. [PostgreSQL Documentation — Table Partitioning](https://www.postgresql.org/docs/current/ddl-partitioning.html) — documentation
+3. [PostgreSQL Documentation — Using EXPLAIN](https://www.postgresql.org/docs/current/using-explain.html) — documentation
+4. [PostgreSQL Documentation — Indexes](https://www.postgresql.org/docs/current/indexes.html) — documentation
+5. [PostgreSQL Documentation — CLUSTER](https://www.postgresql.org/docs/current/sql-cluster.html) — documentation
+6. [PostgreSQL Wiki — Performance Optimization](https://wiki.postgresql.org/wiki/Performance_Optimization) — documentation
+7. [Query Optimization — Wikipedia](https://en.wikipedia.org/wiki/Query_optimization) — documentation
+8. [PostgreSQL Documentation — Server Configuration](https://www.postgresql.org/docs/current/runtime-config-query.html) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
