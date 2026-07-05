@@ -1,0 +1,146 @@
+---
+id: blog-1783246557774-when-postgresql-partitioning-b
+title: "When PostgreSQL Partitioning Backfires: Lessons from GitLab's Database Nightmare"
+slug: when-postgresql-partitioning-backfires-lessons-from-gitlab-s-database-nightmare
+date: "2026-07-05"
+author: "Satishkumar Dhule"
+channel: database
+category: database
+difficulty: intermediate
+tags: ["explain", "query-plan", "partitioning"]
+description: "Learn from GitLab's real-world partitioning disaster: how missing partition key filters caused Sev-2 incidents, and how to diagnose slow PostgreSQL queries using EXPLAIN plans, composite indexes, and clustering."
+question: You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+sources:
+  - title: GitLab incident report - Partitioning-related database incident
+    url: "https://gitlab.com/gitlab-com/gl-infra/production/-/work_items/21562"
+    type: article
+  - title: PostgreSQL Documentation - Table Partitioning
+    url: "https://www.postgresql.org/docs/current/ddl-partitioning.html"
+    type: documentation
+  - title: PostgreSQL Documentation - Using EXPLAIN
+    url: "https://www.postgresql.org/docs/current/using-explain.html"
+    type: documentation
+  - title: PostgreSQL Documentation - CREATE INDEX
+    url: "https://www.postgresql.org/docs/current/sql-createindex.html"
+    type: documentation
+  - title: PostgreSQL Documentation - CLUSTER
+    url: "https://www.postgresql.org/docs/current/sql-cluster.html"
+    type: documentation
+  - title: Wikipedia - Query optimization
+    url: "https://en.wikipedia.org/wiki/Query_optimization"
+    type: article
+  - title: Wikipedia - Database index
+    url: "https://en.wikipedia.org/wiki/Database_index"
+    type: article
+  - title: DigitalOcean - Understanding PostgreSQL Indexes
+    url: "https://www.digitalocean.com/community/tutorials/understanding-postgresql-indexes"
+    type: article
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| intermediate | database | explain, query-plan, partitioning |
+
+It was supposed to be GitLab's salvation. A multi-year engineering effort to partition their largest CI/CD tables—containing terabytes of data—using PostgreSQL's declarative partitioning. But as the partitions multiplied, a silent killer crept in. Queries that once returned in milliseconds began consuming more and more resources, triggering two Sev-2 incidents that brought CI pipelines to a crawl [1].
+
+---
+
+> ### Real-World Case — GitLab
+>
+> GitLab engineered a multi-year effort to partition their largest CI/CD database tables (ci_builds, ci_pipelines) using PostgreSQL declarative partitioning to improve scalability as data grew into terabytes. After rolling out partitioning, they discovered that high-frequency Sidekiq workers and API authentication queries were querying the partitioned tables without including the partition_id filter — causing full cross-partition scans that got progressively more expensive with each new partition.
+>
+> | | |
+> |---|---|
+> | **Challenge** | Multiple production queries hitting the p_ci_builds table (lookups by token_encrypted, build_id, etc.) had no partition key in their WHERE clauses, so PostgreSQL could not prune partitions. Each unpartitioned query required 259 slowpath LockManager LWLock acquisitions per execution (10 partitions × 24 indexes + parent table). As partitions grew, these non-pruned queries drove LockManager LWLock saturation on CI replicas. |
+> | **Solution** | GitLab: (1) Added partition_id filters to all high-frequency queries to enable partition pruning, (2) Created a Ci::PartitionableFinder concern that optimistically queries the current partition first and falls back to cross-partition scan only if not found, (3) Built a dedicated ci_job_tokens table to eliminate unpartitioned token-lookup queries on p_ci_builds, (4) Developed CI tooling that automatically detects and blocks new unpartitioned queries in merge requests, (5) Temporarily disabled automatic partition creation as a corrective action until all queries were fixed. |
+> | **Outcome** | Two Severity 2 production incidents (INC-8367, INC-8474) caused database lock contention, Sidekiq queueing delays SLO violations, and slow CI job status updates for customers. At peak, hundreds of thousands of LockManager slowpath lock acquisitions per second saturated replicas. Post-fix, LockManager contention dropped dramatically, partition creation was re-enabled with confidence, and CI replica stability was restored. |
+> | **Lesson** | Partitioning without ensuring all high-frequency queries include the partition key is worse than not partitioning at all. Each non-pruned query scans every partition — and as partitions multiply, the cost grows linearly while LockManager contention grows combinatorially (every partition × every index). Always validate partition pruning in EXPLAIN plans (check the Append node for partition count), and build automated guardrails to detect unpruned queries before they reach production. |
+
+---
+
+## Hook — The Partition That Broke the Pipeline
+
+You have done everything right. You read the PostgreSQL docs cover to cover. You designed a careful partitioning scheme by date. You migrated 100 million rows. Yet when you query a specific date range, the response time is... worse? Welcome to a club that GitLab never wanted to join. After rolling out a massive partitioning effort across their CI/CD database, GitLab discovered that some of their most critical queries were silently scanning every single partition—even when the data was neatly organized by date. This is the story of how partitioning nearly broke one of the largest PostgreSQL deployments on the planet, and what you can learn from it.
+
+## Problem — Why Partitioning Can Make Things Worse
+
+Partitioning is like organizing a library by floor. You put all 2023 books on the first floor, 2024 on the second, and so on. When a patron asks for a book from 2024, you send them directly to that floor. This is partition pruning, and it is the whole point of partitioning. But here is the problem: if the patron just asks for 'books' without specifying the year, the librarian has to check every single floor. In PostgreSQL terms, that means a full scan of every partition—and with each new partition you add, the query gets slower. Many developers assume that partitioning is a magic bullet. The truth is more nuanced. Partitioning optimizes for a specific query pattern: filtering by the partition key. If your application queries don't consistently include that key, you are not just failing to optimize—you are actively making things worse. Each new partition adds overhead to sequential scans, index maintenance, and query planning. The performance cliff is real, and it hits when you least expect it.
+
+## Real-World Case — GitLab's Partitioning Meltdown
+
+GitLab learned this lesson the hard way. Their CI/CD tables—specifically `ci_builds` and `ci_pipelines`—had grown to terabyte scale. After a multi-year engineering effort, they rolled out PostgreSQL declarative partitioning across these tables. The results looked good—until they weren't. Two Severity 2 incidents (INC-8367 and INC-8474) exposed a critical flaw. High-frequency Sidekiq workers and API authentication queries were querying the partitioned tables without including the `partition_id` filter. As GitLab created more partitions over time, these queries performed progressively worse, scanning every partition instead of one. The impact was severe. Database lock contention spiked as hundreds of thousands of LockManager slowpath lock acquisitions saturated replicas per second. Sidekiq queues backed up, violating SLOs. Customers experienced slow CI job status updates. The team had to halt partition creation entirely until they could trace and fix every query path. Post-fix, LockManager contention dropped dramatically. Partition creation was re-enabled with confidence. CI replica stability was restored [1]. The lesson? Partitioning is only as effective as the queries that use it.
+
+## Deep Dive — Reading the EXPLAIN Plan Like a Detective
+
+When a query on a partitioned table is slow, your first stop is the EXPLAIN plan. Think of it as a detective's notebook—every clue is there if you know where to look. First, check partition pruning. Look for `Subplans Removed` in the EXPLAIN output with `(ANALYZE, BUFFERS)`. PostgreSQL 12+ will tell you exactly how many partitions it pruned versus scanned. If you see all partitions being scanned, you have found the root cause [3]. Second, check index utilization. Is the query using an index or performing a sequential scan across partitions? A sequential scan on a partitioned table is especially dangerous because it compounds across every partition. Third, look for expensive sort or hash aggregate operations. PostgreSQL may choose to sort in memory or on disk, and with partitioned data, the cost estimation can be misleading [6]. The fix often involves creating composite indexes that include both the partition key and the columns in your WHERE clause. For example, if you partition by `event_date` and frequently filter by `status`, create an index on `(event_date, status)`. This satisfies both the partition pruning requirement and the filter clause [4]. You might also consider `CLUSTER` to physically reorder the table data to match the index, which can dramatically reduce random I/O. But be warned: CLUSTER is a one-time operation that locks the table and cannot be run concurrently. Use it judiciously [5].
+
+## Workflow — The Step-by-Step Diagnostic Protocol
+
+When you encounter a slow query on a partitioned table, follow this diagnostic workflow: Start by running `EXPLAIN (ANALYZE, BUFFERS)` on your query. Check if partition pruning is working by looking at the number of partitions scanned versus removed. If pruning is not working, the most likely cause is the query missing the partition key filter—add it. If pruning is working but the query is still slow, check what scan type is being used. A sequential scan on a single partition might be acceptable for small partitions, but for large ones you need an index. Create a composite index on `(partition_key, filtered_column)`. If an index is used but there is an expensive sort, consider whether `CLUSTER` or a covering index could help [2]. Re-test with EXPLAIN ANALYZE and iterate until the performance meets your SLOs. The flowchart below visualizes this exact process.
+
+## Code Example — Diagnosing and Fixing Slow Partitioned Queries
+
+The first step is always diagnosis. Run EXPLAIN ANALYZE with the BUFFERS option to see exactly what PostgreSQL is doing. The output reveals whether partition pruning is working and what type of scan is being performed. If you see sequential scans across many partitions, you need an index. Create a composite index CONCURRENTLY to avoid blocking writes in production. Finally, consider CLUSTER to physically reorder the table data for optimal range scan performance.
+
+## Lessons Learned — What Every Developer Should Take Away
+
+Partitioning is not a set-and-forget optimization. It requires ongoing vigilance. First, always include the partition key in your WHERE clause—this is the single most important rule. Second, monitor your EXPLAIN plans as partitions are added. What works with 10 partitions may not work with 100 [7]. Third, invest in composite indexes pairing the partition key with your most common filter columns. Fourth, use CLUSTER carefully—it is powerful but expensive. Fifth, build observability into your database layer. GitLab's ability to trace the issue to specific Sidekiq workers was only possible because they had detailed monitoring [1]. Finally, make EXPLAIN plans part of your code review process. A query that works on a development database with 10,000 rows may fail spectacularly on production with 100 million rows [8]. Start by running EXPLAIN on your slowest partitioned query today.
+
+---
+
+## Partitioned Query Optimization Diagnostic Flow
+
+```mermaid
+flowchart TD
+    A[Slow Query on Partitioned Table] --> B[Run EXPLAIN ANALYZE BUFFERS]
+    B --> C{Subplans Removed > 0?}
+    C -->|No| D[Add Partition Key Filter to WHERE]
+    C -->|Yes| E{Scan Type?
+Index or Sequential}
+    E -->|Sequential Scan| F[Create Composite Index
+on (partition_key, filter_cols)]
+    E -->|Index Scan| G{Expensive Sort
+or Hash Aggregate?}
+    G -->|Yes| H[Consider CLUSTER
+or Covering Index]
+    G -->|No| I[Check Statistics &
+Data Distribution]
+    D --> J[Re-run EXPLAIN ANALYZE]
+    F --> J
+    H --> J
+    I --> J
+    J --> K{Performance
+Acceptable?}
+    K -->|No| L[Re-evaluate Partition Strategy]
+    K -->|Yes| M[Query Optimized ✓]
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+
+**A:** Check partition pruning effectiveness, index utilization patterns, and expensive sort operations. Create composite indexes on (date, filtered_columns) and evaluate clustering strategies for optimal data access.
+
+</details>
+
+## Conclusion
+
+Partitioning is a powerful tool, but it demands respect. GitLab's story is a reminder that every architectural decision comes with hidden assumptions — and those assumptions only reveal themselves at scale. The next time you design a partitioned table, ask yourself: what queries will touch this data, and do they all include the partition key? Your future self, debugging a Sev-2 incident at 3am, will thank you. Start by running EXPLAIN on your slowest partitioned query today. You might be surprised at what you find.
+
+---
+
+## References
+
+1. [GitLab incident report - Partitioning-related database incident](https://gitlab.com/gitlab-com/gl-infra/production/-/work_items/21562) — article
+2. [PostgreSQL Documentation - Table Partitioning](https://www.postgresql.org/docs/current/ddl-partitioning.html) — documentation
+3. [PostgreSQL Documentation - Using EXPLAIN](https://www.postgresql.org/docs/current/using-explain.html) — documentation
+4. [PostgreSQL Documentation - CREATE INDEX](https://www.postgresql.org/docs/current/sql-createindex.html) — documentation
+5. [PostgreSQL Documentation - CLUSTER](https://www.postgresql.org/docs/current/sql-cluster.html) — documentation
+6. [Wikipedia - Query optimization](https://en.wikipedia.org/wiki/Query_optimization) — article
+7. [Wikipedia - Database index](https://en.wikipedia.org/wiki/Database_index) — article
+8. [DigitalOcean - Understanding PostgreSQL Indexes](https://www.digitalocean.com/community/tutorials/understanding-postgresql-indexes) — article
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
