@@ -16,6 +16,13 @@ export interface KeyboardShortcut {
   metaKey?: boolean;
   /** Handler function to call when the shortcut is triggered */
   handler: (event: KeyboardEvent) => void;
+  /**
+   * Optional predicate evaluated after the key/modifiers match but before
+   * preventDefault is called. Return false to let the keystroke pass through
+   * untouched (no preventDefault, no handler) — e.g. when the user is typing
+   * in an editor and a bare-letter shortcut should not fire.
+   */
+  shouldTrigger?: (event: KeyboardEvent) => boolean;
   /** Human-readable description of what the shortcut does */
   description: string;
 }
@@ -92,12 +99,19 @@ export function useKeyboardNavigation(shortcuts: KeyboardShortcut[]): void {
           (shortcut.metaKey === undefined || event.metaKey === shortcut.metaKey);
         
         if (matches) {
+          // Let the shortcut veto itself (e.g. focus is in an editor) before
+          // we swallow the keystroke. This must gate preventDefault, not just
+          // the handler, otherwise the character is eaten even when we bail.
+          if (shortcut.shouldTrigger && !shortcut.shouldTrigger(event)) {
+            continue;
+          }
+
           // Prevent default browser behavior for this key combination
           event.preventDefault();
-          
+
           // Call the shortcut handler
           shortcut.handler(event);
-          
+
           // Stop checking other shortcuts once we find a match
           break;
         }

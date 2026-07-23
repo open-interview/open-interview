@@ -8,7 +8,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { KeyboardShortcut } from './use-keyboard-navigation';
+import { createElement } from 'react';
+import { createRoot } from 'react-dom/client';
+import { act } from 'react';
+import { KeyboardShortcut, useKeyboardNavigation } from './use-keyboard-navigation';
 
 describe('useKeyboardNavigation', () => {
   beforeEach(() => {
@@ -505,6 +508,88 @@ describe('useKeyboardNavigation', () => {
 
       expect(shortcut.description).toContain('search');
       expect(shortcut.description.length).toBeGreaterThan(20);
+    });
+  });
+
+  describe('shouldTrigger gating (live hook)', () => {
+    let container: HTMLDivElement;
+    let root: ReturnType<typeof createRoot>;
+
+    function mount(shortcuts: KeyboardShortcut[]) {
+      function Harness() {
+        useKeyboardNavigation(shortcuts);
+        return null;
+      }
+      act(() => {
+        root.render(createElement(Harness));
+      });
+    }
+
+    beforeEach(() => {
+      container = document.createElement('div');
+      document.body.appendChild(container);
+      root = createRoot(container);
+    });
+
+    afterEach(() => {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+    });
+
+    it('fires the handler and prevents default when shouldTrigger is absent', () => {
+      const handler = vi.fn();
+      mount([{ key: 'r', handler, description: 'Go to review' }]);
+
+      const event = new KeyboardEvent('keydown', { key: 'r', cancelable: true });
+      act(() => {
+        document.dispatchEvent(event);
+      });
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it('fires the handler when shouldTrigger returns true', () => {
+      const handler = vi.fn();
+      mount([{ key: 'r', handler, shouldTrigger: () => true, description: 'Go to review' }]);
+
+      const event = new KeyboardEvent('keydown', { key: 'r', cancelable: true });
+      act(() => {
+        document.dispatchEvent(event);
+      });
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it('does not fire the handler or prevent default when shouldTrigger returns false', () => {
+      const handler = vi.fn();
+      mount([{ key: 'r', handler, shouldTrigger: () => false, description: 'Go to review' }]);
+
+      const event = new KeyboardEvent('keydown', { key: 'r', cancelable: true });
+      act(() => {
+        document.dispatchEvent(event);
+      });
+
+      // The keystroke must pass through untouched so the editor still receives it.
+      expect(handler).not.toHaveBeenCalled();
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('receives the originating event so it can inspect event.target', () => {
+      const handler = vi.fn();
+      const shouldTrigger = vi.fn(() => false);
+      mount([{ key: 'r', handler, shouldTrigger, description: 'Go to review' }]);
+
+      const event = new KeyboardEvent('keydown', { key: 'r', cancelable: true });
+      act(() => {
+        document.dispatchEvent(event);
+      });
+
+      expect(shouldTrigger).toHaveBeenCalledWith(event);
+      expect(handler).not.toHaveBeenCalled();
     });
   });
 });
