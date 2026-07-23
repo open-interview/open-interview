@@ -1,0 +1,53 @@
+[
+  {
+    "id": "cks-mcq-002",
+    "certificationId": "cks",
+    "domain": "minimize-microservice-vulnerabilities",
+    "question": "A platform team applies the following NetworkPolicy to all production namespaces to enforce least-privilege egress and minimize lateral movement between microservices:\n\n```yaml\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: deny-all-egress\n  namespace: production\nspec:\n  podSelector: {}\n  policyTypes:\n  - Egress\n  egress: []\n```\n\nAfter applying this policy, Pods in the production namespace can no longer resolve DNS names (e.g., external API endpoints or service mesh control plane addresses). What is the root cause, and how should the NetworkPolicy be corrected to restore DNS resolution while maintaining the deny-all egress posture for all other traffic?",
+    "answer": "The empty egress array blocks all outbound traffic including DNS queries to CoreDNS in kube-system. Add an egress rule with namespaceSelector targeting kube-system and ports UDP/TCP 53. Do not allow all traffic to kube-system as that exposes API server and metrics-server. The kubernetes.io/metadata.name label is immutable and safer than custom labels for namespace selection.",
+    "options": [
+      {
+        "id": "a",
+        "text": "The policy blocks all egress including DNS traffic to kube-dns (CoreDNS) on UDP/TCP port 53 in the kube-system namespace. Add a targeted egress rule allowing traffic to kube-dns with namespaceSelector matching kube-system and port rules for UDP/TCP 53.",
+        "isCorrect": true
+      },
+      {
+        "id": "b",
+        "text": "The policy blocks all egress including DNS traffic to kube-dns (CoreDNS) on UDP/TCP port 53 in the kube-system namespace. Add a broad egress rule allowing all traffic to the kube-system namespace to restore DNS.",
+        "isCorrect": false
+      },
+      {
+        "id": "c",
+        "text": "The empty egress array means no traffic is blocked; the DNS failure is caused by a missing CoreDNS deployment in the cluster. Redeploy CoreDNS and the issue resolves automatically.",
+        "isCorrect": false
+      },
+      {
+        "id": "d",
+        "text": "The policy only applies to Egress policyType, so Ingress traffic is unaffected. The DNS issue is unrelated to this policy and is instead caused by a misconfigured /etc/resolv.conf in the container image.",
+        "isCorrect": false
+      }
+    ],
+    "explanation": "## How It Works\n\nWhen a NetworkPolicy with `policyTypes: [Egress]` and an empty `egress: []` array is applied, Kubernetes blocks ALL outbound traffic from every Pod selected by the PodSelector (in this case, all Pods via `podSelector: {}`). This includes DNS resolution traffic, which is critical for service discovery, external API calls, and control plane communication.\n\nDNS resolution in Kubernetes works by directing DNS queries to CoreDNS (or kube-dns), which runs as a Service named `kube-dns` in the `kube-system` namespace. By default, CoreDNS listens on UDP port 53 and TCP port 53. Every Pod in the cluster needs to reach this Service to resolve both internal service names (e.g., `payment-service.production.svc.cluster.local`) and external domains.\n\nThe empty `egress: []` array explicitly allows zero egress rules, meaning the default-deny behavior blocks everything outbound. Since DNS queries go to a different namespace (kube-system), they are blocked by this policy.\n\nThe fix is to add a specific egress rule that permits DNS traffic while maintaining the deny-all posture for everything else. This rule must use `namespaceSelector` to target `kube-system` and specify port rules for UDP/TCP 53, rather than allowing all traffic to kube-system.\n\n## Code Example\n\n```yaml\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: deny-all-egress-allow-dns\n  namespace: production\nspec:\n  podSelector: {}\n  policyTypes:\n  - Egress\n  egress:\n  - to:\n    - namespaceSelector:\n        matchLabels:\n          kubernetes.io/metadata.name: kube-system\n    ports:\n    - protocol: UDP\n      port: 53\n    - protocol: TCP\n      port: 53\n```\n\nThe `kubernetes.io/metadata.name` label is automatically applied by Kubernetes to all namespaces starting from version 1.21. Using this label is safer than relying on custom labels because it cannot be tampered with by namespace administrators. The rule only permits DNS traffic (UDP/TCP 53) to kube-system, preserving the deny-all posture for all other egress.\n\n## Key Points\n\n- **Empty Egress Array**: An empty `egress: []` array is NOT the same as omitting the egress field entirely. Empty array explicitly denies all egress traffic.\n\n- **DNS is Cross-Namespace**: CoreDNS runs in kube-system, so any deny-all egress policy in a different namespace will block DNS unless explicitly permitted.\n\n- **Kube-dns Ports**: DNS uses both UDP port 53 (standard queries) and TCP zone transfers / large responses. Both must be allowed.\n\n- **namespaceSelector Safety**: Using `kubernetes.io/metadata.name` label is preferred over custom labels because it is immutable and automatically managed by the API server.\n\n## Common Mistake\n\nThe most frequent error is allowing all traffic to kube-system (Option B) instead of restricting to only DNS ports. While this restores DNS resolution, it opens unnecessary attack surface. Any Pod in the production namespace could then communicate with any Service in kube-system, including the Kubernetes API server, metrics-server, or other sensitive components. The correct approach is to restrict the egress rule to only UDP/TCP port 53, maintaining least-privilege even within the DNS exception.\n\nAnother common mistake is assuming that an empty `egress: []` array means no policy is applied (Option C). In reality, the empty array explicitly sets the default-deny behavior for all egress traffic.\n\n## Interview Tip\n\nThe interviewer is testing whether you understand that NetworkPolicy egress rules operate on a default-deny basis when the Egress policyType is specified. A strong answer demonstrates that you recognize DNS is a cross-namespace dependency that must be explicitly permitted, and that you can distinguish between a broad exception (allow all to kube-system) and a narrow exception (allow only port 53). Mentioning the `kubernetes.io/metadata.name` label and explaining why it is safer than custom labels shows production-level knowledge. The key insight is that security policies must account for infrastructure dependencies, not just application traffic patterns.",
+    "diagram": "flowchart TD\n  A[Pod in production namespace] --> B[DNS query to kube-dns]\n  B --> C{NetworkPolicy applied?}\n  C -->|No policy| D[DNS resolves successfully]\n  C -->|deny-all egress empty array| E[All egress blocked including DNS]\n  E --> F[Pod cannot resolve service names]\n  F --> G[Add egress rule for UDP/TCP 53 to kube-system]\n  G --> H[DNS queries permitted]\n  H --> I[All other egress still denied]\n  I --> J[Least-privilege maintained]\n  G -->|Broad rule allows all kube-system traffic| K[DNS works but attack surface expanded]\n  K --> L[Pods can reach API server, metrics-server]\n  L --> M[Security violation: excessive permissions]",
+    "companies": [
+      "Cloudflare",
+      "Salesforce",
+      "Lyft"
+    ],
+    "difficulty": "intermediate",
+    "tags": [
+      "cks",
+      "network-policy",
+      "microsegmentation",
+      "dns",
+      "egress",
+      "least-privilege",
+      "lateral-movement"
+    ],
+    "sourceUrl": null,
+    "videos": {
+      "shortVideo": null,
+      "longVideo": null
+    }
+  }
+]
