@@ -1,0 +1,209 @@
+---
+id: blog-1785578353512-two-clicks-one-room-the-transa
+title: "Two Clicks, One Room: The Transaction Design That Ends Double Bookings"
+slug: two-clicks-one-room-the-transaction-design-that-ends-double-bookings
+date: "2026-08-01"
+author: "Satishkumar Dhule"
+channel: database
+category: database
+difficulty: intermediate
+tags: ["acid", "isolation-levels", "mvcc"]
+description: "Double bookings happen when availability reads and reservation writes live in different worlds. Learn SERIALIZABLE, MVCC, and row locks, Shopify lessons included."
+question: "You're building a booking system for Airbnb where multiple users can reserve the same property simultaneously. How would you design the transaction handling to prevent double bookings while maintaining high availability?"
+sources:
+  - title: Shopify incident report
+    url: "https://shopify.engineering/scaling-inventory-reservations"
+    type: blog
+  - title: "PostgreSQL Documentation: MVCC"
+    url: "https://www.postgresql.org/docs/current/mvcc.html"
+    type: documentation
+  - title: "PostgreSQL Documentation: Transaction Isolation"
+    url: "https://www.postgresql.org/docs/current/transaction-iso.html"
+    type: documentation
+  - title: "PostgreSQL Documentation: Explicit Locking"
+    url: "https://www.postgresql.org/docs/current/explicit-locking.html"
+    type: documentation
+  - title: ACID - Wikipedia
+    url: "https://en.wikipedia.org/wiki/ACID"
+    type: documentation
+  - title: Multiversion Concurrency Control - Wikipedia
+    url: "https://en.wikipedia.org/wiki/Multiversion_concurrency_control"
+    type: documentation
+  - title: Isolation (database systems) - Wikipedia
+    url: "https://en.wikipedia.org/wiki/Isolation_(database_systems)"
+    type: documentation
+  - title: Optimistic Concurrency Control - Wikipedia
+    url: "https://en.wikipedia.org/wiki/Optimistic_concurrency_control"
+    type: documentation
+  - title: "PostgreSQL Documentation: SELECT"
+    url: "https://www.postgresql.org/docs/current/sql-select.html"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| intermediate | database | acid, isolation-levels, mvcc |
+
+Two shoppers hit 'Pay now' on the same last jacket at the same millisecond, and one of them wakes up to an apology email the next day. That was Shopify's oversell problem for years, a quiet tax on merchants who had to cancel orders and eat the support cost [1]. The fix was not more machines or faster code; it was rethinking how a database hands out a scarce resource. This is the story of that fix, and how the same ideas keep an Airbnb-style booking system from renting the same cabin to two families.
+
+---
+
+> ### Real-World Case — Shopify
+>
+> During checkout, two buyers can simultaneously try to purchase the same last unit of inventory, and the merchant ends up cancelling one order, sending an apology email, and eating the support cost. Shopify's oversell protection (reserve inventory on payment start, claim it on payment success) ran for years on Redis using DECR/INCR counters, but reservations lived in Redis while the authoritative inventory ledger lived in MySQL, so the reserve and claim steps could never be atomic.
+>
+> | | |
+> |---|---|
+> | **Challenge** | Guarantee exactly-once reservation and deduction of the same sellable unit at enormous scale - Shopify powers over 14% of U.S. ecommerce and hit $5.1M in sales per minute at Black Friday 2025 peak (an 11% increase year-over-year), and every one of those transactions touches inventory. The system had to stay fast and correct under flash-sale bursts with zero oversells, zero lost reservations, and multi-location support. |
+> | **Solution** | Instead of a single row with a quantity counter (which couldn't survive the contention), they moved reservations into the same MySQL 8 database as the ledger using one row per sellable unit in a bounded pool (capped at 1,000 rows per item/location, replenished from the ledger), grabbed free rows with SELECT ... FOR UPDATE SKIP LOCKED, switched from REPEATABLE READ to READ COMMITTED to eliminate gap locks that blocked replenishment and caused deadlocks, adopted composite primary keys to cut row locks from 2 to 1, standardized lock ordering, and batched with UNION ALL. They ran Redis and MySQL in shadow mode (dual-write) and cut over pod-by-pod with a kill switch. |
+> | **Outcome** | The rebuild hit Shopify's high-throughput targets during peak 2025 traffic with no oversells. Auditing connection usage revealed the real ceiling was code elsewhere in the checkout path: cleanup removed 50% of reads and 33% of transactions on the primary database, and during high-volume flash sales writer CPU stayed under 50% and reader CPU under 16% with headroom to spare. |
+> | **Lesson** | The plot twist: the bottleneck was never the database engine, the queries, or the locks - it was connection pool exhaustion caused by code they weren't even looking at. And the counterintuitive win: they ditched Redis (sub-millisecond latency) for MySQL (ACID) because atomicity between reserve and claim matters more than raw speed. When you need high-throughput mutual exclusion, SKIP LOCKED on row-per-unit tables in your existing database can beat a dedicated cache. |
+
+---
+
+## Hook — Two shoppers, one last jacket, and a database that says 'yes' to both
+
+It is 11:58 p.m. Somewhere, two shoppers are staring at the same product page. One 'Buy Now' jacket remains in stock. Both of them click within the same second. Your checkout service processes both requests. Your database, bless its transactional heart, confirms both orders. And tomorrow morning, a merchant writes a refund, drafts an apology email, and swallows the support cost.
+
+This is not a hypothetical. It is the exact scenario that haunted Shopify's checkout pipeline for years [1]. For a booking platform, the same race plays out nightly: two families booking the same lakeside cabin for the same week, each one certain they just secured the reservation. Somewhere between 'Add to cart' and 'Confirmed', a single row in a table becomes the battleground for real money.
+
+Here is the uncomfortable truth about databases: they only stay consistent if you make them. Overbooking erodes trust, inflates support costs, and quietly cannibalizes revenue. The good news? The tools to prevent it are older than the problem itself.
+
+## Problem — The check-then-act race that double-sells everything
+
+At the heart of every double booking sits a pattern so innocent it looks harmless: check availability, then insert the reservation. Read-modify-write. The problem is that between the 'read' and the 'write', a whole parallel universe can slip in.
+
+Say you book a room with a naive flow: your code queries the availability table and sees June 5-7 are free. Then it inserts a booking. Meanwhile, another request reads the same rows, also sees June 5-7 as free, and inserts its own booking. Neither transaction sees the other's uncommitted work, and both commit. Congratulations: two families now have keys to the same cabin [3].
+
+Developers have shipped thousands of systems that do exactly this. The bug is invisible in local testing because you are the only user, and it stays quiet under moderate load because collisions are rare. But at scale, or during a flash sale, the probability math turns on you. The fix cannot be 'try the insert and hope'; the database needs to be told, explicitly, which rows are off-limits while a booking is in progress [4].
+
+Consequently, the real question is not whether you need protection against double bookings, but where you put the guardrails: at the database layer, the application layer, or both. Spoiler: it is both.
+
+## Real-World Case — Shopify's split-brain inventory
+
+Building on the naive pattern's failure, consider how Shopify ran its oversell protection for years. The system was elegant on paper: reserve inventory the moment a payment starts, claim it when payment succeeds. The reservation lived in Redis as simple DECR/INCR counters for speed, while the authoritative inventory ledger lived in MySQL [1].
+
+Here is the plot twist: a counter in Redis and a ledger in MySQL are two different truths. The reserve step and the claim step could never be atomic, because they touched two systems with no shared transaction. When two buyers fought over the last unit, the merchant was left to cancel an order, send an apology email, and absorb the support cost [1].
+
+The rebuild moved reservations into the database transaction itself, making reserve-and-claim a single atomic operation. The results speak for themselves: no oversells during peak 2025 traffic, and the cleanup removed 50 percent of reads and 33 percent of transactions on the primary database. During high-volume flash sales, writer CPU stayed under 50 percent and reader CPU under 16 percent [1].
+
+The lesson transfers directly to bookings: any availability logic that lives outside the transaction containing the write is a ticking bomb. The moment the authoritative data and the locking mechanism diverge, a double booking becomes a matter of when, not if.
+
+## Deep Dive — SERIALIZABLE, MVCC, and the quiet power of row locks
+
+Now for the toolbox. The answer to the double-booking problem rests on three pillars that fit together like a puzzle: SERIALIZABLE isolation, MVCC, and row-level locks.
+
+Start with isolation levels. PostgreSQL defaults to READ COMMITTED, which is fast but offers few guarantees about what a concurrent transaction may do in the middle of yours [3]. SERIALIZABLE goes further: it guarantees concurrent transactions behave as if they ran one after another, even when they actually overlap [3][7]. Under the hood, PostgreSQL implements it with Serializable Snapshot Isolation, which detects read-write conflicts and aborts the loser. That abort is a feature, not a bug, because it is the database refusing to let two guests take the same room.
+
+MVCC, meanwhile, is the engine that makes concurrent reads cheap. Every transaction gets a consistent snapshot of the data, so readers never block writers and writers never block readers [2][6]. This matters for your availability check, which can be a fast snapshot read with no locks attached. But a snapshot read alone cannot reserve anything, and that is precisely the trap naive systems fall into.
+
+That is where row-level locks enter the picture. SELECT ... FOR UPDATE takes a pessimistic lock on the specific rows that represent the nights being booked [4][9]. A second transaction trying to book those same nights simply waits at that statement until the first one commits or rolls back. Critically, you lock the availability calendar, not the property row itself, so a single hot cabin does not become a serial bottleneck for the whole listing [9].
+
+The trade-offs look like this:
+
+| Approach | How it works | Strength | Weakness |
+| --- | --- | --- | --- |
+| Optimistic (version column) | Read a version, write only if it is unchanged | High concurrency, no locks held | Wasted retries under contention [8] |
+| Pessimistic (FOR UPDATE) | Lock the rows for the whole transaction | No lost updates, easy to reason about | Lock waits under heavy contention [4] |
+| Snapshot read only | MVCC snapshot, no lock | Ultra-fast reads | Can still double-book [6] |
+
+And the plot twist? You rarely choose just one. High availability comes from offloading reads: availability checks hit read replicas and a cache, while the small, critical write path uses SERIALIZABLE with row locks [1]. Yes, a cached availability read can be a few milliseconds stale. But you do not need perfectly fresh reads to prevent double bookings; you need perfectly safe writes.
+
+## Workflow — From 'Book Now' to confirmed, without the second booking
+
+So how does all of this come together as an actual flow? Think of the booking pipeline as a gauntlet with three gates: a fast path, a strong path, and a fail-safe.
+
+First, the fast path. The request checks availability against a cache or a read replica. This gate exists to serve the millions of browsers who are looking at the cabin rather than reserving it, and almost every request stops right here.
+
+Second, the strong path. If the dates look free, the request opens a SERIALIZABLE transaction and runs SELECT ... FOR UPDATE on the exact date range in the availability table [4]. Contention becomes real here: concurrent bookings for the same nights queue up on the lock instead of silently overwriting each other.
+
+Third, the fail-safe. Inside the same transaction, an application-level validation re-checks for overlapping bookings, inserts the reservation, and invalidates the availability cache as part of the commit. If the transaction is aborted by a deadlock or serialization failure, the client retries with exponential backoff, never an unbounded retry loop and never a silent write.
+
+The sequence diagram in Figure 1 shows exactly what happens when two guests race for the same nights: guest B waits on the row lock, then re-checks and finds zero free nights, then rolls back. Guest B walks away with a clean rejection, not a double-confirmed booking.
+
+Here is the part that surprises most developers: the waiting is good. A few milliseconds of lock wait is dramatically cheaper than a cancelled order, an apology email, and the long tail of angry reviews.
+
+## Code Example — A booking transaction that refuses to double-book
+
+Enough theory; here is what the strong path looks like in practice. This Python example uses SQLAlchemy against PostgreSQL to implement the reserve-and-claim pattern as a single atomic transaction: lock the availability rows, validate once more, insert the booking, and invalidate the cache on commit [4]. The retry loop handles the serialization failures that SERIALIZABLE isolation will throw at you under load.
+
+The trick to read is how the lock, the validation, and the insert all live inside one transaction boundary. There is no Redis counter to fall out of sync and no separate 'reserve then claim' window to exploit. The only way in is through the row lock.
+
+## Lessons Learned — Five scars from the double-booking trenches
+
+By now the arc should be clear: naive reads double-book, split-brain systems double-book, and even correct databases double-book if you never told them to enforce it. Here is the distilled wisdom:
+
+- Put the lock where the resource is. Lock the availability calendar rows, not the property row. Your goal is to serialize night-level contention, not every request on a listing [4][9].
+- Never leave reservation state outside the write transaction. Shopify learned this the hard way; a Redis counter and a MySQL ledger are two truths, not one [1].
+- Treat serialization failures as normal life. Use exponential backoff with a max retry count, and do not treat an abort as a crash [3].
+- High availability is a read-path problem. Caches and read replicas absorb browse traffic so the write path can afford to be strict [1].
+- Measure lock contention. A circuit breaker on hot properties is a good safety valve, but it is usually a symptom of a modeling problem, so consider sharding nights by property cluster.
+
+Watch out: adding FOR UPDATE to a query that lacks an index on the locking predicate will escalate to locking far more rows than you intended. The availability table needs a (property_id, booking_date) index before this pattern is safe [9].
+
+Hot take: optimistic locking with version columns is a favorite interview answer, but the moment your hot row is a single product or cabin, pessimism wins. Version columns shine on spread-out contention; FOR UPDATE shines when everyone wants the same thing [8].
+
+The action plan for tomorrow: move any reserve-and-claim logic into one transaction, add FOR UPDATE on your availability rows with the right index, put retries with backoff in front of the booking call, and let the cache handle the traffic so the transaction can be strict. Your support inbox will thank you.
+
+---
+
+## Booking Race Sequence
+
+```mermaid
+sequenceDiagram
+    participant GuestA as Guest A
+    participant GuestB as Guest B
+    participant Cache as Availability Cache
+    participant DB as PostgreSQL
+    GuestA->>Cache: Check availability (fast path)
+    GuestB->>Cache: Check availability (fast path)
+    Cache-->>GuestA: Nights 5-7 free
+    Cache-->>GuestB: Nights 5-7 free
+    GuestA->>DB: BEGIN (SERIALIZABLE)
+    GuestB->>DB: BEGIN (SERIALIZABLE)
+    GuestA->>DB: SELECT ... FOR UPDATE nights 5-7
+    GuestB->>DB: SELECT ... FOR UPDATE nights 5-7
+    Note over DB: Guest A holds the row lock; Guest B waits
+    GuestA->>DB: Snapshot re-check: still free
+    GuestA->>DB: INSERT booking
+    GuestA->>DB: COMMIT
+    GuestA->>Cache: Invalidate cache (write-through)
+    DB-->>GuestB: Lock released; rows returned
+    GuestB->>DB: Re-check availability
+    DB-->>GuestB: 0 free nights
+    GuestB->>DB: ROLLBACK
+    Note over GuestB: Clean rejection - no double booking
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You're building a booking system for Airbnb where multiple users can reserve the same property simultaneously. How would you design the transaction handling to prevent double bookings while maintaining high availability?
+
+**A:** Use SERIALIZABLE isolation with optimistic concurrency control. Implement row-level locks on property availability tables, use MVCC snapshot reads for checking availability, and apply application-level validation to ensure atomic booking operations.
+
+</details>
+
+## Conclusion
+
+Every double booking is a small story of consistency debt: a check that was not atomic, a reserve that lived outside the ledger, a lock that was never taken. Shopify's rebuild shows what happens when you take those three problems seriously: zero oversells at peak traffic, half the reads gone, and CPU headroom to spare [1]. The same three moves, SERIALIZABLE where it counts, row locks on the calendar, and reads served from the cache, will keep your booking system honest.
+
+The one insight to carry into your next design meeting: consistency is not a database feature you enable, it is a boundary you draw. You get to decide where the transaction ends. Draw it around the last unit, and everyone gets what they paid for.
+
+---
+
+## References
+
+1. [Shopify incident report](https://shopify.engineering/scaling-inventory-reservations) — blog
+2. [PostgreSQL Documentation: MVCC](https://www.postgresql.org/docs/current/mvcc.html) — documentation
+3. [PostgreSQL Documentation: Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html) — documentation
+4. [PostgreSQL Documentation: Explicit Locking](https://www.postgresql.org/docs/current/explicit-locking.html) — documentation
+5. [ACID - Wikipedia](https://en.wikipedia.org/wiki/ACID) — documentation
+6. [Multiversion Concurrency Control - Wikipedia](https://en.wikipedia.org/wiki/Multiversion_concurrency_control) — documentation
+7. [Isolation (database systems) - Wikipedia](https://en.wikipedia.org/wiki/Isolation_(database_systems)) — documentation
+8. [Optimistic Concurrency Control - Wikipedia](https://en.wikipedia.org/wiki/Optimistic_concurrency_control) — documentation
+9. [PostgreSQL Documentation: SELECT](https://www.postgresql.org/docs/current/sql-select.html) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
