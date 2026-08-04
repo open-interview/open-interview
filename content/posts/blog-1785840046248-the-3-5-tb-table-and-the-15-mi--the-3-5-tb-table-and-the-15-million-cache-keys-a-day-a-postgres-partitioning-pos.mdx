@@ -1,0 +1,157 @@
+---
+id: blog-1785840046248-the-3-5-tb-table-and-the-15-mi
+title: "The 3.5 TB Table and the 15 Million Cache Keys a Day: A Postgres Partitioning Postmortem"
+slug: the-3-5-tb-table-and-the-15-million-cache-keys-a-day-a-postgres-partitioning-pos
+date: "2026-08-04"
+author: "Satishkumar Dhule"
+channel: database
+category: database
+difficulty: intermediate
+tags: ["explain", "query-plan", "partitioning"]
+description: "GitLab's 3.5 TB ci_builds table and 15M daily cache keys reveal why partitioned queries still run slow. Learn to read EXPLAIN, prune first, index second."
+question: You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+sources:
+  - title: GitLab incident report
+    url: "https://gitlab.com/gitlab-org/gitlab/-/work_items/594500"
+    type: article
+  - title: PostgreSQL table partitioning documentation
+    url: "https://www.postgresql.org/docs/current/ddl-partitioning.html"
+    type: documentation
+  - title: PostgreSQL EXPLAIN documentation
+    url: "https://www.postgresql.org/docs/current/using-explain.html"
+    type: documentation
+  - title: PostgreSQL index basics documentation
+    url: "https://www.postgresql.org/docs/current/indexes.html"
+    type: documentation
+  - title: PostgreSQL CLUSTER documentation
+    url: "https://www.postgresql.org/docs/current/sql-cluster.html"
+    type: documentation
+  - title: GitLab database partitioning development guide
+    url: "https://docs.gitlab.com/ee/development/partitioning/"
+    type: documentation
+  - title: "Wikipedia: Database index"
+    url: "https://en.wikipedia.org/wiki/Database_index"
+    type: documentation
+  - title: "Wikipedia: Query optimization"
+    url: "https://en.wikipedia.org/wiki/Query_optimization"
+    type: documentation
+  - title: "DigitalOcean: An Introduction to PostgreSQL"
+    url: "https://www.digitalocean.com/community/tutorials/an-introduction-to-postgresql"
+    type: blog
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| intermediate | database | explain, query-plan, partitioning |
+
+GitLab.com's CI database once held a `ci_builds` table that ballooned to 3.5 TB — with roughly a terabyte of indexes on top — blowing past the company's own 100 GB max-table-size principle [1]. So the team did what any sane engineering org would do: split the ~50 `ci_*` tables into partitioned `p_ci_*` tables. That is the moment the story turns, because shortly after the new partition scheme shipped, two Severity 2 incidents (INC-8367, INC-8474) pushed Sidekiq job queueing past its SLO and saturated the LockManager LWLocks on CI read replicas [1]. It is the same quiet nightmare hiding inside every slow partitioned query you have ever debugged — and the way out is written, line by line, in the EXPLAIN plan.
+
+---
+
+> ### Real-World Case — GitLab
+>
+> GitLab.com's CI/CD database had outgrown its schema: the `ci_builds` table alone reached ~3.5 TB (with ~1 TB of indexes) — far past GitLab's 100 GB max-table-size principle — so they partitioned the ~50 `ci_*` tables (into `p_ci_builds`, `p_ci_pipelines`, etc.) using LIST partitioning on a synthetic `partition_id`. But shortly after, two Severity 2 production incidents (INC-8367, INC-8474) hit: Sidekiq job queueing SLO violations and database lock contention caused by LockManager LWLock saturation on CI read replicas.
+>
+> | | |
+> |---|---|
+> | **Challenge** | Despite the partitioning, several extremely high-frequency Sidekiq worker queries (e.g., `SELECT * FROM p_ci_pipelines WHERE id = $1` and `SELECT * FROM p_ci_builds WHERE type IN (...) AND id = $4`) were written without a `partition_id` filter. PostgreSQL therefore could not perform partition pruning, and every query did a full cross-partition scan of all partitions — and because the number of partitions kept growing, each non-pruned query got progressively more expensive over time. |
+> | **Solution** | GitLab audited the offending query fingerprints, then (1) added `partition_id` to the WHERE clauses of all high-call-rate queries, (2) built a two-layer routing strategy (a Redis cache mapping `record_id` -> `partition_id`, plus an overflow table with a range index on `ci_partitions`) so workers could resolve the partition without signature changes or cross-partition scans, (3) deployed query analyzers to automatically flag queries that miss the routing table or omit the partition key, and (4) temporarily paused partition creation until the unpruned queries were fixed. |
+> | **Outcome** | LockManager LWLock saturation on CI replicas was reduced, Sidekiq job processing recovered, and CI partition creation was unblocked — the investigation quantified the problem as ~15 million new cache keys/day to support pruning and listed the three highest-call-rate offending query fingerprints by frequency. The postmortem fed automated analyzers so any future query violating pruning best practices is caught before it reaches production. |
+> | **Lesson** | Partitioning alone guarantees nothing — performance only improves if partition pruning actually happens. Always inspect the EXPLAIN plan for the Append node and confirm how many child partitions were pruned, and ensure every performance-critical query includes the partition key; a query that omits it silently scans every partition, and the cost compounds linearly as partitions are added. |
+
+---
+
+## Hook — Your partitioning worked. So why is it still slow?
+
+You know the moment. A dashboard goes red, someone pings "why is CI so slow?", and you find yourself staring at a 10-second query against a table that should answer in milliseconds. The table is partitioned. The date filter is right there. And yet the database shrugs and walks every row it can find. The worst part? Partitioning is supposed to prevent exactly this. GitLab built an entire partition scheme to keep `ci_builds` under control — and within weeks of shipping it, the new design sat at the center of two production incidents [1]. So before you reach for the "add another index" reflex, consider this: the expensive operation may not be the scan at all. It might be everything around it. Ever wondered what a partitioned table has in common with a packed suitcase? Both feel organized — right up until you realize you packed the wrong things [9].
+
+## Problem — When a 3.5 TB table finally gets chopped up, the pain just changes shape
+
+Every system that grows long enough hits a wall. For GitLab.com, the wall was `ci_builds` at 3.5 TB — roughly 35x the size the platform team considered safe, with a solid terabyte of that being indexes alone [1]. Without partitioning, every DELETE and autovacuum pass touched a massive object, bloat accumulated, and maintenance windows became the bottleneck for the entire CI product. So the team made the right call: LIST partitioning on a synthetic `partition_id`, spreading rows across manageable chunks. Here is the twist though: partitioning fixes table bloat, not query pathology [8]. A query with the right partition key can still be slow — and the query plan is the only place where the truth about why is actually written down. The skill you need is reading that truth in the right order: is pruning happening? Is an index being used instead of a sequential scan? Is an expensive sort or hash aggregate hiding behind a perfectly reasonable filter? Get that order wrong and you will spend a week optimizing the wrong node.
+
+## Real-World Case — GitLab.com's partition scheme that triggered two Severity 2 incidents
+
+Shortly after GitLab.com's ~50 `ci_*` tables were converted into `p_ci_builds`, `p_ci_pipelines`, and friends, two Severity 2 incidents (INC-8367 and INC-8474) lit up the on-call channel: Sidekiq job queueing blew past its SLO, and LockManager LWLock saturation made the CI read replicas nearly unusable [1]. The root cause was a genuine plot twist. Partitioning had replaced one problem with a new tax: the database must decide which partitions to read on every query, and that pruning decision gets cached. GitLab's investigation quantified roughly 15 million new cache keys generated per day just to support pruning, and ranked the three highest-call-rate offending query fingerprints by frequency [1]. The fix was not abandoning partitioning — it was making the hot queries prune correctly and building automated analyzers so any future query violating pruning best practices is caught before it ever reaches production [1]. The resolution was measurable: LockManager LWLock saturation on CI replicas dropped, Sidekiq job processing recovered, and partition creation was finally unblocked [1]. In other words: the table was fine. The queries were the problem. That is the entire article in one sentence.
+
+## Deep Dive — Reading the EXPLAIN plan in the order that actually matters
+
+Here is what `EXPLAIN (ANALYZE, BUFFERS)` actually tells you when a date-range query on a partitioned table runs slow — and the order you should check it. First, partition pruning. If the plan still lists dozens of child tables under an Append node, the planner could not eliminate them; your WHERE clause and the partition key simply do not align [2]. The usual suspects: filters written with functions wrapped around the partition column (`WHERE date_trunc('day', event_date) = ...` defeats pruning entirely) or comparing the partition key to a value the planner cannot fold down to a constant. Second, index utilization. A Seq Scan on a surviving partition means either no useful index exists or the planner's cost estimate chose the scan because the row estimate is off — almost always stale statistics [7]. Third, expensive operations. Look upward in the plan for Sort and HashAggregate nodes; an ORDER BY or GROUP BY can dominate the entire runtime, and no amount of indexing on the WHERE clause helps a sort [3]. The counterintuitive insight is the heart of the story: on a 3.5 TB problem, the first fix is rarely "add an index." It is "stop reading partitions you do not need," then make the surviving reads fast, then remove the sorts [4].
+
+| Symptom in EXPLAIN | Likely cause | First move |
+|---|---|---|
+| Append node with many surviving subplans | WHERE clause doesn't match partition key | Align the filter with the partition key [2] |
+| Seq Scan on a surviving partition | Missing index or stale statistics | Composite index, or ANALYZE first [7] |
+| Sort / HashAggregate near the top | ORDER BY / GROUP BY on a huge surviving set | Reduce partitions read, reconsider the sort [3] |
+
+## Workflow — The five-step diagnosis loop that turns instinct into process
+
+Turn all of that into a repeatable workflow and you get a loop, not a checklist — because you re-run EXPLAIN after every change until the numbers improve. Step one, reproduce the slow query against a read replica with `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)`. Step two, inspect pruning first: does the number of subplans removed match what you expect for that date range? Step three, check the access method on the hottest surviving node — index scan or sequential scan? Step four, look upward for sorts and aggregates that dominate the total cost. Step five, fix the most expensive item, re-run the plan, and iterate. When a query finally behaves, lock the lesson in with automated guardrails — GitLab feeds its postmortem findings into analyzers that flag pruning violations during development [1]. That last step is the one most teams skip, and it is the one that turns a one-time firefight into a durable capability. GitLab's partitioning guide documents exactly how their `partition_id` scheme was designed so new tables inherit the right conventions from day one [6]. The flowchart below maps this journey from a slow query to the final verdict.
+
+## Code Example — Turn a plan into a diagnosis with Python and psycopg2
+
+Let's make this concrete. Instead of eyeballing raw plan text, parse it. PostgreSQL can return the plan as JSON, which means a script can walk the tree and flag the same three problems you just learned to check by hand. This is the same idea behind tools like `auto_explain` — turning one developer's instincts into something a whole team, or a CI check, can run [3]. The script below connects to a read replica so ANALYZE never burdens production writes, executes the EXPLAIN, recursively scans every node for missing pruning, sequential scans, and expensive sorts or aggregates, then prints the exact SQL it would recommend [5].
+
+## Lessons Learned — Prune first, index second, sort third, automate always
+
+After all that, the takeaways fit on a sticky note:
+
+- **Partitioning solves table bloat, not query design.** GitLab's 3.5 TB table was partitioned and still produced two Severity 2 incidents [1].
+- **Order matters.** Pruning first, indexes second, sorts third — each fix changes what the next step even sees.
+- **Composite indexes are the right shape** for date-range plus status filters: `(partition_key, filtered_column)`, with the partition key first [4].
+- **Consider CLUSTER** when the surviving row set is still large and physically scattered — it trades slower writes for dramatically faster range reads [5].
+- **Automate the lesson.** If your pipeline can deploy a query that violates pruning rules, it eventually will — GitLab's analyzers now catch those before production [1].
+
+Here is the battle scar nobody talks about: teams confidently add a third or fourth index to fix a slow query, when the real problem was 47 partitions being read because the filter column had a function wrapper. Indexes don't fix bad pruning [7]. And if this feels overwhelming, you are not alone — this is a Level 2 interview question for a reason. The one-line summary to share with your team: a slow partitioned query is rarely asking for more indexes — it is asking you to read less data first.
+
+---
+
+## Query Diagnosis Flow
+
+```mermaid
+flowchart TD
+    A[Slow query on partitioned table] --> B[EXPLAIN ANALYZE BUFFERS JSON]
+    B --> C{Partition pruning working?}
+    C -- No --> D[Align WHERE with partition key]
+    C -- Yes --> E{Index or Seq Scan?}
+    E -- Seq Scan --> F[Add composite index (key, filters)]
+    F --> G{Expensive Sort or Agg?}
+    E -- Index --> G
+    G -- Yes --> H[CLUSTER for locality / rethink sort]
+    G -- No --> I[Good plan - lock it in]
+    D --> J[Re-run EXPLAIN]
+    F --> J
+    H --> J
+    J --> C
+    I --> K[Automated guardrails catch future regressions]
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+
+**A:** Check partition pruning effectiveness, index utilization patterns, and expensive sort operations. Create composite indexes on (date, filtered_columns) and evaluate clustering strategies for optimal data access.
+
+</details>
+
+## Conclusion
+
+The journey ends where it started: with a table big enough to scare a platform team. GitLab's experience proves that partitioning a 3.5 TB monster is necessary — but it is only chapter one [1]. Chapter two is teaching every query to prune, index, and sort its way to a plan you can actually explain. Literally. Tomorrow, run `EXPLAIN (ANALYZE, BUFFERS)` on your slowest partitioned query, check pruning before you add a single index, and consider building the same guardrail GitLab did: an automated check that refuses bad query plans before they reach production [1]. Share that one trick with your team. It might be the difference between a quiet night and a pager going off at 3am.
+
+---
+
+## References
+
+1. [GitLab incident report](https://gitlab.com/gitlab-org/gitlab/-/work_items/594500) — article
+2. [PostgreSQL table partitioning documentation](https://www.postgresql.org/docs/current/ddl-partitioning.html) — documentation
+3. [PostgreSQL EXPLAIN documentation](https://www.postgresql.org/docs/current/using-explain.html) — documentation
+4. [PostgreSQL index basics documentation](https://www.postgresql.org/docs/current/indexes.html) — documentation
+5. [PostgreSQL CLUSTER documentation](https://www.postgresql.org/docs/current/sql-cluster.html) — documentation
+6. [GitLab database partitioning development guide](https://docs.gitlab.com/ee/development/partitioning/) — documentation
+7. [Wikipedia: Database index](https://en.wikipedia.org/wiki/Database_index) — documentation
+8. [Wikipedia: Query optimization](https://en.wikipedia.org/wiki/Query_optimization) — documentation
+9. [DigitalOcean: An Introduction to PostgreSQL](https://www.digitalocean.com/community/tutorials/an-introduction-to-postgresql) — blog
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
