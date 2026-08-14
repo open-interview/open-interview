@@ -1,0 +1,222 @@
+---
+id: blog-1786698494357-one-room-two-guests-zero-doubl
+title: "One Room, Two Guests, Zero Double Bookings: The Concurrency Story Behind Airbnb's Five Nines"
+slug: one-room-two-guests-zero-double-bookings-the-concurrency-story-behind-airbnb-s-f
+date: "2026-08-14"
+author: "Satishkumar Dhule"
+channel: database
+category: database
+difficulty: intermediate
+tags: ["acid", "isolation-levels", "mvcc"]
+description: "How Airbnb stopped double bookings and double charges with SERIALIZABLE isolation, MVCC, and idempotency — a story-driven guide to race-proof booking systems."
+question: "You're building a booking system for Airbnb where multiple users can reserve the same property simultaneously. How would you design the transaction handling to prevent double bookings while maintaining high availability?"
+sources:
+  - title: Airbnb incident report
+    url: "https://medium.com/airbnb-engineering/avoiding-double-payments-in-a-distributed-payments-system-2981f6b070bb"
+    type: article
+  - title: PostgreSQL Transaction Isolation documentation
+    url: "https://www.postgresql.org/docs/current/transaction-iso.html"
+    type: documentation
+  - title: PostgreSQL Explicit Locking documentation
+    url: "https://www.postgresql.org/docs/current/explicit-locking.html"
+    type: documentation
+  - title: PostgreSQL MVCC documentation
+    url: "https://www.postgresql.org/docs/current/mvcc.html"
+    type: documentation
+  - title: Multiversion Concurrency Control — Wikipedia
+    url: "https://en.wikipedia.org/wiki/Multiversion_concurrency_control"
+    type: documentation
+  - title: Serializability — Wikipedia
+    url: "https://en.wikipedia.org/wiki/Serializability"
+    type: documentation
+  - title: ACID — Wikipedia
+    url: "https://en.wikipedia.org/wiki/ACID"
+    type: documentation
+  - title: Concurrency Control — Wikipedia
+    url: "https://en.wikipedia.org/wiki/Concurrency_control"
+    type: documentation
+  - title: Understanding Isolation Levels in Database Transactions — DigitalOcean
+    url: "https://www.digitalocean.com/community/tutorials/understanding-isolation-levels-in-database-transactions"
+    type: blog
+  - title: PostgreSQL SELECT documentation
+    url: "https://www.postgresql.org/docs/current/sql-select.html"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| intermediate | database | acid, isolation-levels, mvcc |
+
+Two guests click "Book" on the same property at the same instant. One bedroom, two confirmed reservations, and a customer-service fire that apologies cannot put out. That nightmare used to be a real threat inside Airbnb's distributed payments system, where retrying a lost response could charge the same guest twice for a single booking [1]. This is the story of what a booking transaction can teach you about isolation levels, MVCC, and locking. And by the end, you will know exactly how to build a booking system that says "no" to double bookings — even when your database is tempted to say "yes" to both of them.
+
+---
+
+> ### Real-World Case — Airbnb
+>
+> As Airbnb migrated from a monolithic Rails app to service-oriented architecture, every booking became a distributed transaction: a single API call fanning out into downstream services, each changing state and each able to fail or time out mid-flight. When a guest clicked "Book" twice, or a client retried after a lost response, the naive recovery — retrying — was exactly the action that could charge the same guest twice for one booking.
+>
+> | | |
+> |---|---|
+> | **Challenge** | Guarantee at-most-once (exactly-once) booking and payment processing under concurrent requests, race conditions, timeouts, and ambiguous failures — without adding latency and without forcing every product developer to become a distributed-systems and eventual-consistency specialist. |
+> | **Solution** | Airbnb built Orpheus, a generic idempotency framework used across all payments services. Every money-moving API request acquires a database row-level lock on its idempotency key, which acts as an expiring lease (requests may only retry after the lease expires); refunds use deterministic entity-level keys like "payment-1234-refund" so a $5 refund can never execute twice; retries use exponential backoff with jitter; the idempotency check always reads from the master, never replicas, to eliminate replica-lag races; and errors are classified as retryable vs non-retryable. Notably, a standalone idempotency microservice was rejected — it would be a remote call across the network that could itself time out ambiguously, inheriting the exact disease it was meant to cure. |
+> | **Outcome** | In the follow-up post "Rebuilding Payment Orchestration at Airbnb," the team reports the new orchestration achieved 99.999% (five 9s) consistency for payments, with the idempotency framework upgrading Kafka's at-least-once delivery into exactly-once semantics. Guests are charged at most once even under concurrent "Book" clicks, aggressive client retries, and partial failures. |
+> | **Lesson** | The database row lock is the correct concurrency primitive for booking flows: embed the correctness guarantee in the data layer via locks on idempotency keys rather than a separate lock/idempotency service, and make retries safe (idempotent). Idempotency is what lets you keep high availability — firing retries freely — without ever risking a double charge. |
+
+---
+
+## Hook — One Room, Two Guests, Zero Rooms Left
+
+Ever wondered why hotels and rental platforms can still overbook in 2026? It is not because they forgot to check availability. It is because "check availability" and "reserve the room" are two operations that a fast-enough server can run directly on top of each other — two guests reaching for the same chair in the same millisecond. The stakes are brutal: one overbooking means a double charge, a refund fight, a furious guest, and a host staring at an empty calendar while the platform eats the cost.
+
+Here is the thing though: the fix is not more code. It is understanding how databases actually serialize work — and why the most dangerous place in your system is the tiny gap between a read and a write. By the end of this journey, you will know exactly how Airbnb defended against this exact attack on their own platform, and how you can borrow their playbook before your own double-click epidemic starts.
+
+## Problem — The Race Condition Hiding in Every "Available" Button
+
+The villain of this story has a name: the lost update. Two requests arrive for the same date range. Both read "available." Both write a reservation. Neither ever saw the other's write. That is a race condition with expensive consequences, and it is the classic failure mode that concurrency control exists to prevent [8].
+
+You might think a simple "check-then-insert" guard in application code solves it. Many developers discover the hard way that it does not — the check and the insert are two separate round trips, and the microseconds between them are exactly where overbookings are born. Worse, the modern backend makes the gap wider, not narrower. A single booking endpoint fans out into downstream services, each changing state, each able to time out mid-flight. When a guest double-clicks "Book," or a client retries after a lost response, the naive recovery — retrying — is precisely the action that creates the duplicate.
+
+⚠️ Watch Out: application-level availability flags in Redis or a cached counter feel fast and clever. They also make the race easier to hit. Caches are eventually consistent by design; your booking ledger must not be.
+
+So who has been burned by this? Pull up a chair — Airbnb has a story worth stealing.
+
+## Real-World Case — Airbnb vs. the Double Charge
+
+As Airbnb migrated from a monolithic Rails app to service-oriented architecture, every booking became a distributed transaction: a single API call fanning out into downstream services, each changing state, each able to fail or time out mid-flight [1]. When a guest clicked "Book" twice — or a client retried after a lost response — the naive recovery was the exact action that could charge the same guest twice for one booking.
+
+The fix was not a bigger database or a faster cache. It was orchestration with idempotency built into the core. In their follow-up post "Rebuilding Payment Orchestration at Airbnb," the team reports that their idempotency framework upgraded Kafka's at-least-once delivery into exactly-once semantics, and the new payment orchestration achieved 99.999% — five nines — consistency for payments [1]. Guests are charged at most once, even under concurrent "Book" clicks, aggressive retries, and partial failures.
+
+🎯 Key Point: the incident was framed as a payments problem, but the root cause was the same race your booking endpoint faces today. Distributed systems do not need perfect networks; they need operations that are safe to retry. Airbnb's answer applies far beyond payments.
+
+## Deep Dive — SERIALIZABLE, MVCC, and the Fine Art of Locking
+
+Building on that incident, the database-side defense follows a clear hierarchy. At the foundation sits MVCC — multiversion concurrency control — the engine that lets readers and writers avoid blocking each other by keeping multiple versions of a row around [5]. That design is exactly why a long-running reporting query can scan for minutes without freezing your booking writes [4].
+
+Snapshot isolation is the comfortable middle ground built on MVCC: every transaction reads a consistent snapshot, with no locking surprises. But here is the plot twist: snapshots are a trap. Two transactions can each read "free," each write "booked," and both commit — a pair of conflicting snapshots that together produce one overbooked calendar. This is the exact scenario that keeps booking engineers employed.
+
+Enter SERIALIZABLE, the strongest isolation level, which guarantees the outcome is identical to running the transactions one after the other [2][6]. PostgreSQL implements it with Serializable Snapshot Isolation (SSI), which detects read-write conflicts across snapshots and aborts one of the offenders rather than letting the anomaly slip through [2]. You still have to retry the aborted transaction — with exponential backoff and jitter, not a blind loop [9]. Together with atomicity, consistency, and durability, that isolation guarantee is the ACID contract your database is actually promising you [7].
+
+| Strategy | How it stops double bookings | The real tradeoff |
+|---|---|---|
+| SERIALIZABLE + SELECT FOR UPDATE | Locks the availability rows so the second writer blocks instead of overwriting [3] | Contention: hot properties serialize, and lock waits add latency |
+| Optimistic locking (version column) | An UPDATE ... WHERE version = old aborts stale writers | Great when conflicts are rare; miserable when two users fight over the same cabin |
+| Read replicas for availability checks | Offloads the "can I book?" reads to keep the primary fast | Read lag can show "free" to someone already blocked — the write path must stay strict |
+
+💡 Insight: SERIALIZABLE is not the slow sibling it used to be. With SSI, PostgreSQL lets concurrent transactions run in parallel and only aborts the ones that genuinely conflict [2]. The worst-case latency is paid by the loser of the race alone — not by every guest on the platform.
+
+## Workflow — The Seven-Step Booking Dance
+
+Now for the part that makes the theory click: the end-to-end booking flow. Every step has a purpose, and skipping one reintroduces the race you just learned to fear. The diagram below — the "Booking Flow" — shows two guests racing for the same property, and how the lock resolves the dead heat.
+
+```mermaid
+sequenceDiagram
+    participant A as Guest A
+    participant B as Guest B
+    participant S as Booking Service
+    participant D as PostgreSQL (SERIALIZABLE)
+
+    A->>S: Book property (same dates)
+    B->>S: Book property (same dates)
+    S->>D: BEGIN; SELECT ... FOR UPDATE
+    Note over D: Availability rows locked for Guest A
+    B->>S: Locks the same date rows
+    Note over D: Guest B blocks on the lock
+    S->>D: Re-check availability under lock
+    S->>D: INSERT reservation; COMMIT
+    D-->>S: Success - lock released
+    S-->>A: 201 Created (cache invalidated)
+    S->>D: Guest B retries after lock release
+    S->>D: Re-check availability
+    D-->>S: Dates now taken
+    S-->>B: 409 Conflict - no availability
+```
+
+The dance, step by step:
+
+1. Begin the transaction at SERIALIZABLE isolation [2].
+2. SELECT ... FOR UPDATE the availability rows for the requested date range [3]. This is the lock that makes the second writer wait.
+3. Under the lock, re-check the actual booking rows — now every reader sees the committed truth, so the re-check is trustworthy [2].
+4. Insert the reservation if the range is still free.
+5. Commit. The lock releases and the blocked writer is unblocked.
+6. Invalidate the cached availability for that property so future reads see the change immediately.
+7. If the transaction aborts with a serialization failure, retry with exponential backoff — and give up after a few tries, not infinity [9].
+
+🔥 Hot Take: most "high availability" objections to SERIALIZABLE are really arguments against unbounded lock waits. Cap the wait with a lock timeout, fail fast, and let the retry loop absorb the noise. Availability is not lost — it is moved to a layer you can actually tune.
+
+## Code Example — Building the Atomic Booking Transaction
+
+Enough theory — time to make a database sweat. The example below is a Python booking transaction against PostgreSQL using psycopg2. It combines SERIALIZABLE isolation with row-level locks and a disciplined retry loop. This is the pattern you can port to any SQL database that supports SELECT FOR UPDATE [3][10].
+
+## Lessons Learned — What to Do Differently Tomorrow
+
+So after all this — the race, the incident, the locking — what should you do differently tomorrow? Here is the short list:
+
+- Treat "check availability" and "reserve" as one atomic unit, always inside a single transaction. Splitting them is an open invitation to overbooking.
+- Default your critical writes to SERIALIZABLE (or the strongest level your database offers), and let MVCC handle the reads [2][5].
+- Use SELECT FOR UPDATE on the availability rows, not on the whole table — narrow locks keep hot properties available [3].
+- Wrap every booking attempt in a retry loop with exponential backoff and jitter, and set a hard cap on attempts [9].
+- Put idempotency keys on your booking endpoints. Airbnb's lesson is that a retry must never be a second booking [1].
+- Add a circuit breaker for your hottest properties — when lock wait times spike, fail fast and queue rather than pile more waiters onto one row.
+
+⚠️ Watch Out: the most common battle scar in this arena is forgetting to roll back after a serialization failure. A single aborted transaction left dirty will poison every retry with a "current transaction is aborted" error — and it is the easiest bug in this article to introduce.
+
+If this feels like a lot, you are not alone — this is one of the deepest rabbit holes in database engineering, and even Airbnb needed a full orchestration migration to get it right [1]. Start small: pick one critical endpoint, add idempotency, then harden the transaction. One property at a time.
+
+---
+
+## Booking Flow — Two Guests, One Property
+
+```mermaid
+sequenceDiagram
+    participant A as Guest A
+    participant B as Guest B
+    participant S as Booking Service
+    participant D as PostgreSQL (SERIALIZABLE)
+
+    A->>S: Book property (same dates)
+    B->>S: Book property (same dates)
+    S->>D: BEGIN; SELECT ... FOR UPDATE
+    Note over D: Availability rows locked for Guest A
+    B->>S: Locks the same date rows
+    Note over D: Guest B blocks on the lock
+    S->>D: Re-check availability under lock
+    S->>D: INSERT reservation; COMMIT
+    D-->>S: Success - lock released
+    S-->>A: 201 Created (cache invalidated)
+    S->>D: Guest B retries after lock release
+    S->>D: Re-check availability
+    D-->>S: Dates now taken
+    S-->>B: 409 Conflict - no availability
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You're building a booking system for Airbnb where multiple users can reserve the same property simultaneously. How would you design the transaction handling to prevent double bookings while maintaining high availability?
+
+**A:** Use SERIALIZABLE isolation with optimistic concurrency control. Implement row-level locks on property availability tables, use MVCC snapshot reads for checking availability, and apply application-level validation to ensure atomic booking operations.
+
+</details>
+
+## Conclusion
+
+Two guests clicked "Book" at the same instant, and the system said "yes" to both — that is the nightmare Airbnb engineered against with exactly-once semantics and five-nines consistency [1]. You now have the same toolbox: SERIALIZABLE isolation, MVCC, row-level locks, idempotency keys, and a retry loop with patience. The next time you build a booking flow, remember the journey — the race is not in the database, it is in the gap between your operations. Close the gap, and your guests will never fight over the same chair again. Go audit your booking endpoint tonight, and when someone double-clicks, make sure the only thing duplicated is their excitement — not their charge.
+
+---
+
+## References
+
+1. [Airbnb incident report](https://medium.com/airbnb-engineering/avoiding-double-payments-in-a-distributed-payments-system-2981f6b070bb) — article
+2. [PostgreSQL Transaction Isolation documentation](https://www.postgresql.org/docs/current/transaction-iso.html) — documentation
+3. [PostgreSQL Explicit Locking documentation](https://www.postgresql.org/docs/current/explicit-locking.html) — documentation
+4. [PostgreSQL MVCC documentation](https://www.postgresql.org/docs/current/mvcc.html) — documentation
+5. [Multiversion Concurrency Control — Wikipedia](https://en.wikipedia.org/wiki/Multiversion_concurrency_control) — documentation
+6. [Serializability — Wikipedia](https://en.wikipedia.org/wiki/Serializability) — documentation
+7. [ACID — Wikipedia](https://en.wikipedia.org/wiki/ACID) — documentation
+8. [Concurrency Control — Wikipedia](https://en.wikipedia.org/wiki/Concurrency_control) — documentation
+9. [Understanding Isolation Levels in Database Transactions — DigitalOcean](https://www.digitalocean.com/community/tutorials/understanding-isolation-levels-in-database-transactions) — blog
+10. [PostgreSQL SELECT documentation](https://www.postgresql.org/docs/current/sql-select.html) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
