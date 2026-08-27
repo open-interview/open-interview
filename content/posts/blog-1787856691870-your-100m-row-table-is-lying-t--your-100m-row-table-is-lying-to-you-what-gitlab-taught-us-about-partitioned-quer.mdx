@@ -1,0 +1,144 @@
+---
+id: blog-1787856691870-your-100m-row-table-is-lying-t
+title: "Your 100M-Row Table Is Lying to You: What GitLab Taught Us About Partitioned Query Hell"
+slug: your-100m-row-table-is-lying-to-you-what-gitlab-taught-us-about-partitioned-quer
+date: "2026-08-27"
+author: "Satishkumar Dhule"
+channel: database
+category: database
+difficulty: intermediate
+tags: ["explain", "query-plan", "partitioning"]
+description: "Learn how GitLab fixed 8-second search by turning partition pruning, composite indexes, and CLUSTER into a 10x speedup — and what to check in your own EXPLAIN plan."
+question: You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+sources:
+  - title: GitLab incident report
+    url: "https://handbook.gitlab.com/handbook/engineering/data-engineering/database-excellence/database-frameworks/doc/issue-group-search-partitioning/"
+    type: article
+  - title: "PostgreSQL Documentation: EXPLAIN"
+    url: "https://www.postgresql.org/docs/current/sql-explain.html"
+    type: documentation
+  - title: "PostgreSQL Documentation: CREATE INDEX"
+    url: "https://www.postgresql.org/docs/current/sql-createindex.html"
+    type: documentation
+  - title: "PostgreSQL Documentation: CLUSTER"
+    url: "https://www.postgresql.org/docs/current/sql-cluster.html"
+    type: documentation
+  - title: "PostgreSQL Documentation: Table Partitioning"
+    url: "https://www.postgresql.org/docs/current/ddl-partitioning.html"
+    type: documentation
+  - title: "PostgreSQL Documentation: GiST and GIN Index Types"
+    url: "https://www.postgresql.org/docs/current/textsearch-indexes.html"
+    type: documentation
+  - title: "Use the Index, Luke!"
+    url: "https://use-the-index-luke.com/"
+    type: blog
+  - title: "PostgreSQL Documentation: Analyzing How PostgreSQL Executes a Query"
+    url: "https://www.postgresql.org/docs/current/using-explain.html"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| intermediate | database | explain, query-plan, partitioning |
+
+You have a PostgreSQL table with 100 million rows, partitioned by date. You add an index. And still, that date-range query crawls. Sound familiar? You are not alone — GitLab hit this exact wall when its database ballooned past 5 TB and a single global index turned full-text search into an 8-second nightmare [1]. Here is the uncomfortable truth: the answer is never just "add an index." Let's walk the path from diagnostic to fix, using GitLab's own battlefield as our map.
+
+---
+
+> ### Real-World Case — GitLab
+>
+> GitLab.com's PostgreSQL database grew to over 5 TB, with individual tables blistering past 100 GB. Full-text search on the `issues` table (23 million issues) became painfully slow — a simple 'foobar' title/description search took ~2.8 seconds and a group-scoped issue search took ~8 seconds, driven by a single global 19 GB GIN trigram index and physical data spread across a huge heap.
+>
+> | | |
+> |---|---|
+> | **Challenge** | Diagnosing why queries on a massive table stayed slow despite existing indexes, and choosing an optimization that let the query planner cheaply eliminate most of the search space. The global trigram index was too large to be efficient, and per-group searches could not prune anything. |
+> | **Solution** | GitLab hash-partitioned the `issues` table into 64-128 partitions keyed on `top_level_namespace`, deliberately aligning the partition key with the real query pattern (group-scoped search) rather than using a generic date key. This required denormalizing `top_level_namespace_id` into the table. After partitioning, each partition has its own small trigram index and the planner prunes down to a single relevant partition via EXPLAIN-visible partition pruning. |
+> | **Outcome** | Group issue search dropped from ~2 seconds to ~0.2 seconds on a warm cache — an 8-10x speedup. Per-partition trigram indexes became 10-100x smaller than the old 19 GB global index. The trade-off: query planning time rose slightly (10ms to 40ms) from the extra partition metadata. |
+> | **Lesson** | Partitioning only pays off when the partition key matches how queries actually filter data; the planner can only prune partitions a query references. Achieving that may require denormalizing a key into the table, and physical layout (partitioning/pruning) — not just better SQL — is the durable fix for slow queries on large PostgreSQL tables. |
+
+---
+
+## Hook — The 8-Second Search That Should Take Milliseconds
+
+Picture this: a developer types a plain word — 'foobar' — into your issue tracker's search bar, and waits. And waits. Two point eight seconds later, the results shuffle onto the screen. For a group-scoped search, that wait stretches to a full eight seconds. That is not a lag spike; that is the sound of a database quietly suffocating. This was the reality at GitLab.com, where the issues table alone held 23 million rows and the team was paying the price for a single global 19 GB GIN trigram index sitting on a massively spread-out heap [1]. The stakes are simple: every extra hundred milliseconds is a developer yanked out of flow, and at GitLab's scale, those milliseconds add up to real human cost.
+
+## Problem — Partitioned, Indexed, and Still Painfully Slow
+
+Here is the classic trap. The table is partitioned by date. The query filters on a date range. The obvious fix should work: create an index, let the planner prune the partitions, and reap the speedup. Yet the query stays slow, and the team stares at the EXPLAIN output wondering what went wrong. The truth is that partitioning alone rarely fixes slow queries, and an index only helps if the planner actually uses it. Many developers assume the partition key is doing all the heavy lifting, but the geometry of your data — how rows are physically laid out, whether the planner can prune early, and whether the query needs expensive sorts — matters far more than the presence of an index. The problem is a combination: pruning that only partially happens, indexes that the planner ignores in favor of sequential scans, and sort operations that eat your memory budget whole.
+
+## Real-World Case — GitLab
+
+This is where the theory gets real. GitLab's PostgreSQL database grew past 5 TB, and individual tables soared beyond 100 GB [1]. The full-text search over the issues table — built on a single global 19 GB GIN trigram index — ground to a halt. A group-scoped issue search took eight seconds, and a simple title/description lookup took nearly three. The root cause was a perfect storm: one monolithic index, physical data sprawled across a huge heap, and no way for the planner to take advantage of the partitioned layout. The fix was to move from one global index to per-partition trigram indexes. The results were dramatic: group issue search dropped from about 2 seconds to about 0.2 seconds on a warm cache — an 8-10x speedup — and each per-partition index became 10-100x smaller than the old global index [1]. The trade-off? Query planning time rose from 10ms to 40ms due to the extra partition metadata. Nobody mentions the 'but' when they quote the speedup — but that planning cost is exactly the kind of nuance that separates a good engineer from a great one.
+
+## Deep Dive — Partition Pruning, Index Utilization, and the Sort That Eats You
+
+So what should you actually look at in that EXPLAIN plan? Start with partition pruning. You want to confirm that the planner is only touching the partitions that actually contain your date range — not scanning all of them out of caution. If pruning is missing or partial, no index will save you. Next, examine index utilization: is the planner doing an index scan, or falling back to a sequential scan because the query is too unselective, or because the statistics are stale? Then hunt for the expensive operations — sorts and hash aggregates that balloon your memory and row estimates. This leads to the deeper insight: the fix often is not one optimization but a composition of them. That is why a composite index on (date, filtered_columns) is such a common win — it lets the planner satisfy both the partition key and the WHERE clause in a single pass. And when physical layout is still poorly ordered, CLUSTER can reorder the heap so that the index and the data agree on where rows live, cutting random I/O dramatically.
+
+## Workflow — The Diagnostic Checklist from Pain to Speedup
+
+Building on all that, here is the repeatable workflow that emerges from GitLab's experience. The diagram below maps the journey. First, run an EXPLAIN (ANALYZE, BUFFERS) on the real query and confirm whether partition pruning is firing. Second, check whether the planner is using an index or a sequential scan — if it is scanning, ask why. Third, identify the expensive sorts and aggregates at the top of the plan. Fourth, design a composite index that covers the WHERE clause and matches your pruning key. Fifth, evaluate clustering when data access patterns demand it. Finally, measure before and after — because the trade-offs, like GitLab's uptick in planning time, only reveal themselves when you benchmark the whole system. This workflow is the difference between guessing and diagnosing.
+
+## Code Example — Reading the Plan, Building the Index, Clustering the Heap
+
+Now for the hands-on part. Start by diagnosing the query with a full EXPLAIN so you can see pruning, index usage, and expensive operations at a glance. Then add the composite index that matches both the date partition and the filtered column. Finally, if the physical layout is fighting you, cluster the table. The bash script below automates this exact sequence as a repeatable diagnostic and optimize routine.
+
+## Lessons Learned — What to Do Differently Tomorrow
+
+If this feels overwhelming, you are not alone. Every one of these lessons is hard-won, and they all distill into a handful of principles. Partitioning is a tool, not a silver bullet — it only pays off when the planner actually prunes. An index is only as good as the plan that uses it, so verify with EXPLAIN instead of assuming. The cheapest optimization in the world is knowing whether you are sorting, scanning, or pruning before you write any migration. And most importantly, measure the whole system, not just the happy path — because, as GitLab discovered, a 10ms planner hiccup can be the hidden tax on a 10x speedup. Tomorrow, before touching a single column, run EXPLAIN on the slow query and look for those three red flags: no pruning, no index, and an expensive sort.
+
+---
+
+## Query Optimization Diagnostic Flow
+
+```mermaid
+flowchart TD
+    A[Slow Date-Range Query] --> B{EXPLAIN ANALYZE}
+    B --> C[Is Partition Pruning Firing?]
+    C -- No --> D[Fix Partition Key / Range
+Design]
+    C -- Yes --> E[Index Being Used or
+Sequential Scan?]
+    E -- Scan --> F[Check Selectivity,
+Update Statistics]
+    E -- Index --> G[Expensive Sort or
+Hash Aggregate?]
+    G -- Yes --> H[Build Composite Index
+(date, filtered_cols)]
+    G -- No --> I[Heap Ordering Poor?]
+    I -- Yes --> J[CLUSTER on Index]
+    I -- No --> K[Measure Before / After]
+    D --> K
+    F --> K
+    H --> K
+    J --> K
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+
+**A:** Check partition pruning effectiveness, index utilization patterns, and expensive sort operations. Create composite indexes on (date, filtered_columns) and evaluate clustering strategies for optimal data access.
+
+</details>
+
+## Conclusion
+
+So what should you do differently tomorrow? Stop trusting indexes and partitioning on faith — trust the EXPLAIN plan. On your next slow query, run EXPLAIN (ANALYZE, BUFFERS), confirm pruning fires, confirm the index is used, and hunt the sort that eats your memory. Build composite indexes that match your partition key, reach for CLUSTER when the heap fights you, and always measure the whole system before and after. The one insight to share with your team: a 10x speedup almost always ships with a hidden tax somewhere — GitLab's was 30ms of planning time. Find yours before it finds you.
+
+---
+
+## References
+
+1. [GitLab incident report](https://handbook.gitlab.com/handbook/engineering/data-engineering/database-excellence/database-frameworks/doc/issue-group-search-partitioning/) — article
+2. [PostgreSQL Documentation: EXPLAIN](https://www.postgresql.org/docs/current/sql-explain.html) — documentation
+3. [PostgreSQL Documentation: CREATE INDEX](https://www.postgresql.org/docs/current/sql-createindex.html) — documentation
+4. [PostgreSQL Documentation: CLUSTER](https://www.postgresql.org/docs/current/sql-cluster.html) — documentation
+5. [PostgreSQL Documentation: Table Partitioning](https://www.postgresql.org/docs/current/ddl-partitioning.html) — documentation
+6. [PostgreSQL Documentation: GiST and GIN Index Types](https://www.postgresql.org/docs/current/textsearch-indexes.html) — documentation
+7. [Use the Index, Luke!](https://use-the-index-luke.com/) — blog
+8. [PostgreSQL Documentation: Analyzing How PostgreSQL Executes a Query](https://www.postgresql.org/docs/current/using-explain.html) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
