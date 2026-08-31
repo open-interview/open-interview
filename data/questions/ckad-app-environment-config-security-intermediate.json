@@ -1,0 +1,123 @@
+[
+  {
+    "id": "ckad-envsec-001",
+    "certificationId": "ckad",
+    "domain": "application-environment-configuration-security",
+    "question": "Your team runs a Node.js application in the production namespace. The app reads its database credentials (username and password) from environment variables DB_USER and DB_PASSWORD. You must make these secrets available to the running pod without exposing them in the Deployment manifest, while following the principle of least privilege. Which approach satisfies the requirement and uses the recommended Kubernetes mechanism?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a Secret with the credentials and inject it as environment variables using secretKeyRef so their values never appear in the Deployment YAML.",
+        "isCorrect": true
+      },
+      {
+        "id": "b",
+        "text": "Store the credentials directly as plain text environment variables in the Deployment spec so they are easy to read and debug for the operations team.",
+        "isCorrect": false
+      },
+      {
+        "id": "c",
+        "text": "Mount the database credentials into a ConfigMap and reference it with configMapKeyRef so the database credentials are centralized in one configuration object.",
+        "isCorrect": false
+      },
+      {
+        "id": "d",
+        "text": "Hard-code the credentials in the container image's environment using an ENV statement in the Dockerfile so they are baked in at build time.",
+        "isCorrect": false
+      }
+    ],
+    "explanation": "## Correct Answer\n\nOption A is correct. A **Secret** is the Kubernetes-native object designed to hold sensitive data such as credentials. Injecting it via `secretKeyRef` in the container's `env` block makes the value available to the app as an environment variable while keeping it out of the Deployment manifest and out of plain-text config.\n\n## Why Other Options Are Wrong\n\n- Option B: Putting credentials directly in the Deployment spec stores them in plain text in `etcd`, exposes them in `kubectl get deployment -o yaml`, and pollutes git history. It violates the principle of least privilege and Kubernetes best practice.\n- Option C: A ConfigMap is intended for **non-sensitive** configuration data. Storing database credentials in a ConfigMap does not provide the secrecy constraints or the encryption-at-rest handling that Secrets do.\n- Option D: Baking credentials into the container image at build time makes them visible to anyone who can pull the image, permanently embeds them in the image layers, and requires a rebuild to rotate them. This is an anti-pattern.\n\n## Key Concepts\n\n- **Secret**: Kubernetes object for sensitive data; its values are base64-encoded at rest by default and can be encrypted with KMS/encryption-at-rest configuration.\n- **secretKeyRef**: Selects a key from a Secret to populate a container's environment variable without exposing the value in the resource manifest.\n- **Least privilege**: Granting the minimum access needed; secrets should not be readable in plain text by anyone who can view the workload manifest.\n- **ConfigMap vs Secret**: ConfigMap is for non-sensitive config; use Secrets for credentials, tokens, and keys.\n\n## Real-World Application\n\nIn production, database credentials, API keys, and TLS certificates should always be stored in Secrets. Inject them via `secretKeyRef` (or volume mounts) and rotate them centrally. Enable encryption at rest on Secrets and restrict read access with RBAC rather than scattering credentials across Deployment manifests or image builds.\n\n## Example Secret and Env Injection\n\n```yaml\napiVersion: v1\nkind: Secret\nmetadata:\n  name: db-credentials\n  namespace: production\ntype: Opaque\nstringData:\n  DB_USER: appuser\n  DB_PASSWORD: s3cr3t\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: orders-api\n  namespace: production\nspec:\n  template:\n    spec:\n      containers:\n        - name: app\n          image: orders-api:v3\n          env:\n            - name: DB_USER\n              valueFrom:\n                secretKeyRef:\n                  name: db-credentials\n                  key: DB_USER\n            - name: DB_PASSWORD\n              valueFrom:\n                secretKeyRef:\n                  name: db-credentials\n                  key: DB_PASSWORD\n```",
+    "difficulty": "intermediate",
+    "tags": [
+      "secret",
+      "secretKeyRef",
+      "environment-variables",
+      "configmap",
+      "rbac",
+      "least-privilege",
+      "application-environment",
+      "ckad"
+    ]
+  },
+  {
+    "id": "ckad-envsec-002",
+    "certificationId": "ckad",
+    "domain": "application-environment-configuration-security",
+    "question": "You are deploying a microservice into the team-a namespace. The security policy requires that the container process run as a non-root user, not gain additional privileges, and reject writes to the container's root filesystem while still allowing writes to an emptyDir volume for temporary storage. Which securityContext configuration at the container level satisfies all of these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Set runAsUser: 1000, allowPrivilegeEscalation: false, and readOnlyRootFilesystem: true, while mounting an emptyDir volume at a writable path for temporary storage.",
+        "isCorrect": true
+      },
+      {
+        "id": "b",
+        "text": "Set runAsNonRoot: true and privileged: true so the container runs as a non-root user but keeps elevated Linux capabilities for debugging.",
+        "isCorrect": false
+      },
+      {
+        "id": "c",
+        "text": "Set readOnlyRootFilesystem: false and runAsUser: 1000 so the container can write anywhere, including its own root filesystem, which simplifies the temporary storage path.",
+        "isCorrect": false
+      },
+      {
+        "id": "d",
+        "text": "Set runAsUser: 0 and allowPrivilegeEscalation: false so the container runs as root but cannot escalate privileges, satisfying the least-privilege requirement.",
+        "isCorrect": false
+      }
+    ],
+    "explanation": "## Correct Answer\n\nOption A is correct. Setting **runAsUser: 1000** runs the process as a non-root user, **allowPrivilegeEscalation: false** forbids the process from gaining more privileges than its parent (and disables setuid binaries), and **readOnlyRootFilesystem: true** makes the container's root filesystem read-only. Mounting an **emptyDir** volume at a writable path gives the app a writable scratch space while the root filesystem stays read-only.\n\n## Why Other Options Are Wrong\n\n- Option B: `privileged: true` grants the container full host access and all Linux capabilities, which is the opposite of least privilege. It contradicts `runAsNonRoot`'s intent and is never appropriate for a hardened workload.\n- Option C: Keeping `readOnlyRootFilesystem: false` allows the container to write to its root filesystem, which violates the explicit requirement to reject root-filesystem writes. Writes belong on the mounted emptyDir volume.\n- Option D: `runAsUser: 0` runs the container as root, which directly violates the non-root-user requirement regardless of `allowPrivilegeEscalation`. Running as root defeats namespaced least-privilege hardening.\n\n## Key Concepts\n\n- **securityContext**: Container- or pod-level settings defining user/group, capabilities, seccomp, SELinux, and read-only constraints.\n- **runAsUser / runAsNonRoot**: Control the UID the process runs under; non-root is best practice.\n- **allowPrivilegeEscalation**: Prevents a process from gaining more privileges than its parent, including via setuid binaries.\n- **readOnlyRootFilesystem**: Makes the container's root filesystem read-only; writable data must go into mounted volumes such as emptyDir.\n- **emptyDir**: A temporary, per-pod writable volume that is destroyed when the pod is removed, ideal for scratch/tmp data.\n\n## Real-World Application\n\nHardening CI/CD pipelines and production workloads frequently requires a read-only root filesystem with a writable emptyDir volume for temp files, caches, or scratch space. Combined with a non-root UID and `allowPrivilegeEscalation: false`, this reflects common Pod Security Standards (restricted profile) and is the foundation of running untrusted or security-sensitive containers.\n\n## Example securityContext\n\n```yaml\nspec:\n  containers:\n    - name: app\n      image: myapp:v1\n      securityContext:\n        runAsUser: 1000\n        runAsNonRoot: true\n        allowPrivilegeEscalation: false\n        readOnlyRootFilesystem: true\n        capabilities:\n          drop:\n            - ALL\n      volumeMounts:\n        - name: scratch\n          mountPath: /tmp\n      volumes:\n        - name: scratch\n          emptyDir: {}\n```",
+    "difficulty": "intermediate",
+    "tags": [
+      "securitycontext",
+      "pod-security",
+      "runasuser",
+      "readonlyrootfilesystem",
+      "allowprivilegeescalation",
+      "emptydir",
+      "least-privilege",
+      "application-security",
+      "ckad"
+    ]
+  },
+  {
+    "id": "ckad-envsec-003",
+    "certificationId": "ckad",
+    "domain": "application-environment-configuration-security",
+    "question": "A team has deployed the app-config ConfigMap in the team-a namespace with a key named features. The Operations team now wants an out-of-the-box diagnostic container to always see the current values even if the ConfigMap is updated later, and they want the update to propagate to the running container automatically. Which approach makes every pod in the namespace see the live ConfigMap data without redeploying the workload?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Mount the ConfigMap as a volume so updates to the ConfigMap data are synced to the mounted files within the running container without a pod restart.",
+        "isCorrect": true
+      },
+      {
+        "id": "b",
+        "text": "Inject the ConfigMap values as environment variables using configMapKeyRef so they remain in sync with ConfigMap updates automatically since they are read at runtime.",
+        "isCorrect": false
+      },
+      {
+        "id": "c",
+        "text": "Copy the ConfigMap values into the container image at build time so the running container always has the latest values without any Kubernetes synchronization.",
+        "isCorrect": false
+      },
+      {
+        "id": "d",
+        "text": "Use a ConfigMap-backed volume with subPath mounts so every key is always fully synced into the running container as soon as the ConfigMap is edited.",
+        "isCorrect": false
+      }
+    ],
+    "explanation": "## Correct Answer\n\nOption A is correct. When a ConfigMap is mounted as a **volume**, Kubernetes projects the ConfigMap data into files under the mount path. When the ConfigMap is updated, the kubelet refreshes the projected files in the running container **automatically within a few seconds** (default sync period of roughly a minute), without requiring a pod restart. Environment variables, by contrast, are frozen at container start.\n\n## Why Other Options Are Wrong\n\n- Option B: Environment variables injected via `configMapKeyRef` are read once when the container starts and are **never updated** afterward. Updating the ConfigMap does not change already-running containers' environment, so they are not kept in sync.\n- Option C: Baking values into the image at build time captures only a snapshot and requires rebuilding and redeploying the image to pick up changes. It provides no live synchronization.\n- Option D: While a volume mount does sync, **subPath** mounts are a known exception: files mounted via `subPath` are **not** updated when the ConfigMap changes, because the subPath mechanism does not perform the atomic symlink swap that regular ConfigMap volume mounts use.\n\n## Key Concepts\n\n- **ConfigMap volume mount**: Projects ConfigMap keys as files and the kubelet continuously syncs them to the running pod when the ConfigMap changes.\n- **Env injection is static**: `configMapKeyRef`/`secretKeyRef` values are captured at process start and do not update.\n- **subPath limitation**: `subPath` mounts break live updates because they bind a single file instead of using the projected-volume symlink mechanism.\n- **Use case**: Read-live configuration (feature flags, routing rules) is best served by volume mounts, while immutable startup values are fine as env vars.\n\n## Real-World Application\n\nFor feature flags, lookup tables, or routing rules that must change without redeploying, mount the ConfigMap as a volume and have the application re-read files or watch the directory for changes. Avoid relying on environment variables for runtime-updatable config, and avoid `subPath` when you need automatic propagation.\n\n## Example ConfigMap Volume Mount\n\n```yaml\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: app-config\n  namespace: team-a\ndata:\n  features: \"{\\\"beta\\\":true,\\\"darkMode\\\":false}\"\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: app\n  namespace: team-a\nspec:\n  template:\n    spec:\n      containers:\n        - name: app\n          image: app:v1\n          volumeMounts:\n            - name: config\n              mountPath: /etc/app-config\n      volumes:\n        - name: config\n          configMap:\n            name: app-config\n```",
+    "difficulty": "intermediate",
+    "tags": [
+      "configmap",
+      "volume-mount",
+      "configmapkeyref",
+      "subpath",
+      "environment-variables",
+      "configuration",
+      "live-updates",
+      "ckad"
+    ]
+  }
+]
