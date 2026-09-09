@@ -1,0 +1,232 @@
+---
+id: blog-1788958393912-deployment-vs-serving-the-ml-p
+title: "Deployment vs. Serving: The ML Production Divide That Breaks Teams (And How Netflix Solved It at Scale)"
+slug: deployment-vs-serving-the-ml-production-divide-that-breaks-teams-and-how-netflix
+date: "2026-09-09"
+author: "Satishkumar Dhule"
+channel: devops
+category: devops
+difficulty: beginner
+tags: ["mlops", "deployment"]
+description: "Learn the critical differences between ML model deployment and model serving, with real-world insights from Netflix's architecture handling 1M+ requests per second."
+question: "Explain the key differences between model serving and model deployment in ML systems, including specific technologies, scaling considerations, and real-world implementation patterns?"
+sources:
+  - title: "Netflix: State of Routing in Model Serving"
+    url: "https://netflixtechblog.com/state-of-routing-in-model-serving-16e22fe18741"
+    type: blog
+  - title: Kubernetes Documentation - Horizontal Pod Autoscaler
+    url: "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/"
+    type: documentation
+  - title: TorchServe GitHub Repository
+    url: "https://github.com/pytorch/serve"
+    type: blog
+  - title: TensorFlow Serving Documentation
+    url: "https://www.tensorflow.org/tfx/guide/serving"
+    type: documentation
+  - title: BentoML GitHub Repository
+    url: "https://github.com/bentoml/BentoML"
+    type: blog
+  - title: MLflow Model Registry Documentation
+    url: "https://mlflow.org/docs/latest/model-registry.html"
+    type: documentation
+  - title: NVIDIA Triton Inference Server Documentation
+    url: "https://github.com/triton-inference-server/server"
+    type: blog
+  - title: BentoML - Model Serving Framework
+    url: "https://docs.bentoml.com/en/latest/guides/overview.html"
+    type: documentation
+  - title: Envoy Proxy - High Performance Edge Proxy
+    url: "https://www.envoyproxy.io/docs/envoy/latest/"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| beginner | devops | mlops, deployment |
+
+Netflix serves over 250 million users worldwide, and behind every recommendation, every personalized thumbnail, and every search result sits an ML model making decisions in real time [1]. But here is the thing most developers do not realize until they are staring at a broken production system at 2am: getting a model into production and getting a model to serve predictions are two fundamentally different problems. Confusing the two is one of the most expensive mistakes in modern ML systems. Netflix learned this the hard way, and the architecture they built to solve it reveals a pattern every ML team should understand.
+
+---
+
+> ### Real-World Case — Netflix
+>
+> Netflix needed to unify ML model serving across hundreds of model types and versions serving 250M+ users, while cleanly separating the concerns of deployment (infrastructure, CI/CD, versioning) from serving (real-time inference, routing, A/B testing). They built a centralized ML serving platform with a custom routing layer called Switchboard handling over 1 million requests per second.
+>
+> | | |
+> |---|---|
+> | **Challenge** | Netflix's ML ecosystem had grown to hundreds of models across dozens of teams, each with different hardware requirements (CPU vs GPU), latency SLAs, and deployment cadences. The company needed a single serving abstraction that decoupled application teams from model runtimes, while solving the coordination problem where deploying a new model version with schema changes caused failures when upstream consumers hadn't updated yet. |
+> | **Solution** | Netflix built a unified JVM-based serving system that handles end-to-end inference flow: routing, A/B test logic, feature fetching, inference, post-processing, and logging. They introduced Switchboard (later replaced by Lightbulb) as a custom gRPC proxy for context-aware routing across 1M+ RPS. For GPU models, they integrated NVIDIA Triton with vLLM as the inference engine, separating model packaging (deployment) from runtime serving. They offered two deployment strategies: Red-Black for standard deployments and Versioned deployments that maintain independent deployments per model version to solve the schema-change coordination problem. |
+> | **Outcome** | As of 2025, Netflix's serving platform handles 1 million requests per second across hundreds of model types and versions. They achieved zero-downtime upgrades for GPU models by pre-materializing models on Amazon FSx (avoiding cold-start latency from S3 downloads), pinned compatible Triton+vLLM versions to prevent backend-loading failures, and built constrained decoding that pushes business rules inside the decode loop rather than retrying invalid generations. The architecture allowed small CPU models to run in-process while larger GPU models delegated to remote Model Scoring Service. |
+> | **Lesson** | The key insight is that deployment and serving are fundamentally different concerns that must be decoupled. Deployment is about infrastructure provisioning, CI/CD pipelines, version management, and rollback strategies. Serving is about runtime request routing, model loading, inference optimization, and response processing. Netflix discovered that even with a common serving interface, the abstraction doesn't eliminate underlying complexity—packaging compatibility, constrained decoding state management, and versioned deployments still require engineering at each layer. The 'coordination gap' during schema changes between model versions was only solvable by maintaining multiple concurrent deployments. |
+
+---
+
+## Hook — The 1am Deploy That Should Have Worked
+
+Picture this: your team just pushed a new recommendation model through CI/CD. The pipeline green-lit every check. Kubernetes rolled out the new pods. Monitoring showed healthy resource utilization. By every metric, the deploy was a success. Then users start complaining. Latency spikes. Responses arrive garbled. The model is loaded, but it is not serving correctly. Sound familiar? The painful truth is that deployment and serving are not the same thing, and treating them as one unified step is how production ML systems fail in spectacular ways. One handles the plumbing. The other handles the performance. Miss the distinction, and you get systems that deploy perfectly but crash under real traffic.
+
+## Problem — Why Two Problems Are Hiding Inside One
+
+In traditional software, deployment and runtime are tightly coupled. You deploy a web server, it serves HTTP. Done. But in ML, the model artifact itself introduces a layer of complexity that traditional DevOps never had to consider. Deployment encompasses the entire lifecycle: CI/CD pipelines, infrastructure provisioning with tools like Kubernetes and Terraform, environment configuration, monitoring setup, and rollback strategies [2]. It is the process of getting your model artifact from a notebook to a place where it can run. Serving, on the other hand, is the runtime layer. It is the inference API, the request router, the model loader, the batching engine. Frameworks like TensorFlow Serving, TorchServe, and BentoML live here [3]. They handle loading model weights into memory, routing incoming requests, versioning models for A/B tests, and optimizing response latency. The confusion between these two creates real problems. Teams wire their CI/CD directly to their serving layer, creating tight coupling that makes rollback dangerous. They optimize deployment speed while ignoring cold-start latency. They monitor pipeline health but miss inference quality. The result? Systems that look healthy on dashboards but fail when users actually hit them.
+
+## Real-World Case — Netflix's Million-Request Challenge
+
+Netflix faced exactly this problem, but at a scale most teams cannot imagine. With hundreds of model types and versions serving 250M+ users, they needed to cleanly separate deployment concerns (infrastructure, CI/CD, versioning) from serving concerns (real-time inference, routing, A/B testing) [1]. Their solution was a centralized ML serving platform with a custom routing layer called Switchboard. Switchboard handles over 1 million requests per second, routing traffic to hundreds of model endpoints while cleanly decoupling the infrastructure layer from the inference layer. But the real insights came from the battle scars along the way. Netflix discovered that cold-start latency from downloading models off S3 was unacceptable for GPU-accelerated workloads. Their fix? Pre-materializing models on Amazon FSx, making them instantly available when a pod starts [1]. They also learned that version compatibility between backends like Triton and vLLM was a silent killer. Pinning compatible versions prevented backend-loading failures that would otherwise surface only under production traffic. Perhaps most elegantly, they pushed business rules inside the decode loop using constrained decoding, rather than retrying invalid generations externally. The result was zero-downtime upgrades for GPU models and a platform that lets small CPU models run in-process while larger GPU models delegate to a remote Model Scoring Service [1]. The key insight: deployment and serving must be architecturally separate but operationally coordinated.
+
+## Deep Dive — The Technical Trade-Offs Nobody Warns You About
+
+Understanding the deployment-serving split requires examining the specific trade-offs that arise when each layer operates independently. Latency versus throughput is the most common tension. A serving framework optimized for low-latency single requests will sacrifice throughput, while a batch-optimized system will add latency to individual requests. Real-time inference demands sub-100ms response times, while batch processing can tolerate seconds or minutes [2]. Then there is the scaling dimension. Horizontal scaling through Kubernetes pod replicas handles traffic spikes elegantly. But vertical scaling — allocating more GPU memory or CPU — is sometimes unavoidable for large model files that cannot be sharded across nodes [4]. Cold start optimization is another critical consideration. When a new model version deploys, the serving layer must load weights into memory. For a 70B parameter model on a GPU cluster, this can take minutes. Netflix solved this with pre-materialization on FSx, but most teams must make deliberate choices about warm pools, model caching, and snapshot strategies [1]. Versioning adds further complexity. A/B testing requires routing specific traffic percentages to different model versions. Canary deployments need gradual rollouts with automatic rollback on metric degradation. And shadow deployments must run new models alongside production traffic without affecting user responses [3]. The following comparison table captures the real trade-offs teams face:
+
+## Workflow — From Notebook to Production Serving
+
+The following architecture illustrates how deployment and serving operate as distinct but coordinated layers. Deployment handles the infrastructure and lifecycle, while serving handles the runtime inference. Note how they share a model registry but operate on different timescales and failure modes. flowchart TB subgraph Deploy["Deployment Layer"] A[Model Training] --> B[Model Registry
+MLflow / SageMaker] B --> C[CI/CD Pipeline
+GitHub Actions] C --> D[Infrastructure
+Kubernetes / Terraform] D --> E[Health Checks
+& Monitoring] end subgraph Serve["Serving Layer"] F[Load Balancer
+NGINX / Envoy] --> G[Request Router
+Switchboard] G --> H1[CPU Model
+In-Process] G --> H2[GPU Model
+Model Scoring Service] H1 --> I[Response
+Aggregation] H2 --> I end B -.->|Version sync| F E -.->|Metrics back| C style Deploy fill:#e8f4fd,stroke:#1a73e8 style Serve fill:#fef3e0,stroke:#ea8600 This separation matters because deployment failures and serving failures require fundamentally different responses. A CI/CD pipeline failure means halting the rollout. A serving failure means routing traffic to a healthy model version. They share state through the model registry but operate independently.
+
+## Code Example — A Minimal Model Serving Router
+
+The following Python example demonstrates a simplified version of the routing pattern Netflix uses with Switchboard. It separates the deployment concern (model loading and versioning) from the serving concern (request handling and routing):
+import time
+from dataclasses import dataclass, field
+from typing import Dict, Callable, Optional
+from enum import Enum
+
+# Model status tracks deployment lifecycle vs serving state
+class ModelStatus(Enum):
+    LOADING = "loading"       # Deployment: model being loaded into memory
+    READY = "ready"           # Serving: model available for inference
+    DEGRADED = "degraded"     # Serving: model responding but with elevated latency
+    DRAINING = "draining"     # Deployment: old version being removed
+
+@dataclass
+class ModelEndpoint:
+    """Separates deployment metadata from serving runtime."""
+    model_id: str
+    version: str
+    status: ModelStatus = ModelStatus.LOADING
+    load_time_ms: float = 0.0
+    request_count: int = 0
+    error_count: int = 0
+    last_error: Optional[str] = None
+
+    # Serving: the actual inference function
+    predict_fn: Optional[Callable] = field(default=None, repr=False)
+
+    def is_available(self) -> bool:
+        """Check if model is healthy enough to serve traffic."""
+        return self.status == ModelStatus.READY and self.predict_fn is not None
+
+    def predict(self, input_data: dict) -> dict:
+        """Route prediction request to loaded model."""
+        if not self.is_available():
+            raise RuntimeError(f"Model {self.model_id}:{self.version} unavailable")
+        start = time.time()
+        try:
+            result = self.predict_fn(input_data)
+            self.request_count += 1
+            return {"result": result, "model": f"{self.model_id}:{self.version}"}
+        except Exception as e:
+            self.error_count += 1
+            self.last_error = str(e)
+            raise
+        finally:
+            self.load_time_ms = (time.time() - start) * 1000
+
+class ModelRouter:
+    """Production router: decouples deployment from serving."""
+    def __init__(self, default_model: str):
+        self.endpoints: Dict[str, Dict[str, ModelEndpoint]] = {}
+        self.default_model = default_model
+
+    def register(self, model_id: str, version: str, predict_fn: Callable):
+        """Deployment layer: registers a new model version."""
+        endpoint = ModelEndpoint(model_id=model_id, version=version, predict_fn=predict_fn)
+        if model_id not in self.endpoints:
+            self.endpoints[model_id] = {}
+        self.endpoints[model_id][version] = endpoint
+        # Mark as ready after successful load
+        endpoint.status = ModelStatus.READY
+        print(f"Deployed {model_id}:{version} - status: READY")
+
+    def route(self, input_data: dict, model_id: str = None, 
+              version: str = None) -> dict:
+        """Serving layer: routes requests to best available endpoint."""
+        model_id = model_id or self.default_model
+        if model_id not in self.endpoints:
+            raise ValueError(f"No endpoints for model {model_id}")
+
+        # Prefer specified version, fall back to latest ready endpoint
+        if version:
+            endpoint = self.endpoints[model_id].get(version)
+            if endpoint and endpoint.is_available():
+                return endpoint.predict(input_data)
+
+        # Route to latest ready version (A/B traffic splitting pattern)
+        for ver in reversed(list(self.endpoints[model_id].keys())):
+            endpoint = self.endpoints[model_id][ver]
+            if endpoint.is_available():
+                return endpoint.predict(input_data)
+
+        raise RuntimeError(f"No healthy endpoints for {model_id}")
+
+# Example usage: deploying and serving a recommendation model
+router = ModelRouter(default_model="recommendations")
+
+# Deployment: register model versions (would normally load weights here)
+router.register("recommendations", "v1.0", lambda x: {"score": 0.85})
+router.register("recommendations", "v1.1", lambda x: {"score": 0.91})
+
+# Serving: route inference requests
+response = router.route({"user_id": "12345", "context": "homepage"})
+print(response)  # Routes to v1.1 as it is the latest ready version
+ Walking through this code: the `ModelEndpoint` class separates deployment metadata (load time, status) from serving behavior (the predict function). The `ModelRouter` handles request routing independently of model loading. When you register a new version, it does not interrupt existing traffic. When you route a request, it finds the best available endpoint automatically. This pattern mirrors Netflix's Switchboard concept at a micro scale: the router decides where traffic goes, while the deployment layer decides what models are available.
+
+## Lessons Learned — The Patterns That Actually Work
+
+The journey from confusing deployment with serving to architecting them separately reveals several hard-won insights: **Battle Scars to Avoid:** - Many developers wire CI/CD directly to the serving endpoint. This creates tight coupling where a failed deploy takes down inference. Keep them communicating through a model registry, not directly. - Cold-start latency is the silent killer of ML serving. A model that takes 3 minutes to load will cause cascading timeouts during autoscaling events. Pre-materialize models on fast storage like FSx or use warm pools [1]. - Do not assume GPU backends are version-agnostic. Triton, vLLM, and similar frameworks have strict compatibility matrices. Pin versions explicitly [1]. **What Works:** - Use constrained decoding to enforce business rules inside the model decode loop, not as post-processing retries [1]. - Route small CPU models in-process for minimal latency; delegate large GPU models to dedicated scoring services [1]. - Monitor both layers independently: track deployment pipeline health (deploy frequency, rollback rate) and serving health (latency p99, error rate, throughput) [2]. The ultimate lesson from Netflix's experience is this: deployment is a problem of reliability engineering, while serving is a problem of performance engineering. They share a model registry but diverge in failure modes, scaling strategies, and monitoring requirements. Treat them as the two halves of a whole, and your ML systems will be significantly more resilient.
+
+---
+
+## ML Deployment vs Serving Architecture
+
+```mermaid
+flowchart TB subgraph Deploy["Deployment Layer"] A[Model Training] --> B[Model Registry MLflow SageMaker] B --> C[CI/CD Pipeline GitHub Actions] C --> D[Infrastructure Kubernetes Terraform] D --> E[Health Checks and Monitoring] end subgraph Serve["Serving Layer"] F[Load Balancer NGINX Envoy] --> G[Request Router Switchboard] G --> H1[CPU Model In-Process] G --> H2[GPU Model Model Scoring Service] H1 --> I[Response Aggregation] H2 --> I end B -.->|Version sync| F E -.->|Metrics back| C
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** Explain the key differences between model serving and model deployment in ML systems, including specific technologies, scaling considerations, and real-world implementation patterns?
+
+**A:** Deployment encompasses CI/CD pipelines, infrastructure setup, and monitoring using tools like Kubernetes, MLflow, and SageMaker. Serving focuses on runtime inference APIs with frameworks like TensorFlow Serving, TorchServe, or BentoML, handling request routing, model versioning, and autoscaling. Key trade-offs include latency vs throughput, batch vs real-time inference, and cold start optimization.
+
+</details>
+
+## Conclusion
+
+The core lesson from Netflix's experience is that deployment and serving are not one problem with one solution - they are two distinct engineering challenges that share a model registry. Treating deployment as a reliability problem and serving as a performance problem, then letting them communicate through a versioned model registry rather than tight coupling, is the pattern that scales to millions of requests per second. Start tomorrow by auditing your current ML pipeline. If your CI/CD directly triggers model loading in your serving layer, you have found your first refactor target. Build the separation now, before your traffic demands it.
+
+---
+
+## References
+
+1. [Netflix: State of Routing in Model Serving](https://netflixtechblog.com/state-of-routing-in-model-serving-16e22fe18741) — blog
+2. [Kubernetes Documentation - Horizontal Pod Autoscaler](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/) — documentation
+3. [TorchServe GitHub Repository](https://github.com/pytorch/serve) — blog
+4. [TensorFlow Serving Documentation](https://www.tensorflow.org/tfx/guide/serving) — documentation
+5. [BentoML GitHub Repository](https://github.com/bentoml/BentoML) — blog
+6. [MLflow Model Registry Documentation](https://mlflow.org/docs/latest/model-registry.html) — documentation
+7. [NVIDIA Triton Inference Server Documentation](https://github.com/triton-inference-server/server) — blog
+8. [BentoML - Model Serving Framework](https://docs.bentoml.com/en/latest/guides/overview.html) — documentation
+9. [Envoy Proxy - High Performance Edge Proxy](https://www.envoyproxy.io/docs/envoy/latest/) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
