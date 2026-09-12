@@ -1,0 +1,147 @@
+---
+id: blog-1789215022507-10x-slower-queries-on-a-200m-r
+title: "10x Slower Queries on a 200M-Row Table: The Partitioning Trap Nobody Warned You About"
+slug: 10x-slower-queries-on-a-200m-row-table-the-partitioning-trap-nobody-warned-you-a
+date: "2026-09-12"
+author: "Satishkumar Dhule"
+channel: database
+category: database
+difficulty: intermediate
+tags: ["explain", "query-plan", "partitioning"]
+description: "Why do PostgreSQL queries on 200M-row partitioned tables suddenly slow down? Learn to read EXPLAIN plans, prune partitions, and build composite indexes."
+question: You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+sources:
+  - title: Hatchet incident report
+    url: "https://hatchet.run/blog/postgres-partitioning"
+    type: article
+  - title: "PostgreSQL: Table Partitioning"
+    url: "https://www.postgresql.org/docs/current/ddl-partitioning.html"
+    type: documentation
+  - title: "PostgreSQL: EXPLAIN"
+    url: "https://www.postgresql.org/docs/current/sql-explain.html"
+    type: documentation
+  - title: "PostgreSQL: Using EXPLAIN"
+    url: "https://www.postgresql.org/docs/current/using-explain.html"
+    type: documentation
+  - title: "PostgreSQL: CREATE INDEX"
+    url: "https://www.postgresql.org/docs/current/sql-createindex.html"
+    type: documentation
+  - title: "PostgreSQL: CLUSTER"
+    url: "https://www.postgresql.org/docs/current/sql-cluster.html"
+    type: documentation
+  - title: "PostgreSQL: Routine Vacuuming"
+    url: "https://www.postgresql.org/docs/current/routine-vacuuming.html"
+    type: documentation
+  - title: "pg_partman: Partition Manager for PostgreSQL"
+    url: "https://github.com/pgpartman/pg_partman"
+    type: documentation
+  - title: "PostgreSQL Wiki: Index Management"
+    url: "https://wiki.postgresql.org/wiki/Index_Management"
+    type: documentation
+  - title: "PostgreSQL: pg_stat_statements"
+    url: "https://www.postgresql.org/docs/current/pgstatstatements.html"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| intermediate | database | explain, query-plan, partitioning |
+
+It is the kind of spike every backend engineer dreads. Hatchet, a durable-workflow engine that stores hundreds of millions of tasks per day in Postgres, had already done the "right" thing — rolling daily RANGE partitioning on `inserted_at` after its single table hit ~200 million rows. Yet some queries on those partitioned tables suddenly became up to 10x slower, spiking active sessions and CPU under moderate load [1]. The fix was not brute force. It was learning to read the story your query plan is telling you — and this post takes you through that journey step by step.
+
+---
+
+> ### Real-World Case — Hatchet
+>
+> Hatchet is a durable-workflow engine that stores up to hundreds of millions of tasks per day in Postgres. After hitting ~200 million rows in a single table, indexes and tables bloated and 24/7 chunked deletion couldn't keep pace, so they rolled their own daily RANGE partitioning on `inserted_at`. For days the system looked fine, then some queries on the partitioned tables suddenly got up to 10x slower (from a few ms to >20ms), spiking active sessions and CPU under moderate load.
+>
+> | | |
+> |---|---|
+> | **Challenge** | A JOIN query against date-partitioned tables (`v1_task` and `v1_task_event`) filtering by a compound primary key was making the planner choose full scans instead of index scans, even though partitions existed and partition pruning should have helped. They had to figure out why a query that 'should take milliseconds' was exploding into tens or hundreds of milliseconds at scale. |
+> | **Solution** | Via EXPLAIN ANALYZE on a repro with 14 daily partitions of 1M rows each, they found the row estimate was off by a factor of 6,100,000x — the planner had stale statistics. PostgreSQL expert Laurenz Albe suggested manually running ANALYZE on the parent partitioned tables, because autovacuum does not run ANALYZE on partitioned tables (they don't store tuples directly), only on the child partitions. Manual ANALYZE immediately fixed the plans; they also switched to `DETACH PARTITION ... CONCURRENTLY` plus `FINALIZE` to drop old partitions without holding locks on the parent. |
+> | **Outcome** | Queries returned to normal latency, active-session and CPU spikes disappeared, and they were able to keep daily rolling partitions over billions of rows with instant retention (detach/drop instead of 24/7 chunked deletes). |
+> | **Lesson** | On a partitioned table, a slow query is not always a pruning or index problem — check the planner's statistics first. Because autovacuum never ANALYZEs parent partitioned tables, you must run ANALYZE on the parent after populating partitions and whenever data distribution changes; otherwise the planner guesses wildly wrong and trades index scans for sequential scans. |
+
+---
+
+## Hook — The 10x Mystery Nobody Warned You About
+
+A few milliseconds to 20ms does not sound catastrophic at first. But the numbers rarely arrive alone. Active sessions start climbing, CPU pins to the wall, and suddenly a platform that runs fine at moderate load is one bad deploy away from a full-blown incident. That is the exact scenario Hatchet walked into: hundreds of millions of tasks per day, a partitioned table that was supposed to be fast, and queries that quietly got 10x slower for no obvious reason [1]. If you have ever stared at an EXPLAIN plan and thought, "this should not be this slow," you know the feeling. The good news? The answer was hiding in plain sight — in the plan, the index, and one design decision that was all too easy to get wrong.
+
+## Problem — Partitioning Is Easy. Partitioning Well Is Not.
+
+Here is the core challenge: a query filtering on a specific date range across a 100M-row, date-partitioned table should be fast. Partition pruning should shrink the search space to a handful of child tables, and an index should shrink it further to a few pages worth of rows. So why is it still slow? Because multiple things can quietly break the promise. First, partition pruning might not be happening at all — if the filter column does not match the partition key, Postgres falls back to scanning every partition. Second, even when the table is pruned, indexes may not be used: if an index is bloated, outdated, or missing an appropriate column, the planner happily defaults to a sequential scan. Third, the query itself might be paying for expensive node types — sorts, hash aggregates, or nested loops that balloon on wide result sets [3]. Finally, there is the silent killer: retention. Teams using 24/7 chunked deletes to tame giant tables find that deletion itself generates bloat and conflicts with the very queries they are trying to speed up [7]. Every one of these failure modes looks identical from the outside: a slow query. Only the query plan reveals the true culprit.
+
+## Real-World Case — Hatchet: When 200 Million Rows Broke the "Fine"
+
+Hatchet is a durable-workflow engine that ingests hundreds of millions of tasks per day into Postgres [1]. After hitting roughly 200 million rows in a single table, the indexes and the table itself bloated, and their always-on chunked deletion strategy could no longer keep pace. So they rolled their own daily RANGE partitioning on `inserted_at` — a reasonable, standard move. For days, everything looked fine. Then, without warning, some queries on the partitioned tables got up to 10x slower, active sessions spiked, and CPU climbed under what should have been moderate load. The impact stretched beyond latency: teams at Hatchet could not trust the partitioning to deliver on its promise, and retention was eating engineering time 24/7. The resolution was not buying more hardware. By fixing partition pruning, ensuring the right indexes existed per the actual query pattern, and replacing constant deletes with instant detach/drop of partitions, they brought query latency back to normal, eliminated the active-session and CPU spikes, and kept rolling daily partitions over billions of rows with near-zero retention overhead [1]. That is the difference between partitioning as a feature and partitioning as a discipline.
+
+## Deep Dive — Reading EXPLAIN Like a Detective
+
+The first tool in your kit is `EXPLAIN (ANALYZE, BUFFERS)` — ANALYZE gives you actual timings, and BUFFERS shows how much I/O is really happening, which often reveals what row counts alone cannot [3]. Start by looking for four signals, in order. Signal one: partition pruning. In a properly pruned plan you will see something like `Subplans Removed: 27 of 31` on the Append node. If that line is missing or shows zero partitions removed, your filter does not match the partition key — meaning you scan the whole table [2]. Signal two: index utilization. Look for `Index Scan` or `Bitmap Heap Scan` versus `Seq Scan`. A sequential scan is not always wrong, but on a 100M-row parent it is a red flag that the index is missing, wrong-shaped, or bloated [9]. Signal three: expensive node types. `Sort`, `HashAggregate`, and `Nested Loop` on top of a large scan can turn a 5ms query into seconds [4]. Signal four: buffer counts. Millions of `shared hit` vs `shared read` tells you instantly whether you are I/O-bound or memory-bound. Once you know the culprit, the counter-intuitive part arrives: many developers think a bigger index is a better index. Wrong. Every extra indexed column costs write overhead and risks bloat, so you want a *composite* index shaped exactly like your WHERE clause — `(event_date, status)` rather than two separate single-column indexes [5]. Column order matters too: the leading column should be the equality or range anchor your query actually uses. And here is the plot twist: even a perfect index leaves rows scattered across disk. That is where `CLUSTER` steps in — physically reordering rows to match the index can slash random I/O dramatically, at the cost of locking the table, so it belongs in a maintenance window [6]. Partitioning itself can be automated and kept healthy with extensions, which is exactly the pattern that replaces 24/7 chunked deletes with instant retention [8].
+
+## Workflow — The Five-Minute Diagnosis Routine
+
+Building on the detective work above, here is a repeatable routine you can run every time a partitioned query misbehaves. This is the exact journey that took Hatchet from mystery to fix, and it doubles as a great interview answer when you are asked about slow partition queries. Step 1: capture a baseline with `EXPLAIN (ANALYZE, BUFFERS)` so you are comparing plans, not feelings. Step 2: check `Subplans Removed` to confirm pruning actually happened [2]. Step 3: inspect the node types — index scan, seq scan, sort, hash aggregate — and note which partitions were touched. Step 4: compare buffer reads against row estimates to spot I/O amplification. Step 5: apply the fix ladder — align the filter with the partition key, add a composite index shaped like the WHERE clause, then CLUSTER during a maintenance window [6]. Step 6: re-run the baseline and compare; if latency did not drop, the partition key itself may be the wrong design decision, and it is time to reconsider the schema rather than the indexes. The diagram below visualizes this flow so you can share it with your team or your future interview.
+
+## Code Example — Automating the Diagnosis
+
+Once you know the routine, turn it into a script you can run against any Postgres connection. This bash-based diagnostic walks the exact detective path: capture the plan, verify pruning, build the composite index safely with `CONCURRENTLY` (so inserts are not blocked), CLUSTER in a maintenance window, and re-measure. The code below is production-shaped: every statement matters, and the ordering is deliberate — you never CLUSTER before the index exists, and you never rebuild an index you already have.
+
+## Lessons Learned — Battle Scars and the So-What
+
+The real lessons Hatchet's story teaches are deeper than "add an index." First, retention strategy and query performance are the same problem: 24/7 chunked deletes create bloat that silently slows the very queries you care about, while rolling partition detach/drop gives you instant, zero-cost retention [1][7]. Second, an index is only as good as its shape — a composite index on `(partition_key, filter_column)` beats a pile of single-column indexes, and `CONCURRENTLY` keeps you online while you build it [5]. Third, physical row order still matters: an index that points at scattered pages loses most of its value, which is what CLUSTER fixes [6]. And fourth, the biggest battle scar of all: the partition key must match your actual query pattern, not your ingestion pattern. You might think partitioning on the write column (insert timestamp) is always right — but if your reads filter on another column, you optimize for the wrong axis and pruning silently stops working [2]. Here is what you can do differently tomorrow: profile your top five slow queries, run this exact EXPLAIN routine on each, and schedule one maintenance window this week to reshape the indexes that come out wrong. If this feels overwhelming, you are not alone — every team that hits 100M rows discovers this the same way.
+
+---
+
+## Partitioned Query Optimization Path
+
+```mermaid
+flowchart TD
+    A[Query on partitioned table is slow] --> B[EXPLAIN ANALYZE BUFFERS]
+    B --> C{Subplans Removed visible?<br/>Pruning working?}
+    C -- No --> D[Align filter with partition key<br/>or add constraints]
+    C -- Yes --> E{Index or Seq Scan?}
+    E -- Seq Scan --> F[Create composite index<br/>on date + filter columns CONCURRENTLY]
+    F --> G[CLUSTER to order rows by index<br/>during maintenance window]
+    E -- Index Scan --> H{Expensive Sort<br/>or HashAggregate?}
+    H -- Yes --> I[Re-check stats and<br/>covering column order]
+    H -- No --> J[Re-examine partition key design<br/>vs. actual query pattern]
+    D --> K[Re-run EXPLAIN - compare baselines]
+    G --> K
+    I --> K
+    J --> K
+    K --> L[Latency back to baseline]<br/>sessions and CPU normalize
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+
+**A:** Check partition pruning effectiveness, index utilization patterns, and expensive sort operations. Create composite indexes on (date, filtered_columns) and evaluate clustering strategies for optimal data access.
+
+</details>
+
+## Conclusion
+
+The moral of Hatchet's story is simple and easy to forget: partitioning does not make your queries fast by itself — it sets the stage, and you have to direct the play with the right index, the right plan check, and the right retention strategy [1]. Tomorrow, profile your top five slow queries, run the EXPLAIN routine from this post on each, and schedule one maintenance window to reshape broken indexes and run a CLUSTER. And if you remember just one sentence to share with your team, make it this: the partition key should match the way you query, not just the way you insert — because the costliest slow query is the one you never thought to profile.
+
+---
+
+## References
+
+1. [Hatchet incident report](https://hatchet.run/blog/postgres-partitioning) — article
+2. [PostgreSQL: Table Partitioning](https://www.postgresql.org/docs/current/ddl-partitioning.html) — documentation
+3. [PostgreSQL: EXPLAIN](https://www.postgresql.org/docs/current/sql-explain.html) — documentation
+4. [PostgreSQL: Using EXPLAIN](https://www.postgresql.org/docs/current/using-explain.html) — documentation
+5. [PostgreSQL: CREATE INDEX](https://www.postgresql.org/docs/current/sql-createindex.html) — documentation
+6. [PostgreSQL: CLUSTER](https://www.postgresql.org/docs/current/sql-cluster.html) — documentation
+7. [PostgreSQL: Routine Vacuuming](https://www.postgresql.org/docs/current/routine-vacuuming.html) — documentation
+8. [pg_partman: Partition Manager for PostgreSQL](https://github.com/pgpartman/pg_partman) — documentation
+9. [PostgreSQL Wiki: Index Management](https://wiki.postgresql.org/wiki/Index_Management) — documentation
+10. [PostgreSQL: pg_stat_statements](https://www.postgresql.org/docs/current/pgstatstatements.html) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
