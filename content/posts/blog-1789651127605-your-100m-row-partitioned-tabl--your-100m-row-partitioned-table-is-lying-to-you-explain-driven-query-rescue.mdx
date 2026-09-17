@@ -1,0 +1,147 @@
+---
+id: blog-1789651127605-your-100m-row-partitioned-tabl
+title: "Your 100M-Row Partitioned Table Is Lying to You: EXPLAIN-Driven Query Rescue"
+slug: your-100m-row-partitioned-table-is-lying-to-you-explain-driven-query-rescue
+date: "2026-09-17"
+author: "Satishkumar Dhule"
+channel: database
+category: database
+difficulty: intermediate
+tags: ["explain", "query-plan", "partitioning"]
+description: "Learn how to read PostgreSQL EXPLAIN plans to diagnose slow queries on partitioned 100M-row tables - from partition pruning to composite indexes, with the ChartMogul case study."
+question: You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+sources:
+  - title: ChartMogul incident report
+    url: "https://chartmogul.com/blog/how-migrating-our-database-eliminated-data-processing-incidents"
+    type: article
+  - title: "PostgreSQL Documentation: Table Partitioning"
+    url: "https://www.postgresql.org/docs/current/ddl-partitioning.html"
+    type: documentation
+  - title: "Partition Pruning Analysis: Reading Partitioned Plans"
+    url: "https://www.database-execution-plan.com/reading-interpreting-query-plans/partition-pruning-analysis/"
+    type: blog
+  - title: "PostgreSQL Documentation: CREATE INDEX"
+    url: "https://www.postgresql.org/docs/current/sql-createindex.html"
+    type: documentation
+  - title: "PostgreSQL SME Cookbook: Partition Pruning"
+    url: "https://postgresql.codeguides.io/partitioning-table-design/partition-pruning/"
+    type: documentation
+  - title: "PostgreSQL Documentation: CLUSTER"
+    url: "https://www.postgresql.org/docs/current/sql-cluster.html"
+    type: documentation
+  - title: "PostgreSQL Documentation: EXPLAIN"
+    url: "https://www.postgresql.org/docs/current/sql-explain.html"
+    type: documentation
+  - title: "Partition Pruning Isn't Magic - When It Actually Works"
+    url: "https://philipmcclarence.com/partition-pruning-isn-t-magic-here-s-when-it-actually-works/"
+    type: blog
+  - title: "All Your GUCs in a Row: enable_partition_pruning"
+    url: "https://thebuild.com/blog/all-your-gucs-in-a-row-enable_partition_pruning/"
+    type: blog
+  - title: Partitioning in Postgres and the risk of high partition counts
+    url: "https://pganalyze.com/blog/5mins-postgres-partitioning"
+    type: blog
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| intermediate | database | explain, query-plan, partitioning |
+
+ChartMogul's ingestion database processed millions of webhooks daily, and then it started collapsing under its own weight. The culprit wasn't bad hardware or sloppy code - it was the partitioning strategy itself, with hundreds or thousands of LIST partitions grinding query performance to a halt [1]. After migrating to HASH partitioning and sharding, they measured a 5x speedup on simple SELECTs, a 3x speedup on joined queries, and a 10% drop in AWS RDS costs [1]. Here is the uncomfortable truth at the heart of that story: a partitioned table can look perfectly healthy while silently scanning partitions it should never touch. This guide shows you exactly how to catch it - and fix it - using nothing more than the EXPLAIN plan sitting at your fingertips.
+
+---
+
+> ### Real-World Case — ChartMogul
+>
+> ChartMogul's ingestion database processed millions of webhooks daily and was partitioned using LIST partitioning with one partition per customer/account. As they grew, this approach became unsustainable with hundreds or thousands of partitions causing severe performance degradation.
+>
+> | | |
+> |---|---|
+> | **Challenge** | LIST partitioning with one partition per customer caused extreme read IOPS, out-of-memory issues from large inefficient indexes, stale Postgres statistics, and heavy administrative overhead from attaching/detaching partitions. The ingestion database was the single most expensive RDS instance and a single point of failure. |
+> | **Solution** | Replaced LIST partitioning with HASH partitioning using 30 partitions (each ~2.5GB at 95th percentile), migrating tables to sharded platform databases using AWS Database Migration Service for zero-downtime migration. The key insight was that mixing big and small accounts randomly via hash partitioning eliminated the need for manual partition management. |
+> | **Outcome** | 5x improvement in simple SELECT queries, 3x improvement in SELECT queries with joins, 10% reduction in AWS RDS costs by eliminating the most expensive instance and its replica, 5,000 lines of legacy code deleted, and all data normalization incidents eliminated since April 2023. |
+> | **Lesson** | LIST partitioning with one partition per entity does not scale—too many partitions create planning overhead, index bloat, and administrative locks that outweigh pruning benefits. HASH partitioning with a carefully chosen partition count provides uniform data distribution without the management burden. |
+
+---
+
+## Hook — The query was supposed to be fast. It wasn't.
+
+You partitioned a 100M-row table by date. You bragged about it in the standup. The dashboard still crawls. Sound familiar? Among the most frustrating situations in database work is the moment you realize the elegant architecture you shipped is doing nothing for the query that actually matters. A date-range filter that should touch a single month is somehow touching everything. The plan looks enormous. The disk is thrashing. And the paging channel is starting to fill with messages like "Is the DB down?" Every one of these symptoms traces back to a breakdown on the journey between your SQL and the storage engine - a breakdown that EXPLAIN can expose in seconds once you know what to look for. The stakes are genuinely high: on a table with hundreds of partitions, a single failed pruning decision can turn a query that should take milliseconds into one that takes minutes. Partitioning is not a silver bullet; it is a contract you sign with the planner, and the planner collects payment from you every time you write a WHERE clause [2].
+
+## Problem — Partitioning is a contract, and your WHERE clause is the signature
+
+Here is the plot twist: partitioning does not make queries fast on its own. It only removes data from consideration when the planner or executor can prove a partition cannot contain matching rows. Without that proof, the query scans everything and partitioning becomes pure overhead - more planning time, more locks, more metadata in memory [2]. The pain point affects anyone running analytics on time-series data: events, orders, metrics, webhooks. Three failure modes dominate. First, partition pruning fails because the predicate wraps the partition key in a function like date_trunc('month', event_date) = '2024-01-01' - the planner cannot compare a function result against partition bounds, so nothing gets eliminated [3]. Second, pruning succeeds but the surviving partition is still huge, and the planner chooses a sequential scan because the index either does not exist or does not cover the extra filters like status = 'completed'. Third, the partition key itself is wrong for the workload - for example partitioning by account ID when every query filters on time - so no query ever aligns with the scheme [2]. Each failure looks different in the plan, which is why the first skill to build is reading the evidence before touching the tuning knobs. The good news? Every one of these failures shows up as a fingerprint in EXPLAIN output.
+
+## Real-World Case — ChartMogul: when partitioning becomes the incident
+
+ChartMogul's ingestion database is a cautionary tale about every partitioning mistake compounding at once. Their core database processed millions of webhooks daily, partitioned with LIST partitioning - one partition per account. It felt tidy at first, but as the company grew, hundreds or thousands of partitions made the scheme unsustainable [1]. The symptoms read like a database horror story: extreme read IOPS from queries chewing through hundreds of thousands or millions of records, out-of-memory crashes from large and inefficient indexes, stale statistics that demanded constant vacuuming, and administrative operations that took ACCESS EXCLUSIVE locks on the parent table [1]. Their single RDS instance became a single point of failure and the most expensive instance in their AWS bill [1]. In late 2022 the team decided to migrate, swapping LIST for HASH partitioning with 30 partitions per large table - roughly 2.5GB each - and moved the data to their sharded platform database [1]. The payoff was dramatic: a 5x improvement in simple SELECT queries, a 3x improvement for SELECTs with joins, a 10% reduction in AWS RDS costs by eliminating the most expensive instance and its replica, and 5,000 lines of legacy code deleted [1]. Most importantly, all data normalization incidents vanished from April 2023 onward [1]. The uncomfortable lesson here is that 'partitioned' and 'optimized' are not synonyms - and that the number of partitions is a design decision with real, measurable consequences at scale [2].
+
+## Deep Dive — Reading the fingerprints: pruning, indexes, and the expensive sort
+
+Now the detective work. When a query on a partitioned table is slow, your instinct might be to add indexes or buy a bigger instance. Resist it. The correct first move is always EXPLAIN (ANALYZE, BUFFERS), because every wrong turn leaves a fingerprint in the plan. 💡 Insight: Partition pruning comes in two flavors. Plan-time pruning removes partitions before execution when the WHERE clause uses constants, and pruned partitions simply never appear as children in the plan. Execution-time pruning handles parameters and values from subqueries or join parameters, keeping all subplans in the plan but reporting them with (never executed) or a lower loops count [1,2]. 🔥 Hot Take: A plan that shows one Append child is not necessarily pruning better than one that lists ten - if the ten reflect runtime pruning on a parameterized query, the executor is doing the right work at the right time [2]. The telltale line to hunt for is Subplans Removed: N in EXPLAIN ANALYZE output; if N is missing and every child scan reports actual rows, every partition was read [3]. Next, check index utilization: a large surviving partition scanned sequentially means your composite index does not match the filter shape. The fix is usually a composite index on (partition_key, filtered_columns) so the index condition covers the whole WHERE clause [4]. Finally, watch for expensive Sort nodes or hash aggregates on top - these are often the hidden cost that makes a correctly-pruned query feel slow. ⚠️ Watch Out: PostgreSQL's planner handles up to a few thousand partitions fairly well only if typical queries prune down to a handful; planning time and session memory grow as more partitions remain after pruning, one reason ChartMogul's hundreds of LIST partitions hurt them [1,2].
+
+## Workflow — A disciplined five-step diagnosis before you touch a single knob
+
+Building on the deep dive, teams benefit from a repeatable diagnosis workflow instead of whack-a-mole tuning. The journey from slow query to fast plan looks like this: 1) Reproduce the slow query and capture EXPLAIN (ANALYZE, BUFFERS) as a baseline. 2) Verify partition pruning by counting Append children and looking for Subplans Removed. 3) Check the access method inside each surviving partition - index scan or sequential scan - and compare against your filters. 4) Audit the top nodes for expensive sorts or hash aggregates that rewrite the query's shape. 5) If all else fails, question the partition key itself and simulate the workload before re-partitioning. The archive below, from the diagnosis flow, doubles as a mnemonic: pruning → access path → sorting → partition design. Many developers discover that a single hardened step in this chain converts a 40-second query into a 200-millisecond one. 🎯 Key Point: Once the plan is healthy, protect it - add a regression test that runs EXPLAIN and fails CI if new scan children appear for a bounded query [3,5]. The diagram that follows maps this workflow onto the decision points you will actually face.
+
+## Code Example — The EXPLAIN-driven rescue, step by step
+
+Time to make it concrete. The code below encodes the full workflow as a psql session, starting with diagnosis and ending with the structural fix. This mirrors exactly the pattern the interview question probes: verify pruning, verify index utilization, then add the composite index and cluster. Every step is reversible, and every step is evidenced by the plan before you make another change. The composite index on (event_date, status) lets the planner resolve both the date range and the status filter through the index condition rather than a per-row filter inside the surviving partition [4]. CLUSTER then rewrites the table data in index order, improving locality for range-heavy reads - a meaningful win for hot partitions, though remember the table is locked during the rewrite, so schedule it in a maintenance window [6].
+
+## Lessons Learned — The three battle scars every team carries
+
+After the journey, the takeaways crystallize into three scars teams keep re-opening until they learn them. First, battle scar one: believing EXPLAIN without ANALYZE. Runtime pruning cannot be observed without execution, so a plan full of children and no Subplans Removed line means nothing was pruned - always pair plain EXPLAIN with EXPLAIN (ANALYZE, BUFFERS) [2,3]. Second, battle scar two: wrapping the partition key in a function or cast. A predicate like event_date::date = CURRENT_DATE defeats pruning because the planner cannot compare a cast expression against partition bounds; rewrite it as a half-open range on the raw column [3,5]. Third, battle scar three: over-partitioning. When Planning Time dwarfs Execution Time, you have too many partitions - ChartMogul's LIST partition explosion is the canonical example, and the audit trail suggests HASH partitioning with a deliberate partition count instead [1,2]. 💡 Insight: pruning is driven by partition bounds, not by indexes - indexes on the key column are unnecessary; composite indexes on the filter columns are where the real win lives [2,4]. The workflow is simple to internalize: prove pruning, inspect the access path, kill the sort, question the key, then lock in the plan with a regression test [3,5]. Fix the query before you touch the schema - nine times out of ten the schema was never the problem.
+
+---
+
+## Partitioned Query Optimization Diagnosis Flow
+
+```mermaid
+flowchart TD
+    A[Slow query on partitioned table] --> B[Run EXPLAIN ANALYZE BUFFERS]
+    B --> C{Partition pruning working?<br/>Subplans Removed present?}
+    C -- No --> D[Fix predicate shape<br/>half-open range on raw key, no functions]
+    D --> B
+    C -- Yes --> E{Index used or seq scan?}
+    E -- Seq scan --> F[Add composite index<br/>key + filtered columns]
+    F --> B
+    E -- Index scan --> G{Expensive Sort / HashAgg on top?}
+    G -- Yes --> H[Rewrite query or add covering index]
+    H --> B
+    G -- No --> I{Partition key matches workload?<br/>Planning Time >> Execution Time}
+    I -- No --> J[Re-partition or CLUSTER by access pattern]
+    J --> B
+    I -- Yes --> K[Lock in with EXPLAIN regression test]<br/>K --> L[Query is fast]
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+
+**A:** Check partition pruning effectiveness, index utilization patterns, and expensive sort operations. Create composite indexes on (date, filtered_columns) and evaluate clustering strategies for optimal data access.
+
+</details>
+
+## Conclusion
+
+The next time a query on your partitioned table crawls, run EXPLAIN (ANALYZE, BUFFERS) before you resize the instance or sprinkle indexes. Prove pruning happened, inspect the access path inside the surviving partition, hunt down the expensive sort, then question the partition key itself - ChartMogul's 5x speedup came from precisely this discipline when hundreds of LIST partitions became the bottleneck [1]. Convert that plan shape into a regression test on the spot, and tomorrow you will catch the next failure in CI instead of on call. The one insight worth sharing with your team: pruning is not delivered by the DDL, it is earned by every WHERE clause you write [9].
+
+---
+
+## References
+
+1. [ChartMogul incident report](https://chartmogul.com/blog/how-migrating-our-database-eliminated-data-processing-incidents) — article
+2. [PostgreSQL Documentation: Table Partitioning](https://www.postgresql.org/docs/current/ddl-partitioning.html) — documentation
+3. [Partition Pruning Analysis: Reading Partitioned Plans](https://www.database-execution-plan.com/reading-interpreting-query-plans/partition-pruning-analysis/) — blog
+4. [PostgreSQL Documentation: CREATE INDEX](https://www.postgresql.org/docs/current/sql-createindex.html) — documentation
+5. [PostgreSQL SME Cookbook: Partition Pruning](https://postgresql.codeguides.io/partitioning-table-design/partition-pruning/) — documentation
+6. [PostgreSQL Documentation: CLUSTER](https://www.postgresql.org/docs/current/sql-cluster.html) — documentation
+7. [PostgreSQL Documentation: EXPLAIN](https://www.postgresql.org/docs/current/sql-explain.html) — documentation
+8. [Partition Pruning Isn't Magic - When It Actually Works](https://philipmcclarence.com/partition-pruning-isn-t-magic-here-s-when-it-actually-works/) — blog
+9. [All Your GUCs in a Row: enable_partition_pruning](https://thebuild.com/blog/all-your-gucs-in-a-row-enable_partition_pruning/) — blog
+10. [Partitioning in Postgres and the risk of high partition counts](https://pganalyze.com/blog/5mins-postgres-partitioning) — blog
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
