@@ -1,0 +1,133 @@
+---
+id: blog-1790003401569-inside-fastly-s-instant-purge-
+title: "Inside Fastly's Instant Purge: Making the World Forget in 150ms"
+slug: inside-fastly-s-instant-purge-making-the-world-forget-in-150ms
+date: "2026-09-21"
+author: "Satishkumar Dhule"
+channel: system-design
+category: system-design
+difficulty: intermediate
+tags: ["edge", "caching", "purging"]
+description: How Fastly made global cache purge hit ~150ms (near the speed of light) and how you can design multi-region invalidation that keeps a 5-second SLA at 10K ops/sec.
+question: "How would you design a multi-region CDN cache purging system that guarantees content propagation within 5 seconds while handling 10,000 concurrent invalidations per second?"
+sources:
+  - title: Fastly incident report
+    url: "https://www.fastly.com/blog/over-a-decade-later-evolution-of-instant-purge"
+    type: article
+  - title: Content delivery network
+    url: "https://en.wikipedia.org/wiki/Content_delivery_network"
+    type: documentation
+  - title: "MDN: HTTP caching"
+    url: "https://developer.mozilla.org/en-US/docs/Web/HTTP/Caching"
+    type: documentation
+  - title: "MDN: Cache-Control header"
+    url: "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control"
+    type: documentation
+  - title: "AWS CloudFront: Invalidating files"
+    url: "https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html"
+    type: documentation
+  - title: "Cloudflare Docs: Purge cache"
+    url: "https://developers.cloudflare.com/cache/how-to/purge-cache/"
+    type: documentation
+  - title: "Redis Docs: Streams"
+    url: "https://redis.io/docs/latest/develop/data-types/streams/"
+    type: documentation
+  - title: "Cloudflare Docs: Workers"
+    url: "https://developers.cloudflare.com/workers/"
+    type: documentation
+  - title: "RFC 9111: HTTP Caching"
+    url: "https://datatracker.ietf.org/doc/html/rfc9111"
+    type: paper
+  - title: Circuit breaker design pattern
+    url: "https://en.wikipedia.org/wiki/Circuit_breaker_design_pattern"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| intermediate | system-design | edge, caching, purging |
+
+Ever wondered why your users keep seeing yesterday's sports scores even after your pipeline said 'published'? Fastly's customers once lived that nightmare, and their demand was blunt: cache invalidation should be a routine part of publishing live content — sports scores, stock tickers, breaking news — not an emergency tool for cleaning up mistakes [1]. At CDN scale that once took seconds to minutes per purge, which made frequently-changing content effectively uncacheable. Today Fastly's instant purge reaches every POP in ~150ms, capped only by the speed of light — here is how the same design works in your system.
+
+---
+
+> ### Real-World Case — Fastly
+>
+> Fastly's customers wanted cache invalidation to be a routine part of the publishing workflow — updating sports scores, stock tickers, and breaking news live — rather than an emergency tool for cleaning up mistakes. But at CDN scale, distributing a purge to cache servers across every POP around the world traditionally took seconds to minutes, which made frequently-changing content effectively uncacheable. Fastly set out to make global cache invalidation nearly instant — so fast it would be capped only by the speed of light.
+>
+> | | |
+> |---|---|
+> | **Challenge** | Design a multi-region CDN cache purging system guaranteed to propagate invalidations to every edge server worldwide in well under a second, at massive scale, with no single point of failure — and keep it reliable through real-world network partitions, packet loss, and denial-of-service attacks. |
+> | **Solution** | Fastly rejected the industry-standard centralized design (send purge to a central coordinator, which fans out) because the coordinator adds latency and is a single point of failure. Instead they built a decentralized system: a purge request is ingested by the nearest POP, then broadcast via UDP to every cache server in the network using the Bimodal Multicast protocol (gossip-based retransmission guarantees eventual delivery). They deliberately skip acknowledgments (cutting latency roughly in half) and broadcast to every node rather than routing only to servers holding the content — no content-location maps needed. Later iterations added a 'double-delivery' mechanism (send each purge to at least two healthy nodes per POP) to cope with internet 'weather' and network growth. |
+> | **Outcome** | Purges begin within 5ms at the closest POP and reach every POP in the world in ~150ms on average (almost always under 250ms) — roughly 30x faster than the 5-second SLA and near the ~65ms speed-of-light physical limit. The system scaled from 2-3 purges/second in 2011 to ~60,000 purges/second today. It weathered a real firewall misconfiguration that split a POP from the network (95th-percentile purge latency rose two orders of magnitude but purges still completed in ~10 seconds) and survived a DDoS attack with all purges recovered, never exceeding one minute. It remained a differentiator for over a decade until Cloudflare's own 'instant purge' under 150ms landed in 2024. |
+> | **Lesson** | For guaranteed-fast global invalidation, centralized coordination and content-location tracking are the enemy — broadcasting every purge to every edge node over UDP with gossip-based retransmission is simpler, faster, and far more failure-tolerant. Equally important: don't purge before your origin has the new content, or you'll just re-cache the old version. |
+
+---
+
+## Hook — the 3am publish that never arrived
+
+Picture this: it is 3am, the hotfix is deployed, CI is green, and the dashboard says 'Complete'. You open the app on your phone and yesterday's bug still stares back. Sound familiar? That is cache psychic damage — and 99% of the time it is not the deploy, it is the purge that never happened.\n\nWhen you sit behind a CDN, a cache invalidation is the entire difference between 'fixed' and 'your users still see the broken thing'. Fastly's customers learned this lesson early: they wanted purging to be a routine part of publishing live content — sports scores, stock tickers, breaking news — not an emergency tool for cleaning up mistakes [1]. Here is the catch: at global scale, telling every POP on Earth to forget something is dramatically harder than the deploy that triggered it. Over a decade, Fastly pushed that 'forget' from seconds to ~150ms [1] — and this article walks through exactly what it takes to build that same promise into your own system.
+
+## Problem — cache invalidation is the operation everybody skips
+
+People love to joke that there are only two hard things in computer science: cache invalidation and naming things. The joke survives because it is true. A cache miss costs you milliseconds of latency; a stale cache costs you user trust — and unlike latency, trust does not show up on a waterfall chart.\n\nThe mechanics are brutal: when new data ships, every layer between the user and the origin still holds the old copy. Distributing a purge to cache servers across every POP traditionally took seconds to minutes, which meant frequently-changing content was effectively uncacheable [1]. So you were stuck with a false choice — serve stale or serve slow.\n\nThen the non-functional requirements turn the problem up to eleven:\n- Latency: under 5 seconds of propagation, globally\n- Throughput: 10,000 concurrent invalidations per second\n- Availability: 99.99% uptime — a dead purge pipeline silently re-serves stale data\n- Consistency: strong cross-region consistency, so Dublin never keeps serving what Frankfurt has already forgotten\n\nMany developers discover the trap only in production: the panic fix 'TTL=0' destroys the edge. You stop caching dynamic content entirely, the origin melts, and suddenly an orphaned deploy is the least of your worries. This leads to the actual challenge — making the delete travel faster than the data it deletes.
+
+## Real-World Case — Fastly's speed-of-light chase
+
+Building on the problem, no company demonstrates that near-instant invalidation is physically possible better than Fastly. Their customers demanded invalidation become a routine part of the publishing workflow — updating sports scores, stock tickers, and breaking news live — rather than an emergency tool for cleaning up mistakes. At CDN scale, distributing a purge to cache servers in POPs around the world traditionally took seconds to minutes, making frequently-changing content effectively uncacheable [1].\n\nFastly decided the purge should be capped only by the speed of light. The results read like science fiction:\n- Purges begin within ~5ms at the closest POP and reach every POP in ~150ms on average, almost always under 250ms [1]\n- That is roughly 30x faster than a 5-second SLA, sitting right at the ~65ms speed-of-light physical limit for global reach [1]\n- Throughput scaled from 2-3 purges/second in 2011 to ~60,000 purges/second today [1]\n\nThat infrastructure got battle-tested the way all great systems are — via disaster. A firewall misconfiguration split one POP from the network, spiking 95th-percentile purge latency by two orders of magnitude, yet purges still completed in ~10 seconds [1]. Then a DDoS attack hammered the pipeline, and every purge was recovered without ever exceeding one minute [1]. That is resilience design you can point at, not just chart on a slide.\n\nHere is the plot twist worth sitting down for: this remained a differentiator for over a decade, until Cloudflare fielded its own 'instant purge' under 150ms in 2024 [1]. The bar you have to beat keeps rising — which is why understanding the design is worth far more than copying the number.
+
+## Deep Dive — two clocks, batching, and the physics of the edge
+
+The Fastly numbers lead to a counterintuitive insight: you do not beat purge latency with brute force, you beat it with coordination. Purge design is really two clocks working together — the freshness window (TTL) and the propagation time (invalidation) — and many developers think a purge replaces the TTL. Actually the two team up.\n\nTake a 2-second TTL. If a purge is lost, worst-case staleness is two seconds — a soft safety net enforced by the HTTP caching model in RFC 9111 [9]. The purge just gets you there ahead of schedule: 'Cache-Control: max-age=2, must-revalidate' tells every edge and intermediate cache to revalidate before serving [4]. The result is a freshness guarantee with a hard floor instead of an all-or-nothing bet [3].\n\nBatching is the second trick of the trade, and it is where the cost math gets interesting. Pattern-based purging with wildcards — purge '/scores/*' instead of enumerating 10,000 URLs — collapses the problem space. Fold 100 invalidations into a single API call and the purge API cost drops by roughly 90%, which is exactly why every major CDN exposes batch endpoints [6][5].\n\nHere is the tradeoff table that decides your design:\n\n| Strategy | Worst-case staleness | Cache hit rate | API cost | When you choose it |\n|---|---|---|---|---|\n| TTL = 0 | none (no caching) | none | none | rarely-stale, low-traffic pages |\n| Short TTL + purge | TTL window (~2s) | high | low | frequently-changing dynamic content |\n| Long TTL + purge | until purge lands | highest | moderate | mostly-stable content, rare pushes |\n\nYou might think TTL=0 is the safest. It is actually the most dangerous at scale — it converts a freshness problem into an availability problem. ⚠️ Watch Out: a purge pipeline without a durable queue is a thundering herd waiting for your next re-publish. Redis Streams with consumer groups give you ordering, redelivery, and checkpoints that a bare pub/sub cannot [7], and edge workers turn regional coordination from a 'call every POP' loop into local fan-out near the PoPs that matter [8]. Circuit breakers keep one failing provider from dragging down the whole pipeline — fail fast after five consecutive failures instead of slow-motion crashing the bus [10].\n\n💡 Insight: purging is eventual consistency with reconciliation, not a transactional guarantee. Design for convergence, then measure it.
+
+## Workflow — from publish event to planet-wide forget
+
+The deep dive gives you the pieces; the workflow shows how they snap together into a pipeline that keeps a 5-second global promise under a 10K ops/sec load.\n\n1. A publish event fires — a deploy, a content update, or a manual 'kill switch' flag.\n2. An API Gateway receives the invalidation request, validates zones and patterns, and rejects malformed input before it can poison the queue.\n3. The request lands in an invalidation queue — Redis Streams with consumer groups — so bursts are absorbed and nothing is lost on reboot [7].\n4. Edge Workers, acting as regional cache coordinators, read the stream in batches of 100 invalidations and group work by zone.\n5. Coordinators fan out to the CDN providers — CloudFront and Cloudflare batch endpoints — using wildcard pattern purges and constructing raw multi-region requests [5][6].\n6. Failures retry with exponential backoff plus jitter, backstopped by a circuit breaker after five consecutive failures [10]; the survivors go to a dead-letter queue for manual review.\n7. A reconciliation sweep re-checks each region against the stream log until every POP agrees — turning network-partition edge cases into a converged state.\n\nThe diagram below shows the whole flow, and it is intentionally boring: no clever hacks, just a belt-and-suspenders flow where every failure path gets a named consumer. [Figure: Purge Propagation Pipeline]\n\nThat boring-ness is the point. Every box is a resilience decision: the queue is durable, the breaker is fail-fast, the DLQ is a human mailbox, and the sweep is the backstop. When the DDoS hit, this exact shape is what let purges keep completing in under a minute [1].
+
+## Code Example — a coordinator that survives the world
+
+To make the theory real, here is a production-shaped coordinator — the piece of the pipeline that sits between the queue and the CDN provider. You can ship it as a Cloudflare Worker, an AWS Lambda, or a small container; the patterns are identical [8][6].\n\nNotice three deliberate design decisions in the snippet. First, jobs are acknowledged only after every zone confirms the purge, so a crash mid-flight replays them instead of silently losing data. Second, overlapping patterns are deduped before dispatch — collapsing '/scores/*' and '/scores/live/*' into one call is where the ~90% API cost reduction actually comes from [6]. Third, the retry loop is bounded, jittered, and gated on the circuit breaker, so one sick provider can never backpressure the entire system [10].\n\nPair this on the content side with a defensive header for dynamic responses: 'Cache-Control: max-age=2, must-revalidate' [4]. The system never has to be perfect — a lost purge now degrades to a two-second staleness instead of a fire drill.
+
+## Lessons Learned — what changes tomorrow
+
+By now the strategy should feel less like an exotic trick and more like a mind-set shift. The biggest lesson from Fastly's decade-plus of instant purge is that invalidation was never an emergency tool — it is a publishing primitive, and it belongs wired straight into the publish workflow [1].\n\nThe same dynamics showed up everywhere: batching wildcard patterns cut purge API costs by ~90% [6], short TTLs turned purge failures into noise instead of outages [4], and explicit failure paths — DLQ, circuit breaker, reconciliation sweep — kept the pipeline alive through misconfigurations and DDoS alike [10][1].\n\nWhat to do differently tomorrow:\n- Wire purging into the deploy pipeline, not a separate 'ops tool'\n- Prefer 'max-age' of a few seconds plus purge — never burn TTL=0 for dynamic pages [3]\n- Batch and use wildcards: purge '/scores/*', not 10,000 URLs [6]\n- Add a durable queue, a dead-letter mailbox, and a breaker before the load test finds the gap [7][10]\n- Instrument purge latency per region and alert on regression — Fastly watched one firewall change spike P95 by two orders of magnitude [1]\n\n🔥 Hot Take: if your 'instant' purge is judged only by averages, you have already lost. Edge cases define the experience; the median is just marketing.\n\n🎯 Key Point: the speed of light is your SLA's ceiling; your design is the floor. Fastly could chase the ~65ms physics limit only because everything else was engineered to stay out of the way [1]. Your goal is simply to get out of your own way — one durable queue, one honest failure path, and one reconciliation sweep at a time.
+
+---
+
+## Purge Propagation Pipeline
+
+```mermaid
+flowchart LR\n    A[Publisher / CI deploy] --> B[API Gateway]\n    B --> C[Invalidation Queue\nRedis Streams + consumer groups]\n    C --> D1[Edge Worker - Region A]\n    C --> D2[Edge Worker - Region B]\n    C --> D3[Edge Worker - Region C]\n    D1 --> E1[CloudFront POPs]\n    D2 --> E2[Cloudflare POPs]\n    D3 --> E3[Origin caches]\n    E1 --> F[Confirmation sink]\n    E2 --> F\n    E3 --> F\n    F --> G[Reconciliation sweep]\n    C -.DLQ.-> H[Dead letter queue]\n    B -.Circuit breaker.-> C
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** How would you design a multi-region CDN cache purging system that guarantees content propagation within 5 seconds while handling 10,000 concurrent invalidations per second?
+
+**A:** Implement Cloudflare API + AWS CloudFront with distributed invalidation queue, edge compute coordination, and 2-second TTL. Use batch invalidation, exponential backoff, and regional cache headers for 5-second SLA.
+
+</details>
+
+## Conclusion
+
+The story loops back to where it started: at 3am, waiting for the publish to reach every user on Earth. Fastly turned that wait into ~150ms — a journey from 'purge as cleanup' to 'purge as publish', from seconds to the speed of light [1]. You will not build a 60,000 purges-per-second engine tomorrow, and you should not try. Instead, start with the carve-outs that matter: short TTLs for dynamic content, batched pattern purges, a durable queue, and a named failure path for everything that can break. Apply the instinct that drove Fastly for over a decade — treat invalidation as part of publishing, not as punishment — and your 5-second SLA stops being a bet and becomes a default. Go wire the purge into your deploy pipeline tonight; your 3am self will not even have to wake up.
+
+---
+
+## References
+
+1. [Fastly incident report](https://www.fastly.com/blog/over-a-decade-later-evolution-of-instant-purge) — article
+2. [Content delivery network](https://en.wikipedia.org/wiki/Content_delivery_network) — documentation
+3. [MDN: HTTP caching](https://developer.mozilla.org/en-US/docs/Web/HTTP/Caching) — documentation
+4. [MDN: Cache-Control header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control) — documentation
+5. [AWS CloudFront: Invalidating files](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Invalidation.html) — documentation
+6. [Cloudflare Docs: Purge cache](https://developers.cloudflare.com/cache/how-to/purge-cache/) — documentation
+7. [Redis Docs: Streams](https://redis.io/docs/latest/develop/data-types/streams/) — documentation
+8. [Cloudflare Docs: Workers](https://developers.cloudflare.com/workers/) — documentation
+9. [RFC 9111: HTTP Caching](https://datatracker.ietf.org/doc/html/rfc9111) — paper
+10. [Circuit breaker design pattern](https://en.wikipedia.org/wiki/Circuit_breaker_design_pattern) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
