@@ -1,0 +1,186 @@
+---
+id: blog-1790256566792-deploys-used-to-be-a-ceremony-
+title: "Deploys Used to Be a Ceremony: How Intuit and Argo CD Made Git the Single Source of Truth"
+slug: deploys-used-to-be-a-ceremony-how-intuit-and-argo-cd-made-git-the-single-source-
+date: "2026-09-24"
+author: "Satishkumar Dhule"
+channel: devops
+category: devops
+difficulty: beginner
+tags: ["argocd", "flux", "declarative"]
+description: "How GitOps with Argo CD compressed Intuit's days-long deployments into five-minute rollouts — and how the declarative mindset fixes configuration drift for good."
+question: "You're setting up GitOps for a microservices deployment. How would you configure ArgoCD to automatically sync changes from your Git repository to Kubernetes, and what's the difference between declarative and imperative approaches in this context?"
+sources:
+  - title: Intuit incident report
+    url: "https://www.cncf.io/case-studies/intuit/"
+    type: article
+  - title: Argo CD documentation
+    url: "https://argo-cd.readthedocs.io/en/stable/"
+    type: documentation
+  - title: Argo CD Declarative Setup and Application CRD
+    url: "https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/"
+    type: documentation
+  - title: Kubernetes Declarative Configuration Management
+    url: "https://kubernetes.io/docs/tasks/manage-kubernetes-objects/declarative-config/"
+    type: documentation
+  - title: Kubernetes Imperative Configuration Management
+    url: "https://kubernetes.io/docs/tasks/manage-kubernetes-objects/imperative-config/"
+    type: documentation
+  - title: Helm Documentation
+    url: "https://helm.sh/docs/"
+    type: documentation
+  - title: Kustomize (Kubernetes SIG)
+    url: "https://github.com/kubernetes-sigs/kustomize"
+    type: documentation
+  - title: GitOps — Wikipedia
+    url: "https://en.wikipedia.org/wiki/GitOps"
+    type: article
+  - title: CNCF OpenGitOps Definition
+    url: "https://opengitops.dev/"
+    type: blog
+  - title: Argo CD GitHub Repository
+    url: "https://github.com/argoproj/argo-cd"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| beginner | devops | argocd, flux, declarative |
+
+"Releases used to be a ceremony." That is how Intuit, the company behind QuickBooks and TurboTax, once described shipping software: a fleet-wide rollout meant updating "all these manual scripts," and a new release could slip to days or even weeks [1]. Intuit had already migrated to the public cloud, yet lift-and-shift delivered almost no benefit — the old operational pain simply moved to new hardware. The turning point came after Intuit acquired Applatix, the startup behind Argo, and rebuilt its Modern SaaS platform on Kubernetes and GitOps, making Git the single source of truth with Argo CD syncing thousands of applications across hundreds of clusters [1]. The result: deployment cycles in the QuickBooks platform dropped from days to minutes, and the mean time to recover from a rollback or roll-forward fell from 45 minutes to under five [1]. That is the power of declarative delivery — and here is how you can harness it without inheriting the ceremony.
+
+The idea of GitOps has been evolving since its 2017 origins as a way to operate Kubernetes clusters [8], and Argo CD has become the flagship tool for making that idea practical [2] — but the real story is what happens when a company bets its entire platform on it.
+
+---
+
+> ### Real-World Case — Intuit
+>
+> Intuit, maker of QuickBooks and TurboTax, migrated to the public cloud but got almost no benefit from lift-and-shift — new software releases still took days and sometimes weeks, and rolling out a release across the fleet involved updating 'all these manual scripts.' After acquiring Applatix (the startup behind Argo), they built their 'Modern SaaS' platform around Kubernetes and GitOps, making Git the single source of truth for deployments with Argo CD syncing thousands of applications across hundreds of clusters.
+>
+> | | |
+> |---|---|
+> | **Challenge** | Cloud migration alone didn't speed up development velocity because deployments remained imperative and manual: teams ran hand-maintained scripts against clusters, releases were 'a ceremony' that took days to roll out, and there was no auditable source of truth. They needed declarative, automated, Git-driven deployment — with self-healing reconciliation and fast rollbacks — at enterprise scale during spikes like the April 15 tax deadline. |
+> | **Solution** | Intuit created Argo CD, a GitOps controller that watches Git repositories (containing YAML manifests, Helm charts, and Kustomize configs), continuously reconciles the live cluster state with the declared desired state, auto-syncs on Git commits, and self-heals drift from manual changes. Developers declare their desired state; Argo CD handles the 'how.' Intuit scaled this from zero to 100+ Kubernetes clusters running 500 production services within a year, and later to roughly 12,000 applications across ~370 clusters and ~3,000 Git repositories managed by thousands of developers. |
+> | **Outcome** | In the QuickBooks platform, the deployment cycle dropped from days to minutes; MTTR for a rollback or roll-forward fell from 45 minutes to under 5 minutes; creating or upgrading a service takes less than 10 minutes including automated build/deploy pipelines; and in 18 months Intuit went from zero to ~2,000 services on Kubernetes. 'Releases used to be a ceremony' that took days; new versions of complex, multi-service stacks now ship 'under five minutes.' |
+> | **Lesson** | The imperative approach (kubectl and manual scripts) is what keeps deployment slow and risky — moving to the cloud doesn't fix it. The declarative GitOps model, where Argo CD continuously reconciles the cluster to Git and self-heals drift, is what converted release days into minutes and made rollbacks trivially fast. Bonus insight: it's not just about deploying apps — the same declarative Git-driven control plane now governs their clusters and policies too. |
+
+---
+
+## Hook — the 4:55pm hotfix that nobody wrote down
+
+Picture this: it is 4:55pm on a Friday and a production hotfix is ready. A senior engineer opens five terminals, runs twenty kubectl commands, and whispers a small prayer. Forty minutes later, half the fleet looks right and the other half looks……different. Sound familiar? For years this was normal. Manual changes land directly on the cluster, nobody writes them down, and the "source of truth" lives in someone's head. The stakes are quietly enormous: every unscripted kubectl run is configuration drift waiting to become an outage, and every outage is a page at 3am. Many developers discover that the cloud does not fix process problems — it just gives you better hardware to be chaotic on. Nobody sets out to build a fragile platform; it happens one forgotten flag at a time.
+
+The uncomfortable question is whether the people operating the cluster even know what state they are in. When teams run imperative commands directly against production, the environment becomes an unversioned snowflake that exists nowhere else but in memory [5]. GitOps exists precisely to break this cycle and to give operators something they have never really had: a memory.
+
+## Problem — the cluster is forgetful, and so is everyone else
+
+Building on that Friday-night tension, here is the core problem: Kubernetes gives you incredible power to declare what you want, but nothing stops you from using it imperatively. The moment someone types kubectl run or kubectl scale and presses enter, the cluster moves into a state that exists nowhere else but in that terminal [5]. Consequently, the environment slowly drifts: staging no longer matches prod, nobody can explain why a manifest differs, and "rollback" becomes a museum tour of git log archaeology. Moreover, this drift is not just an inconvenience — it is a compliance and audit nightmare. When an auditor asks "who changed the ingress rules, and when?", the honest answer is often a shrug.
+
+The core tension is deceptively simple. Imperative tooling is wonderful for exploration and terrible for record-keeping; declarative tooling inverts that trade-off entirely — a little more effort up front, but every future change becomes reviewable, repeatable, and reversible [4]. However, there is a twist: telling developers to "be more disciplined" has never once worked at scale. The solution has to be mechanical. The question is whether you can trust a machine to hold the line on your behalf — and that is exactly the bet Intuit made.
+
+## Real-World Case — Intuit, the company that bet its platform on Git
+
+The company that gave this problem a name is one you probably use every tax season. Intuit moved QuickBooks and TurboTax to the public cloud expecting a speed-up, but lift-and-shift delivered almost no benefit: new releases still took days, sometimes weeks, and rolling out a release across the fleet meant updating "all these manual scripts" [1]. Releases were a ceremony, staffed by people and driven by checklists. So Intuit went hunting for a fundamentally different model instead of a faster script.
+
+After acquiring Applatix, the startup behind the Argo project, they built their Modern SaaS platform around Kubernetes and GitOps, where Git became the single, authoritative source of truth for every deployment and Argo CD continuously synced thousands of applications across hundreds of clusters [1]. The numbers speak for themselves: in the QuickBooks platform, the deployment cycle dropped from days to minutes; MTTR for a rollback or roll-forward fell from 45 minutes to under five; and creating or upgrading a service now takes less than ten minutes, including automated build and deploy pipelines [1]. Even more striking, in 18 months Intuit went from zero to roughly two thousand services on Kubernetes, and complex multi-service stacks now ship in under five minutes [1]. The question this raises: if a planet-scale SaaS can compress release cycles from days to minutes, why do so many teams still treat shipping as a launch event?
+
+## Deep Dive — declarative vs imperative, and why the thermostat wins
+
+The transformation described above does not hinge on new tooling so much as a new mindset. Argo CD is the reconciliation engine, but the philosophy is declarative delivery: you describe the complete desired state in version control, and the platform continuously makes the live world match it [2][9]. Think of it like a thermostat, not a thermostat manual — you set the target once, and a control loop keeps checking reality against that target forever. Here is how the two philosophies stack up in practice:
+
+| | Declarative (GitOps) | Imperative (kubectl) |
+|---|---|---|
+| Where the truth lives | Git repository [4] | Developer terminals [5] |
+| Change mechanism | Pull request to commit | Direct command execution |
+| Auditing | Full history via git log | Depends on human memory |
+| Rollback | Fast revert of a commit | Manual, error-prone |
+| Multi-cluster consistency | Built in — same source, same state | Drift guaranteed |
+| Failure mode | Slow the first time, boring forever | Fast the first time, chaos later |
+
+The deeper insight is that Argo CD is not a CI tool — it does not build or package your software, and it is not a build frontend. It continuously reconciles. Developers declare the desired state using plain YAML manifests, Helm charts, or Kustomize overlays, whichever fits the team's taste [6][7]. Argo CD polls the repository at a configurable health check interval, typically one to five minutes, and diffs the declared state against the live cluster [3]. When it detects drift, it has two weapons: prune, which deletes resources that no longer exist in Git, and self-heal, which reverts any manual change back to the declared state [3].
+
+Here is the plot twist everyone misses: self-healing means you should not hand-tune a running cluster even for a "quick fix" — Argo CD will, within minutes, politely undo it. That feels aggressive until you realize the alternative is reverting changes you never detected. ⚠️ Watch Out: enabling prune without discipline can remove more than you intended, so review what Git describes before you flip it on. 🔥 Hot Take: if a platform can delete changes you made by hand, those hand-made changes were probably the bug anyway. 💡 Insight: the most expensive kubernetes object is not a StatefulSet — it is the undocumented mental model inside an on-call engineer's head.
+
+## Workflow — from repository to reconciliation in five mechanical steps
+
+Once the philosophy clicks, the workflow is refreshingly mechanical. The journey from empty cluster to self-healing platform looks like this: first, install Argo CD into its own namespace [2]. Second, point it at your Git repository by name, path, and target branch. Third, declare the desired sync behavior — automated, with or without prune and self-heal. Fourth, let the reconciliation loop take over: commit, poll, diff, apply, converge. Fifth, watch the audit trail build itself in git log, because every change now flows through version control [3].
+
+The loop below tells the visual story: Git is the brain, Argo CD is the nervous system, and the cluster is the muscle that keeps getting pulled back into line.
+
+```mermaid diagram id starts here```
+
+The system lives in the following diagram: [Figure: ArgoCD reconciliation loop]. The most important part of the loop is the feedback arrow back into reconciliation — the platform never assumes it is done, because drift is constant and normal. The discipline does not live in the pipeline; it lives in the fact that a machine runs the loop forever, silently, while developers sleep.
+
+## Code Example — wiring up a self-healing Argo CD Application
+
+With the workflow mapped out, it is time to make it real. The pattern below is the production skeleton used by countless teams: install Argo CD, declare an Application that points at a Git source, and let the platform reconcile forever. Everything that matters — the repo URL, the path, the target revision, and the sync policy — lives in version control, not in a terminal [3].
+
+The code block is bash (applying a heredoc-fed manifest and driving the CLI):
+
+```bash here```
+
+Let us walk through it line by line. The first two commands install Argo CD into its own argocd namespace using the official stable manifest [10]. Next, the Application Custom Resource is the heart of everything: it names the destination cluster and namespace, points source at your Git repository and the apps/payment-service directory on branch main, and — most importantly — sets syncPolicy.automated with prune: true and selfHeal: true [3]. That single policy does the heavy lifting: prune removes anything that vanished from Git, and selfHeal stomps manual drift back to the declared state. The syncOptions line adds a convenience so namespaces are created automatically when they do not exist yet. Finally, describe and sync commands let you watch the reconciliation live and force a sync if you do not want to wait for the next poll [2]. This is the entire operational loop, compressed into a handful of declarative lines — no release ceremony required.
+
+## Lessons Learned — battle scars, best practices, and the one thing to change tomorrow
+
+After walking this path, several lessons stand out — some learned the hard way by teams that got there before you. First, start declarative from day one; retrofitting GitOps onto a drifted cluster means reconciling the mess you already have, and that is the painful version of the job [4]. Second, enable self-heal with both eyes open — it is the difference between a platform that defends itself and an environment that quietly rots [3]. Third, treat clusters or namespaces as ownership boundaries: one Application per service, not one giant Application that owns everything, or an errant prune becomes a demolition [10].
+
+Here are the concrete rules that make it stick: 
+- Repo, path, and branch in version control — never in a dashboard [3]
+- Review every change to Git as a peer review, because Git is now your deploy gate [4]
+- Use Helm or Kustomize for template reuse, but keep the rendered output reviewable [6][7]
+- Turn on prune only after you trust what Git describes, and test in a staging cluster first
+- Keep the health check interval honest: 1-5 minutes is the sweet spot, not 30 seconds of over-polling [3]
+
+🎯 Key Point: the workflow you build around Git matters far more than any YAML flag in the Application manifest. If this feels overwhelming, you are not alone — but the setup above is genuinely a single afternoon of work, and the payoff compounds nightly. The one change to make tomorrow: pick one small namespace, point Argo CD at it with automated sync, prune, and self-heal enabled, then break it on purpose. Watch the platform fix it. That fifteen-minute experiment will teach you more than a week of reading documentation.
+
+---
+
+## ArgoCD reconciliation loop
+
+```mermaid
+flowchart LR
+  A[Developer commits to Git repo] --> B[Argo CD polls Git every 1-5 min]
+  B --> C{Desired state equals live cluster?}
+  C -->|Yes| D[Healthy — nothing to do]
+  C -->|No| E[Argo CD syncs manifests to cluster]
+  E --> F[Kubernetes converges to desired state]
+  F --> B
+  G[Manual kubectl change] --> H{Self-heal enabled?}
+  H -->|Yes| I[Change reverted back to Git state]
+  H -->|No| J[Configuration drift accumulates]
+  I --> B
+  J --> K[Audit and rollback become painful]
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You're setting up GitOps for a microservices deployment. How would you configure ArgoCD to automatically sync changes from your Git repository to Kubernetes, and what's the difference between declarative and imperative approaches in this context?
+
+**A:** I'd configure ArgoCD by setting up a Git repository containing Kubernetes manifests or Helm charts, creating an Application CRD that points to the Git repository, enabling auto-sync with a health check interval of 3 minutes, and implementing self-healing to automatically revert any manual changes. The declarative approach involves defining the desired state in Git through YAML manifests, Helm charts, or Kustomize configurations, where ArgoCD continuously reconciles the actual state with the desired state. In contrast, the imperative approach uses kubectl commands to make direct changes to the cluster, bypassing the Git repository as the single source of truth.
+
+</details>
+
+## Conclusion
+
+When ceremony collapses into a five-minute rollout, 'release day' stops being an event and becomes something much better: an invisible, constant stream. The moral of Intuit's journey [1] is simple — the repository, not the terminal, is where your platform's memory lives, and a machine willing to reconcile forever is worth more than the most disciplined engineer on Earth. Start small: pick one namespace, point Argo CD at it with automated sync, prune, and self-heal, then break it on purpose and watch the platform fix itself. The one insight to share with your team tomorrow: the best changes to a production system are the ones a machine gets to make — boring, deterministic, and thoroughly documented.
+
+---
+
+## References
+
+1. [Intuit incident report](https://www.cncf.io/case-studies/intuit/) — article
+2. [Argo CD documentation](https://argo-cd.readthedocs.io/en/stable/) — documentation
+3. [Argo CD Declarative Setup and Application CRD](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/) — documentation
+4. [Kubernetes Declarative Configuration Management](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/declarative-config/) — documentation
+5. [Kubernetes Imperative Configuration Management](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/imperative-config/) — documentation
+6. [Helm Documentation](https://helm.sh/docs/) — documentation
+7. [Kustomize (Kubernetes SIG)](https://github.com/kubernetes-sigs/kustomize) — documentation
+8. [GitOps — Wikipedia](https://en.wikipedia.org/wiki/GitOps) — article
+9. [CNCF OpenGitOps Definition](https://opengitops.dev/) — blog
+10. [Argo CD GitHub Repository](https://github.com/argoproj/argo-cd) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
