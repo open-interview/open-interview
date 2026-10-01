@@ -1,0 +1,138 @@
+---
+id: blog-1790867250874-the-3-am-pager-and-the-villa-t
+title: "The 3 AM Pager and the Villa That Sold 50 Times: How Booking Systems Prevent Double Bookings"
+slug: the-3-am-pager-and-the-villa-that-sold-50-times-how-booking-systems-prevent-doub
+date: "2026-10-01"
+author: "Satishkumar Dhule"
+channel: database
+category: database
+difficulty: intermediate
+tags: ["acid", "isolation-levels", "mvcc"]
+description: "Learn how Booking.com solved double bookings at scale using SERIALIZABLE isolation, MVCC, and SELECT FOR UPDATE. A story-driven guide to safe transactions."
+question: "You're building a booking system for Airbnb where multiple users can reserve the same property simultaneously. How would you design the transaction handling to prevent double bookings while maintaining high availability?"
+sources:
+  - title: Booking.com incident report
+    url: "https://www.cockroachlabs.com/customers/booking-com/"
+    type: blog
+  - title: ACID properties
+    url: "https://en.wikipedia.org/wiki/ACID"
+    type: documentation
+  - title: Isolation (database systems)
+    url: "https://en.wikipedia.org/wiki/Isolation_(database_systems)"
+    type: documentation
+  - title: Multiversion concurrency control
+    url: "https://en.wikipedia.org/wiki/Multiversion_concurrency_control"
+    type: documentation
+  - title: PostgreSQL Transaction Isolation
+    url: "https://www.postgresql.org/docs/current/transaction-iso.html#XACT-SERIALIZABLE"
+    type: documentation
+  - title: PostgreSQL SELECT FOR UPDATE
+    url: "https://www.postgresql.org/docs/current/sql-select.html#SQL-FOR-UPDATE-SHARE"
+    type: documentation
+  - title: Optimistic concurrency control
+    url: "https://en.wikipedia.org/wiki/Optimistic_concurrency_control"
+    type: documentation
+  - title: Exponential backoff
+    url: "https://en.wikipedia.org/wiki/Exponential_backoff"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| intermediate | database | acid, isolation-levels, mvcc |
+
+Ever wondered what happens when thousands of people click 'Book Now' for the same property at the exact same second? For one of the world's largest travel marketplaces, this wasn't hypothetical - it was a daily engineering challenge. As Booking.com discovered while scaling their Order Platform, reservation creation is inherently a multi-step, multi-row transaction that their original NoSQL architecture simply couldn't handle safely [1]. What they learned about transactional integrity holds lessons for anyone building systems where 'sold out' can't mean 'accidentally oversold.'
+
+---
+
+> ### Real-World Case — Booking.com
+>
+> Booking.com's centralized Order Platform — the source of truth for all hotel, flight, car and ticket reservations feeding checkout, ML and finance systems — was built on Cassandra, chosen after painful lessons with sharded MySQL (complicated app layers, downtime during master failovers). As reservation volume grew, the NoSQL model stopped fitting the data: reservation creation is inherently a multi-step, multi-row transaction.
+>
+> | | |
+> |---|---|
+> | **Challenge** | Cassandra gives only row-level isolation and no proper ACID transactions, so a reservation that read-modify-writes across several rows/partitions was not protected against concurrent bookings. Booking.com denormalized heavily and then hand-built a locking layer on top of Cassandra lightweight transactions (LWTs) — which introduced a new failure mode: LWT calls would time out, and it was impossible to tell whether a timeout meant a legitimate unfulfilled condition or an infrastructure problem, so correct multi-row booking operations couldn't be trusted. |
+> | **Solution** | Replace the homegrown locking and denormalization workarounds with a distributed SQL store that enforces serializable ACID transactions, letting the database abort and have the client retry conflicting transactions instead of the application hand-rolling locks. They evaluated three databases against real-world scenarios with a proof of concept and selected CockroachDB, running a single multi-region cluster (Frankfurt, London, Ireland) on CockroachDB Cloud, using native CDC plus secondary indexes to eliminate the near-real-time replication pipelines and OpenSearch cross-checks they had been maintaining. |
+> | **Outcome** | Order Platform now holds ~20TB of reservation data in a 3-region, 99.999%-available cluster with a 99.99998% write SLI; the custom locking layer, extra cross-check services and multi-database replication pipelines were deleted, cutting cognitive/operational load and cost on a SOX- and PCI-scoped system serving one of the world's largest travel marketplaces (6.8B+ guest arrivals). Booking.com is now preparing the platform for a tenfold traffic increase on the same architecture. |
+> | **Lesson** | Higher write availability is not free correctness — it is paid for later. Row-level isolation and application-level locks cannot safely express a multi-row read-modify-write reservation, and a hand-rolled lock layer degrades into ambiguous timeouts that are worse than contention. Booking.com explicitly traded Cassandra's higher write availability for serializable ACID guarantees and kept availability high by scaling the database horizontally and geographically instead of weakening isolation. |
+
+---
+
+## Hook — The Invisible Race That Breaks Businesses
+
+It was never supposed to happen. The villa in Santorini showed as available. Sarah clicked book. Alex clicked book. Marcus clicked book. All at the same millisecond. Three different guests all think they've secured their dream vacation. Only one should win. The rest should see 'sold out.' This is the race condition that haunts every booking system on the planet. The stakes are real: angry customers, damaged trust, and revenue lost to manual reconciliation. You might think a simple database write is enough - but as you'll soon discover, without the right transactional guardrails, your system can happily sell the same room fifty times. This sets the stage for why even tech giants have had to rethink their approach to transactional data.
+
+## Problem — When 'Available' Becomes a Lie
+
+The core challenge is deceptively simple: multiple users reading the same state simultaneously. When two requests check availability at the same time, both see 'vacant,' both proceed to create bookings, and suddenly your property is overbooked. You might think this is just a theoretical edge case - until it happens on a holiday weekend with thousands of concurrent requests. The problem compounds when bookings span multiple dates, involve multiple rooms, or require updating availability calendars, payments, and inventory in a single atomic operation. Many developers discover that a standard 'read-then-write' pattern fails catastrophically under load. Therefore, you need mechanisms that enforce mutual exclusion and maintain ACID properties [2]. But how? The tradeoff is brutal: stronger consistency often means more locking, which can choke throughput when hot properties (like New Year's Eve hotspots) see massive traffic spikes.
+
+## Real-World Case — Booking.com
+
+This isn't just hypothetical. Booking.com faced this exact problem at planetary scale. Their centralized Order Platform - the source of truth for hotel, flight, car, and ticket reservations - was originally built on Cassandra after painful lessons with sharded MySQL (complicated app layers and downtime during master failovers). However, as reservation volume exploded, the NoSQL model stopped fitting the data: reservation creation is inherently a multi-step, multi-row transaction [1]. The platform now holds ~20TB of reservation data in a 3-region, 99.999% available cluster with a 99.99998% write SLI. By rethinking their architecture and adopting a model better suited for transactional workloads, Booking.com eliminated custom locking layers, extra cross-check services, and multi-database replication pipelines - cutting cognitive and operational load while preparing for a tenfold traffic increase [1]. This war story illustrates a key lesson: sometimes the 'scalable' NoSQL choice breaks down when correctness is non-negotiable.
+
+## Deep Dive — The Toolbox for Preventing Double Bookings
+
+To solve this, you need to understand three fundamental concepts that work together: isolation levels, MVCC, and concurrency control patterns [2][3][4]. Isolation levels determine how much one transaction sees of another's work. At the strongest end, SERIALIZABLE isolation guarantees that transactions appear to execute in some serial order - preventing phantom reads and race conditions that cause overbooking [3][5]. But SERIALIZABLE comes with performance costs. That's where Multiversion Concurrency Control (MVCC) comes in - instead of locking rows for reading, MVCC gives each transaction a consistent snapshot, letting readers and writers coexist peacefully [4]. This is why PostgreSQL can provide strong isolation without grinding everything to a halt. Then there's concurrency control: you can take an optimistic approach (check for conflicts at commit time using version numbers) or a pessimistic approach (lock resources upfront) [6][7]. The sweet spot for bookings is often pessimistic locking on the specific date-range rows with SELECT FOR UPDATE, combined with application-level validation [6]. This prevents the race where both transactions read the same state. But watch out - lock contention on popular properties can create bottlenecks. That's why retry logic with exponential backoff is essential when transactions fail due to conflicts [8].
+
+## Workflow — From Availability Check to Confirmed Booking
+
+So how does this work in practice? The process follows a deliberate sequence: (1) Identify the property and date range to book, (2) Acquire locks on the availability records for those dates using SELECT FOR UPDATE to prevent concurrent modifications, (3) Re-validate availability under the lock - never trust the pre-lock read, (4) Check business rules (min stay, max guests, pricing), (5) Create the booking record and update availability in the same transaction, (6) Commit. If anything fails or conflicts occur, retry with exponential backoff. The diagram below illustrates this guarded flow - notice how the lock forms a critical gate that serializes access to contested inventory. With MVCC handling consistent reads elsewhere and SERIALIZABLE/locking protecting writes, you get correctness without sacrificing availability for non-conflicting bookings [4][5][6].
+
+## Code Example — A Production-Style Booking Transaction
+
+Let's make this concrete. The following example demonstrates a safe booking flow using PostgreSQL-style semantics with pessimistic locking and retry logic. The code first locks the relevant availability rows for the date range, re-checks that all dates are still available, creates the booking, marks dates as booked, and commits - all atomically. The retry loop with exponential backoff handles serialization conflicts gracefully. This pattern is directly applicable to the problem we explored: it prevents the 'read simultaneously, write both' race by serializing access at the row level [6].
+
+## Lessons Learned — Building for the 3 AM Pager
+
+Looking back at the journey: you started with a simple question about simultaneous bookings, discovered why NoSQL fell short for multi-row transactions (as Booking.com learned [1]), and explored the layered defenses of isolation levels [3], MVCC [4], and controlled locking [6]. The key takeaway is that correctness and availability aren't binary tradeoffs - you can have both if you choose the right primitives. Remember: never trust pre-checks without re-validating under locks; implement exponential backoff for retryable failures [8]; monitor lock contention on hot properties; and design your schema to lock at the right granularity (date-range rows beat broad table locks). Most importantly, test under contention - the bugs only appear when 100 people click at once. So tomorrow, when you're designing stateful operations that must be atomic, ask yourself: are you reading and writing in the same transaction with proper locking? If not, you might be selling that villa more times than you have keys.
+
+---
+
+## Safe Booking Transaction Flow with Pessimistic Locking
+
+```mermaid
+flowchart TD
+    A[User clicks Book Now] --> B[Identify property and date range]
+    B --> C[Start transaction with SERIALIZABLE isolation]
+    C --> D[SELECT FOR UPDATE on availability rows for date range]
+    D --> E[Re-validate availability under lock]
+    E --> F{All dates available?}
+    F -->|No| G[Rollback transaction\nReturn 'unavailable']
+    F -->|Yes| H[Validate business rules\n(min stay, guests, pricing)]
+    H --> I[Create booking record]
+    I --> J[Mark dates as booked]
+    J --> K[Commit transaction]
+    K --> L[Return confirmation to user]
+    G --> M[Retry with exponential backoff on conflicts]
+    M --> C
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You're building a booking system for Airbnb where multiple users can reserve the same property simultaneously. How would you design the transaction handling to prevent double bookings while maintaining high availability?
+
+**A:** Use SERIALIZABLE isolation with optimistic concurrency control. Implement row-level locks on property availability tables, use MVCC snapshot reads for checking availability, and apply application-level validation to ensure atomic booking operations.
+
+</details>
+
+## Conclusion
+
+The next time you build a system where concurrent access could corrupt state, remember this story. You don't need to invent complex distributed locks from scratch - you just need to use your database's transaction primitives correctly. Start by identifying the contention point (in this case, specific date-range rows), wrap the critical read-modify-write in a transaction with appropriate locking [6], and add retry logic for resilience [8]. Most importantly, test under contention before going to production. Do this tomorrow, and you'll sleep better knowing that when 1000 people click 'Book Now' at the same instant, only one gets the room. Your future self (and your on-call rotation) will thank you.
+
+---
+
+## References
+
+1. [Booking.com incident report](https://www.cockroachlabs.com/customers/booking-com/) — blog
+2. [ACID properties](https://en.wikipedia.org/wiki/ACID) — documentation
+3. [Isolation (database systems)](https://en.wikipedia.org/wiki/Isolation_(database_systems)) — documentation
+4. [Multiversion concurrency control](https://en.wikipedia.org/wiki/Multiversion_concurrency_control) — documentation
+5. [PostgreSQL Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html#XACT-SERIALIZABLE) — documentation
+6. [PostgreSQL SELECT FOR UPDATE](https://www.postgresql.org/docs/current/sql-select.html#SQL-FOR-UPDATE-SHARE) — documentation
+7. [Optimistic concurrency control](https://en.wikipedia.org/wiki/Optimistic_concurrency_control) — documentation
+8. [Exponential backoff](https://en.wikipedia.org/wiki/Exponential_backoff) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)

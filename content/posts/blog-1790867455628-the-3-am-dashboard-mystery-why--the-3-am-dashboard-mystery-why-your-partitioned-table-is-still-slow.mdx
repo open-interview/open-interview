@@ -1,0 +1,138 @@
+---
+id: blog-1790867455628-the-3-am-dashboard-mystery-why
+title: "The 3 AM Dashboard Mystery: Why Your Partitioned Table Is Still Slow"
+slug: the-3-am-dashboard-mystery-why-your-partitioned-table-is-still-slow
+date: "2026-10-01"
+author: "Satishkumar Dhule"
+channel: database
+category: database
+difficulty: intermediate
+tags: ["explain", "query-plan", "partitioning"]
+description: "Why partitioning alone fails for slow queries on large PostgreSQL tables. Learn to read EXPLAIN plans, add composite indexes, and optimize like Cloudflare did."
+question: You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+sources:
+  - title: Cloudflare incident report
+    url: "https://blog.cloudflare.com/timescaledb-art/"
+    type: blog
+  - title: PostgreSQL Partition Pruning
+    url: "https://www.postgresql.org/docs/current/ddl-partitioning.html#DDL-PARTITION-PRUNING"
+    type: documentation
+  - title: PostgreSQL EXPLAIN
+    url: "https://www.postgresql.org/docs/current/sql-explain.html"
+    type: documentation
+  - title: Using EXPLAIN — PostgreSQL
+    url: "https://www.postgresql.org/docs/current/using-explain.html"
+    type: documentation
+  - title: PostgreSQL Index Types
+    url: "https://www.postgresql.org/docs/current/indexes.html"
+    type: documentation
+  - title: PostgreSQL Performance Tips
+    url: "https://wiki.postgresql.org/wiki/Performance_Optimization"
+    type: documentation
+  - title: Database Partitioning - Wikipedia
+    url: "https://en.wikipedia.org/wiki/Partition_(database)"
+    type: documentation
+  - title: PostgreSQL CLUSTER
+    url: "https://www.postgresql.org/docs/current/sql-cluster.html"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| intermediate | database | explain, query-plan, partitioning |
+
+Picture this: you're staring at a dashboard that takes forever to load, and your largest customers are starting to complain. This is exactly the situation Cloudflare's Digital Experience Monitoring team found themselves in. As their fleet-status logs exploded from hundreds of inserts per second to thousands, their `device_state` table swelled to billions of rows—and queries for large customers over 7-day ranges became painfully slow [1]. What they discovered next challenges a common assumption: partitioning alone isn't always the fix.
+
+---
+
+> ### Real-World Case — Cloudflare
+>
+> Cloudflare's Digital Experience Monitoring (DEX) team stores WARP client fleet-status logs in PostgreSQL on the Zero Trust dashboard. After launching at ~200 inserts/sec, adoption pushed them to 1,000 inserts/sec and the `device_state` table grew to billions of rows — and dashboards became painful for large customers (30,000+ devices) querying 7+ day time ranges. They evaluated daily RANGE partitions on `timestamp` specifically to fix this, then discovered it wasn't the real bottleneck.
+>
+> | | |
+> |---|---|
+> | **Challenge** | A date-partitioned-friendly workload (millions of rows per customer per day, low-cardinality grouping columns) where time-range dashboard queries over billions of rows stayed slow — while customers also wanted up to a year of retention. Any fix also had to survive manual partition management and a 3-engineer team. |
+> | **Solution** | They ran a dual-write canary benchmark on real dashboard queries (1h / 24h / 7-day windows, 500M–1B rows), found that btree indexes alone don't survive at that scale, and switched raw tables to TimescaleDB hypertables (1-hour chunks) with Hypercore columnstore, `segmentby = account_id`, min/max sparse indexes via `orderby`, automatic retention policies, and continuous aggregates for incremental downsampling. Their Zero Trust ART team went further and dropped nearly all indexes, keeping only `(account_id, timestamp)`. Along the way they applied a hard-won B-tree lesson: put the timestamp column LAST in multicolumn indexes and order equality columns by cardinality — a change that alone gave up to 100% faster SELECTs. |
+> | **Outcome** | 5x–35x faster queries vs vanilla Postgres (uncompressed fine for 1–24h; compression + columnstore + segmentby decisive at 7 days). Compression took `device_state` from 1616 GB to 49 GB (32.83x ratio), meaning 33x more retention for the same cost. Earlier, hand-rolled cron-based pre-aggregation tables had already delivered up to 1000x faster dashboard charts (seconds → instant). |
+> | **Lesson** | Partition pruning is necessary but not sufficient. For real analytics over billions of rows, the cost driver is I/O and bytes scanned, not the number of partitions — Cloudflare explicitly rejected RANGE partitioning because it didn't fix their hot7-day dashboard queries. Columnar layout + compression + sparse min/max indexes beat B-tree indexes at scale (the ART team ended up with essentially one index), and index column order mattered as much as index existence. |
+
+---
+
+## Hook — The Illusion of a Quick Fix
+
+It sounds obvious, doesn't it? If you're querying a massive table by date, partitioning by date should solve everything. Many developers think that splitting 100 million rows into monthly or daily chunks means the database will magically just scan the relevant partitions and return results in milliseconds. But what happens when you've done all that, and your query filtering on a specific date range is still slow? The truth is that partitioning is just one piece of the performance puzzle, and the real bottleneck often hides in plain sight.
+
+## Problem — When Partitioning Isn't Enough
+
+You have a PostgreSQL table with 100 million rows partitioned by date. A query filtering on a specific date range should prune partitions and scan only what's needed. But in reality, you might still be waiting seconds—or minutes—for results. The stakes are high: slow dashboards frustrate users, increase compute costs, and can cascade into broader system slowdowns. So where do you look? The answer lies in understanding what the query planner is actually doing. By examining the EXPLAIN plan, you can uncover whether partition pruning is working, whether indexes are being used, and whether expensive operations like sorts or aggregates are dragging performance down. This is the critical first step in diagnosing the real issue.
+
+## Real-World Case — Cloudflare
+
+Cloudflare's story illustrates this perfectly [1]. Their Digital Experience Monitoring (DEX) team stores WARP client fleet-status logs in PostgreSQL on the Zero Trust dashboard. After launching at ~200 inserts/sec, adoption surged to 1,000 inserts/sec and the `device_state` table grew to billions of rows. For large customers with 30,000+ devices querying 7+ day time ranges, dashboards became painful to use. They evaluated daily RANGE partitions on `timestamp` specifically to address this—but discovered partitioning wasn't the real bottleneck [1]. Instead, they found that combining compression, columnstore techniques, and segmenting made the difference. Compression alone took `device_state` from 1,616 GB down to just 49 GB—a 32.83x reduction—meaning 33x more retention for the same cost. Earlier, hand-rolled cron-based pre-aggregation tables had already delivered up to 1000x faster dashboard charts, turning seconds into instant results [1].
+
+## Deep Dive — Reading the Signs
+
+So what exactly should you check when your partitioned table is still slow? First, verify partition pruning is actually working. If the planner isn't eliminating irrelevant partitions, you're scanning far more data than necessary [2]. Second, examine index utilization patterns. A sequential scan across even a single partition can be expensive if that partition is large and your WHERE clause isn't covered by an appropriate index [3]. Third, watch for expensive sort operations, hash aggregates, or other blocking operations that show up as high-cost nodes in your EXPLAIN output [4]. The key insight is this: partitioning reduces the data surface area, but indexes determine how efficiently you access data within those partitions. For date-range queries with additional filters, the optimal strategy is often a composite index on (partition key, filtered columns). This allows the database to jump directly to relevant rows within the pruned partitions, rather than scanning everything. But you also need to consider the physical layout—clustering can further reduce I/O by keeping related rows together on disk [5].
+
+## Workflow — Diagnosing and Optimizing Systematically
+
+Building on these insights, here's a step-by-step workflow for tackling slow queries on partitioned tables. As shown in the accompanying diagram [6], you start by gathering evidence with EXPLAIN (ANALYZE, BUFFERS) to see the actual execution plan with timing and buffer usage. Next, confirm partition pruning is effective—look for "Partitioned Scan" with only the expected partitions selected. If pruning is missing or incomplete, recheck your WHERE clause uses the partition key correctly [2]. Third, assess index usage within pruned partitions. If you see sequential scans where index scans are expected, your indexes may be missing, incomplete, or not selective enough for the query pattern [3][4]. Fourth, identify expensive operations—high-cost Sort, HashAggregate, or Nested Loop nodes often point to missing indexes or suboptimal join strategies. Fifth, optimize by adding a covering composite index that matches your query pattern (e.g., (date, filtered_columns)), and consider clustering on that index if range scans are common [5]. Finally, measure again with EXPLAIN (ANALYZE) to verify the improvement. This systematic approach helps you move from guessing to knowing.
+
+## Code Example — Putting Theory Into Practice
+
+Let's see this workflow in action with a concrete example. The code below demonstrates how to diagnose and optimize a query on a partitioned `events` table filtering by date range and status.
+
+## Lessons Learned — The Path Forward
+
+The journey from slow dashboards to fast queries teaches us several crucial lessons. First, partitioning is necessary but not sufficient for large datasets—it's a data organization strategy, not a performance silver bullet. Second, always measure with EXPLAIN (ANALYZE, BUFFERS) before optimizing; assumptions about what's slow are often wrong, as Cloudflare discovered [1]. Third, the right composite index can be transformative when it aligns with your query patterns—especially when it covers both the partition key and frequently filtered columns [3][5]. Fourth, consider physical organization (clustering) for range-heavy workloads, and for truly massive datasets, explore advanced strategies like compression or columnar storage when appropriate [1][7]. Most importantly, remember: optimization is about finding the actual bottleneck, not just the most obvious one. So tomorrow, when you face a slow query on a partitioned table, resist the urge to just add more partitions. Instead, follow the evidence—your users (and your database) will thank you for it.
+
+---
+
+## Query Optimization Workflow
+
+```mermaid
+flowchart TD
+  A[Query is slow on partitioned table] --> B[Run EXPLAIN (ANALYZE, BUFFERS)]
+  B --> C{Partition pruning working?}
+  C -->|No| D[Fix WHERE clause to use partition key]
+  C -->|Yes| E{Indexes being used?}
+  E -->|No/Partial| F[Add composite index on (part_key, filtered_cols)]
+  E -->|Yes| G{Expensive ops (sort/agg)?}
+  G -->|Yes| H[Consider covering index/clustering]
+  G -->|No| I[Check I/O, consider compression/layout]
+  D --> B
+  F --> J[CLUSTER if range scans common]
+  H --> J
+  J --> K[Re-measure with EXPLAIN]
+  K --> L[Verify improvement]
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+
+**A:** Check partition pruning effectiveness, index utilization patterns, and expensive sort operations. Create composite indexes on (date, filtered_columns) and evaluate clustering strategies for optimal data access.
+
+</details>
+
+## Conclusion
+
+The story is clear: don't mistake partitioning for a complete performance solution. Like Cloudflare discovered, the real bottlenecks often lurk in index usage, I/O patterns, and physical data layout [1]. By systematically examining your EXPLAIN plans, adding the right composite indexes, and considering clustering or advanced storage strategies when needed, you can transform painfully slow dashboards into lightning-fast experiences. The next time you're faced with a slow query on a partitioned table, let the evidence guide you—not assumptions.
+
+---
+
+## References
+
+1. [Cloudflare incident report](https://blog.cloudflare.com/timescaledb-art/) — blog
+2. [PostgreSQL Partition Pruning](https://www.postgresql.org/docs/current/ddl-partitioning.html#DDL-PARTITION-PRUNING) — documentation
+3. [PostgreSQL EXPLAIN](https://www.postgresql.org/docs/current/sql-explain.html) — documentation
+4. [Using EXPLAIN — PostgreSQL](https://www.postgresql.org/docs/current/using-explain.html) — documentation
+5. [PostgreSQL Index Types](https://www.postgresql.org/docs/current/indexes.html) — documentation
+6. [PostgreSQL Performance Tips](https://wiki.postgresql.org/wiki/Performance_Optimization) — documentation
+7. [Database Partitioning - Wikipedia](https://en.wikipedia.org/wiki/Partition_(database)) — documentation
+8. [PostgreSQL CLUSTER](https://www.postgresql.org/docs/current/sql-cluster.html) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
