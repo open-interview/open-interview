@@ -1,0 +1,138 @@
+---
+id: blog-1790951904546-when-partitioning-isn-t-enough
+title: "When Partitioning Isn't Enough: The 1TB Query That Brought Notion To Its Knees"
+slug: when-partitioning-isn-t-enough-the-1tb-query-that-brought-notion-to-its-knees
+date: "2026-10-02"
+author: "Satishkumar Dhule"
+channel: database
+category: database
+difficulty: intermediate
+tags: ["explain", "query-plan", "partitioning"]
+description: "Even partitioned tables can scan terabytes. Learn from Notion's scale story how EXPLAIN ANALYZE, composite indexes, and clustering prevent slow queries."
+question: You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+sources:
+  - title: Notion incident report
+    url: "https://pganalyze.com/blog/how-notion-runs-postgres-at-scale"
+    type: blog
+  - title: "PostgreSQL: EXPLAIN"
+    url: "https://www.postgresql.org/docs/current/sql-explain.html"
+    type: documentation
+  - title: "PostgreSQL: Partitioning"
+    url: "https://www.postgresql.org/docs/current/ddl-partitioning.html"
+    type: documentation
+  - title: "PostgreSQL: Indexes"
+    url: "https://www.postgresql.org/docs/current/indexes.html"
+    type: documentation
+  - title: "PostgreSQL: CLUSTER"
+    url: "https://www.postgresql.org/docs/current/sql-cluster.html"
+    type: documentation
+  - title: "PostgreSQL: CREATE INDEX"
+    url: "https://www.postgresql.org/docs/current/sql-createindex.html"
+    type: documentation
+  - title: Use The Index Luke
+    url: "https://use-the-index-luke.com/"
+    type: blog
+  - title: Database Partitioning
+    url: "https://en.wikipedia.org/wiki/Partition_(database)"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| intermediate | database | explain, query-plan, partitioning |
+
+What if I told you that even with your table partitioned by date, a single query could still scan an entire terabyte of data? That's exactly what happened at Notion [1] - a company whose PostgreSQL database grew so large that seemingly simple lookups triggered massive sequential scans, forcing engineers to completely rearchitect how they stored data. For developers dealing with large datasets, this story holds a critical lesson: partitioning alone is never a silver bullet.
+
+---
+
+> ### Real-World Case — Notion
+>
+> Notion ran a single, massive PostgreSQL database on Amazon RDS that grew into multi-terabyte tables (one table alone reached ~1TB) as usage exploded after the 2020-2021 growth spike. Engineers found that queries which should have been cheap index lookups were instead triggering full sequential scans of 1TB tables, and that unused indexes on those tables were accelerating bloat. They ultimately sharded the monolith into 480 logical shards (Postgres schemas) spread across 32 physical RDS instances, keyed on space_id rather than time.
+>
+> | | |
+> |---|---|
+> | **Challenge** | Indexes existed but the planner refused to use them: query patterns with more than ~23 WHERE clauses made Postgres abandon index paths and choose a full table scan of a ~1TB table, spiking CPU and I/O. Simultaneously, indexes that were never scanned kept the table bloated, degrading scan performance and making autovacuum fall behind. |
+> | **Solution** | Instead of blindly adding indexes, they instrumented and captured real plans (pganalyze/auto_explain with EXPLAIN ANALYZE BUFFERS) to see where index paths were being dropped: (1) they rewrote/batched high-clause-count queries so the planner costed index plans again, capping the feature's query load to  containment query patterns much better; (3) they removed unused indexes to stop bloat, and (4) changed the partitioning key from time to space_id so the shards aligned with how queries actually filter (one workspace at a time), keeping intra-shard joins intact. |
+> | **Outcome** | The GIN opclass change alone cut query runtime from ~5,000 ms to ~600 ms (733% improvement, >8x faster) with no result mismatches in staging comparison. Batching the over-complex queries removed the 1TB seq scans and dropped that feature's database load below 5%. Overall they cut ~480 TB across 32 physical databases, kept <500GB per table, and later scaled to 96 nodes with no application code changes. |
+> | **Lesson** | Partitioning is not a substitute for reading the plan. Notion's biggest wins came from asking why the planner abandoned an index (too many predicates blew up the cost estimate) and why a given index type didn't match the operator - not from adding more indexes. And the partition key must match the dominant query pattern: Notion partitioned by space_id, not by date, because users query within a single workspace - a date-partitioned design would have multiplied cross-shard work instead of removing it. |
+
+---
+
+## Hook — The 3AM Pager That Should Never Have Gone Off
+
+Picture this: your product is exploding in popularity. Usage is skyrocketing. Tables that started at megabytes are now pushing terabytes. Then at 3 AM, the pager goes off. Queries that used to return in milliseconds are now taking seconds. Your carefully planned partitioning strategy - the one you thought would save you - is failing. This isn't hypothetical. At Notion [1], this nightmare became reality when their multi-terabyte PostgreSQL tables started triggering full sequential scans on queries that should have been lightning fast. The stakes couldn't be higher: when performance degrades this badly, user experience crumbles and infrastructure costs spiral out of control.
+
+## Problem — Why Partitioning Alone Isn't Enough
+
+Many developers assume that partitioning a massive table by date automatically makes range queries fast. The logic seems sound: if you filter for January data, PostgreSQL should only scan the January partition and ignore everything else. But reality is more nuanced. When queries filter on additional columns beyond the partition key, or when indexes aren't properly aligned with access patterns, the query planner may still choose sequential scans. Worse, partitioning can even hide inefficiencies - unused indexes bloat tables, and poorly chosen strategies force the database to do more work than necessary. The core challenge is this: you must verify that partition pruning actually works, that indexes are being utilized effectively, and that expensive operations aren't creeping in. Without understanding what your EXPLAIN plan is telling you, you're flying blind with terabytes of data.
+
+## Real-World Case — Notion
+
+Notion's explosive growth between 2020 and 2021 pushed their single PostgreSQL database to its breaking point [1]. What started as a manageable setup evolved into multi-terabyte tables - one table alone reached nearly 1TB. The symptoms were brutal: queries that should have been cheap index lookups were instead triggering full sequential scans across gigabytes of data. Making matters worse, unused indexes on those massive tables were accelerating bloat, further degrading performance. The fix wasn't a simple index tweak. Engineers ultimately sharded their monolith into 480 logical shards (Postgres schemas) spread across 32 physical RDS instances, keyed on space_id rather than time [1]. But before that massive rearchitecture, they found targeted optimizations that delivered dramatic results - a GIN opclass change alone cut query runtime from ~5,000 ms down to ~600 ms, an over 8x improvement with no correctness issues [1]. They also batched complex queries to eliminate 1TB sequential scans, dropping that feature's database load below 5% [1]. The end result: they cut ~480 TB of data across 32 databases, kept each table under 500 GB, and scaled to 96 nodes without changing application code [1].
+
+## Deep Dive — Reading The Signs In Your EXPLAIN Plan
+
+Building on Notion's experience, the first question you need to answer is: is partition pruning actually working? When a query filters on the partition key (like event_date), EXPLAIN should show that only specific partitions are being scanned [2][3]. If you see "Append" with all partitions considered, your pruning isn't effective - meaning you're scanning far more data than necessary. Next, examine index utilization patterns [4]. Look for "Index Scan" or "Bitmap Index Scan" rather than "Seq Scan" on large partitions. However, even with indexes, you need to check if they're covering your query. An index on just (date) won't help much if you're also filtering on status and need other columns - PostgreSQL may still fetch heap tuples, adding overhead. Finally, watch for expensive operations like sorts, hashes, or aggregates that explode with data volume [2]. These often appear as the most expensive nodes in your EXPLAIN ANALYZE output. The key insight: optimization isn't about guessing - it's about reading the evidence your query planner gives you.
+
+## Workflow — A Methodical Path To Faster Queries
+
+When tackling a slow partitioned query, resist the urge to add indexes randomly. Instead, follow a systematic workflow. First, capture the actual execution with EXPLAIN (ANALYZE, BUFFERS) to see real costs, not just estimates [2]. Second, verify partition pruning - ensure only relevant partitions are scanned. If pruning is poor, check your WHERE clause matches the partition key boundaries and consider constraint exclusion. Third, evaluate index usage - if you're seeing sequential scans on large partitions, your index strategy needs work. Fourth, design a composite index that matches your access pattern - for date-range queries with additional filters, an index on (date, filtered_columns) often works best because it lets the planner seek to the right date range and then scan efficiently within it [4]. Fifth, consider clustering if you need range scans in order or if index-only scans aren't possible [5]. This workflow, visualized in the diagram below, transforms guesswork into precision. Each step builds on the previous one, leading you toward a targeted fix rather than over-engineering.
+
+## Code Example — From Diagnosis To Fix
+
+The best way to understand this is to see it in action. Start by investigating what the query planner is actually doing. Then apply targeted optimizations based on what you learn. The example below demonstrates both diagnosis and remediation - first you gather evidence with EXPLAIN ANALYZE, then you add a composite index that aligns with your query pattern, and finally you consider clustering for better physical data layout. These are the same kinds of targeted fixes that helped Notion achieve massive performance gains before their larger rearchitecture [1].
+
+## Lessons Learned — What Separates Heroes From Casualties
+
+The journey from Notion's terabyte-scale pain to a fix teaches us several hard-earned lessons. First, partitioning is an organizational tool, not a performance guarantee - you must verify pruning works [2][3]. Second, indexes must align with your actual query patterns, not theoretical ones. A composite index on (date, status) is far more effective for filtering by both than separate indexes when your access pattern is date-range based [4]. Third, measurement beats assumption every time - EXPLAIN ANALYZE with BUFFERS reveals the truth about I/O and time [2]. Fourth, sometimes you need to go beyond indexing - clustering can reduce heap fetches when scanning ranges [5]. Finally, the biggest lesson from Notion: when scale truly outgrows a single node, sharding by the right key (like space_id) can unlock horizontal scaling without app changes [1]. But you don't jump to sharding first - you exhaust targeted optimizations, measure results, and only then rearchitect at the scale where it pays off.
+
+---
+
+## Query Optimization Workflow
+
+```mermaid
+flowchart TD
+  A[Start: Slow Query] --> B{Capture EXPLAIN ANALYZE}
+  B --> C{Check Partition Pruning}
+  C --|All Partitions Scanned| D[Fix WHERE clause / constraints]
+  C --|Only Relevant Partitions| E{Check Index Usage}
+  D --> B
+  E --|Seq Scan on Large Partitions| F[Design Composite Index matching pattern]
+  E --|Index Scan Used| G{Check for Expensive Ops}
+  F --> H[CREATE INDEX CONCURRENTLY]
+  H --> I[Re-test with EXPLAIN]
+  I --> G
+  G --|Sorts/Hashes Expensive| J[Consider Clustering or covering index]
+  G --|Acceptable Performance| K[Done]
+  J --> I
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+
+**A:** Check partition pruning effectiveness, index utilization patterns, and expensive sort operations. Create composite indexes on (date, filtered_columns) and evaluate clustering strategies for optimal data access.
+
+</details>
+
+## Conclusion
+
+Partitioning by date is just the beginning, not the end. As Notion's scale showed us [1], you must verify partition pruning works, ensure indexes match your access patterns, and measure with EXPLAIN ANALYZE. Start by diagnosing with data, not hunches - add a composite index that aligns with your filters, consider clustering if it helps, and only rearchitect when the numbers demand it. Tomorrow, before you declare a partitioned table 'optimized,' look at your EXPLAIN plan first. The performance you save might be your own sleep at 3 AM.
+
+---
+
+## References
+
+1. [Notion incident report](https://pganalyze.com/blog/how-notion-runs-postgres-at-scale) — blog
+2. [PostgreSQL: EXPLAIN](https://www.postgresql.org/docs/current/sql-explain.html) — documentation
+3. [PostgreSQL: Partitioning](https://www.postgresql.org/docs/current/ddl-partitioning.html) — documentation
+4. [PostgreSQL: Indexes](https://www.postgresql.org/docs/current/indexes.html) — documentation
+5. [PostgreSQL: CLUSTER](https://www.postgresql.org/docs/current/sql-cluster.html) — documentation
+6. [PostgreSQL: CREATE INDEX](https://www.postgresql.org/docs/current/sql-createindex.html) — documentation
+7. [Use The Index Luke](https://use-the-index-luke.com/) — blog
+8. [Database Partitioning](https://en.wikipedia.org/wiki/Partition_(database)) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
