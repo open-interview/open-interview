@@ -1,0 +1,149 @@
+---
+id: blog-1791033622247-the-20tb-query-that-nearly-bro
+title: "The 20TB Query That Nearly Broke the Dashboard: How Zerodha Tamed PostgreSQL Date Ranges"
+slug: the-20tb-query-that-nearly-broke-the-dashboard-how-zerodha-tamed-postgresql-date
+date: "2026-10-03"
+author: "Satishkumar Dhule"
+channel: database
+category: database
+difficulty: intermediate
+tags: ["explain", "query-plan", "partitioning"]
+description: "Learn how Zerodha tamed 20TB of PostgreSQL by choosing month-level partitioning, composite indexes, and data-driven EXPLAIN analysis to serve 40-50k qps."
+question: You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+sources:
+  - title: Zerodha incident report
+    url: "https://zerodha.tech/blog/working-with-postgresql"
+    type: blog
+  - title: "PostgreSQL: Using EXPLAIN"
+    url: "https://www.postgresql.org/docs/current/using-explain.html"
+    type: documentation
+  - title: "PostgreSQL: Table Partitioning"
+    url: "https://www.postgresql.org/docs/current/ddl-partitioning.html"
+    type: documentation
+  - title: "PostgreSQL: Indexes"
+    url: "https://www.postgresql.org/docs/current/indexes.html"
+    type: documentation
+  - title: "PostgreSQL: CREATE INDEX"
+    url: "https://www.postgresql.org/docs/current/sql-createindex.html"
+    type: documentation
+  - title: "PostgreSQL: CLUSTER"
+    url: "https://www.postgresql.org/docs/current/sql-cluster.html"
+    type: documentation
+  - title: "PostgreSQL: ANALYZE"
+    url: "https://www.postgresql.org/docs/current/sql-analyze.html"
+    type: documentation
+  - title: "PostgreSQL: The Statistics Collector"
+    url: "https://www.postgresql.org/docs/current/monitoring-stats.html"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| intermediate | database | explain, query-plan, partitioning |
+
+Picture this: a trading back-office serving up to 40,000-50,000 queries per second at peak, all while holding hundreds of billions of rows. For Zerodha, this wasn't a hypothetical stress test, but their day-to-day reality [1]. The solution to their scale wouldn't be throwing more hardware at the problem, but rather learning when their most trusted optimization, partitioning by date, was actually working against them. This is the story of that counterintuitive discovery.
+
+---
+
+> ### Real-World Case — Zerodha
+>
+> Zerodha runs the database backend for Console, its trading back-office product, on self-hosted PostgreSQL: roughly 20TB across four sharded nodes holding hundreds of billions of rows of daily trades, P&L and ledger entries, taking tens of millions of inserts per day from end-of-day (EOD) batch jobs and serving up to 40,000-50,000 queries per second at peak. Because virtually all of their data is timestamped, they logically partitioned every table by time.
+>
+> | | |
+> |---|---|
+> | **Challenge** | Queries filtering on a specific date range were still slow despite heavy partitioning. Their team discovered the counterintuitive cause: they had moved to per-DAY partitioning, which made bulk inserts dramatically faster (each day's EOD dump lands in an empty partition) but crushed date-range query performance, because Postgres now had to fan out across and join dozens of logical partitions for a single report query — and planning time grew with partition count. |
+> | **Solution** | Instead of chasing per-query index tweaks, they changed the partition granularity itself: back to per-MONTH partitions, matching the natural access pattern (user report queries are almost always within a single month's range). They also used EXPLAIN ANALYZE as the primary diagnostic: sizing shared_buffers by checking buffer hits on the heaviest queries, and sizing max_parallel_workers / max_parallel_workers_per_gather because Append nodes fan out across monthly partitions and gather in parallel. They tuned work_mem to ~600MB for their sort/JOIN-heavy queries, added composite and partial indexes only where actually needed (avoiding over-indexing on a write-heavy warehouse), disabled autovacuum in favor of scheduled VACUUM ANALYZE on the hottest partitions, and absorbed the mid-month insert cost by bulk-loading EOD data into a temp table that serves user queries for the day before syncing asynchronously into the real partitioned table. |
+> | **Outcome** | Per-month partitioning became 'a far better tradeoff' than per-day — daily bulk-insert speedup traded back for date-range queries no longer spanning many partitions. The resulting clusters hold ~20TB / hundreds of billions of rows on modest hardware and serve 40-50k queries/sec at peak, with the original single-master setup serving billions of rows on just two 32-core/64GB EC2 instances; the whole 20TB DB was sharded across four nodes via postgres_fdw in under two hours with zero schema changes. |
+> | **Lesson** | Partitioning is a bargain you strike with your query patterns, not with your insert pattern. Finer partitions make writes cheaper and reads across a range far more expensive, because the Append fan-out and planning overhead dominate the pruning win. Measure the real access pattern before choosing partition granularity, and read the plan — the answer is usually 'too many partitions in the Append node,' not 'missing an index.' Zerodha's own hard rule: 97.42% of RDBMS bottlenecks are poor indexing or poor vacuuming, and EXPLAIN ANALYZE is how you find out which. |
+
+---
+
+## Hook — When More Partitions Become The Problem
+
+Scale has a cruel sense of humor. As your dataset grows from millions, to tens of millions, and eventually into the hundreds of billions, the optimizations that once saved you begin to exact a hidden tax. For developers, the knee-jerk reaction to time-series data is almost always the same: partition by day, week, or month to allow the query planner to prune old data away. It seems logical. After all, if you only need January's data, why should the database even touch December? However, as Zerodha would come to discover [1], this logic has a tipping point. The very partition boundaries that speed up bulk inserts can multiply exponentially for a query that needs to scan a modest range, forcing the planner to open far more partitions than necessary.
+
+## Problem — The Illusion Of Partition Pruning
+
+You might think that partitioning alone is a silver bullet. In theory, declarative partitioning should allow PostgreSQL to eliminate entire partitions from the search space before touching a single tuple [2][3]. Yet, this is where many developers are caught off guard. If your `WHERE` clause doesn't align with the partition key's constraints in a way the planner can prove, pruning fails silently. Worse still, if you query a range that spans many partitions, the overhead of opening, planning, and executing against each partition can dwarf the cost of scanning a single, well-indexed table [3]. This leads to a painful realization: the shape of your queries matters just as much as the shape of your data. For workloads with tens of millions of inserts per day and 40-50k reads per second [1], that misalignment can go from a nuisance to a bottleneck in the blink of an eye.
+
+## Real-World Case — Zerodha's Tradeoff
+
+This exact dilemma was faced by Zerodha, the brokerage that powers Console, its trading back-office product [1]. Running self-hosted PostgreSQL, their 20TB deployment was sharded across four nodes, holding hundreds of billions of rows of trades, P&L, and ledger entries. With tens of millions of inserts from EOD jobs, their initial instinct to partition tables by day was sound for ingestion. However, as date-range queries became commonplace for reporting and reconciliation, spanning daily partitions proved costly. After careful evaluation, they made a counterintuitive pivot: switching from per-day partitioning to per-month partitioning. This was, in their words, 'a far better tradeoff' [1]. The result? Clusters holding ~20TB across hundreds of billions of rows on modest hardware, still serving 40-50k queries/sec at peak. Most remarkably, the original single-master setup served billions of rows on just two 32-core/64GB EC2 instances, and the entire 20TB database was sharded across four nodes via `postgres_fdw` in under two hours with zero schema changes [1].
+
+## Deep Dive — Diagnosing The Root Cause
+
+Building on Zerodha's lesson, the key is to prove your assumptions with evidence. Before reaching for more partitions or larger indexes, you need to interrogate the execution plan. PostgreSQL's `EXPLAIN` is your microscope, and with `ANALYZE` and `BUFFERS`, it exposes the true cost of a query [2]. First, verify partition pruning is actually working. If the plan still lists dozens of partitions being scanned for a small date window, your predicate is not being proven against the partition bounds [3]. Second, inspect index utilization. A bitmap or index scan is only useful if the index's key prefix matches your filter. For a composite filter like `(event_date, status)`, a single-column index on `event_date` may be insufficient, leading to heap fetches or even a parallel sequential scan [4]. Third, be wary of sorts and aggregates. If the query requires ordering by an unindexed key, or performs large hash aggregates, those operations can dominate I/O, especially when scanning across multiple partitions [2]. Lastly, consider access patterns. For time-series, clustering on a frequently filtered index can drastically reduce random I/O by keeping related tuples physically close together [5][6].
+
+## Workflow — From Diagnosis To Optimization
+
+With the theory established, how do you put this into practice? Here's a battle-tested workflow that you can apply to your own large-scale tables. Following these steps in order prevents you from over-indexing, or worse, partitioning your way into a new problem [1][2][3][4]: 
+
+1. **Capture the baseline.** Use `EXPLAIN (ANALYZE, BUFFERS)` on the problematic query against a representative dataset. Pay special attention to the number of partitions scanned and the estimated vs. actual rows [2]. 
+2. **Verify pruning.** If the query spans a range, confirm that only the expected partitions are considered. If not, adjust your predicates or reconsider your partition granularity to better match your most common range sizes [3]. 
+3. **Cover your predicates.** For filters on `date` alongside other selective columns, create a composite index with `date` as the leading key (e.g. `(event_date, status)`). Use `CREATE INDEX CONCURRENTLY` in production to avoid locking writes [4][5]. 
+4. **Reduce I/O.** If the index is hot and tuples are scattered, `CLUSTER` the table (or partition) using that index to co-locate them. Be aware this requires a rewrite lock and may need to be re-run over time [6]. 
+5. **Keep stats fresh.** Outdated statistics can mislead the planner. Ensure `autovacuum` is tuned, and consider `ANALYZE` after large loads to keep row counts and selectivities accurate [7]. 
+6. **Measure, don't assume.** Re-run your baseline after each change and compare `Buffers: hit/read`, execution time, and rows removed by filters. If the tradeoff regresses on other queries (like ingestion), iterate on granularity [1][2].
+
+## Code Example — Putting It To The Test
+
+With the workflow in mind, let's look at a concrete example inspired by the scenario at hand. The code below focuses on verification and optimization for a time-series table. It directly addresses the problem of slow date-range queries without making unnecessary structural changes first.
+
+## Lessons Learned — The Nuance That Matters
+
+After tracing the journey from diagnosis to optimization, a few hard-earned lessons emerge. First, **partitioning is a tool, not a default.** Its effectiveness is tied to query alignment. For reporting queries that span ranges, coarser granularity (like months over days) can drastically reduce partition overhead, as Zerodha proved with their 20TB workload [1]. Second, **evidence beats intuition.** Always rely on `EXPLAIN (ANALYZE, BUFFERS)` to validate pruning and index usage, rather than guessing the plan [2]. Third, **cover, don't over-cover.** A well-placed composite index with the date as the leading key can eliminate vast swaths of data, but too many indexes will tax your write path [4][5]. Fourth, **physics still matter.** Clustering can be a force multiplier for read-heavy time-series data, reducing I/O at the cost of maintenance [6]. Finally, **keep your planner honest.** Fresh statistics, reasonable `work_mem`, and well-tuned `autovacuum` will do more for general performance than any single silver bullet [7][8]. So the next time you stare down a slow date-range query on a massive table, don't ask, 'Should I partition by day?' Ask, 'What granularity best serves the queries my users actually run?' That single question might just save you terabytes of headache.
+
+---
+
+## Partition-Aware Query Optimization Workflow
+
+```mermaid
+flowchart TD
+  A[Query arrives] --> B{Does WHERE constrain partition key?}
+  B -->|No| C[Planner cannot prune partitions]
+  B -->|Yes| D[Prune irrelevant partitions]
+  C --> E[Consider range size vs partition count]
+  D --> E
+  E --> F{Composite index covers predicates?}
+  F -->|No| G[Evaluate sequential scan vs partial index]
+  F -->|Yes| H[Index scan using leading key]
+  G --> I{Sort or aggregate required?}
+  H --> I
+  I -->|Yes| J[Check sort cost & selectivity]
+  I -->|No| K[Return results with minimal I/O]
+  J --> K
+  K --> L[Measure with EXPLAIN (ANALYZE, BUFFERS)]
+  L --> M{Meet SLOs?}
+  M -->|No| N[Re-evaluate partition granularity or clustering]
+  M -->|Yes| O[Deploy with monitoring]
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You have a PostgreSQL table with 100M rows partitioned by date. A query filtering on a specific date range is still slow. What would you check in the EXPLAIN plan and how would you optimize it?
+
+**A:** Check partition pruning effectiveness, index utilization patterns, and expensive sort operations. Create composite indexes on (date, filtered_columns) and evaluate clustering strategies for optimal data access.
+
+</details>
+
+## Conclusion
+
+The most dangerous phrase in database optimization is, 'This worked at smaller scale.' As Zerodha's story shows, partitioning by the most granular time unit can become your bottleneck as query patterns evolve. The antidote isn't a new silver bullet, it's discipline: prove pruning with EXPLAIN, cover predicates with a well-ordered composite index, reduce I/O through clustering, and keep statistics honest. So tomorrow, before you split another table by day, ask yourself: what granularity truly serves the ranges your users query? Test it. Measure it. Let the data, not the instinct, decide.
+
+---
+
+## References
+
+1. [Zerodha incident report](https://zerodha.tech/blog/working-with-postgresql) — blog
+2. [PostgreSQL: Using EXPLAIN](https://www.postgresql.org/docs/current/using-explain.html) — documentation
+3. [PostgreSQL: Table Partitioning](https://www.postgresql.org/docs/current/ddl-partitioning.html) — documentation
+4. [PostgreSQL: Indexes](https://www.postgresql.org/docs/current/indexes.html) — documentation
+5. [PostgreSQL: CREATE INDEX](https://www.postgresql.org/docs/current/sql-createindex.html) — documentation
+6. [PostgreSQL: CLUSTER](https://www.postgresql.org/docs/current/sql-cluster.html) — documentation
+7. [PostgreSQL: ANALYZE](https://www.postgresql.org/docs/current/sql-analyze.html) — documentation
+8. [PostgreSQL: The Statistics Collector](https://www.postgresql.org/docs/current/monitoring-stats.html) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
