@@ -1,0 +1,172 @@
+---
+id: blog-1792424604823-the-day-10-000-browsers-tried-
+title: "The Day 10,000 Browsers Tried To Boot At Once"
+slug: the-day-10-000-browsers-tried-to-boot-at-once
+date: "2026-10-19"
+author: "Satishkumar Dhule"
+channel: system-design
+category: system-design
+difficulty: advanced
+tags: ["selenium", "webdriver", "grid"]
+description: "Learn how to design a scalable Selenium Grid for 10,000 concurrent sessions with zero memory leaks using Kubernetes, Redis TTLs, and self-healing patterns."
+question: "Design a scalable Selenium Grid architecture to handle 10,000 concurrent test sessions with 99.9% uptime, ensuring zero memory leaks through automatic session lifecycle management, real-time monitoring, and graceful node failure recovery across multiple data centers?"
+sources:
+  - title: Wrike incident report
+    url: "https://habr.com/ru/companies/wrike/articles/539682/"
+    type: article
+  - title: Selenium Grid Documentation
+    url: "https://www.selenium.dev/documentation/grid/"
+    type: documentation
+  - title: Kubernetes Concepts
+    url: "https://kubernetes.io/docs/concepts/"
+    type: documentation
+  - title: Redis EXPIRE Command
+    url: "https://redis.io/docs/latest/commands/expire/"
+    type: documentation
+  - title: Prometheus Overview
+    url: "https://prometheus.io/docs/introduction/overview/"
+    type: documentation
+  - title: Circuit Breaker Design Pattern
+    url: "https://en.wikipedia.org/wiki/Circuit_breaker_design_pattern"
+    type: documentation
+  - title: etcd - Distributed Consensus
+    url: "https://etcd.io/docs/v3.5/learning/why/"
+    type: documentation
+  - title: Kubernetes Pod Disruptions
+    url: "https://kubernetes.io/docs/concepts/workloads/pods/disruptions/"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| advanced | system-design | selenium, webdriver, grid |
+
+Picture this: it's peak testing hour, and you're about to unleash 10,000 concurrent browser sessions onto your infrastructure. For the QA teams at Wrike, this wasn't a theoretical scaling problem, but a very real operational nightmare. As documented in their engineering incident [1], Wrike's Selenium test farm on Google Kubernetes Engine was crumbling under bursty loads, leaving them with flaky results and stuck sessions. The stakes couldn't be higher - every minute of instability chips away at developer confidence, slows down releases, and leaves you wondering if your test grid can truly keep up with the pace of modern engineering.
+
+---
+
+> ### Real-World Case — Wrike
+>
+> Wrike ran its Selenium test farm on Google Kubernetes Engine using short-lived preemptible VMs. Selenium Grid's static browser nodes and stateful hub made the infrastructure unstable under bursty test loads, and QA teams regularly reported flaky results and stuck sessions. Wrike needed to run more than 1,000 tests in parallel in a single cluster without abandoning cost-saving preemptible instances.
+>
+> | | |
+> |---|---|
+> | **Challenge** | Selenium Grid could not tolerate preemptible VMs being reclaimed at any moment. The hub was a single point of failure, idle browser pods wasted cluster capacity, and long-lived nodes accumulated state and failed to clean up sessions reliably. Simply tuning Grid was not enough. |
+> | **Solution** | Wrike built Callisto, a stateless Kubernetes-native replacement for Selenium Grid. Nginx routes session creation and deletion to Callisto, which creates a fresh browser pod per test through the Kubernetes API and deletes the pod when the session ends. Instead of storing session-to-pod mappings in a database, Callisto rewrites the WebDriver session ID to embed the pod name and IP, keeping the control plane stateless. It exports Prometheus metrics and integrates Selenoid UI for live session visibility, VNC, and driver logs. |
+> | **Outcome** | After upgrading GKE from 1.12 to 1.14, Wrike sustained more than 2,000 concurrently running tests with browser pod creation under 10 seconds. The system runs roughly 130,000 to 180,000 tests per day, reduced GKE spending by 30-40% versus Selenium Grid, and fixed intermittent Nginx 499 errors by raising worker-shutdown-timeout from 10 seconds to 120 seconds. |
+> | **Lesson** | The most reliable fix for browser memory leaks and stale sessions is architectural: make every session disposable and keep the control plane stateless. Creating a fresh pod per test and deleting it on completion eliminates long-lived node state entirely, and stateless routing lets preemptible or failed nodes be replaced without losing the grid. |
+
+---
+
+## Hook — When Your Test Grid Goes Up In Smoke
+
+The pager rarely goes off for a slow test. It goes off when the entire regression suite grinds to a halt, when engineers are left refreshing dashboards, and when leadership starts asking why the release train has suddenly derailed. This is the silent tax of an unstable Selenium Grid - a problem that compounds with scale. You're not just battling code anymore; you're battling resource contention, orphaned browser sessions, and the creeping dread that your infrastructure might fold the moment traffic spikes. This is exactly where many teams find themselves before they realize that scale demands a complete architectural shift.
+
+## Problem — The Hidden Costs of Static Infrastructure
+
+At first glance, a traditional Selenium Grid seems simple enough. A central hub routes commands to static browser nodes. However, this simplicity quickly becomes your biggest liability at scale [2]. Static nodes are notoriously bad at handling bursty test loads, as they can't elastically expand or contract to meet demand. When tests finish, sessions can linger in memory, creating a slow leak that eventually starves your cluster. Moreover, when nodes fail or are reclaimed - a common occurrence with cost-saving preemptible instances - stateful hubs struggle to recover gracefully. This leaves you with two painful options: over-provision and hemorrhage cloud spend, or under-provision and watch your tests become flaky. Neither is sustainable when you're aiming for the throughput and reliability modern CI/CD demands.
+
+## Real-World Case — Wrike
+
+Wrike lived this reality day after day. Their QA teams needed to run more than 1,000 tests in parallel in a single cluster without abandoning the cost benefits of preemptible VMs [1]. The culprit? Selenium Grid's static browser nodes and a stateful hub that simply couldn't keep pace with unpredictable test bursts. The impact was staggering: after upgrading GKE from 1.12 to 1.14, Wrike sustained more than 2,000 concurrently running tests with browser pod creation under 10 seconds. The system now runs roughly 130,000 to 180,000 tests per day, reduced GKE spending by 30-40% versus Selenium Grid, and fixed intermittent Nginx 499 errors by raising worker-shutdown-timeout from 10 seconds to 120 seconds [1]. This transformation proves that the right architecture doesn't just improve reliability - it can drastically slash costs while scaling beyond what seemed possible.
+
+## Deep Dive — Building For 10,000 Concurrent Sessions
+
+So how do you reach 10,000 concurrent sessions with 99.9% uptime and zero memory leaks? It starts by abandoning static infrastructure in favor of an elastic, cloud-native model. Kubernetes provides the orchestration backbone, allowing you to dynamically scale browser nodes based on demand [3]. Instead of a stateful hub holding all session state, you need an external session store. Redis, with its TTL policies, ensures that stale sessions automatically expire without manual intervention [4]. This is the first critical step towards eliminating memory leaks - if a session is abandoned, it won't live forever in your cluster. Next, you need visibility. Prometheus gives you real-time metrics on memory usage, queue depth, and session duration [5], letting you act before limits are breached. To maintain 99.9% uptime across multiple data centers, you need circuit breakers to isolate failing nodes [6], health checks to detect degradation early [3], and distributed consensus mechanisms to prevent split-brain scenarios during network partitions [7]. Each piece works in concert to create a self-healing grid that can withstand both expected bursts and unexpected failures.
+
+## Workflow — Orchestrating A Self-Healing Grid
+
+To bring this architecture to life, you need to think in layers. At the control plane level, a Kubernetes cluster spans multiple availability zones with auto-scaling node pools sized to meet your workload [3][6]. Browser nodes run as ephemeral pods, enforcing strict CPU and memory limits to prevent noisy neighbors from starving the system. The hub coordinates routing while persisting session metadata in a Redis cluster with aggressive TTL-based expiration and key cleanup scans [4]. Prometheus scrapes metrics from every pod, feeding alerts when memory usage crosses critical thresholds [5]. Circuit breakers trip on repeated failures, removing unhealthy nodes from rotation for a cooldown period [6]. Finally, lifecycle hooks and sidecar containers ensure that when a pod is terminated - whether from scaling down, preemption, or rolling updates - all browser processes and volumes are cleaned up. This is visualized in the architecture below (see diagram), showing how these components interact to maintain equilibrium even at 10,000 concurrent sessions.
+
+## Code Example — Automating Cleanup For Zero Memory Leaks
+
+Prevention is only half the battle. To guarantee zero memory leaks, you need automated cleanup logic that runs regardless of how a session ends. The following script demonstrates a pragmatic approach: it connects to Redis to discover expired or orphaned session keys, cross-references against known active pods via Kubernetes API, and force-cleans up any dangling resources. This pattern, combined with TTL policies, ensures stale data never accumulates in memory or on disk. As you scale to thousands of sessions, this kind of automation is what separates a brittle grid from a production-grade one.
+
+## Lessons Learned — What You Should Do Differently Tomorrow
+
+Scaling to 10,000 concurrent Selenium sessions isn't about throwing more hardware at the problem. It's about embracing elasticity and designing for failure from day one. Embrace ephemeral infrastructure - treat browser nodes as cattle, not pets. Use TTLs and automated cleanup to guarantee no memory leaks survive termination events [4]. Instrument everything - if you aren't alerting on memory at 80% and queue depth, you're flying blind [5]. Build for graceful degradation with circuit breakers and Pod Disruption Budgets to preserve capacity during failures [3][6]. Most importantly, test under realistic burst patterns. Many developers discover that preemptible instances, once feared, become an advantage when paired with the right recovery strategies [1]. If this feels overwhelming, you're not alone - but with these battle-tested patterns, you can build a test grid that scales with confidence instead of crumbling under pressure.
+
+---
+
+## Elastic Selenium Grid Architecture
+
+```mermaid
+flowchart TB
+  subgraph Users["CI/CD Test Runners"]
+    TR1[Test Job 1]
+    TR2[Test Job 10k]
+  end
+
+  subgraph Control["Control Plane"]
+    Hub[Selenium Hub - Stateless Router]
+    HPA[Horizontal Pod Autoscaler]
+    PDB[Pod Disruption Budget]
+  end
+
+  subgraph Data["State & Metrics"]
+    Redis[(Redis Cluster - Sessions + TTL)]
+    Prom[(Prometheus - Memory/Queue Metrics)]
+  end
+
+  subgraph Nodes["Ephemeral Browser Nodes (K8s Pods)"]
+    N1[Chrome Pod - 2GB/1CPU]
+    N2[Firefox Pod - 2GB/1CPU]
+    Nn[... Auto-Scaled Pods ...]
+  end
+
+  subgraph Recovery["Resiliency"]
+    CB[Circuit Breaker]
+    HC[Health Checks / Liveness]
+    SC[Sidecar Cleanup]
+  end
+
+  TR1 --> Hub
+  TR2 --> Hub
+  Hub --> Redis
+  Hub --> HPA
+  HPA --> N1
+  HPA --> N2
+  HPA --> Nn
+  N1 --> Redis
+  N2 --> Redis
+  Nn --> Redis
+  Prom <-- N1
+  Prom <-- N2
+  Prom <-- Nn
+  HC --> CB
+  CB --> Hub
+  SC --> N1
+  SC --> N2
+  SC --> Nn
+  PDB --> Nodes
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** Design a scalable Selenium Grid architecture to handle 10,000 concurrent test sessions with 99.9% uptime, ensuring zero memory leaks through automatic session lifecycle management, real-time monitoring, and graceful node failure recovery across multiple data centers?
+
+**A:** Deploy Kubernetes cluster with auto-scaling node pools, Redis session store with TTL policies, Prometheus metrics for memory monitoring, circuit breakers for node isolation, and sidecar containers for session cleanup. Implement health checks, resource quotas, and rolling updates.
+
+</details>
+
+## Conclusion
+
+The path to 10,000 concurrent test sessions isn't paved with more static VMs - it's built on elasticity, automation, and relentless focus on cleanup. By learning from Wrike's transformation and combining Kubernetes orchestration, Redis TTLs, Prometheus monitoring, and circuit breakers, you can achieve 99.9% uptime without sacrificing cost efficiency. The question isn't whether your grid will fail under pressure - it's whether it will heal itself when it does. Start by instrumenting your current setup, add automated cleanup today, and watch your test infrastructure become an accelerant for delivery instead of a bottleneck.
+
+---
+
+## References
+
+1. [Wrike incident report](https://habr.com/ru/companies/wrike/articles/539682/) — article
+2. [Selenium Grid Documentation](https://www.selenium.dev/documentation/grid/) — documentation
+3. [Kubernetes Concepts](https://kubernetes.io/docs/concepts/) — documentation
+4. [Redis EXPIRE Command](https://redis.io/docs/latest/commands/expire/) — documentation
+5. [Prometheus Overview](https://prometheus.io/docs/introduction/overview/) — documentation
+6. [Circuit Breaker Design Pattern](https://en.wikipedia.org/wiki/Circuit_breaker_design_pattern) — documentation
+7. [etcd - Distributed Consensus](https://etcd.io/docs/v3.5/learning/why/) — documentation
+8. [Kubernetes Pod Disruptions](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
