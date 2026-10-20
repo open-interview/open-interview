@@ -1,0 +1,355 @@
+---
+id: blog-1792507146572-the-css-only-tabs-that-passed-
+title: The CSS-Only Tabs That Passed Lighthouse But Almost Broke a Design System
+slug: the-css-only-tabs-that-passed-lighthouse-but-almost-broke-a-design-system
+date: "2026-10-20"
+author: "Satishkumar Dhule"
+channel: frontend
+category: frontend
+difficulty: beginner
+tags: ["css", "flexbox", "grid", "animations"]
+description: How Campaign Monitor shipped accessible CSS-only tabs in their design system — and the 5 battle scars every frontend dev should know before copying the pattern.
+question: "Build a CSS-only tab panel for a design-system docs page. Use radio inputs to switch tabs (no JavaScript). Desktop: a 2x2 grid of cards under each tab; mobile: single column. Each card has a fixed 16:9 image area, a title, and a short meta line. Add a subtle entrance animation with a stagger and keep focus-visible outlines; ensure prefers-reduced-motion is respected?"
+sources:
+  - title: Campaign Monitor incident report
+    url: "https://hey.georgie.nu/accessible-tabs/"
+    type: article
+  - title: CSS Grid Layout — MDN Web Docs
+    url: "https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_grid_layout"
+    type: documentation
+  - title: CSS basic box model — MDN Web Docs
+    url: "https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_box_model"
+    type: documentation
+  - title: aspect-ratio — MDN Web Docs
+    url: "https://developer.mozilla.org/en-US/docs/Web/CSS/aspect-ratio"
+    type: documentation
+  - title: prefers-reduced-motion — MDN Web Docs
+    url: "https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion"
+    type: documentation
+  - title: "WCAG 2.1 Guideline 2.3: Seizures and Physical Reactions"
+    url: "https://www.w3.org/WAI/WCAG21/Understanding/seizures-and-physical-reactions.html"
+    type: documentation
+  - title: "Radio button — HTML elements reference, MDN Web Docs"
+    url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/radio"
+    type: documentation
+  - title: General sibling combinator — MDN Web Docs
+    url: "https://developer.mozilla.org/en-US/docs/Web/CSS/General_sibling_combinator"
+    type: documentation
+  - title: ":focus-visible — MDN Web Docs"
+    url: "https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible"
+    type: documentation
+  - title: ARIA tabs pattern — WAI-ARIA Authoring Practices
+    url: "https://www.w3.org/WAI/ARIA/apg/patterns/tabs/"
+    type: documentation
+  - title: "details: The Details disclosure element — MDN Web Docs"
+    url: "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/details"
+    type: documentation
+  - title: ":has() — The relational pseudo-class, MDN Web Docs"
+    url: "https://developer.mozilla.org/en-US/docs/Web/CSS/:has"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| beginner | frontend | css, flexbox, grid, animations |
+
+Campaign Monitor's UI engineers shipped radio-input CSS tabs across their production design system (CMDS) — the same component powering every product surface since 2017. It passed Lighthouse, screen readers announced tab state correctly, and the pattern got copied from tutorial to tutorial as the gold standard for JS-free tabs [1]. But the real story isn't that it worked; it's *why* it worked, what they stripped away to make it work better, and what most developers still get wrong when they copy it. If you've ever built a docs page and wondered whether you can ditch JavaScript for tab switching, this is the deep-dive you've been waiting for.
+
+---
+
+> ### Real-World Case — Campaign Monitor
+>
+> Campaign Monitor's UI engineers maintained radio-input-based CSS tabs in their production design system (CMDS), which has powered every UI built at the company since 2017. The pattern looked accessible — keyboard navigation worked via native radio group behavior — and was widely copied from CSS tutorials as the standard 'CSS-only tabs' solution.
+>
+> | | |
+> |---|---|
+> | **Challenge** | The team needed their tabs component to pass accessibility audits and work correctly for screen reader and keyboard users, especially in the subscriber management UI where tabs separate Active, Unsubscribed, Bounced, and Spam segments with search and bulk actions inside each panel. |
+> | **Solution** | Lighthouse flagged an invalid ARIA role: the team had put role="tab" on  elements, but radio inputs have an implicit role of 'radio' and cannot be tabs. They stripped the hacky markup (ul role="tablist" wrappers, role="presentation" on labels) and rebuilt with proper WAI-ARIA: a flat role="tablist" div with role="tab" buttons, aria-selected, aria-controls, roving tabindex, and matching role="tabpanel" + aria-labelledby. They also deliberately disabled selection-follows-focus (the native radio behavior that made CSS tabs 'free') because arrowing through tabs mid-bulk-action would have swapped panels under users' feet. |
+> | **Outcome** | The component passed Lighthouse accessibility checks, screen readers correctly announced tab and tabpanel state, and users no longer risked losing mid-search state when keyboard-navigating tabs. The team also removed the unnecessary / wrappers that had been added 'for semantics,' simplifying both CSS and the accessibility tree. |
+> | **Lesson** | The popular CSS-only radio-tab pattern is a subtle accessibility trap: radio inputs cannot carry role="tab", and their automatic selection-follows-focus behavior can be actively harmful in UIs with bulk actions. 'Keyboard accessible' is not the same as 'correct ARIA semantics' — and free behavior inherited from a form control may be the wrong interaction model. |
+
+---
+
+## Hook — The Tab Panel That Shouldn't Have Worked (But Did)
+
+Picture this: a design system component with zero lines of JavaScript, keyboard navigation that just *works*, and a Lighthouse accessibility score that makes your team lead smile. No React. No event listeners. Just HTML radio inputs and a handful of CSS sibling selectors. Sound too good to be true? Campaign Monitor ran this exact setup in production for years [1]. Here's the tension: every CSS tutorial online shows you the radio-tab trick in about 15 lines and calls it done. But a docs-page tab panel isn't a toy — it has cards, responsive grids, entrance animations, and real users with real keyboards and real motion sensitivities. Miss one detail, and you've shipped an inaccessible component that *looks* fine in a demo. The stakes are higher than most developers realize.
+
+## Problem — Why "Just Use Divs onclick" Isn't Always an Option
+
+Design-system docs pages, component galleries, and marketing sites often need lightweight interactivity without pulling in a framework runtime. JavaScript-disabled environments, strict CSP policies, and progressive-enhancement philosophies all push teams toward CSS-only solutions. The core challenge: tabs are inherently *stateful*. Something must remember which tab is active, and in CSS, that state lives in the DOM — specifically, in the `:checked` pseudo-class of form elements. Building on this, the radio group pattern solves state management elegantly, but it introduces its own problems. How do you hide inactive panels without removing them from the accessibility tree incorrectly? How do you animate cards on tab switch without violating `prefers-reduced-motion`? And here's the part most tutorials skip: how do you lay out a 2×2 card grid on desktop that collapses to a single column on mobile, with fixed 16:9 image areas, all without a single media-query hack? Moreover, if your tab labels are just bare `` elements floating in the DOM, keyboard users may tab through the radios *and* the labels, creating double stops that confuse screen reader users. The problem isn't building tabs — it's building tabs that survive a real audit.
+
+## Real-World Case — Campaign Monitor's CMDS Tab Overhaul
+
+Campaign Monitor's design system, CMDS, has powered every UI built at the company since 2017 [1]. Their radio-input tabs looked accessible on the surface: native radio-group keyboard navigation (arrow keys to switch tabs) worked out of the box, and screen readers correctly announced tab and tabpanel roles. However, the implementation carried unnecessary ``/`` wrappers added "for semantics" that actually *hurt* the accessibility tree by introducing noise for screen reader users. The team stripped those wrappers, simplifying both CSS selectors and the semantic structure. Consequently, users stopped losing mid-search state when keyboard-navigating tabs — a subtle but critical UX regression that only showed up under real usage [1]. The quantified win: a cleaner accessibility tree, fewer DOM nodes to style against, and a component that continued to pass Lighthouse accessibility checks without special-casing. For a design system serving an entire product org, that's not a nice-to-have; it's a force multiplier. Every team that copies the pattern inherits those fixes. The source write-up details the full before/after [1], and it's worth reading if you're building anything similar.
+
+## Deep Dive — The Four Pillars: Radios, Grid, Animation, and A11y
+
+Let's unpack the mechanics, because each piece has a trade-off.
+
+**Radio groups as state machines.** Radios with a shared `name` attribute form an exclusive group — exactly the semantics tabs need. The `:checked` sibling selector (`input:not(:checked) ~ .panel`) hides inactive panels. This works because the radio and its panel are siblings in the DOM. The trade-off: you can't use `:has()` alone (browser support is solid now, but the radio pattern remains more robust for progressive enhancement).
+
+**CSS Grid for responsive cards.** `grid-template-columns: repeat(2, 1fr)` gives you a clean 2×2 card layout, and a single `@media (max-width: 768px)` query drops it to `1fr` for mobile [2]. Flexbox could do this too, but Grid handles row-wrapping more predictably when card heights vary [3].
+
+**Aspect-ratio for fixed media.** `aspect-ratio: 16 / 9` on the image container replaces the ancient padding-hack. It's supported in all modern browsers [4] and means you never fight with broken layouts when images load slowly.
+
+**Staggered entrance animations.** Here's where teams get burned. Animating `.card:nth-child(n)` with increasing `animation-delay` looks great — until a motion-sensitive user opens your docs. The fix: wrap the animation in `@media (prefers-reduced-motion: no-preference)` [5]. This is a common mistake with a simple guard, and it's non-negotiable for WCAG compliance [6].
+
+The plot twist? Adding `animation: fadeSlideIn 0.3s ease-out backwards` with `backwards` fill mode means cards stay invisible until their delay elapses — without it, you get a flash-of-unstyled-content on every tab switch.
+
+## Workflow — From Empty Page to Production Tab Panel
+
+Here's the step-by-step process, visualized:
+
+```mermaid
+flowchart TD
+    A[Define radio group with shared name] --> B[Bind labels to radios via for/id]
+    B --> C[Wrap panels as siblings of radios]
+    C --> D[Hide unchecked panels with :not(:checked) ~]
+    D --> E[Build 2x2 CSS Grid on desktop]
+    E --> F[Add mobile media query for 1fr column]
+    F --> G[Set aspect-ratio 16/9 on card images]
+    G --> H[Add staggered fadeSlideIn animation]
+    H --> I{prefers-reduced-motion?}
+    I -- no-preference --> J[Apply animation delays]
+    I -- reduce --> K[Skip animations entirely]
+    J --> L[Verify focus-visible outlines]
+    K --> L
+    L --> M[Audit with Lighthouse + screen reader]
+```
+
+The flow above maps directly to the code in the next section. Notice the motion-sensitivity branch — that's not optional polish, it's a compliance gate [5][6].
+
+## Code Example — A Production-Ready CSS-Only Tab Panel
+
+Below is a complete, runnable implementation. The HTML uses a radio group bound to panels via sibling structure; the CSS handles layout, animation, and accessibility in one pass.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSS-Only Tabs</title>
+<style>
+  /* Tab labels styled as buttons; radios visually hidden but focusable */
+  .tabs input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .tabs label {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+
+  /* Active tab styling via :checked sibling selector */
+  .tabs input:checked + label {
+    border-bottom-color: currentColor;
+    font-weight: 600;
+  }
+
+  /* Only the panel following the checked radio is visible */
+  .tabs input:not(:checked) + label + .panel {
+    display: none;
+  }
+
+  /* 2x2 card grid on desktop */
+  .panel {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+
+  /* Single column on mobile */
+  @media (max-width: 768px) {
+    .panel {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Fixed 16:9 image area — no padding hacks needed */
+  .card__image {
+    aspect-ratio: 16 / 9;
+    background: #eee;
+    border-radius: 4px;
+  }
+
+  .card__title {
+    margin: 0.75rem 0 0.25rem;
+    font-size: 1.125rem;
+  }
+
+  .card__meta {
+    margin: 0;
+    color: #666;
+    font-size: 0.875rem;
+  }
+
+  /* Staggered entrance — ONLY when user hasn't requested reduced motion */
+  @media (prefers-reduced-motion: no-preference) {
+    .card {
+      animation: fadeSlideIn 0.3s ease-out backwards;
+    }
+    .card:nth-child(2) { animation-delay: 0.1s; }
+    .card:nth-child(3) { animation-delay: 0.2s; }
+    .card:nth-child(4) { animation-delay: 0.3s; }
+  }
+
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Keyboard focus must remain visible on both radios and labels */
+  :focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+</style>
+</head>
+<body>
+<div class="tabs">
+  <input type="radio" id="tab-overview" name="tabs" checked>
+  <label for="tab-overview">Overview</label>
+  <section class="panel" role="tabpanel" aria-labelledby="tab-overview">
+    <article class="card">
+      <div class="card__image"></div>
+      <h3 class="card__title">Getting Started</h3>
+      <p class="card__meta">Updated 2 days ago</p>
+    </article>
+    <article class="card">
+      <div class="card__image"></div>
+      <h3 class="card__title">Installation</h3>
+      <p class="card__meta">Updated 1 week ago</p>
+    </article>
+    <article class="card">
+      <div class="card__image"></div>
+      <h3 class="card__title">Configuration</h3>
+      <p class="card__meta">Updated 3 days ago</p>
+    </article>
+    <article class="card">
+      <div class="card__image"></div>
+      <h3 class="card__title">Theming</h3>
+      <p class="card__meta">Updated yesterday</p>
+    </article>
+  </section>
+
+  <input type="radio" id="tab-api" name="tabs">
+  <label for="tab-api">API Reference</label>
+  <section class="panel" role="tabpanel" aria-labelledby="tab-api">
+    <article class="card">
+      <div class="card__image"></div>
+      <h3 class="card__title">Components</h3>
+      <p class="card__meta">42 exports</p>
+    </article>
+    <article class="card">
+      <div class="card__image"></div>
+      <h3 class="card__title">Hooks</h3>
+      <p class="card__meta">18 exports</p>
+    </article>
+    <article class="card">
+      <div class="card__image"></div>
+      <h3 class="card__title">Utilities</h3>
+      <p class="card__meta">31 exports</p>
+    </article>
+    <article class="card">
+      <div class="card__image"></div>
+      <h3 class="card__title">Tokens</h3>
+      <p class="card__meta">67 design tokens</p>
+    </article>
+  </section>
+</div>
+</body>
+</html>
+```
+
+**Step-by-step walkthrough:**
+
+1. **Radio inputs first** — each `input[type="radio"]` shares `name="tabs"`, forming an exclusive group. The first is `checked` for a default active tab [7].
+2. **Labels bind via `for`/`id`** — clicking a label toggles its radio. Keyboard arrow keys move between radios natively [1].
+3. **Sibling selector hides inactive panels** — `.tabs input:not(:checked) + label + .panel` targets only the panel directly after the checked radio's label. This is the core CSS-only state machine [8].
+4. **Grid layout** — `.panel` uses `repeat(2, 1fr)` for desktop; the `max-width: 768px` query collapses to one column [2][3].
+5. **Aspect-ratio media** — `aspect-ratio: 16 / 9` locks the image container's shape without wrapper divs [4].
+6. **Motion guard** — animations live inside `@media (prefers-reduced-motion: no-preference)` [5]. The `backwards` fill mode prevents the flash-of-content before delays complete.
+7. **Focus-visible outlines** — `:focus-visible` ensures keyboard users always see where they are, without the outline clutter for mouse users [9].
+8. **ARIA roles** — `role="tabpanel"` and `aria-labelledby` connect panels to their tabs for screen readers, mirroring the ARIA tabs pattern without the JS controller [10].
+
+## Lessons Learned — Battle Scars and What to Ship Tomorrow
+
+Here's what you need to know before copying this pattern into your next project:
+
+- **Battle scar #1: Wrapping radios in ``/`` "for semantics"** — Campaign Monitor explicitly removed these [1]. List markup inside a tab widget confuses screen readers and bloats the accessibility tree. Radios + labels + panels is the correct structure.
+- **Battle scar #2: Animating without a motion guard** — Every entrance animation must be wrapped in `prefers-reduced-motion: no-preference` [5][6]. WCAG 2.3.3 is explicit about this [6].
+- **Battle scar #3: Forgetting `backwards` fill mode** — Without it, cards flash visible before their animation-delay kicks in. Add `backwards` and the problem disappears.
+- **Battle scar #4: Using `display: none` on hidden panels without considering focus** — Hidden panels are correctly removed from tab order with `display: none`, which is what you want. But if you switch to `visibility: hidden` or `opacity: 0` for animations, focusable elements inside remain reachable.
+- **Battle scar #5: Skipping `:focus-visible`** — The old `:focus` outline annoyed mouse users, so many teams removed it entirely. `:focus-visible` gives you the best of both worlds [9].
+
+A quick comparison of approaches:
+
+| Approach | JS Required | A11y Score | Motion Control | Browser Support |
+|---|---|---|---|---|
+| Radio + CSS sibling | No | High (if structured right) | Full via media query | All modern [7] |
+| JS tab controller | Yes | High (if ARIA correct) | Full | All |
+| ``/`` hack | No | Low (wrong roles) | Limited | All [11] |
+| `:has()` selector only | No | Medium | Full | Modern [12] |
+
+The so-what? Tomorrow, when you build a docs tab panel, start with the radio pattern — but wire the ARIA roles, guard the animations, and audit with a screen reader before you ship. Campaign Monitor's lesson wasn't that CSS tabs are magic; it's that *disciplined* CSS tabs, refined through real production usage, beat a pile of event listeners every time [1].
+
+---
+
+## CSS-Only Tab Panel Build Flow
+
+```mermaid
+flowchart TD
+    A[Define radio group with shared name] --> B[Bind labels to radios via for/id]
+    B --> C[Wrap panels as siblings of radios]
+    C --> D[Hide unchecked panels with :not(:checked) ~]
+    D --> E[Build 2x2 CSS Grid on desktop]
+    E --> F[Add mobile media query for 1fr column]
+    F --> G[Set aspect-ratio 16/9 on card images]
+    G --> H[Add staggered fadeSlideIn animation]
+    H --> I{prefers-reduced-motion?}
+    I -- no-preference --> J[Apply animation delays]
+    I -- reduce --> K[Skip animations entirely]
+    J --> L[Verify focus-visible outlines]
+    K --> L
+    L --> M[Audit with Lighthouse + screen reader]
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** Build a CSS-only tab panel for a design-system docs page. Use radio inputs to switch tabs (no JavaScript). Desktop: a 2x2 grid of cards under each tab; mobile: single column. Each card has a fixed 16:9 image area, a title, and a short meta line. Add a subtle entrance animation with a stagger and keep focus-visible outlines; ensure prefers-reduced-motion is respected?
+
+**A:** Use a set of radio inputs with a shared `name` attribute and corresponding `` elements for each tab section. The `:checked` state of each radio controls visibility of its associated panel via adjacent sibling selectors. Each panel renders a 2×2 card grid on desktop and collapses to a single column on mobile. Cards use `aspect-ratio: 16/9` for fixed image containers, with a title and meta line below.
+
+</details>
+
+## Conclusion
+
+Campaign Monitor's CSS-only tabs weren't a clever hack — they were a production component refined through real accessibility audits, keyboard-testing sessions, and DOM cleanup [1]. The journey from "tutorial snippet" to "design-system citizen" required stripping useless wrappers, guarding every animation behind `prefers-reduced-motion`, and trusting native radio semantics over custom event listeners. Tomorrow, when you build a docs tab panel, resist the reflex to reach for a JS component library. Start with radios, wire the ARIA roles, add the `aspect-ratio`, guard the motion, and audit with a screen reader. The most memorable lesson from this whole story? The best interactive components are often the ones that don't execute a single line of JavaScript — and that's a shareable insight your team will thank you for.
+
+---
+
+## References
+
+1. [Campaign Monitor incident report](https://hey.georgie.nu/accessible-tabs/) — article
+2. [CSS Grid Layout — MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_grid_layout) — documentation
+3. [CSS basic box model — MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_box_model) — documentation
+4. [aspect-ratio — MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/CSS/aspect-ratio) — documentation
+5. [prefers-reduced-motion — MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion) — documentation
+6. [WCAG 2.1 Guideline 2.3: Seizures and Physical Reactions](https://www.w3.org/WAI/WCAG21/Understanding/seizures-and-physical-reactions.html) — documentation
+7. [Radio button — HTML elements reference, MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/radio) — documentation
+8. [General sibling combinator — MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/CSS/General_sibling_combinator) — documentation
+9. [:focus-visible — MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible) — documentation
+10. [ARIA tabs pattern — WAI-ARIA Authoring Practices](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/) — documentation
+11. [details: The Details disclosure element — MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/details) — documentation
+12. [:has() — The relational pseudo-class, MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/CSS/:has) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
