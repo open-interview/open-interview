@@ -1,0 +1,141 @@
+---
+id: blog-1794501703204-deployed-is-not-served-the-10-
+title: "Deployed Is Not Served: The 10-Millisecond Lesson From Netflix's 1M-Request Platform"
+slug: deployed-is-not-served-the-10-millisecond-lesson-from-netflix-s-1m-request-platf
+date: "2026-11-12"
+author: "Satishkumar Dhule"
+channel: devops
+category: devops
+difficulty: beginner
+tags: ["mlops", "deployment"]
+description: "Deployment ships your model; serving keeps it fast. Learn the difference, the trade-offs, and the Netflix-tested patterns behind 1M requests per second."
+question: "Explain the key differences between model serving and model deployment in ML systems, including specific technologies, scaling considerations, and real-world implementation patterns?"
+sources:
+  - title: Netflix incident report
+    url: "https://netflixtechblog.com/state-of-routing-in-model-serving-16e22fe18741"
+    type: article
+  - title: MLOps - Wikipedia
+    url: "https://en.wikipedia.org/wiki/MLOps"
+    type: documentation
+  - title: Kubernetes Deployments
+    url: "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/"
+    type: documentation
+  - title: Horizontal Pod Autoscaling
+    url: "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/"
+    type: documentation
+  - title: TensorFlow Serving
+    url: "https://github.com/tensorflow/serving"
+    type: documentation
+  - title: TorchServe
+    url: "https://github.com/pytorch/serve"
+    type: documentation
+  - title: NVIDIA Triton Inference Server
+    url: "https://github.com/triton-inference-server/server"
+    type: documentation
+  - title: Hidden Technical Debt in Machine Learning Systems
+    url: "https://arxiv.org/abs/1503.05991"
+    type: paper
+  - title: A/B testing - Wikipedia
+    url: "https://en.wikipedia.org/wiki/A/B_testing"
+    type: documentation
+  - title: Site Reliability Engineering
+    url: "https://sre.google/sre-book/table-of-contents/"
+    type: documentation
+  - title: BentoML
+    url: "https://github.com/bentoml/BentoML"
+    type: documentation
+  - title: Amazon SageMaker Documentation
+    url: "https://docs.aws.amazon.com/sagemaker/"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| beginner | devops | mlops, deployment |
+
+Picture a model that passes every test, ships through a flawless CI/CD pipeline, and still makes your product feel broken. At Netflix, recommendations, payments fraud detection, search ranking, and artwork personalization all depend on a centralized model-serving platform — and by 2025 that system was handling roughly one million inference requests per second across 300+ models and more than 30 internal client services [1]. The hard part was never shipping the model. It was everything that happened after the model went live. Here is the distinction that separates teams who ship confidently from teams who page at 3 a.m.
+
+---
+
+> ### Real-World Case — Netflix
+>
+> Netflix runs a centralized ML model serving platform that powers recommendations, payments fraud detection, search ranking, and artwork personalization for 250M+ members. By 2025 the platform was serving hundreds of model types and versions at roughly 1 million requests per second across 30+ internal client services.
+>
+> | | |
+> |---|---|
+> | **Challenge** | Netflix needed a single abstraction so client microservices could request inference without knowing which model version, cluster shard, or experiment was involved. Their first solution, a custom routing service called Switchboard, sat directly in the request path and became both a single point of failure and a latency tax—adding 10–20ms per request due to serialization/deserialization, plus tail-latency amplification for latency-sensitive use cases. |
+> | **Solution** | Netflix separated the deployment control plane from the serving data plane. Model authors package artifacts and a control plane handles deployment, versioning, health checks, autoscaling, and multi-region rollout over Triton-based inference backends. For routing, they replaced the in-path Switchboard design with Lightbulb, a decoupled service that manages routing metadata only, while Envoy proxies enforce routing at the edge; clients get fallback and caching so a routing failure cannot take down all model access. |
+> | **Outcome** | The refactored architecture supports 1M+ inference requests per second, 300+ models, and 30+ client services while eliminating the extra 10–20ms network hop and removing the central router as a single point of failure. Netflix preserved fast experimentation and A/B testing without putting routing logic in the critical request path. |
+> | **Lesson** | Deployment and serving are distinct planes: the control plane can be centralized, but the data plane must be decentralized and failure-isolated. The counterintuitive lesson is that the abstraction everyone wanted—a single central router—became the bottleneck, so Netflix kept the abstraction while moving enforcement out of the hot path. |
+
+---
+
+## Hook — The Model Was Live. The Product Was Still Slow.
+
+The dashboard said green. The pipeline said deployed. The model was answering requests. So why did checkout feel sluggish, why did search results arrive a beat late, and why did the on-call engineer get paged at 3 a.m. for a rollout that 'looked fine'?\n\nThis is the gap that bites production ML teams. Deployment is about getting an artifact safely into an environment. Serving is about answering a request inside a latency budget while traffic spikes, models change, and hardware misbehaves. Those are different problems with different failure modes.\n\nMany developers treat serving as an afterthought — a thin API wrapper around a pickle file. Then reality arrives: cold starts add hundreds of milliseconds, a single routing hop adds 10 to 20ms to every call, and one overloaded replica cascades into timeouts across the fleet [1].\n\n🎯 **Key Point:** A model is not 'in production' because it is deployed. It is in production when it reliably serves real traffic under real constraints.\n\nThe rest of this story is about the space between those two milestones — and why mature teams treat it as a first-class system.
+
+## Problem — Deployment Ends Where the Request Begins
+
+The confusion starts with vocabulary. Teams say 'we deployed the model' to mean everything from merging a training job to exposing a public endpoint. That vagueness hides a costly organizational gap: the people who own infrastructure and the people who own latency often are not the same people.\n\nDeployment answers a release question: can this artifact be promoted safely, observed, and rolled back? Serving answers a runtime question: can this request be answered correctly, quickly, and cheaply, right now, at this traffic level?\n\nWhen those concerns blur, predictable problems follow:\n\n- **Ownership gaps** — platform teams own Kubernetes, data scientists own notebooks, and nobody owns p99 latency.\n- **Wrong metrics** — success gets measured by deploy frequency instead of error rate and tail latency [10].\n- **Fragile rollouts** — a new model version ships to 100% of traffic with no canary and no fast rollback path [9].\n- **Cost surprises** — GPU replicas sit idle overnight because autoscaling was never wired to the serving layer [4].\n\n💡 **Insight:** MLOps is not one discipline. It is the seam between release engineering and runtime systems, and seams are where production incidents live [2].\n\nIf this feels familiar, you are not alone. The fix is not more tooling — it is separating the two problems clearly enough to design for each one.
+
+## Real-World Case — Netflix
+
+Netflix offers a masterclass in why serving deserves its own architecture. By 2025, its centralized model-serving platform powered recommendations, payments fraud detection, search ranking, and artwork personalization for 250M+ members, running hundreds of model types and versions across 30+ internal client services [1].\n\nThe interesting part is not the scale. It is what the original design cost. An early architecture routed inference traffic through a central router, which added an extra 10 to 20ms network hop to every request and turned that router into a single point of failure [1]. At one million requests per second, a 10ms tax is not a rounding error — it is a product-wide latency budget being spent on plumbing.\n\nNetflix refactored the architecture so routing logic moved out of the critical request path while preserving fast experimentation and A/B testing. The result supported 1M+ inference requests per second, 300+ models, and 30+ client services, eliminated the extra hop, and removed the central router as a single point of failure [1].\n\n⚠️ **Watch Out:** The seductive lesson is 'delete the router.' The real lesson is 'stop putting control-plane decisions in the data plane.' Netflix kept experimentation — it just stopped charging every user request for it.\n\nThat distinction is the heart of this article. Deployment can be centralized and deliberate. Serving must be distributed, fast, and boring.
+
+## Deep Dive — Two Systems, Two Sets of Trade-offs
+
+Once you separate deployment from serving, the trade-offs become much easier to reason about.\n\n| Dimension | Deployment | Serving |\n|---|---|---|\n| Question answered | Can this artifact run safely in production? | Can this request be answered in time? |\n| Core tools | Kubernetes, Terraform, MLflow, SageMaker | TensorFlow Serving, TorchServe, Triton, BentoML |\n| Typical failure | Bad rollout, drifted config | Timeout, cold start, overload |\n| Success metric | Deploy frequency, rollback time | p99 latency, throughput, error rate |\n\nOn the deployment side, Kubernetes Deployments give you declarative rollouts and replica management [3], while the Horizontal Pod Autoscaler adjusts capacity based on observed load [4]. Managed platforms such as SageMaker bundle training, hosting, and monitoring into one control plane [12]. Model registries and pipeline tools like MLflow keep versions and lineage coherent [2].\n\nOn the serving side, specialized model servers do the heavy lifting. TensorFlow Serving handles model versioning and efficient TensorFlow inference [5], TorchServe targets PyTorch workloads [6], and NVIDIA Triton supports multiple frameworks and dynamic batching [7]. BentoML packages models into deployable services with sensible serving defaults [11].\n\nThe core trade-offs are timeless:\n\n- **Latency vs throughput** — batching improves GPU utilization but adds queueing delay. Real-time systems usually optimize tail latency; batch systems optimize cost per item.\n- **Batch vs real-time** — offline scoring is cheap and forgiving; online scoring is expensive and unforgiving.\n- **Cold start vs cost** — warm replicas answer fast and bill constantly; scale-to-zero saves money and punishes the first user.\n- **Flexibility vs stability** — custom FastAPI services are easy to change and easy to break; dedicated model servers are rigid and predictable.\n\n🔥 **Hot Take:** Most 'model performance' problems in production are actually serving problems. A perfectly accurate model behind a 700ms cold start is a bad product. The industry has written whole papers about this class of hidden technical debt [8].\n\nNow that the concepts are clear, the practical question is how these two systems connect into one reliable workflow.
+
+## Workflow — From Registry to Request, Without the Extra Hop
+
+A production-grade flow keeps deployment decisions deliberate and serving decisions fast. The diagram below shows the handoff: the deployment pipeline prepares and promotes artifacts, while the serving tier handles traffic, versioning, and health at runtime.\n\n1. **Register the model.** Every artifact gets an immutable version, metrics, and lineage.\n2. **Package and test.** Build a container image, run smoke tests, and verify the inference contract.\n3. **Roll out gradually.** Use Kubernetes to create a new ReplicaSet and shift traffic with a canary instead of a big-bang switch [3].\n4. **Route at the edge.** Serve multiple versions side by side for A/B tests, but keep routing logic lightweight and local to the request path [9].\n5. **Scale on real signals.** Drive autoscaling from request concurrency, queue depth, or latency rather than CPU alone [4].\n6. **Observe and decide.** Track p50, p95, p99, error rate, saturation, and model-specific drift signals [10].\n7. **Promote or roll back.** If health checks and SLOs hold, promote. If not, shift traffic back without redeploying.\n\nThe critical design move is separating the control plane from the data plane. Choosing which model version should receive traffic is a control-plane decision. Applying that choice to a live request is a data-plane operation. Netflix's refactor is essentially an exercise in keeping the second one brutally cheap [1].\n\n💡 **Insight:** The best serving architectures make the common path boring and the rare path safe. Fast lookups for normal traffic, clear rollback for bad days.
+
+## Code Example — A Serving Layer With Version Routing and Readiness
+
+The code below sketches a minimal but production-shaped serving layer in Python. It loads the model once at startup, exposes separate liveness and readiness endpoints, supports per-request version routing for canaries, and records latency so tail behavior is visible.\n\n```python\nfrom contextlib import asynccontextmanager\nfrom fastapi import FastAPI, HTTPException, Request\nfrom pydantic import BaseModel\nimport os\nimport time\n\nMODEL_VERSION = os.getenv('MODEL_VERSION', 'v1')\nMODELS = {}\n\n\ndef load_model(version: str):\n    # Replace this with a real artifact fetch from your registry\n    return {'version': version, 'weights': [0.0] * 10}\n\n\n@asynccontextmanager\nasync def lifespan(app: FastAPI):\n    # Load at startup so requests do not pay the cold-start cost\n    MODELS[MODEL_VERSION] = load_model(MODEL_VERSION)\n    # Warm up the runtime before reporting ready\n    for _ in range(3):\n        _ = MODELS[MODEL_VERSION]['weights']\n    yield\n    MODELS.clear()\n\n\napp = FastAPI(lifespan=lifespan)\n\n\nclass PredictRequest(BaseModel):\n    features: list[float]\n\n\n@app.get('/healthz')\nasync def healthz():\n    # Liveness: is the process alive?\n    return {'status': 'ok', 'version': MODEL_VERSION}\n\n\n@app.get('/readyz')\nasync def readyz():\n    # Readiness: should the load balancer send traffic here?\n    if MODEL_VERSION not in MODELS:\n        raise HTTPException(status_code=503, detail='model not loaded')\n    return {'status': 'ready', 'version': MODEL_VERSION}\n\n\n@app.post('/predict')\nasync def predict(payload: PredictRequest, request: Request):\n    start = time.perf_counter()\n    # Allow canary traffic to target a specific version explicitly\n    requested = request.headers.get('x-model-version', MODEL_VERSION)\n    model = MODELS.get(requested)\n    if model is None:\n        raise HTTPException(status_code=404, detail='unknown model version')\n    # Replace with real inference; keep the critical path small\n    score = sum(payload.features) % 1.0\n    elapsed_ms = (time.perf_counter() - start) * 1000\n    return {\n        'score': score,\n        'version': model['version'],\n        'latency_ms': round(elapsed_ms, 2),\n    }\n```\n\nWalking through it: the lifespan hook loads and warms the model once, which attacks cold start directly. The separate `/healthz` and `/readyz` endpoints matter because liveness failures should restart a pod, while readiness failures should only remove it from the load balancer. The version header enables canary and A/B routing without redeploying the fleet. Finally, returning latency per response gives you a cheap early signal before full observability is wired in [4][5].\n\nThis is intentionally small. In practice, put a real model server or a hardened framework behind it, add structured logging, and connect the metrics to your autoscaler. The shape stays the same.
+
+## Lessons Learned — Stop Confusing Release With Runtime
+
+The journey from 'deployed' to 'served' is mostly about seeing two systems where others see one.\n\n- **Separate the control plane from the data plane.** Routing policy can be sophisticated; applying it per request must be cheap [1].\n- **Measure tail latency, not averages.** Averages hide the users who are actually suffering [10].\n- **Treat cold start as a feature, not an accident.** Warm pools, preloading, and readiness gates are cheaper than angry users.\n- **Make rollback a traffic decision.** If reverting requires a full redeploy, it is too slow [3].\n- **Autoscale on the right signal.** CPU is a proxy; concurrency, queue depth, and latency are the real story [4].\n- **Keep experimentation out of the hot path.** A/B tests are essential, but they should not tax every request [9].\n- **Expect technical debt.** Serving systems accumulate hidden complexity faster than training code [8].\n\n⚠️ **Common battle scar:** Teams often optimize model accuracy for weeks, then discover the real bottleneck is a 200ms feature lookup or an over-eager batch window. Profile the whole request path, not just the model.\n\nThe memorable takeaway is simple: deployment is a promise that the artifact is safe to run; serving is the proof that it is fast enough to matter. Netflix's refactor did not make models smarter. It made the path to them shorter, safer, and cheaper [1]. Do the same, and your next rollout will be judged by users, not by dashboards.
+
+---
+
+## Deployment vs Serving Architecture
+
+```mermaid
+flowchart TD\n    A[Model Training] --> B[Model Registry]\n    B --> C[Deployment Pipeline]\n    C --> D[Container Image + Config]\n    D --> E[Kubernetes Rollout]\n    E --> F{Traffic Router}\n    F -->|Canary 5%| G[Serving Pod v1]\n    F -->|Canary 95%| H[Serving Pod v2]\n    G --> I[Inference API]\n    H --> I\n    I --> J[Metrics + Traces]\n    J --> K{Healthy?}\n    K -->|Yes| L[Promote Version]\n    K -->|No| M[Rollback]\n    M --> E
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** Explain the key differences between model serving and model deployment in ML systems, including specific technologies, scaling considerations, and real-world implementation patterns?
+
+**A:** Deployment encompasses CI/CD pipelines, infrastructure setup, and monitoring using tools like Kubernetes, MLflow, and SageMaker. Serving focuses on runtime inference APIs with frameworks like TensorFlow Serving, TorchServe, or BentoML, handling request routing, model versioning, and autoscaling. Key trade-offs include latency vs throughput, batch vs real-time inference, and cold start optimization.
+
+</details>
+
+## Conclusion
+
+Netflix's serving platform did not get faster by making models smarter. It got faster by removing a 10 to 20ms hop from every request and taking a single point of failure out of the critical path [1]. That is the mindset shift worth copying tomorrow: treat deployment as a release discipline and serving as a runtime discipline, then design each one for its own failure modes. Measure tail latency, gate traffic with readiness, make rollback a routing decision, and keep experimentation out of the hot path. The one insight to share with your team is this: a deployed model is a promise, but a served model is proof.
+
+---
+
+## References
+
+1. [Netflix incident report](https://netflixtechblog.com/state-of-routing-in-model-serving-16e22fe18741) — article
+2. [MLOps - Wikipedia](https://en.wikipedia.org/wiki/MLOps) — documentation
+3. [Kubernetes Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) — documentation
+4. [Horizontal Pod Autoscaling](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/) — documentation
+5. [TensorFlow Serving](https://github.com/tensorflow/serving) — documentation
+6. [TorchServe](https://github.com/pytorch/serve) — documentation
+7. [NVIDIA Triton Inference Server](https://github.com/triton-inference-server/server) — documentation
+8. [Hidden Technical Debt in Machine Learning Systems](https://arxiv.org/abs/1503.05991) — paper
+9. [A/B testing - Wikipedia](https://en.wikipedia.org/wiki/A/B_testing) — documentation
+10. [Site Reliability Engineering](https://sre.google/sre-book/table-of-contents/) — documentation
+11. [BentoML](https://github.com/bentoml/BentoML) — documentation
+12. [Amazon SageMaker Documentation](https://docs.aws.amazon.com/sagemaker/) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
