@@ -1,0 +1,218 @@
+---
+id: blog-1795193759289-the-delete-that-saved-facebook
+title: "The Delete That Saved Facebook: A 13x Cache Invalidation Story"
+slug: the-delete-that-saved-facebook-a-13x-cache-invalidation-story
+date: "2026-11-20"
+author: "Satishkumar Dhule"
+channel: backend
+category: backend
+difficulty: beginner
+tags: ["redis", "memcached", "cache-invalidation"]
+description: "Discover cache invalidation through Meta's 17,000-to-1,300 queries/sec story, with write-through patterns, Redis vs Memcached trade-offs, and runnable code."
+question: "You're building a user profile service that caches frequently accessed profiles. How would you implement cache invalidation when a user updates their profile, and what trade-offs would you consider between Redis and Memcached?"
+sources:
+  - title: Meta (Facebook) incident report
+    url: "https://www.usenix.org/system/files/conference/nsdi13/nsdi13-final170.pdf"
+    type: article
+  - title: Cache (computing)
+    url: "https://en.wikipedia.org/wiki/Cache_(computing)"
+    type: documentation
+  - title: Cache stampede
+    url: "https://en.wikipedia.org/wiki/Cache_stampede"
+    type: documentation
+  - title: redis/redis GitHub repository
+    url: "https://github.com/redis/redis"
+    type: documentation
+  - title: memcached/memcached GitHub repository
+    url: "https://github.com/memcached/memcached"
+    type: documentation
+  - title: Amazon ElastiCache Developer Guide
+    url: "https://docs.aws.amazon.com/elasticache/latest/developerguide/WhatIsElastiCache.html"
+    type: documentation
+  - title: "RFC 9111: HTTP Caching"
+    url: "https://datatracker.ietf.org/doc/html/rfc9111"
+    type: documentation
+  - title: Python 3 functools documentation
+    url: "https://docs.python.org/3/library/functools.html"
+    type: documentation
+  - title: "MDN Web Docs: HTTP caching"
+    url: "https://developer.mozilla.org/en-US/docs/Web/HTTP/Caching"
+    type: documentation
+---
+
+| Difficulty | Channel | Tags |
+|---|---|---|
+| beginner | backend | redis, memcached, cache-invalidation |
+
+What if the fastest way to keep a billion users happy was to delete less? At Meta (Facebook), profile and social data was read far more often than written, and MySQL served billions of reads per second behind a demand-filled look-aside cache built on Memcached [1]. A naive “write then delete” strategy looked safe on paper, yet at scale it produced stale sets and thundering herds that hammered the database [1]. The fix was not a bigger database — it was smarter invalidation, and the numbers were almost absurd: herd-prone keys dropped from 17,000 queries per second to 1,300 [1].
+
+---
+
+> ### Real-World Case — Meta (Facebook)
+>
+> Facebook served billions of reads per second from MySQL with profile and social data that is read far more often than written, using Memcached as a demand-filled look-aside cache. On updates, a web server wrote to the database then sent a delete to invalidate cached data, but at scale naive invalidation produced stale sets and thundering herds that overloaded databases.
+>
+> | | |
+> |---|---|
+> | **Challenge** | Keeping cache and database consistent across thousands of servers, multiple frontend clusters, and regions—without stale reads or stampedes of redundant DB queries on hot keys. |
+> | **Solution** | They preferred idempotent deletes over cache sets, invented a 64-bit per-key 'lease' token (issued at most once per 10 seconds) to arbitrate writes and throttle thundering herds, and embedded invalidation keys inside SQL statements so mcsqueal daemons could extract deletes from the commit log and batch-broadcast them via mcrouter—making lost deletes replayable. Remote markers handled cross-region replication lag. |
+> | **Outcome** | Peak database query rate on herd-prone keys fell from 17,000/s to 1,300/s (~13x); delete batching improved median deletes per packet by 18x; system sustains billions of requests/sec over trillions of items for 1B+ users; only 4% of deletes actually invalidate cached data. |
+> | **Lesson** | Cache invalidation is a distributed-systems problem, not a delete() call: favor idempotent deletes, gate refill with leases, and make invalidation durable and replayable from the DB commit log—accepting slight staleness for massive load savings. |
+
+---
+
+## Hook — The Most Boring Line in the Diff
+
+Building on that opening number, consider the most unassuming line in the code review: cache.delete('profile:42'). It looks about as threatening as a stray semicolon. Then a fan account swaps its avatar, 200,000 refreshes land in the same second, and every one of them misses because the key vanished a moment too early. A cache is only a second copy of the truth, but that second copy decides whether a service answers in microseconds or begs MySQL for mercy [2]. The stakes are brutally simple: one sloppy invalidation turns a routine profile edit into a database incident. So why does deleting data that was just written cause so much trouble?
+
+## Problem — When Good Caches Go Stale
+
+However, the trouble starts long before the delete. Write to the database, then update the cache: that sounds atomic until two requests race and an older fill lands after a newer one. The result is a stale set — a cache entry that looks perfectly fresh but represents a dead version of the profile. Meanwhile, if the key expires while a thousand readers arrive, they all stampede the database together, a classic cache stampede [3]. Many developers discover this at 2am, staring at a connection pool that has quietly become a waiting room.
+
+Here is what you need to know:
+- Two copies of data mean two windows of inconsistency; TTLs merely cap the damage.
+- A 5-30 minute TTL keeps profile reads fast, but every expiration is a mini-outage for that key.
+- Deleting the key is safer than writing a value, because deletion cannot resurrect an older payload.
+- Distributed deployments multiply the problem: each application node has its own idea of what is current.
+
+The uncomfortable question is whether the cache should be told about writes at all — or whether it should simply be allowed to forget.
+
+## Real-World Case — Meta (Facebook)
+
+This leads straight to the most instructive caching story at scale. Meta (Facebook) ran profile and social data in MySQL, read far more often than written, and put Memcached in front as a demand-filled look-aside cache serving billions of reads per second [1]. On updates, a web server committed to the database and then sent a delete to invalidate the cached copy. Elegant, right? At scale, that naive pattern created stale sets and thundering herds; herd-prone keys alone drove 17,000 database queries per second [1].
+
+The plot twist is that the fix was mostly plumbing. Meta batched deletes so a single packet carried roughly 18 times more invalidations, and only about 4% of deletes actually found cached data to remove [1]. The system now sustains billions of requests per second across trillions of items for more than a billion users, while those same herd-prone keys fell to around 1,300 queries per second — roughly a 13x improvement [1].
+
+🔥 Hot take: the cache did not get smarter; the invalidation path got less chatty and more precise. What would happen if your own delete traffic were 90% noise?
+
+## Deep Dive — Write-Through, Cache-Aside, and the Redis/Memcached Fork
+
+Building on Meta's plumbing lesson, the design choice is less about libraries and more about who owns the truth. Write-through caching writes to the database and the cache together, so a read rarely sees a cold key. The safer variant pairs that with write-invalidation: commit the database change, then delete the key, letting the next reader refill it. That ordering matters — an in-flight fill scheduled before the commit can otherwise land after it and preserve an old avatar forever.
+
+Cache-aside reads complement this: check the cache, load on miss, store with a TTL, and move on. TTLs are not a substitute for invalidation; they are the seat belt for when invalidation fails. HTTP caching has made the same peace with freshness windows for years [7].
+
+### Redis vs Memcached — the real tradeoff
+
+| Option | Strength | Cost | Use it when |
+|---|---|---|---|
+| Redis | Pub/sub invalidation, persistence, rich data structures [4] | More moving parts, more memory per key | Complex invalidation, durability, queues, or leaderboards matter |
+| Memcached | Lean multithreaded cache, minimal overhead, easy horizontal scaling [5] | No pub/sub, no persistence, manual coordination | Pure read caching at massive scale with simple keys |
+| Managed Redis (AWS ElastiCache) | Operational offload for failover and patching [6] | Higher bill than self-managed | The team wants durability without becoming a Redis operations team |
+
+💡 Insight: Redis pub/sub lets every application node react to an invalidation event [4], while Memcached expects the caller to coordinate deletes across nodes [5]. If invalidation fans out to ten services, Redis buys back engineering time. If the workload is a giant hot key-value rug, Memcached remains hard to beat.
+
+🎯 Key Point: choose the invalidation model first, then the store. An expensive data structure nobody invalidates correctly is still a wrong answer. When would each option actually earn its keep in your stack?
+
+## Workflow — The Invalidation Path, Step by Step
+
+Consequently, the flow below treats every update as a small transaction with an audience. The sequence diagram below maps the same path your code will take, from the first cache hit to the cross-node invalidation message.
+
+1. Read first: GET profile:42. A hit returns immediately; no database, no drama.
+2. On a miss, acquire a short single-flight lock so one request refills the cache while the rest wait briefly.
+3. Load from MySQL, then SET with a jittered 5-30 minute TTL so keys never expire in lockstep.
+4. On update, commit the database write before touching the cache; the database remains the source of truth.
+5. DELETE the key rather than rewriting the value, then PUBLISH an invalidation event for other nodes.
+6. Subscribe on every application node and drop local copies on that event; monitor hit rate and delete volume.
+
+⚠️ Watch Out: deleting before the database commit is the classic foot-gun. A reader can refill the old value between the delete and the commit, and the cache will serve that stale copy until the TTL rescues it.
+
+After debugging this pattern many times, the teams that sleep best add jitter to both TTLs and retry backoff. Ready to see the smallest version that survives production?
+
+## Code Example — A Production-Shaped Python Implementation
+
+This leads naturally to code that encodes every rule above without turning into a framework. The snippet uses Redis with cache-aside reads, a single-flight lock, jittered TTL, and delete-then-publish invalidation; redis-py supports the atomic NX/EX SET used for the lock [4].
+
+```python
+key = f'profile:{user_id}'
+hit = cache.get(key)
+if hit is not None:
+    return json.loads(hit)  # fast path, no database
+```
+
+The full implementation lives in the code example field, but the critical lines are worth reading twice:
+- cache.get(key) is the fast path; a hit never touches MySQL.
+- SET with nx=True and ex=LOCK_TTL makes lock acquisition atomic.
+- json.dumps(profile) keeps the payload simple; swap in protobuf when bytes matter.
+- save_to_db runs before cache.delete(key), so an old fill cannot overwrite a committed change.
+- publish is the bridge to other nodes; Memcached deployments replace it with explicit fan-out.
+
+Python's own functools cache shows the same local-cache idea in miniature [8]. Sound familiar: the hardest part is not the SET, it is deciding when not to write?
+
+## Lessons Learned — Battle Scars and the Tomorrow Test
+
+Building on that implementation, the durable lessons are less about syntax and more about discipline under load. Meta's numbers remain the north star: 17,000 to 1,300 queries per second, 18x denser delete packets, and only 4% of deletes doing real work [1].
+
+Battle scars worth avoiding:
+- Deleting before commit: fix by writing to the database first, then deleting.
+- Writing the new value instead of deleting: fix by letting the next reader refill; old in-flight fills cannot win.
+- Fixed TTLs across all keys: fix with jitter, because synchronized expirations are a self-inflicted herd.
+- No hit-rate monitoring: fix with dashboards for hit ratio, lock contention, and deletes per packet.
+- Treating the cache as a database: fix by keeping durability in the store that actually has it [6].
+
+💡 Insight: HTTP caches already accept that stale-for-a-moment is a reasonable price for scale [9]. Profile caches deserve the same pragmatic contract.
+
+The tomorrow test is small: pick one hot key, add jitter, move the delete after the commit, and watch the graph. One three-engineer sprint is usually enough to prove the change. Which of those five mistakes is hiding in your codebase today?
+
+---
+
+## Cache Invalidation Sequence
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant W as Web Server
+    participant C as Cache (Redis/Memcached)
+    participant D as MySQL
+    participant P as Pub/Sub Channel
+    U->>W: GET /profile/42
+    W->>C: GET profile:42
+    alt cache hit
+        C-->>W: JSON profile
+        W-->>U: 200 OK (sub-millisecond)
+    else cache miss
+        W->>C: SET lock:profile:42 NX EX 5
+        W->>D: SELECT profile 42
+        D-->>W: row
+        W->>C: SET profile:42 (TTL 5-30m + jitter)
+        W->>C: DEL lock:profile:42
+        W-->>U: 200 OK
+    end
+    U->>W: PATCH /profile/42
+    W->>D: UPDATE + COMMIT
+    D-->>W: ack
+    W->>C: DEL profile:42
+    W->>P: PUBLISH invalidate profile:42
+    P-->>W: other nodes drop local copies
+    Note over C,D: Next read refills cache; lock and jitter tame the herd
+```
+
+<details>
+<summary><strong>Original Interview Question</strong></summary>
+
+**Q:** You're building a user profile service that caches frequently accessed profiles. How would you implement cache invalidation when a user updates their profile, and what trade-offs would you consider between Redis and Memcached?
+
+**A:** Implement write-through caching with TTL-based expiration. On profile update, invalidate the cache by deleting the key and writing new data to both the database and cache. Redis offers pub/sub for automatic distributed invalidation, while Memcached requires manual coordination across nodes.
+
+</details>
+
+## Conclusion
+
+The delete that looked harmless at the start of this story turned out to be the whole plot. Meta turned naive invalidation into a precision system and cut herd-prone database load roughly 13x [1]. Your version does not need billions of requests to benefit: move the delete after the commit, add jitter, and publish the invalidation instead of hoping the TTL saves you. The one insight to take to your team: caches rarely fail because they are too small — they fail because nobody agreed on when to forget.
+
+---
+
+## References
+
+1. [Meta (Facebook) incident report](https://www.usenix.org/system/files/conference/nsdi13/nsdi13-final170.pdf) — article
+2. [Cache (computing)](https://en.wikipedia.org/wiki/Cache_(computing)) — documentation
+3. [Cache stampede](https://en.wikipedia.org/wiki/Cache_stampede) — documentation
+4. [redis/redis GitHub repository](https://github.com/redis/redis) — documentation
+5. [memcached/memcached GitHub repository](https://github.com/memcached/memcached) — documentation
+6. [Amazon ElastiCache Developer Guide](https://docs.aws.amazon.com/elasticache/latest/developerguide/WhatIsElastiCache.html) — documentation
+7. [RFC 9111: HTTP Caching](https://datatracker.ietf.org/doc/html/rfc9111) — documentation
+8. [Python 3 functools documentation](https://docs.python.org/3/library/functools.html) — documentation
+9. [MDN Web Docs: HTTP caching](https://developer.mozilla.org/en-US/docs/Web/HTTP/Caching) — documentation
+
+---
+
+**Author:** Satishkumar Dhule — [GitHub](https://github.com/satishkumar-dhule) · [LinkedIn](https://linkedin.com/in/satishkumar-dhule) · [Website](https://satishkumar-dhule.github.io)
